@@ -9,10 +9,11 @@ import kotlin.test.assertEquals
  * Every row mirrors one measured against the real kernel by
  * `rulekit.validate.laws.SupportedCharactersDeclarationGateLawsTest`.
  *
- * **The silent rows carry the risk, and there are three kinds.** A restriction this checker cannot read as
- * singletons and ranges, a declared string that is not an enum value, and a value carrying a surrogate: each
- * is a model A12 accepts or has never been asked about, so a finding on one would be this checker's own
- * reading presented as A12's.
+ * **The silent rows carry the risk, and there are two kinds.** A restriction this checker cannot read as
+ * singletons and ranges, and a declared string that is not an enum value: each is a model A12 accepts or has
+ * never been asked about, so a finding on one would be this checker's own reading presented as A12's. A value
+ * carrying a supplementary-plane character was a third until A12 was measured judging it per UTF-16 unit
+ * (KERNEL-FINDINGS KF551, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`).
  *
  * **The grapheme rows name their code points rather than spelling them.** Written as literal accented
  * characters they would pass or fail on how this FILE happens to be normalized — a row that reads as a
@@ -80,6 +81,8 @@ class SupportedCharactersTest {
         actual["a precomposed single-character entry"] = codes("""["A-Z","$precomposed"]""", "beta")
         actual["both range ends"] = codes("""["A-Z"]""", "AZ")
         actual["one below a range's start"] = codes("""["B-Y"]""", "A")
+        // A supplementary-plane character is two UTF-16 units, and A12 judges each.
+        actual["a value carrying a surrogate pair"] = codes("""["A-Z"]""", supplementary)
 
         val expected = mutableMapOf<String, List<String>>()
         expected["no restriction — the control"] = emptyList()
@@ -92,6 +95,7 @@ class SupportedCharactersTest {
         expected["a precomposed single-character entry"] = invalid + invalid + invalid + invalid
         expected["both range ends"] = emptyList()
         expected["one below a range's start"] = invalid
+        expected["a value carrying a surrogate pair"] = invalid + invalid
         assertEquals(expected, actual, "one finding per distinct offending character of each value")
     }
 
@@ -128,7 +132,6 @@ class SupportedCharactersTest {
         actual["a reversed range"] = codes("""["Z-A"]""", "beta")
         actual["an empty restriction list"] = codes("""[]""", "beta")
         actual["a non-string entry"] = codes("""[7]""", "beta")
-        actual["a value carrying a surrogate pair"] = codes("""["A-Z"]""", supplementary)
         val expected = actual.keys.associateWith { emptyList<String>() }
         assertEquals(expected, actual, "an unreadable restriction leaves the whole model unjudged")
     }
@@ -138,7 +141,7 @@ class SupportedCharactersTest {
      *
      * Without the gap a consumer reads "examined, nothing found" for a model the family declined to judge —
      * the one direction an under-reporting checker can still mislead in. The unreadable restriction is a
-     * MODEL-level gap because it silences every declaration at once; a skipped value is declaration-level.
+     * MODEL-level gap because it silences every declaration at once.
      */
     @Test
     fun theSilenceIsPublishedAsACoverageGap() {
@@ -149,21 +152,12 @@ class SupportedCharactersTest {
             unreadable.joinToString("\n") { "${it.at}: ${it.reason}" },
         )
 
-        val skipped = report("""["A-Z"]""", supplementary).gaps
-        assertEquals(
-            listOf<String?>("/Shop/Delivery"),
-            skipped.filter { it.reason.contains("supplementary-plane") }.map { it.at },
-            skipped.joinToString("\n") { "${it.at}: ${it.reason}" },
-        )
-
-        // The control: a model this family fully judged publishes neither, so the rows above are answering
-        // to the declaration rather than to a gap the report always carries.
+        // The control: a model this family fully judged publishes no gap, so the row above is answering to
+        // the declaration rather than to a gap the report always carries.
         val judged = report("""["A-Z"]""", "beta").gaps
         assertEquals(
             emptyList(),
-            judged.filter {
-                it.reason.contains("NO enum value was judged") || it.reason.contains("supplementary-plane")
-            },
+            judged.filter { it.reason.contains("NO enum value was judged") },
             judged.joinToString("\n") { "${it.at}: ${it.reason}" },
         )
     }

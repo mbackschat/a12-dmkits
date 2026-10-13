@@ -10661,6 +10661,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool computes through the interpreter and adds no Date rendering of its own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-01 in the 2026-10-13 handback as already satisfied, with the new locks; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf551": {
+      "sha256": "776cd86262962b66fdfa462c4a1e080aaf8791d4fe0cf0e701851b8f9083a499",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["enumeration notification stream"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["enumeration notification stream"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["enumeration notification stream"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed enumeration builder refuses a misaligned category before A12 sees it and reports no notification stream of its own.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The checker reports invalid characters per UTF-16 unit before the category blocks, collapses identical notifications, groups shortfalls before surpluses across categories, names no entry carrying a surrogate, and treats category tokens as a repertoire carrier.", "evidence": {"enumeration notification stream": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "Every coded class agrees with A12 in order and multiplicity on all 42 rows; before the change 20 of the peer's 37 rows disagreed."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import declares enumeration values without categories and leaves their admission to the consistency check.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export maps declared values only and reports no notifications.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel's ordered notifications are compared with the portable checker's on 42 own-domain rows, with the two codeless classes pinned separately.", "evidence": {"enumeration notification stream": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodelessClassesArePublishedOrDeliberatelyNot", "witness": "The unsupported-signs sentence is published exactly once wherever A12 raises it, and the repeated-value sentence never stands alone."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model consistency is not interpreter behaviour.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs relay the kernel's or the portable checker's report and add no notification of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-04 in the 2026-10-13 handback, including the supplementary category-token rows; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

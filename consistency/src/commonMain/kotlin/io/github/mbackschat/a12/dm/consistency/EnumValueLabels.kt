@@ -34,7 +34,8 @@ internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
     }
 
 private fun duplicateTokenFindings(field: TrackedDeclaration, values: List<JsonObject?>): List<Finding> {
-    val tokens = values.mapNotNull { it?.string("value") }
+    // A value with a supplementary-plane character is not named; A12 reports it as an unsupported sign (KF551).
+    val tokens = values.mapNotNull { it?.string("value") }.filter { it.namedByA12() }
     val repeated = tokens.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
     return repeated.map { token ->
         finding(

@@ -134,8 +134,8 @@ class EnumValueMultipleDefectLawsTest {
                         + codeless("BASIC") + "," + codeless("PLUS"));
         // The cell that settles the multiplicity: 1×2 and 2×1 both give two, which a maximum and a sum
         // predict as well, and only 2×2 separates them. Four — the cross product. The two misalignment
-        // findings ride along because four values under two tokens are two values short, which is the
-        // same row saying again that nothing here is withheld.
+        // findings ride along because each category leaves the repeated PLUS unclassified twice, and A12
+        // keeps one of identical notifications (KF551): one per category, nothing withheld.
         expected.put("TWO tokens each repeated under TWO categories",
                 MISSING_CATEGORY + "," + MISSING_CATEGORY + "," + SPOILT_PAIRING + "," + SPOILT_PAIRING
                         + "," + SPOILT_PAIRING + "," + SPOILT_PAIRING + "," + DUPLICATE + "," + DUPLICATE

@@ -308,17 +308,18 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET, DeclarationStage.INDEPENDENT) { base, at ->
         base.elementNameAlphabetFindings(at)
     },
-    CheckProducer.ModelWide(
-        stage = ModelStage.DECLARATION,
-        completes = setOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT),
-        findings = { it.enumCategoryFindings() },
-        gaps = { it.enumCategoryGaps() },
-    ),
+    // A12 reports an enumeration's invalid characters before its category alignment (KF551).
     CheckProducer.ModelWide(
         stage = ModelStage.DECLARATION,
         completes = setOf(CheckFamily.ENUM_VALUE_CHARACTERS),
         findings = { it.supportedCharacterFindings() },
         gaps = { it.supportedCharacterGaps() },
+    ),
+    CheckProducer.ModelWide(
+        stage = ModelStage.DECLARATION,
+        completes = setOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT),
+        findings = { it.enumCategoryFindings() },
+        gaps = { it.enumCategoryGaps() },
     ),
     CheckProducer.ModelWide(
         stage = ModelStage.DECLARATION,

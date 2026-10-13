@@ -13238,3 +13238,23 @@ a12-kernel-lean `SPEC-2026-10-13-01`; the scalar counterpart of [KF202](#kf202)'
 At run time the target's format decides the stored text. `2024-03-05` from an ISO source stores `05.03.2024` in a dotted target; a dotted source stores ISO in an ISO target; a full Date and a year-month store `2024` in a `yyyy` target; a yearless `03-05` completes with Base Year 2024 to `2024-03-05`; a starred column stores its first filled row. An empty first source falls through to the next. A malformed first source is reached and clears a seeded target, although a valid source follows; with nothing filled, the seeded target clears as well. A malformed source after the first filled one is never read.
 
 Locked by `adapter.laws.FirstFilledDateTargetRenderingDiffTest` (dynamic Groovy, static Java and the interpreter on five documents, outcomes pinned) and `adapter.laws.CheckerFirstFilledDateTargetAgreementTest` (the kernel against the portable checker on thirteen rows, with and without a Base Year). The `yyyy`-into-full-Date row is admission only; its stored value is not measured.
+
+## §8 supplement — an Enumeration declaration's notifications come in blocks, identical ones once, and no coded class names a value carrying a supplementary-plane character (kernel `checkConsistency`, 2026-10-13) <a id="kf551"></a>
+
+> Fold: pending — the declaration stream belongs in §8 beside the category pairing.
+
+a12-kernel-lean `SPEC-2026-10-13-04`. For one Enumeration field A12 reports in this order:
+
+| block | class | multiplicity |
+|---|---|---|
+| 1 | `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` | one per distinct (value, UTF-16 unit) under a restricted charset: `o` + U+1F6D2 under `A-Z` draws three, the bare U+1F6D2 two |
+| 2 | codeless "The field contains one or several unsupported signs." | once per field, for any supplementary-plane character in a value, a value label or a category token, which extends [KF489](#kf489)'s carriers |
+| 3 | `MVK_MISSING_CATEGORY_VALUE` | one per distinct unclassified value per category |
+| 4 | `MVK_MISSING_INTERNAL_VALUE` | one per distinct surplus token per category |
+| 5 | `MVK_CATEGORY_VALUE_DUPLICATE` | one per repeated value per category ([KF344](#kf344)) |
+| 6 | `MVK_INTERNAL_VALUES_DUPLICATE` | one per repeated value |
+| 7 | codeless "The enumeration contains the value '…' multiple times." | one per repeated value |
+
+Blocks 3 and 4 run over every category, so shortfalls precede surpluses whatever the category order: a surplus, a shortfall and a surplus category draw one missing-category class, then two missing-internal ones. A12 keeps one of identical notifications. So values `PLUS, PLUS` past a category's last token draw one class for that category, and tokens `STANDARD, HIGH, TOP, TOP, PEAK` over two values draw two. A value carrying any supplementary-plane character, alone or beside letters, is named by none of blocks 3, 5 and 6, and such a surplus token by no block 4 class: `STANDARD` plus U+1F6D2 over one value draws block 2 alone. It still holds its position in the pairing, so U+1F6D2 followed by `BASIC` under one token draws a missing-category class for `BASIC`, and a repeated one still draws block 7. Under the default charset, lowercase and non-ASCII BMP values are admitted.
+
+Locked by `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`, which re-expresses the peer's 37-row capture in our own domain, all of whose classes it reproduces, and adds five rows with mixed values and supplementary tokens. The source agrees: A12 checks the declaration as a document of its metamodel ([KF146](#kf146)), whose formal check refuses any UTF-16 surrogate, so such an entry is unknown to the category rules, while block 7 comes from a separate serializer check over the raw values (`BasicConsistencyCheck.checkEnumerationType`), and identical notifications fall into a set. The portable checker now follows blocks 1 and 3–6 in order and multiplicity; it publishes block 2 as `RK_UNSUPPORTED_CHARACTER`, now for a category token too, after block 5, and block 7 not at all, since a repeated value always also draws block 6 or block 2. Not measured: an order inside a block, a supplementary-plane character in a category name, table-backed enumerations, and the interleaving of two enumeration fields.

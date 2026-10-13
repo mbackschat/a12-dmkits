@@ -15,9 +15,16 @@ import kotlinx.serialization.json.JsonPrimitive
  * set membership one, and A12 reports the two directions separately: a value with no token is
  * `MVK_MISSING_CATEGORY_VALUE`, a token with no value is `MVK_MISSING_INTERNAL_VALUE`.
  *
- * **The multiplicity is part of the law.** A12 emits one notification per unpaired element, so two values
- * under an empty token list draw two findings. A family reporting the misalignment once would be reporting a
- * different fact, and the oracle keeps its multiplicity for exactly that reason.
+ * **The multiplicity is part of the law, and so is A12's collapse.** A12 emits one notification per unpaired
+ * element, so two values under an empty token list draw two findings, but it keeps one of IDENTICAL
+ * notifications: a value repeated past the tokens, or a repeated surplus token, is reported once per category.
+ * The findings come in A12's blocks, every category's unclassified values first, then every surplus token,
+ * then the spoilt pairings (KERNEL-FINDINGS KF551, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`).
+ *
+ * **A value or token carrying a supplementary-plane character is never named.** A12 reads the declaration as a
+ * document of its metamodel, whose formal check refuses any UTF-16 surrogate, so such an entry is unknown to
+ * the pairing rules and is reported through the codeless "unsupported signs" notification instead, which this
+ * checker publishes as `RK_UNSUPPORTED_CHARACTER`. The entry still occupies its position in the pairing.
  *
  * **The member names are measured, not read off the Java fields**
  * (`rulekit.validate.laws.EnumCategoryWireShapeLawsTest`), and that grid also settled why a checker cannot
@@ -37,11 +44,23 @@ internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
-        val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
-        categories.flatMap { category ->
-            field.misalignment(values, category) + field.spoiltPairing(values, category)
-        }
+        val categories = (body["categories"] as? JsonArray ?: return@flatMap emptyList()).mapNotNull { it.pairing() }
+        categories.flatMap { field.shortfall(values, it) } + categories.flatMap { field.surplus(values, it) } +
+            categories.flatMap { field.spoiltPairing(values, it) }
     }
+
+/** One category as this family reads it, or null when it is not the measured shape. */
+private class Pairing(val name: String, val tokens: JsonArray)
+
+private fun JsonElement.pairing(): Pairing? {
+    val declared = this as? JsonObject ?: return null
+    val tokens = declared["values"] as? JsonArray ?: return null
+    val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+    return Pairing(named, tokens)
+}
+
+/** Whether A12 names this entry in a coded notification: one carrying a UTF-16 surrogate it does not. */
+internal fun String.namedByA12(): Boolean = none { it.isSurrogate() }
 
 /**
  * The declarations this family stayed silent about, so silence is never read as agreement.
@@ -112,18 +131,15 @@ internal fun JsonObject.declaredEnumValues(): List<String>? {
     }
 }
 
-/** One category's unpaired elements, in the order A12 reports them: its own values first, then its tokens. */
-private fun TrackedDeclaration.misalignment(values: List<String>, category: JsonElement): List<Finding> {
-    val declared = category as? JsonObject ?: return emptyList()
-    val tokens = declared["values"] as? JsonArray ?: return emptyList()
-    val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
-    return when {
-        tokens.size < values.size -> values.drop(tokens.size).map { unclassified(named, it, tokens.size) }
-        tokens.size > values.size ->
-            tokens.drop(values.size).map { token -> unmatched(named, token.tokenText(), values.size) }
-        else -> emptyList()
-    }
-}
+/** The values past this category's last token, each named once. */
+private fun TrackedDeclaration.shortfall(values: List<String>, category: Pairing): List<Finding> =
+    values.drop(category.tokens.size).filter { it.namedByA12() }.distinct()
+        .map { unclassified(category.name, it, category.tokens.size) }
+
+/** The tokens past this enum's last value, each named once. */
+private fun TrackedDeclaration.surplus(values: List<String>, category: Pairing): List<Finding> =
+    category.tokens.drop(values.size).map { it.tokenText() }.filter { it.namedByA12() }.distinct()
+        .map { unmatched(category.name, it, values.size) }
 
 /**
  * The pairings a value declared twice makes ambiguous — one finding per duplicated value, per category.
@@ -138,10 +154,9 @@ private fun TrackedDeclaration.misalignment(values: List<String>, category: Json
  * under two categories draw FOUR; 1×2 and 2×1 each draw two, which a maximum and a sum predict as well. And
  * it counts duplicated VALUES rather than extra occurrences: a token declared three times draws one.
  */
-private fun TrackedDeclaration.spoiltPairing(values: List<String>, category: JsonElement): List<Finding> {
-    val declared = category as? JsonObject ?: return emptyList()
-    val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
-    return values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.map { token ->
+private fun TrackedDeclaration.spoiltPairing(values: List<String>, category: Pairing): List<Finding> {
+    val named = category.name
+    return values.filter { it.namedByA12() }.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.map { token ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
@@ -165,9 +180,9 @@ private fun TrackedDeclaration.unclassified(category: String, value: String, tok
 )
 
 /**
- * The surplus token NAMES itself, because A12 raises one diagnostic per surplus token (measured, two of
- * them draw two). Findings identical in code, path and text would be folded by any consumer deduplicating
- * on those three, which would silently discard the multiplicity this family exists to reproduce.
+ * The surplus token NAMES itself, because A12 raises one diagnostic per DISTINCT surplus token (two distinct
+ * ones draw two, a repeated one draws one). Naming it keeps the two distinct findings distinct for a consumer
+ * deduplicating on code, path and text, which would otherwise fold the multiplicity this family reproduces.
  */
 private fun TrackedDeclaration.unmatched(category: String, token: String, values: Int) = Finding(
     FindingCategory.A12_CONSTRAINT,

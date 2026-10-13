@@ -142,7 +142,7 @@ enum class CheckFamily {
     /**
      * That an Enumeration's categories pair with its values. The pairing is POSITIONAL, so the law is equal
      * cardinality rather than set membership, and A12 names each unpaired element separately — a value with
-     * no token and a token with no value are different codes, and both are reported once per element.
+     * no token and a token with no value are different codes, and both are reported once per distinct element.
      */
     ENUM_CATEGORY_ALIGNMENT,
 

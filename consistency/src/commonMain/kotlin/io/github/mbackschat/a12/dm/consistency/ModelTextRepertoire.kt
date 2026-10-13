@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * That no text A12 validates as part of the model carries a character outside the Basic Multilingual Plane.
@@ -14,7 +15,7 @@ import kotlinx.serialization.json.JsonObject
  *
  * **The carriers are measured one by one, and some texts are not among them.** Every text of a rule or a
  * computation is one — its condition or preconditions, operation, error code and message. So are a field's
- * annotations, enum values and enum labels, its type's own message (a String type's pattern message, an
+ * annotations, enum values, enum labels and category tokens ([KF551]), its type's own message (a String type's pattern message, an
  * Enumeration's invalid-value message), and a group's annotations. The labels of the model, of a group and
  * of a field are NOT, and neither is a message or an enum label written for a locale the model does not
  * declare. Reading the check as "every text of the model" would refuse three kinds of legal model.
@@ -29,8 +30,8 @@ import kotlinx.serialization.json.JsonObject
  * one thing that takes it away, with the rest of the rule.
  *
  * **What it leaves to A12**, all of it under-reporting: a mounted provider's declarations, whose reach through
- * the host was not measured, and every member not listed above — a field type's other members, a category,
- * the model's header. The report publishes that silence once, as a coverage gap.
+ * the host was not measured, and every member not listed above — a field type's other members, a category's
+ * name, the model's header. The report publishes that silence once, as a coverage gap.
  */
 internal fun TrackedFactBase.modelTextRepertoireFindings(): List<Finding> =
     declarations().filterNot { it.origin.isMounted }.mapNotNull { element ->
@@ -90,13 +91,18 @@ private fun TrackedDeclaration.annotationTexts(): List<CarriedText> =
         )
     }
 
-/** An enum's values and, for a declared locale only, their labels. */
+/** An enum's values, for a declared locale only their labels, and its categories' tokens. */
 private fun JsonObject.enumTexts(declaredLocales: List<String>): List<CarriedText> =
     (this["values"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { entry ->
         listOfNotNull(entry.string("value")?.let { CarriedText("the enum value `$it`", it) }) +
             (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
                 .filter { label -> label.string("locale")?.let { localeKeyOrNull(it) } in declaredLocales }
                 .mapNotNull { label -> label.string("text")?.let { CarriedText("an enum label", it) } }
+    } + (this["categories"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { category ->
+        (category["values"] as? JsonArray).orEmpty().mapNotNull { token ->
+            (token as? JsonPrimitive)?.takeIf { it.isString }?.content
+                ?.let { CarriedText("the category token `$it`", it) }
+        }
     }
 
 private fun TrackedDeclaration.repertoireFinding(found: Unsupported): Finding = Finding(
