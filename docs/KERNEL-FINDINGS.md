@@ -13457,3 +13457,29 @@ A12 judges a restricted charset per UTF-16 unit ([KF551](#kf551)), and a supplem
 Each row also draws the codeless unsupported-signs sentence of KF551's block 2. A stored value meets the same tester: under the spanning range a note carrying U+1F6D2 is formally invalid on both strategies, while a BMP letter inside the range is admitted.
 
 Why the high unit is refused inside a covering range is not settled here. Locked by `adapter.laws.CheckerEnumDeclarationStreamAgreementTest` against the portable checker, which refused only units outside the ranges and judged a surrogate entry as a range, and now refuses every high unit and reports a surrogate entry as `CK_MODEL_NOT_BUILDABLE`. `consistency.SupportedCharactersTest` mirrors it on JVM and JS, and `adapter.laws.SupportedCharactersSupplementaryDiffTest` holds the stored values across the three engines, the interpreter already agreeing.
+
+## §13 supplement — a message field parameter renders the row it reads, whatever its spelling; a value read through a key that selects no row faults the rule (both strategies, 2026-10-13) <a id="kf561"></a>
+
+> Fold: pending — belongs in §13's error-text interpolation, beside [KF198](#kf198)'s parameter forms and [KF546](#kf546)'s keyed group token.
+
+a12-kernel-lean `SPEC-2026-10-13-12`. A policy keys its repeatable `Claims` by `Ref` (each claim holding a repeatable `Items`), pairs `Covers` with `Limits` by an Enumeration index `Grade`, and keys `Tiers` by a Number `Num`; rules read each field in their condition and render it in their text:
+
+| parameter | rule in | renders |
+|---|---|---|
+| `$Note.value$`, `$Note$`, `$Status->Band$`, `$index('Ref').value$` | `Claims` | the firing row's value, name, category and index token |
+| `$../Note.value$` and `$/Policy/Claims/Note.value$` | `Claims/Items` | the enclosing claim's value, both spellings alike |
+| `$/Policy/Holder.value$` and the bare short name `$Holder.value$` | `Claims` | the root value; the label renders `Holder` |
+| `$/Policy/Limits/Cap.value$` and the bare `$Cap.value$` | `Covers` | the limit the `Grade` join pairs with each cover (`5`, then `7`), not the cover's own coordinate |
+| `$/Policy/Claims/Note.value For "c1"$`, its index field `Ref`, its label | root | the claim keyed `c1`: its value, `c1`, `Note` |
+| the same `For Pick`, `Pick` holding `c0` | root | the claim keyed `c0` |
+| `$/Policy/Tiers/Label.value For "2"$`, `Num`, `$#/Policy/Tiers For "2"$` | root | the tier whose Number index is 2: `t2`, `2`, `2` |
+| an empty `Note` and `$…Status->Band For "c2"$` of the claim keyed `c2` | root | the empty text, the category of its `OPEN` status |
+| `$/Policy/Claims/Note.value For "c9"$`, no claim keyed `c9` | root | the rule still fires, but its WHOLE text is replaced: "An error occurred while evaluation the data check: repetition index must be > 0, or 0 for wildcard, but not negative" |
+| the same in a rule iterating `Claims` | `Claims` | that one fault message, at the first claim only; the second claim's firing reports nothing |
+| `$/Policy/Claims/Note For "c9"$`, the label alone | root | `Note`, with no fault |
+| `$/Policy/Claims/Status->Band For "c9"$` | root | the empty text, with no fault |
+
+So the bare name resolves in two tiers, as [KF335](#kf335) measured for admission: below the rule's group, otherwise the model's one field of that short name. Every spelling of one field reads the same cell, so the row follows the reading context (the firing row, its enclosing row, or the parallel partner) or the key. Of the three suffixes only `.value` faults on an unmatched key. The single first-row message is the shape of every runtime failure in a rule's row loop ([KF513](#kf513)); that the cell read is what throws on A12's unknown coordinate is a source reading (`MainValidatorController.substParameter` has no guard for it, while the group token's `substIndexNumberParam` renders `?`), not a measured mechanism. The message keeps its code and VALUE type and refers to no field.
+
+Locked by `adapter.laws.MessageParameterRowDiffTest` (both kernel strategies pinned row by row, the interpreter by structure, and every message signature on all three), with `MessageParameterRowRenderTest` holding the interpreter on JVM and Node ([IF398](INTERPRETER-FINDINGS.md#if398)). Not measured: a missing parallel partner, keyed rendering below a nested indexed group, a labelled Enumeration value through a key, and a short-name key (`For Pick` without the path) on a model whose `fieldRefByShortNameAllowed` is off.
+

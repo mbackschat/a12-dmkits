@@ -49,6 +49,10 @@ internal data class MessageTerminals(
  *  - `$index(<shortName>).value$` / `$index(<shortName>)->Category$` → the error ancestry's index token/category
  *    through the model-aware overload (SPEC11-01); this is separate from ordinary field label presentation.
  *  - `$<relpath>$` → the already-resolved display name via [labelOf].
+ *  - A field name is absolute, below [base] after each leading `../`, or, through the model-aware [fieldPathOf], a
+ *    unique short name; every spelling reads the same cell ([KF561]).
+ *  - `$<path>.value For <key>$`, `$<path> For <key>$`, `$<path>->Category For <key>$` → the row the key selects,
+ *    through [selectedCellOf]; see [selectedText] for a key that selects none.
  *
  * A name colliding with a terminal is written in the grammar's single-quote escape (`$'For'$`) and the quotes
  * are erased before any lookup, so an unnecessary quote is transparent. Only kernel-ADMITTED templates reach
@@ -94,6 +98,8 @@ internal fun renderMessage(
     baseYearOf: (Int) -> String?,
     groupIndexOf: (String) -> String?,
     indexTextOf: (String, String?) -> String? = { _, _ -> null },
+    selectedCellOf: (String) -> SelectedCell? = { null },
+    fieldPathOf: (String) -> String = { name -> messageFieldPath(base, name) },
 ): String = if ('$' !in template) template else terminals.tokenPattern.replace(template) { token ->
     val name = unquoted(token.groupValues[NAME])
     val group = token.groupValues[GROUP]
@@ -103,8 +109,11 @@ internal fun renderMessage(
         group.isNotEmpty() -> groupIndexOf(if (group.any { it.isWhitespace() }) group else unquoted(group)) ?: token.value
         index.isNotEmpty() -> indexTextOf(index, unquoted(token.groupValues[INDEX_CATEGORY]).takeIf { it.isNotEmpty() }) ?: token.value
         name.isEmpty() -> baseYearOf(offsetOf(token.groupValues[OFFSET])) ?: token.value
+        token.groupValues[SELECTION].isNotEmpty() ->
+            selectedCellOf(fieldPathOf(name) + token.groupValues[SELECTION])?.let { cell -> selectedText(token, cell, labelOf,
+                enumValueOf, enumCategoryOf, defaultValueOf) } ?: token.value
         else -> {
-            val path = "$base/$name"
+            val path = fieldPathOf(name)
             val category = token.groupValues[CATEGORY]
             when {
                 category.isNotEmpty() -> enumCategoryOf(path, storedAt(path, messageValueOf), category) ?: ""
@@ -116,14 +125,61 @@ internal fun renderMessage(
     }
 }
 
-/** The signed-offset, group, name, value-suffix and category capture groups of the pattern below, in order. */
+/**
+ * The cell a key-selected field token reads: the field's path and, when the key selects a row, that row's stored
+ * display value. [matched] is false when no row carries the key.
+ */
+internal class SelectedCell(val path: String, val stored: String?, val matched: Boolean)
+
+/**
+ * A key-selected token's text. A label needs no row; a category read through a key that selects none renders
+ * empty; a value read through it fails the rule's evaluation, whose message then carries the fault text alone
+ * (KERNEL-FINDINGS KF561, `adapter.laws.MessageParameterRowDiffTest`).
+ */
+private fun selectedText(
+    token: MatchResult,
+    cell: SelectedCell,
+    labelOf: (String) -> String,
+    enumValueOf: (String, String) -> String?,
+    enumCategoryOf: (String, String, String) -> String?,
+    defaultValueOf: (String) -> String,
+): String {
+    val category = token.groupValues[CATEGORY]
+    return when {
+        category.isNotEmpty() -> if (cell.matched) enumCategoryOf(cell.path, cell.stored ?: "", category) ?: "" else ""
+        token.groupValues[VALUE_SUFFIX].isNotEmpty() ->
+            if (cell.matched) valueText(cell.path, { cell.stored }, enumValueOf, defaultValueOf)
+            else throw UnmatchedMessageKeyFailure(token.value)
+        else -> labelOf(cell.path)
+    }
+}
+
+/**
+ * A field token's path below the rule's group: an absolute name as written, otherwise after one step up per
+ * leading `../`. The kernel reads every spelling of one field at the same cell, so a nested rule's `../X` and
+ * `/Root/Group/X` render the enclosing row alike (KF561). A model-aware caller adds the short-name tier.
+ */
+internal fun messageFieldPath(base: String, name: String): String {
+    if (name.startsWith('/')) return name
+    var parent = base
+    var rest = name
+    while (rest.startsWith("../")) {
+        parent = parent.substringBeforeLast('/')
+        rest = rest.removePrefix("../")
+    }
+    return "$parent/$rest"
+}
+
+/** The capture groups of the pattern below, in order: the signed offset, group, name, value suffix, category, key
+ *  selection, index name and index category. */
 private const val OFFSET = 1
 private const val GROUP = 2
 private const val NAME = 3
 private const val VALUE_SUFFIX = 4
 private const val CATEGORY = 5
-private const val INDEX = 6
-private const val INDEX_CATEGORY = 7
+private const val SELECTION = 6
+private const val INDEX = 7
+private const val INDEX_CATEGORY = 8
 
 /**
  * The base-year alternative comes FIRST so its terminal is never read as a field name — which is exactly the
@@ -134,7 +190,8 @@ private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
         "|\\\$" + terminals.baseYear + "([+-]\\d+)?\\\$" +
         "|\\\$#([\\w/.']+(?:\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)\\\$" +
-        "|\\\$([\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?\\\$" +
+        "|\\\$((?:\\.\\./)*[\\w/']+)(?:\\.(" + terminals.value + ")|->(\\w+))?" +
+        "(\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?\\\$" +
         "|\\\$index\\(([\\w']+)\\)(?:\\." + terminals.value + "|->([\\w']+))\\\$",
 )
 

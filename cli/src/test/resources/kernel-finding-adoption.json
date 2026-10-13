@@ -11038,6 +11038,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no charset logic of their own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-11; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf561": {
+      "sha256": "31b7a2151e3ef53ef006a300a9ebaa3cc84123d8ef8719e7d5e10b4668be7586",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["keyed message token"],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["message parameter row"],
+        "interpreter": ["message parameter row"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["message parameter row"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "The typed surface writes the keyed value, label and category tokens whose rows this finding measures.", "evidence": {"keyed message token": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/KeyedMessageTokenTest.java#theKernelAdmitsEachKeyedTokenBesideTheMatchingKeyedRead", "witness": "The kernel admits the typed keyed tokens beside the matching keyed read."}}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The portable checker judges which parameters a model may write, not the text a document renders.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no rule messages.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no rule messages.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row and compared with the interpreter.", "evidence": {"message parameter row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageParameterRowDiffTest.kt#bothKernelStrategiesRenderTheRowEachParameterReads", "witness": "Both strategies render every spelling at the row it reads and fault an unmatched value read once, at the first row."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Field tokens resolve absolute, parent-relative and short names, and a keyed token reads the row its key selects.", "evidence": {"message parameter row": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/MessageParameterRowRenderTest.kt#everySpellingAndKeyReadsItsRow", "witness": "On JVM and Node every spelling reads its row and an unmatched value read ends the rule with one fault message."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders messages through the interpreter and carries no rendering of its own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

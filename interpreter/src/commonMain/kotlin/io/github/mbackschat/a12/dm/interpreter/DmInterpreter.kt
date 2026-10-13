@@ -19,6 +19,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.DisplayPresentation
 import io.github.mbackschat.a12.dm.interpreter.eval.MessageTerminals
 import io.github.mbackschat.a12.dm.interpreter.eval.presentDisplayValue
+import io.github.mbackschat.a12.dm.interpreter.eval.SelectedCell
+import io.github.mbackschat.a12.dm.interpreter.eval.messageFieldPath
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.semanticIndexRepetitions
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -1233,6 +1235,8 @@ class DmInterpreter private constructor(
                         // both go through `repsOf(path).last()` rather than through two derivations (KF245).
                         groupIndexOf = { argument -> groupParameterIndex(argument, rule.group, pass, ctx) },
                         indexTextOf = { name, category -> indexParameterText(name, category, errorPath, pass, ctx) },
+                        selectedCellOf = { written -> selectedMessageCell(written, rule.group, pass, ctx) },
+                        fieldPathOf = { name -> messageParameterPath(rule.group, name) },
                     )
                 } ?: ""
                 val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
@@ -1317,6 +1321,43 @@ class DmInterpreter private constructor(
         pass.doc.messagePointer(reference.path, repetitions)
     }
 
+    /**
+     * A message field name's path, in A12's two tiers: below the rule's group, and otherwise, for a bare name, the
+     * model's one field of that short name. The second tier holds whatever `fieldRefByShortNameAllowed` says, and
+     * the kernel's admission has already refused a name two fields share (KERNEL-FINDINGS KF335, KF561).
+     */
+    private fun messageParameterPath(ruleGroup: String, name: String): String {
+        val local = messageFieldPath(ruleGroup, name)
+        if (local in model.kinds || '/' in name) return local
+        return fieldsByShortName[name]?.singleOrNull() ?: local
+    }
+
+    private val fieldsByShortName: Map<String, List<String>> by lazy {
+        model.kinds.keys.groupBy { it.substringAfterLast('/') }
+    }
+
+    /** A `Target For key` message argument as the selected reference its condition twin reads. */
+    private fun selectedMessageReference(written: String, ruleGroup: String): MessageReference.Selected? {
+        val selected = io.github.mbackschat.a12.dm.interpreter.parse.parseExpression(written, ruleGroup, model.conditionLanguage)
+            as? Expr.SemanticIndex ?: return null
+        val indexField = nearestIndexFieldOf(model.indexFields, selected.path) ?: return null
+        val key = selected.indexValue?.let(SelectedKey::Literal)
+            ?: selected.indexFieldPath?.let(SelectedKey::Field) ?: return null
+        return MessageReference.Selected(selected.path, key, indexField)
+    }
+
+    /**
+     * The cell a `$Field.value For key$` token reads: the row the key selects, through the same lookup as the
+     * `$#Group For key$` token, displayed like any message value (KERNEL-FINDINGS KF561).
+     */
+    private fun selectedMessageCell(written: String, ruleGroup: String, pass: ValidationPass, ctx: EvalContext): SelectedCell? {
+        val reference = selectedMessageReference(written, ruleGroup) ?: return null
+        val repetitions = selectedMessageRepetitions(reference, pass, ctx)
+            ?: return SelectedCell(reference.path, null, matched = false)
+        val stored = pass.callerDoc.messageDisplayValueAt(reference.path, repetitions)
+        return SelectedCell(reference.path, presentedDisplayValue(stored, reference.path, pass.locale), matched = true)
+    }
+
     private fun selectedMessageRepetitions(
         reference: MessageReference.Selected, pass: ValidationPass, ctx: EvalContext,
     ): List<Int>? {
@@ -1338,13 +1379,8 @@ class DmInterpreter private constructor(
      */
     private fun groupParameterIndex(written: String, ruleGroup: String, pass: ValidationPass, ctx: EvalContext): String? {
         if (written.any { it.isWhitespace() }) {
-            val selected = io.github.mbackschat.a12.dm.interpreter.parse.parseExpression(written, ruleGroup, model.conditionLanguage)
-                as? Expr.SemanticIndex ?: return null
-            val indexField = nearestIndexFieldOf(model.indexFields, selected.path) ?: return null
-            val key = selected.indexValue?.let(SelectedKey::Literal)
-                ?: selected.indexFieldPath?.let(SelectedKey::Field) ?: return null
-            return selectedMessageRepetitions(MessageReference.Selected(selected.path, key, indexField), pass, ctx)
-                ?.lastOrNull()?.toString() ?: "?"
+            val selected = selectedMessageReference(written, ruleGroup) ?: return null
+            return selectedMessageRepetitions(selected, pass, ctx)?.lastOrNull()?.toString() ?: "?"
         }
         val argument = written.replace("'", "")
         val path = when (argument) {

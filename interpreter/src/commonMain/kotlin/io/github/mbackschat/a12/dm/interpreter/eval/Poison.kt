@@ -31,3 +31,6 @@ sealed class RuntimeEvaluationFailure(message: String) : RuntimeException(messag
 class EmptyPatternFailure : RuntimeEvaluationFailure("an authored pattern must not be empty")
 
 class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the wall label $label has no instant in the model zone")
+
+/** A message token reading a value through a key that selects no row (KERNEL-FINDINGS KF561). */
+class UnmatchedMessageKeyFailure(token: String) : RuntimeEvaluationFailure("the message parameter $token selects no row")
