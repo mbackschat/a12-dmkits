@@ -208,6 +208,7 @@ class Document(internal val config: DocumentConfig) {
      */
     private fun invalidateDerivedCaches() {
         cachedIndex = null                 // the lazily-built lookup index
+        charsetView = null                 // this document read under another charset ([withLegalCharset])
         rowContextsCache.clear()           // a `Having` filter's per-row contexts
         filterWalkCache.clear()            // the same, with the missing coordinates a filter's walk visits
         filterWalkSelector = null
@@ -583,10 +584,16 @@ class Document(internal val config: DocumentConfig) {
     internal fun withLegalCharset(charset: LegalCharset): Document {
         // Value equality, so one declaration parsed twice still shares a document.
         if (config.legalCharset == charset) return this
+        // Kept until the next mutation: a copy per call doubled the CPU of every validation under a consumer's
+        // charset (`CharsetPerfTest`, 2026-10-13). Each caller only reads the copy, so it is never stale.
+        charsetView?.takeIf { it.config.legalCharset == charset }?.let { return it }
         val copy = Document(config.copy(legalCharset = charset))
         for (p in placements) if (p.isGroup) copy.group(p.path, *p.reps.toIntArray()) else copy.copyField(p)
+        charsetView = copy
         return copy
     }
+
+    private var charsetView: Document? = null
 
     /**
      * One [EvalContext] per runtime iteration row of [groupPath]. This is normally its instantiated V2 rows.

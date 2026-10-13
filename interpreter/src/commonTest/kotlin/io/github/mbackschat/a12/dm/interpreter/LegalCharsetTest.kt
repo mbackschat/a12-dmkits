@@ -35,6 +35,16 @@ class LegalCharsetTest {
         assertNotEquals(LegalCharset.BMP, LegalCharset.ofRanges(0x0000..0xD7FF, 0xE000..0xFFFF))
     }
 
+    /** The document is read under the call's charset through a kept copy; a later edit must reach the next call. */
+    @Test fun aDocumentEditedBetweenCallsIsReadUnderTheCharsetAgain() {
+        val ascii = LegalCharset.ofRanges(0x00..0x7F)
+        val engine = DmInterpreter(def, legalCharset = ascii)
+        val doc = Document(def.kinds).field(S, "abc", 1, 1)
+        assertEquals(emptyList(), engine.validate(doc).messages.map { it.code })
+        doc.field(S, "café", 1, 1)
+        assertEquals(listOf("ZeichenNichtImZeichensatz"), engine.validate(doc).messages.map { it.code })
+    }
+
     @Test fun customAsciiCharsetRejectsBmpChars() {
         val ascii = LegalCharset.ofRanges(0x00..0x7F)
         assertEquals(false, charsetFires("abc", ascii), "ASCII allows plain ASCII")

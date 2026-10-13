@@ -21,6 +21,12 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-13 — a consumer charset copied the whole document on every call
+
+The same routine gate breached `charset grapheme` at n = 32000 (interpreter CPU median 189.0 ms with GC 116, record `2026-10-13T154756Z`). The row had read 89.5 to 91.6 ms with GC 0 through `2026-10-12T124213Z` and 187.8 to 189.2 ms from `2026-10-13T065211Z` on. `abdc13a27` made `Document.withLegalCharset` build a copy of the document under the consumer's charset on every validation call. That first slow record is labelled `c223b0f4c` because it was captured (08:52 +0200) before `abdc13a27` was committed (09:43): a record names HEAD, not the tree it measured ([IG170](INTERPRETER-GAPS.md)).
+
+The fix keeps that copy on the document until its next mutation, which already clears every derived cache. Measured alone on the routine scenario: 61.9 ms with GC 0. `LegalCharsetTest.aDocumentEditedBetweenCallsIsReadUnderTheCharsetAgain` locks the invalidation; it fails when the mutation leaves the copy in place. In the same gate, `compute-overlay` correlation at n = 6000 read 152.6 ms against a 151.89 ms ceiling. Measured alone it read 138.0 ms, and no commit in the range touches its path, so this checkpoint treats it as load (Spotlight was indexing during the gate).
+
 ### Checkpoint 2026-10-13 — the required-empty scan doubled a starred count, and only where it could not fire
 
 The routine gate breached `group-star-expansion` at n = 8000 (interpreter CPU median 46.28 ms against a 37.68 ms ceiling, record `2026-10-13T152412Z`). The same row had read 22.0 to 25.1 ms in every record through `2026-10-12T124213Z` (commit `2293025d6`) and 43.7 to 46.3 ms in every record from `2026-10-13T065211Z` (commit `c223b0f4c`) on. Its GC count in the window rose from 0 or 1 to between 85 and 103. Load cannot move an allocation count, so the change was taken as code. Three interpreter commits separate the two revisions, and `c223b0f4c` added a second walk over every row of a starred operand, building a row context per row, to look for a required-empty cell ([KF552](KERNEL-FINDINGS.md#kf552)).
