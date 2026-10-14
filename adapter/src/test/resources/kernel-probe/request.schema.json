@@ -41,6 +41,25 @@
         }
       }
     },
+    "customConditions": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "the custom conditions this request REGISTERS with the kernel, keyed by the name a `CustomCondition <Name>` leaf uses, and passed as the per-call `DocumentProcessingConfig.customConditionFactory` on every channel the request observes. A name not declared here stays unregistered. Each engine block then carries `customConditionCalls`: every invocation the kernel made, in call order. The behaviours are declarative so an artifact is reproducible from the request bytes alone. OMIT the key to register nothing; an empty object is refused, because it observes exactly what its absence does.",
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": false,
+        "description": "one declared condition: exactly one of `returns` and `whenFilled`.",
+        "properties": {
+          "returns": { "type": "boolean", "description": "a constant answer." },
+          "whenFilled": {
+            "type": "string",
+            "description": "true exactly when the document holds a value at this pointer, written in A12's own `DocumentPointer` spelling (`Claim/Items[2]/Cost`, the implicit `[1]` optional). It must name one cell, so a wildcard repetition `[0]` is refused."
+          }
+        }
+      }
+    },
     "observe": {
       "type": "array",
       "minItems": 1,
@@ -132,6 +151,16 @@
       },
       "rows": [
         { "name": "malformed-coupon", "documentInline": { "Order": { "CouponCode": "save-2026" } } }
+      ]
+    },
+    {
+      "model": "claim.dm.json",
+      "customConditions": {
+        "AdjusterApproved": { "returns": true },
+        "ItemReceipted": { "whenFilled": "Claim/Note" }
+      },
+      "rows": [
+        { "name": "noted", "documentInline": { "Claim": { "Note": "water damage" } } }
       ]
     },
     {

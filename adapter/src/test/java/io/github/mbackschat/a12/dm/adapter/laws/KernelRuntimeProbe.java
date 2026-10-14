@@ -21,7 +21,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -241,13 +240,12 @@ public final class KernelRuntimeProbe {
      * and the rows.
      */
     public record Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock,
-            Set<Observation> observe, List<Row> rows,
-            Map<String, DeclarativeCustomFieldTypes.Declared> customFieldTypes) {
+            Set<Observation> observe, List<Row> rows, Bindings bindings) {
 
-        /** A request declaring no custom field type — the shape every request had before they were bindable. */
+        /** A request binding nothing — the shape every request had before host bindings were declarable. */
         public Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock,
                 Set<Observation> observe, List<Row> rows) {
-            this(modelRef, modelJson, locale, clock, observe, rows, Map.of());
+            this(modelRef, modelJson, locale, clock, observe, rows, Bindings.NONE);
         }
 
         /**
@@ -296,12 +294,32 @@ public final class KernelRuntimeProbe {
             }
             observe = Collections.unmodifiableSet(EnumSet.copyOf(observe));
             rows = List.copyOf(rows);
+        }
+    }
+
+    /**
+     * What a request registers with the kernel for every call: custom field types and custom conditions, both
+     * declarative so the artifact is reproducible from the request bytes alone.
+     */
+    public record Bindings(Map<String, DeclarativeCustomFieldTypes.Declared> customFieldTypes,
+            Map<String, DeclarativeCustomConditions.Declared> customConditions) {
+
+        static final Bindings NONE = new Bindings(Map.of(), Map.of());
+
+        public Bindings {
             customFieldTypes = Map.copyOf(customFieldTypes);
+            // Insertion order kept: it is the request's order, which a reader matches calls against.
+            customConditions = Collections.unmodifiableMap(new LinkedHashMap<>(customConditions));
         }
 
         /** The kernel binding for {@link #customFieldTypes}, or {@code null} when the request declares none. */
         ICustomFieldTypeFactory fieldTypeFactory() {
             return DeclarativeCustomFieldTypes.factoryOf(customFieldTypes);
+        }
+
+        /** A fresh recorder for one (row, strategy) block. */
+        DeclarativeCustomConditions.Recorder recorder() {
+            return new DeclarativeCustomConditions.Recorder(customConditions);
         }
     }
 
@@ -362,7 +380,8 @@ public final class KernelRuntimeProbe {
             rows.add(new Row(name, document(rowNode, base, name), relevant(rowNode, name)));
         }
         return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows,
-                customFieldTypes(root));
+                new Bindings(customFieldTypes(root), root.hasNonNull("customConditions")
+                        ? DeclarativeCustomConditions.parse(root.get("customConditions")) : Map.of()));
     }
 
     /**
@@ -566,7 +585,7 @@ public final class KernelRuntimeProbe {
         boolean computeResults = request.observe().contains(Observation.COMPUTE_RESULTS);
         // Bound identically on both strategies, because a type resolvable on one and not the other would
         // report a split that is the harness's rather than the kernel's.
-        ICustomFieldTypeFactory fieldTypes = request.fieldTypeFactory();
+        ICustomFieldTypeFactory fieldTypes = request.bindings().fieldTypeFactory();
 
         List<KernelProbeArtifact.Row> rows = new ArrayList<>();
         for (Row row : request.rows()) {
@@ -576,38 +595,42 @@ public final class KernelRuntimeProbe {
             rows.add(new KernelProbeArtifact.Row(row.name(), List.of(
                     // Each channel is SET as it completes rather than handed over together, so a raise in a
                     // later one leaves the earlier ones on the block instead of discarding them with it.
-                    observe(GROOVY_DYNAMIC, groovyDynamic, (engine, block) -> {
+                    observe(GROOVY_DYNAMIC, groovyDynamic, request.bindings().recorder(), (engine, calls, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        block.messages(channel(Observation.VALIDATE_FULL,
-                                () -> project(engine.validationMessages(instance, clock, locale, fieldTypes))));
+                        var conditions = calls.conditions();
+                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> project(
+                                engine.validationMessages(instance, clock, locale, conditions, fieldTypes))));
                         if (compute) {
-                            block.computations(Optional.of(channel(Observation.COMPUTE, () -> project(
-                                    engine.computation(instance, clock, locale, fieldTypes)))));
+                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> project(
+                                    engine.computation(instance, clock, locale, conditions, fieldTypes)))));
                         }
                         row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
-                                channel(Observation.VALIDATE_PART, () -> project(engine
+                                channel(Observation.VALIDATE_PART, calls, () -> project(engine
                                         .partialValidationMessages(
-                                                instance, rel, clock, locale, fieldTypes))))));
+                                                instance, rel, clock, locale, conditions, fieldTypes))))));
                         if (computeResults) {
-                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
-                                    engine.computeResults(instance, clock, locale, fieldTypes)))));
+                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, calls,
+                                    () -> project(engine.computeResults(
+                                            instance, clock, locale, conditions, fieldTypes)))));
                         }
                     }),
-                    observe(JAVA_STATIC, javaStatic, (engine, block) -> {
+                    observe(JAVA_STATIC, javaStatic, request.bindings().recorder(), (engine, calls, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        block.messages(channel(Observation.VALIDATE_FULL,
-                                () -> project(engine.validationMessages(instance, clock, locale, fieldTypes))));
+                        var conditions = calls.conditions();
+                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> project(
+                                engine.validationMessages(instance, clock, locale, conditions, fieldTypes))));
                         if (compute) {
-                            block.computations(Optional.of(channel(Observation.COMPUTE, () -> project(
-                                    engine.computation(instance, clock, locale, fieldTypes)))));
+                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> project(
+                                    engine.computation(instance, clock, locale, conditions, fieldTypes)))));
                         }
                         row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
-                                channel(Observation.VALIDATE_PART, () -> project(engine
+                                channel(Observation.VALIDATE_PART, calls, () -> project(engine
                                         .partialValidationMessages(
-                                                instance, rel, clock, locale, fieldTypes))))));
+                                                instance, rel, clock, locale, conditions, fieldTypes))))));
                         if (computeResults) {
-                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
-                                    engine.computeResults(instance, clock, locale, fieldTypes)))));
+                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, calls,
+                                    () -> project(engine.computeResults(
+                                            instance, clock, locale, conditions, fieldTypes)))));
                         }
                     }))));
         }
@@ -648,23 +671,33 @@ public final class KernelRuntimeProbe {
      * already had ({@link KernelProbeOverCapacityFaultTest}).
      */
     private static <E> KernelProbeArtifact.Engine observe(String name, Built<E> built,
-            BiConsumer<E, KernelProbeArtifact.Engine.Builder> observation) {
-        return switch (built) {
-            case Built.Failed<E> failed -> KernelProbeArtifact.Engine.faulted(name, failed.fault());
+            DeclarativeCustomConditions.Recorder calls, BlockObservation<E> observation) {
+        var block = KernelProbeArtifact.Engine.of(name);
+        switch (built) {
+            case Built.Failed<E> failed -> block.fault(failed.fault());
             case Built.Engine<E> ready -> {
-                var block = KernelProbeArtifact.Engine.of(name);
                 try {
-                    observation.accept(ready.engine(), block);
+                    observation.accept(ready.engine(), calls, block);
                 } catch (Raised raised) {
                     block.fault(raised.fault());
                 }
-                yield block.build();
             }
-        };
+        }
+        // Set on every path, a raise included: the calls it interrupted each completed.
+        return block.customConditionCalls(calls.calls()).build();
+    }
+
+    /** One (row, strategy) observation over a built engine, recording condition calls into {@code calls}. */
+    @FunctionalInterface
+    private interface BlockObservation<E> {
+
+        void accept(E engine, DeclarativeCustomConditions.Recorder calls, KernelProbeArtifact.Engine.Builder block);
     }
 
     /** Runs one observed channel, converting a kernel raise into the fault that replaces the whole block. */
-    private static <T> T channel(Observation observation, Supplier<T> read) {
+    private static <T> T channel(Observation observation, DeclarativeCustomConditions.Recorder calls,
+            Supplier<T> read) {
+        calls.enter(observation);
         try {
             return read.get();
         } catch (RuntimeException e) {
@@ -891,7 +924,7 @@ public final class KernelRuntimeProbe {
         return address(pointer.fullName(), pointer.repetitionIndexes());
     }
 
-    private static String address(String fullName, List<Integer> repetitionIndexes) {
+    static String address(String fullName, List<Integer> repetitionIndexes) {
         return KernelMessageAddressProjector.address(
                 A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes));
     }

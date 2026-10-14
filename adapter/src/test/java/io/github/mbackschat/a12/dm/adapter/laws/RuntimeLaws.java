@@ -1385,8 +1385,14 @@ public final class RuntimeLaws {
          */
         List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
+            return validationMessages(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return List.copyOf(
-                    rt.validateFull(instance, config(clock, locale, Map.of(), fieldTypes)).getMessages());
+                    rt.validateFull(instance, config(clock, locale, conditions, fieldTypes)).getMessages());
         }
 
         /**
@@ -1403,8 +1409,15 @@ public final class RuntimeLaws {
         /** As above, with a custom-field-type factory bound for the call. */
         List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
                 Locale locale, ICustomFieldTypeFactory fieldTypes) {
+            return partialValidationMessages(instance, relevant, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return List.copyOf(rt.validatePart(instance, relevantPointers(relevant),
-                    config(clock, locale, Map.of(), fieldTypes)).getMessages());
+                    config(clock, locale, conditions, fieldTypes)).getMessages());
         }
 
         /**
@@ -1422,14 +1435,26 @@ public final class RuntimeLaws {
         /** As above, with a custom-field-type factory bound for the call. */
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
-            return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
+            return computation(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
+            return observationOf(rt.compute(instance, config(clock, locale, conditions, fieldTypes)));
         }
 
         /** The kernel's own result collections plus the applied document — see {@link ComputeResultObservation}. */
         ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
+            return computeResults(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return resultObservationOf(
-                    rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)), model, instance);
+                    rt.compute(instance, config(clock, locale, conditions, fieldTypes)), model, instance);
         }
 
         /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
@@ -1686,8 +1711,14 @@ public final class RuntimeLaws {
         /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
         List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
+            return validationMessages(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return List.copyOf(
-                    rt.validateFull(instance, config(clock, locale, Map.of(), fieldTypes)).getMessages());
+                    rt.validateFull(instance, config(clock, locale, conditions, fieldTypes)).getMessages());
         }
 
         /**
@@ -1703,8 +1734,15 @@ public final class RuntimeLaws {
         /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
         List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
                 Locale locale, ICustomFieldTypeFactory fieldTypes) {
+            return partialValidationMessages(instance, relevant, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return List.copyOf(rt.validatePart(instance, relevantPointers(relevant),
-                    config(clock, locale, Map.of(), fieldTypes)).getMessages());
+                    config(clock, locale, conditions, fieldTypes)).getMessages());
         }
 
         /** The static-JAVA twin of {@link KernelEngine#computation} — same contract, same reason. */
@@ -1715,14 +1753,26 @@ public final class RuntimeLaws {
         /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
-            return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
+            return computation(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
+            return observationOf(rt.compute(instance, config(clock, locale, conditions, fieldTypes)));
         }
 
         /** The static-JAVA twin of {@link KernelEngine#computeResults}. */
         ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
+            return computeResults(instance, clock, locale, Map.of(), fieldTypes);
+        }
+
+        /** As above, with custom conditions bound for the call as well. */
+        ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
+                Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return resultObservationOf(
-                    rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)), model, instance);
+                    rt.compute(instance, config(clock, locale, conditions, fieldTypes)), model, instance);
         }
 
         /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */

@@ -13,7 +13,7 @@ The JVM-only, non-shipped route by which an external consumer asks the **real A1
 | Request shape | [`adapter/src/test/resources/kernel-probe/request.schema.json`](../adapter/src/test/resources/kernel-probe/request.schema.json) |
 | Artifact shape | [`adapter/src/test/resources/kernel-probe/artifact.schema.json`](../adapter/src/test/resources/kernel-probe/artifact.schema.json) |
 | Implementation | `adapter/src/test/java/…/adapter/laws/KernelRuntimeProbe.java` + `KernelProbeArtifact.java` |
-| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeComputeResultsTest` + `KernelProbeCustomFieldTypeTest` + `KernelProbeDocumentFidelityTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
+| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeComputeResultsTest` + `KernelProbeCustomFieldTypeTest` + `KernelProbeCustomConditionTest` + `KernelProbeDocumentFidelityTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
 
 ## 1. Why a Gradle task and not a verb
 
@@ -84,6 +84,17 @@ Documents are **A12's canonical Document JSON** — the same shape `dmtool model
 ```
 
 The shape is **dmtool's own `--predefined-types` registry**, deliberately — one concept, one spelling. Its imperative sibling (`--custom-field-types-js`) is **not** mirrored: an artifact is pinned by SHA-256, so every input must be reproducible from the request bytes alone. The validator applies `pattern`, then the type's lengths, then the **field's** declared `minLength`/`maxLength`, which the kernel hands over through `ICustomFieldTypeValidationParam`; each failure names its own gate in the message `code` (`customFieldType.pattern`, `field.maxLength`, …), which is A12's rule that the code is the validator's `getErrorKey()` rather than a fixed kernel code. Omitting the key declares nothing and reproduces the artifact byte for byte; an **empty object** is refused, because it reads as a default while leaving the cell exactly as unobservable as its absence does. *(Locked: `adapter.laws.KernelProbeCustomFieldTypeTest` — the host's key and text on both strategies, the accept/empty-cell liveness controls, both request refusals, and the schema parity.)*
+
+**`customConditions` makes a `CustomCondition` rule observable, and records how the kernel calls it.** A `CustomCondition <Name>` leaf resolves only through the per-call `DocumentProcessingConfig.customConditionFactory`, so without a registration no rule using one is observable; a name the request does not declare stays unregistered. The behaviours are declarative, for the same reproducibility reason as `customFieldTypes`: a constant, or true exactly when the document holds a value at one pointer in A12's own `DocumentPointer` spelling.
+
+```jsonc
+"customConditions": {
+  "AdjusterApproved": { "returns": true },             // a constant
+  "ItemReceipted":    { "whenFilled": "Claim/Note" }    // true when that cell holds a value
+}
+```
+
+The conditions are bound on every channel the request observes, and each engine block then carries `customConditionCalls`: every invocation in call order, each naming its `observation`, the condition `name`, the `relevant` set the kernel passed (`null` under full validation), the `formallyIncorrect` set, the `errorEntity` with the row's repetition indices, and the declared behaviour's `result`. Both sets are sorted, since the kernel hands over sets. The block is present exactly when the request declares a condition, so an unchanged request keeps its bytes, and an empty list then means no rule reached one. Calls a raise interrupted are kept, because each one completed. Each entry needs exactly one of the two keys; an unknown key, a non-boolean `returns`, a pointer A12 cannot parse, a trailing wildcard `[0]` and an empty object are refused. *(Locked: `adapter.laws.KernelProbeCustomConditionTest` — every recorded `true` matched against a rule that fired on both strategies, each behaviour, the row-indexed error entity, a malformed cell in the formally incorrect set, `null` versus the caller's relevant set, the empty and the absent record, every refusal, and both schemas.)*
 
 **`locale` is not cosmetic.** The kernel refuses a locale the model has not *declared*, outright — measured 2026-08-11: probing a `de_DE`-only model at the default gives `IllegalArgumentException: Locale 'en_US' is not supported in the document model '…'`. So a German-only model is unobservable without this key rather than merely reported in English. Only the `message` channel is locale-dependent; `code`, `type`, `severity`, and every address are not. Both directions are locked by `KernelRuntimeProbeTest.theRequestPinsAnEvaluationLocaleBecauseTheKernelRefusesAnUndeclaredOne`.
 

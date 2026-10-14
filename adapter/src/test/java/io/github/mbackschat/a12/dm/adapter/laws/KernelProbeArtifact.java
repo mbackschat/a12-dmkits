@@ -112,7 +112,30 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
     /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
     private record Observation(List<Message> messages, Optional<Computations> computations,
             Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
-            Optional<Fault> fault) {
+            Optional<List<ConditionCall>> customConditionCalls, Optional<Fault> fault) {
+    }
+
+    /**
+     * One invocation the kernel made of a custom condition the request declared, in call order across the block's
+     * channels. {@code observation} names the channel the call came from, which the arguments cannot: both
+     * {@code validateFull} and {@code compute} hand over no relevant set.
+     */
+    public record ConditionCall(KernelRuntimeProbe.Observation observation, String name,
+            ConditionArguments arguments, boolean result) {
+    }
+
+    /**
+     * What the kernel handed the condition, as addresses: the relevant set ({@link Optional#empty()} when the
+     * kernel passed none, which full validation does), the formally incorrect set, and the error entity with its
+     * repetition indices. Both sets are sorted, since the kernel hands over sets.
+     */
+    public record ConditionArguments(Optional<List<String>> relevant, List<String> formallyIncorrect,
+            String errorEntity) {
+
+        public ConditionArguments {
+            relevant = relevant.map(List::copyOf);
+            formallyIncorrect = List.copyOf(formallyIncorrect);
+        }
     }
 
     /**
@@ -128,14 +151,19 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * request asked for it, and omitted otherwise so an artifact pinned before the observation existed stays
      * byte-identical. Here the distinction bites hardest, because the {@code noneRelevant} coverage legitimately
      * produces an EMPTY list — which is a measurement, not an absence.
+     *
+     * <p>{@code customConditionCalls} is present exactly when the request declares a custom condition, again so
+     * an existing artifact keeps its bytes, and an empty list then means the kernel called none. It is no channel:
+     * the calls a raise interrupted are kept, because each one completed.
      */
     public record Engine(String engine, List<Message> messages, Optional<Computations> computations,
             Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
-            Optional<Fault> fault) {
+            Optional<List<ConditionCall>> customConditionCalls, Optional<Fault> fault) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
             partialMessages = partialMessages.map(list -> list.stream().sorted().toList());
+            customConditionCalls = customConditionCalls.map(List::copyOf);
             requireRaisedChannelAbsent(engine, messages, computations, partialMessages, computeResults, fault);
         }
 
@@ -213,7 +241,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         /** The strategy raised instead of observing — the whole block IS the fault. */
         public static Engine faulted(String engine, Fault fault) {
             return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.empty(),
-                    Optional.of(fault));
+                    Optional.empty(), Optional.of(fault));
         }
 
         /** The public construction path for an observed block; an unset channel means "not observed". */
@@ -224,6 +252,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             private Optional<Computations> computations = Optional.empty();
             private Optional<List<Message>> partialMessages = Optional.empty();
             private Optional<ComputeResults> computeResults = Optional.empty();
+            private Optional<List<ConditionCall>> customConditionCalls = Optional.empty();
             private Optional<Fault> fault = Optional.empty();
 
             private Builder(String engine) {
@@ -250,6 +279,11 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return this;
             }
 
+            public Builder customConditionCalls(Optional<List<ConditionCall>> recorded) {
+                this.customConditionCalls = recorded;
+                return this;
+            }
+
             /**
              * The raise that ended this block's observation, leaving whatever channels had already completed.
              * Set it on a block that observed nothing and the result equals {@link Engine#faulted}.
@@ -260,7 +294,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             }
 
             public Engine build() {
-                return new Engine(engine, messages, computations, partialMessages, computeResults, fault);
+                return new Engine(engine, messages, computations, partialMessages, computeResults,
+                        customConditionCalls, fault);
             }
         }
 
@@ -270,7 +305,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         // for the same reason and one more: two strategies raising the same fault IS an agreement, and a run
         // that could not state it left the reader with "one of them faults" (a12-kernel-lean, 2026-09-04).
         private Observation observation() {
-            return new Observation(messages, computations, partialMessages, computeResults, fault);
+            return new Observation(messages, computations, partialMessages, computeResults, customConditionCalls,
+                    fault);
         }
     }
 
@@ -514,6 +550,10 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 });
                 engine.computeResults().ifPresent(results -> write(
                         engineNode.putObject("computeResults"), results));
+                engine.customConditionCalls().ifPresent(calls -> {
+                    ArrayNode callNodes = engineNode.putArray("customConditionCalls");
+                    calls.forEach(call -> write(callNodes.addObject(), call));
+                });
             }
         }
 
@@ -548,6 +588,19 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             });
         });
         return render(mapper, root);
+    }
+
+    private static void write(ObjectNode node, ConditionCall call) {
+        node.put("observation", call.observation().wireName());
+        node.put("name", call.name());
+        call.arguments().relevant().ifPresentOrElse(relevant -> {
+            ArrayNode addresses = node.putArray("relevant");
+            relevant.forEach(addresses::add);
+        }, () -> node.putNull("relevant"));
+        ArrayNode incorrect = node.putArray("formallyIncorrect");
+        call.arguments().formallyIncorrect().forEach(incorrect::add);
+        node.put("errorEntity", call.arguments().errorEntity());
+        node.put("result", call.result());
     }
 
     private static void write(ObjectNode messageNode, Message message) {

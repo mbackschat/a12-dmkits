@@ -232,10 +232,8 @@ class KernelProbeFaultCaptureTest {
         fault: KernelProbeArtifact.Fault,
         messages: List<KernelProbeArtifact.Message> = emptyList(),
         computations: Optional<KernelProbeArtifact.Computations> = Optional.empty(),
-    ) = KernelProbeArtifact.Engine(
-        KernelRuntimeProbe.GROOVY_DYNAMIC, messages, computations,
-        Optional.empty(), Optional.empty(), Optional.of(fault),
-    )
+    ) = KernelProbeArtifact.Engine.of(KernelRuntimeProbe.GROOVY_DYNAMIC)
+        .messages(messages).computations(computations).fault(fault).build()
 
     /** The published shape stays the published shape: the fault-carrying artifact validates against it. */
     @Test

@@ -202,6 +202,38 @@
                   "description": "every message this strategy's `validatePart` raised under the row's declared `relevant` coverage, in the same total order as `messages`. PRESENT exactly when the request asked for `validatePart`; ABSENT otherwise. Unlike `messages`, an EMPTY array here is a measurement rather than a shape artifact: the `noneRelevant` coverage legitimately produces one, and that is one of the two things this observation exists to reach. Compare against `messages` on the same row to read what the caller's coverage gated: `validateFull` answers the document, `validatePart` answers the document AS SEEN BY a caller, and only the second can express a call-local partial coverage.",
                   "items": { "$ref": "#/$defs/message" }
                 },
+                "customConditionCalls": {
+                  "type": "array",
+                  "description": "every invocation this strategy made of a custom condition the request declared, in CALL order across the block's channels. PRESENT exactly when the request declares `customConditions`, so an unchanged request keeps its bytes; an EMPTY list then means the kernel called none. It is no channel: calls a raise interrupted are kept, since each one completed.",
+                  "items": {
+                    "type": "object",
+                    "required": ["observation", "name", "relevant", "formallyIncorrect", "errorEntity", "result"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "observation": {
+                        "enum": ["validateFull", "compute", "computeResults", "validatePart"],
+                        "description": "the channel the call came from; `validateFull` and `compute` both pass no relevant set, so the arguments cannot say."
+                      },
+                      "name": { "type": "string", "description": "the declared condition's name." },
+                      "relevant": {
+                        "type": ["array", "null"],
+                        "items": { "type": "string", "format": "a12-message-address" },
+                        "description": "the relevant set the kernel handed over, sorted; `null` when it passed none, which full validation does."
+                      },
+                      "formallyIncorrect": {
+                        "type": "array",
+                        "items": { "type": "string", "format": "a12-message-address" },
+                        "description": "the formally incorrect cells the kernel handed over, sorted."
+                      },
+                      "errorEntity": {
+                        "type": "string",
+                        "format": "a12-message-address",
+                        "description": "the rule's error entity, with the repetition indices of the row being evaluated."
+                      },
+                      "result": { "type": "boolean", "description": "what the declared behaviour answered." }
+                    }
+                  }
+                },
                 "computeResults": {
                   "type": "object",
                   "required": ["withoutErrors", "errored", "applied"],
