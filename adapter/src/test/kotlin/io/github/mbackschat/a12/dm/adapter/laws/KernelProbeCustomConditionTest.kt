@@ -106,6 +106,27 @@ class KernelProbeCustomConditionTest {
         }
     }
 
+    /**
+     * A name the request does not declare stays unregistered even beside one it does, so the missing lookup stays
+     * observable. The kernel raises nothing for it: it reports the rule under the rule's own code, naming the
+     * missing condition and referencing no field, while the declared condition is still called.
+     */
+    @Test
+    fun anUndeclaredNameStaysUnregisteredBesideADeclaredOne() {
+        val out = dir.resolve("undeclared-name.json")
+        KernelRuntimeProbe.main(arrayOf(request("undeclared-name", model,
+            rows = """{ "name": "r", "documentInline": { "Claim": { "Note": "n" } } }""",
+            customConditions = """"FraudSuspected": { "returns": false }""").toString(), out.toString()))
+        MAPPER.readTree(Files.readString(out)).rowNamed("r").path("engines").forEach { engine ->
+            assertFalse(engine.has("fault"), engine.toString())
+            val missing = engine.path("messages").single { it.path("code").asText() == "ADJUSTER_APPROVED" }
+            assertTrue("Custom condition 'AdjusterApproved'" in missing.path("message").asText(), missing.toString())
+            assertTrue(missing.path("referenced").isEmpty, missing.toString())
+            assertEquals(listOf("FraudSuspected"), engine.path("customConditionCalls").map { it.path("name").asText() },
+                engine.toString())
+        }
+    }
+
     /** A request that declares none keeps its bytes: the key appears on no block. */
     @Test
     fun aRequestDeclaringNoConditionPublishesNoCallRecord() {
