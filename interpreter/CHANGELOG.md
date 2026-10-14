@@ -6,6 +6,10 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Added
+
+- **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired; a starred read that would bind a repeatable level below that parent is still reported unsupported.
+
 ### Fixed
 
 - Keyed group row numbers and index value/category tokens now render in rule messages, including an unmatched parallel row’s joined key.

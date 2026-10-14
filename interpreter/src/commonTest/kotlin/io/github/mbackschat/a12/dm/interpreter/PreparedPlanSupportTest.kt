@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -86,8 +87,10 @@ class PreparedPlanSupportTest {
     fun reportsParallelDocumentViewsThatExecutionCannotProvide() {
         val indexed = setOf("/Plan/A/Key", "/Plan/B/Key")
         val aggregate = parallelModel(
-            condition = "[A/Value] > [B/Value] And AtLeastOneFieldFilled(A*/Value)",
+            condition = "[A/Value] > [B/Value] And AtLeastOneFieldFilled(A/Lines*/Units)",
             indexFields = indexed,
+            extraFields = listOf(FieldDef("/Plan/A/Lines/Units", Kind.NUMBER)),
+            extraRepeatable = setOf("/Plan/A/Lines"),
         )
         val nonJoinedGroupFill = parallelModel(
             condition = "[A/Value] > [B/Value] And GroupFilled(Other)",
@@ -98,45 +101,37 @@ class PreparedPlanSupportTest {
         val aggregateReasons = DmInterpreter(aggregate).supportAudit().map { it.reason }
         val groupFillReasons = DmInterpreter(nonJoinedGroupFill).supportAudit().map { it.reason }
 
-        assertTrue(aggregateReasons.any { "aggregate/filter" in it && "parallel iteration" in it }, "$aggregateReasons")
+        assertTrue(aggregateReasons.any { "bound below the parallel iteration's common parent" in it }, "$aggregateReasons")
         assertTrue(groupFillReasons.any { "non-parallel group" in it }, "$groupFillReasons")
     }
 
     /**
-     * **A STARRED group operand in a parallel iteration is caught by the star check, not by the group-read scan
-     * — so the scan's blindness to it is unreachable.**
+     * **A starred group operand of a group outside the join evaluates from the common parent, so the group-read
+     * scan's blindness to it is correct rather than a gap.**
      *
      * `parallelGroupReads` collects group-operand paths with `(it as? Expr.Field)?.path`, which drops an
-     * `Expr.Star`. The kernel-legal `NoGroupFilled(G*)` parses to exactly that, so the scan cannot see it, and a
-     * refusal gate that cannot see a shape would evaluate it instead of declining — the wrong direction.
-     *
-     * Measured rather than reasoned, because the claim that the gap is unreachable is a claim about the ORDER of
-     * two checks in one function: `requireParallelDocumentSupport` runs `starRefs(ast).isNotEmpty()` first, and
-     * `starRefs` collects every `Expr.Star` including a starred group operand. Reading says the star check wins;
-     * this row is what makes that a measurement. **The gap is therefore live in the code and dead in practice,
-     * and the right treatment is to leave it alone** — an unreachable branch with a test costs more than the gap.
+     * `Expr.Star`, so `NoGroupFilled(Other*)` passes it. That is the measured reading: a star iterating at the
+     * common parent ranges over that parent's rows whichever rows the join paired (KERNEL-FINDINGS KF567, where
+     * `NoGroupFilled(Prices*)` beside a join is pinned on the Kernel by `adapter.laws.JoinedRowAggregateDiffTest`).
+     * Before KF567 a blanket star decline answered first and this row asserted it.
      */
     @Test
-    fun aStarredGroupOperandInAParallelIterationDeclinesAtTheStarCheck() {
+    fun aStarredGroupOperandBesideAJoinEvaluatesFromTheCommonParent() {
         val starredGroupFill = parallelModel(
             condition = "[A/Value] > [B/Value] And NoGroupFilled(Other*)",
             indexFields = setOf("/Plan/A/Key", "/Plan/B/Key"),
             extraFields = listOf(FieldDef("/Plan/Other/Flag", Kind.STRING)),
+            extraRepeatable = setOf("/Plan/Other"),
         )
 
-        val reasons = DmInterpreter(starredGroupFill).supportAudit().map { it.reason }
-
-        assertTrue(reasons.isNotEmpty(), "the shape must decline somewhere rather than evaluate")
-        assertTrue(reasons.any { "aggregate/filter" in it && "parallel iteration" in it },
-            "the STAR check is what declines it — if this ever reports the non-parallel-group reason instead, " +
-                "the star check stopped seeing group operands and the scan's `as? Expr.Field` blindness became " +
-                "reachable: $reasons")
+        assertEquals(emptyList(), DmInterpreter(starredGroupFill).supportAudit().map { it.reason })
     }
 
     private fun parallelModel(
         condition: String,
         indexFields: Set<String>,
         extraFields: List<FieldDef> = emptyList(),
+        extraRepeatable: Set<String> = emptySet(),
     ) = ModelDef(
         fields = listOf(
             FieldDef("/Plan/A/Key", Kind.STRING),
@@ -145,8 +140,8 @@ class PreparedPlanSupportTest {
             FieldDef("/Plan/B/Value", Kind.NUMBER),
         ) + extraFields,
         rules = listOf(RuleDef("/Plan/PAR", "/Plan", condition, "PAR", "../A/Value")),
-        repeatableGroups = setOf("/Plan/A", "/Plan/B"),
-        declaredReps = mapOf("/Plan/A" to 10, "/Plan/B" to 10),
+        repeatableGroups = setOf("/Plan/A", "/Plan/B") + extraRepeatable,
+        declaredReps = mapOf("/Plan/A" to 10, "/Plan/B" to 10) + extraRepeatable.associateWith { 10 },
         indexFields = indexFields,
     )
 

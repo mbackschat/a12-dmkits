@@ -215,9 +215,16 @@ internal class IterationScopes(private val model: ModelDef) {
      * a branch or an empty document and cannot drift from a separate support-only AST recognizer.
      */
     private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>, commonParent: String) {
-        if (starRefs(ast).isNotEmpty()) {
-            throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
-        }
+        // A joined row reads starred domains from its common-parent row, so a star may bind no repeatable level
+        // below that parent (the runtime twin is the parallel row's `commonFor`, KERNEL-FINDINGS KF567). A keyed
+        // read needs no twin here: A12 refuses one below a joined group (`MVK_MULTIPLE_INDEX_FIELDS`) and one under an
+        // unstarred repeatable ancestor (`MVK_NO_WILDCARD`), `adapter.laws.JoinedRowAggregateDiffTest`.
+        val commonDepth = pathParts(commonParent).size
+        starRefs(ast).firstOrNull { star -> bindingLevels(star).drop(commonDepth).any { it in model.repeatable } }
+            ?.let { star ->
+                throw UnsupportedConstructException(
+                    "an aggregate over ${star.path} bound below the parallel iteration's common parent $commonParent is not modeled")
+            }
         parallelGroupReads(ast).firstOrNull { it !in joined && it != commonParent }?.let { group ->
             throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($group) inside a parallel iteration is not modeled")

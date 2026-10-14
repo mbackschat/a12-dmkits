@@ -11230,6 +11230,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-04; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf567": {
+      "sha256": "ca5850721feec16c5077c9b1bbc48bd2ed7126f18307b5f19bcb9436fd72b56e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["aggregates and keyed reads from a joined row"],
+        "checker": ["admission of reads from a joined row"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["aggregates and keyed reads from a joined row", "admission of reads from a joined row"],
+        "interpreter": ["aggregates and keyed reads from a joined row"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["aggregates and keyed reads from a joined row", "admission of reads from a joined row"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "The typed surface authors every measured read, filter and computation from a joined row without refusal.", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Starred aggregates, a filter, value-list uniqueness, literal and field keys, a keyed group and a captured root field, authored through BoundModel."}}},
+        "checker": {"state": "APPLIED", "basis": "The checker already answered every admission row as A12 does and is silent on the measured model; the agreement is now locked.", "evidence": {"admission of reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#whatA12AdmitsFromAJoinedRow", "witness": "A star below a joined group admitted; a joined-group capture, a keyed read below a joined group and one under an unstarred repeatable ancestor refused."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both strategies are pinned per SKU over three documents, and A12's admission verdicts through rule check.", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#theKernelReadsEveryDomainFromTheCommonParent", "witness": "Matched, unmatched and missing-price-list documents with the joined rows in opposite orders."}, "admission of reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#whatA12AdmitsFromAJoinedRow", "witness": "Four admission rows."}}},
+        "interpreter": {"state": "APPLIED", "basis": "A joined row now reads starred and keyed domains from its common-parent row instead of declining them; a domain bound below the common parent stays declined (IG174).", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared against both strategies on every document; the refusal is pinned by anAggregateBelowAJoinedGroupIsRefused."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-01, -02, -03 and -06; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }

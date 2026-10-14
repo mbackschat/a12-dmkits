@@ -13622,3 +13622,22 @@ a12-kernel-lean `SPEC-2026-10-14-04`. A gift form declares `Wrapping` with the t
 So the declaration check admits an empty stored token and the literal gate admits `""` wherever it is one of the field's tokens, but a cell never holds it: a stored `""` is the empty cell, so membership in `""` never fires, and neither `== ""` nor `!= ""` fires on an Enumeration, exactly as on a String. Not measured: an empty category token, a labelled empty token, an empty token as an index field's value.
 
 Locked by `adapter.laws.EmptyEnumerationTokenDiffTest`: the literal rows pinned for A12 and compared against the portable checker; the four documents pinned for both strategies and compared against the interpreter. All three already agreed. a12-kernel-lean measured the same rows on their own form at a12-dmkits `a4091041`.
+
+## §9 supplement — from a joined row, a starred or keyed read ranges over the common parent's rows, whichever rows the join paired (both strategies, 2026-10-14) <a id="kf567"></a>
+
+> Fold: pending — belongs in §9's parallel-iteration account, beside its topology bullet.
+
+a12-kernel-lean `SPEC-2026-10-14-01`, `-02`, `-03` and `-06`. An order-fulfilment sheet joins `Orders` and `Stock` by `Sku`, so every rule below runs once per SKU and reports on `Stock/OnHand`; `Prices` is a third group keyed by `Code`, `Catalog/Rates` the same under a non-repeatable wrapper, and the root holds `HouseTariff`. The documents put the joined groups' rows in opposite orders and leave one SKU on each side unmatched.
+
+| read from the joined row | what it ranges over, or selects |
+|---|---|
+| `Sum(Orders*/Qty)`, with or without `Having [Orders/Qty] > 1` | every order under the root, the filter reading each candidate row |
+| `FieldValuesNotUnique(Orders*/Tariff)`, `Sum(Catalog/Rates*/Amount)`, `NoGroupFilled(Prices*)` | every row under the root, through the wrapper |
+| `[Orders/Qty For "A"]` — a joined group, keyed by a literal | A's order, from every SKU's row |
+| `[Prices/Amount For Orders/Tariff]`, its `FieldNotFilled`, `GroupFilled(Prices For "STD")` with its keyed row and value in the message, `[Catalog/Rates/Amount For "STD"]` | the row whose code is the key, at every joined row; a field key is read from the joined row, an unmatched one selects nothing |
+| `AtLeastOneFieldFilled(Prices*/Amount Having [Prices/Code] == [$HouseTariff])` | every price, the captured field read at the root |
+| a computation on `Stock/Reserved`: `[Orders/Qty] + Sum(Orders*/Qty)`, gated by `[Prices/Amount For "STD"]` filled | the joined order's quantity plus every order's |
+
+Three neighbouring reads are refused at the model, so none has a runtime account: a filter capturing a joined group draws `MVK_PARALLEL_ITERATION_NOT_ALLOWED`, as [KF375](#kf375)'s capture table records; a keyed read below a joined group draws `MVK_MULTIPLE_INDEX_FIELDS`, the joined group's index making two on the path; and a keyed read under an unstarred repeatable ancestor draws `MVK_NO_WILDCARD`. A star below a joined group, `Sum(Orders/Lines*/Units) > [Stock/OnHand]`, is admitted and was not run. Not measured: a star or keyed read under a repeatable frame of a framed join.
+
+Locked by `adapter.laws.JoinedRowAggregateDiffTest`: every document agrees across both strategies and the interpreter, the dynamic strategy's firings are pinned per SKU, and the three refusals are pinned through `rule check`. a12-kernel-lean's `joined-carrier-limits`, `joined-carrier-admission` and `parallel-instance-leaves` captures and the `message-parameter-rows` render grid replay to the same agreement here, references and texts included.

@@ -1794,7 +1794,7 @@ class Document(internal val config: DocumentConfig) {
         private val indexFieldName: String,
         private val indexToken: String,
         private val cellRelevant: ((String, List<Int>) -> Boolean)?,
-    ) : EvalContext {
+    ) : EvalContext, DeclaredStarRowProvider, FilterWalkRowProvider, GroupListEnvironmentProvider, FirstFilledScanProvider {
 
         // A row over a present index value is always evaluated (the value exists in at least one group).
         override val evaluated: Boolean = true
@@ -1924,23 +1924,134 @@ class Document(internal val config: DocumentConfig) {
         override fun enumCategoryValue(path: String, category: String, value: Val): Val =
             enumCategoryOf(path, category, (value as? Val.Txt)?.v)
 
-        // Aggregates / filters / semantic index / custom conditions are NOT valid inside a parallel iteration
-        // (KERNEL-SEMANTICS §9: a filter condition may not contain a parallel iteration, and vice versa) — fail
-        // loud rather than risk a silently-wrong answer.
-        override fun star(path: String, bindDepth: Int): List<Val> = unsupportedInParallel()
-        override fun starOmission(path: String, bindDepth: Int): Boolean = unsupportedInParallel()
+        /**
+         * The common-parent row, which owns every aggregate and keyed domain read from a joined row: a starred
+         * operand iterating at or above the joined level ranges over the rows under the common parent, and a keyed
+         * read selects among them, independently of which row the join paired (KERNEL-FINDINGS KF567,
+         * `adapter.laws.JoinedRowAggregateDiffTest`). A key operand still reads the joined row, because the
+         * interpreter evaluates it here before asking for the selection.
+         */
+        private val common by lazy(LazyThreadSafetyMode.NONE) { RowContext(commonParent, cReps, evaluated = true) }
+
+        private val commonDepth = partsOf(commonParent).size
+
+        /**
+         * [common], for a domain whose first iterating level is [iteratesFrom] (0-based). A repeatable level between
+         * the common parent and that level would be bound — to a joined, framed or third group's row — which no
+         * measurement covers, so it is refused loudly; `IterationScopes.requireParallelDocumentSupport` refuses such a
+         * star before any document is read. A non-repeatable wrapper there has one row and binds nothing.
+         */
+        private fun commonFor(groupPath: String, iteratesFrom: Int): RowContext {
+            val parts = partsOf(groupPath)
+            if ((commonDepth until minOf(iteratesFrom, parts.size)).any {
+                    "/" + parts.take(it + 1).joinToString("/") in repeatableGroups
+                }
+            ) {
+                throw UnsupportedConstructException(
+                    "an aggregate or keyed read of $groupPath bound below the parallel iteration's common parent " +
+                        "$commonParent is not modeled")
+            }
+            return common
+        }
+
+        private fun starDomain(fieldPath: String, bindDepth: Int): RowContext =
+            groupDomain(parentGroup(fieldPath), bindDepth)
+
+        private fun groupDomain(groupPath: String, bindDepth: Int): RowContext =
+            commonFor(groupPath, if (bindDepth >= 0) bindDepth else partsOf(groupPath).size - 1)
+
+        // The keyed level is selected rather than bound, so only the levels above it must not bind.
+        private fun keyedDomain(indexField: String): RowContext =
+            parentGroup(indexField).let { commonFor(it, partsOf(it).size - 1) }
+
+        override fun star(path: String, bindDepth: Int): List<Val> = starDomain(path, bindDepth).star(path, bindDepth)
+        override fun starAll(path: String, bindDepth: Int): List<Val> = starDomain(path, bindDepth).starAll(path, bindDepth)
+        override fun starCells(path: String, bindDepth: Int): List<Pair<List<Int>, Val?>> =
+            starDomain(path, bindDepth).starCells(path, bindDepth)
+        override fun starOmission(path: String, bindDepth: Int): Boolean =
+            starDomain(path, bindDepth).starOmission(path, bindDepth)
+        override fun starScanStates(path: String, bindDepth: Int): List<CellState> =
+            starDomain(path, bindDepth).starScanStates(path, bindDepth)
         override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> =
-            unsupportedInParallel()
+            starDomain(path, bindDepth).starScanCells(path, bindDepth, declaredRange)
+        override fun declaredStarRows(fieldPath: String, bindDepth: Int): Sequence<EvalContext> =
+            starDomain(fieldPath, bindDepth).declaredStarRows(fieldPath, bindDepth)
+        override fun indexColumn(path: String, bindDepth: Int): IndexColumn =
+            starDomain(path, bindDepth).indexColumn(path, bindDepth)
+
+        override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
+            groupDomain(groupPath, bindDepth).rowContexts(groupPath, bindDepth)
+        override fun scopePrefixOf(groupPath: String, bindDepth: Int): List<Int> =
+            groupDomain(groupPath, bindDepth).scopePrefixOf(groupPath, bindDepth)
+        override fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
+            groupDomain(groupPath, bindDepth).filterWalkRows(groupPath, bindDepth, counts)
+        override fun sparseFilterPrefixes(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): Set<List<Int>>? =
+            groupDomain(groupPath, bindDepth).sparseFilterPrefixes(groupPath, bindDepth, counts)
+        override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
+            groupDomain(groupPath, bindDepth).groupListEnvironments(groupPath, bindDepth)
+        override fun declaredGroupListExtent(groupPath: String, bindDepth: Int): Int? =
+            groupDomain(groupPath, bindDepth).declaredGroupListExtent(groupPath, bindDepth)
+        override fun firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext> =
+            groupDomain(groupPath, bindDepth).firstFilledRows(groupPath, bindDepth)
+
+        // A starred operand carries its own binding level. An unstarred one (`-1`) binds its own path, which from a
+        // joined row is the joined row itself, and stays unmodeled, as do the bare-group scans below.
+        override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope =
+            fillScope(scopePath, isGroup, bindDepth) { _, _, stored -> stored }
+        override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int, cellValue: CellValueSource): FillScope =
+            if (bindDepth < 0) unboundInParallel(scopePath)
+            else commonFor(scopePath, bindDepth).fillScope(scopePath, isGroup, bindDepth, cellValue)
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
-            unsupportedInParallel()
+            unboundInParallel(groupPath)
+        override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> = unboundInParallel(groupPath)
+
+        // The model's declared fields under a group: structural, so no row binds it.
+        override fun containedFields(groupPath: String): List<String> = common.containedFields(groupPath)
+
+        override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? =
+            keyedDomain(indexField).indexedCell(targetPath, indexField, indexValue)
+        override fun indexedCell(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): Val? = keyedDomain(indexField).indexedCell(targetPath, indexField, indexValue, indexIdentityAdmitted)
+        override fun indexedCellRepetitions(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): List<Int>? =
+            keyedDomain(indexField).indexedCellRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
+        override fun indexPointerRepetitions(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): List<Int>? =
+            keyedDomain(indexField).indexPointerRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
         override fun indexedGroupRow(
             groupPath: String,
             indexField: String,
             indexValue: String,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-        ): EvalContext? = unsupportedInParallel()
-        private fun unsupportedInParallel(): Nothing =
-            throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
+        ): EvalContext? = keyedDomain(indexField).indexedGroupRow(groupPath, indexField, indexValue, indexIdentityAdmitted)
+
+        // The caller already chose these repetitions, so they read the document there directly.
+        override fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? =
+            common.indexedValueAt(targetPath, repetitions)
+        override fun partialDateBoundaryAt(path: String, repetitions: List<Int>, lastDay: Boolean): Val? =
+            common.partialDateBoundaryAt(path, repetitions, lastDay)
+        override fun absentGroupRow(groupPath: String, repetitions: List<Int>): EvalContext =
+            common.absentGroupRow(groupPath, repetitions)
+
+        override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int):
+            Map<List<Val>, IntArray> = groupDomain(groupPath, bindDepth).correlationBuckets(groupPath, joinFields, starPath, bindDepth)
+        override fun orderedCorrelation(groupPath: String, innerField: String, starPath: String, bindDepth: Int):
+            OrderedCorrelation = groupDomain(groupPath, bindDepth).orderedCorrelation(groupPath, innerField, starPath, bindDepth)
+
+        private fun unboundInParallel(path: String): Nothing = throw UnsupportedConstructException(
+            "an unstarred read of $path inside a parallel iteration is not modeled")
     }
 
     /**
