@@ -179,15 +179,26 @@ class JoinedRowAggregateDiffTest {
     @Test
     fun anAggregateBelowAJoinedGroupIsRefused() {
         val lines = Dsl.sum(bound.flatten("/Fulfilment/Orders/Lines*/Units"))
-        val declined = bound.addAll(listOf(rule("LINES_ABOVE_STOCK", paired.and(lines.gt(onHand)))), emptyList()).toJson()
+        val declined = bound.addAll(
+            listOf(rule("LINES_ABOVE_STOCK", paired.and(lines.gt(onHand)))),
+            listOf(bound.computation(bound.num("/Fulfilment/Stock/Reserved")).name("LinesReservedComputation")
+                .calc(qty.asNumber().plus(lines)).message(Dsl.en("Reservation computed.")).build()),
+        ).toJson()
         val prepared = PreparedModel.loadExpandedJson(declined)
-        val report = prepared.createInterpreter()
-            .validateFull(prepared.documents.readDocument(documents.values.first()))
+        val engine = prepared.createInterpreter()
+        val document = prepared.documents.readDocument(documents.values.first())
+        val report = engine.validateFull(document)
         assertEquals(mapOf(
             "lines_above_stock_rule" to "an aggregate over /Fulfilment/Orders/Lines/Units bound below the parallel " +
                 "iteration's common parent /Fulfilment is not modeled",
+            "Reserved" to "an aggregate over /Fulfilment/Orders/Lines/Units bound below the parallel " +
+                "iteration's common parent /Fulfilment is not modeled",
         ),
             report.unsupported.associate { it.path.substringAfterLast('/') to it.reason })
+        // The support audit above declines the computation at preparation; computing it reaches the joined row's
+        // runtime guard instead, the one refusal on that path.
+        assertEquals(listOf("an aggregate or keyed read of /Fulfilment/Orders/Lines bound below the parallel " +
+            "iteration's common parent /Fulfilment is not modeled"), engine.compute(document).unsupported.map { it.reason })
     }
 
     /**
