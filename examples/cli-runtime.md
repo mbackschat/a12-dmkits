@@ -600,3 +600,24 @@ dmtool -m examples/models/shipment-ancestor-errors.dm.json model eval \
   "zuGrosseZeile"
 ]
 ```
+
+## Today and Now read one instant, in the model's zone
+
+`Today` and `Now` read the current instant by default, as A12 does. `--clock <instant>` pins it on `model eval`, `rule eval` and `model compute`, so a run that depends on the date is reproducible. The instant carries its own offset, and the model's `timeZone` decides which day it is: the two instants below are an hour apart on one UTC day, but on either side of midnight in Berlin, the order model's zone.
+
+```bash
+cat > /tmp/rt-order-oct14.json <<'JSON'
+{ "Order": { "OrderDate": "2026-10-14" } }
+JSON
+for instant in 2026-10-13T21:30:00Z 2026-10-13T22:30:00Z; do
+  dmtool -m examples/models/order-ruled.dm.json model eval \
+    --instance /tmp/rt-order-oct14.json --condition "[/Order/OrderDate] > Today" \
+    --field /Order/OrderDate --code ORDER_AHEAD --clock "$instant" \
+    | jq -c --arg at "$instant" '{at: $at, orderAhead: .data.rule.fired}'
+done
+```
+
+```output
+{"at":"2026-10-13T21:30:00Z","orderAhead":true}
+{"at":"2026-10-13T22:30:00Z","orderAhead":false}
+```

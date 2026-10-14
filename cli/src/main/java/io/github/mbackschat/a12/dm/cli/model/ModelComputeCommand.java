@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
+import io.github.mbackschat.a12.dm.cli.EvalClockOption;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -13,7 +14,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -49,8 +52,16 @@ final class ModelComputeCommand extends BaseCommand {
     @Mixin
     CustomSupportOptions customSupport = new CustomSupportOptions();
 
+    @Mixin
+    EvalClockOption evalClock = new EvalClockOption();
+
     @Override
     public Integer call() {
+        Optional<Instant> clock = evalClock.instant();
+        if (clock.isEmpty()) {
+            return refuseOptionValue(RkCode.INVALID_VALUE, evalClock.refusalSummary(), "--clock", null,
+                    EvalClockOption.FIX);
+        }
         String model = model();
         String modelJson = readModelJson(model);
         if (modelJson == null) {
@@ -77,7 +88,7 @@ final class ModelComputeCommand extends BaseCommand {
         ObjectNode data;
         try {
             data = InterpreterEngine.computeData(interpJson, documentJson, localeTag,
-                    customSupport.predefinedTypes(), customSupport.customConditions(), customSupport.customFieldTypes());
+                    customSupport.runtimeInputs(clock.get()));
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());

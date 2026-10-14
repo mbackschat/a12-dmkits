@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.interp.CustomJsWorker;
+import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.cli.interp.PredefinedTypesFile;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
@@ -102,6 +104,11 @@ public final class CustomSupportOptions {
         } catch (IOException e) {
             throw new IllegalArgumentException("cannot read --custom-field-types-js dir: " + e.getMessage());
         }
+    }
+
+    /** The registries above, with the evaluation instant {@code Today}/{@code Now} read. */
+    public InterpreterEngine.RuntimeInputs runtimeInputs(Instant clock) {
+        return new InterpreterEngine.RuntimeInputs(predefinedTypes(), customConditions(), customFieldTypes(), clock);
     }
 
     /**

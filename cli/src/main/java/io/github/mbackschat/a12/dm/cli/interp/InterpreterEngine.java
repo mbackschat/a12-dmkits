@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -18,6 +19,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock;
 import io.github.mbackschat.a12.dm.interpreter.model.Message;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType;
@@ -167,22 +169,16 @@ public final class InterpreterEngine {
         return Stream.concat(first.stream(), second.stream()).distinct().toList();
     }
 
-    /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).
-     *  {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
-     *  bare {@code validateFull} ({@code --no-computations}). */
+    /**
+     * {@code model eval} over the whole model, optionally narrowing the {@code rule} verdict to {@code targetRule}.
+     * {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
+     * bare {@code validateFull} ({@code --no-computations}). A non-null {@code relevantJson} selects
+     * {@code validatePart}.
+     */
     public static ObjectNode evalData(String modelJson, String documentJson, String locale, String targetRule,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        return evalData(modelJson, documentJson, locale, targetRule, predefinedTypes, customConditions,
-                customFieldTypes, applyComputations, null);
-    }
-
-    /** Whole- or partial-document evaluation; non-null {@code relevantJson} selects {@code validatePart}. */
-    public static ObjectNode evalData(String modelJson, String documentJson, String locale, String targetRule,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
-        return evalFor(InterpreterModelLoader.load(modelJson), documentJson, locale, targetRule,
-                predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
+            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
+        return evalFor(InterpreterModelLoader.load(modelJson), documentJson, locale, targetRule, inputs,
+                applyComputations, relevantJson);
     }
 
     /**
@@ -193,20 +189,28 @@ public final class InterpreterEngine {
      * A candidate carries no message template, so it renders its {@code name} (matching the kernel's fallback).
      */
     public static ObjectNode evalCandidateData(String modelJson, String documentJson, CandidateRule candidate,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        return evalCandidateData(modelJson, documentJson, candidate, predefinedTypes, customConditions,
-                customFieldTypes, applyComputations, null);
-    }
-
-    /** Candidate evaluation with optional partial-validation relevance. */
-    public static ObjectNode evalCandidateData(String modelJson, String documentJson, CandidateRule candidate,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
+            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
         RuleDef rule = candidateRule(candidate, candidate.name());
         ModelDef def = InterpreterModelLoader.load(modelJson).withRule(rule);
-        return evalFor(def, documentJson, candidate.locale(), rule.getPath(),
-                predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
+        return evalFor(def, documentJson, candidate.locale(), rule.getPath(), inputs, applyComputations,
+                relevantJson);
+    }
+
+    /**
+     * The host inputs one runtime evaluation binds besides the model, the document and the locale: the kernel's
+     * {@code DocumentProcessingConfig} slots for the custom field types, the custom conditions and
+     * {@code currentDateForTest}. Bundled because every entry point takes all four together.
+     *
+     * @param clock the instant {@code Today}/{@code Now} read, in the model's zone
+     */
+    public record RuntimeInputs(Map<String, PredefinedType> predefinedTypes,
+            Map<String, CustomCondition> customConditions, Map<String, CustomFieldType> customFieldTypes,
+            Instant clock) {
+
+        DmInterpreter interpreter(ModelDef def) {
+            return new DmInterpreter(def, EvalClock.at(clock.toEpochMilli(), def.getTimeZone()), predefinedTypes,
+                    customConditions, customFieldTypes);
+        }
     }
 
     /**
@@ -305,10 +309,9 @@ public final class InterpreterEngine {
      * ({@link #evalCandidateData}) end here, so candidate and persisted evaluation are bit-identical.
      */
     private static ObjectNode evalFor(ModelDef def, String documentJson, String locale, String targetRule,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
+            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
+        DmInterpreter interp = inputs.interpreter(def);
         Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
         Set<RelevantEntity> relevant = relevantJson == null ? null : RelevantSelection.parse(relevantJson, def);
         ValidationOutcome outcome = relevant == null
@@ -340,12 +343,10 @@ public final class InterpreterEngine {
 
     /** {@code model compute}: each computed field's outcome (value / cleared / error). */
     public static ObjectNode computeData(String modelJson, String documentJson, String locale,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes) {
+            RuntimeInputs inputs) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        var evaluation = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes)
-                .computeWithSupport(doc, locale);
+        var evaluation = inputs.interpreter(def).computeWithSupport(doc, locale);
         List<Computed> computed = evaluation.getResults();
 
         ObjectNode data = MAPPER.createObjectNode();
@@ -375,12 +376,10 @@ public final class InterpreterEngine {
 
     /** {@code rule eval}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
     public static ObjectNode ruleTestData(String modelJson, String documentJson, String locale, String rulePath,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+            RuntimeInputs inputs, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        return focusedRuleData(def, doc, locale, rulePath, predefinedTypes, customConditions, customFieldTypes,
-                applyComputations, (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
+        return focusedRuleData(def, doc, locale, rulePath, inputs, applyComputations, (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
     }
 
     /**
@@ -388,14 +387,12 @@ public final class InterpreterEngine {
      * through the same fired/passed/suppressed/unsupported data contract as a stored rule.
      */
     public static ObjectNode ruleTestCandidateData(String modelJson, String documentJson, CandidateRule candidate,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+            RuntimeInputs inputs, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
         String locale = candidate.locale();
         RuleDef rule = focusedRule(candidate);
-        return focusedRuleData(def, doc, locale, rule.getPath(), predefinedTypes, customConditions,
-                customFieldTypes, applyComputations,
+        return focusedRuleData(def, doc, locale, rule.getPath(), inputs, applyComputations,
                 (interpreter, evaluated) -> interpreter.evalCandidate(rule, evaluated, locale));
     }
 
@@ -406,12 +403,10 @@ public final class InterpreterEngine {
 
     /** One focused-rule execution and projection for both stored and candidate routes. */
     private static ObjectNode focusedRuleData(ModelDef def, Document doc, String locale, String rulePath,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations,
-            FocusedRuleEvaluator evaluator) {
+            RuntimeInputs inputs, boolean applyComputations, FocusedRuleEvaluator evaluator) {
         RuleResult result;
         try {
-            DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
+            DmInterpreter interp = inputs.interpreter(def);
             Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
             result = evaluator.evaluate(interp, evalDoc);
         } catch (UnsupportedConstructException e) {

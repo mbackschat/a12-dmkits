@@ -3,11 +3,13 @@ package io.github.mbackschat.a12.dm.interpreter.model
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.eval.dateStoreFormat
+import io.github.mbackschat.a12.dm.interpreter.eval.isoFromZonedInstant
 import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.interpreter.eval.temporalClassifier
 
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
+import kotlin.jvm.JvmStatic
 
 /*
  * The structured model the interpreter evaluates — the interpreter owns its types (a clean data contract,
@@ -60,9 +62,10 @@ enum class RangeYearInterpretation { STANDARD, FROM, TO }
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
  * (`Today`, `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
- * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. The consumer supplies it
- * (dmtool from the JVM clock; a JS consumer from `Date`). A model that uses a clock constant with no clock
- * (or `Now` with no [now]) cannot be evaluated — the rule is reported as unsupported, not crashed.
+ * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. A host holding an instant
+ * builds it with [at], which reads that instant in the model's zone as the kernel does with
+ * `currentDateForTest`; dmtool passes the current instant unless `--clock` pins one. A model that uses a clock
+ * constant with no clock (or `Now` with no [now]) cannot be evaluated — the rule is reported as unsupported.
  *
  * @property today the current date as an ISO `yyyy-MM-dd` string (the value of `Today`).
  * @property now the current date-time as an ISO `yyyy-MM-dd'T'HH:mm:ss` string, optionally followed by an
@@ -70,7 +73,22 @@ enum class RangeYearInterpretation { STANDARD, FROM, TO }
  *   identity while all authored/stored temporal rendering remains whole-second. Null means the consumer
  *   supplies only a date — then a `Now`-using rule is reported unsupported.
  */
-data class EvalClock(val today: String, val now: String? = null)
+data class EvalClock(val today: String, val now: String? = null) {
+    companion object {
+        /**
+         * The clock at [epochMillis], read as wall time in [timeZone]. The kernel's `RuntimeController` sets a
+         * calendar in the model's zone to its `currentDateForTest` instant and keeps the milliseconds
+         * (KERNEL-FINDINGS, `Now`'s epoch-millisecond identity), so a non-zero remainder is carried as `.SSS`.
+         */
+        @JvmStatic
+        fun at(epochMillis: Long, timeZone: ModelTimeZone): EvalClock {
+            val wall = isoFromZonedInstant(epochMillis.floorDiv(1_000L), timeZone)
+            val millis = epochMillis.mod(1_000L)
+            val now = if (millis == 0L) wall else wall + "." + millis.toString().padStart(3, '0')
+            return EvalClock(wall.substringBefore('T'), now)
+        }
+    }
+}
 
 /** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
 enum class MsgType { VALUE, OMISSION }

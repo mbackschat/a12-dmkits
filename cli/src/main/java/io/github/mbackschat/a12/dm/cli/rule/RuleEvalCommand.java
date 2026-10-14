@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
+import io.github.mbackschat.a12.dm.cli.EvalClockOption;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -14,7 +15,9 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
@@ -88,8 +91,16 @@ final class RuleEvalCommand extends BaseCommand {
     @Mixin
     CustomSupportOptions customSupport = new CustomSupportOptions();
 
+    @Mixin
+    EvalClockOption evalClock = new EvalClockOption();
+
     @Override
     public Integer call() {
+        Optional<Instant> clock = evalClock.instant();
+        if (clock.isEmpty()) {
+            return refuseOptionValue(RkCode.INVALID_VALUE, evalClock.refusalSummary(), "--clock", null,
+                    EvalClockOption.FIX);
+        }
         boolean candidate = condition != null || field != null;
         if (candidate && rule != null) {
             return fail("pass either a stored <rulePathInModel> OR a candidate (--condition + --field), not both");
@@ -147,8 +158,7 @@ final class RuleEvalCommand extends BaseCommand {
                     return refuseUndeclaredReferences(undeclared);
                 }
                 data = InterpreterEngine.ruleTestCandidateData(interpJson, documentJson, spec,
-                        customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations);
+                        customSupport.runtimeInputs(clock.get()), !noComputations);
             } else {
                 // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
                 if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
@@ -161,8 +171,7 @@ final class RuleEvalCommand extends BaseCommand {
                     return refuseUndeclaredReferences(undeclared);
                 }
                 data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
-                        customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations);
+                        customSupport.runtimeInputs(clock.get()), !noComputations);
             }
             RuntimeEvidence evidence = RuntimeEvidence.interpreter();
             ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);

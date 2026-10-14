@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
+import io.github.mbackschat.a12.dm.cli.EvalClockOption;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -11,7 +12,9 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
@@ -107,8 +110,16 @@ final class ModelEvalCommand extends BaseCommand {
     @Mixin
     CustomSupportOptions customSupport = new CustomSupportOptions();
 
+    @Mixin
+    EvalClockOption evalClock = new EvalClockOption();
+
     @Override
     public Integer call() {
+        Optional<Instant> clock = evalClock.instant();
+        if (clock.isEmpty()) {
+            return refuseOptionValue(RkCode.INVALID_VALUE, evalClock.refusalSummary(), "--clock", null,
+                    EvalClockOption.FIX);
+        }
         String model = model();
         boolean candidate = condition != null || field != null;
         if (candidate && ruleId != null) {
@@ -177,8 +188,7 @@ final class ModelEvalCommand extends BaseCommand {
         try {
             if (candidate) {
                 data = InterpreterEngine.evalCandidateData(interpJson, documentJson, spec,
-                        customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations, relevant);
+                        customSupport.runtimeInputs(clock.get()), !noComputations, relevant);
             } else {
                 // a structured refusal for an unknown --rule narrowing — otherwise it would silently report
                 // the missing rule as fired:false.
@@ -187,8 +197,7 @@ final class ModelEvalCommand extends BaseCommand {
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
                 }
                 data = InterpreterEngine.evalData(interpJson, documentJson, localeTag, ruleId,
-                        customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations, relevant);
+                        customSupport.runtimeInputs(clock.get()), !noComputations, relevant);
             }
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
