@@ -323,9 +323,6 @@ fun formalError(
  */
 internal val LENGTH_GUARDED: () -> Boolean = { true }
 
-/** [LENGTH_GUARDED]'s other answer, for a converted Number. */
-internal val CONVERTED_UNGUARDED: () -> Boolean = { false }
-
 internal fun formalErrorCached(
     kind: Kind, raw: String, scale: Int? = null, format: String? = null,
     datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,

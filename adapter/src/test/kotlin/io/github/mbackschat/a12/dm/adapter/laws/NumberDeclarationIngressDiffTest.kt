@@ -89,6 +89,36 @@ class NumberDeclarationIngressDiffTest {
         assertEquals(kernel, interpreted, "the interpreter's charset gate on a converted Number drifted")
     }
 
+    /**
+     * The read side of the unguarded conversion, and why the read needs no flag for it. Conversion keeps the scale
+     * but the evaluation text drops trailing zeros, so `1.` and 99,999 zeros reads as `1` and the rule fires. An
+     * evaluation text that stays past the guard carries more than 15 digits, so the total-digit check rejects it
+     * first and the rule is silent either way: the guard could change the code, never whether the value is read.
+     */
+    @Test
+    fun aRuleReadsAConvertedNumberPastTheTechnicalGuardOnlyWhenItsDigitsAreValid() {
+        val bound = BoundModel.ofJson(model)
+        val reading = TypedRules.inject(model, bound.rule(bound.group("/Premium")).name("PositiveRule")
+            .errorField(bound.field("/Premium/Rate"))
+            .`when`(bound.num("/Premium/Rate").gt(0).or(bound.num("/Premium/Loose").gt(0)))
+            .code("POSITIVE").severity(Severity.ERROR).message(Dsl.en("A rate is positive.")).build())
+        val documents = PreparedModel.loadExpandedJson(reading)
+        val engine = documents.createInterpreter()
+        val rows = listOf(
+            document("Rate", quoted("1")) to listOf("POSITIVE"),
+            document("Rate", quoted("1." + "0".repeat(99_999))) to listOf("POSITIVE"),
+            document("Rate", quoted("x".repeat(100_000))) to listOf("wertZuLang"),
+            document("Loose", quoted("0." + "0".repeat(99_999) + "1")) to listOf("stelligkeitZuLang"),
+        )
+        val kernel = rows.associate { (json, _) -> label("Premium", json) to RuntimeLaws.jsonIngressCodes(reading, json) }
+        assertEquals(rows.associate { (json, codes) -> label("Premium", json) to codes }, kernel,
+            "the Kernel moved off the measured rule-read rows")
+        val interpreted = rows.associate { (json, _) ->
+            label("Premium", json) to engine.validateFull(documents.documents.readDocument(json)).findings.map { it.code }.sorted()
+        }
+        assertEquals(kernel, interpreted, "the interpreter's read of a converted Number past the guard drifted")
+    }
+
     private fun document(field: String, json: String) = """{"Premium":{"$field":$json}}"""
 
     private fun kernelCodes(field: String, json: String) = RuntimeLaws.jsonIngressCodes(model, document(field, json))

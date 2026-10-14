@@ -132,12 +132,11 @@ class Document(internal val config: DocumentConfig) {
         val authored: String? = value,
     ) {
         /** The formal check's view of a valued placement: evaluation text plus the authored text it came from. */
-        fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it, converted = numberIdentity != null) }
+        fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it) }
     }
 
-    /** The evaluation text of a stored value, the authored text the input gates measure, and whether A12 holds the
-     *  value [converted] — a converted Number meets no technical length guard ([CONVERTED_UNGUARDED]). */
-    private data class FormalInput(val value: String, val authored: String, val converted: Boolean = false)
+    /** The evaluation text of a stored value and the authored text the input gates measure. */
+    private data class FormalInput(val value: String, val authored: String)
 
     /** One declared-tail decision for a starred field in a bound row scope (IF194). */
     private data class StarOmissionKey(val path: String, val bindDepth: Int, val scope: List<Int>)
@@ -2037,20 +2036,23 @@ class Document(internal val config: DocumentConfig) {
 
     /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]
      *  gate, and the COMPUTE-mode poison trigger ([EvalContext.cellState], IF85). Format + declared constraints,
-     *  the full per-cell check. */
-    private fun formallyInvalid(path: String, raw: String, authored: String = raw, converted: Boolean = false): Boolean {
+     *  the full per-cell check.
+     *
+     *  A converted Number is length-guarded here too, although A12 never guards it ([lengthGuardedAt]): its
+     *  evaluation text only exceeds the guard by carrying more than 15 digits, which the total-digit check
+     *  rejects anyway, so the guard can change the code but never this answer (KF564). */
+    private fun formallyInvalid(path: String, raw: String, authored: String = raw): Boolean {
         if (path in config.customFields) return false
         val kind = kindOf(path)
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         return formalError(kind, raw, scales[path], declaredTemporalFormat(path, kind), precision,
             rangeConfig[path]?.second,
             fieldConstraints[path] ?: FieldConstraints.NONE, config.legalCharset, baseYear = baseYear ?: 2000,
-            timeZone = timeZone, rangeYearInterpretation = yearInterpretationOf(path), authored = authored,
-            lengthGuarded = if (converted) CONVERTED_UNGUARDED else LENGTH_GUARDED) != null
+            timeZone = timeZone, rangeYearInterpretation = yearInterpretationOf(path), authored = authored) != null
     }
 
     private fun formallyInvalid(path: String, input: FormalInput): Boolean =
-        formallyInvalid(path, input.value, input.authored, input.converted)
+        formallyInvalid(path, input.value, input.authored)
 
     /** Whether the stored value at [path]/[reps] meets the technical length guard — false for a converted Number. */
     internal fun lengthGuardedAt(path: String, reps: List<Int>): Boolean = valueAt(path, reps)?.numberIdentity == null
@@ -2088,16 +2090,15 @@ class Document(internal val config: DocumentConfig) {
      * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
      * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
-    private fun resolveValue(path: String, input: FormalInput): Val =
-        resolveValue(path, input.value, input.authored, input.converted)
+    private fun resolveValue(path: String, input: FormalInput): Val = resolveValue(path, input.value, input.authored)
 
-    private fun resolveValue(path: String, raw: String, authored: String = raw, converted: Boolean = false): Val {
+    private fun resolveValue(path: String, raw: String, authored: String = raw): Val {
         val kind = kindOf(path)
         // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
         // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
-        if (formallyInvalid(path, raw, authored, converted)) return Val.Unknown
+        if (formallyInvalid(path, raw, authored)) return Val.Unknown
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         // The DECLARED FORMAT decides which canonicalization a temporal cell gets, never the field's kind
         // (KF211) — so a TIME field declared `dd.MM.yyyy` canonicalizes to ISO like any date and compares
