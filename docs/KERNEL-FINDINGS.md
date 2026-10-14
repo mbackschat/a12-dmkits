@@ -13581,3 +13581,44 @@ So the runtime resolves the `-1` sentinel into an ordinary pair: a `-1` minimum 
 A quoted Number converts wherever the host decimal constructor reads it, whose digit test accepts every BMP decimal digit; the leading-zero keep test of a `leadingZerosAllowed` field reads only the ASCII `0`, so `"٠٣"` converts and `"0٣"` stays text that is not a number. A converted value is held as a decimal and never meets the 99,999-unit technical guard of [KF547](#kf547), whichever of its renderings would be long; text the converter kept does meet it. The charset gate after the guard reaches both, so a converted value is not exempt from the input gates as a whole: that was this finding's first account, and the charset row, predicted to stay silent, refuted it before it shipped. The cascade reads the runtime rendering, which strips fractional zeros beyond the minimum, so a long run of fractional zeros draws nothing while a long integer draws `stelligkeitZuLang`.
 
 Locked by `adapter.laws.NumberDeclarationIngressDiffTest` (the Kernel pinned row by row through its own JSON ingress, the interpreter compared against it), with `NumberDeclarationReadTest` holding the interpreter's three primitives on JVM and Node ([IF401](INTERPRETER-FINDINGS.md#if401)). a12-kernel-lean measured the same classes on their own form at a12-dmkits `a4091041`, and their captures replay clean through the interpreter at this revision. Not settled here: quoted `1e2147483648`, whose scale still fits 32 bits, converts and then faults `validateFull` with an arithmetic underflow (their capture), and a computed fractional result into a `(-1, 0)` field, which neither side measured.
+
+## §13 supplement — a condition call standing where an operation is expected draws the token class at its keyword, after every gate of a production completed before it (`checkConsistency`, 2026-10-14) <a id="kf565"></a>
+
+> Fold: pending — belongs in §13's account of the condition grammar.
+
+a12-kernel-lean `SPEC-2026-10-14-05`. One shipment form (String `Tracking`, Number `Weight`, Date `Shipped`), one rule reporting on `Weight`, each row its condition alone:
+
+| where the condition call stands | A12 reports |
+|---|---|
+| an operation's operand (`Abs(FieldFilled(Weight)) > 0`), over text, naming no declared field, as the first of `Max`'s two operands, a value-list call, a group call | `MVK_UNEXPECTED_TOKEN` |
+| either arithmetic operand, either comparison side | `MVK_UNEXPECTED_TOKEN` |
+| after `RoundUpValue(Tracking, 2)` inside the same operand, arithmetic or comparison | `MVK_NO_NUMBER` |
+| after `RoundUpValue(Weight, 2)` (the Number twin) | `MVK_UNEXPECTED_TOKEN` |
+| after `YearFromDate(Tracking)` or `AddDays(Tracking, 1)`: inside an operand, in a comparison standing as an operand, before a doubled connective, behind a sound leaf | `MVK_NO_DATE` |
+| the same rows over `Shipped` (the Date twins) | `MVK_UNEXPECTED_TOKEN` |
+
+So the call is refused at its keyword, before any read inside it is resolved, which is why an undeclared name inside it changes nothing. A production that completed before the keyword has already run its own gate, and that gate answers first; only a correctly typed twin lets the token class through. The rows cover the rounding, `YearFromDate` and `AddDays` gates outside a filter body; a completed call inside a filter body before such a defect is not measured.
+
+Locked by `adapter.laws.CheckerConditionCallOperandAgreementTest`: A12 pinned row by row and the portable checker compared against it, which it already matched. a12-kernel-lean measured the same classes in 30 rows on their own form at a12-dmkits `a4091041`, and their capture replays against our checker with no disagreement.
+
+## §8 supplement — an Enumeration may declare the empty stored token: it loads, `""` is a literal exactly where it is declared, and a stored `""` reads as an absent cell (`checkConsistency` + both strategies, 2026-10-14) <a id="kf566"></a>
+
+> Fold: pending — belongs in §8's account of declared tokens, beside [KF519](#kf519)'s empty value-list entry.
+
+a12-kernel-lean `SPEC-2026-10-14-04`. A gift form declares `Wrapping` with the tokens `""` and `Gold`, the control `Ribbon` with `Red` and `Gold`, and a String `Note`. The model is valid.
+
+| condition, reporting on `Wrapping` | A12 reports |
+|---|---|
+| `FieldValueIncludedInValueList(Wrapping, "")`, its negation, `[Wrapping] == ""` | nothing: admitted |
+| `FieldValueIncludedInValueList(Ribbon, "")` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+
+| document (`Wrapping`, `Ribbon`) | rules that fire, or findings |
+|---|---|
+| `""`, `""` | `FieldNotFilled` on both, as omissions; no formal finding |
+| absent, absent | the same |
+| `Gold`, `Gold` | `FieldFilled` on both, `Wrapping` in `Gold`, `Wrapping` not in `""` |
+| `Silver`, `Silver` | `stringFalschesMuster` on each field, and no rule |
+
+So the declaration check admits an empty stored token and the literal gate admits `""` wherever it is one of the field's tokens, but a cell never holds it: a stored `""` is the empty cell, so membership in `""` never fires, and neither `== ""` nor `!= ""` fires on an Enumeration, exactly as on a String. Not measured: an empty category token, a labelled empty token, an empty token as an index field's value.
+
+Locked by `adapter.laws.EmptyEnumerationTokenDiffTest`: the literal rows pinned for A12 and compared against the portable checker; the four documents pinned for both strategies and compared against the interpreter. All three already agreed. a12-kernel-lean measured the same rows on their own form at a12-dmkits `a4091041`.

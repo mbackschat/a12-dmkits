@@ -11182,6 +11182,54 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-13-13 and -15; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf565": {
+      "sha256": "a89940c7ea9f1efc298d3fa948725b6c4ec6013e8c91b7e67cecb43444feae55",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["condition call in an operation position"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["condition call in an operation position"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["condition call in an operation position"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed surface cannot author a condition call as an operand; the finding is about condition text.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The checker already answered every row as A12 does; the agreement is now locked.", "evidence": {"condition call in an operation position": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerConditionCallOperandAgreementTest.kt#aConditionCallInAnOperationPositionDrawsTheTokenClass", "witness": "Operand, arithmetic and comparison positions, and the completed rounding and date gates ahead of them."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12's verdict is pinned row by row through rule check.", "evidence": {"condition call in an operation position": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerConditionCallOperandAgreementTest.kt#aGateOfAProductionCompletedBeforeTheCallAnswersFirst", "witness": "Each completed gate beside its correctly typed twin."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "A refused condition never reaches evaluation.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "rule check reports the kernel's or the checker's verdict unchanged.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-05; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf566": {
+      "sha256": "cd77d6a23ef2c2159f5495272118f9ddc5e08df13f267f5e9dae63ea5d766893",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["empty enumeration token"],
+        "checker": ["empty enumeration token"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["empty enumeration token"],
+        "interpreter": ["empty enumeration token"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["empty enumeration token"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "The typed builder declares the empty token and authors membership and equality against it without refusal.", "evidence": {"empty enumeration token": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyEnumerationTokenDiffTest.kt#aStoredEmptyTokenReadsAsAnAbsentCell", "witness": "value(\"\"), in(\"\"), notIn(\"\"), eq(\"\") and ne(\"\") authored through the typed surface."}}},
+        "checker": {"state": "APPLIED", "basis": "The checker already admitted the literal where declared and refused it elsewhere; the agreement is now locked.", "evidence": {"empty enumeration token": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyEnumerationTokenDiffTest.kt#theEmptyTokenIsALiteralWhereDeclaredAndNowhereElse", "witness": "Membership, negation and equality on the declaring field; membership on the control field."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "The finding concerns rule literals and stored values, not schema shapes.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "The finding concerns rule literals and stored values, not schema shapes.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both strategies are pinned over four documents through A12's JSON ingress.", "evidence": {"empty enumeration token": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyEnumerationTokenDiffTest.kt#aStoredEmptyTokenReadsAsAnAbsentCell", "witness": "Stored empty, absent, declared and undeclared values."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter already read a stored empty token as the empty cell and suppressed an empty literal comparison; the agreement is now locked.", "evidence": {"empty enumeration token": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyEnumerationTokenDiffTest.kt#aStoredEmptyTokenReadsAsAnAbsentCell", "witness": "The interpreter compared against the Kernel on every document."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-04; awaits peer review.", "evidence": {}}
+      }
     }
   }
 }
