@@ -306,8 +306,13 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val operands = mutableListOf<List<Token>>()
         var lastOperandStart = cursor
         if (id != "Time" || !isText(")")) {
-            val signature = if (id in VALIDITY && kind(peek()) == KeywordKind.FUNCTION)
-                listOf(Slot.DATE) else SIGNATURES[id]
+            // A12's grammar has two validity conditions and nothing between them: a `Date` construction alone, or
+            // a field and a type name (`ValidityConditionOperandLawsTest.whatTheGrammarAdmitsAsAValidityCondition`).
+            val signature = when {
+                id !in VALIDITY -> SIGNATURES[id]
+                identity(peek()) == "Date" -> listOf(Slot.DATE)
+                else -> listOf(Slot.ENTITY, Slot.STRING)
+            }
             var position = 0
             var values = false
             var valueKind: TokenKind? = null
@@ -358,6 +363,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                         sites += SyntaxSite.DateArgument(operator.text, tokens.subList(from, cursor), filterActive)
                     }
                     Slot.COMPONENT -> component()
+                    Slot.STRING -> { if (peek()?.kind != TokenKind.STRING) fail(SyntaxFailureKind.MATCH); take() }
                     null -> argument(reference = operator.text !in FORM_CONSTRUCTS)
                     }
                 }
@@ -507,7 +513,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
 
     private class RecognitionStop(val failure: ShapeFailure) : RuntimeException()
     /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */
-    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, COMPONENT }
+    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, COMPONENT, STRING }
 
     private companion object {
         val CONNECTIVES = setOf("And", "AND", "and", "Or", "OR", "or", "Und", "UND", "und", "Oder", "ODER", "oder")

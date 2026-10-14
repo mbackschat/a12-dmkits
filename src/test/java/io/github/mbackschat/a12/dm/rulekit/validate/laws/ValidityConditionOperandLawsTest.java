@@ -99,6 +99,30 @@ class ValidityConditionOperandLawsTest {
         assertEquals(expected, actual, "what the predefined-type arm demands of its field");
     }
 
+    /**
+     * The grammar's two shapes, and nothing between them: a validity condition is a {@code Date} construction
+     * alone or a field and a type name, so any other operand count or construction fails at the parser.
+     */
+    @Test
+    void whatTheGrammarAdmitsAsAValidityCondition() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a field alone", verdict("Valid(Code)"));
+        actual.put("a date field alone", verdict("Valid(OrderedOn)"));
+        actual.put("the negated spelling of a field alone", verdict("Invalid(Code)"));
+        actual.put("a field, a type name and a third operand", verdict("Valid(Code, \"EMail\", \"IBAN\")"));
+        actual.put("a date shift alone", verdict("Valid(AddDays(OrderedOn, 1))"));
+        actual.put("a date extract alone", verdict("Valid(DayFromDate(OrderedOn))"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a field alone", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a date field alone", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the negated spelling of a field alone", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a field, a type name and a third operand", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a date shift alone", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a date extract alone", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "what the grammar admits as a validity condition");
+    }
+
     /** The date arm's one question: the construction must reference at least one field. */
     @Test
     void whatTheDateArmDemandsOfItsConstruction() {

@@ -6146,7 +6146,7 @@
       }
     },
     "kf402": {
-      "sha256": "97e47376e2095a9c9a2a1d1f1c09ff99aa2fb466a60be7da2aa46a6564542e65",
+      "sha256": "683971291b5135c6f164493b3f31664b359d1d33f9f9a818335791e27500e543",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -11253,6 +11253,30 @@
         "interpreter": {"state": "APPLIED", "basis": "A joined row now reads starred and keyed domains from its common-parent row instead of declining them; a domain bound below the common parent stays declined (IG174).", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared against both strategies on every document; the refusal is pinned by anAggregateBelowAJoinedGroupIsRefused."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-01, -02, -03 and -06; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf350": {
+      "sha256": "c52c350cfc2bf666deafece1a534232433a55f3145c46f09c49e43c0a92486a2",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["a keyed read of another repeatable group beside an unread error field", "unkeyed repetition reads pre-empting the reference class"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["a keyed read of another repeatable group beside an unread error field"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a keyed read of another repeatable group beside an unread error field"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The finding is an admission verdict on condition text, which the typed surface does not decide.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The reference family now asks only the levels a reference walks, its selected level removed, and keeps the unstarred pre-emption.", "evidence": {"a keyed read of another repeatable group beside an unread error field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedReadErrorReferenceAgreementTest.kt#aKeyedReadOfAnotherGroupLeavesTheErrorFieldUnreferenced", "witness": "Literal and field keys draw the reference class; the unkeyed read keeps the parallel class."}, "unkeyed repetition reads pre-empting the reference class": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ErrorFieldReferenceReachLawsTest.java#aRepetitionReadPreEmptsTheUnreferencedTargetClass", "witness": "The original unstarred pre-emption rows, unchanged."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12's verdicts are pinned row by row through rule check.", "evidence": {"a keyed read of another repeatable group beside an unread error field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedReadErrorReferenceAgreementTest.kt#aKeyedReadOfAnotherGroupLeavesTheErrorFieldUnreferenced", "witness": "Four rows on a parcel depot."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "A refused rule never reaches evaluation.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "rule check reports the kernel's or the checker's verdict unchanged.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-06; awaits peer review.", "evidence": {}}
       }
     }
   }

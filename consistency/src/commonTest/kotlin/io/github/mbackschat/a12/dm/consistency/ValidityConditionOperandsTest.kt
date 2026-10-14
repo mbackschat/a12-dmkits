@@ -60,6 +60,30 @@ class ValidityConditionOperandsTest {
     private fun valid(probe: String): List<String> = codes("FieldFilled(Reference) And $probe")
         .filter { it != "MVK_ERROR_FIELD_NOT_REFERENCED" }
 
+    /** Only the grammar's two shapes parse: a `Date` construction alone, or a field and a type name. */
+    @Test
+    fun whatTheGrammarAdmitsAsAValidityCondition() {
+        val token = listOf("MVK_UNEXPECTED_TOKEN")
+        assertEquals(
+            mapOf(
+                "a field alone" to token,
+                "a date field alone" to token,
+                "the negated spelling of a field alone" to token,
+                "a field, a type name and a third operand" to token,
+                "a date shift alone" to token,
+                "a date extract alone" to token,
+            ),
+            mapOf(
+                "a field alone" to valid("Valid(Code)"),
+                "a date field alone" to valid("Valid(OrderedOn)"),
+                "the negated spelling of a field alone" to valid("Invalid(Code)"),
+                "a field, a type name and a third operand" to valid("Valid(Code, \\\"EMail\\\", \\\"IBAN\\\")"),
+                "a date shift alone" to valid("Valid(AddDays(OrderedOn, 1))"),
+                "a date extract alone" to valid("Valid(DayFromDate(OrderedOn))"),
+            ),
+        )
+    }
+
     @Test
     fun whatThePredefinedTypeArmDemandsOfItsField() {
         val actual = mutableMapOf<String, List<String>>()

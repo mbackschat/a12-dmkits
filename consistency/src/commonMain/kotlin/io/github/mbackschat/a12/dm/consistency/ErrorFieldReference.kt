@@ -48,10 +48,11 @@ private fun TrackedFactBase.errorFieldReferenceFindings(element: TrackedDeclarat
     val target = (declared.target as? Reference.Resolved)?.path ?: return emptyList()
     val references = conditionReferencesOf(element)
     val rulesOwn = rulesOwnReferences(element)
+    val iterated = rulesOwnIterationLevels(element)
     if (references.isEmpty() ||
         references.any { it.target !is Reference.Resolved } ||
         references.any { it.written in rulesOwn && it.reaches(target) } ||
-        references.any { it.written in rulesOwn && iteratesPastTheTarget(it, target) } ||
+        references.any { it.written in rulesOwn && iteratesPastTheTarget(it, target, iterated?.get(it.written)) } ||
         namesTheRulesOwnGroup(element) ||
         mentions(element, target)
     ) return emptyList()
@@ -94,8 +95,17 @@ private fun TrackedFactBase.errorFieldReferenceFindings(element: TrackedDeclarat
  * too, and the report withholds this post-parse class behind it
  * (`rulekit.validate.laws.ErrorFieldReferenceReachLawsTest.aStarPreEmptsTheClassOnlyWhereItCoversEveryLevel`,
  * mirrored in `consistency.ErrorFieldReferenceTest`).
+ *
+ * **A keyed level is selected, not iterated**, so [iterated] — the reference's ordinary levels with its selected
+ * level removed ([rulesOwnIterationLevels]) — confines the test to levels the reference really walks. A keyed read
+ * of another repeatable group therefore pre-empts nothing, and A12 answers it with this family's own class
+ * (`adapter.laws.CheckerKeyedReadErrorReferenceAgreementTest`, a12-kernel-lean SPEC-2026-10-14-06 row `u03`).
  */
-private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference, target: String): Boolean {
+private fun TrackedFactBase.iteratesPastTheTarget(
+    reference: ConditionReference,
+    target: String,
+    iterated: Set<String>?,
+): Boolean {
     if ('*' in reference.written) {
         return false
     }
@@ -103,6 +113,7 @@ private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference,
     val targetGroup = groupOfTargetField(target)
     return repeatableGroups().any { candidate ->
         resolved.startsWith("${candidate.path}/") &&
+            (iterated == null || candidate.path in iterated) &&
             !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
             !(targetGroup != null && parallelVerdictOf(candidate, targetGroup) == ParallelVerdict.Joint)
     }
