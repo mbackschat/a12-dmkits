@@ -2803,7 +2803,7 @@
       }
     },
     "kf475": {
-      "sha256": "1d7bc4694006793a3918ae012ee768a7f681be02abc7e7edc0cf3cd4ab61295a",
+      "sha256": "5d8f8fe30e8841da44415c209ad533112130df23dc3ff22a42b6e4db7e95a1f9",
       "task": "IG155",
       "scope": {
         "adapter": [
@@ -11277,6 +11277,30 @@
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "A refused rule never reaches evaluation.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "rule check reports the kernel's or the checker's verdict unchanged.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-06; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf568": {
+      "sha256": "15bce1c796b8f05ee6f86ae2b4e0f72991b9b23dda41691103aaa1cdd484b160",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the order and gates of an entity spec's modifiers"],
+        "checker": ["the order and gates of an entity spec's modifiers"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the order and gates of an entity spec's modifiers", "a dotted literal beside a first-filled Date"],
+        "interpreter": ["a dotted literal beside a first-filled Date"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the order and gates of an entity spec's modifiers", "a dotted literal beside a first-filled Date"]
+      },
+      "consumers": {
+        "dmkits": {"state": "OPEN", "basis": "The typed surface renders a keyed category only as a message token; a keyed category read in a condition is DG137.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The condition recognizer reads the modifiers once each in the grammar's order; a keyed category keeps the category gates, a filtered operand's key meets the filter's index gate, and a string-keyed bracket meets the read gates.", "evidence": {"the order and gates of an entity spec's modifiers": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEntitySpecModifierAgreementTest.kt#theModifiersOfAnEntitySpecFollowTheGrammarsOrder", "witness": "Admitted and refused modifier orders, keyed category gates, the filter's index gate against four bodies and three precedence controls, and keyed bracket reads, A12 and the checker per row."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12's verdicts are pinned through rule check, and the literal typing through both strategies.", "evidence": {"the order and gates of an entity spec's modifiers": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEntitySpecModifierAgreementTest.kt#aFilteredOperandTakesNoKeyAboveItsStar", "witness": "The filter's index gate whatever the body reads."}, "a dotted literal beside a first-filled Date": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateLiteralComparisonDiffTest.kt#aDottedLiteralBesideAFirstFilledDateIsADate", "witness": "Plain and keyed first-filled Dates against 01.01.2026, two-sided."}}},
+        "interpreter": {"state": "APPLIED", "basis": "FirstFilledValue joined the operators whose operands type a counterpart literal (IF403).", "evidence": {"a dotted literal beside a first-filled Date": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateLiteralComparisonDiffTest.kt#aDottedLiteralBesideAFirstFilledDateIsADate", "witness": "The interpreter compared against both strategies on four documents."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-07; awaits peer review.", "evidence": {}}
       }
     }
   }

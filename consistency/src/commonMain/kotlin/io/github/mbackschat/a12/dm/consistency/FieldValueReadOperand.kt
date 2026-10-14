@@ -51,11 +51,13 @@ private fun TrackedFactBase.readDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): ReadDefect? {
-    val written = read.path ?: return null
+    // A string-keyed read meets the same gates with its keyed level addressed; a star on or above that level is
+    // the index's own class, raised at the key ahead of the bracket (KERNEL-FINDINGS KF568).
+    val written = read.path ?: read.keyedPath ?: return null
     // In a filter's body the levels a read crosses are the filter chain's question, asked only after the body
     // has been read, so a group there meets its bracket first — whether or not the filter iterates it
     // (`rulekit.validate.laws.FieldValueReadOperandLawsTest.theGatesReachEveryCarrierOfTheRead`).
-    val addressed = addressedTargetOf(written, declaringGroup, element, indexSelected = false,
+    val addressed = addressedTargetOf(written, declaringGroup, element, indexSelected = read.path == null,
         everyLevelAddressed = read.inAFilterBody && !read.outerMarker) ?: return null
     val target = declarationAt(addressed) ?: return null
     when (target.declaredKind) {

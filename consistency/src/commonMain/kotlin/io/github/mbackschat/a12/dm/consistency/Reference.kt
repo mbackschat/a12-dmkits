@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -610,6 +611,19 @@ internal fun TrackedFactBase.operandReferenceIn(
     declaringGroup: String,
     element: TrackedDeclaration,
     plain: () -> OperandReference?,
+): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, plain)
+
+/**
+ * [operandReferenceIn], where [keepsCategory] says whether the caller reads [OperandReference.category]. A keyed
+ * operand projecting a category reaches only such a caller: a family that never asks for the category would
+ * judge the enumerated field where A12 judges its category ([KERNEL-FINDINGS KF568]).
+ */
+private fun TrackedFactBase.keyedReferenceIn(
+    text: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    keepsCategory: Boolean,
+    plain: () -> OperandReference?,
 ): OperandReference? {
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
     val inner = text.withoutEnclosingBrackets()
@@ -618,7 +632,14 @@ internal fun TrackedFactBase.operandReferenceIn(
         return plain()
     }
     val use = uses.singleOrNull() ?: return null
-    val value = bareReferenceIn(inner.substring(0, use.keywordAt), conditionLanguage) ?: return null
+    // The indexed operand may project a category, which `entitySpec` writes ahead of the keyword (KF568).
+    val head = tokenize(inner.substring(0, use.keywordAt))
+    val arrow = head.indexOfFirst { it.text == "->" }
+    val category = if (arrow < 0) null else head.drop(arrow + 1).singleOrNull()?.takeIf { it.isName() }?.text
+        ?: return null
+    if (category != null && !keepsCategory) return null
+    val valueText = if (arrow < 0) inner.substring(0, use.keywordAt) else inner.substring(0, head[arrow].start)
+    val value = bareReferenceIn(valueText, conditionLanguage) ?: return null
     val key = inner.substring(use.start, use.end)
     val bareKey = if (use.keyLiteral != null) {
         tokenize(key).size == 1
@@ -627,7 +648,7 @@ internal fun TrackedFactBase.operandReferenceIn(
     }
     val sound = bareKey && tokenize(inner.substring(use.end)).isEmpty() &&
         admitsSemanticIndex(use, declaringGroup, element)
-    return if (sound) OperandReference(value, indexSelected = true, key = key.trim()) else null
+    return if (sound) OperandReference(value, indexSelected = true, category = category, key = key.trim()) else null
 }
 
 /** Whether [text] writes a semantic index anywhere, which is what routes it to [operandReferenceIn]. */
@@ -804,7 +825,7 @@ internal fun TrackedFactBase.categorySpecIn(
     declaringGroup: String,
     element: TrackedDeclaration,
     bare: () -> String? = { bareReferenceIn(text, conditionLanguage) },
-): OperandReference? = operandReferenceIn(text, declaringGroup, element) {
+): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = true) {
     categoryAccessesIn(text, conditionLanguage).singleOrNull()
         ?.let { (path, category) -> OperandReference(path, category = category) }
         ?: bare()?.let { OperandReference(it) }

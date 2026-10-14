@@ -263,7 +263,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 val end = tokens[cursor - 1].end
                 // KF496: an immediate lexical defect prevents the completed-read action.
                 peek()
-                val read = fieldValueRead(spec, token.start, end, filterActive, keywords)
+                // The bracket's own entity is the last one recorded, a key recording its own first.
+                val own = entities.lastOrNull()
+                val keyedByLiteral = own != null && own.indexed && !own.filtered &&
+                    spec.last().kind == TokenKind.STRING
+                val read = fieldValueRead(spec, token.start, end, filterActive, keywords, keyedByLiteral)
                 fieldReads += read
                 sites += SyntaxSite.FieldRead(read)
                 complete(OperationShape.Read(read))
@@ -473,37 +477,36 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         completedSteps[start] = tokens[cursor - 1].end
         if (!walked) completed(SyntaxSite.Kind.PATH_STEP, start, record = reference)
         val path = tokens.subList(pathStart, cursor)
-        var indexed = false
-        var filtered = false
-        while (true) {
-            when {
-                identity(peek()) == "SemanticIndex" -> {
-                    val indexStart = peek()!!.start
-                    take()
-                    if (peek()?.kind == TokenKind.STRING) take() else entity(indexKey = true)
-                    completed(SyntaxSite.Kind.INDEX, indexStart)
-                    indexed = true
-                }
-                identity(peek()) == "Having" -> {
-                    val keyword = take()
-                    peek()
-                    val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey)
-                    sites += entry
-                    filterActive = true
-                    condition()
-                    peek()
-                    sites += SyntaxSite.FilterExit(entry, tokens[cursor - 1].end)
-                    filtered = true
-                    // KF486: finishing a nested filter clears the flag instead of restoring its parent.
-                    filterActive = false
-                }
-                else -> break
-            }
-        }
+        // `entitySpec` takes each modifier at most once and in this order: `-> Category`, `For key`, `Having
+        // filter` (GrammarOnly_ConditionParser.g4). A second `For` or a later `->` is therefore never this
+        // entity's: it belongs to an entity key, which takes it in its own production, or is unexpected
+        // (KERNEL-FINDINGS KF568).
         val category = if (consume("->")) {
             if (!name(peek())) fail(if (walked) SyntaxFailureKind.MATCH else SyntaxFailureKind.DECISION)
             take()
         } else null
+        var indexed = false
+        var filtered = false
+        if (identity(peek()) == "SemanticIndex") {
+            val indexStart = peek()!!.start
+            take()
+            if (peek()?.kind == TokenKind.STRING) take() else entity(indexKey = true)
+            completed(SyntaxSite.Kind.INDEX, indexStart)
+            indexed = true
+        }
+        if (identity(peek()) == "Having") {
+            val keyword = take()
+            peek()
+            val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey)
+            sites += entry
+            filterActive = true
+            condition()
+            peek()
+            sites += SyntaxSite.FilterExit(entry, tokens[cursor - 1].end)
+            filtered = true
+            // KF486: finishing a nested filter clears the flag instead of restoring its parent.
+            filterActive = false
+        }
         completed(SyntaxSite.Kind.ENTITY, start, record = reference)
         if (reference) entities += RecognizedEntity(sites.last() as SyntaxSite.Completion,
             path, indexKey, filterActive, indexed, filtered, category)

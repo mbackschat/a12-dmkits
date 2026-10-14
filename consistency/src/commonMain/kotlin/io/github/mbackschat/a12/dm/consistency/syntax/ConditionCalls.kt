@@ -510,13 +510,18 @@ internal fun fieldValueRead(
     end: Int,
     filterActive: Boolean,
     keywords: Map<String, KeywordKind>,
+    keyedByLiteral: Boolean,
 ): FieldValueRead {
-    val category = spec.takeIf { it.size > 2 && it[it.size - 2].text == "->" && it.last().isName() }
-        ?.last()?.text
+    // The category stands right after the path, ahead of any `For` or `Having` (KF568); an arrow behind one of
+    // those belongs to an entity key.
+    val valueEnd = spec.indexOfFirst { it.text == "->" || it.kind == TokenKind.NAME && it.text in keywords }
+    val arrow = valueEnd.takeIf { it > 0 && spec[it].text == "->" && spec.getOrNull(it + 1)?.isName() == true }
+    val category = arrow?.let { spec[it + 1].text }
     val outerMarker = spec.firstOrNull()?.text == "$"
-    val path = (if (category == null) spec else spec.dropLast(2))
-        .let { if (outerMarker && filterActive) it.drop(1) else it }.asPath(keywords)
-    return FieldValueRead(path, at, end, filterActive, category, outerMarker)
+    fun reduced(run: List<Token>) = run.let { if (outerMarker && filterActive) it.drop(1) else it }.asPath(keywords)
+    val path = reduced(if (arrow == null) spec else spec.take(arrow) + spec.drop(arrow + 2))
+    val keyedPath = if (keyedByLiteral && valueEnd > 0) reduced(spec.take(valueEnd)) else null
+    return FieldValueRead(path, at, end, filterActive, category, outerMarker, keyedPath)
 }
 
 /**
@@ -536,6 +541,9 @@ internal fun soleFieldValueReadIn(text: String, language: ConditionLanguage): Fi
  *
  * The active filter flag is not lexical nesting: a nested filter clears it (KF486). An outer marker in an
  * active filter retains ordinary rule-target binding (KF487); outside it the path remains unreduced.
+ *
+ * [path] stays absent on a keyed read; [keyedPath] is that read's value path where a string key alone selects
+ * the row, the shape whose gates are the plain read's with the keyed level addressed (KF568).
  */
 internal data class FieldValueRead(
     val path: String?,
@@ -544,6 +552,7 @@ internal data class FieldValueRead(
     val inAFilterBody: Boolean,
     val category: String? = null,
     val outerMarker: Boolean = false,
+    val keyedPath: String? = null,
 )
 
 /** Every `Having` body in [text], each placed by its own offset. */

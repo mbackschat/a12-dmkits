@@ -114,11 +114,13 @@ private class KeyRun(val path: String?, val literal: String?, val category: Stri
  * index went unjudged (`adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest`).
  */
 private fun List<Token>.pathEndingBefore(at: Int, keywords: Map<String, KeywordKind>): PathRun {
-    var begin = at
+    // A category the indexed operand carries stands between its path and the keyword (KF568).
+    val pathEnd = if (at >= 2 && this[at - 2].text == "->" && this[at - 1].isName()) at - 2 else at
+    var begin = pathEnd
     while (begin > 0 && this[begin - 1].isPathToken(keywords) && !completesAnAtKeyword(begin - 1, keywords)) {
         begin--
     }
-    var end = at
+    var end = pathEnd
     while (end > begin && this[end - 1].text in PATH_TAIL_SEPARATORS) {
         end--
     }
@@ -130,9 +132,9 @@ private fun List<Token>.pathEndingBefore(at: Int, keywords: Map<String, KeywordK
 private fun List<Token>.keyStartingAfter(at: Int, keywords: Map<String, KeywordKind>, filter: String?): KeyRun {
     val first = getOrNull(at + 1) ?: return KeyRun(null, null, null, -1, at + 1)
     if (first.kind == TokenKind.STRING) {
-        val literal = first.text.decodeAuthoredStringLiteral()
-        val category = categoryAt(at + 2)
-        return KeyRun(null, literal, category, at + 1, if (category == null) at + 2 else at + 4)
+        // A string key is no `entitySpec`, so an arrow behind it projects nothing: A12 meets it as an
+        // unexpected token (KF568).
+        return KeyRun(null, first.text.decodeAuthoredStringLiteral(), null, at + 1, at + 2)
     }
     var end = at + 1
     while (end < size && this[end].isPathToken(keywords)) {

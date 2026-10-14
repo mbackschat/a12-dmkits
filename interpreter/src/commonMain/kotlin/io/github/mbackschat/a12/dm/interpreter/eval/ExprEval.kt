@@ -52,6 +52,9 @@ private val DATE_TIME_PRODUCING_FUNCS = setOf(
 /** The min/max family — temporal when its operands are ([dateAggregate]/[producesTemporal]). */
 private val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE)
 
+/** The operators whose result is one of their operands' values, so their operands type it ([producesTemporal]). */
+private val OPERAND_TYPED_FUNCS = MIN_MAX_FUNCS + FunctionOp.FIRST_FILLED_VALUE
+
 /** Starred value aggregates whose result can be memoized by expression + aggregate-scope prefixes. */
 private val MEMOIZED_STAR_AGGREGATES = setOf(
     FunctionOp.SUM,
@@ -737,16 +740,17 @@ private const val DATE_TIME_LITERAL_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
 /** Whether [e] statically yields a DATE or DATE_TIME value — the signal that a counterpart string LITERAL is a
  *  temporal literal ([coerceTemporalLiteral]), not a plain string. A field whose declared format is a date or a
  *  date-time, whatever its kind (KF211; `adapter.laws.DateDeclaredTimeComparisonDiffTest`), the temporal
- *  constants (`Today`/`BaseYear`/`Now`), a temporal-producing function, or a min/max whose operands are temporal
- *  ([dateAggregate] — the kernel types `Min`/`MinValue` polymorphically by their operands, so a literal beside a
- *  temporal min is a temporal literal). */
+ *  constants (`Today`/`BaseYear`/`Now`), a temporal-producing function, or an operator returning one of its
+ *  operands whose operands are temporal ([dateAggregate] — the kernel types `Min`/`MinValue` and
+ *  `FirstFilledValue` by their operands, so a literal beside a temporal one is a temporal literal; KF568,
+ *  `adapter.laws.FirstFilledDateLiteralComparisonDiffTest`). */
 private fun Interpreter.producesTemporal(e: Expr): Boolean = when (e) {
     is Expr.Field -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
     is Expr.Const -> ConstantOp.byName(e.name).let {
         it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR || it == ConstantOp.NOW
     }
     is Expr.Func -> FunctionOp.byName(e.name).let { op ->
-        op in DATE_PRODUCING_FUNCS || op in DATE_TIME_PRODUCING_FUNCS || (op in MIN_MAX_FUNCS && dateAggregate(e))
+        op in DATE_PRODUCING_FUNCS || op in DATE_TIME_PRODUCING_FUNCS || (op in OPERAND_TYPED_FUNCS && dateAggregate(e))
     }
     is Expr.SemanticIndex -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
     else -> false

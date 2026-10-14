@@ -36,7 +36,7 @@ internal fun TrackedFactBase.categoryContributions(element: TrackedDeclaration):
     entityContributions(element, EntityCheck.CATEGORY) { entity, span ->
         val category = entity.category ?: return@entityContributions null
         categoryFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), category.text.trim('`'),
-            element.path.substringBeforeLast('/'), element, span.member, span)
+            element.path.substringBeforeLast('/'), element, span.member, span, entity.indexed)
     }
 
 private fun TrackedFactBase.categoryFinding(
@@ -46,6 +46,7 @@ private fun TrackedFactBase.categoryFinding(
     element: TrackedDeclaration,
     member: String,
     span: TextSpan,
+    indexSelected: Boolean,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
@@ -53,7 +54,7 @@ private fun TrackedFactBase.categoryFinding(
     }
     val named = declarationAt(resolved.path) ?: return null
     if (named.declaredKind == DeclaredKind.GROUP) {
-        addressedTargetOf(path, declaringGroup, element, indexSelected = false, everyLevelAddressed = false)
+        addressedTargetOf(path, declaringGroup, element, indexSelected, everyLevelAddressed = false)
             ?: return null
         return finding(
             "MVK_NO_GROUPS_ALLOWED",

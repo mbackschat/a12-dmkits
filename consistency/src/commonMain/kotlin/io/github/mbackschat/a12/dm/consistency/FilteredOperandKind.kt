@@ -7,7 +7,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * What a `Having` filter's OWN operand may be — a field, starred, with no semantic index on it.
  *
  * The operand must be a field (`MVK_NO_GROUPS_ALLOWED`), then must carry a wildcard (`MVK_WILDCARDS_REQUIRED`),
- * then must carry no semantic index, and the filter BODY is [fieldValueReadOperandFindings]' subject, so the two
+ * then must carry no semantic index (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), and the filter BODY is [fieldValueReadOperandFindings]' subject, so the two
  * families partition the construct. **The two classes here are raised at two different points.** The kind is
  * asked by the parser as it reads the `Having` keyword (`initFilterCondition`, the grammar's action on
  * `'Mit'` in `GrammarOnly_ConditionParser.g4`), so a group draws it ahead of anything its body holds; the
@@ -115,10 +115,6 @@ private fun TrackedFactBase.specFinding(
     if (resolved !is Reference.Resolved) {
         return null
     }
-    // Filtered after its own string key, a starred spec draws the index gate first, raised at the key.
-    if (spec.indexed && '*' in path) {
-        return null
-    }
     val whose = if (spec.key) "the index key `$path` — a `Having` after `For` filters the key" else "`$path`"
     if (isGroupPath(resolved.path)) {
         if (!beforeBody) return null
@@ -128,6 +124,21 @@ private fun TrackedFactBase.specFinding(
                 "selects rows by a FIELD of the repetition, so name a field of that group instead",
             element.path,
             spec.kindSpan,
+        )
+    }
+    // A starred spec filtered after its own string key meets `checkNoSemanticIndex`, the chain's third gate, once
+    // the whole spec is read. A star on or above the keyed level is refused earlier, at the key, by the index's
+    // own gate, and that earlier-closing class is the one report assembly keeps; a star below it is admitted by
+    // the index (KF351), so the filter's gate is what answers, whatever the body reads (KERNEL-FINDINGS KF568).
+    if (spec.indexed && '*' in path && isFieldPath(resolved.path)) {
+        if (beforeBody || spec.key) return null
+        return finding(
+            "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+            "in `$member`: `Having` filters `$path`, which a semantic index already narrows to one row of a " +
+                "level above its star — A12 takes no index on a filtered operand; filter on the key's field " +
+                "in the body instead, or drop the filter",
+            element.path,
+            spec.span,
         )
     }
     if (beforeBody || OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
