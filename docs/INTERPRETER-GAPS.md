@@ -24,6 +24,7 @@
   - message token rendering, which re-parses `For key` tokens per fired message.
 
   Settles with one routine lane per path plus allocated bytes per lane in `PerfHarness`.
+- **IG173 — three edges of the Number ingress and bound printing are characterized, not matched** (opened 2026-10-14, [KF564](KERNEL-FINDINGS.md#kf564)). (a) A quoted `1e2147483648` converts in A12, its scale still fitting 32 bits, and then faults `validateFull` with an arithmetic underflow (a12-kernel-lean's capture); the interpreter keeps the text and reports `zahlHatUngueltigeZeichen`. (b) A converted value whose point shift exceeds the per-field decode ceiling, 16,000,000 places, is kept verbatim as a denial-of-service guard; A12 expands it, which exhausted the measuring JVM at `1e±2147483647`, so the rows between the ceiling and that point are unmeasured on A12's side and differ on ours. A zero there, such as `0e99999999`, is a plain `0` to A12 and kept text to us. (c) `printedNumberBound` rounds the double's shortest decimal, while A12 prints with Java's `%.nf`, whose digits come from an older binary-to-decimal conversion that can emit one more digit for a few doubles; a bound whose rounding position falls on that digit would print differently. No such bound is known. Each settles with one kernel row, (a) and (b) only if a consumer can author such a value through a supported route.
 
 ## 2. Deferred / ongoing-incremental
 

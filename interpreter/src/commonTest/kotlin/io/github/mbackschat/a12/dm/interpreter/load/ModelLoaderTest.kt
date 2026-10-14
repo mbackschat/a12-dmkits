@@ -140,11 +140,11 @@ class ModelLoaderTest {
     }
 
     @Test
-    fun preservesRawNumberTextForFractionalConstraints() {
-        // F1: the value is read via the tree API and NEVER round-tripped through a Double/JS number, so a
-        // declared minValue of 100.50 keeps its exact literal (a Double round-trip would yield "100.5").
+    fun printsDeclaredNumberBoundsAsTheRuntimeComparesThem() {
+        // A12 compares a bound as the text printed from its nearest double (KF564): with minFractionalDigits
+        // absent beside a maximum of 2 the members differ, so `100.50` prints as its shortest decimal `100.5`.
         val amount = load().constraintsOf("/Order/Lines/Amount")
-        assertEquals("100.50", amount.minValue)
+        assertEquals("100.5", amount.minValue)
         assertEquals("1000", amount.maxValue)
     }
 

@@ -103,7 +103,12 @@ internal class ValueAdmissionCache(
         return if (checks.hasCodeBasedValidatorAt(path)) {
             byCell.getOrPut(CellKey(path, reps, input)) { checks.computeValueAdmissionAt(path, raw, locale, input) }
         } else {
-            byValue.getOrPut(ValueKey(path, input)) { checks.computeValueAdmissionAt(path, raw, locale, input) }
+            // Value-keyed although a converted Number meets no length guard and kept text does: on one field the two
+            // never share a text, since kept text is either unconvertible or carries the ASCII leading zero no
+            // converted rendering has (KF564).
+            byValue.getOrPut(ValueKey(path, input)) {
+                checks.computeValueAdmissionAt(path, raw, locale, input) { document.lengthGuardedAt(path, reps) }
+            }
         }
     }
 

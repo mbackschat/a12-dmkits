@@ -20,6 +20,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.printedNumberBound
+import io.github.mbackschat.a12.dm.interpreter.model.resolveFractionalPair
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -43,8 +45,9 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.requirePreparedGroupChi
  * The mapper reads via kotlinx-serialization-json's **tree API** (`A12_JSON.parseToJsonElement` — the shared
  * A12-shape parse configuration, so a commented model source loads as it does in A12 — plus a hand-written
  * [JsonElement] → [ModelDef] walk) — no `@Serializable`, no compiler plugin (proposal §11 fork F1). A number's
- * **raw literal is preserved** verbatim ([JsonPrimitive.content], e.g. `100.50` stays `"100.50"`): the value is
- * never round-tripped through a `Double`/JS number, so a declared `minValue`/`maxValue` keeps its exact scale.
+ * **raw literal is read verbatim** ([JsonPrimitive.content], e.g. `100.50` stays `"100.50"`), never through a parser's
+ * own `Double`. The one deliberate exception is a Number field's `minValue`/`maxValue`: A12 compares those as the
+ * text printed from their nearest double, so the loader prints them the same way ([printedNumberBound], KF564).
  *
  * ## The walk
  * Only `content.modelRoot.rootGroups` and nested `Group.elements` form the document-element tree. The same
@@ -373,11 +376,15 @@ object ModelLoader {
 
     private fun fieldDef(node: JsonElement, id: String): FieldDef {
         requireConsistentEnumSValue(node, id)
+        val declaredMinimumFraction = typedInt(node, "NumberType", "minFractionalDigits")
+        val declaredMaximumFraction = scaleOf(node)
+        val fraction = declaredMaximumFraction?.let { resolveFractionalPair(declaredMinimumFraction, it) }
         return FieldDef(
         path = id,
         kind = kindOf(node, id),
         labels = localizedTexts(node.path("Field").path("label")),
-        scale = scaleOf(node),
+        scale = fraction?.maximum,
+        fractionalPartChecked = fraction?.checked ?: true,
         signed = signed(node),
         required = requirednessOf(node),
         format = formatOf(node),
@@ -403,9 +410,13 @@ object ModelLoader {
             .path("errorMessage")),
         requiredMessages = localizedTexts(node.path("Field").path("requirednessConfig").path("errorMessage")),
         noValueValidation = typedBool(node, "StringType", "noValueValidation"),
-        minValue = numberTypeText(node, "minValue"),
-        maxValue = numberTypeText(node, "maxValue"),
-        minFractionalDigits = typedInt(node, "NumberType", "minFractionalDigits"),
+        minValue = declaredMaximumFraction?.let {
+            printedNumberBound(numberTypeText(node, "minValue"), declaredMinimumFraction, it)
+        },
+        maxValue = declaredMaximumFraction?.let {
+            printedNumberBound(numberTypeText(node, "maxValue"), declaredMinimumFraction, it)
+        },
+        minFractionalDigits = fraction?.minimum,
         lineBreaksPermitted = typedBool(node, "StringType", "lineBreaksPermitted"),
         leadingZerosAllowed = typedBool(node, "NumberType", "leadingZerosAllowed"),
         zeroNotAllowed = typedBool(node, "NumberType", "zeroNotAllowed"),
@@ -574,7 +585,8 @@ object ModelLoader {
             else -> Requiredness.NOT_REQUIRED
         }
 
-    /** A NUMBER field's scale (`NumberType.maxFractionalDigits`), or null for a non-number field. The kernel's
+    /** A NUMBER field's DECLARED scale (`NumberType.maxFractionalDigits`, `-1` included — [resolveFractionalPair]
+     *  reads it), or null for a non-number field. The kernel's
      *  `NumberType.maxFractionalDigits` is a **primitive int defaulting to 0** (kernel-md-a12internal), so a
      *  NumberType that omits it is scale-0 — an INTEGER: any decimal separator is `zahlHatDezimalTrenner`. A
      *  null return here means "not a number field", NOT "no scale constraint" (a number is never unconstrained). */

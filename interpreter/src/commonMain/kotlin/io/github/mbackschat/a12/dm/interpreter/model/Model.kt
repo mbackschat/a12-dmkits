@@ -254,13 +254,17 @@ data class FieldDef(
     /** A STRING field's `noValueValidation` — when true the kernel's `FormatDefinitionString.validiereFormat`
      *  returns `Valid` immediately, so ALL value checks (pattern / length / the default newline) are skipped. */
     val noValueValidation: Boolean = false,
-    /** A NUMBER field's declared minimum value (`NumberType.minValue`), raw text; below it → `zahlZuKlein`. */
+    /** A NUMBER field's minimum value (`NumberType.minValue`) as the runtime compares it — the text printed from
+     *  the declared bound's nearest double ([printedNumberBound], KF564); below it → `zahlZuKlein`. */
     val minValue: String? = null,
-    /** A NUMBER field's declared maximum value (`NumberType.maxValue`), raw text; above it → `zahlZuGross`. */
+    /** A NUMBER field's maximum value (`NumberType.maxValue`), printed as [minValue] is; above it → `zahlZuGross`. */
     val maxValue: String? = null,
-    /** A NUMBER field's declared minimum fractional digits (`NumberType.minFractionalDigits`); too few →
-     *  `zahlFalscheAnzahlNachkommastellen`, none at all → `zahlOhneDezimalTrenner`. */
+    /** A NUMBER field's minimum fractional digits (`NumberType.minFractionalDigits`, the `-1` sentinel resolved by
+     *  [resolveFractionalPair]); too few → `zahlFalscheAnzahlNachkommastellen`, none at all → `zahlOhneDezimalTrenner`. */
     val minFractionalDigits: Int? = null,
+    /** Whether a NUMBER value's fractional part is checked at all — the separator test of an integer field and the
+     *  fractional-count test. False only for a `-1` minimum beside a zero maximum ([resolveFractionalPair], KF564). */
+    val fractionalPartChecked: Boolean = true,
     /** STRING `lineBreaksPermitted` — default false (the kernel forbids line breaks → `stringMitNewline`). */
     val lineBreaksPermitted: Boolean = false,
     /** NUMBER `leadingZerosAllowed` — default false (the kernel forbids leading zeros → `zahlHatFuehrendeNullen`). */
@@ -389,6 +393,8 @@ data class FieldConstraints(
     val minValue: String? = null,
     val maxValue: String? = null,
     val minFractionalDigits: Int? = null,
+    /** NUMBER: whether the fractional part is checked at all ([FieldDef.fractionalPartChecked]). */
+    val fractionalPartChecked: Boolean = true,
     /** STRING: whether line breaks are permitted. **Default false** = the kernel forbids them (`stringMitNewline`);
      *  `true` is the non-default that allows them. So [NONE] (false) reproduces the kernel default for a plain field. */
     val lineBreaksPermitted: Boolean = false,
@@ -428,6 +434,7 @@ data class FieldConstraints(
      *  `true` (the non-default); the default-forbidden newline/leading-zeros checks still run via [NONE]. */
     val any: Boolean = minLength != null || maxLength != null || pattern != null ||
         enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
+        !fractionalPartChecked ||
         lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation ||
         maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null ||
         numberMaxLength != null || rejectBefore1900 || positivesOnly || amountTrait
@@ -673,6 +680,7 @@ data class ModelDef(
                 minValue = it.minValue,
                 maxValue = it.maxValue,
                 minFractionalDigits = it.minFractionalDigits,
+                fractionalPartChecked = it.fractionalPartChecked,
                 lineBreaksPermitted = it.lineBreaksPermitted,
                 leadingZerosAllowed = it.leadingZerosAllowed,
                 zeroNotAllowed = it.zeroNotAllowed,

@@ -1,0 +1,53 @@
+package io.github.mbackschat.a12.dm.interpreter.model
+
+import io.github.mbackschat.a12.dm.interpreter.A12DocumentJson
+import io.github.mbackschat.a12.dm.interpreter.dec
+
+/**
+ * A Number declaration's fractional pair as the runtime reads it: [minimum] and [maximum] fractional digits, and
+ * whether a stored value's fractional part is checked at all ([checked]).
+ *
+ * A12 writes "no bound" as `-1` and resolves it before validating (KERNEL-FINDINGS KF564, measured 2026-10-13 by
+ * a12-kernel-lean on both strategies and re-measured here by `NumberDeclarationIngressDiffTest`): a `-1` minimum
+ * beside a positive maximum reads as `0`, and a `-1` maximum fixes the count at the minimum, an absent minimum
+ * reading as `0`. The exception is a `-1` minimum beside a zero maximum: neither the separator test nor the
+ * fractional-count test is armed, so `1.555` is valid there, and a computation fits to zero places.
+ */
+internal data class FractionalPair(val minimum: Int?, val maximum: Int, val checked: Boolean)
+
+/**
+ * Resolve the declared [declaredMinimum] (null when absent) and [declaredMaximum] (A12's primitive default `0` when
+ * absent). Only `-1` is an admissible negative member (KF559), so any negative member here is that sentinel.
+ */
+internal fun resolveFractionalPair(declaredMinimum: Int?, declaredMaximum: Int): FractionalPair {
+    val minimum = declaredMinimum ?: 0
+    return when {
+        declaredMaximum < 0 -> FractionalPair(declaredMinimum?.coerceAtLeast(0), minimum.coerceAtLeast(0), checked = true)
+        minimum < 0 && declaredMaximum == 0 -> FractionalPair(0, 0, checked = false)
+        minimum < 0 -> FractionalPair(0, declaredMaximum, checked = true)
+        else -> FractionalPair(declaredMinimum, declaredMaximum, checked = true)
+    }
+}
+
+/**
+ * The text a declared `minValue`/`maxValue` is compared as at runtime: A12 code generation holds the bound as its
+ * nearest binary64 double and prints that double (KF564). When both RAW fractional members equal one `n ≥ 0` it
+ * prints exactly `n` places, rounding the double's shortest decimal half up, so `5.555` on a fixed two-place field
+ * becomes `5.56`; otherwise it prints the shortest decimal that reads back to the double, plain and without
+ * trailing zeros, so `1.00000000000000001` becomes `1`.
+ *
+ * The fixed-places arm reads the SHORTEST decimal. The Kernel's printer (Java's `%.nf`) takes its digits from an
+ * older binary-to-decimal conversion that can emit one digit more for a few doubles; a bound whose rounding
+ * position falls on that digit would print differently. No such bound is known to be authored, and none is
+ * measured (INTERPRETER-GAPS IG173).
+ *
+ * Null [authored] text, or text that is no finite number, is returned unchanged: the value check then has no
+ * readable bound, which is how an unreadable bound behaved before.
+ */
+internal fun printedNumberBound(authored: String?, declaredMinimum: Int?, declaredMaximum: Int): String? {
+    val double = authored?.trim()?.toDoubleOrNull()?.takeIf { it.isFinite() } ?: return authored
+    val shortest = A12DocumentJson.canonicalNumberOrNull(double.toString()) ?: return authored
+    val places = declaredMinimum ?: 0
+    return if (places >= 0 && places == declaredMaximum) dec(shortest).displayAtScale(places)
+    else dec(shortest).display()
+}

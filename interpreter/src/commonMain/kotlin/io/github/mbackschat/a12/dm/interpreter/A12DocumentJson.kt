@@ -101,10 +101,24 @@ internal object A12DocumentJson {
      * `007` → `7`, `1e5` → `100000`, `-0.0` → `0.0` — normalize here too.
      */
     internal fun canonicalNumberOrNull(literal: String): String? {
-        val match = A12_CONVERTER_NUMBER.matchEntire(literal) ?: return null
+        val match = A12_CONVERTER_NUMBER.matchEntire(asciiDigits(literal)) ?: return null
         val (sign, integerPart, fractionPart, exponentPart) = match.destructured
         if (integerPart.isEmpty() && fractionPart.isEmpty()) return null
         return plainForm(sign, integerPart, fractionPart, exponentPart)
+    }
+
+    /**
+     * [literal] with every non-ASCII decimal digit replaced by its ASCII twin. A12's converter is the host decimal
+     * constructor, which reads any UTF-16 unit its digit test accepts, so Arabic-Indic `٣.٥` and fullwidth `５`
+     * convert to `3.5` and `5` (KF564, `NumberDeclarationIngressDiffTest`). A supplementary-plane digit is two
+     * surrogate units, neither a digit, so it stays unconvertible, as it is for the host. The leading-zero keep
+     * test still reads the authored text, where only the ASCII `0` counts.
+     */
+    private fun asciiDigits(literal: String): String {
+        if (literal.all { it.code < 0x80 }) return literal
+        return buildString(literal.length) {
+            for (c in literal) append(if (c.code >= 0x80 && c.isDigit()) '0' + c.digitToInt() else c)
+        }
     }
 
     /**

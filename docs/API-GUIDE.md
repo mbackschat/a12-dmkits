@@ -1814,8 +1814,8 @@ So you can prove a rule *behaves* — run a passing and a violating document and
 
 <!-- teaser -->
 ```kotlin
-// tree API only (no @Serializable, no compiler plugin); a number's raw literal is preserved — a declared
-// minValue of 100.50 stays "100.50" (never round-tripped through a Double/JS number).
+// tree API only (no @Serializable, no compiler plugin); a number's raw literal is read verbatim, except a
+// Number field's minValue/maxValue, which A12 compares as printed from its nearest double (KF564).
 val model: ModelDef = ModelLoader.load(dmJson)
 
 // …build a Document for the instance, then evaluate with NO kernel on the classpath.

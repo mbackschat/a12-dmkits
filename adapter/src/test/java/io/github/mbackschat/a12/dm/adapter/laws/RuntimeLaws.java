@@ -654,6 +654,21 @@ public final class RuntimeLaws {
     }
 
     /**
+     * The {@code codes} half of {@link #jsonIngress} alone: A12's ingress and {@code validateFull}, without the
+     * write-back. A value whose plain rendering has a scale beyond 9,999 places validates but cannot be written
+     * back, because Jackson's generator refuses to print such a {@code BigDecimal} plainly, so a row about the
+     * runtime outcome of such a value needs this route (measured 2026-10-14 on {@code 1e100000}).
+     */
+    static List<String> jsonIngressCodes(String modelJson, String documentJson) {
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        IDocumentModelResolver resolver = id -> engine.model;
+        IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
+        DocumentV2 v2 = deserializeV2(serializer, modelJson, documentJson);
+        return engine.rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
+                .map(IMessage::getErrorCode).sorted().toList();
+    }
+
+    /**
      * Render an explicit placement fixture through A12's own V1→V2 converter and canonical V2 serializer.
      * Retained-result differentials use this to feed the identical document to the standalone public JSON
      * boundary without maintaining a second, invented placement-to-tree encoder.

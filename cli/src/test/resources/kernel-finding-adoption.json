@@ -10512,7 +10512,7 @@
       }
     },
     "kf547": {
-      "sha256": "259a208d90ce3b7065c832828d277d9c479616fd96807fd6076cc676d4cab70b",
+      "sha256": "9969b916039c7845f4de733601f9c67a6132d2a5a5b7d711cd9042d844fba7d9",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11157,6 +11157,30 @@
         "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's input gates already measure the authored text before the fold (KF547).", "evidence": {"authored-text length guard": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "The interpreter refuses the same value and admits the 99,999-unit control, as both strategies do."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and carries no input gate of its own.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "The fact itself went out with KF547 in the 2026-10-13 handback; this entry only stops contradicting it.", "evidence": {}}
+      }
+    },
+    "kf564": {
+      "sha256": "4dec4b4decc5003aee78a88338f0cbb704bee141f91b4fb141e54e92c0467d1d",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["number declaration runtime reading", "quoted number ingress"],
+        "interpreter": ["number declaration runtime reading", "quoted number ingress"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["number declaration runtime reading", "quoted number ingress"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed Number builder already writes the -1 sentinel and bounds as declared; the runtime reading is the engines'.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "This finding is about stored values at runtime; the declaration's own printed-bound check belongs to the consistency rules.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes declarations, not stored values.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads declarations, not stored values.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row through A12's own Document JSON ingress, without the write-back a huge plain value cannot survive.", "evidence": {"number declaration runtime reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Sentinel pairs, the zero-maximum exception and four printed bounds on both sides of each."}, "quoted number ingress": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Arabic-Indic and fullwidth digits, the ASCII leading-zero keep test, and converted versus kept 100,000-unit values."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The loader resolves the pair and prints the bounds, the read gate converts BMP decimal digits, and a converted Number meets no input gate.", "evidence": {"number declaration runtime reading": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#theFractionalSentinelResolvesIntoAnOrdinaryPairExceptBesideAZeroMaximum", "witness": "The resolution and printing primitives on JVM and Node."}, "quoted number ingress": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#aQuotedNumberConvertsNonAsciiDecimalDigitsButNotSupplementaryOnes", "witness": "BMP digits convert, a supplementary digit does not."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-13-13 and -15; awaits peer review.", "evidence": {}}
       }
     }
   }

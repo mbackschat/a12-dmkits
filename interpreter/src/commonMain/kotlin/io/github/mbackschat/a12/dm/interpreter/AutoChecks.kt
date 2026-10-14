@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
 import io.github.mbackschat.a12.dm.interpreter.eval.computedValueErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.fixedRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
+import io.github.mbackschat.a12.dm.interpreter.eval.LENGTH_GUARDED
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
@@ -503,6 +504,7 @@ internal class AutoChecks(
         raw: String,
         locale: String,
         authored: String,
+        lengthGuarded: () -> Boolean = LENGTH_GUARDED,
     ): FormalResult {
         val kind = model.kinds[path] ?: return FormalResult.Valid
         // A custom field meets the same input gates as every other kind, and a failed gate never reaches its
@@ -511,7 +513,7 @@ internal class AutoChecks(
             io.github.mbackschat.a12.dm.interpreter.eval.inputGateError(authored, legalCharset)
         } else formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
             model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
-            model.timeZone, model.rangeYearInterpretationOf(path), authored, patterns::matches)
+            model.timeZone, model.rangeYearInterpretationOf(path), authored, lengthGuarded, patterns::matches)
         formatError?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
         return try {
             customTypeRejection(path, authored, locale)?.let {

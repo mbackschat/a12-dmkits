@@ -303,12 +303,28 @@ fun formalError(
     rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     /** The stored text before CRLF normalization, which the input gates measure; [raw] is its evaluation form. */
     authored: String = raw,
+    /** Whether the technical length guard applies — false for a Number A12 holds converted rather than as text. */
+    lengthGuarded: () -> Boolean = LENGTH_GUARDED,
 ): FormalErrorCode? {
     return formalErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, legalCharset, baseYear, timeZone,
-        rangeYearInterpretation, authored,
+        rangeYearInterpretation, authored, lengthGuarded,
     ) { pattern, value -> compilePattern(pattern).matches(value) }
 }
+
+/**
+ * The technical length guard applies to text only. A Number A12's ingress converted is held as a decimal, so the
+ * guard never reaches it, however long its plain rendering is: `1e100000` and `"1" + 100,000 zeros` draw
+ * `stelligkeitZuLang`, and 100,000 leading zeros before `1` draw nothing, while the same leading zeros kept as text on
+ * a `leadingZerosAllowed` field draw `wertZuLang`. The charset gate after it still reaches a converted Number: under a
+ * model whose characters exclude the digits, `5` draws `ZeichenNichtImZeichensatz` (KF564,
+ * `NumberDeclarationIngressDiffTest`). The question is asked only after the guard failed, so the common case pays
+ * nothing for it.
+ */
+internal val LENGTH_GUARDED: () -> Boolean = { true }
+
+/** [LENGTH_GUARDED]'s other answer, for a converted Number. */
+internal val CONVERTED_UNGUARDED: () -> Boolean = { false }
 
 internal fun formalErrorCached(
     kind: Kind, raw: String, scale: Int? = null, format: String? = null,
@@ -321,6 +337,7 @@ internal fun formalErrorCached(
      *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
     rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     authored: String = raw,
+    lengthGuarded: () -> Boolean = LENGTH_GUARDED,
     patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
@@ -331,7 +348,10 @@ internal fun formalErrorCached(
     // technical length guard, then the baseline (IF43) — legal charset (default BMP; [legalCharset] customizes
     // it, e.g. DIN 91379), leading blank, trailing blank. They pre-empt the type-specific check (a ` 2024-01-01`
     // DATE is `fuehrendesBlank`).
-    inputGateError(authored, legalCharset)?.let { return it }
+    inputGateError(authored, legalCharset)?.let { gate ->
+        if (gate != FormalErrorCode.VALUE_TOO_LONG || lengthGuarded()) return gate
+        baselineValueError(authored, legalCharset)?.let { return it }
+    }
     return typeFormatErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone,
         rangeYearInterpretation, patternMatches,
@@ -680,6 +700,8 @@ private fun numberFormalError(raw: String, scale: Int?, c: FieldConstraints): Fo
     c.positivesOnly && raw.contains('-') ->
         if (c.amountTrait && c.zeroNotAllowed && isNegativeZero(raw)) FormalErrorCode.ZERO_NOT_ALLOWED
         else FormalErrorCode.SIGN_ON_UNSIGNED
+    // A `-1` minimum beside a zero maximum arms neither test (KF564); the arms after them still run.
+    !c.fractionalPartChecked -> null
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
     else -> null
