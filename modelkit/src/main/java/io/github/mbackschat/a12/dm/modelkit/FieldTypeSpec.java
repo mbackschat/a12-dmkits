@@ -9,6 +9,7 @@ import java.util.Map;
 import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
+import io.github.mbackschat.a12.dm.predicates.NumberBoundPredicatesKt;
 
 /**
  * The typed configuration of a field — one record per kind, carrying only the slots that kind
@@ -224,8 +225,12 @@ public sealed interface FieldTypeSpec {
                 throw new IllegalArgumentException("minFractionalDigits " + declaredMin
                         + " > maxFractionalDigits " + declaredMax);
             }
-            if (minValue != null && maxValue != null && minValue.compareTo(maxValue) > 0) {
-                throw new IllegalArgumentException("minValue " + minValue + " > maxValue " + maxValue);
+            // A12 stores the bounds as doubles and, with no fractional digit allowed, compares them rounded
+            // to whole numbers — so `1.4` over `1` is a legal declaration (KERNEL-FINDINGS KF569).
+            if (minValue != null && maxValue != null && NumberBoundPredicatesKt.numberBoundsInverted(
+                    minValue.doubleValue(), maxValue.doubleValue(), maxFractionalDigits)) {
+                throw new IllegalArgumentException("minValue " + minValue + " > maxValue " + maxValue
+                        + " (with no fractional digit allowed, A12 compares both rounded half away from zero)");
             }
         }
 

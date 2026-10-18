@@ -23,11 +23,18 @@ import kotlinx.serialization.json.JsonObject
  * answered" gets the first row wrong; one asking "is any label present" gets the second wrong.
  *
  * **The two codes are separated by WHOSE disagreement it is.** Values that disagree on carrying a label at
- * all — an empty `label` array counts as carrying none — draw `MVK_COUNT_OF_VALUES_INVALID`, and A12 reports
- * that INSTEAD of the locale code, so this family does the same.
+ * all draw `MVK_COUNT_OF_VALUES_INVALID`, and A12 reports that INSTEAD of the locale code, so this family does
+ * the same. **A label is carried only for a DECLARED locale** ([KERNEL-FINDINGS KF569]): a value labelled
+ * only for an undeclared locale carries none, exactly like an empty `label` array. The row that separates
+ * this from "any entry labels" is one value labelled for the declared and an undeclared locale beside one
+ * labelled only for the undeclared locale — A12 answers the count code, where "any entry" would say both
+ * values carry a label and name the locale code instead.
+ *
+ * **The family judges the DEFAULT-VARIANT model**, as its sibling enumeration families do (KF569): a field an
+ * `ONLY` filter deletes there is not checked for its values, its labels or its tokens.
  */
 internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    defaultVariantFields().flatMap { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         val entries = values.map { it as? JsonObject }
         duplicateTokenFindings(field, entries) + labelFindings(field, entries)
@@ -51,10 +58,16 @@ private fun TrackedFactBase.labelFindings(
     field: TrackedDeclaration,
     values: List<JsonObject?>,
 ): List<Finding> {
-    val labelled = values.map { (it?.get("label") as? JsonArray)?.takeIf { list -> list.isNotEmpty() } }
-    // A value with an EMPTY label array is one that carries none, which is the row that separates the two
-    // codes: A12 answers the values' own disagreement and says nothing about the locales.
-    if (labelled.any { it != null } && labelled.any { it == null }) {
+    val texts = values.map { value ->
+        (value?.get("label") as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+            .mapNotNull { entry -> entry.string("locale")?.let { localeKeyOrNull(it) }?.to(entry) }
+            .filter { (locale, _) -> locale in declaredLocales }
+            // A later entry for one locale replaces an earlier one, as everywhere else A12 collects texts.
+            .toMap()
+    }
+    // A value whose entries name no declared locale carries no label, which is the row that separates the
+    // two codes: A12 answers the values' own disagreement and says nothing about the locales.
+    if (texts.any { it.isNotEmpty() } && texts.any { it.isEmpty() }) {
         return listOf(
             finding(
                 field,
@@ -64,13 +77,7 @@ private fun TrackedFactBase.labelFindings(
             ),
         )
     }
-    val texts = labelled.map { entries ->
-        entries.orEmpty().filterIsInstance<JsonObject>()
-            .mapNotNull { entry -> entry.string("locale")?.let { localeKeyOrNull(it) }?.to(entry) }
-            // A later entry for one locale replaces an earlier one, as everywhere else A12 collects texts.
-            .toMap()
-    }
-    if (declaredLocales.none { locale -> texts.any { it.containsKey(locale) } }) {
+    if (texts.all { it.isEmpty() }) {
         return emptyList()
     }
     val unanswered = declaredLocales.filter { locale ->
@@ -96,7 +103,8 @@ private fun TrackedFactBase.labelFindings(
  * A12 writes one per-language block per declared locale and asks each block's `displayValue` list to be
  * unique ([KERNEL-FINDINGS KF368], `rulekit.validate.laws.EnumValueAndLabelLawsTest`), so the same text used
  * for one value in English and another in German is ADMITTED — the row a family keyed on the texts alone
- * would refuse.
+ * would refuse. A locale the model does not declare has no block, so a text repeated only there is never
+ * compared ([KERNEL-FINDINGS KF569]); [texts] arrive already narrowed to the declared locales.
  *
  * **It is asked only where the label set is otherwise complete**, which is where it was measured: a set that
  * is short or half-blank draws its own class first, and whether A12 adds this one there is unmeasured.

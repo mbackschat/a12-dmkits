@@ -33,11 +33,10 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
             xmlAncestor != null -> "MVK_NAME_STARTS_WITH_XML" to
                 "this group sits below `$xmlAncestor`, and A12 reads that group's reserved prefix `xml` into every " +
                     "group beneath it"
-            !root && element.name.startsWith('_') && RESERVED_GROUP_NAMES.none {
-                element.name == it || element.name.startsWith("${it}_")
-            } -> "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN" to
-                "A12 reserves a leading underscore below the root for ${RESERVED_GROUP_NAMES.joinToString()} " +
-                    "and their underscore suffixes"
+            !root && element.name.startsWith('_') && !element.name.isReservedUnderscoreGroupName() ->
+                "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN" to
+                    "A12 admits a leading underscore below the root only for `__meta` itself or a name beginning " +
+                    "with `__attachment_meta`"
             else -> null
         }
         if (refusal != null) findings += element.nameFinding(refusal.first, refusal.second)
@@ -109,7 +108,14 @@ private enum class ElementPathPart {
 private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
 private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
 private fun Char.isGroupCharacter(): Boolean = isAsciiLetter() || isAsciiDigit() || this == '_' || this in "äöüÄÖÜß"
-private val RESERVED_GROUP_NAMES = listOf("__meta", "__attachment_meta")
+
+/**
+ * The two underscore names A12 keeps for its own groups, and they are reserved DIFFERENTLY
+ * ([KERNEL-FINDINGS KF569]): `__meta` as a whole name, `__attachment_meta` as a prefix — so
+ * `__attachment_metadata` and `__attachment_metaX` are admitted while `__meta_x` and `__metadata` are refused.
+ * Case counts on both.
+ */
+private fun String.isReservedUnderscoreGroupName(): Boolean = this == "__meta" || startsWith("__attachment_meta")
 
 private fun TrackedDeclaration.nameFinding(code: String, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, path,

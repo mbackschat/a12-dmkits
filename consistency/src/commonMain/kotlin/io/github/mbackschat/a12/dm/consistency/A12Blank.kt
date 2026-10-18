@@ -24,3 +24,9 @@ internal fun Char.isJavaWhitespace(): Boolean = when (this) {
     in '\u2000'..'\u2006', in '\u2008'..'\u200A' -> true
     else -> false
 }
+
+/**
+ * Java's `String.trim`: strips every character up to U+0020 from both ends, and nothing else — the no-break
+ * space and the other Unicode spaces survive. `A12BlankJvmTest` compares it with the JDK's own answer.
+ */
+internal fun String.javaTrimmed(): String = trim { it <= ' ' }

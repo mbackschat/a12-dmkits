@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
@@ -519,7 +518,7 @@ private fun Slot.numberDefect(body: JsonObject, written: String): SlotDefect? {
     // else is admitted. Measured 2026-09-14 — a reader keying on the declared minimum alone refuses that
     // shape, while the same field with neither the flag nor a minimum, and with `minValue: -1`, are both
     // genuinely refused (`TemporalComponentDeclarationLawsTest`).
-    val nonNegative = (body["positivesOnly"] as? JsonPrimitive)?.booleanOrNull == true ||
+    val nonNegative = body.flag("positivesOnly") == true ||
         (body["minValue"] as? JsonPrimitive)?.doubleOrNull?.let { it >= 0 } == true
     val maxValue = (body["maxValue"] as? JsonPrimitive)?.doubleOrNull
     val fits = !scaled && nonNegative &&

@@ -27,6 +27,10 @@ dependencies {
     // DM-JSON emit/read via Jackson; the YAML reader backs YAML-flavoured model input (same tree-walking style).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
+
+    // The shared-predicate leaf: the Number bound law `NumberSpec` refuses is the one the portable checker
+    // reports, stated once. `implementation` for core's reason: no predicate type crosses a published signature.
+    implementation project(':predicates')
 }
 
 // Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-modelkit — MIT (POM depends on dmkits-core).

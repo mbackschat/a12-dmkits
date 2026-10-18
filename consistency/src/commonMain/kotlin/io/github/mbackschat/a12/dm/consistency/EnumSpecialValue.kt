@@ -12,17 +12,20 @@ import kotlinx.serialization.json.JsonObject
  * gives that refusal its kernel basis and closes the same gap on the stored carrier, where another tool may
  * have written the declaration.
  *
- * **A BLANK `sValue` is not a value outside the domain** — A12 reads an empty member as unset and never asks
- * the question, so reporting one would refuse a model A12 admits.
+ * **Both sides are compared TRIMMED, as Java's `String.trim` trims** ([KERNEL-FINDINGS KF569]): `" BASIC"`
+ * and `"BASIC "` match the token `BASIC`, the token `" BASIC"` matches the `sValue` `BASIC`, and an `sValue`
+ * that trims to nothing — a space, a tab — is unset, so A12 never asks the question. The no-break space is not
+ * trimmed and stays a foreign value, which is the row that separates this from a whitespace-blind comparison;
+ * the case of a letter and an inner space still count.
  */
 internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
     defaultVariantFields().mapNotNull { field ->
         val body = field.enumerationBody() ?: return@mapNotNull null
-        val special = body.string("sValue")?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+        val special = body.string("sValue")?.takeIf { it.javaTrimmed().isNotEmpty() } ?: return@mapNotNull null
         val declared = (body["values"] as? JsonArray)
             ?.mapNotNull { (it as? JsonObject)?.string("value") }
             ?: return@mapNotNull null
-        if (special in declared) {
+        if (special.javaTrimmed() in declared.map { it.javaTrimmed() }) {
             return@mapNotNull null
         }
         Finding(

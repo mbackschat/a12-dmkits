@@ -11302,6 +11302,54 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-07; awaits peer review.", "evidence": {}}
       }
+    },
+    "kf569": {
+      "sha256": "eb889ca2aeb4c92629e7f0fb27d49cc854b377b669469b909ce55f4180cd4ed6",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the Number bound comparison", "the boolean-member binding"],
+        "checker": ["the field-declaration readings of the enumeration, name, bound and boolean-member laws"],
+        "json-schema-import": ["the Number bound comparison"],
+        "json-schema-export": ["the Number bound comparison"],
+        "adapter": ["the field-declaration readings of the enumeration, name, bound and boolean-member laws"],
+        "interpreter": ["the boolean-member binding"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the field-declaration readings of the enumeration, name, bound and boolean-member laws"]
+      },
+      "consumers": {
+        "dmkits": {"state": "OPEN", "basis": "NumberSpec consumes numberBoundsInverted, so a rounded-equal pair authors and reads; the Java model readers still bind the two String flags as strict JSON booleans (Batch T2).", "evidence": {"the Number bound comparison": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/NumberBoundRoundingTest.java#theBoundsAreComparedAsA12ComparesThem", "witness": "Rounded, absent-scale, one-digit and -1 rows, plus the stored-model read path."}}},
+        "checker": {"state": "APPLIED", "basis": "The label family judges the default-variant model over declared locales, sValue is compared trimmed, __attachment_meta is a prefix, bounds go through numberBoundsInverted, and boolean members bind as A12's reader binds them.", "evidence": {"the field-declaration readings of the enumeration, name, bound and boolean-member laws": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAdmissionAgreementTest.kt#theLabelFamilyJudgesTheDefaultVariantModel", "witness": "Every reading against its control, A12 and the checker per row; DeclarationAdmissionReadingsTest replays them on both checker runtimes."}}},
+        "json-schema-import": {"state": "APPLIED", "basis": "Imported numeric bounds are declared through NumberSpec, which consumes the shared predicate.", "evidence": {"the Number bound comparison": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/NumberBoundRoundingTest.java#theBoundsAreComparedAsA12ComparesThem", "witness": "The NumberSpec construction the importer reaches."}}},
+        "json-schema-export": {"state": "OPEN", "basis": "The exporter writes the declared bounds as written; whether a scale-0 bound should export as A12 reads it at runtime (KF564) is unmeasured.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12's verdicts are pinned through checkConsistency per row.", "evidence": {"the field-declaration readings of the enumeration, name, bound and boolean-member laws": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAdmissionAgreementTest.kt#theStringFlagsBindAsA12ReadsThem", "witness": "Bindable flag spellings beside their controls; anUnbindableFlagDrawsNoCodedClass pins the unread model."}}},
+        "interpreter": {"state": "OPEN", "basis": "ModelLoader reads the two String flags as JSON booleans, so an integer flag reads false (Batch T2).", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and the kits it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-18 handback against SPEC-2026-10-13-16; awaits peer review.", "evidence": {}}
+      }
+    },
+    "kf307": {
+      "sha256": "8e7e9b9c5e3e98b774954091d601e60c4a11315d61a6619bc74f2b8e9529b25f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the noValueValidation binding on an ordering key"],
+        "checker": ["the noValueValidation binding on an ordering key"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": ["the noValueValidation binding on an ordering key"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the noValueValidation binding on an ordering key"]
+      },
+      "consumers": {
+        "dmkits": {"state": "OPEN", "basis": "The Java model readers bind the flag as a strict JSON boolean; the corrected binding is Batch T2.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The ordering family reads the flag through the shared boolean-member reader, so a fractional number no longer sets it.", "evidence": {"the noValueValidation binding on an ordering key": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DeclarationAdmissionReadingsTest.kt#eachReadingAgainstItsControl", "witness": "The bound, cleared and unbindable spellings of the shared reader."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no ordering key.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no ordering key.", "evidence": {}},
+        "adapter": {"state": "NOT_APPLICABLE", "basis": "The corrected rows are pinned under KF569's lock.", "evidence": {}},
+        "interpreter": {"state": "OPEN", "basis": "ModelLoader reads the flag as a JSON boolean (Batch T2).", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the flag through the checker and the kits it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Carried in the 2026-10-18 handback under SPEC-2026-10-13-16.", "evidence": {}}
+      }
     }
   }
 }

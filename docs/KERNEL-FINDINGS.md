@@ -6317,7 +6317,7 @@ The portable checker's completeness family now asks its shape parser where it st
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10, whose ordering-key material names the flag without saying how it binds.
 
-**A12 binds this flag through a coercion, and the complete admitted set is narrow rather than lenient.** `true` and the string `"true"` SET it; `false`, the string `"false"` and the number `0` clear it; the numbers `1` and `2` set it, so any non-zero number does; an explicit `null` leaves it unset. A string that is neither boolean literal — `"yes"` — is **not** coerced to false: it refuses A12's reader outright, which is a different tier again. A checker reading the member as a strict JSON boolean therefore admits an ordering key A12 refuses, and that is what this repository's did for the numeric spellings until this row.
+**A12 binds this flag through a coercion, and the complete admitted set is narrow rather than lenient.** *(Corrected 2026-10-14: the grid below held one case per spelling and one integer sign, and both halves generalized wrongly — `"TRUE"` and `"True"` also set the flag and `""` clears it, while a FRACTIONAL number such as `1.0` or `1.5` does not bind at all, so "any non-zero number" holds for integers only. [KF569](#kf569) carries the full binding; the `"yes"` and `null` rows stand.)* `true` and the string `"true"` SET it; `false`, the string `"false"` and the number `0` clear it; the numbers `1` and `2` set it, so any non-zero number does; an explicit `null` leaves it unset. A string that is neither boolean literal — `"yes"` — is **not** coerced to false: it refuses A12's reader outright, which is a different tier again. A checker reading the member as a strict JSON boolean therefore admits an ordering key A12 refuses, and that is what this repository's did for the numeric spellings until this row.
 
 **The neighbouring TYPE shapes are settled at the same time, and two of them are unreadable rather than admitted.** An empty `fieldType` object carries no `type` discriminator, so the reader refuses. A `NumberType` carrying `noValueValidation` likewise refuses — the member is not declared on that binding at all, which raises the source reading of `isNoValueValidation()` being a `FormatDefinitionString` method into a measured fact: **there is no "same flag, other type" model for a checker to judge**, because such a model does not load. A plain `NumberType` as an ordering key is ADMITTED, so it is the flag that is refused and never the non-string type.
 
@@ -13671,3 +13671,42 @@ The filter rows are `CheckEntitySpecImpl.checkFilterCondition`'s chain in source
 **At runtime, a dotted literal beside a first-filled Date is a date (both strategies).** `FirstFilledValue(RevisedBy, PromisedBy) < "01.01.2026"` fires for a promised `2025-06-30`, which sorts after the literal as text, and the keyed `FirstFilledValue(Shipments/DeliveredOn For "T1", PromisedBy)` does the same when the key matches nothing (the captures' rule `c03`). The literal is typed by the operands the operator returns one of, as beside `Min`/`MinValue`.
 
 Locked by `adapter.laws.CheckerEntitySpecModifierAgreementTest` (A12 and the checker per row) and `adapter.laws.FirstFilledDateLiteralComparisonDiffTest` (both strategies and the interpreter). The interpreter side is [IF403](INTERPRETER-FINDINGS.md#if403).
+
+## §13 supplement — six field-declaration readings: the label family judges the default variant, labels count per declared locale, `sValue` is trimmed, `__attachment_meta` is a prefix, integer bounds are rounded, and boolean members bind as Jackson binds them (`checkConsistency`, 2026-10-14) <a id="kf569"></a>
+
+> Fold: pending — declaration-tier rules; each folds beside the finding it extends ([KF321](#kf321), [KF366](#kf366), [KF268](#kf268), [KF320](#kf320), [KF319](#kf319)).
+
+a12-kernel-lean's `field-declaration-notifications` captures (`SPEC-2026-10-13-16`, their report) held eight declarations A12 admits and the portable checker refused. Each was re-measured here on an own-domain policy model, beside a control A12 refuses and a discriminator for the rival reading. The checker's earlier answer is in the last column.
+
+| declaration | A12 | checker before |
+|---|---|---|
+| an enumeration an `ONLY` filter deletes at the default variant: labels started, a blank label, a repeated label | admitted | `MVK_COUNT_OF_VALUES_INVALID` / `…_AND_DISPLAY_VALUES` / `MVK_DISPLAY_VALUES_DUPLICATE` |
+| the same with a repeated token | a codeless refusal only | `MVK_INTERNAL_VALUES_DUPLICATE` |
+| the same rows unfiltered or `ALL_EXCEPT`-filtered (the control) | the coded class | the coded class |
+| one value labelled only for an undeclared locale (blank or not), beside an unlabelled value | admitted | `MVK_COUNT_OF_VALUES_INVALID` |
+| a value labelled for the declared and an undeclared locale, beside one labelled for the undeclared locale only | `MVK_COUNT_OF_VALUES_INVALID` | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| a label repeated only in an undeclared locale (a ninth row, not in the captures) | admitted | `MVK_DISPLAY_VALUES_DUPLICATE` |
+| `sValue` `" "`, `"\t"`, `" BASIC"`, `"BASIC "`; the token `" BASIC"` with `sValue` `BASIC` | admitted | `MVK_S_VALUE_INVALID` |
+| `sValue` `"GOLD"`, `" GOLD"`, `"BA SIC"`, a lone no-break space, `"basic"` | `MVK_S_VALUE_INVALID` | the same |
+| nested group `__attachment_metadata`, `__attachment_metaX` | admitted | `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` |
+| nested group `__meta_x` | `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` | admitted |
+| `__metadata`, `__META`, `__Attachment_meta`, `__attachment_me`, `___attachment_meta` / `__meta`, `__attachment_meta`, `__attachment_meta_photo` | refused / admitted | the same |
+| Number bounds with `maxFractionalDigits` 0 or absent: 1.4 over 1, 1.4 over 1.2, 2.4 over 1.6, −1.5 over −1.6, −0.5 over −1, 0.49999999999999994 over 0 | admitted | `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` |
+| the same at 0: 1.5 over 1.4, 1.6 over 1, 2.5 over 2; at 1: 1.04 over 1, 1.004 over 1.001; at −1: 1.4 over 1 | `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` | the same |
+| `noValueValidation: true` with `lineBreaksPermitted` 2, 1, −1, `"true"`, `"TRUE"` | admitted | `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` |
+| the same with 0, `"false"`, `""`; `noValueValidation` 1, 2, `"True"` with no line-break flag | `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` | silent on the three `noValueValidation` rows |
+| `positivesOnly` 1 or `"TRUE"` beside `maxLength` 16 at scale 0 / `positivesOnly` 0 or `""` | `MVK_MAX_LENGTH_TOO_BIG` / admitted | admitted / admitted |
+| either String flag as 1.0, 1.5, `"1"` or `"tRUE"` | the model is not read: Jackson's `MismatchedInputException` for a `boolean` member | silent, or `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` |
+
+Six readings account for every row, and each is the one its rival gets wrong:
+
+- **The value-and-label family judges the default-variant model**, as the category and special-value families already did. The rival, judging the authored declaration, refuses all four `ONLY` rows.
+- **A label is carried only for a DECLARED locale**, in all three laws. "Any entry labels" names the locale class on the discriminating row, where A12 names the count class; and the uniqueness law is asked per declared language ([KF368](#kf368)), so a text repeated only for an undeclared locale is never compared.
+- **`sValue` and the tokens are compared after Java's `String.trim`**, which strips U+0000–U+0020 and nothing else, so an `sValue` that trims to nothing is unset. "Skip any whitespace" admits `" GOLD"` and the no-break row; comparing only the `sValue` trimmed refuses the padded token.
+- **`__meta` is reserved as a whole name and `__attachment_meta` as a prefix**, which is exactly the second gate's own sentence ([KF268](#kf268)). The checker had read both as "the name or the name plus an underscore suffix".
+- **With no fractional digit allowed, both bounds are rounded half away from zero to integers before they are compared**; at 1 or more, or at −1, the stored doubles are compared. `Math.round` (half up) refuses −1.5 over −1.6, `floor(x + 0.5)` refuses 0.49999999999999994 over 0, half-to-even admits 2.5 over 2, and rounding to the declared scale admits 1.04 over 1 at one digit.
+- **A primitive `boolean` member binds as Jackson binds it**: literals as themselves, an integer as "not zero", `"true"`/`"True"`/`"TRUE"` and `"false"`/`"False"`/`"FALSE"`, and `""` as false. Any other token refuses the reader. The three members are declared `boolean` in the kernel's `StringType` and `NumberType`, and `positivesOnly` was measured on the same reading rather than inferred from it.
+
+Not settled here, and recorded as a gap: A12 withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` beside a printed bound that fails its codeless formal check (`-0` at scale 0, more than 15 digits), and the checker still names it there ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md)).
+
+Locked by `adapter.laws.CheckerDeclarationAdmissionAgreementTest` (A12 and the checker per row), replayed on both checker runtimes by `consistency.DeclarationAdmissionReadingsTest`. The bound law is `numberBoundsInverted` in `:predicates`, which modelkit's `NumberSpec` now consumes (`modelkit.NumberBoundRoundingTest`).

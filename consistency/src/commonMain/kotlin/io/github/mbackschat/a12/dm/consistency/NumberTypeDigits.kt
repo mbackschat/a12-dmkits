@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.numberBoundsInverted
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
@@ -118,7 +119,7 @@ private fun digitPairFindings(field: TrackedDeclaration, digits: DigitCounts): L
 private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     val min = body.number("minValue") ?: return emptyList()
     val max = body.number("maxValue") ?: return emptyList()
-    if (min <= max) {
+    if (!numberBoundsInverted(min, max, body.int("maxFractionalDigits"))) {
         return emptyList()
     }
     return listOf(
@@ -126,7 +127,8 @@ private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): Lis
             field,
             "MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE",
             "this field declares a `minValue` of $min above its `maxValue` of $max, which A12 refuses; " +
-                "equal bounds are admitted",
+                "equal bounds are admitted, and with no fractional digit allowed A12 compares both rounded " +
+                "half away from zero to whole numbers",
         ),
     )
 }
@@ -201,21 +203,24 @@ private fun lengthFindings(field: TrackedDeclaration, body: JsonObject, digits: 
     val min = body.declaredLength("minLength")
     val max = body.declaredLength("maxLength")
     val minFractional = digits.minFractional.value
-    val signed = body.flag("positivesOnly") != true
+    val positivesOnly = body.flag("positivesOnly")
+    val signed = positivesOnly != true
     val fractionalPart = digits.fractionalPart()
+    // An unbindable `positivesOnly` leaves the sign unknown, as an unknown fractional part leaves the point.
+    val budgetKnown = fractionalPart != null && positivesOnly != null
     val fractional = fractionalPart == true
     val budget = DIGIT_BUDGET + (if (signed) 1 else 0) + (if (fractional) 1 else 0)
     val spent = "$DIGIT_BUDGET digits" +
         (if (signed) " plus a sign" else "") + (if (fractional) " plus a decimal point" else "")
     val findings = mutableListOf<Finding>()
-    if (fractionalPart != null && min != null && min > budget) {
+    if (budgetKnown && min != null && min > budget) {
         findings += finding(
             field,
             "MVK_MIN_LENGTH_TOO_BIG",
             "this field requires at least $min characters where A12 allows $budget — $spent",
         )
     }
-    if (fractionalPart != null && max != null && max > budget) {
+    if (budgetKnown && max != null && max > budget) {
         findings += finding(
             field,
             "MVK_MAX_LENGTH_TOO_BIG",

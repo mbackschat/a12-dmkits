@@ -34,7 +34,8 @@ internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
         // A12 is silent on a field deleted from the default variant, on both carriers (KF556).
         if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
         field.stringTypeBody()?.let { body ->
-            return@flatMap memberRangeFindings(field, body.lengthMembers(admitsUndefined = true)) +
+            return@flatMap unbindableFlagFindings(field, body) +
+                memberRangeFindings(field, body.lengthMembers(admitsUndefined = true)) +
                 noValueValidationFindings(field, body) + lengthFindings(field, body)
         }
         // The custom type carries the same two length members under the same law and answers with a class of
@@ -46,7 +47,25 @@ internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
         } ?: emptyList()
     }
 
-/** The four laws that hold only when the type declares `noValueValidation`. */
+/** The two flags A12's reader cannot bind as declared, each of which keeps the model from loading at all. */
+private fun unbindableFlagFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> =
+    STRING_FLAGS.filter { body.unbindableFlag(it) }.map { member ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "`$member` holds `${body[member]}`, which A12's reader cannot bind as a boolean — write `true` or " +
+                "`false` — so the model never loads and no consistency verdict about it exists",
+            field.path,
+        )
+    }
+
+private val STRING_FLAGS = listOf("noValueValidation", "lineBreaksPermitted")
+
+/**
+ * The four laws that hold only when the type declares `noValueValidation`, each asked only of flags A12 can
+ * bind ([flag]).
+ */
 private fun noValueValidationFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     if (body.flag("noValueValidation") != true) {
         return emptyList()
@@ -70,7 +89,7 @@ private fun noValueValidationFindings(field: TrackedDeclaration, body: JsonObjec
                 "EMPTY hint list is admitted, so it is the entries rather than the member that conflict",
         )
     }
-    if (body.flag("lineBreaksPermitted") != true) {
+    if (body.flag("lineBreaksPermitted") == false) {
         findings += finding(
             field,
             "MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK",

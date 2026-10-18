@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -225,24 +224,6 @@ private fun TrackedFactBase.orderingFinding(
 }
 
 /**
- * Whether this value SETS the flag, the way A12 binds it rather than the way JSON types it.
- *
- * A12 does not require a JSON boolean here, and a checker demanding one admits fields A12 refuses. Measured
- * (`rulekit.validate.laws.GroupOrderingFieldTypeLawsTest.theShapesAroundTheRefusedTypeAreAdmitted`): `true`
- * and the string `"true"` set it; `false`, the string `"false"` and the number `0` clear it; the numbers `1`
- * and `2` set it, so any non-zero number does. A string that is neither boolean literal — `"yes"` — is not
- * coerced at all but refuses A12's reader outright, which is a binding verdict this family does not own, so
- * it is left to whoever reports unbindable members rather than silently read as false here.
- */
-private fun JsonPrimitive.setsTheFlag(): Boolean {
-    booleanOrNull?.let { return it }
-    if (isString) {
-        return false
-    }
-    return content.toDoubleOrNull()?.let { it != 0.0 } ?: false
-}
-
-/**
  * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`.
  *
  * The predicate keys on the STRING body carrying the flag, which is `FieldUtils.isNoValueValidation`'s own
@@ -253,7 +234,8 @@ private fun JsonPrimitive.setsTheFlag(): Boolean {
 private fun noValueValidationFinding(field: TrackedDeclaration, member: String, code: String): Finding? {
     val string = FieldType.STRING.bodyIn(field.body?.get("fieldType") as? JsonObject)
         ?: return null
-    if ((string["noValueValidation"] as? JsonPrimitive)?.setsTheFlag() != true) {
+    // An unbindable flag keeps the model from loading, which the string-parameter family reports.
+    if (string.flag("noValueValidation") != true) {
         return null
     }
     return Finding(

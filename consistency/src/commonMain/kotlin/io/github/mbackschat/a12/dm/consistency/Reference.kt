@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -869,7 +868,7 @@ private fun waivesValueValidationIn(body: JsonObject?): Boolean {
         return false
     }
     val string = FieldType.STRING.bodyIn(declared) ?: return false
-    return (string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
+    return string.flag("noValueValidation") == true
 }
 
 /** Whether [tokens] spell one written-out number. */

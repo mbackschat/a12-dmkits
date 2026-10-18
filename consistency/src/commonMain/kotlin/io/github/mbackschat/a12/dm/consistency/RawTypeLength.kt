@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.maxLengthDeclaration
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 
 /**
  * What `Length` over a RAW-TYPE field may look like.
@@ -75,7 +73,7 @@ private fun TrackedFactBase.rawTypeRead(
 private fun TrackedFactBase.isRawType(path: String): Boolean {
     val body = declarationAt(path, DeclaredKind.FIELD)
         ?.stringTypeBody() ?: return false
-    return (body["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
+    return body.flag("noValueValidation") == true
 }
 
 private fun rawLengthOffence(
