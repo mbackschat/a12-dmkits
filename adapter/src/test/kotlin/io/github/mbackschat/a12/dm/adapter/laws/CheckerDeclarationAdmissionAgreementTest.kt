@@ -113,6 +113,12 @@ class CheckerDeclarationAdmissionAgreementTest {
         "no value validation 2" to flags(2, null) to setOf(NO_LINE_BREAK),
         "no value validation \"True\"" to flags("True", null) to setOf(NO_LINE_BREAK),
         "no value validation \"\"" to flags("", null) to admitted,
+        // The string arm trims as Java trims, and the text `null` is the default.
+        "line breaks \" true\"" to flags(true, " true") to admitted,
+        "line breaks \"null\"" to flags(true, "null") to setOf(NO_LINE_BREAK),
+        "line breaks \" \"" to flags(true, " ") to setOf(NO_LINE_BREAK),
+        "no value validation \" TRUE\"" to flags(" TRUE", null) to setOf(NO_LINE_BREAK),
+        "no value validation \"null\"" to flags("null", null) to admitted,
     ))
 
     /** The same reader binds `positivesOnly`, which moves the Number length budget by the sign's one place. */
@@ -131,7 +137,7 @@ class CheckerDeclarationAdmissionAgreementTest {
      */
     @Test
     fun anUnbindableFlagDrawsNoCodedClass() {
-        val unbindable = listOf<Any>(1.0, 1.5, "1", "tRUE")
+        val unbindable = listOf<Any>(1.0, 1.5, "1", "tRUE", "NULL", "\u00A0true", emptyList<String>(), emptyMap<String, String>())
         val wrong = unbindable.flatMap { raw -> listOf(flags(raw, null), flags(true, raw)) }.mapNotNull { json ->
             val built = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
             val ours = ours(json)

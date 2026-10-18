@@ -75,7 +75,9 @@ public final class ModelReader {
      * two-sided (INTERPRETER-FINDINGS IF228, whose first pass fixed the {@code :interpreter} parse sites and
      * missed this JVM one).
      */
-    private static final ObjectMapper MAPPER = JsonMapper.builder()
+    // Package scope so ConfigFlag decodes a member's JSON text with this same model codec rather than a second
+    // construction site (A12JsonConstructionGuardTest).
+    static final ObjectMapper MAPPER = JsonMapper.builder()
             .enable(JsonParser.Feature.ALLOW_COMMENTS)
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)

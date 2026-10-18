@@ -24,9 +24,9 @@ private val TRUE_SPELLINGS = setOf("true", "True", "TRUE")
 private val FALSE_SPELLINGS = setOf("false", "False", "FALSE")
 
 /**
- * Read [value] the way the kernel's own POJO binding reads it — measured over twenty-two spellings by
+ * Read [value] the way the kernel's own POJO binding reads it — measured by
  * `rulekit.validate.laws.ShortNameFlagSpellingLawsTest`, which asks the kernel rather than any accessor of
- * ours (KERNEL-FINDINGS KF289).
+ * ours (KERNEL-FINDINGS KF289, KF569).
  *
  * **This is NOT `asBoolean`, and the gap runs in the dangerous direction.** `asBoolean` takes only the
  * lowercase `"true"`, so it reads `"True"` as OFF where the kernel reads it as ON — and for
@@ -46,12 +46,13 @@ internal fun configFlag(value: JsonElement?): ConfigFlag {
     val primitive = value as? JsonPrimitive ?: return ConfigFlag.UNREADABLE
     val text = primitive.content
     if (primitive.isString) {
+        // Trimmed as Java's `String.trim` trims (U+0000–U+0020 only), and the empty, blank or `null` text is the
+        // type's default (KF569, measured on this member and on `StringType.noValueValidation`). This copy is
+        // held to the same rows as `:predicates`' `a12BooleanOfString`, which the interpreter may not depend on.
+        val trimmed = text.trim { it <= ' ' }
         return when {
-            text in TRUE_SPELLINGS -> ConfigFlag.ON
-            text in FALSE_SPELLINGS -> ConfigFlag.OFF
-            // Jackson's empty-string coercion supplies the type's default BEFORE the recognized-values check,
-            // so the empty string is not an unrecognized spelling — it is `false`.
-            text.isEmpty() -> ConfigFlag.OFF
+            trimmed in TRUE_SPELLINGS -> ConfigFlag.ON
+            trimmed in FALSE_SPELLINGS || trimmed.isEmpty() || trimmed == "null" -> ConfigFlag.OFF
             else -> ConfigFlag.UNREADABLE
         }
     }

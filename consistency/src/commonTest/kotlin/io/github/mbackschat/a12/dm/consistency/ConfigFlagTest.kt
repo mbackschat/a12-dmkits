@@ -49,6 +49,15 @@ class ConfigFlagTest {
             "{}" to ConfigFlag.UNREADABLE,
             "[]" to ConfigFlag.UNREADABLE,
             "null" to ConfigFlag.OFF,
+            // A string is trimmed as Java trims and the text `null` is the default (KF569, both carriers).
+            "\" true\"" to ConfigFlag.ON,
+            "\"\\ttrue\"" to ConfigFlag.ON,
+            "\"\\u00A0true\"" to ConfigFlag.UNREADABLE,
+            "\" \"" to ConfigFlag.OFF,
+            "\"null\"" to ConfigFlag.OFF,
+            "\" null\"" to ConfigFlag.OFF,
+            "\"NULL\"" to ConfigFlag.UNREADABLE,
+            "1e0" to ConfigFlag.UNREADABLE,
             "absent" to ConfigFlag.OFF,
         )
         assertEquals(expected, actual, "how the checker reads each spelling of a boolean model-config member")
@@ -103,6 +112,7 @@ class ConfigFlagTest {
         val SPELLINGS = listOf(
             "true", "false", "\"true\"", "\"True\"", "\"TRUE\"", "\"false\"", "\"False\"", "\"FALSE\"",
             "\"yes\"", "\"1\"", "\"\"", "1", "2", "-1", "0", "-0", "0.5", "1.5", "{}", "[]", "null",
+            "\" true\"", "\"\\ttrue\"", "\"\\u00A0true\"", "\" \"", "\"null\"", "\" null\"", "\"NULL\"", "1e0",
         )
     }
 }

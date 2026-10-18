@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -29,8 +31,15 @@ class ShortNameRefDiffTest {
      *  kernel AND the interpreter must BOTH fire iff [expected] (before IF119 the interpreter threw on the
      *  cross-group ref). The error field is `PostalCode` because the kernel requires the rule's error field to
      *  be referenced in the condition (`MVK_ERROR_FIELD_NOT_REFERENCED`), which is exactly what we reference. */
-    private fun agree(cond: String, expected: Boolean, msg: String, values: Map<String, String>) {
-        val modelJson = RuntimeLaws.withRule(order, "/Order", "SN", "../BillingAddress/PostalCode", "SN", cond)
+    private fun agree(
+        cond: String,
+        expected: Boolean,
+        msg: String,
+        values: Map<String, String>,
+        flag: String? = null,
+    ) {
+        val ruled = RuntimeLaws.withRule(order, "/Order", "SN", "../BillingAddress/PostalCode", "SN", cond)
+        val modelJson = flag?.let { spelled(ruled, it) } ?: ruled
         val def = ModelLoader.load(modelJson)
         val kernel = RuntimeLaws.fires(modelJson, "SN", setOf("/Order"), values)
         val iDoc = def.newDocument()
@@ -59,4 +68,22 @@ class ShortNameRefDiffTest {
     @Test fun crossGroupValueSilentOnMismatch() =
         agree("[PostalCode] == \"12345\"", false, "[PostalCode] == \"12345\" is silent when the value differs",
             mapOf(PC to "99999"))
+
+    // ---- the flag's spelling: A12 trims a string flag before it reads it (KERNEL-FINDINGS KF569) ----------
+
+    @Test fun aPaddedFlagStillTurnsTheTierOn() =
+        agree("FieldFilled(PostalCode)", true, "a \" true\" flag is ON, so [PostalCode] resolves cross-group",
+            mapOf(PC to "12345"), flag = " true")
+
+    @Test fun aTabLedFlagStillTurnsTheTierOn() =
+        agree("FieldFilled(PostalCode)", true, "a tab-led \"true\" flag is ON, so [PostalCode] resolves cross-group",
+            mapOf(PC to "12345"), flag = "\ttrue")
+
+    /** [model] with `fieldRefByShortNameAllowed` written as the JSON string [spelling]. */
+    private fun spelled(model: String, spelling: String): String {
+        val mapper = ObjectMapper()
+        val root = mapper.readTree(model) as ObjectNode
+        (root.path("content").path("modelConfig") as ObjectNode).put("fieldRefByShortNameAllowed", spelling)
+        return root.toString()
+    }
 }

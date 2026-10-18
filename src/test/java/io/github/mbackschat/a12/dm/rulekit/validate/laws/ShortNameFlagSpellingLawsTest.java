@@ -136,6 +136,45 @@ class ShortNameFlagSpellingLawsTest {
     }
 
     /**
+     * The string arm TRIMS before it compares, and treats the text {@code null} as the type's default
+     * ([KF569], first measured on {@code StringType.noValueValidation} and re-measured here on this carrier
+     * rather than inherited). The trim is Java's {@code String.trim}, which strips U+0000 to U+0020 only, so a
+     * no-break or em space before {@code true} still refuses; the {@code null} match is exact, so
+     * {@code "NULL"} refuses while {@code " null"} trims to it.
+     */
+    @Test
+    void theStringIsTrimmedAndTheTextNullReadsAsTheDefault() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("\" true\"", readAs(TextNode.valueOf(" true")));
+        actual.put("\"\\ttrue\"", readAs(TextNode.valueOf("\ttrue")));
+        actual.put("\"true\\n\"", readAs(TextNode.valueOf("true\n")));
+        actual.put("\" TRUE\"", readAs(TextNode.valueOf(" TRUE")));
+        actual.put("a no-break space before true", readAs(TextNode.valueOf("\u00A0true")));
+        actual.put("an em space before true", readAs(TextNode.valueOf("\u2003true")));
+        actual.put("\" \"", readAs(TextNode.valueOf(" ")));
+        actual.put("\"null\"", readAs(TextNode.valueOf("null")));
+        actual.put("\" null\"", readAs(TextNode.valueOf(" null")));
+        actual.put("\"NULL\"", readAs(TextNode.valueOf("NULL")));
+        actual.put("\"FaLsE\"", readAs(TextNode.valueOf("FaLsE")));
+        actual.put("1e0", readAs(DoubleNode.valueOf(1.0)));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("\" true\"", ON);
+        expected.put("\"\\ttrue\"", ON);
+        expected.put("\"true\\n\"", ON);
+        expected.put("\" TRUE\"", ON);
+        expected.put("a no-break space before true", UNREADABLE);
+        expected.put("an em space before true", UNREADABLE);
+        expected.put("\" \"", OFF);
+        expected.put("\"null\"", OFF);
+        expected.put("\" null\"", OFF);
+        expected.put("\"NULL\"", UNREADABLE);
+        expected.put("\"FaLsE\"", UNREADABLE);
+        expected.put("1e0", UNREADABLE);
+        assertEquals(expected, actual, "how A12 reads a padded or null-text spelling of fieldRefByShortNameAllowed");
+    }
+
+    /**
      * Whether the model-wide fallback ran, asked through the Kernel's own verdict on a bare unique name.
      *
      * <p>A rejection carrying no {@code MVK_*} code is not a verdict about the reference: it is the model

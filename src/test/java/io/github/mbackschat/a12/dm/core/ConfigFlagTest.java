@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
  * {@code rulekit.validate.laws.ShortNameFlagSpellingLawsTest} (kernel 30.8.1, 2026-09-12,
  * KERNEL-FINDINGS KF289).
  *
- * <p><b>Every row is the Kernel's answer, not a design choice</b>, which is what makes this a conformance
+ * <p><b>Every row is the Kernel's answer, not a design choice</b> (the padded and null-text rows are KF569's,
+ * measured on both carriers), which is what makes this a conformance
  * lock rather than a formatting preference. Two families diverge from the {@code asBoolean} reading every
  * site here used until 2026-09-12, and both change what a consumer is told: a capitalized {@code "True"} is
  * ON to A12 and OFF to {@code asBoolean}, silently disabling the model-wide short-name tier so a bare
@@ -24,7 +25,8 @@ class ConfigFlagTest {
 
     private static final List<String> SPELLINGS = List.of(
             "true", "false", "\"true\"", "\"True\"", "\"TRUE\"", "\"false\"", "\"False\"", "\"FALSE\"",
-            "\"yes\"", "\"1\"", "\"\"", "1", "2", "-1", "0", "-0", "0.5", "1.5", "{}", "[]", "null");
+            "\"yes\"", "\"1\"", "\"\"", "1", "2", "-1", "0", "-0", "0.5", "1.5", "{}", "[]", "null",
+            "\" true\"", "\"\\ttrue\"", "\"\\u00A0true\"", "\" \"", "\"null\"", "\"NULL\"", "1.0", "1e0");
 
     @Test
     void everySpellingIsReadTheWayA12ReadsIt() {
@@ -50,14 +52,22 @@ class ConfigFlagTest {
         expected.put("2", ConfigFlag.ON);
         expected.put("-1", ConfigFlag.ON);
         expected.put("0", ConfigFlag.OFF);
-        // Jackson normalizes `-0` to the same node as `0`, so the Kernel cannot distinguish the two and this
-        // row is ours: the rule decides on the literal's text, where the sign survives.
+        // Measured on `StringType.noValueValidation` (KF569): `-0` reads as false.
         expected.put("-0", ConfigFlag.OFF);
         expected.put("0.5", ConfigFlag.UNREADABLE);
         expected.put("1.5", ConfigFlag.UNREADABLE);
         expected.put("{}", ConfigFlag.UNREADABLE);
         expected.put("[]", ConfigFlag.UNREADABLE);
         expected.put("null", ConfigFlag.OFF);
+        // A string is trimmed as Java trims, decoded first, and the text `null` is the default (KF569).
+        expected.put("\" true\"", ConfigFlag.ON);
+        expected.put("\"\\ttrue\"", ConfigFlag.ON);
+        expected.put("\"\\u00A0true\"", ConfigFlag.UNREADABLE);
+        expected.put("\" \"", ConfigFlag.OFF);
+        expected.put("\"null\"", ConfigFlag.OFF);
+        expected.put("\"NULL\"", ConfigFlag.UNREADABLE);
+        expected.put("1.0", ConfigFlag.UNREADABLE);
+        expected.put("1e0", ConfigFlag.UNREADABLE);
         expected.put("absent", ConfigFlag.OFF);
         assertEquals(expected, actual, "how each spelling of a boolean model-config member is read");
     }

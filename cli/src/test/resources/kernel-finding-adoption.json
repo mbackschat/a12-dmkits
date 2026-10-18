@@ -11304,7 +11304,7 @@
       }
     },
     "kf569": {
-      "sha256": "eb889ca2aeb4c92629e7f0fb27d49cc854b377b669469b909ce55f4180cd4ed6",
+      "sha256": "05cf9544fba2cc6bcab5b2bb03d920939056df48319dfc3f5eedc22b8794f875",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the Number bound comparison", "the boolean-member binding"],
@@ -11348,6 +11348,30 @@
         "adapter": {"state": "NOT_APPLICABLE", "basis": "The corrected rows are pinned under KF569's lock.", "evidence": {}},
         "interpreter": {"state": "OPEN", "basis": "ModelLoader reads the flag as a JSON boolean (Batch T2).", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the flag through the checker and the kits it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Carried in the 2026-10-18 handback under SPEC-2026-10-13-16.", "evidence": {}}
+      }
+    },
+    "kf289": {
+      "sha256": "c2f6027287c27ee972f8a4486d4e69bfe3d1e4d8b8fd60fcda41d6fdfbfe5053",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the spelling of a boolean model-config flag"],
+        "checker": ["the spelling of a boolean model-config flag"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the spelling of a boolean model-config flag"],
+        "interpreter": ["the spelling of a boolean model-config flag"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the spelling of a boolean model-config flag"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "core's ConfigFlag decodes the member and reads it through a12BooleanOfString / a12BooleanOfNumber in :predicates; ModelReader and ModelDocument consume it.", "evidence": {"the spelling of a boolean model-config flag": {"reference": "src/test/java/io/github/mbackschat/a12/dm/core/ConfigFlagTest.java#everySpellingIsReadTheWayA12ReadsIt", "witness": "Every measured spelling, including the trimmed and null-text rows."}}},
+        "checker": {"state": "APPLIED", "basis": "configFlag reads through the shared law.", "evidence": {"the spelling of a boolean model-config flag": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ConfigFlagTest.kt#everySpellingIsReadTheWayA12ReadsIt", "witness": "The same rows on both checker runtimes."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes the flag as a JSON boolean.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read the flag.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The spelling grid asks the Kernel, and the runtime tier is held against both strategies.", "evidence": {"the spelling of a boolean model-config flag": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ShortNameRefDiffTest.kt#aPaddedFlagStillTurnsTheTierOn", "witness": "A padded and a tab-led flag resolve a cross-group short name in all three engines."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter's own configFlag copy matches the shared law row for row (IF404).", "evidence": {"the spelling of a boolean model-config flag": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ConfigFlagTest.kt#everySpellingIsReadTheWayTheKernelReadsIt", "witness": "The same rows on both interpreter runtimes."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the flag through the kits and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Carried in the 2026-10-18 handback under SPEC-2026-10-13-16.", "evidence": {}}
       }
     }
