@@ -612,7 +612,16 @@ internal class ComputationEngine(
                 .ifEmpty {
                     return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
                 }
-            is Val.Bool -> v.v.toString()
+            // A Confirm has no false, and A12 leaves a Confirm target EMPTY for the one computation that can hand it
+            // one: a copy of an empty Confirm, which a computation reads as `False` exactly as a condition does.
+            // Every other route to `False` is refused statically (`MVK_INVALID_COMPARE_TO_YES`), so whether A12
+            // reads the empty source as empty or stores `False` as empty is undecidable on an admitted model;
+            // deciding it here keeps the condition reading intact (`adapter.laws.ConfirmComputationOperandDiffTest`).
+            is Val.Bool -> if (!v.v && model.kinds[comp.targetPath] == Kind.CONFIRM) {
+                return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
+            } else {
+                v.v.toString()
+            }
             is Val.Range -> renderRange(v, comp.targetPath)
             is Val.Unknown ->
                 return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))

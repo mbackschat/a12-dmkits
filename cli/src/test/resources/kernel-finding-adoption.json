@@ -11422,6 +11422,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders the message through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-10 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
       }
+    },
+    "kf571": {
+      "sha256": "06f4d2cae18bea07f7dec92a4dd458f5f4f68b98d32473524bdefee64c4dde81",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the empty Confirm copy oracle"],
+        "interpreter": ["the Confirm target store"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author computations and evaluate none.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Runtime only; the cross-kind refusal it rests on is MVK_INVALID_COMPARE_TO_YES, which the finding cites rather than changes.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no computation.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export evaluates no computation.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies leave the target empty through RuntimeLaws.compute and the generated-Java engine.", "evidence": {"the empty Confirm copy oracle": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConfirmComputationOperandDiffTest.kt#anEmptyConfirmOperandLeavesItsTargetEmpty", "witness": "Root and row copies of an empty Confirm, beside the precondition control."}}},
+        "interpreter": {"state": "APPLIED", "basis": "toComputed stores no value for a False bound for a Confirm target (IF408).", "evidence": {"the Confirm target store": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ConfirmComputationOperandDiffTest.kt#anEmptyConfirmOperandLeavesItsTargetEmpty", "witness": "The interpreter's outcomes equal both strategies' on every row."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool computes through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "Their reader already matches A12 on these rows (their src-row-copy-carriers-and-root-indices checkpoint); the defect was ours alone.", "evidence": {}}
+      }
     }
   }
 }

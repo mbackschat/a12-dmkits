@@ -4775,3 +4775,12 @@ The same defect sat on the authoring side. `ConditionDirectives.allowDifferingDe
 The requiredness renderer scanned the template once, replaced `$field$`, kept a doubled pair, and reported any other dollar sequence unsupported. So an authored `$field.value$` or `$Feld$`, both of which A12 admits, made `validateFull` refuse the document instead of rendering. A12 instead runs four literal replace-all passes over the whole text, in the order `$Feld$`, `$field$`, `$Feld.Wert$`, `$field.value$`, in either condition language, and keeps every other sequence ([KF570](KERNEL-FINDINGS.md#kf570)). `renderRequiredFieldMessage` now does the same. The order is observable where tokens overlap or a label carries one, which is why the renderer cannot share the String-pattern producer's one-pass scan.
 
 *Locked:* `adapter.laws.RequirednessTextSubstitutionDiffTest` (both strategies, every discriminating row, a German model, a repeated row); `FieldOwnedMessageTest.requirednessRendersTheValueTokenEmpty` (JVM and Node).
+
+### IF408: a computed `False` for a Confirm target is no value (2026-10-20) <a id="if408"></a>
+
+The interpreter reads an empty Confirm operand as `False` in a computation, as in a condition, and stored that `False` into a Confirm target, where it is a formal error. So a copy of an empty Confirm came back ERRORED where A12 leaves the target empty ([KF571](KERNEL-FINDINGS.md#kf571)). `ComputationEngine.toComputed` now treats a `False` bound for a Confirm target as no computed value, CLEARED, beside the empty-text rule ([IF123](#if123)). The fix sits at the store, not the read, because the read is shared with conditions, which must keep reading `False`, and because no admitted model can tell the two places apart.
+
+Found by replaying a12-kernel-lean's `R11_DM` row-copy capture, whose two divergent rows (an empty row source and an absent root source) were both this one mechanism.
+
+*Locked:* `adapter.laws.ConfirmComputationOperandDiffTest` (both strategies; root and row copies, a filled control, a precondition reading the empty Confirm as `False`).
+

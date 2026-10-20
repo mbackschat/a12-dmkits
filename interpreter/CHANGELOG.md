@@ -12,6 +12,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **A computation copying an empty Confirm field now leaves its Confirm target empty**, as the Kernel does; it used to store `false` there and report the target erroneous.
 - **A rule condition that opens with the scale-gate waiver now loads and evaluates**, in the model's condition language (`@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` or `@UnterdrueckeWarnung(…)`); the model was refused at its first waived rule. The waived comparison is evaluated exactly, as in the Kernel.
 - **A required field's own message renders every token the Kernel substitutes**: `$field$`, `$Feld$`, and the empty `$field.value$`/`$Feld.Wert$`, in either condition language. A value token used to make the document unsupported.
 - Keyed group row numbers and index value/category tokens now render in rule messages, including an unmatched parallel row’s joined key.

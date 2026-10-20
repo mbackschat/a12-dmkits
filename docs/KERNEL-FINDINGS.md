@@ -13735,3 +13735,21 @@ a12-kernel-lean's `SPEC-2026-10-14-10` report, re-measured here on an own-domain
 A repeated row's required field renders once per empty row, with the same text (r12). Each template opens with its row tag in the lock, so one validation per engine yields every row.
 
 *(Locked: `adapter.laws.RequirednessTextSubstitutionDiffTest`; the interpreter's rendering on JVM and Node by `FieldOwnedMessageTest`.)*
+
+## §11 supplement — a computation copying an empty Confirm leaves its Confirm target empty, and no admitted computation can hand a Confirm target any other `False` (tri-engine differential + `checkConsistency`, 2026-10-20) <a id="kf571"></a>
+
+> Fold: pending — beside the empty-operand facts of §11.
+
+Found replaying a12-kernel-lean's row-copy carriers (`filter-suppression-and-row-carriers-2026-10-14`, `R11_DM`: `C2k02 := [Rows/C]` on an empty row, `C2k15 := [C0]` with `C0` absent), then re-measured here on an own-domain order model. A Confirm target computed as a copy of an empty Confirm, at the root or in a repeated row, is left empty on both strategies: no value and no error. A filled `true` is copied. A condition still reads the empty Confirm as `False`: `[Terms] != True` selects its alternative when `Terms` is empty.
+
+| computation | source | target |
+|---|---|---|
+| `TermsCopy := [Terms]` (Confirm ← Confirm) | empty / `true` | empty / `true` |
+| `Items/GiftWrapCopy := [Items/GiftWrap]` | row 1 empty, row 2 `true` | empty, `true` |
+| `TermsPending := True` when `[Terms] != True` (Boolean) | empty / `true` | `true` / empty |
+| a Boolean target copying a Confirm, a Confirm target copying a Boolean | — | refused, `MVK_INVALID_COMPARE_TO_YES` |
+
+The refused rows are why the mechanism stays open. A computation is checked as `[target] == [source]`, and a Confirm compares only with a Confirm or the constant `True`, so an empty Confirm copy is the one admitted way a Confirm target meets `False`. "The empty source reads empty" and "a `False` is stored as empty" therefore agree on every admitted model, and nothing authorable separates them.
+
+*(Locked: `adapter.laws.ConfirmComputationOperandDiffTest`.)*
+
