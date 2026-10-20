@@ -65,7 +65,7 @@ private class ComputationDiagnosticAssemblyFailure(first: Message, second: Messa
  */
 internal class ComputationEngine(
     private val model: ModelDef,
-    private val clock: EvalClock?,
+    private val clock: () -> EvalClock?,
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
     private val preparedModel: PreparedEvaluationPlan,
@@ -238,7 +238,7 @@ internal class ComputationEngine(
         // The compute path builds its own config, so it needs the ledger wired here too — counting only the
         // validation config would have left COMPUTE_OVERLAY reporting zero evaluation work.
         val computeConfig = EvalConfig(
-            clock,
+            clock(),
             model.baseYear,
             model.indexFields,
             timeZone = model.timeZone,

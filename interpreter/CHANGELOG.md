@@ -8,6 +8,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Added
 
+- **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. Rules using either constant used to be reported unsupported.
 - **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired. A starred read below one of the joined groups reads that group's joined row, empty where the group has no row for the key, and joins the group even when nothing else reads it.
 
 ### Fixed

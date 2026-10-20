@@ -134,7 +134,7 @@ class PreparationWorkCounterTest {
     private fun engineSharing(plans: ModelStaticPlans, model: ModelDef): DmInterpreter =
         DmInterpreter.sharing(
             model = model,
-            clock = null,
+            clock = { null },
             predefinedTypes = PredefinedTypeRegistry.DEFAULT,
             customConditions = emptyMap(),
             customFieldTypes = emptyMap(),

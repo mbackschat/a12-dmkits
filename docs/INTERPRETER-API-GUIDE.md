@@ -374,6 +374,8 @@ export function validateWithProjectCondition(
 
 A thrown, recursively re-entered, or thenable-returning callback becomes `InterpreterIntegrationError`. The evaluator never implicitly awaits a customization callback.
 
+The same configuration takes `evaluationInstant`, a `Date` that pins what `Today` and `Now` read, as a test date does in A12. It is read in the model's time zone. Leave it out in production: each validation or computation call then reads the current instant.
+
 ## 6. Kotlin
 
 The Kotlin Multiplatform API owns the common implementation. Kotlin/JVM and Kotlin/JS use the same workspace, Document, model-ownership, validation, and computation contracts.

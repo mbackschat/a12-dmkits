@@ -847,6 +847,39 @@ hostileEvidence.push(
   "PreparedDocumentApi.tryReadDocument.document.*",
 );
 
+// `Today` reads the pinned instant as wall time in the model's zone: 22:30 UTC on 20 October is the 21st in Berlin.
+const renewal = PreparedModel.loadExpandedJson(JSON.stringify({
+  header: {id: "renewal"},
+  content: {
+    modelConfig: {timeZone: "Europe/Berlin"},
+    modelRoot: {rootGroups: [{
+      type: "Group", id: "/Renewal", name: "Renewal",
+      Group: {elements: [
+        {type: "Field", id: "/Renewal/DueOn", name: "DueOn",
+          Field: {fieldType: {type: "DateType", DateType: {format: "yyyy-MM-dd"}}}},
+        {type: "Rule", id: "/Renewal/DueToday", name: "DueToday",
+          Rule: {errorEntityRelPath: "../DueOn", errorCode: "DUE_TODAY",
+            errorCondition: "FieldFilled(DueOn) And [DueOn] == Today", severity: "ERROR",
+            errorMessage: [{locale: "en_US", text: "The policy renews today."}]}},
+      ]},
+    }]},
+  },
+}));
+const renewalDue = renewal.documents.readDocument({Renewal: {DueOn: "2026-10-21"}});
+const pinnedCodes = renewal.createInterpreter({evaluationInstant: new Date("2026-10-20T22:30:00Z")})
+  .validateFull(renewalDue).findings.map(({code}) => code).join(",");
+if (pinnedCodes !== "DUE_TODAY") {
+  throw new Error(`a pinned evaluation instant was not read in the model's zone: ${pinnedCodes}`);
+}
+if (!renewal.createInterpreter().supportReport().fullySupported) {
+  throw new Error("the default evaluation instant left Today unsupported");
+}
+expectThrows(
+  "createInterpreter with an invalid evaluation instant",
+  (error) => error instanceof TypeError,
+  () => renewal.createInterpreter({evaluationInstant: new Date(Number.NaN)}),
+);
+
 assertHostileClassificationsExecuted(boundaryClassifications, hostileEvidence);
 
 console.log("TypeScript package consumer passed");

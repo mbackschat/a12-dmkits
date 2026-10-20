@@ -812,6 +812,7 @@ final class io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration { /
         final fun build(): io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder.build|build(){}[0]
         final fun customConditions(io.github.mbackschat.a12.dm.interpreter/CustomConditionRegistry): io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder.customConditions|customConditions(io.github.mbackschat.a12.dm.interpreter.CustomConditionRegistry){}[0]
         final fun customFieldTypes(io.github.mbackschat.a12.dm.interpreter/CustomFieldTypeRegistry): io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder.customFieldTypes|customFieldTypes(io.github.mbackschat.a12.dm.interpreter.CustomFieldTypeRegistry){}[0]
+        final fun evaluationInstant(kotlin/Long): io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Builder.evaluationInstant|evaluationInstant(kotlin.Long){}[0]
     }
 
     final object Companion { // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration.Companion|null[0]

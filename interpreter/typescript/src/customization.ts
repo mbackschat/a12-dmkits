@@ -53,10 +53,15 @@ export interface CustomConditionInvocation {
 /** Synchronous error condition; returning true fires the owning rule. */
 export type CustomCondition = (invocation: CustomConditionInvocation) => boolean;
 
-/** Named project callbacks bound while creating an interpreter. */
+/** Named project callbacks bound while creating an interpreter, and the instant it evaluates at. */
 export interface InterpreterConfiguration {
   readonly customFieldTypes?: Readonly<Record<string, CustomFieldValidator>>;
   readonly customConditions?: Readonly<Record<string, CustomCondition>>;
+  /**
+   * The instant `Today` and `Now` read, as A12's `currentDateForTest`, read as wall time in the model's zone.
+   * Omitted, every validation or computation call reads the current instant.
+   */
+  readonly evaluationInstant?: Date;
 }
 
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
@@ -164,3 +169,18 @@ export const customConditionRegistrations = (
           requireSynchronous(condition(conditionInvocation(invocation))),
       ),
   );
+
+/** @internal */
+export const evaluationInstantMillis = (
+  configuration: InterpreterConfiguration | undefined,
+): number | null => {
+  const instant = configuration?.evaluationInstant;
+  if (instant === undefined) {
+    return null;
+  }
+  const millis = instant instanceof Date ? instant.getTime() : Number.NaN;
+  if (!Number.isFinite(millis)) {
+    throw new TypeError("evaluationInstant must be a valid Date");
+  }
+  return millis;
+};

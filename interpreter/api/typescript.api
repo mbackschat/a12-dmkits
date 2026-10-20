@@ -218,6 +218,7 @@ export declare class Interpreter {
 export interface InterpreterConfiguration {
     readonly customFieldTypes?: Readonly<Record<string, CustomFieldValidator>>;
     readonly customConditions?: Readonly<Record<string, CustomCondition>>;
+    readonly evaluationInstant?: Date;
 }
 
 ## InterpreterIntegrationError

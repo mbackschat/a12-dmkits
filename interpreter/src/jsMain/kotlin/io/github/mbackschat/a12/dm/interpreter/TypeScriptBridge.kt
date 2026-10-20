@@ -231,11 +231,13 @@ class InterpreterBridgePreparedModel internal constructor(
     fun createInterpreter(
         customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,
         customConditions: Array<InterpreterBridgeCustomConditionRegistration>,
+        evaluationInstant: Double?,
     ): InterpreterBridgeInterpreterResult =
         try {
             InterpreterBridgeInterpreterResult(
                 InterpreterBridgeInterpreter(
-                    core.createInterpreter(interpreterConfiguration(customFieldTypes, customConditions)),
+                    core.createInterpreter(
+                        interpreterConfiguration(customFieldTypes, customConditions, evaluationInstant)),
                 ),
                 null,
             )
@@ -740,6 +742,7 @@ fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnown.UNKNOW
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,
     customConditions: Array<InterpreterBridgeCustomConditionRegistration>,
+    evaluationInstant: Double?,
 ): CoreInterpreterConfiguration {
     val fieldTypes = CoreCustomFieldTypeRegistry.builder()
     customFieldTypes.forEach { registration ->
@@ -765,9 +768,11 @@ private fun interpreterConfiguration(
             },
         )
     }
+    // A JavaScript Date's time value is an integral millisecond count, so the conversion is exact.
     return CoreInterpreterConfiguration.builder()
         .customFieldTypes(fieldTypes.build())
         .customConditions(conditions.build())
+        .apply { evaluationInstant?.let { evaluationInstant(it.toLong()) } }
         .build()
 }
 

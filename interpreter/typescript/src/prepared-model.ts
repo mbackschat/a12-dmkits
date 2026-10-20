@@ -4,6 +4,7 @@ import {PreparedDocumentApi} from "./documents.js";
 import {
   customConditionRegistrations,
   customFieldTypeRegistrations,
+  evaluationInstantMillis,
   type InterpreterConfiguration,
 } from "./customization.js";
 import {
@@ -91,6 +92,7 @@ export class PreparedModel {
     const result = this.core.createInterpreter(
       customFieldTypeRegistrations(configuration),
       customConditionRegistrations(configuration),
+      evaluationInstantMillis(configuration),
     );
     if (result.failure !== null && result.failure !== undefined) {
       throwBridgeFailure(result.failure);

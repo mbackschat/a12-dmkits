@@ -298,6 +298,8 @@ Partial validation preserves the Kernel-grounded relevance contract:
 
 `InterpreterConfiguration` accepts explicit name-to-callback maps for custom field types and custom conditions. Binding resolves every model-used custom name before evaluation and keeps callback instances scoped to that interpreter.
 
+It also takes an optional evaluation instant (`evaluationInstant`: epoch milliseconds in Kotlin, a `Date` in TypeScript), the instant `Today` and `Now` read, as A12's `currentDateForTest`. The instant is read as wall time in the model's zone. Without one, each validation or computation call reads the current instant, so one interpreter kept across calls never evaluates against a stale date. That follows A12's `RuntimeController`, which builds a calendar in the model's zone per call when `currentDateForTest` is unset; this is a source reading, since no differential can pin the current instant. `InterpreterEvaluationClockTest` and the TypeScript consumer lock both paths.
+
 Custom field validators are synchronous and receive:
 
 - the raw stored value;

@@ -124,7 +124,7 @@ class SharedPreparationConcurrencyTest {
                         repeat(perThread) {
                             val engine = DmInterpreter.sharing(
                                 model = model,
-                                clock = null,
+                                clock = { null },
                                 predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                                 customConditions = emptyMap(),
                                 customFieldTypes = emptyMap(),

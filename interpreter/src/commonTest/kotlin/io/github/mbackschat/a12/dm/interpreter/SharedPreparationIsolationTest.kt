@@ -53,7 +53,7 @@ class SharedPreparationIsolationTest {
         } else {
             DmInterpreter.sharing(
                 model = model,
-                clock = null,
+                clock = { null },
                 predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                 customConditions = emptyMap(),
                 customFieldTypes = types,

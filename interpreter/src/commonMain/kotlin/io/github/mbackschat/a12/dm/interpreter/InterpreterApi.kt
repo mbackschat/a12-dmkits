@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition as EngineCu
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData as EngineCustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType as EngineCustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -722,6 +723,7 @@ class CustomConditionRegistry private constructor(
 class InterpreterConfiguration private constructor(
     internal val customFieldTypes: CustomFieldTypeRegistry,
     internal val customConditions: CustomConditionRegistry,
+    internal val evaluationInstant: Long?,
 ) {
     companion object {
         @JvmStatic
@@ -734,12 +736,18 @@ class InterpreterConfiguration private constructor(
     class Builder internal constructor() {
         private var customFieldTypes = CustomFieldTypeRegistry.empty()
         private var customConditions = CustomConditionRegistry.empty()
+        private var evaluationInstant: Long? = null
 
         fun customFieldTypes(value: CustomFieldTypeRegistry) = apply { customFieldTypes = value }
         fun customConditions(value: CustomConditionRegistry) = apply { customConditions = value }
+        /**
+         * Pin the instant `Today` and `Now` read, as A12's `currentDateForTest` does; it is read as wall time in the
+         * model's zone. Unset, every validation or computation call reads the current instant, as A12 does.
+         */
+        fun evaluationInstant(epochMillis: Long) = apply { evaluationInstant = epochMillis }
 
         fun build(): InterpreterConfiguration =
-            InterpreterConfiguration(customFieldTypes, customConditions)
+            InterpreterConfiguration(customFieldTypes, customConditions, evaluationInstant)
     }
 }
 
@@ -810,9 +818,12 @@ class Interpreter private constructor(
 
     init {
         try {
+            val definition = prepared.definition()
+            val zone = definition.timeZone
+            val pinned = configuration.evaluationInstant?.let { EvalClock.at(it, zone) }
             engine = DmInterpreter.sharing(
-                model = prepared.definition(),
-                clock = null,
+                model = definition,
+                clock = if (pinned != null) ({ pinned }) else ({ EvalClock.at(currentEpochMillis(), zone) }),
                 predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                 customConditions = configuration.customConditions.engineMap(::adaptCondition),
                 customFieldTypes = configuration.customFieldTypes.engineMap(),

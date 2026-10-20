@@ -447,6 +447,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfigurat
 	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
 	public final fun customConditions (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
 	public final fun customFieldTypes (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
+	public final fun evaluationInstant (J)Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Companion {

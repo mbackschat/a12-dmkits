@@ -67,7 +67,9 @@ private const val MASKABLE_DEPTH = 63
  */
 class DmInterpreter private constructor(
     private val model: ModelDef,
-    private val clock: EvalClock?,
+    /** The clock for one call, asked once per validation or computation call, as A12 samples its current instant
+     *  per call when `currentDateForTest` is unset. A source yields a clock on every call or on none. */
+    private val clock: () -> EvalClock?,
     /** The consumer-supplied predefined-type registry (`Valid`/`Invalid(field, "Name")`) — the kernel's
      *  `IPredefinedType` client SPI. Defaults to the built-in common set ([PredefinedTypeRegistry.DEFAULT]);
      *  a consumer may pass its own (built-ins + project types). An unregistered name → the rule is unsupported. */
@@ -130,7 +132,7 @@ class DmInterpreter private constructor(
         legalCharset: LegalCharset = LegalCharset.BMP,
         messageLabelProvider: MessageLabelProvider? = MessageLabelProvider.MODEL_LABEL_OR_NAME,
     ) : this(
-        model, clock, predefinedTypes, customConditions, customFieldTypes, legalCharset, messageLabelProvider,
+        model, { clock }, predefinedTypes, customConditions, customFieldTypes, legalCharset, messageLabelProvider,
         plans = null,
     )
 
@@ -151,7 +153,7 @@ class DmInterpreter private constructor(
         @JvmSynthetic
         internal fun sharing(
             model: ModelDef,
-            clock: EvalClock?,
+            clock: () -> EvalClock?,
             predefinedTypes: Map<String, PredefinedType>,
             customConditions: Map<String, CustomCondition>,
             customFieldTypes: Map<String, CustomFieldType>,
@@ -203,7 +205,7 @@ class DmInterpreter private constructor(
         model,
         this.plans,
         support = PreparationSupport(
-            clock = clock,
+            clock = clock(),
             predefinedTypes = predefinedTypes,
             customConditions = customConditions,
             customFieldTypes = customFieldTypes,
@@ -1063,7 +1065,7 @@ class DmInterpreter private constructor(
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
             groupCountGate: GroupCountGate?,
             groupPresence: (String, List<Int>) -> GroupPresenceState): EvalConfig =
-        EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
+        EvalConfig(clock(), model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             indexIdentityAdmitted = indexIdentityAdmitted,
