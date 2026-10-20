@@ -11446,6 +11446,54 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool computes through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "Their reader already matches A12 on these rows (their src-row-copy-carriers-and-root-indices checkpoint); the defect was ours alone.", "evidence": {}}
       }
+    },
+    "kf101": {
+      "sha256": "f5410586b7cac2b6629aa4550dd5473c663103ca39b25508c8a1c874395b9d89",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["a key across sibling fixed groups"],
+        "checker": ["a key across sibling fixed groups"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["a key across sibling fixed groups"],
+        "interpreter": ["a key across sibling fixed groups"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a key across sibling fixed groups"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "Dsl.repetitionNotUnique authors the sibling key and the kits refuse nothing about it.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The rules are built through Dsl.repetitionNotUnique and A12 admits them."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker refuses none of the branching keys A12 admits.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The model setup asserts no rejecting finding beside A12's admission."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no RepetitionNotUnique rule.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no RepetitionNotUnique rule.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are measured unchanged.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "Dynamic Groovy and generated Java per row, both key orders."}}},
+        "interpreter": {"state": "APPLIED", "basis": "keyRowGroup uses the shared repeatable row for a branching key (IF409).", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The interpreter's messages equal both strategies' on every row."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the key through the kits, the checker and the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-09 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
+    },
+    "kf572": {
+      "sha256": "4020bb6a75eb5ad93026c1c30da1af73835ae246e40e153cc013211ccd0e16a1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["a key across sibling fixed groups"],
+        "checker": ["a key across sibling fixed groups"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["a key across sibling fixed groups"],
+        "interpreter": ["a key across sibling fixed groups"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a key across sibling fixed groups"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "Dsl.repetitionNotUnique authors the sibling key and the kits refuse nothing about it.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The rules are built through Dsl.repetitionNotUnique and A12 admits them."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker refuses none of the branching keys A12 admits.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The model setup asserts no rejecting finding beside A12's admission."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no RepetitionNotUnique rule.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no RepetitionNotUnique rule.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are measured unchanged.", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "Dynamic Groovy and generated Java per row, both key orders."}}},
+        "interpreter": {"state": "APPLIED", "basis": "keyRowGroup uses the shared repeatable row for a branching key (IF409).", "evidence": {"a key across sibling fixed groups": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingGroupKeyDiffTest.kt#aDuplicateKeyAcrossSiblingGroupsFiresOnEveryDuplicateRow", "witness": "The interpreter's messages equal both strategies' on every row."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the key through the kits, the checker and the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-09 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
     }
   }
 }

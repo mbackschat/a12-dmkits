@@ -4784,3 +4784,9 @@ Found by replaying a12-kernel-lean's `R11_DM` row-copy capture, whose two diverg
 
 *Locked:* `adapter.laws.ConfirmComputationOperandDiffTest` (both strategies; root and row copies, a filled control, a precondition reading the empty Confirm as `False`).
 
+### IF409: `RepetitionNotUnique` keys in sibling fixed groups compare per their shared repeatable row (2026-10-20) <a id="if409"></a>
+
+`RepetitionNotUniqueEvaluator.keyRowGroup` took the key row from one hierarchy path and refused every other shape as unsupported, so a key across the sibling fixed groups of one repeatable row, which A12 admits ([KF572](KERNEL-FINDINGS.md#kf572)), made `validateFull` refuse the whole model. A branching key now uses the nearest repeatable group that every key group shares, the row A12 compares it per; any other branching shape stays unsupported, since A12 measured none. The one-path rule and its order independence ([IF278](#if278)) are unchanged.
+
+*Locked:* `adapter.laws.RepetitionNotUniqueSiblingGroupKeyDiffTest` (both strategies, both key orders, an absent sibling group as OMISSION, a one-path control).
+

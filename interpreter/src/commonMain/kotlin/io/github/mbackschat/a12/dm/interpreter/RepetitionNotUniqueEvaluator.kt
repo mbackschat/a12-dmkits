@@ -91,19 +91,25 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
     }
 
     /**
-     * The row group is the deepest key parent, independent of authored key order. Kernel admission requires all
-     * key groups to lie on one hierarchy path; enforce that same finite boundary here so a hand-built [ModelDef]
-     * cannot make an invalid parallel tuple silently select one branch.
+     * The row group is the deepest key parent when the key groups lie on one hierarchy path, independent of
+     * authored key order. Key groups that branch are admitted by A12 when they are fixed groups of one repeatable
+     * row, which then is the row the key is compared per, in either key order (KERNEL-FINDINGS KF572). Any other
+     * branching shape stays unsupported, so a hand-built [ModelDef] cannot make a tuple across repeatable levels
+     * silently select one branch; A12 measured none of those.
      */
     private fun keyRowGroup(keys: List<String>): String {
         val groups = keys.map(::parentGroup).distinct()
         val deepest = groups.maxBy { pathParts(it).size }
-        if (groups.any { it != deepest && !deepest.startsWith("$it/") }) {
-            throw UnsupportedConstructException(
-                "RepetitionNotUnique key groups must lie on one hierarchy path: ${groups.joinToString()}")
-        }
-        return deepest
+        if (groups.all { it == deepest || deepest.startsWith("$it/") }) return deepest
+        return groups.map(::repeatableRowOf).distinct().singleOrNull() ?: throw UnsupportedConstructException(
+            "RepetitionNotUnique key groups must lie on one hierarchy path or share one repeatable row: " +
+                groups.joinToString())
     }
+
+    /** The nearest repeatable group at or above [group], or null when none is. */
+    private fun repeatableRowOf(group: String): String? =
+        generateSequence(group) { g -> parentGroup(g).takeIf { it != "/" && it != g } }
+            .firstOrNull { it in model.repeatable }
 
     /** Build one call's duplicate cache from the already-validated, document-independent [plan]. */
     fun outcomes(plan: RnuPlan?, pass: ValidationPass): RnuCache? {
