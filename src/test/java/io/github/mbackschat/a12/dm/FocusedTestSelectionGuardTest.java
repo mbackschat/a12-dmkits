@@ -62,6 +62,40 @@ class FocusedTestSelectionGuardTest {
     }
 
     /**
+     * Gradle binds {@code --tests} to the task just before it, so {@code :test :child:test --tests X} filters
+     * {@code :child:test} only and runs the whole root suite beside it. Every filtered root run in one 2026-10-20
+     * session paid for the full suite this way, unnoticed because the targeted classes passed among the rest.
+     * Giving each task its own filter is the control, and a task bounded by its own script filter is a lane that
+     * is meant to run whole.
+     */
+    @Test
+    void aSuiteLeftUnfilteredBesideAFilteredOneIsRefused(@TempDir Path dir) throws Exception {
+        Path policy = Path.of(System.getProperty("focusedTestPolicy")).toAbsolutePath();
+        Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = 'binding-control'\ninclude 'child'\n");
+        Files.createDirectories(dir.resolve("child"));
+        Files.writeString(dir.resolve("build.gradle"), """
+                allprojects {
+                    apply plugin: 'java'
+                    tasks.register('boundedGuard', Test) { filter.includeTestsMatching 'BoundedGuardTest' }
+                }
+                apply from: '%s'
+                """.formatted(policy.toString().replace("\\", "\\\\").replace("'", "\\'")));
+
+        Result refused = run(dir, ":test", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run");
+        assertNotEquals(0, refused.code(), refused::output);
+        assertTrue(refused.output().contains("binds --tests to the task just before it"), refused::output);
+        assertTrue(refused.output().contains(":test would run unfiltered"), refused::output);
+
+        for (String[] allowed : List.of(
+                new String[] {":test", "--tests", "*Focused", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},
+                new String[] {":boundedGuard", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},
+                new String[] {":test", ":child:test", "--dry-run"})) {
+            Result result = run(dir, allowed);
+            assertEquals(0, result.code(), result::output);
+        }
+    }
+
+    /**
      * A JVM task with {@code failOnNoMatchingTests} switched off stands in for a Kotlin/JS test task, which
      * ignores that switch, so only the policy can fail the empty selection; the matching filter is the control
      * that proves the task runs at all.
