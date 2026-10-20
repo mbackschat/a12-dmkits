@@ -52,9 +52,16 @@ public final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
     /**
      * The stored-token <b>S-value</b> (DM-JSON {@code sValue}) — the model-owned default an eligible empty
      * INDEX field receives during full validation (SPEC-2026-07-23-14). Must name one of the declared
-     * {@link #value(String) values} (checked at build — the kernel stages it into evaluation unvalidated).
+     * {@link #value(String) values}, compared after trimming as A12 compares it (checked at build; A12 refuses
+     * one outside the domain, KERNEL-FINDINGS KF366).
+     *
+     * <p>A blank token is refused here although A12 admits it: it reads as no S-value at all, so authoring one is
+     * a mistake to leave the call out, never a meaning. A read model may still carry one.
      */
     public EnumFieldBuilder sValue(String storedToken) {
+        if (storedToken != null && storedToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("a blank S-value reads as none; leave sValue out instead");
+        }
         this.sValue = storedToken;
         return this;
     }

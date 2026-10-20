@@ -11304,10 +11304,10 @@
       }
     },
     "kf569": {
-      "sha256": "fdf9f815f003995c5d8572373e869cd6961376828e5a62283789af917cfca77d",
+      "sha256": "f97e710e828b68dbdd75edfea7a0117c74b3ed631ddf80e33b02ee78f8a2f569",
       "task": "F-USE-BACKLOG",
       "scope": {
-        "dmkits": ["the Number bound comparison", "the boolean-member binding"],
+        "dmkits": ["the Number bound comparison", "the boolean-member binding", "the trimmed sValue"],
         "checker": ["the field-declaration readings of the enumeration, name, bound and boolean-member laws"],
         "json-schema-import": ["the Number bound comparison"],
         "json-schema-export": ["the Number bound comparison"],
@@ -11317,7 +11317,7 @@
         "a12-kernel-lean": ["the field-declaration readings of the enumeration, name, bound and boolean-member laws"]
       },
       "consumers": {
-        "dmkits": {"state": "APPLIED", "basis": "NumberSpec consumes numberBoundsInverted, so a rounded-equal pair authors and reads; the Java model readers bind every field-declaration boolean member through core.ConfigFlag (IF405).", "evidence": {"the boolean-member binding": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/BooleanMemberReadTest.java#everyReadPathBindsTheMemberAsA12Does", "witness": "Set and cleared spellings of every member on authoredState, field read and ModelIndex."}, "the Number bound comparison": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/NumberBoundRoundingTest.java#theBoundsAreComparedAsA12ComparesThem", "witness": "Rounded, absent-scale, one-digit and -1 rows, plus the stored-model read path."}}},
+        "dmkits": {"state": "APPLIED", "basis": "EnumSpec compares the sValue trimmed, so a model A12 loads reads; NumberSpec consumes numberBoundsInverted, so a rounded-equal pair authors and reads; the Java model readers bind every field-declaration boolean member through core.ConfigFlag (IF405).", "evidence": {"the trimmed sValue": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/EnumSValueTest.java#aModelWhoseSValueA12ReadsTrimmedIsReadable", "witness": "Padded, blank and tab S-values and a padded token read through ModelDocument."}, "the boolean-member binding": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/BooleanMemberReadTest.java#everyReadPathBindsTheMemberAsA12Does", "witness": "Set and cleared spellings of every member on authoredState, field read and ModelIndex."}, "the Number bound comparison": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/NumberBoundRoundingTest.java#theBoundsAreComparedAsA12ComparesThem", "witness": "Rounded, absent-scale, one-digit and -1 rows, plus the stored-model read path."}}},
         "checker": {"state": "APPLIED", "basis": "The label family judges the default-variant model over declared locales, sValue is compared trimmed, __attachment_meta is a prefix, bounds go through numberBoundsInverted, and boolean members bind as A12's reader binds them.", "evidence": {"the field-declaration readings of the enumeration, name, bound and boolean-member laws": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAdmissionAgreementTest.kt#theLabelFamilyJudgesTheDefaultVariantModel", "witness": "Every reading against its control, A12 and the checker per row; DeclarationAdmissionReadingsTest replays them on both checker runtimes."}}},
         "json-schema-import": {"state": "APPLIED", "basis": "Imported numeric bounds are declared through NumberSpec, which consumes the shared predicate.", "evidence": {"the Number bound comparison": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/NumberBoundRoundingTest.java#theBoundsAreComparedAsA12ComparesThem", "witness": "The NumberSpec construction the importer reaches."}}},
         "json-schema-export": {"state": "OPEN", "basis": "The exporter writes the declared bounds as written; whether a scale-0 bound should export as A12 reads it at runtime (KF564) is unmeasured.", "evidence": {}},
@@ -11496,11 +11496,11 @@
       }
     },
     "kf370": {
-      "sha256": "32080f84604e4e113c5852ae3a5e3064fb9fbd97f8de57bdc2e3fc6ef0a0d238",
+      "sha256": "da6dab30ad4184419b5562db90c55433354bddbe724a54feb87f44c647828703",
       "task": "F-USE-BACKLOG",
       "scope": {
-        "dmkits": ["the bound unstarred operand class"],
-        "checker": ["the bound unstarred operand class"],
+        "dmkits": ["the bound unstarred operand class", "the operand order"],
+        "checker": ["the bound unstarred operand class", "the operand order", "a computation target"],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["the bound unstarred operand class"],
@@ -11509,8 +11509,8 @@
         "a12-kernel-lean": ["the bound unstarred operand class"]
       },
       "consumers": {
-        "dmkits": {"state": "APPLIED", "basis": "SumOfProducts refuses a pair with an operand that may cross an unstarred repeatable level without quoting a code, since A12's class depends on the rule's binding; the catalog constraint states the binding split.", "evidence": {"the bound unstarred operand class": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/SumOfProductsConditionTest.java#quotesTheKernelCodeTheOperandPairWouldActuallyProduce", "witness": "The unstarred-operand pairs read uncoded beside the pairs whose code the pair alone decides."}}},
-        "checker": {"state": "APPLIED", "basis": "The operand reader treats the error field's iterated group as binding, and the gate chain reports the lowest-level class for an unstarred lowest level, the repeatable-level class only where no level repeats.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "Twelve rows, A12 and the checker per row, including the declaring-group pair the checker had reported under the wrong class."}}},
+        "dmkits": {"state": "APPLIED", "basis": "SumOfProducts refuses a pair with an operand that may cross an unstarred repeatable level without quoting a code, since A12's class depends on the rule's binding; the catalog constraint states the binding split.", "evidence": {"the operand order": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/SumOfProductsConditionTest.java#judgesEachOperandsFilterBeforeItsExtraStars", "witness": "A filtered two-level operand on either side beside a plain two-level one."}, "the bound unstarred operand class": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/SumOfProductsConditionTest.java#quotesTheKernelCodeTheOperandPairWouldActuallyProduce", "witness": "The unstarred-operand pairs read uncoded beside the pairs whose code the pair alone decides."}}},
+        "checker": {"state": "APPLIED", "basis": "The operand reader treats the error field's iterated group as binding, and the gate chain reports the lowest-level class for an unstarred lowest level, the repeatable-level class only where no level repeats.", "evidence": {"the operand order": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SumOfProductsOperandsTest.kt#theFourClassesInTheOrderA12DecidesThem", "witness": "The filter on the right after a two-level left operand."}, "a computation target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#aComputationTargetBindsTheLevelAsAnErrorFieldDoes", "witness": "Four computation placements, A12 and the checker per row."}, "the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "Twelve rows, A12 and the checker per row, including the declaring-group pair the checker had reported under the wrong class."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no SumOfProducts condition.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no SumOfProducts condition.", "evidence": {}},
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "A12's verdicts are pinned through RuleValidator per row.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "A12's class per row beside the checker's."}}},
@@ -11541,6 +11541,54 @@
         "interpreter": {"state": "APPLIED", "basis": "ParallelRowContext.domainFor reads the side's joined row, a star joins its side, a star-only rule joins as any other, and the side's index field is named beside a starred reference (IF410).", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter against both strategies on every document, references and fill-to-fix included."}, "a rule reading both sides only through stars": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#aRuleReadingBothSidesOnlyThroughStars", "witness": "It fires for the one SKU whose own order counts no line, on all three engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these reads through the checker and the interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-12 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
+    },
+    "kf366": {
+      "sha256": "d4c32c52e3bf20454ce786ec104a8e17a2582de6fd66da660da29d1f259f6f63",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["a blank sValue"],
+        "checker": ["a blank sValue"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": ["a blank sValue"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "EnumSpec no longer refuses a blank sValue on read; the builder still refuses authoring one, as a no-op.", "evidence": {"a blank sValue": {"reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/EnumSValueTest.java#aModelWhoseSValueA12ReadsTrimmedIsReadable", "witness": "A blank and a tab S-value read through ModelDocument."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker asks the domain law only of an S-value that trims to a token.", "evidence": {"a blank sValue": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAdmissionAgreementTest.kt#theLabelFamilyJudgesTheDefaultVariantModel", "witness": "The trimmed S-value rows, A12 and the checker per row."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no sValue.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read the sValue.", "evidence": {}},
+        "adapter": {"state": "NOT_APPLICABLE", "basis": "The admission row is locked by validate.laws.EnumDeclarationShapeLawsTest, outside the adapter.", "evidence": {}},
+        "interpreter": {"state": "OPEN", "basis": "ModelLoader declines a blank sValue as unsupported, since A12 stages it as written (KF574, IG178).", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the sValue through the kits, the checker and the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "The correction is to our own reading; the runtime fact travels as KF574.", "evidence": {}}
+      }
+    },
+    "kf574": {
+      "sha256": "34a2ce62b5439b4572881172890b023a18ce2cd3cbf76640676a19b06b1562b1",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the staged sValue"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits stage nothing.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The checker does not evaluate.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import stages nothing.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export stages nothing.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned for a padded and a blank sValue, beside the staged and typed controls.", "evidence": {"the staged sValue": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/IndexDefaultStagingDiffTest.kt#aPaddedOrBlankSValueIsStagedAsWritten", "witness": "SL_OTHER without a formal error on both strategies; the control stages STD and a typed padded value draws fuehrendesBlank."}}},
+        "interpreter": {"state": "OPEN", "basis": "ModelLoader declines the model as unsupported (IG178).", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here after a cold review of KF569; goes back in the next handback.", "evidence": {}}
       }
     }
   }

@@ -27,14 +27,20 @@ public final class EvalClockOption {
                     + "Default: the current instant.")
     String clock;
 
-    /** The evaluation instant — the current one when {@code --clock} is absent; empty when it is malformed. */
+    /**
+     * The evaluation instant — the current one when {@code --clock} is absent; empty when it is malformed or lies
+     * beyond the epoch-millisecond range A12's {@code currentDateForTest}, a {@code java.util.Date}, can hold. A finer
+     * fraction than milliseconds is dropped for the same reason.
+     */
     public Optional<Instant> instant() {
         if (clock == null) {
             return Optional.of(Instant.now());
         }
         try {
-            return Optional.of(Instant.parse(clock));
-        } catch (DateTimeParseException e) {
+            Instant parsed = Instant.parse(clock);
+            parsed.toEpochMilli();
+            return Optional.of(parsed);
+        } catch (DateTimeParseException | ArithmeticException e) {
             return Optional.empty();
         }
     }

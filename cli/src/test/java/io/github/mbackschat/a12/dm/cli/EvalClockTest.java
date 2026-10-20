@@ -112,26 +112,44 @@ class EvalClockTest {
         assertEquals(expected, observed);
     }
 
+    /** Without a pin {@code Today} is the run's own date in the model's zone, so a constant default cannot pass. */
     @Test
     void withoutAPinTheCurrentInstantIsRead(@TempDir Path dir) throws Exception {
         Path model = model(dir);
-        assertEquals(List.of(true, false), List.of(
-                fired(data(run(model, instance(dir, "2999-01-01"), null, "model", "eval"))).contains("ORDER_AHEAD"),
-                fired(data(run(model, instance(dir, "2000-01-01"), null, "model", "eval"))).contains("ORDER_AHEAD")));
+        var berlin = java.time.ZoneId.of("Europe/Berlin");
+        // Read the date on both sides of the run, so a run across Berlin midnight cannot flake.
+        String before = java.time.LocalDate.now(berlin).toString();
+        String computed = data(run(model, instance(dir, "2000-01-01"), null, "model", "compute"))
+                .path("computed").path(0).path("value").asText();
+        String after = java.time.LocalDate.now(berlin).toString();
+        assertTrue(computed.equals(before) || computed.equals(after),
+                () -> "Today read " + computed + ", the run's date is " + before + " / " + after);
     }
 
+    /** The instant reaches the interpreter with its milliseconds, the identity {@code Now} keeps (KF82); finer is dropped. */
     @Test
-    void anInstantWithoutAnOffsetIsRefused(@TempDir Path dir) throws Exception {
+    void theMillisecondsOfThePinnedInstantAreKept() {
+        var option = new EvalClockOption();
+        option.clock = "2026-10-14T10:00:00.250999Z";
+        assertEquals(java.time.Instant.parse("2026-10-14T10:00:00.250Z").toEpochMilli(),
+                option.instant().orElseThrow().toEpochMilli());
+    }
+
+    /** An offset-less date-time, and an instant beyond the epoch-millisecond range a {@code java.util.Date} holds. */
+    @Test
+    void anUnreadableInstantIsRefused(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path document = instance(dir, "2026-10-14");
-        for (String[] verb : List.of(new String[] {"model", "eval"}, new String[] {"model", "compute"},
-                new String[] {"rule", "eval", "/Order/OrderNotAhead"})) {
-            var result = run(model, document, "2026-10-14T10:00:00", verb);
-            assertTrue(result.code() != 0, () -> "an offset-less --clock exits non-zero: " + result.out());
-            JsonNode diagnostic = MAPPER.readTree(result.out()).path("diagnostics").path(0);
-            assertEquals("RK_INVALID_VALUE", diagnostic.path("code").asText(), result::out);
-            assertTrue(diagnostic.path("summary").asText().contains("--clock"), result::out);
-            assertFalse(diagnostic.path("fix").asText().isBlank(), result::out);
+        for (String instant : List.of("2026-10-14T10:00:00", "+300000000-01-01T00:00:00Z")) {
+            for (String[] verb : List.of(new String[] {"model", "eval"}, new String[] {"model", "compute"},
+                    new String[] {"rule", "eval", "/Order/OrderNotAhead"})) {
+                var result = run(model, document, instant, verb);
+                assertTrue(result.code() != 0, () -> "a refused --clock exits non-zero: " + result.out());
+                JsonNode diagnostic = MAPPER.readTree(result.out()).path("diagnostics").path(0);
+                assertEquals("RK_INVALID_VALUE", diagnostic.path("code").asText(), result::out);
+                assertTrue(diagnostic.path("summary").asText().contains("--clock"), result::out);
+                assertFalse(diagnostic.path("fix").asText().isBlank(), result::out);
+            }
         }
     }
 }

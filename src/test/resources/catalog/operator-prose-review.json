@@ -431,9 +431,16 @@
       "ordinal": 3,
       "digest": "sha256:badafd002a0074038dc838402a1f7cd269705df6a06f45df490ebadb3cdaa968",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.ScaleWaiverLanguageLawsTest.eachLanguageAdmitsItsOwnKeywordAndRefusesTheOther"
+        }
+      ]
     },
     {
       "operator": "Equal",
@@ -503,9 +510,16 @@
       "ordinal": 5,
       "digest": "sha256:176cb55477366c35d3efc38de831092bef2c49bb372daaa41028c0ee394d5f45",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.ScaleWaiverLanguageLawsTest.eachLanguageAdmitsItsOwnKeywordAndRefusesTheOther"
+        }
+      ]
     },
     {
       "operator": "Equal",
@@ -8154,7 +8168,7 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:2c2c5895f69f176906e645d856f334b1643cb27389fb748ca7a2138fd94ac586",
+      "digest": "sha256:02f0d72cbc7c05309a72001515e15d60875dc9a6b8f864024c524c5afdf7cecd",
       "classifications": [
         "REJECTION"
       ],
@@ -8164,7 +8178,7 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:71ccda85b79cf8b5db296da8e90d2ec999e6b7e983a2f4c031a7979913f67d8d",
+      "digest": "sha256:2e47e39067a337a5ec5832c9c6e41b04edc0d579fc51db0e0f12e933832c539c",
       "classifications": [
         "REJECTION"
       ],
@@ -26104,6 +26118,93 @@
         {
           "type": "CLAIM_PROBE",
           "id": "SumOfProducts.filtered-operand",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.bound-different-groups.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DIFFERENT_GROUPS"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.bound-different-groups",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.bound-different-groups.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.bound-different-groups",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.right-filter-after-multi-star.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.right-filter-after-multi-star",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.right-filter-after-multi-star.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.right-filter-after-multi-star",
           "side": "CONTROL"
         }
       ]

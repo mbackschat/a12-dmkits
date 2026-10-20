@@ -66,6 +66,35 @@ class EnumSValueTest {
                 .build());
     }
 
+    /**
+     * A12 compares the S-value and the tokens after Java's {@code String.trim}, so a padded one matches and one that
+     * trims to nothing is unset (KERNEL-FINDINGS KF569). Reading such a model must not refuse what A12 loads.
+     */
+    @Test
+    void aModelWhoseSValueA12ReadsTrimmedIsReadable() {
+        String declared = shipment().toJson();
+        java.util.Map<String, String> readable = new java.util.LinkedHashMap<>();
+        readable.put("padded S-value", declared.replace("\"sValue\" : \"STD\"", "\"sValue\" : \" STD\""));
+        readable.put("trailing pad", declared.replace("\"sValue\" : \"STD\"", "\"sValue\" : \"STD \""));
+        readable.put("blank S-value", declared.replace("\"sValue\" : \"STD\"", "\"sValue\" : \" \""));
+        readable.put("tab S-value", declared.replace("\"sValue\" : \"STD\"", "\"sValue\" : \"\\t\""));
+        readable.put("padded token", declared.replace("\"STD\"", "\" STD\"").replace("\"sValue\" : \" STD\"", "\"sValue\" : \"STD\""));
+        readable.forEach((row, json) -> {
+            assertTrue(!json.equals(declared), row + ": the fixture edit did not apply");
+            FieldTypeSpec spec = ModelDocument.read(json).authoredState().fields().get("/Shipment/Lines/ServiceLevel").type();
+            assertTrue(spec instanceof FieldTypeSpec.EnumSpec, row);
+        });
+    }
+
+    /** The trim is all A12 forgives: another spelling, or a no-break space, stays outside the domain (KF569). */
+    @Test
+    void anSValueThatDiffersAfterTrimmingIsStillRefused() {
+        for (String other : java.util.List.of("std", "S TD", "\u00A0")) {
+            assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+                    .rootGroup("G", g -> g.enumField("E", e -> e.value("STD").sValue(other))).build(), other);
+        }
+    }
+
     @Test
     void anSValueOutsideTheDeclaredValuesIsRejectedFailFast() {
         // The kernel stages the token into evaluation without re-validating it, so a typo'd sValue would

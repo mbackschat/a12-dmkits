@@ -123,14 +123,23 @@ private fun TrackedFactBase.readOperand(
 /** A12's class for this pair, in its own gate order, or null when the pair is legal. */
 private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = when {
     left.owningGroup != right.owningGroup -> "MVK_DIFFERENT_GROUPS"
-    left.filtered || right.filtered -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
-    (left.stars > 1 || right.stars > 1) && (left.lowestUnstarred || right.lowestUnstarred) -> null
-    left.stars > 1 || right.stars > 1 -> "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+    // The wildcard gate asks each operand in turn, so the left one's verdict stands before the right one is read
+    // (`rulekit.validate.laws.SumOfProductsLawsTest`, the filter on the right after a two-level left operand).
+    left.filtered || left.stars > 1 -> wildcardClassOf(left, right)
+    right.filtered || right.stars > 1 -> wildcardClassOf(right, left)
     // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of these gates.
     left.stars == 0 && right.stars == 0 && left.at == right.at -> null
     !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
     left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
     else -> null
+}
+
+/** The wildcard gate's verdict on [operand]: its filter first, read at the lowest level, then its extra stars. */
+private fun wildcardClassOf(operand: ParallelOperand, other: ParallelOperand): String? = when {
+    operand.filtered -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+    // Withheld where a level is also left unstarred: which of the two A12 names there is unmeasured.
+    operand.lowestUnstarred || other.lowestUnstarred -> null
+    else -> "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
 }
 
 private fun finding(code: String, element: TrackedDeclaration, member: String, span: TextSpan): Finding = Finding(

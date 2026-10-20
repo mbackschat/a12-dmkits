@@ -16,10 +16,10 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * <p>The constructor pre-checks the part of the kernel's boundary it can see from the operands alone: two
  * unfiltered single-star lists whose FIELDS share one owning group. It deliberately does <b>not</b> check that
  * the star sits on the <em>lowest repeatable</em> segment — that needs the model's repeatability, which an
- * operand does not carry — so {@code Milestones*}{@code /Tasks/Effort} passes here and the kernel rejects it
- * ({@code MVK_NO_WILDCARD}). Under-reporting is safe; quoting a wrong code is not, so the refusal message
- * names the code the kernel emits for that exact PAIR, per the matrix in {@code SumOfProductsLawsTest}, and
- * names none where that code depends on the rule the pair will sit in (KERNEL-FINDINGS KF370).
+ * operand does not carry — so {@code Milestones*}{@code /Tasks/Effort} passes here and the kernel rejects it,
+ * with a class the rule decides (KERNEL-FINDINGS KF370). Under-reporting is safe; quoting a wrong code is not, so
+ * the refusal message names the code the kernel emits for that exact PAIR, per the matrix in
+ * {@code SumOfProductsLawsTest}, and names none where that code depends on the rule the pair will sit in.
  */
 public record SumOfProducts(FieldOperand left, FieldOperand right) implements Calculation {
 
@@ -43,9 +43,9 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      * first quoted the wrong defect.
      *
      * <p>Deliberately uncoded, although a well-formed pair with a text list is {@code MVK_NO_NUMBER}. One of
-     * the gates ahead of it — a repeatable ancestor left unstarred, {@code MVK_NO_WILDCARD} — needs the model's
-     * repeatability, which an operand does not carry, so this refusal cannot know it is the kernel's answer.
-     * Citing it would quote {@code MVK_NO_NUMBER} for a pair the kernel reports as a missing wildcard.
+     * the gates ahead of it — a repeatable ancestor left unstarred — needs the model's repeatability, which an
+     * operand does not carry, so this refusal cannot know it is the kernel's answer. Citing it would quote
+     * {@code MVK_NO_NUMBER} for a pair the kernel reports as a missing or misplaced wildcard.
      */
     private static void requireNumber(FieldOperand operand) {
         if (operand.kind() != ValueKind.NUMBER) {
@@ -68,6 +68,11 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      * does not know the rule it will sit in, so the pair is refused, which every one of those classes does, and
      * the code is withheld. Unknown topology counts as crossing, as in {@link FieldRef}.
      *
+     * <p><b>An identical starless pair is a duplicate</b> (corrected 2026-10-21): A12's duplicate gate runs ahead
+     * of the pair gates and skips only a starred operand, so {@code SumOfProducts(Quantity, Quantity)} is
+     * {@code MVK_DUPLICATE_PARAM1} ({@code validate.laws.DuplicateOverlapCarrierSweepLawsTest}); this quoted the
+     * repeatable-level code.
+     *
      * <p><b>The owning-group conjunct is not decoration</b> (corrected 2026-09-14): without it a pair of plain
      * fields in DIFFERENT groups quoted the repeatable-level code, where the kernel draws the owning-group one.
      * The row that had covered this arm gave both its operands the same owning group, so the two conditions
@@ -77,6 +82,9 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
     private static Optional<KernelCode> mismatchCode(FieldOperand left, FieldOperand right) {
         if (mayCrossUnstarredRepetition(left) || mayCrossUnstarredRepetition(right)) {
             return Optional.empty();
+        }
+        if (left instanceof FieldRef && left.equals(right)) {
+            return Optional.of(KernelCode.MVK_DUPLICATE_PARAM1);
         }
         if (left instanceof FieldRef && right instanceof FieldRef
                 && owningGroup(left).equals(owningGroup(right))) {
@@ -92,10 +100,12 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
         };
     }
 
-    private static final String RULE_DEPENDENT = "; which class A12 reports depends on the rule: "
-            + KernelCode.MVK_NO_WILDCARD.name() + " where it does not bind the unstarred repeatable level, "
-            + KernelCode.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED.name() + " or "
-            + KernelCode.MVK_DIFFERENT_GROUPS.name() + " where it does — star every repeatable level of both";
+    /**
+     * Names no code on purpose: the class depends on the rule, and without a model on the topology too, so any list
+     * would leave one out (two plain fields of one fixed group are {@code MVK_REPEATABLE_LEVEL_REQUIRED}).
+     */
+    private static final String RULE_DEPENDENT = "; which class A12 reports depends on the repetition of the operands' "
+            + "levels and on whether the rule binds an unstarred one — star every repeatable level of both";
 
     /** The group that directly contains the operand's field — the kernel's {@code checkAllEntitiesInSameGroup}. */
     private static String owningGroup(FieldOperand operand) {
@@ -103,15 +113,17 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
         return path.substring(0, path.lastIndexOf('/'));
     }
 
+    /** A12's wildcard gate, per operand in order: the filter, read at the lowest level, before the extra stars
+     *  ({@code validate.laws.SumOfProductsLawsTest}, the filtered operand that also stars two levels). */
     private static void requireLowestLevelStar(FieldListRef operand) {
-        if (operand.flattened().size() != 1) {
-            throw Refusals.of(KernelCode.MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED,
-                    "SumOfProducts permits an asterisk only at its lowest"
-                            + " repetition position");
-        }
         if (operand.filter().isPresent()) {
             throw Refusals.of(KernelCode.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED,
                     "SumOfProducts needs an unrestricted asterisk at its lowest"
+                            + " repetition position");
+        }
+        if (operand.flattened().size() != 1) {
+            throw Refusals.of(KernelCode.MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED,
+                    "SumOfProducts permits an asterisk only at its lowest"
                             + " repetition position");
         }
     }

@@ -81,6 +81,9 @@ class RawClockCensusTest {
                     + "it, and this file asserts nothing at all"),
             Map.entry("NativePerformanceRunnerTest.java",
                     "asserts that runner's protocol, not a duration"),
+            Map.entry("EvalClockTest.java",
+                    "reads today's DATE before and after an unpinned `model eval` to check its default against it, "
+                    + "so a midnight crossing still passes; no duration is measured, and load cannot change a date"),
             Map.entry("ModelReportSinglePassTest.java",
                     "its single timed method is @EnabledIfSystemProperty-gated at the METHOD level and self-describes as "
                     + "not a gate; the class-level rule below deliberately does not match a method annotation, "

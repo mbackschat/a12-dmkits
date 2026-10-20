@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 
 /**
  * A date field's declared CONFIG against its declared FORMAT — A12's two date-config gates.
@@ -72,8 +71,9 @@ private fun JsonObject.declaredFormat(member: String): String? {
 
 private fun pre1900Finding(field: TrackedDeclaration, body: JsonObject, format: String?): Finding? {
     // The gate is on the VALUE and not on the member's presence — `false` is admitted on a year-free format,
-    // so a checker keyed on presence would report a declaration A12 takes.
-    if ((body["youngerThan1900Check"] as? JsonPrimitive)?.booleanOrNull != true) {
+    // so a checker keyed on presence would report a declaration A12 takes. The value is bound as A12 binds it,
+    // so `1` and `" TRUE"` set it too (`adapter.laws.CheckerDeclarationAdmissionAgreementTest`).
+    if (body.flag("youngerThan1900Check") != true) {
         return null
     }
     if (format == null || format !in YEAR_FREE_FORMATS) {

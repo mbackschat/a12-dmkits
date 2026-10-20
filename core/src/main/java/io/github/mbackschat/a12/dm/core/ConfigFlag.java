@@ -47,6 +47,9 @@ public enum ConfigFlag {
      *
      * @param jsonText the member's value rendered as JSON ({@code JsonNode.toString()}), or {@code null} when
      *     the member is absent. An absent member and an explicit {@code null} both read as {@link #OFF}.
+     *     The text is trusted to BE such a rendering, never parsed as a whole: a malformed string literal
+     *     throws {@link IllegalArgumentException}, and any other text that is not JSON reaches the number
+     *     branch and reads as {@link #UNREADABLE}.
      */
     public static ConfigFlag ofJsonText(String jsonText) {
         if (jsonText == null || "null".equals(jsonText)) {

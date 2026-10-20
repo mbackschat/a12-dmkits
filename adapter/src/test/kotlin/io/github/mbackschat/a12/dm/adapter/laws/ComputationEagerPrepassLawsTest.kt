@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -313,11 +315,11 @@ class ComputationEagerPrepassLawsTest {
     }
 
     /** The enum-index fixture with the declared S-value default (SPEC-2026-07-23-14's model surface). */
-    private fun enumIndexModel(): String = DocumentModelDraft.named("inventory-enum-index").locale("en_US")
+    private fun enumIndexModel(sValue: String = "STD"): String = DocumentModelDraft.named("inventory-enum-index").locale("en_US")
         .rootGroup("Inventory") { root ->
             root.group("Items") { items ->
                 items.repeatable(20)
-                    .enumField("Sku") { e -> e.value("STD").value("EXPRESS").sValue("STD") }
+                    .enumField("Sku") { e -> e.value("STD").value("EXPRESS").sValue(sValue) }
                     .stringField("SkuEcho") { }
                     .indexField("Sku")
             }
@@ -343,6 +345,21 @@ class ComputationEagerPrepassLawsTest {
             .associate { it.path to (it.outcome to it.value) }
         assertEquals(ComputeOutcome.VALUE to "STD", outcomes["/Inventory/Items/SkuEcho"],
             "the interpreter stages the same default")
+    }
+
+    /**
+     * A padded S-value, which A12 admits by its trim (KERNEL-FINDINGS KF569), is staged as written for a computation
+     * and read without a formal check, as validation stages it (`IndexDefaultStagingDiffTest`); the interpreter
+     * declines the model (IG178; cold review 2026-10-21).
+     */
+    @Test
+    fun aPaddedSValueIsStagedAsWrittenForAComputation() {
+        val model = RuntimeLaws.withTieredComputation(enumIndexModel(" STD"), "/Inventory/Items", "SkuEchoComp",
+            "../SkuEcho", null, listOf(RuntimeLaws.CompAlt(null, "[Sku]")))
+        val doc = RuntimeLaws.doc().group("/Inventory", 1).group("/Inventory/Items", 1, 1)
+        assertEquals(emptyList<String>() to listOf(" STD"), dualRouteFormalErrors(model, doc) to
+            RuntimeLaws.compute(model, doc).filter { it.path().contains("SkuEcho") }.map { it.value().orElse("") })
+        assertThrows(UnsupportedConstructException::class.java) { ModelLoader.load(model) }
     }
 
     @Test

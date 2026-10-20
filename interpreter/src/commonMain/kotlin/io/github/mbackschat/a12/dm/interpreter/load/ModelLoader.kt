@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.load
 
 import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.configFlag
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
@@ -439,11 +440,18 @@ object ModelLoader {
     private fun requireConsistentEnumSValue(node: JsonElement, id: String) {
         val sValue = enumSValueOf(node) ?: return
         val values = enumValuesOf(node)
-        require(sValue in values) {
+        // A12 also admits a padded or blank S-value by its trim, Java's `String.trim` (KERNEL-FINDINGS KF569), but
+        // then stages the text as written and reads it without a formal check, which this engine does not model
+        // (IG178): declined loudly here rather than evaluated wrong.
+        if (sValue in values) return
+        val trim = { text: String -> text.trim { it <= ' ' } }
+        if (trim(sValue).isEmpty() || values.any { trim(it) == trim(sValue) }) throw UnsupportedConstructException(
+            "Field '$id': A12 admits the S-value '$sValue' by its trim but stages it as written, which the " +
+                "interpreter does not model")
+        throw IllegalArgumentException(
             "Field '$id': the enum S-value '$sValue' is not among the declared enumeration values $values " +
                 "(kernel MVK_S_VALUE_INVALID). An out-of-domain s-value makes the model kernel-inconsistent and " +
-                "ungeneratable; repair the model upstream before loading."
-        }
+                "ungeneratable; repair the model upstream before loading.")
     }
 
     // ── Field-type readers ─────────────────────────────────────────────────────────────────────────

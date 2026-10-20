@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
@@ -12,6 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -67,6 +69,16 @@ class IndexDefaultStagingDiffTest {
         val rule = m.rule(m.group(LINES)).name("SlStd").code("SL_STD").errorField(m.num(QTY))
             .`when`(m.num(QTY).ge(0).and(m.enumOf(SERVICE_LEVEL).`is`("STD"))).severity(Severity.ERROR)
             .message(Dsl.en("standard service level selected")).build()
+        return TypedRules.inject(json, rule)
+    }
+
+    /** SL_OTHER fires on a row whose ServiceLevel is anything but "STD", so it fires for a staged token that is not
+     *  "STD" and is silent for one that is suppressed as formally invalid. */
+    private fun withNotStdRule(json: String): String {
+        val m = BoundModel.ofJson(json)
+        val rule = m.rule(m.group(LINES)).name("SlOther").code("SL_OTHER").errorField(m.num(QTY))
+            .`when`(m.num(QTY).ge(0).and(m.enumOf(SERVICE_LEVEL).isNot("STD"))).severity(Severity.ERROR)
+            .message(Dsl.en("another service level selected")).build()
         return TypedRules.inject(json, rule)
     }
 
@@ -137,6 +149,35 @@ class IndexDefaultStagingDiffTest {
         val fired = agreeFull("present-empty eligible index, full", model) { qty(1, "5"); emptyServiceLevel(1) }
         assertTrue(fired.any { it.startsWith("SL_STD@") }, "the dependent rule sees the staged default: $fired")
         assertFalse(fired.any { it.startsWith("mandatoryField@") }, "no mandatoryField for the defaulted index: $fired")
+    }
+
+    /**
+     * A12 admits a padded or blank S-value by its trim (KERNEL-FINDINGS KF569), then stages the text as written and
+     * reads it without a formal check: the index counts as filled, and a rule comparing it with `STD` sees another
+     * value. The interpreter declines both models (IG178). The blank one is written past the builder, which refuses
+     * it as authoring a no-op (cold review 2026-10-21).
+     */
+    @Test fun aPaddedOrBlankSValueIsStagedAsWritten() {
+        val padded = withNotStdRule(withDependentRule(orderModel(sValue = " STD")))
+        val blank = withNotStdRule(withDependentRule(orderModel())).replace("\"sValue\" : \"STD\"", "\"sValue\" : \" \"")
+        assertTrue("\"sValue\" : \" \"" in blank, "the blank S-value was written")
+        val doc = RuntimeLaws.doc().group(ORDER, 1).group(LINES, 1, 1).field(QTY, "5", 1, 1, 1)
+        for ((label, model) in listOf("padded" to padded, "blank" to blank)) {
+            val dynamic = sigs(RuntimeLaws.messages(model, doc).map { it.code() to it.field() })
+            val java = RuntimeLaws.kernelJavaEngine(model).let { e -> sigs(e.messages(e.instance(doc)).map { it.code() to it.field() }) }
+            assertEquals(listOf("SL_OTHER@/Order[1]/Lines[1]/Qty"), dynamic, "$label: A12 stages the S-value as written")
+            assertEquals(dynamic, java, "$label: static-Java vs dynamic-Groovy")
+            assertThrows(UnsupportedConstructException::class.java, { ModelLoader.load(model) }, label)
+        }
+        // The controls, on all three engines: the unpadded S-value stages `STD`, and the same text typed into the
+        // cell is formally checked.
+        val control = withNotStdRule(withDependentRule(orderModel()))
+        assertEquals(
+            mapOf("staged STD" to listOf("SL_STD@/Order[1]/Lines[1]/Qty"),
+                "typed padded" to listOf("fuehrendesBlank@/Order[1]/Lines[1]/ServiceLevel")),
+            mapOf("staged STD" to agreeFull("staged STD", control) { qty(1, "5") },
+                "typed padded" to agreeFull("typed padded", control) { qty(1, "5"); serviceLevel(1, " STD") }),
+        )
     }
 
     /** An ADMITTED EXPLICIT value is never overridden by the default. */

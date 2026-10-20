@@ -1999,6 +1999,45 @@
       }
     },
     {
+      "id": "SumOfProducts.bound-different-groups",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../Items/Count",
+        "dsl": "FieldFilled(Items/Count) And SumOfProducts(Items/Count, Quantity) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DIFFERENT_GROUPS"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Items/Count",
+        "dsl": "FieldFilled(Items/Count) And SumOfProducts(Items*/Count, Items*/UnitWeight) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfProducts.right-filter-after-multi-star",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "fixture": "PROJECT",
+      "trigger": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Tasks*/Effort, Milestones*/Tasks*/Effort Having [Milestones/Tasks/TaskId] == \"x\") > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+      },
+      "control": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Tasks*/Effort Having [Milestones/Tasks/TaskId] == \"x\", Milestones*/Tasks*/Effort) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      }
+    },
+    {
       "id": "SumOfProducts.no-repeatable-level",
       "operator": "SumOfProducts",
       "kind": "CONDITION",

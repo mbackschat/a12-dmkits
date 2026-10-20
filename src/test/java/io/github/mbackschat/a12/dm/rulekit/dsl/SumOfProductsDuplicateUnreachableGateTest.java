@@ -19,8 +19,8 @@ import io.github.mbackschat.a12.dm.Fixtures;
  *
  * <ul>
  *   <li><b>unstarred and identical</b> — our own parallelism gate already refuses it, so the shape is not
- *       renderable and the kernel is never asked. We report {@code MVK_REPEATABLE_LEVEL_REQUIRED} where the
- *       kernel would report {@code MVK_DUPLICATE_PARAM1}: a disagreement on the CODE, on input both refuse;</li>
+ *       renderable and the kernel is never asked. It quotes the kernel's {@code MVK_DUPLICATE_PARAM1}; it quoted
+ *       {@code MVK_REPEATABLE_LEVEL_REQUIRED} until a cold review on 2026-10-21;</li>
  *   <li><b>starred and identical</b> — admitted by the kernel, because the exact-duplicate arm skips a
  *       wildcarded operand ({@code ref.hasWildCards() && !parser.isHModel()}). So the one shape that clears
  *       our gate is legal, and a duplicate refusal here would be an OVER-rejection.</li>
@@ -39,7 +39,7 @@ class SumOfProductsDuplicateUnreachableGateTest {
         FieldRef qty = ORDER.field("/Order/Quantity");
         var refusal = assertThrows(IllegalArgumentException.class, () -> Dsl.sumOfProducts(qty, qty),
                 "if this stops throwing, SumOfProducts needs its own duplicate gate");
-        assertTrue(refusal.getMessage().contains("MVK_REPEATABLE_LEVEL_REQUIRED"),
+        assertTrue(refusal.getMessage().contains("MVK_DUPLICATE_PARAM1"),
                 () -> "expected the parallelism refusal to be what covers this shape: " + refusal.getMessage());
     }
 

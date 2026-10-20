@@ -436,16 +436,15 @@ public sealed interface FieldTypeSpec {
                             + " (a category must classify every value)");
                 }
             }
-            if (sValue != null) {
-                if (sValue.isBlank()) {
-                    throw new IllegalArgumentException("an S-value must be a non-blank stored token");
-                }
-                if (values.stream().noneMatch(v -> v.value().equals(sValue))) {
-                    throw new IllegalArgumentException("the S-value '" + sValue
-                            + "' is not one of the declared enum values "
-                            + values.stream().map(EnumValue::value).toList()
-                            + " — the kernel stages it into evaluation unvalidated");
-                }
+            // A12 compares both sides after Java's String.trim, so a padded S-value or token matches and one that
+            // trims to nothing is unset (KERNEL-FINDINGS KF569). This constructor also reads models, so refusing
+            // more than A12 would make a model A12 loads unreadable; the raw text is kept for the write-back.
+            String token = sValue == null ? "" : sValue.trim();
+            if (!token.isEmpty() && values.stream().noneMatch(v -> v.value().trim().equals(token))) {
+                throw new IllegalArgumentException("the S-value '" + sValue
+                        + "' is not one of the declared enum values "
+                        + values.stream().map(EnumValue::value).toList()
+                        + ", which A12 refuses too");
             }
         }
 

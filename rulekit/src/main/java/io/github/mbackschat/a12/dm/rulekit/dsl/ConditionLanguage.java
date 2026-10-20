@@ -7,7 +7,8 @@ public enum ConditionLanguage {
 
     /**
      * The language a model's {@code content.modelConfig.conditionLanguage.code} selects: {@code de_DE} is German,
-     * and every other code, an absent one included, reads as English.
+     * {@code en_US} and an absent code English. A12 refuses any other code outright
+     * ({@code validate.laws.ModelConfigCoercionLawsTest}), so reading it as English here decides no model A12 loads.
      */
     public static ConditionLanguage ofModelCode(String code) {
         return "de_DE".equals(code) ? DE : EN;

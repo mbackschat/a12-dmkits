@@ -102,6 +102,19 @@ class SumOfProductsConditionTest {
                 () -> message(QTY, filtered));
     }
 
+    /** The operands are judged in order, the filter before the extra stars (validate.laws.SumOfProductsLawsTest). */
+    @Test
+    void judgesEachOperandsFilterBeforeItsExtraStars() {
+        FieldListRef multiStar = PROJECT.flatten("/Project/Milestones*/Tasks*/Effort");
+        FieldListRef filtered = multiStar.having(PROJECT.str("/Project/Milestones/Tasks/TaskId").eq("x"));
+
+        assertEquals(java.util.List.of(
+                        "filtered on the left -> MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+                        "filtered on the right -> MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"),
+                java.util.List.of(reading("filtered on the left", filtered, multiStar),
+                        reading("filtered on the right", multiStar, filtered)));
+    }
+
     private static String reading(String label, FieldOperand left, FieldOperand right) {
         IllegalArgumentException refusal = refusal(left, right);
         return label + " -> " + (refusal instanceof KernelCodeRefusal coded ? coded.code().name() : "uncoded");

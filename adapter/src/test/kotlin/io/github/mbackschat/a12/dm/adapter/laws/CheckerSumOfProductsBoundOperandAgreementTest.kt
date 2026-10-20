@@ -1,7 +1,10 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
+import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -60,6 +63,38 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
         val observed = rows.mapValues { (_, row) -> verdicts(row) }
         assertEquals(rows.mapValues { (_, row) -> row.codes to row.codes }, observed, "(A12, ours)")
     }
+
+    /**
+     * The same pairs in a computation, whose target binds its group as a rule's error field does (cold review
+     * 2026-10-21): the checker's binding gate reaches computations too, which the rows above never measured.
+     */
+    @Test
+    fun aComputationTargetBindsTheLevelAsAnErrorFieldDoes() {
+        val rows = linkedMapOf(
+            "target in the group, declared at the root" to Comp(ROOT, "Items/StockQty", "SumOfProducts(Items/Count, Items*/UnitWeight)"),
+            "target in the group, declared in it" to Comp(ITEMS, "StockQty", "SumOfProducts(Count, /Order/Items*/UnitWeight)"),
+            "target outside the group" to Comp(ROOT, "LineTotal", "SumOfProducts(Items/Count, Items*/UnitWeight)"),
+            "both starred, target outside — the control" to Comp(ROOT, "LineTotal", "SumOfProducts(Items*/Count, Items*/UnitWeight)"),
+        )
+        val observed = rows.mapValues { (_, row) ->
+            val json = RuntimeLaws.withTieredComputation(order, row.group, "ProbeComputation", "../" + row.target, null,
+                listOf(RuntimeLaws.CompAlt(null, row.operation)))
+            val a12 = KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.selfContained())
+                .filter { it.severity() == Severity.ERROR }
+                .mapNotNull { Regex("\\[([A-Z][A-Z0-9_]+)]").find(it.message())?.groupValues?.get(1) }.toSet()
+            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            a12 to ours
+        }
+        val lowest = setOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+        assertEquals(linkedMapOf(
+            "target in the group, declared at the root" to (lowest to lowest),
+            "target in the group, declared in it" to (lowest to lowest),
+            "target outside the group" to (setOf("MVK_NO_WILDCARD") to setOf("MVK_NO_WILDCARD")),
+            "both starred, target outside — the control" to (emptySet<String>() to emptySet()),
+        ), observed, "(A12, ours)")
+    }
+
+    private class Comp(val group: String, val target: String, val operation: String)
 
     private class Row(val group: String, val errorField: String, val condition: String, val codes: Set<String>)
 

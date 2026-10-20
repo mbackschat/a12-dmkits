@@ -269,6 +269,9 @@ class SumOfProductsLawsTest {
                         + "Milestones*/Tasks*/Effort"));
         actual.put("the same two levels starred, unfiltered — the control",
                 nestedVerdict("Milestones*/Tasks*/Effort, Milestones*/Tasks*/Effort"));
+        actual.put("the filter on the RIGHT operand, both starring two levels", nestedVerdict(
+                "Milestones*/Tasks*/Effort, "
+                        + "Milestones*/Tasks*/Effort Having [Milestones/Tasks/TaskId] == \"x\""));
 
         var expected = new LinkedHashMap<String, String>();
         expected.put("two parallel lists — the control", KernelLaws.ADMITTED);
@@ -285,6 +288,10 @@ class SumOfProductsLawsTest {
         // read at the LOWEST level, which the loop reaches first.
         expected.put("a filtered operand that also stars two levels", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
         expected.put("the same two levels starred, unfiltered — the control",
+                "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
+        // The wildcard gate walks the operands in order, so a left operand starring two levels answers before the
+        // right one's filter is read (cold review 2026-10-21).
+        expected.put("the filter on the RIGHT operand, both starring two levels",
                 "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         assertEquals(expected, actual, "the rest of the SumOfProducts operand gate chain");
     }
