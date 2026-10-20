@@ -94,7 +94,7 @@ private class FilteredSpec(
  * method and no later gate is reached. Null makes the wildcard gate below silent, which is the safe
  * direction: it can only under-report a class A12 states.
  */
-private fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
+internal fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
     val target = (declared?.target as? Reference.Resolved)?.path ?: return null
     if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) {
         return null

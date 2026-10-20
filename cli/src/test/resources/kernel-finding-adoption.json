@@ -11494,6 +11494,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the key through the kits, the checker and the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-09 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
       }
+    },
+    "kf370": {
+      "sha256": "cd1f2abb2a8e41091493d81e470328329c2307676acf10d348bf36765a529740",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the bound unstarred operand class"],
+        "checker": ["the bound unstarred operand class"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the bound unstarred operand class"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the bound unstarred operand class"]
+      },
+      "consumers": {
+        "dmkits": {"state": "OPEN", "basis": "The builder refuses every such pair but cites MVK_REPEATABLE_LEVEL_REQUIRED or MVK_NO_WILDCARD where A12's class depends on the rule's binding; the catalog gotcha repeats them (DG141).", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The operand reader treats the error field's iterated group as binding, and the gate chain reports the lowest-level class for an unstarred lowest level, the repeatable-level class only where no level repeats.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "Eleven rows, A12 and the checker per row, including the declaring-group pair the checker had reported under the wrong class."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no SumOfProducts condition.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no SumOfProducts condition.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "A12's verdicts are pinned through RuleValidator per row.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "A12's class per row beside the checker's."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission only; the interpreter evaluates admitted models.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the class through the checker, the kernel route and the kits.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-08 report, re-measured and widened here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
     }
   }
 }

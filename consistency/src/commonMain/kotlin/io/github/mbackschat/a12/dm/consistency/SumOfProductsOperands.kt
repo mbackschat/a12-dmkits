@@ -20,11 +20,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
  * 2. an operand carries a `Having` filter — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`, because
  *    `isWildcardRestricted` reads a filter as restricting EVERY level, so the lowest one fails first;
  * 3. an operand stars two levels — `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED`;
- * 4. neither operand has a repeatable level at all — `MVK_REPEATABLE_LEVEL_REQUIRED`.
+ * 4. neither operand has a repeatable level at all — `MVK_REPEATABLE_LEVEL_REQUIRED`;
+ * 5. an operand leaves its lowest repeatable level unstarred because the rule binds that level, by iterating
+ *    it through its error field or by being declared inside it — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`
+ *    again, for one unstarred operand or both ([KERNEL-FINDINGS KF370], measured 2026-10-20 by
+ *    `adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest`).
  *
- * **The filter is the only way to reach the second class**, which is why it is not the obvious "a star above
- * the lowest level" shape its name suggests: a plainly missing star is answered by the reference reader with
- * `MVK_NO_WILDCARD` long before this operator's own gates run.
+ * The fifth gate is placed after the third and fourth only for the cells measured; a pair that also stars two
+ * levels is left silent, because which of those classes A12 reaches first is not measured. A missing star on a
+ * level the rule does NOT bind is answered by the reference reader with `MVK_NO_WILDCARD` before this
+ * operator's own gates run.
  *
  * **Silent unless the reference reader is demonstrably silent.** Each operand must resolve to a FIELD, star
  * no level that does not repeat, and star every repeatable level on its path that the declaring group does
@@ -47,9 +52,10 @@ internal fun TrackedFactBase.sumOfProductsContributions(
     val operator = keywords[SUM_OF_PRODUCTS] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val targetGroup = iterationScopeOf(element.declaredReference(), group)
     return callContributions(element, execution) { member, call ->
         if (call.operator != operator) return@callContributions null
-        val pair = call.operands.map { readOperand(it, group, element, filterKeyword) }
+        val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword) }
         if (pair.size != 2 || pair.any { it == null }) return@callContributions null
         classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
     }
@@ -57,21 +63,34 @@ internal fun TrackedFactBase.sumOfProductsContributions(
 
 private const val SUM_OF_PRODUCTS = "SumOfProducts"
 
-/** One operand reduced to what the four laws read, or null when this family may not judge the call. */
-private class ParallelOperand(val owningGroup: String, val stars: Int, val filtered: Boolean, val at: String)
+/**
+ * One operand reduced to what the gates read, or null when this family may not judge the call. [repeats] says
+ * whether its path has a repeatable level at all, [lowestUnstarred] whether its lowest one is left unstarred.
+ */
+private class ParallelOperand(
+    val owningGroup: String,
+    val stars: Int,
+    val filtered: Boolean,
+    val at: String,
+    val repeats: Boolean,
+    val lowestUnstarred: Boolean,
+)
 
 /**
  * Reads one operand, returning null on every shape whose verdict is another gate's.
  *
  * An unbound repeatable level left unstarred is read one row at a time, which the reference reader answers
  * with `MVK_NO_WILDCARD`, or containment does where the target lies outside the declaring group, ahead of
- * this operator. A level at or above the declaring group is bound by the rule's own context, so it may go
- * unstarred — the fixture that made this concrete has a REPEATABLE root group, where demanding its star
- * refuses a legal pair — and a star on it is counted like any other.
+ * this operator. A level at or above the declaring group is bound by the rule's own context, and so is one on
+ * the path of the group the error field iterates ([targetGroup], null where that reading is not this
+ * declaration's to make), so either may go unstarred — the fixture that made the first concrete has a
+ * REPEATABLE root group, where demanding its star refuses a legal pair — and a star on it is counted like any
+ * other.
  */
 private fun TrackedFactBase.readOperand(
     operand: CallOperand,
     declaringGroup: String,
+    targetGroup: String?,
     element: TrackedDeclaration,
     filterKeyword: String,
 ): ParallelOperand? {
@@ -87,7 +106,8 @@ private fun TrackedFactBase.readOperand(
     // A star on a level that does not repeat is `MVK_INVALID_WILDCARD`, which A12 answers before comparing
     // the pair (`rulekit.validate.laws.SumOfProductsLawsTest`).
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
-    if (iteratedLevels(field.path).any { it !in starred && !declaringGroup.isAtOrBelow(it) }) {
+    val levels = iteratedLevels(field.path)
+    if (levels.any { it !in starred && !declaringGroup.isAtOrBelow(it) && targetGroup?.isAtOrBelow(it) != true }) {
         return null
     }
     return ParallelOperand(
@@ -95,6 +115,8 @@ private fun TrackedFactBase.readOperand(
         starred.size,
         filters.isNotEmpty(),
         field.path,
+        repeats = levels.isNotEmpty(),
+        lowestUnstarred = levels.lastOrNull()?.let { it !in starred } == true,
     )
 }
 
@@ -102,9 +124,12 @@ private fun TrackedFactBase.readOperand(
 private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = when {
     left.owningGroup != right.owningGroup -> "MVK_DIFFERENT_GROUPS"
     left.filtered || right.filtered -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+    (left.stars > 1 || right.stars > 1) && (left.lowestUnstarred || right.lowestUnstarred) -> null
     left.stars > 1 || right.stars > 1 -> "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
-    // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of this gate.
-    left.stars == 0 && right.stars == 0 && left.at != right.at -> "MVK_REPEATABLE_LEVEL_REQUIRED"
+    // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of these gates.
+    left.stars == 0 && right.stars == 0 && left.at == right.at -> null
+    !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
+    left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
     else -> null
 }
 
@@ -123,7 +148,8 @@ private fun finding(code: String, element: TrackedDeclaration, member: String, s
 private val ADVICE = mapOf(
     "MVK_DIFFERENT_GROUPS" to "these two name fields of different groups",
     "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED" to
-        "a `$HAVING` filter restricts the star, so the lowest level is left unquantified",
+        "one of them leaves the lowest repeatable level without an unrestricted star, either unstarred or " +
+        "restricted by a `$HAVING` filter, so star that level on both",
     "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED" to "one of them stars more than the lowest level",
     "MVK_REPEATABLE_LEVEL_REQUIRED" to "neither of them has a repeatable level to iterate",
 )
