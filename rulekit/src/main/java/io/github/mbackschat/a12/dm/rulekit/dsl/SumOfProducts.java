@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
-import io.github.mbackschat.a12.dm.core.EntityPaths;
+import java.util.List;
+import java.util.Optional;
+
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
@@ -16,16 +18,18 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * the star sits on the <em>lowest repeatable</em> segment — that needs the model's repeatability, which an
  * operand does not carry — so {@code Milestones*}{@code /Tasks/Effort} passes here and the kernel rejects it
  * ({@code MVK_NO_WILDCARD}). Under-reporting is safe; quoting a wrong code is not, so the refusal message
- * names the code the kernel emits for that exact PAIR, per the matrix in {@code SumOfProductsLawsTest}.
+ * names the code the kernel emits for that exact PAIR, per the matrix in {@code SumOfProductsLawsTest}, and
+ * names none where that code depends on the rule the pair will sit in (KERNEL-FINDINGS KF370).
  */
 public record SumOfProducts(FieldOperand left, FieldOperand right) implements Calculation {
 
     public SumOfProducts {
         if (!(left instanceof FieldListRef leftList) || !(right instanceof FieldListRef rightList)
                 || !owningGroup(left).equals(owningGroup(right))) {
-            throw Refusals.of(mismatchCode(left, right),
-                    "SumOfProducts needs two repetition lists whose fields share one owning group; "
-                            + left.renderedPath() + " and " + right.renderedPath() + " are not parallel");
+            String problem = "SumOfProducts needs two repetition lists whose fields share one owning group; "
+                    + left.renderedPath() + " and " + right.renderedPath() + " are not parallel";
+            throw mismatchCode(left, right).<IllegalArgumentException>map(code -> Refusals.of(code, problem))
+                    .orElseGet(() -> new IllegalArgumentException(problem + RULE_DEPENDENT));
         }
         requireLowestLevelStar(leftList);
         requireLowestLevelStar(rightList);
@@ -51,10 +55,18 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
     }
 
     /**
-     * The kernel's code for a non-parallel pair, reproduced from the measured matrix: a pair with no repeatable
-     * level anywhere <b>and one shared owning group</b> is {@code MVK_REPEATABLE_LEVEL_REQUIRED}; an operand
-     * sitting below a starred group it does not itself wildcard is {@code MVK_NO_WILDCARD}; everything else is
-     * {@code MVK_DIFFERENT_GROUPS}. Applying one code per operand instead got two of these three wrong.
+     * The kernel's code for a non-parallel pair, reproduced from the measured matrix, or empty where the code
+     * depends on the rule. A pair with no repeatable level anywhere <b>and one shared owning group</b> is
+     * {@code MVK_REPEATABLE_LEVEL_REQUIRED}; any other pair is {@code MVK_DIFFERENT_GROUPS}. Applying one code
+     * per operand instead got two of these wrong.
+     *
+     * <p><b>An operand that may cross an unstarred repeatable level has no code here</b> (corrected
+     * 2026-10-20). The reference reader answers {@code MVK_NO_WILDCARD} only where the rule does not bind that
+     * level; where the rule binds it, by iterating it or by being declared inside it, the operator's own gates
+     * answer, {@code MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED} or {@code MVK_DIFFERENT_GROUPS}
+     * (KERNEL-FINDINGS KF370, {@code adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest}). An operand
+     * does not know the rule it will sit in, so the pair is refused, which every one of those classes does, and
+     * the code is withheld. Unknown topology counts as crossing, as in {@link FieldRef}.
      *
      * <p><b>The owning-group conjunct is not decoration</b> (corrected 2026-09-14): without it a pair of plain
      * fields in DIFFERENT groups quoted the repeatable-level code, where the kernel draws the owning-group one.
@@ -62,27 +74,28 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      * were one thing on the only case ever run — on this side and in
      * {@code validate.laws.SumOfProductsLawsTest} alike, which is why measuring the kernel pair is what found it.
      */
-    private static KernelCode mismatchCode(FieldOperand left, FieldOperand right) {
+    private static Optional<KernelCode> mismatchCode(FieldOperand left, FieldOperand right) {
+        if (mayCrossUnstarredRepetition(left) || mayCrossUnstarredRepetition(right)) {
+            return Optional.empty();
+        }
         if (left instanceof FieldRef && right instanceof FieldRef
                 && owningGroup(left).equals(owningGroup(right))) {
-            return KernelCode.MVK_REPEATABLE_LEVEL_REQUIRED;
+            return Optional.of(KernelCode.MVK_REPEATABLE_LEVEL_REQUIRED);
         }
-        if (unwildcardedBelowTheOthersStar(left, right) || unwildcardedBelowTheOthersStar(right, left)) {
-            return KernelCode.MVK_NO_WILDCARD;
-        }
-        return KernelCode.MVK_DIFFERENT_GROUPS;
+        return Optional.of(KernelCode.MVK_DIFFERENT_GROUPS);
     }
 
-    private static boolean unwildcardedBelowTheOthersStar(FieldOperand operand, FieldOperand other) {
-        return other instanceof FieldListRef list && list.flattened().stream().anyMatch(starred ->
-                EntityPaths.isStrictlyInside(operand.fieldPath(), starred.path().value())
-                        && !wildcards(operand, starred.path().value()));
+    private static boolean mayCrossUnstarredRepetition(FieldOperand operand) {
+        return switch (operand) {
+            case FieldOperand.Cell cell -> cell.field().mayCrossUnstarredRepetition(List.of());
+            case FieldListRef list -> list.field().mayCrossUnstarredRepetition(list.flattened());
+        };
     }
 
-    private static boolean wildcards(FieldOperand operand, String groupPath) {
-        return operand instanceof FieldListRef list
-                && list.flattened().stream().anyMatch(starred -> starred.path().value().equals(groupPath));
-    }
+    private static final String RULE_DEPENDENT = "; which class A12 reports depends on the rule: "
+            + KernelCode.MVK_NO_WILDCARD.name() + " where it does not bind the unstarred repeatable level, "
+            + KernelCode.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED.name() + " or "
+            + KernelCode.MVK_DIFFERENT_GROUPS.name() + " where it does — star every repeatable level of both";
 
     /** The group that directly contains the operand's field — the kernel's {@code checkAllEntitiesInSameGroup}. */
     private static String owningGroup(FieldOperand operand) {

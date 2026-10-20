@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
@@ -20,7 +21,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
  * The kernel-measured operand-pair boundary of {@code SumOfProducts}, as the authoring surface reports it.
  * Every row here has a kernel measurement of the same shape in {@code SumOfProductsLawsTest}; the point of
  * this test is that the code we QUOTE is the one the kernel would emit for that pair, which is why the whole
- * matrix is asserted at once rather than one refusal at a time.
+ * matrix is asserted at once rather than one refusal at a time. A pair whose code depends on the rule it will
+ * sit in is refused uncoded: an operand left unstarred on a repeatable level draws {@code MVK_NO_WILDCARD} only
+ * where the rule does not bind that level ({@code adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest}).
  */
 class SumOfProductsConditionTest {
 
@@ -48,6 +51,8 @@ class SumOfProductsConditionTest {
                 reading("descendant list under an unwildcarded level",
                         PROJECT.flatten("/Project/Milestones*/Budget"),
                         PROJECT.flatten("/Project/Milestones/Tasks*/Effort")),
+                reading("two plain fields inside a repeatable group",
+                        BASKET.field("/Basket/Lines/Qty"), BASKET.field("/Basket/Lines/Packaging/Weight")),
                 reading("no repeatable level at all",
                         ORDER.field("/Order/Quantity"), ORDER.field("/Order/BackorderQuantity")),
                 // Both operands plain AND in different owning groups. The row above cannot reach this: its
@@ -61,9 +66,10 @@ class SumOfProductsConditionTest {
                 List.of(
                         "two lists, different owning group -> MVK_DIFFERENT_GROUPS",
                         "two lists, parallel groups -> MVK_DIFFERENT_GROUPS",
-                        "plain field inside the starred group -> MVK_NO_WILDCARD",
+                        "plain field inside the starred group -> uncoded",
                         "plain field outside the starred group -> MVK_DIFFERENT_GROUPS",
-                        "descendant list under an unwildcarded level -> MVK_NO_WILDCARD",
+                        "descendant list under an unwildcarded level -> uncoded",
+                        "two plain fields inside a repeatable group -> uncoded",
                         "no repeatable level at all -> MVK_REPEATABLE_LEVEL_REQUIRED",
                         "no repeatable level, different owning groups -> MVK_DIFFERENT_GROUPS"),
                 readings,
@@ -97,12 +103,15 @@ class SumOfProductsConditionTest {
     }
 
     private static String reading(String label, FieldOperand left, FieldOperand right) {
-        String message = message(left, right);
-        int open = message.lastIndexOf('(');
-        return label + " -> " + message.substring(open + 1, message.length() - 1);
+        IllegalArgumentException refusal = refusal(left, right);
+        return label + " -> " + (refusal instanceof KernelCodeRefusal coded ? coded.code().name() : "uncoded");
     }
 
     private static String message(FieldOperand left, FieldOperand right) {
-        return assertThrows(IllegalArgumentException.class, () -> Dsl.sumOfProducts(left, right)).getMessage();
+        return refusal(left, right).getMessage();
+    }
+
+    private static IllegalArgumentException refusal(FieldOperand left, FieldOperand right) {
+        return assertThrows(IllegalArgumentException.class, () -> Dsl.sumOfProducts(left, right));
     }
 }

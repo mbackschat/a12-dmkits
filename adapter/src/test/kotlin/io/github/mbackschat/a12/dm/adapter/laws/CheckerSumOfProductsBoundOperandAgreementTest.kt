@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test
  * A `SumOfProducts` operand that leaves its lowest repeatable level unstarred, because the rule binds that level,
  * draws `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` (a12-kernel-lean SPEC-2026-10-14-08, re-measured here). The rule
  * binds the level by iterating it, through its error field, or by being declared inside it; one unstarred operand
- * or both draw the class, while `Sum` and `MaxValue` admit the same pair. The class is `MVK_REPEATABLE_LEVEL_REQUIRED`
+ * or both draw the class, while `Sum` and `MaxValue` admit the same pair, and the owning-group gate still answers
+ * ahead of it. The class is `MVK_REPEATABLE_LEVEL_REQUIRED`
  * only where the operands' path has no repeatable level at all, and where the rule does not bind the level the
  * reference reader answers first, with `MVK_NO_WILDCARD`. Each row is pinned for A12 and compared against the
  * portable checker, which reported the declaring-group pair under the wrong class.
@@ -37,6 +38,9 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
                 Row(ITEMS, ITEM_COUNT, "FieldFilled(Count) And SumOfProducts(Count, /Order/Items*/UnitWeight) > 5", lowest),
             "declared in the group, both unstarred" to
                 Row(ITEMS, ITEM_COUNT, "FieldFilled(Count) And SumOfProducts(Count, UnitWeight) > 5", lowest),
+            "iterated, the owning groups differ" to
+                Row(ROOT, ITEM_COUNT, "FieldFilled(Items/Count) And SumOfProducts(Items/Count, Quantity) > 5",
+                    setOf("MVK_DIFFERENT_GROUPS")),
             "not bound — the reader answers" to
                 Row(ROOT, "/Order/Quantity", "FieldFilled(Quantity) And SumOfProducts(Items/Count, Items*/UnitWeight) > 5",
                     setOf("MVK_NO_WILDCARD")),

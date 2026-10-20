@@ -11496,7 +11496,7 @@
       }
     },
     "kf370": {
-      "sha256": "cd1f2abb2a8e41091493d81e470328329c2307676acf10d348bf36765a529740",
+      "sha256": "32080f84604e4e113c5852ae3a5e3064fb9fbd97f8de57bdc2e3fc6ef0a0d238",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the bound unstarred operand class"],
@@ -11509,8 +11509,8 @@
         "a12-kernel-lean": ["the bound unstarred operand class"]
       },
       "consumers": {
-        "dmkits": {"state": "OPEN", "basis": "The builder refuses every such pair but cites MVK_REPEATABLE_LEVEL_REQUIRED or MVK_NO_WILDCARD where A12's class depends on the rule's binding; the catalog gotcha repeats them (DG141).", "evidence": {}},
-        "checker": {"state": "APPLIED", "basis": "The operand reader treats the error field's iterated group as binding, and the gate chain reports the lowest-level class for an unstarred lowest level, the repeatable-level class only where no level repeats.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "Eleven rows, A12 and the checker per row, including the declaring-group pair the checker had reported under the wrong class."}}},
+        "dmkits": {"state": "APPLIED", "basis": "SumOfProducts refuses a pair with an operand that may cross an unstarred repeatable level without quoting a code, since A12's class depends on the rule's binding; the catalog constraint states the binding split.", "evidence": {"the bound unstarred operand class": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/SumOfProductsConditionTest.java#quotesTheKernelCodeTheOperandPairWouldActuallyProduce", "witness": "The unstarred-operand pairs read uncoded beside the pairs whose code the pair alone decides."}}},
+        "checker": {"state": "APPLIED", "basis": "The operand reader treats the error field's iterated group as binding, and the gate chain reports the lowest-level class for an unstarred lowest level, the repeatable-level class only where no level repeats.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "Twelve rows, A12 and the checker per row, including the declaring-group pair the checker had reported under the wrong class."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no SumOfProducts condition.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no SumOfProducts condition.", "evidence": {}},
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "A12's verdicts are pinned through RuleValidator per row.", "evidence": {"the bound unstarred operand class": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerSumOfProductsBoundOperandAgreementTest.kt#anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass", "witness": "A12's class per row beside the checker's."}}},

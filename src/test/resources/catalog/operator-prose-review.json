@@ -8154,7 +8154,7 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:256261392bb9b47d2fe6ff47ad1ee8070dee5bb4d0559bf629c62f94f48efd52",
+      "digest": "sha256:2c2c5895f69f176906e645d856f334b1643cb27389fb748ca7a2138fd94ac586",
       "classifications": [
         "REJECTION"
       ],
@@ -25847,6 +25847,70 @@
         {
           "type": "CLAIM_PROBE",
           "id": "SumOfProducts.unwildcarded-level",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint1.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.bound-unstarred-level"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.bound-unstarred-level.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.bound-unstarred-level",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.bound-unstarred-level.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.bound-unstarred-level",
           "side": "CONTROL"
         }
       ]

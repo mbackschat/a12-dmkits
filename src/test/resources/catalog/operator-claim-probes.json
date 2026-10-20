@@ -1980,6 +1980,25 @@
       }
     },
     {
+      "id": "SumOfProducts.bound-unstarred-level",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../Items/Count",
+        "dsl": "FieldFilled(Items/Count) And SumOfProducts(Items/Count, Items*/UnitWeight) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Items/Count",
+        "dsl": "FieldFilled(Items/Count) And SumOfProducts(Items*/Count, Items*/UnitWeight) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
       "id": "SumOfProducts.no-repeatable-level",
       "operator": "SumOfProducts",
       "kind": "CONDITION",

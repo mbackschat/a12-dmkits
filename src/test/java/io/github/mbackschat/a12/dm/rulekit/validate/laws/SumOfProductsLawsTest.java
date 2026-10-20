@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 
 /**
  * KERNEL-FINDINGS §9 — the measured operand-pair boundary of {@code SumOfProducts}. Two facts the earlier
@@ -97,8 +98,6 @@ class SumOfProductsLawsTest {
         FieldListRef quantities = m.flatten("/Basket/Lines*/Qty");
 
         assertEquals("MVK_DIFFERENT_GROUPS", code(() -> Dsl.sumOfProducts(labels, m.field("/Basket/Fees/Handling"))));
-        assertEquals("MVK_NO_WILDCARD",
-                code(() -> Dsl.sumOfProducts(labels, m.field("/Basket/Lines/Packaging/Weight"))));
         assertEquals("MVK_REPEATABLE_LEVEL_REQUIRED",
                 code(() -> Dsl.sumOfProducts(m.field("/Basket/Fees/Note"), m.field("/Basket/Fees/Handling"))));
         assertEquals("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
@@ -107,9 +106,12 @@ class SumOfProductsLawsTest {
                 m.flatten("/Basket/Lines*/Parts*/Code"), m.flatten("/Basket/Lines*/Parts*/Count"))));
 
         // The number question itself cites nothing — on the well-formed pair, and on the pair whose outranking
-        // gate this record cannot see, where MVK_NO_NUMBER would be the wrong code.
-        for (var pair : List.of(List.of(labels, quantities), List.of(
-                m.flatten("/Basket/Lines/Parts*/Code"), m.flatten("/Basket/Lines/Parts*/Count")))) {
+        // gate this record cannot see, where MVK_NO_NUMBER would be the wrong code. Nor does an operand left
+        // unstarred on a repeatable level: MVK_NO_WILDCARD above holds for this rule, which does not bind
+        // Lines, while a rule that binds it draws another class (KF370), and an operand does not know its rule.
+        for (var pair : List.of(List.of(labels, quantities), List.<FieldOperand>of(
+                m.flatten("/Basket/Lines/Parts*/Code"), m.flatten("/Basket/Lines/Parts*/Count")),
+                List.<FieldOperand>of(labels, m.field("/Basket/Lines/Packaging/Weight")))) {
             IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
                     () -> Dsl.sumOfProducts(pair.get(0), pair.get(1)));
             assertFalse(refusal instanceof KernelCodeRefusal, refusal.getMessage());
