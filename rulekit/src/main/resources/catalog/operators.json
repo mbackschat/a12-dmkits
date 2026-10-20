@@ -674,7 +674,7 @@
         "operands must be type-compatible",
         "numeric == / != requires known compatible derived scales",
         "differing numeric scales are admitted when the smaller-scale operand is multiplicative-constant-capable",
-        "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) admits an otherwise-incompatible numeric == / != comparison"
+        "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES), spelled @UnterdrueckeWarnung in a German-condition model, admits an otherwise-incompatible numeric == / != comparison"
       ],
       "gotchas": [
         {
@@ -698,7 +698,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) waives the numeric == / != scale check",
+          "text": "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) waives the numeric == / != scale check; the keyword is read in the model's condition language, so a German-condition model needs @UnterdrueckeWarnung and refuses the English spelling",
           "kind": "SURPRISE"
         },
         {

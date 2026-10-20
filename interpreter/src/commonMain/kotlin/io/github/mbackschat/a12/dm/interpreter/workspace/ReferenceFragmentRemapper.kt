@@ -53,6 +53,7 @@ internal data class FragmentLanguageProfile(
     val nonReferenceAtoms: Set<String>,
     val customCondition: String,
     val atFrom: String,
+    val suppressWarning: String,
 )
 
 /**
@@ -68,6 +69,7 @@ internal object ReferenceFragmentRemapper {
 
     private const val CUSTOM_CONDITION = "CustomCondition"
     private const val AT_FROM = "From"
+    private const val SUPPRESS_WARNING = "SuppressWarning"
     private val REFERENCE_SEPARATORS = setOf(
         "And",
         "Or",
@@ -108,6 +110,7 @@ internal object ReferenceFragmentRemapper {
                 .flatMapTo(linkedSetOf()) { language.authoredForms(it) },
             customCondition = language.authoredForms(CUSTOM_CONDITION).single(),
             atFrom = language.authoredForms(AT_FROM).single(),
+            suppressWarning = language.authoredForms(SUPPRESS_WARNING).single(),
         )
 
     fun remap(source: String, binding: ReferenceBinding): ReferenceRemapResult =
@@ -192,13 +195,7 @@ private class FragmentScanner(
                     position++
                     atomContext = AtomContext.COMPLETE
                 }
-                '@' -> {
-                    atomContext = if (copyAtKeyword()) {
-                        AtomContext.EXPECTED
-                    } else {
-                        AtomContext.COMPLETE
-                    }
-                }
+                '@' -> atomContext = copyAtKeyword()
                 '-' -> if (charAt(position + 1) == '>') {
                     output.append("->")
                     position += 2
@@ -493,20 +490,38 @@ private class FragmentScanner(
         position = end
     }
 
-    private fun copyAtKeyword(): Boolean {
+    private fun copyAtKeyword(): AtomContext {
         output.append('@')
         position++
         val whitespaceEnd = skipWhitespace(position)
         output.append(source, position, whitespaceEnd)
         position = whitespaceEnd
         if (!charAt(position).isIdentifierStart()) {
-            return false
+            return AtomContext.COMPLETE
         }
         val end = identifierEnd(position)
         val keyword = source.substring(position, end)
         output.append(source, position, end)
         position = end
-        return keyword == languageProfile.atFrom
+        return when (keyword) {
+            languageProfile.atFrom -> AtomContext.EXPECTED
+            languageProfile.suppressWarning -> {
+                copyWaivedWarning()
+                AtomContext.EXPECTED
+            }
+            else -> AtomContext.COMPLETE
+        }
+    }
+
+    /**
+     * The scale-gate waiver's `(NAME)` names a warning, never a reference, so it is copied verbatim; the condition
+     * proper starts after it, which reopens a reference slot (KERNEL-FINDINGS KF75).
+     */
+    private fun copyWaivedWarning() {
+        val close = source.indexOf(')', position)
+        val end = if (close < 0) source.length else close + 1
+        output.append(source, position, end)
+        position = end
     }
 
     private fun copyNumber() {

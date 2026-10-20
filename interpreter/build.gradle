@@ -496,6 +496,7 @@ def generateReferenceRemapProfileSource = tasks.register('generateReferenceRemap
             nonReferenceAtoms = ${kotlinList(profile.nonReferenceAtoms)},
             customCondition = ${groovy.json.JsonOutput.toJson(profile.customCondition)},
             atFrom = ${groovy.json.JsonOutput.toJson(profile.atFrom)},
+            suppressWarning = ${groovy.json.JsonOutput.toJson(profile.suppressWarning)},
         )"""
         }.join(',\n')
         generatedReferenceRemapProfileSource.parentFile.mkdirs()
@@ -508,6 +509,7 @@ internal data class ReferenceRemapLanguageProfile(
     val nonReferenceAtoms: List<String>,
     val customCondition: String,
     val atFrom: String,
+    val suppressWarning: String,
 )
 
 internal object ReferenceRemapLanguageProfiles {

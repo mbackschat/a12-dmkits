@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.parse.RefResolver
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
+import io.github.mbackschat.a12.dm.interpreter.parse.parseRuleCondition
 
 /** A computation's parsed form: each tiered alternative's (precondition?, operation), under an optional
  *  whole-computation common precondition — all parsed once. The kernel selects the first alternative whose
@@ -70,7 +71,7 @@ internal class ParsedModel(
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
         model.rules.associateWith { r -> lazy {
             observe(PreparationWork.RULE_AST, r.path)
-            parseCondition(r.conditionText, r.group, refResolver, model.conditionLanguage)
+            parseRuleCondition(r.conditionText, r.group, refResolver, model.conditionLanguage)
         } }
 
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
@@ -134,7 +135,7 @@ internal class ParsedModel(
      *  a one-off parse for an ad-hoc candidate. */
     fun condAstOf(rule: RuleDef): Cond =
         ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value
-        ?: parseCondition(rule.conditionText, rule.group, refResolver, model.conditionLanguage)
+        ?: parseRuleCondition(rule.conditionText, rule.group, refResolver, model.conditionLanguage)
 
     /** The parsed form of [comp] (a model computation) — cached. */
     fun parsedOf(comp: ComputationDef): ParsedComputation = compParsedAst.getValue(comp).value

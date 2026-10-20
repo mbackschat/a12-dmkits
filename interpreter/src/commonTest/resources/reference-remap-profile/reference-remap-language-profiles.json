@@ -30,7 +30,8 @@
       "RuleGroup"
     ],
     "customCondition": "CustomCondition",
-    "atFrom": "From"
+    "atFrom": "From",
+    "suppressWarning": "SuppressWarning"
   },
   "de_DE": {
     "referenceSeparators": [
@@ -63,6 +64,7 @@
       "RegelKontext"
     ],
     "customCondition": "ApplikationsBedingung",
-    "atFrom": "Von"
+    "atFrom": "Von",
+    "suppressWarning": "UnterdrueckeWarnung"
   }
 }

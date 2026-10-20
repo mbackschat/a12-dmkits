@@ -40,6 +40,19 @@ fun parseCondition(
     language: ConditionLanguage,
 ): Cond = ConditionParser(text, base, resolver, language).parse().lowerArithmetic()
 
+/**
+ * Parse a RULE's condition: the grammar's start production `preamble? bedingung`, whose optional preamble is the
+ * scale-gate waiver `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` (`@UnterdrueckeWarnung` in a German model;
+ * KERNEL-FINDINGS KF75). The waiver lifts a static gate only, so it is consumed and changes no evaluation. Only a
+ * rule's own condition starts this way: a computation's preconditions do not, so they stay on [parseCondition].
+ */
+fun parseRuleCondition(
+    text: String,
+    base: String,
+    resolver: RefResolver,
+    language: ConditionLanguage,
+): Cond = ConditionParser(text, base, resolver, language).parseRule().lowerArithmetic()
+
 /** Parse a value expression (a computation's right-hand side), paths relative to [base]. */
 fun parseExpression(text: String, base: String): Expr =
     parseExpression(text, base, DEFAULT_RESOLVER, ConditionLanguage.EN)
@@ -88,6 +101,23 @@ private class ConditionParser(
         skipWs()
         require(pos >= src.length) { "parser: trailing input at $pos in \"$src\"" }
         return c
+    }
+
+    fun parseRule(): Cond {
+        skipWs()
+        if (peek() == '@') {
+            next()
+            require(matchKeyword("SuppressWarning")) {
+                "parser: expected the localized @SuppressWarning keyword in \"$src\""
+            }
+            skipWsAndExpect('(')
+            // A12 admits exactly this one name, padding included (KF75); any other is refused before evaluation.
+            require(readIdent() == SCALE_GATE_WAIVER) {
+                "parser: only $SCALE_GATE_WAIVER can be waived, in \"$src\""
+            }
+            skipWsAndExpect(')')
+        }
+        return parse()
     }
 
     fun parseTopExpr(): Expr {
@@ -620,12 +650,18 @@ private class ConditionParser(
             }
         }
     }
+    private fun skipWsAndExpect(c: Char) {
+        skipWs()
+        expect(c)
+    }
+
     private fun expect(c: Char) {
         require(peek() == c) { "parser: expected '$c' at $pos in \"$src\"" }
         next()
     }
 
     private companion object {
+        const val SCALE_GATE_WAIVER = "MVK_INVALID_COMPARE_DEC_PLACES"
         val PREDICATES = setOf(
             "FieldFilled", "FieldNotFilled", "AllFieldsFilled", "GroupFilled", "GroupNotFilled",
             "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList",

@@ -6,7 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 /**
  * Render String-pattern and enum invalid-value text in one pass; inserted values remain opaque.
  * FieldConstraintFormalDiffTest's dual-strategy grid separates condition-language tokens from display locale
- * and locks literal terminal dollar pairs (KF42/KF490). Requiredness has its own producer contract below.
+ * and locks literal terminal dollar pairs (KF42/KF490). Requiredness follows a different law, below.
  */
 internal fun renderPatternFieldMessage(
     template: String,
@@ -20,12 +20,15 @@ internal fun renderPatternFieldMessage(
         ConditionLanguage.EN -> mapOf("\$field.value\$" to storedValue, "\$field\$" to fieldLabel)
         ConditionLanguage.DE -> mapOf("\$Feld.Wert\$" to storedValue, "\$Feld\$" to fieldLabel)
     },
-    preserveDollarPair = false,
 )
 
 /**
- * Render the measured `en_US` requiredness message grammar. Its fixed `$field$` replacement is distinct from
- * the String-pattern producer and preserves every `$$` pair verbatim.
+ * Render a requiredness message: four literal replace-all passes over the whole text, `$Feld$` then `$field$` by
+ * the field's label or name, then `$Feld.Wert$` then `$field.value$` by its value, which is empty because only an
+ * empty field draws the message. Both languages' tokens apply whatever the condition language, and every other
+ * dollar sequence stays verbatim. Each pass reads what the previous one produced, so the order is observable
+ * (`$field$Feld$` becomes `$field` plus the label) and a token inside a label is substituted again.
+ * `adapter.laws.RequirednessTextSubstitutionDiffTest` holds each of these against both kernel strategies.
  */
 internal fun renderRequiredFieldMessage(
     template: String,
@@ -33,12 +36,11 @@ internal fun renderRequiredFieldMessage(
     fieldLabel: String,
 ): String {
     requireEnglishFieldTemplate(locale, "requiredness")
-    return renderFixedFieldTokens(
-        template = template,
-        producer = "requiredness",
-        replacements = mapOf("\$field\$" to fieldLabel),
-        preserveDollarPair = true,
-    )
+    return template
+        .replace("\$Feld\$", fieldLabel)
+        .replace("\$field\$", fieldLabel)
+        .replace("\$Feld.Wert\$", "")
+        .replace("\$field.value\$", "")
 }
 
 private fun requireEnglishFieldTemplate(locale: String, producer: String) {
@@ -53,7 +55,6 @@ private fun renderFixedFieldTokens(
     template: String,
     producer: String,
     replacements: Map<String, String>,
-    preserveDollarPair: Boolean,
 ): String {
     val out = StringBuilder(template.length)
     var index = 0
@@ -70,12 +71,10 @@ private fun renderFixedFieldTokens(
                 out.append(replacements.getValue(token))
                 index = dollar + token.length
             }
-            template.startsWith("\$\$", dollar) &&
-                (preserveDollarPair || ((template.length - dollar) % 2 == 0 &&
-                    (dollar until template.length).all { template[it] == '$' })) -> {
-                val end = if (preserveDollarPair) dollar + 2 else template.length
-                out.append(template, dollar, end)
-                index = end
+            template.startsWith("\$\$", dollar) && (template.length - dollar) % 2 == 0 &&
+                (dollar until template.length).all { template[it] == '$' } -> {
+                out.append(template, dollar, template.length)
+                index = template.length
             }
             else -> {
                 val close = template.indexOf('$', dollar + 1)

@@ -83,7 +83,7 @@ class FieldOwnedMessageTest {
     }
 
     @Test
-    fun invalidPatternTokensAndUnmeasuredRequirednessFormsAreReportedUnsupported() {
+    fun invalidPatternTokensAreReportedUnsupported() {
         val patternField = FieldDef(
             CODE,
             Kind.STRING,
@@ -99,18 +99,22 @@ class FieldOwnedMessageTest {
         assertFailsWith<IllegalStateException> {
             DmInterpreter(patternModel).validateFull(invalid)
         }
+    }
 
+    /** The requiredness producer renders a value token as the empty value it has (RequirednessTextSubstitutionDiffTest). */
+    @Test
+    fun requirednessRendersTheValueTokenEmpty() {
         val requiredField = FieldDef(
             CODE,
             Kind.STRING,
             required = Requiredness.ABSOLUTE,
-            requiredMessages = mapOf("en_US" to "Value \$field.value\$"),
+            requiredMessages = mapOf("en_US" to "Value \$field.value\$ \$Feld.Wert\$end"),
         )
         val requiredModel = ModelDef(listOf(requiredField), emptyList())
         val empty = requiredModel.newDocument().group(ORDER, 1).emptyField(CODE, 1, 1)
-        val producerOutcome = DmInterpreter(requiredModel).validate(empty)
-        assertEquals(emptyList(), producerOutcome.messages)
-        assertTrue(producerOutcome.unsupported.single().reason.contains("\$field.value\$"))
+        val outcome = DmInterpreter(requiredModel).validate(empty)
+        assertEquals(emptyList(), outcome.unsupported)
+        assertEquals(listOf("$MANDATORY_FIELD@Value  end"), outcome.messages.map { "${it.code}@${it.text}" })
     }
 
     private companion object {

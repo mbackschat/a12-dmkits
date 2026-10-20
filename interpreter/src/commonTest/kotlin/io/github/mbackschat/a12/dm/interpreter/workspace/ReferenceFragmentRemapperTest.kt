@@ -17,6 +17,7 @@ class ReferenceFragmentRemapperTest {
             assertEquals(profile.nonReferenceAtoms.toSet(), production.nonReferenceAtoms)
             assertEquals(profile.customCondition, production.customCondition)
             assertEquals(profile.atFrom, production.atFrom)
+            assertEquals(profile.suppressWarning, production.suppressWarning)
             profile.referenceSeparators.forEach { separator ->
                 assertRemapped(
                     "$separator /Benefits/Lines/Code",
@@ -51,6 +52,17 @@ class ReferenceFragmentRemapperTest {
                 "RepetitionNotUnique(/Policy/Cover/Lines/Code @${profile.atFrom} /Policy/Cover/Lines)",
                 binding = binding(
                     shortNamesAllowed = false,
+                    conditionLanguage = language,
+                ),
+            )
+            // The waiver's name is a warning code, never a reference: kept verbatim even where a field of that short
+            // name exists, and the condition after it is remapped as usual (KERNEL-FINDINGS KF75).
+            val waiver = "@${profile.suppressWarning}(MVK_INVALID_COMPARE_DEC_PLACES)"
+            assertRemapped(
+                "$waiver [/Benefits/Lines/Code] == 1",
+                "$waiver [/Policy/Cover/Lines/Code] == 1",
+                binding = binding(
+                    fields = setOf("/Benefits/Lines/Code", "/Benefits/Rates/MVK_INVALID_COMPARE_DEC_PLACES"),
                     conditionLanguage = language,
                 ),
             )

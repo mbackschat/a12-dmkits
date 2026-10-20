@@ -34,6 +34,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -516,7 +518,8 @@ final class ApplyCommand extends BaseCommand {
                 }
                 String condition = Comments.withLeadingComment(opt(op, "comment"), req(op, "condition"));
                 if (op.path("allowDifferingDecimals").asBoolean(false)) {
-                    condition = "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) " + condition;
+                    condition = ConditionDirectives.allowDifferingDecimals(ConditionLanguage.ofModelCode(
+                            ModelDocument.read(session.toJson()).config().conditionLanguage()), condition);
                 }
                 session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
                 // G39: optional rule metadata at add time (annotation / internal-/external-description)

@@ -4,8 +4,10 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
+import io.github.mbackschat.a12.dm.interpreter.parse.DEFAULT_RESOLVER
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
+import io.github.mbackschat.a12.dm.interpreter.parse.parseRuleCondition
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -182,7 +184,7 @@ private class ReferenceNormalizer(
             remapMember(
                 body,
                 "errorCondition",
-                ReferenceFragmentKind.CONDITION,
+                ReferenceFragmentKind.RULE_CONDITION,
                 binding(origin),
                 origin,
             ),
@@ -434,12 +436,15 @@ private data class ResidualLocation(
 )
 
 private enum class ReferenceFragmentKind {
+    /** A rule's `errorCondition`, the one carrier that may open with the scale-gate waiver. */
+    RULE_CONDITION,
     CONDITION,
     EXPRESSION,
     ;
 
     fun parse(text: String, base: String, language: ConditionLanguage): Any =
         when (this) {
+            RULE_CONDITION -> parseRuleCondition(text, base, DEFAULT_RESOLVER, language)
             CONDITION -> parseCondition(text, base, language = language)
             EXPRESSION -> parseExpression(text, base, language = language)
         }

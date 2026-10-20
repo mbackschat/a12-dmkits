@@ -828,6 +828,10 @@ public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition or(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition transform(java.util.function.UnaryOperator<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
 
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives
+  public static final java.lang.String SCALE_GATE
+  public static java.lang.String allowDifferingDecimals(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.lang.String)
+
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind classify(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
@@ -869,6 +873,7 @@ public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.O
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage DE
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage EN
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage ofModelCode(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage[] values()
 

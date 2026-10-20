@@ -65,7 +65,8 @@ enum class ConditionLanguage(val code: String) {
 
         /**
          * Identifier keywords from the CI-locked bilingual operator catalog plus the grammar-only `In`,
-         * `RuleGroup`/`RegelKontext`, and `@From`/`@Von` tokens. Symbol operators are language independent.
+         * `RuleGroup`/`RegelKontext`, `@From`/`@Von` and the `@SuppressWarning`/`@UnterdrueckeWarnung` preamble
+         * tokens. Symbol operators are language independent.
          */
         private val GERMAN_TO_CANONICAL = mapOf(
             "FeldAngegeben" to "FieldFilled",
@@ -164,6 +165,7 @@ enum class ConditionLanguage(val code: String) {
             "ErsterAngegebenerWert" to "FirstFilledValue",
             "DatumBereich" to "DateRange",
             "RegelKontext" to "RuleGroup",
+            "UnterdrueckeWarnung" to "SuppressWarning",
         )
 
         private val ENGLISH_KEYWORDS = GERMAN_TO_CANONICAL.values.toSet() + setOf("In", "To")

@@ -264,12 +264,11 @@ public final class ModelWriter {
     }
 
     private static ConditionLanguage conditionLanguage(JsonNode root) {
-        String code = root.path(DmKeys.CONTENT)
+        return ConditionLanguage.ofModelCode(root.path(DmKeys.CONTENT)
                 .path(DmKeys.MODEL_CONFIG)
                 .path(DmKeys.CONDITION_LANGUAGE)
                 .path(DmKeys.CODE)
-                .asText("en_US");
-        return "de_DE".equals(code) ? ConditionLanguage.DE : ConditionLanguage.EN;
+                .asText("en_US"));
     }
 
     private static void replaceConditionIn(ObjectNode root, String ruleFullName, String newConditionText) {

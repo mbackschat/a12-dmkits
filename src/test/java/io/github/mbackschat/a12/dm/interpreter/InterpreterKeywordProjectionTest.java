@@ -210,7 +210,8 @@ class InterpreterKeywordProjectionTest {
         actual.put("DE terminals in the kernel bundle", kernelTerminals("DE").size());
 
         Map<String, Integer> expected = new LinkedHashMap<>();
-        expected.put("hand-written German→canonical rows", 96);
+        // 97 since 2026-10-20: the `@UnterdrueckeWarnung` preamble keyword joined the table (KERNEL-FINDINGS KF75).
+        expected.put("hand-written German→canonical rows", 97);
         expected.put("EN terminals in the kernel bundle", 112);
         expected.put("DE terminals in the kernel bundle", 125);
         assertEquals(expected, actual,

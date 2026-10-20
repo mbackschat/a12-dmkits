@@ -30,9 +30,10 @@ final class ConditionReferenceRemapper {
     private static final Set<String> GERMAN_NON_REFERENCE_ATOMS = Set.of(
             "Wahr", "Falsch", "Heute", "Jetzt", "Referenzjahr", "ErsterTag", "LetzterTag", "RegelKontext");
     private static final LanguageProfile ENGLISH = new LanguageProfile(
-            ENGLISH_REFERENCE_SEPARATORS, ENGLISH_NON_REFERENCE_ATOMS, "CustomCondition", "From");
+            ENGLISH_REFERENCE_SEPARATORS, ENGLISH_NON_REFERENCE_ATOMS, "CustomCondition", "From", "SuppressWarning");
     private static final LanguageProfile GERMAN = new LanguageProfile(
-            GERMAN_REFERENCE_SEPARATORS, GERMAN_NON_REFERENCE_ATOMS, "ApplikationsBedingung", "Von");
+            GERMAN_REFERENCE_SEPARATORS, GERMAN_NON_REFERENCE_ATOMS, "ApplikationsBedingung", "Von",
+            "UnterdrueckeWarnung");
 
     private ConditionReferenceRemapper() {
     }
@@ -378,7 +379,22 @@ final class ConditionReferenceRemapper {
             String keyword = source.substring(position, end);
             output.append(source, position, end);
             position = end;
+            if (language.suppressWarning().equals(keyword)) {
+                copyWaivedWarning();
+                return true;
+            }
             return language.atFrom().equals(keyword);
+        }
+
+        /**
+         * The scale-gate waiver's {@code (NAME)} names a warning, never a reference, so it is copied verbatim; the
+         * condition proper starts after it, which reopens a reference slot (KERNEL-FINDINGS KF75).
+         */
+        private void copyWaivedWarning() {
+            int close = source.indexOf(')', position);
+            int end = close < 0 ? source.length() : close + 1;
+            output.append(source, position, end);
+            position = end;
         }
 
         private void copyNumber() {
@@ -448,7 +464,8 @@ final class ConditionReferenceRemapper {
             Set<String> referenceSeparators,
             Set<String> nonReferenceAtoms,
             String customCondition,
-            String atFrom) {
+            String atFrom,
+            String suppressWarning) {
     }
 
     private static boolean isIdentifierStart(char c) {

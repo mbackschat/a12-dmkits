@@ -82,6 +82,24 @@ class IncludeReferenceRemapTest {
                                         + " /Benefits/Lines)",
                                 profileEntry).text(),
                         profileEntry + ": @" + atFrom);
+                // The waiver's name is a warning code, never a reference: kept verbatim even where a field of that
+                // short name exists, and the condition after it is remapped as usual (KERNEL-FINDINGS KF75).
+                var suppressWarning = profile.path("suppressWarning").asText();
+                assertEquals(suppressWarning, production.suppressWarning());
+                var waiver = "@" + suppressWarning + "(MVK_INVALID_COMPARE_DEC_PLACES)";
+                var collision = new ConditionReferenceRemapper.ReferenceContext(
+                        SINGLE,
+                        "/Benefits/Validation",
+                        java.util.Set.of(),
+                        Map.of("MVK_INVALID_COMPARE_DEC_PLACES",
+                                List.of("/Benefits/Rates/MVK_INVALID_COMPARE_DEC_PLACES")),
+                        true,
+                        profileEntry);
+                assertEquals(
+                        waiver + " [/Policy/Cover/Lines/Code] == 1",
+                        ConditionReferenceRemapper.remapReferences(waiver + " [/Benefits/Lines/Code] == 1", collision)
+                                .text(),
+                        profileEntry + ": " + waiver);
             }
         }
     }

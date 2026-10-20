@@ -1245,12 +1245,14 @@ Two more edges of the §2 empty-value table (all three now canonical in §2's ov
 
 > Fold: folded → §5 + §10.
 
-Two raw-DSL forms the grammar carries outside the operator surface (productions `preamble` / `regelKontextEntity`), both probe-verified; rulekit authors neither but the read path may meet them:
+Two raw-DSL forms the grammar carries outside the operator surface (productions `preamble` / `regelKontextEntity`), both probe-verified. rulekit authors the waiver through `ConditionDirectives.allowDifferingDecimals`, which dmtool's `allowDifferingDecimals` writes through, and never authors `RuleGroup`; the read path may meet both:
 
 - **`@SuppressWarning(NAME)`** (DE `@UnterdrueckeWarnung`) prefixes a condition and suppresses exactly **one** supported warning: `MVK_INVALID_COMPARE_DEC_PLACES` — the numeric equality derived signed-scale/capability gate (§5 finding 18). `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]` validates across scales 0 vs 2, and the same directive covers any otherwise-incompatible numeric `==`/`!=` summary. Any other name is rejected. **Corrected 2026-09-06:** this entry used to say the diagnostic's *code* is the attempted name itself, with `MVK_INVALID_SUPPRESSED_WARNING` supplying only the message text. Measured today at both our layers — `RuleValidator` and `dmtool rule check` — the reported code is `MVK_INVALID_SUPPRESSED_WARNING`, for a fabricated name and for a genuine-but-unsupported one alike; a12-kernel-lean saw the same and asked which layer they were looking at, which is what prompted the re-measurement. The deeper error is that the sentence named a LAYER it never had: our `Notification` carries only a severity and a message, so the kernel supplies **no code field at all** and every `code` we report is derived by us from the message's terminal bracketed key (`Diagnostic.kernelClass`). "The diagnostic's code" was therefore always a statement about our own derivation rather than about the kernel. Whether an older extraction rule ever yielded the attempted name is **not established** — the pre-2026-08-23 rule was a last-match `MVK_*` scan, which on this message also lands on the bracketed key. Treatment: the typed `NumberExpr` builder rejects a known incompatibility early and defers only when model-derived metadata is unavailable; raw rules and dmtool's `allowDifferingDecimals:true` reach this explicit kernel escape hatch.
 - **`RuleGroup`** (DE `RegelKontext`) references the rule's **containing group** as an entity — `GroupFilled(RuleGroup)` validates, and the enclosing group counts as referencing the error field. A star on it draws `MVK_INVALID_WILDCARD_FOR_RULEGROUP` (the grammar admits the token solely for the nicer error). rulekit renders qualified group paths instead.
 
-*(Locked: `validate.laws.DirectiveLawsTest`.)*
+**Extended 2026-10-20** (a12-kernel-lean's `SPEC-2026-10-14-11` report, re-measured here on own-domain order and policy models). The keyword is read in the model's condition language only. A `de_DE` model refuses `@SuppressWarning(…)` and an `en_US` model refuses `@UnterdrueckeWarnung(…)`, both as `MVK_UNEXPECTED_TOKEN`, while the unwaived comparison draws `MVK_INVALID_COMPARE_DEC_PLACES` in both, so the control shows that the waiver alone lifts the gate. Whitespace between the preamble's tokens (`@ SuppressWarning ( … )`) and a `;;` comment after it are admitted, and so is a waiver ahead of a `Having` filter that compares across scales. The waiver lifts the static gate only, because evaluation stays exact on both strategies: with `Units` 5 at scale 0, `[Units] == [Rate]` fires for `Rate` 5.00 and not for 5.01, and a waived `Having [Lines/Amount] != 1.5` keeps every integer row rather than dropping the ones a rounding to scale 0 would equate with 1.5.
+
+*(Locked: `validate.laws.DirectiveLawsTest`; the per-language keyword by `validate.laws.ScaleWaiverLanguageLawsTest`; runtime exactness by `adapter.laws.RuleConditionPreambleDiffTest`; the portable checker's agreement by `adapter.laws.CheckerScaleWaiverAgreementTest`.)*
 
 ## Condition lexing — keyword case-variant families; whitespace rides a hidden channel; a bare name is never an arithmetic operand (source `LexerTerminals_en` + grammar, differential-locked 2026-07-06/09) <a id="kf76"></a>
 
@@ -13712,3 +13714,24 @@ Six readings account for every row, and each is the one its rival gets wrong:
 Not settled here, and recorded as a gap: A12 withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` beside a printed bound that fails its codeless formal check (`-0` at scale 0, more than 15 digits), and the checker still names it there ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md)).
 
 Locked by `adapter.laws.CheckerDeclarationAdmissionAgreementTest` (A12 and the checker per row), replayed on both checker runtimes by `consistency.DeclarationAdmissionReadingsTest`; the second carrier by `rulekit.validate.laws.ShortNameFlagSpellingLawsTest` and, at runtime, `adapter.laws.ShortNameRefDiffTest`. The bound law is `numberBoundsInverted` in `:predicates`, which modelkit's `NumberSpec` now consumes (`modelkit.NumberBoundRoundingTest`).
+
+## §4 supplement — a required field's own message is rendered by four literal replace-all passes, `$Feld$`, `$field$`, `$Feld.Wert$`, `$field.value$`, in either condition language (tri-engine differential, 2026-10-20) <a id="kf570"></a>
+
+> Fold: pending — beside the requiredness producer in [KF42](#kf42).
+
+a12-kernel-lean's `SPEC-2026-10-14-10` report, re-measured here on an own-domain claim model. Every model is consistency-admitted, and dynamic Groovy, generated Java and the interpreter render the same text on every row. [KF42](#kf42) measured one requiredness form (`Cost $$ $field$`). This is the producer's whole grammar: the passes run in the order above over the whole text, the label passes insert the label or name, and the value passes insert the empty value, because only an empty field draws the message.
+
+| row | label | template | rendered | what it separates |
+|---|---|---|---|---|
+| r01–r04 | — / `Insured person` | `$field$`, `$Feld$`, `$field.value$ end`, `$Feld.Wert$ end` | the label or name; `  end` | each token alone, either language |
+| r05 | `Broker` | `$field$Feld$` | `$fieldBroker` | `$Feld$` runs before `$field$`, which a one-pass scan reading left to right gets wrong (`BrokerFeld$`) |
+| r06 | `Agent` | `$Feld.Wert$field$` | `$Feld.WertAgent` | label passes run before value passes: the inserted label breaks the later `$Feld.Wert$` |
+| r08 | `Region` | `$field.value$Feld.Wert$` | `$field.value` | `$Feld.Wert$` runs before `$field.value$` |
+| r09 | — | `$Other$ $FIELD$ $field.Wert$ $$ $field` | unchanged | any other dollar sequence, a doubled pair and an unterminated token stay verbatim |
+| r10 | `Insurer $field.value$ x` | `$field$` | `Insurer  x` | a later pass substitutes a token carried in by the label |
+| r11 | `Carrier $field$` | `$Feld$` | `Carrier Carrier $field$` | … exactly once: the inserted label's `$field$` is replaced by the next pass, and that pass's own insert is not |
+| d01 | `Kunde` | `$field$ $Feld$ $field.value$\|$Feld.Wert$` in a `de_DE` model | `Kunde Kunde \|` | both languages' tokens apply in a German-condition model, unlike the invalid-value producer, whose tokens follow the condition language ([KF42](#kf42)) |
+
+A repeated row's required field renders once per empty row, with the same text (r12). Each template opens with its row tag in the lock, so one validation per engine yields every row.
+
+*(Locked: `adapter.laws.RequirednessTextSubstitutionDiffTest`; the interpreter's rendering on JVM and Node by `FieldOwnedMessageTest`.)*

@@ -11374,6 +11374,54 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the flag through the kits and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Carried in the 2026-10-18 handback under SPEC-2026-10-13-16.", "evidence": {}}
       }
+    },
+    "kf75": {
+      "sha256": "c091a6d669728e8b8c6e3bc45db732b795106382e7a7530f4e087006374565da",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["the waiver keyword in the model's language", "the waiver kept verbatim on include remap"],
+        "checker": ["the waiver keyword in the model's language"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["runtime exactness of a waived rule"],
+        "interpreter": ["reading the waiver ahead of a rule condition", "the waiver kept verbatim on include remap"],
+        "dmtool-cli": ["allowDifferingDecimals in the model's language"],
+        "a12-kernel-lean": ["the waiver keyword in the model's language"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "ConditionDirectives spells the waiver in the model's language, and core.ConditionReferenceRemapper copies it verbatim.", "evidence": {"the waiver keyword in the model's language": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ScaleWaiverLanguageLawsTest.java#eachLanguageAdmitsItsOwnKeywordAndRefusesTheOther", "witness": "Each language admits its own keyword and refuses the other's, beside the unwaived control."}, "the waiver kept verbatim on include remap": {"reference": "src/test/java/io/github/mbackschat/a12/dm/core/IncludeReferenceRemapTest.java#matchesTheSharedJavaAndPortableLanguageProfiles", "witness": "A waiver beside a field named like the code is kept verbatim per language profile."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The recognizer reads the keyword from the model language's table, so the other language's is a syntax error, and the waiver lifts the scale gate.", "evidence": {"the waiver keyword in the model's language": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerScaleWaiverAgreementTest.kt#theWaiverLiftsTheGateInItsOwnLanguageOnly", "witness": "Unwaived, own keyword, padded, commented and foreign keyword, A12 and the checker per row in both languages."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Neither schema direction spells the waiver: schemakit's sources carry no occurrence (2026-10-20).", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Neither schema direction spells the waiver: schemakit's sources carry no occurrence (2026-10-20).", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "RuntimeLaws runs a waived rule on both strategies unchanged; the differential pins that evaluation stays exact.", "evidence": {"runtime exactness of a waived rule": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleConditionPreambleDiffTest.kt#aWaivedRuleEvaluatesExactlyOnEveryAdmittedSpelling", "witness": "5.00 fires and 5.01 does not on every spelling, and a waived Having filter keeps every integer row."}}},
+        "interpreter": {"state": "APPLIED", "basis": "parseRuleCondition consumes the waiver ahead of an errorCondition in the model's language (IF406), and the include remapper copies it verbatim.", "evidence": {"reading the waiver ahead of a rule condition": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/RuleConditionPreambleParseTest.kt#theWaiverIsConsumedAndLeavesTheConditionItPrecedes", "witness": "Plain, padded and commented English and the German keyword parse to the condition alone; RuleConditionPreambleDiffTest compares runtime."}, "the waiver kept verbatim on include remap": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/ReferenceFragmentRemapperTest.kt#matchesTheSharedJavaAndPortableLanguageProfiles", "witness": "The waiver row stays verbatim beside a field named like the code."}}},
+        "dmtool-cli": {"state": "APPLIED", "basis": "rule add and apply write the waiver through ConditionDirectives in the model's condition language.", "evidence": {"allowDifferingDecimals in the model's language": {"reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/rule/ScaleWaiverLanguageCliTest.java#ruleAddWritesTheWaiverTheModelsLanguageAdmits", "witness": "An en_US and a de_DE model each accept and persist their own keyword; the apply route is the sibling method."}}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-11 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
+    },
+    "kf570": {
+      "sha256": "cddb85b21dcc22cd617f7c24633eeff722164178f110d4b41ae6229aec7aa443",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the requiredness rendering oracle"],
+        "interpreter": ["the requiredness renderer"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the requiredness substitution law"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits store the requiredness message as authored and render none.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "Runtime rendering only; which tokens a requiredness message admits is static and stays KF490's.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no requiredness message text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export renders no requiredness message text.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "RuntimeLaws supplies one label-or-name provider to both strategies, and every row agrees.", "evidence": {"the requiredness rendering oracle": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#theFourTokensAreReplacedInSuccessionOverTheWholeText", "witness": "Every discriminating row on dynamic Groovy and generated Java."}}},
+        "interpreter": {"state": "APPLIED", "basis": "renderRequiredFieldMessage runs the four passes in A12's order (IF407).", "evidence": {"the requiredness renderer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#theFourTokensAreReplacedInSuccessionOverTheWholeText", "witness": "The interpreter's text equals both strategies' on every row, the German model and the repeated row included."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders the message through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-10 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
     }
   }
 }
