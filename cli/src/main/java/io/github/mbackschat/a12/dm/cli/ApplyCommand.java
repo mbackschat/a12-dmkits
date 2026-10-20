@@ -35,7 +35,6 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -518,8 +517,7 @@ final class ApplyCommand extends BaseCommand {
                 }
                 String condition = Comments.withLeadingComment(opt(op, "comment"), req(op, "condition"));
                 if (op.path("allowDifferingDecimals").asBoolean(false)) {
-                    condition = ConditionDirectives.allowDifferingDecimals(ConditionLanguage.ofModelCode(
-                            ModelDocument.read(session.toJson()).config().conditionLanguage()), condition);
+                    condition = ConditionDirectives.allowDifferingDecimals(session.conditionLanguage(), condition);
                 }
                 session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
                 // G39: optional rule metadata at add time (annotation / internal-/external-description)

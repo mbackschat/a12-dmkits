@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -321,6 +322,11 @@ public final class EditSession {
 
     public EditSession setConditionLanguage(String localeCode) {
         return editStructure(d -> d.setConditionLanguage(localeCode));
+    }
+
+    /** Read the language the model's conditions are written in — the read peer of {@link #setConditionLanguage}. */
+    public ConditionLanguage conditionLanguage() {
+        return ConditionLanguage.ofModelCode(ModelDocument.read(json).config().conditionLanguage());
     }
 
     public EditSession setFieldRefByShortNameAllowed(boolean allowed) {

@@ -39,6 +39,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession clearModelComment()
   public io.github.mbackschat.a12.dm.edit.EditSession clearSortFields(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.ComputationEditor computation(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage conditionLanguage()
   public io.github.mbackschat.a12.dm.edit.ConfigEditor config()
   public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
   public java.lang.String extractGroupAsInclude(java.lang.String, java.lang.String)

@@ -65,8 +65,8 @@ class FocusedTestSelectionGuardTest {
      * Gradle binds {@code --tests} to the task just before it, so {@code :test :child:test --tests X} filters
      * {@code :child:test} only and runs the whole root suite beside it. Every filtered root run in one 2026-10-20
      * session paid for the full suite this way, unnoticed because the targeted classes passed among the rest.
-     * Giving each task its own filter is the control, and a task bounded by its own script filter is a lane that
-     * is meant to run whole.
+     * Giving each task its own filter is the control, and a task bounded by its own script filter or JUnit tags
+     * is a lane that is meant to run whole. A project-relative task path names the same task as its absolute one.
      */
     @Test
     void aSuiteLeftUnfilteredBesideAFilteredOneIsRefused(@TempDir Path dir) throws Exception {
@@ -77,6 +77,7 @@ class FocusedTestSelectionGuardTest {
                 allprojects {
                     apply plugin: 'java'
                     tasks.register('boundedGuard', Test) { filter.includeTestsMatching 'BoundedGuardTest' }
+                    tasks.register('taggedLane', Test) { useJUnitPlatform { includeTags 'perf' } }
                 }
                 apply from: '%s'
                 """.formatted(policy.toString().replace("\\", "\\\\").replace("'", "\\'")));
@@ -85,10 +86,14 @@ class FocusedTestSelectionGuardTest {
         assertNotEquals(0, refused.code(), refused::output);
         assertTrue(refused.output().contains("binds --tests to the task just before it"), refused::output);
         assertTrue(refused.output().contains(":test would run unfiltered"), refused::output);
+        Result relative = run(dir, ":test", "child:test", "--tests", "*Focused", "-Pfast", "--dry-run");
+        assertNotEquals(0, relative.code(), relative::output);
+        assertTrue(relative.output().contains(":test would run unfiltered"), relative::output);
 
         for (String[] allowed : List.of(
                 new String[] {":test", "--tests", "*Focused", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},
                 new String[] {":boundedGuard", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},
+                new String[] {":taggedLane", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},
                 new String[] {":test", ":child:test", "--dry-run"})) {
             Result result = run(dir, allowed);
             assertEquals(0, result.code(), result::output);

@@ -379,7 +379,8 @@ public final class InterpreterEngine {
             RuntimeInputs inputs, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        return focusedRuleData(def, doc, locale, rulePath, inputs, applyComputations, (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
+        return focusedRuleData(def, doc, locale, rulePath, inputs, applyComputations,
+                (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
     }
 
     /**

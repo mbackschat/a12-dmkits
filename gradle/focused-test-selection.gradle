@@ -4,7 +4,9 @@ gradle.taskGraph.whenReady { graph ->
     // Gradle binds --tests to the task just before it, so `:test :cli:test --tests X` filters :cli:test alone
     // and runs the whole root suite beside it. That cost every filtered root run of one session the full suite,
     // unnoticed because the targeted classes passed among the rest (2026-10-20). A task its build script bounds
-    // with its own filter is a lane meant to run whole, so only a task with no filter at all is refused.
+    // with its own filter or JUnit tags (`:adapter:perfGateTest`) is a lane meant to run whole, so only a task
+    // with no bound at all is refused. A relative path resolves against the root, where `build.sh` invokes;
+    // an abbreviated task name goes unmatched, which can only miss a refusal, never invent one.
     def requested = gradle.startParameter.taskRequests.collectMany { request ->
         def names = []
         request.args.eachWithIndex { arg, i ->
@@ -13,10 +15,17 @@ gradle.taskGraph.whenReady { graph ->
         names
     }
     def requestedTests = graph.allTasks.findAll { task ->
-        task instanceof AbstractTestTask && requested.any { it.startsWith(':') ? task.path == it : task.name == it }
+        task instanceof AbstractTestTask && requested.any {
+            it.contains(':') ? task.path == (it.startsWith(':') ? it : ':' + it) : task.name == it
+        }
+    }
+    def bounded = { task ->
+        !task.filter.includePatterns.isEmpty() || (task instanceof Test
+                && task.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions
+                && !task.options.includeTags.isEmpty())
     }
     def narrowed = requestedTests.findAll { !it.filter.commandLineIncludePatterns.isEmpty() }
-    def whole = requestedTests.findAll { it.filter.commandLineIncludePatterns.isEmpty() && it.filter.includePatterns.isEmpty() }
+    def whole = requestedTests.findAll { it.filter.commandLineIncludePatterns.isEmpty() && !bounded(it) }
     if (!narrowed.isEmpty() && !whole.isEmpty()) {
         throw new GradleException(
                 "Gradle binds --tests to the task just before it: ${whole*.path.join(', ')} would run unfiltered " +

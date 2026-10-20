@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
  * L2c — the {@link ConfigEditor}: a single chaining handle over the model's doc-config, gathering the
@@ -32,5 +33,15 @@ class ConfigEditorTest {
         assertEquals("UTC", doc.config().timeZone());
         assertFalse(doc.config().fieldRefByShortNameAllowed());
         assertTrue(s.toJson().contains("2030"));   // baseYear written (string-valued; no getter on DocConfig)
+    }
+
+    /** The read peer follows the session, so an op later in an {@code apply} batch sees an earlier switch. */
+    @Test
+    void readsTheConditionLanguageAsTheSessionCurrentlyDeclaresIt() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        assertEquals(ConditionLanguage.EN, s.conditionLanguage());
+
+        s.config().conditionLanguage("de_DE");
+        assertEquals(ConditionLanguage.DE, s.conditionLanguage());
     }
 }
