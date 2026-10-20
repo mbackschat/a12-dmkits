@@ -724,6 +724,7 @@ class InterpreterConfiguration private constructor(
     internal val customFieldTypes: CustomFieldTypeRegistry,
     internal val customConditions: CustomConditionRegistry,
     internal val evaluationInstant: Long?,
+    internal val instantSource: () -> Long,
 ) {
     companion object {
         @JvmStatic
@@ -737,6 +738,7 @@ class InterpreterConfiguration private constructor(
         private var customFieldTypes = CustomFieldTypeRegistry.empty()
         private var customConditions = CustomConditionRegistry.empty()
         private var evaluationInstant: Long? = null
+        private var instantSource: () -> Long = ::currentEpochMillis
 
         fun customFieldTypes(value: CustomFieldTypeRegistry) = apply { customFieldTypes = value }
         fun customConditions(value: CustomConditionRegistry) = apply { customConditions = value }
@@ -746,8 +748,11 @@ class InterpreterConfiguration private constructor(
          */
         fun evaluationInstant(epochMillis: Long) = apply { evaluationInstant = epochMillis }
 
+        /** The unpinned clock, replaceable so a test can show it is sampled per call rather than once. */
+        internal fun instantSource(source: () -> Long) = apply { instantSource = source }
+
         fun build(): InterpreterConfiguration =
-            InterpreterConfiguration(customFieldTypes, customConditions, evaluationInstant)
+            InterpreterConfiguration(customFieldTypes, customConditions, evaluationInstant, instantSource)
     }
 }
 
@@ -823,7 +828,7 @@ class Interpreter private constructor(
             val pinned = configuration.evaluationInstant?.let { EvalClock.at(it, zone) }
             engine = DmInterpreter.sharing(
                 model = definition,
-                clock = if (pinned != null) ({ pinned }) else ({ EvalClock.at(currentEpochMillis(), zone) }),
+                clock = if (pinned != null) ({ pinned }) else ({ EvalClock.at(configuration.instantSource(), zone) }),
                 predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                 customConditions = configuration.customConditions.engineMap(::adaptCondition),
                 customFieldTypes = configuration.customFieldTypes.engineMap(),

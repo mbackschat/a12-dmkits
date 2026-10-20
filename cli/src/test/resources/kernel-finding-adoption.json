@@ -11160,7 +11160,7 @@
       }
     },
     "kf564": {
-      "sha256": "4dec4b4decc5003aee78a88338f0cbb704bee141f91b4fb141e54e92c0467d1d",
+      "sha256": "3e757cbc2f90f7d0dee50b80971c26bf5af92ed84a2e17cd2f4cca0167a9e1fb",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11400,7 +11400,7 @@
       }
     },
     "kf570": {
-      "sha256": "cddb85b21dcc22cd617f7c24633eeff722164178f110d4b41ae6229aec7aa443",
+      "sha256": "8b84bcdb578e3033ddd44e99af330d956558271f09cbcb01baff8f884f62fbcf",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11417,14 +11417,14 @@
         "checker": {"state": "NOT_APPLICABLE", "basis": "Runtime rendering only; which tokens a requiredness message admits is static and stays KF490's.", "evidence": {}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no requiredness message text.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export renders no requiredness message text.", "evidence": {}},
-        "adapter": {"state": "ALREADY_CONFORMS", "basis": "RuntimeLaws supplies one label-or-name provider to both strategies, and every row agrees.", "evidence": {"the requiredness rendering oracle": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#theFourTokensAreReplacedInSuccessionOverTheWholeText", "witness": "Every discriminating row on dynamic Groovy and generated Java."}}},
-        "interpreter": {"state": "APPLIED", "basis": "renderRequiredFieldMessage runs the four passes in A12's order (IF407).", "evidence": {"the requiredness renderer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#theFourTokensAreReplacedInSuccessionOverTheWholeText", "witness": "The interpreter's text equals both strategies' on every row, the German model and the repeated row included."}}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "RuntimeLaws supplies one label-or-name provider to both strategies, and every row agrees.", "evidence": {"the requiredness rendering oracle": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#everyTokenIsReplacedInSuccessionOverTheWholeText", "witness": "Every discriminating row on dynamic Groovy and generated Java."}}},
+        "interpreter": {"state": "APPLIED", "basis": "renderRequiredFieldMessage runs the five passes in A12's order (IF407).", "evidence": {"the requiredness renderer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequirednessTextSubstitutionDiffTest.kt#everyTokenIsReplacedInSuccessionOverTheWholeText", "witness": "The interpreter's text equals both strategies' on every row, the German model and the repeated row included."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders the message through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-10 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
       }
     },
     "kf571": {
-      "sha256": "06f4d2cae18bea07f7dec92a4dd458f5f4f68b98d32473524bdefee64c4dde81",
+      "sha256": "89b9f0713aa8e083cba7f5deebff7e7115c503e7f7ba961798145f9e87a38d5c",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11520,25 +11520,25 @@
       }
     },
     "kf573": {
-      "sha256": "f76d2474f2e8358d446195717e80eb91fa3ddab9bc534784e3fad69adb120553",
+      "sha256": "04e74ee75671c5950f04cd36300b91dd47469fa86691c15de2a46761e52309ef",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["a star below a joined group"],
-        "checker": ["a star below a joined group"],
+        "checker": ["a star below a joined group", "the placements"],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["a star below a joined group"],
-        "interpreter": ["a star below a joined group"],
+        "interpreter": ["a star below a joined group", "a rule reading both sides only through stars"],
         "dmtool-cli": [],
         "a12-kernel-lean": ["a star below a joined group"]
       },
       "consumers": {
         "dmkits": {"state": "ALREADY_CONFORMS", "basis": "BoundModel authors every measured read beside the join, one and two starred levels included, and the kits refuse none.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Seven rules and a computation authored through BoundModel and Dsl."}}},
-        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker refuses none of these reads, and a12-kernel-lean's static rows replay to A12's verdicts.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#a12AndTheCheckerAdmitTheModel", "witness": "A12 and the portable checker both admit the model."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker refuses none of the admitted reads, reports A12's MVK_NO_WILDCARD on each refused placement, and a12-kernel-lean's static rows replay to A12's verdicts.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#a12AndTheCheckerAdmitTheModel", "witness": "A12 and the portable checker both admit the model."}, "the placements": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#whereAStarBindsAnUnstarredLevelBesideTheJoin", "witness": "Six placements, A12's and the checker's codes equal on each."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned per SKU, and the unmatched side's references are pinned.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#theKernelReadsEachSidesChildrenAtItsJoinedRow", "witness": "Three documents, firings per SKU on the dynamic strategy, including the -5 row."}}},
-        "interpreter": {"state": "APPLIED", "basis": "ParallelRowContext.domainFor reads the side's joined row, a star joins its side, and the side's index field is named beside a starred reference (IF410).", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter against both strategies on every document, references and fill-to-fix included."}}},
+        "interpreter": {"state": "APPLIED", "basis": "ParallelRowContext.domainFor reads the side's joined row, a star joins its side, a star-only rule joins as any other, and the side's index field is named beside a starred reference (IF410).", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter against both strategies on every document, references and fill-to-fix included."}, "a rule reading both sides only through stars": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#aRuleReadingBothSidesOnlyThroughStars", "witness": "It fires for the one SKU whose own order counts no line, on all three engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these reads through the checker and the interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-12 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
       }

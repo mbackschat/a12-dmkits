@@ -13581,6 +13581,7 @@ a12-kernel-lean `SPEC-2026-10-13-13` and `-15`. One premium form declares each N
 | max `2`, `minValue: 1.0` | `1` / `0.99` | nothing / `zahlZuKlein` |
 | max `0` | `"٣"` (Arabic-Indic three), max `2` `"٣.٥"`, amount `(2, 2)` `"５"` (fullwidth) | nothing: converted to `3`, `3.5`, `5` |
 | max `0`, `leadingZerosAllowed` | `"٠٣"` / `"0٣"` | nothing / `zahlHatUngueltigeZeichen` |
+| max `0`, leading zeros not allowed | `"03"`, `"٠٣"`, `"٣5"` | nothing: each converts to `3` or `35` *(added 2026-10-21)* |
 | max `0` | 100,000 ASCII zeros then `1`; max `2`: `1.` then 99,999 zeros | nothing |
 | max `0` | `"1e100000"`, native `1e100000`, `1` then 100,000 zeros | `stelligkeitZuLang` |
 | max `0`, `leadingZerosAllowed` | 100,000 zeros then `1`; max `0`: 100,000 letters | `wertZuLang` |
@@ -13715,11 +13716,11 @@ Not settled here, and recorded as a gap: A12 withholds `MVK_MIN_VALUE_BIGGER_THA
 
 Locked by `adapter.laws.CheckerDeclarationAdmissionAgreementTest` (A12 and the checker per row), replayed on both checker runtimes by `consistency.DeclarationAdmissionReadingsTest`; the second carrier by `rulekit.validate.laws.ShortNameFlagSpellingLawsTest` and, at runtime, `adapter.laws.ShortNameRefDiffTest`. The bound law is `numberBoundsInverted` in `:predicates`, which modelkit's `NumberSpec` now consumes (`modelkit.NumberBoundRoundingTest`).
 
-## §4 supplement — a required field's own message is rendered by four literal replace-all passes, `$Feld$`, `$field$`, `$Feld.Wert$`, `$field.value$`, in either condition language (tri-engine differential, 2026-10-20) <a id="kf570"></a>
+## §4 supplement — a required field's own message is rendered by five literal replace-all passes, `$<fieldName>.Value$`, `$Feld$`, `$field$`, `$Feld.Wert$`, `$field.value$`, in either condition language (tri-engine differential, 2026-10-20) <a id="kf570"></a>
 
 > Fold: pending — beside the requiredness producer in [KF42](#kf42).
 
-a12-kernel-lean's `SPEC-2026-10-14-10` report, re-measured here on an own-domain claim model. Every model is consistency-admitted, and dynamic Groovy, generated Java and the interpreter render the same text on every row. [KF42](#kf42) measured one requiredness form (`Cost $$ $field$`). This is the producer's whole grammar: the passes run in the order above over the whole text, the label passes insert the label or name, and the value passes insert the empty value, because only an empty field draws the message.
+a12-kernel-lean's `SPEC-2026-10-14-10` report, re-measured here on an own-domain claim model. Every model is consistency-admitted, and dynamic Groovy, generated Java and the interpreter render the same text on every row. [KF42](#kf42) measured one requiredness form (`Cost $$ $field$`). This is the producer's whole grammar: the passes run in the order above over the whole text, the label passes insert the label or name, and the value passes insert the empty value, because only an empty field draws the message. *(Corrected 2026-10-21: this said four passes. A source reading of the formal-error controller found a fifth, `$<fieldName>.Value$`, ahead of the four; rows r13–r14 measure it.)*
 
 | row | label | template | rendered | what it separates |
 |---|---|---|---|---|
@@ -13730,13 +13731,15 @@ a12-kernel-lean's `SPEC-2026-10-14-10` report, re-measured here on an own-domain
 | r09 | — | `$Other$ $FIELD$ $field.Wert$ $$ $field` | unchanged | any other dollar sequence, a doubled pair and an unterminated token stay verbatim |
 | r10 | `Insurer $field.value$ x` | `$field$` | `Insurer  x` | a later pass substitutes a token carried in by the label |
 | r11 | `Carrier $field$` | `$Feld$` | `Carrier Carrier $field$` | … exactly once: the inserted label's `$field$` is replaced by the next pass, and that pass's own insert is not |
+| r13 | — | `$<fieldName>.Value$ end` | `  end` | the fifth token, replaced by the empty value |
+| r14 | — | `$field$<fieldName>.Value$` | `$field` | it runs first: run last, `$field$` would already have taken the name and left `<fieldName>.Value$` unopened |
 | d01 | `Kunde` | `$field$ $Feld$ $field.value$\|$Feld.Wert$` in a `de_DE` model | `Kunde Kunde \|` | both languages' tokens apply in a German-condition model, unlike the invalid-value producer, whose tokens follow the condition language ([KF42](#kf42)) |
 
 A repeated row's required field renders once per empty row, with the same text (r12). Each template opens with its row tag in the lock, so one validation per engine yields every row.
 
 *(Locked: `adapter.laws.RequirednessTextSubstitutionDiffTest`; the interpreter's rendering on JVM and Node by `FieldOwnedMessageTest`.)*
 
-## §11 supplement — a computation copying an empty Confirm leaves its Confirm target empty, and no admitted computation can hand a Confirm target any other `False` (tri-engine differential + `checkConsistency`, 2026-10-20) <a id="kf571"></a>
+## §11 supplement — a computation copying an empty Confirm leaves its Confirm target empty (tri-engine differential + `checkConsistency`, 2026-10-20) <a id="kf571"></a>
 
 > Fold: pending — beside the empty-operand facts of §11.
 
@@ -13749,7 +13752,7 @@ Found replaying a12-kernel-lean's row-copy carriers (`filter-suppression-and-row
 | `TermsPending := True` when `[Terms] != True` (Boolean) | empty / `true` | `true` / empty |
 | a Boolean target copying a Confirm, a Confirm target copying a Boolean | — | refused, `MVK_INVALID_COMPARE_TO_YES` |
 
-The refused rows are why the mechanism stays open. A computation is checked as `[target] == [source]`, and a Confirm compares only with a Confirm or the constant `True`, so an empty Confirm copy is the one admitted way a Confirm target meets `False`. "The empty source reads empty" and "a `False` is stored as empty" therefore agree on every admitted model, and nothing authorable separates them.
+The refused rows are why the mechanism stays open. A computation is checked as `[target] == [source]`, and a Confirm compares only with a Confirm or the constant `True`, so on every shape measured an empty Confirm copy is the only way a Confirm target meets `False`, and "the empty source reads empty" and "a `False` is stored as empty" agree. No shape found separates them; that none exists is not claimed. *(Corrected 2026-10-21: the title and this paragraph said no admitted computation can hand a Confirm target any other `False`, a reachability claim the measured shapes do not settle.)* The cross-kind refusals are also locked for the checker, by `adapter.laws.CheckerFieldCopyCrossAgreementTest` and `CheckerComputationJoinedConditionAgreementTest`.
 
 *(Locked: `adapter.laws.ConfirmComputationOperandDiffTest`.)*
 
@@ -13782,7 +13785,11 @@ a12-kernel-lean's `SPEC-2026-10-14-12` report, re-measured here. An order-fulfil
 | `NumberOfFilledFields` over `Orders/Lines*/Units` or `Orders/Lines*/Picks*/Count`, with `Stock` the only side read plainly | the rule still joins `Orders`: it fires for a SKU with stock and no order, at that stock row |
 | any of these for a side with no row for the SKU | the children read empty and the message names them at that side's `-5` row with the starred level at `[0]`, e.g. `/Fulfilment[1]/Orders[-5]/Lines[0]/Units` |
 | a computation on `Stock/Reserved`: `[Orders/Qty] + Sum(Orders/Lines*/Units)` | agrees across both strategies and the interpreter |
+| `AllFieldsFilled`, `NotAllFieldsFilled(Stock/Bins*/Level)` | decided on the SKU's own bins; a side with no row reads its declared capacity with nothing filled, so `NotAllFieldsFilled` fires there |
+| a rule reading both sides only through stars, error field `Stock/Bins/Level`: `AtLeastOneFieldFilled(Stock/Bins*/Level) And NumberOfFilledFields(Orders/Lines*/Units) == 0` | still joins: it fires for the SKU whose own order counts no line, at `Stock[n]/Bins[1]/Level`, beside a SKU whose order does |
+| a star that also binds an unstarred repeatable level, `Sum(Orders/Lines/Picks*/Count)`, or a third group's, `Sum(Returns/Items*/Units)` | `MVK_NO_WILDCARD` for both, from a rule or computation declared on `Stock`; the `Picks` star is admitted with the error field or target on `Orders/Lines` |
+| `[Orders/Qty] + Sum(Returns*/Items*/Units)` on `Stock/Reserved` | admitted, and agrees across both strategies and the interpreter: a fully starred third group sums under the common parent |
 
-So the domain of a star below a side is that side's joined row. The read also puts that side's index field into the message's referenced and fill-to-fix sets, as a plain read of the side does: with only the starred lines reading `Orders`, `Orders[-5]/Sku` is in both. Not claimed: a gate order, partial-validation dispatch, a keyed read into a child group, a rule declared inside a joined group, and a star under a repeatable frame of a framed join.
+So the domain of a star below a side is that side's joined row. The read also puts that side's index field into the message's referenced and fill-to-fix sets, as a plain read of the side does: with only the starred lines reading `Orders`, `Orders[-5]/Sku` is in both. Not claimed: a gate order, partial-validation dispatch, a keyed read into a child group, a rule declared inside a joined group, a runtime account of the shapes admitted with their declaration on `Orders/Lines`, and a star under a repeatable frame of a framed join. *(Extended 2026-10-21 with the rows from `AllFieldsFilled` on, after a cold review.)*
 
 *(Locked: `adapter.laws.JoinedSideChildReadDiffTest`. a12-kernel-lean's `parallel-child-reads-2026-10-14` captures replay to the same messages here, references included.)*

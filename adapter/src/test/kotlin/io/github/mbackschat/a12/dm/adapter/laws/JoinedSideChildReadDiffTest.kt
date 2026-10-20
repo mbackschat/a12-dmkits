@@ -1,12 +1,19 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
+import io.github.mbackschat.a12.dm.core.Severity as CoreSeverity
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -35,7 +42,9 @@ class JoinedSideChildReadDiffTest {
                 .numberField("OnHand") { it.fractionDigits(0) }
                 .stringField("Note") { }
                 .numberField("Reserved") { it.fractionDigits(0) }
-                .group("Bins") { b -> b.repeatable(2).numberField("Level") { it.fractionDigits(0) } } } }
+                .group("Bins") { b -> b.repeatable(2).numberField("Level") { it.fractionDigits(0) } } }
+            .group("Returns") { r -> r.repeatable(2)
+                .group("Items") { i -> i.repeatable(2).numberField("Units") { it.fractionDigits(0) } } } }
         .build().toJson()
 
     private val bound = BoundModel.ofJson(skeleton)
@@ -93,6 +102,125 @@ class JoinedSideChildReadDiffTest {
             listOf(stock("A", 1, """{"Level":3}"""), stock("B", 2, """{"Level":1}"""))),
     )
 
+    /**
+     * SKU A's stock fills every bin and its order counts no line, SKU B the reverse, so only a joined-row read fires
+     * these probes for A alone: pooled over the common parent, A's count would see B's lines and B's empty bins.
+     */
+    private val probes = documents + ("full bins beside an uncounted order" to sheet(
+        listOf(order("A", 1), order("B", 1, """{"Units":2}""")),
+        listOf(stock("A", 4, """{"Level":1},{"Level":2}"""), stock("B", 1))))
+
+    /**
+     * The quantifiers that read a star's declared range, at matched and unmatched sides: they reach the same joined
+     * row, and an unmatched side's `-5` row reads as its declared capacity with nothing filled (cold review 2026-10-21).
+     * The group quantifiers take no star (`AllGroupsFilled(Stock/Bins*)` draws `MVK_NO_WILDCARDS_G_ALLOWED`).
+     */
+    @Test
+    fun aDeclaredRangeQuantifierReadsTheJoinedRowToo() {
+        val quantified = bound.addAll(listOf(
+            rule("BINS_ALL_LEVELLED", ordered.and(Dsl.allFieldsFilled(levels))),
+            rule("BINS_NOT_ALL_LEVELLED", ordered.and(Dsl.notAllFieldsFilled(levels))),
+        ), emptyList()).toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(quantified), "A12 admits every rule")
+        assertEquals(linkedMapOf(
+            "every SKU on both sides, stock in the opposite order" to listOf("BINS_NOT_ALL_LEVELLED@1", "BINS_NOT_ALL_LEVELLED@2"),
+            // The SKU without stock reads its bins at the `-5` row: declared capacity with nothing filled.
+            "an order without stock and stock without an order" to listOf("BINS_NOT_ALL_LEVELLED@-5", "BINS_NOT_ALL_LEVELLED@1"),
+            "every child filled" to listOf("BINS_NOT_ALL_LEVELLED@1", "BINS_NOT_ALL_LEVELLED@2"),
+            "full bins beside an uncounted order" to listOf("BINS_ALL_LEVELLED@1", "BINS_NOT_ALL_LEVELLED@2"),
+        ), firedByStockRow(quantified, probes))
+        DocumentDifferential.assertAgree(quantified, probes)
+    }
+
+    /**
+     * A rule whose only reads of both sides are stars: the error field is a bin's level, so nothing is read plainly
+     * (cold review 2026-10-21). A12 still joins the two groups: it fires for SKU A alone, whose own order counts no
+     * line, where a pooled read of `Orders` would see B's line.
+     */
+    @Test
+    fun aRuleReadingBothSidesOnlyThroughStars() {
+        val starOnly = bound.addAll(listOf(
+            bound.rule(fulfilment).name("star_only_rule")
+                .errorField(bound.field("/Fulfilment/Stock/Bins/Level"))
+                .`when`(Dsl.atLeastOneFieldFilled(levels).and(Dsl.numberOfFilledFields(units).eq(0)))
+                .code("STAR_ONLY").severity(Severity.ERROR).message(Dsl.en("Check the stock of this SKU.")).build(),
+        ), emptyList()).toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(starOnly), "A12 admits the rule")
+        assertEquals(probes.mapValues { (name, _) ->
+            if (name == "full bins beside an uncounted order") listOf("STAR_ONLY@1") else emptyList()
+        }, firedByStockRow(starOnly, probes))
+        DocumentDifferential.assertAgree(starOnly, probes)
+    }
+
+    /**
+     * A star that also binds an unstarred repeatable level, below a joined group or below the common parent: what A12
+     * says of each placement, and what the interpreter does with the ones A12 admits (cold review 2026-10-21).
+     *
+     * A12 refuses every placement whose declaration does not sit on that level. Where it does (R2, C2), the level
+     * becomes a second parallel iteration group without an index, which the interpreter declines first, so neither
+     * runtime decline for an unmodeled binding is reached by any of these. C4, the starred control, is evaluated:
+     * [aFullyStarredThirdGroupIsReadFromTheCommonParent].
+     */
+    @Test
+    fun whereAStarBindsAnUnstarredLevelBesideTheJoin() {
+        val picksBelowLines = Dsl.sum(bound.flatten("/Fulfilment/Orders/Lines/Picks*/Count"))
+        fun probe(errorField: String, condition: Condition) = bound.rule(fulfilment).name("probe_rule")
+            .errorField(bound.field(errorField)).`when`(condition)
+            .code("PROBE").severity(Severity.ERROR).message(Dsl.en("Check the picks.")).build()
+        fun computation(target: String, value: NumberExpr) =
+            bound.computation(bound.num(target)).name("ProbeComputation").calc(value)
+                .message(Dsl.en("Probe computed.")).build()
+        val computing = { target: String, value: NumberExpr -> emptyList<Rule>() to listOf(computation(target, value)) }
+        val shapes = linkedMapOf(
+            "R1 rule, error field on the other side" to (listOf(probe("/Fulfilment/Stock/Note",
+                stocked.and(picksBelowLines.gt(0)))) to emptyList()),
+            "R2 rule, error field on the unstarred level" to (listOf(probe("/Fulfilment/Orders/Lines/Units",
+                stocked.and(bound.num("/Fulfilment/Orders/Lines/Units").filled()).and(picksBelowLines.gt(0)))) to emptyList()),
+            "C1 computation into the other side" to computing("/Fulfilment/Stock/Reserved", qty.asNumber().plus(picksBelowLines)),
+            "C2 computation into the unstarred level" to
+                computing("/Fulfilment/Orders/Lines/Units", onHand.asNumber().plus(picksBelowLines)),
+            "C3 computation, third group unstarred" to computing("/Fulfilment/Stock/Reserved",
+                qty.asNumber().plus(Dsl.sum(bound.flatten("/Fulfilment/Returns/Items*/Units")))),
+            "C4 computation, third group starred" to computing("/Fulfilment/Stock/Reserved",
+                qty.asNumber().plus(Dsl.sum(bound.flatten("/Fulfilment/Returns*/Items*/Units")))),
+        )
+        val observed = shapes.mapValues { (_, programs) ->
+            val json = ModelWriter.addAll(skeleton, programs.first, programs.second)
+            val a12 = KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.selfContained())
+                .filter { it.severity() == CoreSeverity.ERROR }.mapNotNull { CODE.find(it.message())?.groupValues?.get(1) }
+                .toSortedSet()
+            val checker = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSortedSet()
+            if (a12.isNotEmpty()) return@mapValues "refused $a12; checker $checker"
+            val prepared = PreparedModel.loadExpandedJson(json)
+            val interpreter = prepared.createInterpreter()
+            val audit = interpreter.supportReport().unsupported.map { it.reason }
+            val runtime = interpreter.compute(prepared.documents.readDocument(documents.values.first())).unsupported.map { it.reason }
+            "admitted; checker $checker; audit=$audit; compute=$runtime"
+        }
+        val unindexed = "[parallel iteration group /Fulfilment/Orders/Lines has no index field]"
+        assertEquals(linkedMapOf(
+            "R1 rule, error field on the other side" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
+            "R2 rule, error field on the unstarred level" to "admitted; checker []; audit=$unindexed; compute=[]",
+            "C1 computation into the other side" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
+            "C2 computation into the unstarred level" to "admitted; checker []; audit=$unindexed; compute=$unindexed",
+            "C3 computation, third group unstarred" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
+            "C4 computation, third group starred" to "admitted; checker []; audit=[]; compute=[]",
+        ), observed)
+    }
+
+    /** A star over every level of a third group, beside the join, sums that group's rows under the common parent. */
+    @Test
+    fun aFullyStarredThirdGroupIsReadFromTheCommonParent() {
+        val returned = bound.addAll(emptyList(), listOf(
+            bound.computation(bound.num("/Fulfilment/Stock/Reserved")).name("ReservedComputation")
+                .calc(qty.asNumber().plus(Dsl.sum(bound.flatten("/Fulfilment/Returns*/Items*/Units"))))
+                .message(Dsl.en("Reservation computed.")).build())).toJson()
+        val withReturns = documents.mapValues { (_, json) ->
+            json.removeSuffix("}}") + ""","Returns":[{"Items":[{"Units":2},{"Units":3}]},{"Items":[{},{"Units":4}]}]}}"""
+        }
+        DocumentDifferential.assertAgree(returned, withReturns)
+    }
+
     @Test
     fun a12AndTheCheckerAdmitTheModel() {
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model), "A12 admits every rule")
@@ -142,10 +270,6 @@ class JoinedSideChildReadDiffTest {
      */
     @Test
     fun theKernelReadsEachSidesChildrenAtItsJoinedRow() {
-        val fired = documents.mapValues { (_, json) ->
-            DocumentDifferential.kernel(model, json, dynamic = true).messages
-                .map { it.code + "@" + it.pointer.substringAfter("Stock[").substringBefore("]") }.sorted()
-        }
         assertEquals(linkedMapOf(
             "every SKU on both sides, stock in the opposite order" to listOf(
                 "BINS_EMPTY@1", "BINS_STOCKED@2", "BINS_UNFILLED@1", "FIRST_BIN_STOCKED@2",
@@ -154,6 +278,16 @@ class JoinedSideChildReadDiffTest {
                 "BINS_EMPTY@-5", "BINS_STOCKED@1", "BINS_UNFILLED@-5", "FIRST_BIN_STOCKED@1",
                 "ONLY_LINES_UNCOUNTED@2", "ONLY_PICKS_UNCOUNTED@1", "ONLY_PICKS_UNCOUNTED@2"),
             "every child filled" to listOf("BINS_STOCKED@1", "BINS_STOCKED@2", "FIRST_BIN_STOCKED@1", "FIRST_BIN_STOCKED@2"),
-        ), fired)
+        ), firedByStockRow(model, documents))
+    }
+
+    /** Each document's dynamic-Kernel firings as `code@row`, the `Stock` row read from the message pointer. */
+    private fun firedByStockRow(model: String, sheets: Map<String, String>) = sheets.mapValues { (_, json) ->
+        DocumentDifferential.kernel(model, json, dynamic = true).messages
+            .map { it.code + "@" + it.pointer.substringAfter("Stock[").substringBefore("]") }.sorted()
+    }
+
+    private companion object {
+        val CODE = Regex("""\[(MVK_\w+)]""")
     }
 }

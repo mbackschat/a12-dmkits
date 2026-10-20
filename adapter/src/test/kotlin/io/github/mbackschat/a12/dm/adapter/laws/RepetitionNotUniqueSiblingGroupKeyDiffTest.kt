@@ -78,6 +78,20 @@ class RepetitionNotUniqueSiblingGroupKeyDiffTest {
         emptySet(),
     )
 
+    /** The same documents through the full message signature, the referenced and fill-to-fix pointers included. */
+    @Test
+    fun theReferencesAgreeToo() {
+        fun json(lines: List<Line>) = """{"Order":{"Lines":[""" + lines.joinToString(",") { line ->
+            listOfNotNull(""""Sku":"${line.sku}"""",
+                line.supplier?.let { """"Supplier":{"Code":"$it"}""" },
+                line.batch?.let { """"Batch":{"Number":"$it"}""" }).joinToString(",", "{", "}")
+        } + "]}}"
+        DocumentDifferential.assertAgree(model, linkedMapOf(
+            "a duplicate key across sibling groups" to json(listOf(Line("a", "S1", "B1"), Line("a", "S1", "B1"), Line("b", "S2", null))),
+            "an absent sibling group" to json(listOf(Line("a", "S1", null), Line("b", "S1", null))),
+        ))
+    }
+
     private fun assertAgrees(lines: List<Line>, expected: Set<String>) {
         val def = ModelLoader.load(model)
         val kDoc = RuntimeLaws.doc().group(ROOT, 1)

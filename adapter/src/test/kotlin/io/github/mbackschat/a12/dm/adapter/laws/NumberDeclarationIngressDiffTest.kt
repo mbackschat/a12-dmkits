@@ -159,6 +159,11 @@ class NumberDeclarationIngressDiffTest {
             add(Triple("Rate", quoted("٣.٥"), emptyList()))
             add(Triple("ZeroLed", quoted("٠٣"), emptyList()))
             add(Triple("ZeroLed", quoted("0٣"), listOf("zahlHatUngueltigeZeichen")))
+            // Where leading zeros are not allowed the value still converts, ASCII zero or not, and so does a mix of
+            // scripts without one (cold review 2026-10-21).
+            add(Triple("Units", quoted("03"), emptyList()))
+            add(Triple("Units", quoted("٠٣"), emptyList()))
+            add(Triple("Units", quoted("٣5"), emptyList()))
             add(Triple("Amount", quoted("５"), emptyList()))
             // A converted value never meets the technical guard, however long any rendering of it is…
             add(Triple("Units", quoted("0".repeat(100_000) + "1"), emptyList()))

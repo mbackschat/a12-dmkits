@@ -13,9 +13,10 @@ import java.util.Locale
 
 /**
  * Differential (groovy-dynamic == java-static == interpreter) for a required field's own message text, which A12
- * renders by four literal replace-all passes over the whole text: `$Feld$`, `$field$` by the label or name, then
- * `$Feld.Wert$`, `$field.value$` by the empty value, every other dollar sequence verbatim (a12-kernel-lean's
- * SPEC-2026-10-14-10 report, re-measured here on an own-domain claim model).
+ * renders by literal replace-all passes over the whole text: `$<fieldName>.Value$` by the empty value, then
+ * `$Feld$`, `$field$` by the label or name, then `$Feld.Wert$`, `$field.value$` by the empty value, every other
+ * dollar sequence verbatim (a12-kernel-lean's SPEC-2026-10-14-10 report, re-measured here on an own-domain claim
+ * model; the first pass added after a source reading of the formal-error controller, 2026-10-21).
  *
  * The rows that tell the succession apart from a one-pass token scan are the overlaps, where one pass consumes
  * or completes text a later one reads (`$field$Feld$`), and a label carrying a token, which a later pass
@@ -39,10 +40,15 @@ class RequirednessTextSubstitutionDiffTest {
         Row("Channel", null, "r09 \$Other\$ \$FIELD\$ \$field.Wert\$ \$\$ \$field", "r09 \$Other\$ \$FIELD\$ \$field.Wert\$ \$\$ \$field"),
         Row("Insurer", "Insurer \$field.value\$ x", "r10 \$field\$", "r10 Insurer  x"),
         Row("Carrier", "Carrier \$field\$", "r11 \$Feld\$", "r11 Carrier Carrier \$field\$"),
+        // The value token the formal-error controller replaces before the other four (cold review 2026-10-21).
+        Row("Underwriter", null, "r13 \$<fieldName>.Value\$ end", "r13  end"),
+        // It runs first: the other passes then find `$field` with no closing dollar. Run last, `$field$` would
+        // already have taken the label and left `<fieldName>.Value$` with no opening dollar.
+        Row("Office", null, "r14 \$field\$<fieldName>.Value\$", "r14 \$field"),
     )
 
     @Test
-    fun theFourTokensAreReplacedInSuccessionOverTheWholeText() {
+    fun everyTokenIsReplacedInSuccessionOverTheWholeText() {
         assertAgrees(model(english, "en_US"), english)
     }
 

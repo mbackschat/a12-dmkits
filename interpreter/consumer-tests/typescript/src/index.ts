@@ -1,4 +1,5 @@
 import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
 
 import {
   A12PartiallyKnownMultiPointer,
@@ -847,7 +848,7 @@ hostileEvidence.push(
   "PreparedDocumentApi.tryReadDocument.document.*",
 );
 
-// `Today` reads the pinned instant as wall time in the model's zone: 22:30 UTC on 20 October is the 21st in Berlin.
+// `Today` reads the pinned instant as wall time in the model's zone: 23:30 UTC on 3 February 2001 is the 4th in Berlin.
 const renewal = PreparedModel.loadExpandedJson(JSON.stringify({
   header: {id: "renewal"},
   content: {
@@ -865,11 +866,15 @@ const renewal = PreparedModel.loadExpandedJson(JSON.stringify({
     }]},
   },
 }));
-const renewalDue = renewal.documents.readDocument({Renewal: {DueOn: "2026-10-21"}});
-const pinnedCodes = renewal.createInterpreter({evaluationInstant: new Date("2026-10-20T22:30:00Z")})
+const renewalDue = renewal.documents.readDocument({Renewal: {DueOn: "2001-02-04"}});
+const pinnedCodes = (evaluationInstant: Date) => renewal.createInterpreter({evaluationInstant})
   .validateFull(renewalDue).findings.map(({code}) => code).join(",");
-if (pinnedCodes !== "DUE_TODAY") {
-  throw new Error(`a pinned evaluation instant was not read in the model's zone: ${pinnedCodes}`);
+if (pinnedCodes(new Date("2001-02-03T23:30:00Z")) !== "DUE_TODAY") {
+  throw new Error("a pinned evaluation instant was not read in the model's zone");
+}
+const otherRealmDate = runInNewContext('new Date("2001-02-03T23:30:00Z")') as Date;
+if (pinnedCodes(otherRealmDate) !== "DUE_TODAY") {
+  throw new Error("a Date from another realm was not read as the evaluation instant");
 }
 if (!renewal.createInterpreter().supportReport().fullySupported) {
   throw new Error("the default evaluation instant left Today unsupported");

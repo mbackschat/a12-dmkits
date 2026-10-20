@@ -1937,9 +1937,11 @@ class Document(internal val config: DocumentConfig) {
 
         /**
          * [common], for a domain whose first iterating level is [iteratesFrom] (0-based). A repeatable level between
-         * the common parent and that level would be bound — to a joined, framed or third group's row — which no
-         * measurement covers, so it is refused loudly; `IterationScopes.requireParallelDocumentSupport` refuses such a
-         * star before any document is read. A non-repeatable wrapper there has one row and binds nothing.
+         * the common parent and that level, other than a joined group [domainFor] routes, would be bound to a framed
+         * or third group's row, which no measurement covers, so it is refused loudly;
+         * `IterationScopes.requireParallelDocumentSupport` refuses such a star before any document is read. For a third
+         * group A12 refuses it as `MVK_NO_WILDCARD` (`whereAStarBindsAnUnstarredLevelBesideTheJoin`). A non-repeatable
+         * wrapper there has one row and binds nothing.
          */
         private fun commonFor(groupPath: String, iteratesFrom: Int): RowContext {
             val parts = partsOf(groupPath)
@@ -1959,14 +1961,19 @@ class Document(internal val config: DocumentConfig) {
          * that side's level, else the common parent's row ([commonFor]). A side without a row for this key reads its
          * `-5` row, under which no repetition exists, so the domain is empty and its references keep `-5`
          * (KERNEL-FINDINGS KF573, `adapter.laws.JoinedSideChildReadDiffTest`). A repeatable level between the side and
-         * [iteratesFrom] stays bound and unmodeled; A12 refuses it as `MVK_NO_WILDCARD`.
+         * [iteratesFrom] stays bound and unmodeled. A12 refuses that star as `MVK_NO_WILDCARD` unless the declaration
+         * sits on the level, and there the level is an unindexed parallel iteration group the support audit declines
+         * first (`whereAStarBindsAnUnstarredLevelBesideTheJoin`), so this refusal guards a shape no measured model reaches.
          */
         private fun domainFor(groupPath: String, iteratesFrom: Int): RowContext {
             val side = groupOf(groupPath) ?: return commonFor(groupPath, iteratesFrom)
             val sideDepth = groupDepths.getValue(side)
             if (iteratesFrom < sideDepth) return commonFor(groupPath, iteratesFrom)
             val parts = partsOf(groupPath)
-            if (bindsRepeatable(parts, sideDepth, minOf(iteratesFrom, parts.size))) {
+            // A repeatable frame above the side would bind too, and no measurement covers a framed join (KF573).
+            if (bindsRepeatable(parts, commonDepth, sideDepth - 1) ||
+                bindsRepeatable(parts, sideDepth, minOf(iteratesFrom, parts.size))
+            ) {
                 throw UnsupportedConstructException(
                     "an aggregate of $groupPath bound below the joined group $side is not modeled")
             }

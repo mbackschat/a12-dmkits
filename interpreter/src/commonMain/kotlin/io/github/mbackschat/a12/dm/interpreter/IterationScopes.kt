@@ -60,13 +60,11 @@ internal class IterationScopes(private val model: ModelDef) {
         val refs = nonStarredRefs(ast)
         val semanticAnchors = semanticIndexSpecs(ast, includeFilterBodies = false).flatMap(::ordinaryLevelsOfSelection)
         val scope = (listOfNotNull(deepestRepeatableAnchor(refs)) + semanticAnchors)
-            .maxByOrNull { it.count { c -> c == '/' } } ?: run {
-            val starAnchor = starBindingAnchor(ast)
-            return if (starAnchor != null) IterationPlan.Rows(starAnchor)
-            else rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
-        }
-        // A star bound to another indexed group joins it as a field read does: alone it anchors the join
-        // (KERNEL-FINDINGS KF573). A level below the scope is the scope's own child, not a join partner.
+            .maxByOrNull { it.count { c -> c == '/' } } ?: starBindingAnchor(ast)
+            ?: return rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
+        // A star bound to another indexed group joins it as a field read does: alone it anchors the join, and a
+        // rule reading both sides only through stars joins them too (KERNEL-FINDINGS KF573). A level below the
+        // scope is the scope's own child, not a join partner.
         val starAnchors = starRefs(ast).flatMap(::bindingLevels)
             .filter { it in model.repeatable && !it.startsWith("$scope/") }
         val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors + starAnchors)
@@ -221,12 +219,13 @@ internal class IterationScopes(private val model: ModelDef) {
     private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>, commonParent: String) {
         // A joined row reads a starred domain from its common-parent row (KERNEL-FINDINGS KF567), or, below a joined
         // group, from that group's joined row (KF573); the runtime twin is the parallel row's `domainFor`. So a star
-        // may bind no repeatable level below the common parent other than a joined group and the frames above it. A
+        // may bind no repeatable level below the common parent other than a joined group; a framed join's frame is
+        // not measured, so it stays declined. A
         // keyed read needs no twin here: A12 refuses one below a joined group (`MVK_MULTIPLE_INDEX_FIELDS`) and one
         // under an unstarred repeatable ancestor (`MVK_NO_WILDCARD`), `adapter.laws.JoinedRowAggregateDiffTest`.
         val commonDepth = pathParts(commonParent).size
         fun boundByJoin(star: Expr.Star, level: String) =
-            joined.any { side -> star.path.startsWith("$side/") && (side == level || side.startsWith("$level/")) }
+            joined.any { side -> star.path.startsWith("$side/") && side == level }
         starRefs(ast).firstOrNull { star ->
             bindingLevels(star).drop(commonDepth).any { it in model.repeatable && !boundByJoin(star, it) }
         }

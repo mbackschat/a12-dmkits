@@ -178,7 +178,9 @@ export const evaluationInstantMillis = (
   if (instant === undefined) {
     return null;
   }
-  const millis = instant instanceof Date ? instant.getTime() : Number.NaN;
+  // The brand check, not `instanceof`, so a Date from another realm (an iframe, a `node:vm` context) is accepted.
+  const millis = Object.prototype.toString.call(instant) === "[object Date]"
+    ? Date.prototype.getTime.call(instant) : Number.NaN;
   if (!Number.isFinite(millis)) {
     throw new TypeError("evaluationInstant must be a valid Date");
   }

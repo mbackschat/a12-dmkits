@@ -8,15 +8,15 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Added
 
-- **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. Rules using either constant used to be reported unsupported.
-- **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired. A starred read below one of the joined groups reads that group's joined row, empty where the group has no row for the key, and joins the group even when nothing else reads it.
+- **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. In TypeScript a `Date` from another realm is accepted. Rules using either constant used to be reported unsupported.
+- **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired. A starred read below one of the joined groups reads that group's joined row, empty where the group has no row for the key, and joins the group even when nothing else reads it, a rule reading every group only through starred reads included.
 
 ### Fixed
 
 - **`RepetitionNotUnique` keys in sibling fixed groups of one repeatable row now evaluate**, compared per that row in either key order, as in the Kernel; the model was refused as unsupported.
 - **A computation copying an empty Confirm field now leaves its Confirm target empty**, as the Kernel does; it used to store `false` there and report the target erroneous.
 - **A rule condition that opens with the scale-gate waiver now loads and evaluates**, in the model's condition language (`@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` or `@UnterdrueckeWarnung(…)`); the model was refused at its first waived rule. The waived comparison is evaluated exactly, as in the Kernel.
-- **A required field's own message renders every token the Kernel substitutes**: `$field$`, `$Feld$`, and the empty `$field.value$`/`$Feld.Wert$`, in either condition language. A value token used to make the document unsupported.
+- **A required field's own message renders every token the Kernel substitutes**: `$field$`, `$Feld$`, and the empty `$<fieldName>.Value$`, `$field.value$` and `$Feld.Wert$`, in either condition language. A value token used to make the document unsupported.
 - Keyed group row numbers and index value/category tokens now render in rule messages, including an unmatched parallel row’s joined key.
 - **Model `boolean` members are read as the Kernel binds them**: a padded `" true"` or `" TRUE"` and the integer `1` set `fieldRefByShortNameAllowed`, `Field.global` and every field type's flag (line breaks, value validation, zero, sign, leading zeros, the 1900 check), and a blank or `"null"` text reads as off.
 - **A dated literal compared with `FirstFilledValue` of dates is read as a date**, as beside a date field or `MinValue`; it was compared as text, so `FirstFilledValue(RevisedBy, PromisedBy) < "01.01.2026"` answered wrongly whenever the text order and the date order disagreed.

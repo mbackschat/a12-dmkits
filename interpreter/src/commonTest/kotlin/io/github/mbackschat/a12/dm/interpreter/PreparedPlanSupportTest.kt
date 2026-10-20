@@ -111,6 +111,23 @@ class PreparedPlanSupportTest {
 
         assertTrue(aggregateReasons.any { "bound below the parallel iteration's common parent" in it }, "$aggregateReasons")
         assertEquals(emptyList(), DmInterpreter(joinedChild).supportAudit().map { it.reason })
+        // Below a side of a FRAMED join the frame binds too, which no measurement covers (KF573), so it stays declined.
+        val framedChild = ModelDef(
+            fields = listOf(
+                FieldDef("/Plan/X/A/Key", Kind.STRING),
+                FieldDef("/Plan/X/A/Value", Kind.NUMBER),
+                FieldDef("/Plan/X/A/Lines/Units", Kind.NUMBER),
+                FieldDef("/Plan/B/Key", Kind.STRING),
+                FieldDef("/Plan/B/Value", Kind.NUMBER),
+            ),
+            rules = listOf(RuleDef("/Plan/PAR", "/Plan",
+                "[X/A/Value] > [B/Value] And AtLeastOneFieldFilled(X/A/Lines*/Units)", "PAR", "../B/Value")),
+            repeatableGroups = setOf("/Plan/X", "/Plan/X/A", "/Plan/X/A/Lines", "/Plan/B"),
+            declaredReps = mapOf("/Plan/X" to 3, "/Plan/X/A" to 10, "/Plan/X/A/Lines" to 10, "/Plan/B" to 10),
+            indexFields = setOf("/Plan/X/A/Key", "/Plan/B/Key"),
+        )
+        val framedReasons = DmInterpreter(framedChild).supportAudit().map { it.reason }
+        assertTrue(framedReasons.any { "bound below the parallel iteration's common parent" in it }, "$framedReasons")
         assertTrue(groupFillReasons.any { "non-parallel group" in it }, "$groupFillReasons")
     }
 

@@ -23,10 +23,10 @@ internal fun renderPatternFieldMessage(
 )
 
 /**
- * Render a requiredness message: four literal replace-all passes over the whole text, `$Feld$` then `$field$` by
- * the field's label or name, then `$Feld.Wert$` then `$field.value$` by its value, which is empty because only an
- * empty field draws the message. Both languages' tokens apply whatever the condition language, and every other
- * dollar sequence stays verbatim. Each pass reads what the previous one produced, so the order is observable
+ * Render a requiredness message: five literal replace-all passes over the whole text, `$<fieldName>.Value$` by the
+ * field's value, then `$Feld$` and `$field$` by its label or name, then `$Feld.Wert$` and `$field.value$` by its
+ * value, which is empty because only an empty field draws the message. Both languages' tokens apply whatever the
+ * condition language, and every other dollar sequence stays verbatim. Each pass reads what the previous one produced, so the order is observable
  * (`$field$Feld$` becomes `$field` plus the label) and a token inside a label is substituted again.
  * `adapter.laws.RequirednessTextSubstitutionDiffTest` holds each of these against both kernel strategies.
  */
@@ -37,6 +37,7 @@ internal fun renderRequiredFieldMessage(
 ): String {
     requireEnglishFieldTemplate(locale, "requiredness")
     return template
+        .replace("\$<fieldName>.Value\$", "")
         .replace("\$Feld\$", fieldLabel)
         .replace("\$field\$", fieldLabel)
         .replace("\$Feld.Wert\$", "")

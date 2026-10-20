@@ -245,7 +245,10 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             val group = iteration.joined.firstOrNull { side ->
                 reference.path.startsWith("$side/") && when (reference) {
                     is MessageReference.Ordinary -> true
-                    is MessageReference.Wildcard -> reference.bindDepth >= pathParts(side).size
+                    // An unparsed default (-1) binds down to the field's group, as the parallel row's groupDomain reads it.
+                    is MessageReference.Wildcard ->
+                        (reference.bindDepth.takeIf { it >= 0 } ?: (pathParts(reference.path).size - 2)) >=
+                            pathParts(side).size
                     is MessageReference.Selected -> false
                 }
             }
