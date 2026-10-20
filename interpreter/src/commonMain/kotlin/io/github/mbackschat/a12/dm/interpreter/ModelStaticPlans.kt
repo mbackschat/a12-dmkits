@@ -240,7 +240,15 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     private fun withJoinIndexes(iteration: IterationPlan, references: List<MessageReference>): List<MessageReference> {
         if (iteration !is IterationPlan.Parallel) return references
         return references.flatMap { reference ->
-            val group = iteration.joined.firstOrNull { reference is MessageReference.Ordinary && reference.path.startsWith("$it/") }
+            // A star below a joined group binds that group's joined row, so it names the index too (KF573); a star
+            // on the joined level itself ranges over the common parent and does not (KF567).
+            val group = iteration.joined.firstOrNull { side ->
+                reference.path.startsWith("$side/") && when (reference) {
+                    is MessageReference.Ordinary -> true
+                    is MessageReference.Wildcard -> reference.bindDepth >= pathParts(side).size
+                    is MessageReference.Selected -> false
+                }
+            }
             listOfNotNull(group?.let { MessageReference.Ordinary("$it/${iteration.indexName}") }, reference)
         }
     }

@@ -86,7 +86,15 @@ class PreparedPlanSupportTest {
     @Test
     fun reportsParallelDocumentViewsThatExecutionCannotProvide() {
         val indexed = setOf("/Plan/A/Key", "/Plan/B/Key")
+        // A star below a joined group reads that group's joined row (KERNEL-FINDINGS KF573); one that also binds an
+        // unstarred repeatable level below it has no joined row to read, and A12 refuses it as MVK_NO_WILDCARD.
         val aggregate = parallelModel(
+            condition = "[A/Value] > [B/Value] And AtLeastOneFieldFilled(A/Lines/Picks*/Units)",
+            indexFields = indexed,
+            extraFields = listOf(FieldDef("/Plan/A/Lines/Picks/Units", Kind.NUMBER)),
+            extraRepeatable = setOf("/Plan/A/Lines", "/Plan/A/Lines/Picks"),
+        )
+        val joinedChild = parallelModel(
             condition = "[A/Value] > [B/Value] And AtLeastOneFieldFilled(A/Lines*/Units)",
             indexFields = indexed,
             extraFields = listOf(FieldDef("/Plan/A/Lines/Units", Kind.NUMBER)),
@@ -102,6 +110,7 @@ class PreparedPlanSupportTest {
         val groupFillReasons = DmInterpreter(nonJoinedGroupFill).supportAudit().map { it.reason }
 
         assertTrue(aggregateReasons.any { "bound below the parallel iteration's common parent" in it }, "$aggregateReasons")
+        assertEquals(emptyList(), DmInterpreter(joinedChild).supportAudit().map { it.reason })
         assertTrue(groupFillReasons.any { "non-parallel group" in it }, "$groupFillReasons")
     }
 

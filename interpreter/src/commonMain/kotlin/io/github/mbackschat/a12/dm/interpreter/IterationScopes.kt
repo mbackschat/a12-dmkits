@@ -65,7 +65,11 @@ internal class IterationScopes(private val model: ModelDef) {
             return if (starAnchor != null) IterationPlan.Rows(starAnchor)
             else rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
         }
-        val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors)
+        // A star bound to another indexed group joins it as a field read does: alone it anchors the join
+        // (KERNEL-FINDINGS KF573). A level below the scope is the scope's own child, not a join partner.
+        val starAnchors = starRefs(ast).flatMap(::bindingLevels)
+            .filter { it in model.repeatable && !it.startsWith("$scope/") }
+        val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors + starAnchors)
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) {
             val plan = prepareParallel(scope, parallelGroups)
@@ -215,12 +219,17 @@ internal class IterationScopes(private val model: ModelDef) {
      * a branch or an empty document and cannot drift from a separate support-only AST recognizer.
      */
     private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>, commonParent: String) {
-        // A joined row reads starred domains from its common-parent row, so a star may bind no repeatable level
-        // below that parent (the runtime twin is the parallel row's `commonFor`, KERNEL-FINDINGS KF567). A keyed
-        // read needs no twin here: A12 refuses one below a joined group (`MVK_MULTIPLE_INDEX_FIELDS`) and one under an
-        // unstarred repeatable ancestor (`MVK_NO_WILDCARD`), `adapter.laws.JoinedRowAggregateDiffTest`.
+        // A joined row reads a starred domain from its common-parent row (KERNEL-FINDINGS KF567), or, below a joined
+        // group, from that group's joined row (KF573); the runtime twin is the parallel row's `domainFor`. So a star
+        // may bind no repeatable level below the common parent other than a joined group and the frames above it. A
+        // keyed read needs no twin here: A12 refuses one below a joined group (`MVK_MULTIPLE_INDEX_FIELDS`) and one
+        // under an unstarred repeatable ancestor (`MVK_NO_WILDCARD`), `adapter.laws.JoinedRowAggregateDiffTest`.
         val commonDepth = pathParts(commonParent).size
-        starRefs(ast).firstOrNull { star -> bindingLevels(star).drop(commonDepth).any { it in model.repeatable } }
+        fun boundByJoin(star: Expr.Star, level: String) =
+            joined.any { side -> star.path.startsWith("$side/") && (side == level || side.startsWith("$level/")) }
+        starRefs(ast).firstOrNull { star ->
+            bindingLevels(star).drop(commonDepth).any { it in model.repeatable && !boundByJoin(star, it) }
+        }
             ?.let { star ->
                 throw UnsupportedConstructException(
                     "an aggregate over ${star.path} bound below the parallel iteration's common parent $commonParent is not modeled")

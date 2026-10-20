@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
-import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -173,38 +172,9 @@ class JoinedRowAggregateDiffTest {
     }
 
     /**
-     * A star below a joined group binds the joined order, which no measurement covers, so the interpreter refuses it
-     * before reading a document rather than answer it from the common parent.
-     */
-    @Test
-    fun anAggregateBelowAJoinedGroupIsRefused() {
-        val lines = Dsl.sum(bound.flatten("/Fulfilment/Orders/Lines*/Units"))
-        val declined = bound.addAll(
-            listOf(rule("LINES_ABOVE_STOCK", paired.and(lines.gt(onHand)))),
-            listOf(bound.computation(bound.num("/Fulfilment/Stock/Reserved")).name("LinesReservedComputation")
-                .calc(qty.asNumber().plus(lines)).message(Dsl.en("Reservation computed.")).build()),
-        ).toJson()
-        val prepared = PreparedModel.loadExpandedJson(declined)
-        val engine = prepared.createInterpreter()
-        val document = prepared.documents.readDocument(documents.values.first())
-        val report = engine.validateFull(document)
-        assertEquals(mapOf(
-            "lines_above_stock_rule" to "an aggregate over /Fulfilment/Orders/Lines/Units bound below the parallel " +
-                "iteration's common parent /Fulfilment is not modeled",
-            "Reserved" to "an aggregate over /Fulfilment/Orders/Lines/Units bound below the parallel " +
-                "iteration's common parent /Fulfilment is not modeled",
-        ),
-            report.unsupported.associate { it.path.substringAfterLast('/') to it.reason })
-        // The support audit above declines the computation at preparation; computing it reaches the joined row's
-        // runtime guard instead, the one refusal on that path.
-        assertEquals(listOf("an aggregate or keyed read of /Fulfilment/Orders/Lines bound below the parallel " +
-            "iteration's common parent /Fulfilment is not modeled"), engine.compute(document).unsupported.map { it.reason })
-    }
-
-    /**
      * What A12 admits from a joined row beyond [theKernelReadsEveryDomainFromTheCommonParent]. It admits a star below
-     * a joined group, which the interpreter declines ([anAggregateBelowAJoinedGroupIsRefused]). It refuses the rest at
-     * the model, so none needs an interpreter account: a filter
+     * a joined group, which reads that group's joined row instead (`JoinedSideChildReadDiffTest`). It refuses the rest
+     * at the model, so none needs an interpreter account: a filter
      * correlated with a joined group, which leaves a common-parent field as the only possible outer row
      * (`HOUSE_TARIFF_PRICED`); a keyed read below a joined group, whose own index makes two on the path; and a keyed
      * read under an unstarred repeatable ancestor, which A12 asks to star.

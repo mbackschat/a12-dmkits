@@ -11232,7 +11232,7 @@
       }
     },
     "kf567": {
-      "sha256": "ca5850721feec16c5077c9b1bbc48bd2ed7126f18307b5f19bcb9436fd72b56e",
+      "sha256": "1fa06ab335bba9c8b33cb1f15424d70d97f1fc412d3b413d4e12ec11360f172e",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["aggregates and keyed reads from a joined row"],
@@ -11250,7 +11250,7 @@
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
         "adapter": {"state": "APPLIED", "basis": "Both strategies are pinned per SKU over three documents, and A12's admission verdicts through rule check.", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#theKernelReadsEveryDomainFromTheCommonParent", "witness": "Matched, unmatched and missing-price-list documents with the joined rows in opposite orders."}, "admission of reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#whatA12AdmitsFromAJoinedRow", "witness": "Four admission rows."}}},
-        "interpreter": {"state": "APPLIED", "basis": "A joined row now reads starred and keyed domains from its common-parent row instead of declining them; a domain bound below the common parent stays declined (IG174).", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared against both strategies on every document; the refusal is pinned by anAggregateBelowAJoinedGroupIsRefused."}}},
+        "interpreter": {"state": "APPLIED", "basis": "A joined row now reads starred and keyed domains from its common-parent row instead of declining them; a star below a joined group reads that group's joined row (KF573).", "evidence": {"aggregates and keyed reads from a joined row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowAggregateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared against both strategies on every document."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the checker and interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-14-01, -02, -03 and -06; awaits peer review.", "evidence": {}}
       }
@@ -11517,6 +11517,30 @@
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission only; the interpreter evaluates admitted models.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the class through the checker, the kernel route and the kits.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-08 report, re-measured and widened here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
+      }
+    },
+    "kf573": {
+      "sha256": "f76d2474f2e8358d446195717e80eb91fa3ddab9bc534784e3fad69adb120553",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["a star below a joined group"],
+        "checker": ["a star below a joined group"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["a star below a joined group"],
+        "interpreter": ["a star below a joined group"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a star below a joined group"]
+      },
+      "consumers": {
+        "dmkits": {"state": "ALREADY_CONFORMS", "basis": "BoundModel authors every measured read beside the join, one and two starred levels included, and the kits refuse none.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Seven rules and a computation authored through BoundModel and Dsl."}}},
+        "checker": {"state": "ALREADY_CONFORMS", "basis": "The checker refuses none of these reads, and a12-kernel-lean's static rows replay to A12's verdicts.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#a12AndTheCheckerAdmitTheModel", "witness": "A12 and the portable checker both admit the model."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no conditions.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads no conditions.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned per SKU, and the unmatched side's references are pinned.", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#theKernelReadsEachSidesChildrenAtItsJoinedRow", "witness": "Three documents, firings per SKU on the dynamic strategy, including the -5 row."}}},
+        "interpreter": {"state": "APPLIED", "basis": "ParallelRowContext.domainFor reads the side's joined row, a star joins its side, and the side's index field is named beside a starred reference (IF410).", "evidence": {"a star below a joined group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedSideChildReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter against both strategies on every document, references and fill-to-fix included."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these reads through the checker and the interpreter it runs.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Their SPEC-2026-10-14-12 report, re-measured here; the confirmation goes back in the 2026-10-18 handback.", "evidence": {}}
       }
     }
   }

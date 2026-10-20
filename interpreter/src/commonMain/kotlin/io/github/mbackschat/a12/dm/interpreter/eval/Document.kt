@@ -1943,10 +1943,7 @@ class Document(internal val config: DocumentConfig) {
          */
         private fun commonFor(groupPath: String, iteratesFrom: Int): RowContext {
             val parts = partsOf(groupPath)
-            if ((commonDepth until minOf(iteratesFrom, parts.size)).any {
-                    "/" + parts.take(it + 1).joinToString("/") in repeatableGroups
-                }
-            ) {
+            if (bindsRepeatable(parts, commonDepth, minOf(iteratesFrom, parts.size))) {
                 throw UnsupportedConstructException(
                     "an aggregate or keyed read of $groupPath bound below the parallel iteration's common parent " +
                         "$commonParent is not modeled")
@@ -1954,11 +1951,35 @@ class Document(internal val config: DocumentConfig) {
             return common
         }
 
+        private fun bindsRepeatable(parts: List<String>, from: Int, until: Int): Boolean =
+            (from until until).any { "/" + parts.take(it + 1).joinToString("/") in repeatableGroups }
+
+        /**
+         * The row a domain iterating from [iteratesFrom] reads: the joined row of the side it lies under when it binds
+         * that side's level, else the common parent's row ([commonFor]). A side without a row for this key reads its
+         * `-5` row, under which no repetition exists, so the domain is empty and its references keep `-5`
+         * (KERNEL-FINDINGS KF573, `adapter.laws.JoinedSideChildReadDiffTest`). A repeatable level between the side and
+         * [iteratesFrom] stays bound and unmodeled; A12 refuses it as `MVK_NO_WILDCARD`.
+         */
+        private fun domainFor(groupPath: String, iteratesFrom: Int): RowContext {
+            val side = groupOf(groupPath) ?: return commonFor(groupPath, iteratesFrom)
+            val sideDepth = groupDepths.getValue(side)
+            if (iteratesFrom < sideDepth) return commonFor(groupPath, iteratesFrom)
+            val parts = partsOf(groupPath)
+            if (bindsRepeatable(parts, sideDepth, minOf(iteratesFrom, parts.size))) {
+                throw UnsupportedConstructException(
+                    "an aggregate of $groupPath bound below the joined group $side is not modeled")
+            }
+            return sideRows.getOrPut(side) { RowContext(side, matches[side] ?: computeReps(side), evaluated = true) }
+        }
+
+        private val sideRows = HashMap<String, RowContext>()
+
         private fun starDomain(fieldPath: String, bindDepth: Int): RowContext =
             groupDomain(parentGroup(fieldPath), bindDepth)
 
         private fun groupDomain(groupPath: String, bindDepth: Int): RowContext =
-            commonFor(groupPath, if (bindDepth >= 0) bindDepth else partsOf(groupPath).size - 1)
+            domainFor(groupPath, if (bindDepth >= 0) bindDepth else partsOf(groupPath).size - 1)
 
         // The keyed level is selected rather than bound, so only the levels above it must not bind.
         private fun keyedDomain(indexField: String): RowContext =
@@ -2000,7 +2021,7 @@ class Document(internal val config: DocumentConfig) {
             fillScope(scopePath, isGroup, bindDepth) { _, _, stored -> stored }
         override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int, cellValue: CellValueSource): FillScope =
             if (bindDepth < 0) unboundInParallel(scopePath)
-            else commonFor(scopePath, bindDepth).fillScope(scopePath, isGroup, bindDepth, cellValue)
+            else domainFor(scopePath, bindDepth).fillScope(scopePath, isGroup, bindDepth, cellValue)
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
             unboundInParallel(groupPath)
         override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> = unboundInParallel(groupPath)

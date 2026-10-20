@@ -13648,7 +13648,7 @@ a12-kernel-lean `SPEC-2026-10-14-01`, `-02`, `-03` and `-06`. An order-fulfilmen
 | `AtLeastOneFieldFilled(Prices*/Amount Having [Prices/Code] == [$HouseTariff])` | every price, the captured field read at the root |
 | a computation on `Stock/Reserved`: `[Orders/Qty] + Sum(Orders*/Qty)`, gated by `[Prices/Amount For "STD"]` filled | the joined order's quantity plus every order's |
 
-Three neighbouring reads are refused at the model, so none has a runtime account: a filter capturing a joined group draws `MVK_PARALLEL_ITERATION_NOT_ALLOWED`, as [KF375](#kf375)'s capture table records; a keyed read below a joined group draws `MVK_MULTIPLE_INDEX_FIELDS`, the joined group's index making two on the path; and a keyed read under an unstarred repeatable ancestor draws `MVK_NO_WILDCARD`. A star below a joined group, `Sum(Orders/Lines*/Units) > [Stock/OnHand]`, is admitted and was not run. Not measured: a star or keyed read under a repeatable frame of a framed join.
+Three neighbouring reads are refused at the model, so none has a runtime account: a filter capturing a joined group draws `MVK_PARALLEL_ITERATION_NOT_ALLOWED`, as [KF375](#kf375)'s capture table records; a keyed read below a joined group draws `MVK_MULTIPLE_INDEX_FIELDS`, the joined group's index making two on the path; and a keyed read under an unstarred repeatable ancestor draws `MVK_NO_WILDCARD`. A star below a joined group, `Sum(Orders/Lines*/Units) > [Stock/OnHand]`, is admitted. *(Corrected 2026-10-21: it has since been run, and it reads the joined row rather than the common parent's rows, [KF573](#kf573).)* Not measured: a star or keyed read under a repeatable frame of a framed join.
 
 Locked by `adapter.laws.JoinedRowAggregateDiffTest`: every document agrees across both strategies and the interpreter, the dynamic strategy's firings are pinned per SKU, and the three refusals are pinned through `rule check`. a12-kernel-lean's `joined-carrier-limits`, `joined-carrier-admission` and `parallel-instance-leaves` captures and the `message-parameter-rows` render grid replay to the same agreement here, references and texts included.
 
@@ -13769,3 +13769,20 @@ So the key is compared per row of the repeatable group the siblings share, an ab
 
 *(Locked: `adapter.laws.RepetitionNotUniqueSiblingGroupKeyDiffTest`.)*
 
+## §9 supplement — from a joined row, a star below a joined group reads that group's joined row, and joins the group alone (tri-engine differential + `checkConsistency`, 2026-10-21) <a id="kf573"></a>
+
+> Fold: pending — belongs in §9's parallel-iteration account, beside [KF567](#kf567).
+
+a12-kernel-lean's `SPEC-2026-10-14-12` report, re-measured here. An order-fulfilment sheet joins `Orders` and `Stock` by `Sku`. Each order has repeatable `Lines` {`Units`, repeatable `Picks` {`Count`}}, each stock row repeatable `Bins` {`Level`}. Every rule reports on `Stock/Note`, guarded by `FieldNotFilled(Stock/Note)` and either `FieldFilled(Orders/Qty)` or `FieldFilled(Stock/OnHand)`. In each document one SKU has children and the other has none, so a read pooled over the common parent, [KF567](#kf567)'s domain, would move every firing.
+
+| read beside the join | the Kernel |
+|---|---|
+| `NumberOfFilledFields(Orders/Lines*/Units) == 0`, `Sum(Stock/Bins*/Level) == 0`, `NoFieldFilled(Stock/Bins*/Level)` | fires for the SKU whose own side has no children, never for the other |
+| `AtLeastOneFieldFilled(Stock/Bins*/Level)`, `FirstFilledValue(Stock/Bins*/Level) > 0` | fires for the SKU whose own bins carry a level |
+| `NumberOfFilledFields` over `Orders/Lines*/Units` or `Orders/Lines*/Picks*/Count`, with `Stock` the only side read plainly | the rule still joins `Orders`: it fires for a SKU with stock and no order, at that stock row |
+| any of these for a side with no row for the SKU | the children read empty and the message names them at that side's `-5` row with the starred level at `[0]`, e.g. `/Fulfilment[1]/Orders[-5]/Lines[0]/Units` |
+| a computation on `Stock/Reserved`: `[Orders/Qty] + Sum(Orders/Lines*/Units)` | agrees across both strategies and the interpreter |
+
+So the domain of a star below a side is that side's joined row. The read also puts that side's index field into the message's referenced and fill-to-fix sets, as a plain read of the side does: with only the starred lines reading `Orders`, `Orders[-5]/Sku` is in both. Not claimed: a gate order, partial-validation dispatch, a keyed read into a child group, a rule declared inside a joined group, and a star under a repeatable frame of a framed join.
+
+*(Locked: `adapter.laws.JoinedSideChildReadDiffTest`. a12-kernel-lean's `parallel-child-reads-2026-10-14` captures replay to the same messages here, references included.)*
