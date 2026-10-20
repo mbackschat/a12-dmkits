@@ -5,7 +5,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * How the kernel reads a JSON value bound to a `boolean` member of `content.modelConfig`.
+ * How the kernel reads a JSON value bound to a primitive `boolean` member of a model POJO — of `content.modelConfig`,
+ * of `Field`, or of a field type.
  *
  * **Three outcomes, because folding the third into [OFF] evaluates a model the kernel never loads.** Jackson
  * refuses the whole `DocumentModelConfig` binding for a value it cannot take, so no evaluation of such a
@@ -37,7 +38,8 @@ private val FALSE_SPELLINGS = setOf("false", "False", "FALSE")
  * **Nor is it the rule that governs `excludeRules`/`excludeComputations`**, which reach a custom
  * deserializer's `JsonNode.booleanValue()` and are false for every non-Boolean (KF3). The kernel has two
  * boolean-reading paths and which one a member takes is per-member, so this function is applied only where
- * the POJO path is measured — today, `fieldRefByShortNameAllowed` alone.
+ * the POJO path is measured: `fieldRefByShortNameAllowed` (`ShortNameFlagSpellingLawsTest`), and `Field.global`
+ * plus the field types' `boolean` members (`adapter.laws.BooleanMemberBindingDiffTest`, IF404).
  */
 internal fun configFlag(value: JsonElement?): ConfigFlag {
     if (value == null || value is JsonNull) {

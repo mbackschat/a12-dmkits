@@ -82,8 +82,8 @@ class DeclarationAdmissionReadingsTest {
             "line breaks \"\"" to listOf("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK"),
             "line breaks 1.5" to listOf("CK_MODEL_NOT_BUILDABLE"),
             "positivesOnly 1 beside a 16-character length" to listOf("MVK_MAX_LENGTH_TOO_BIG"),
-            // The sign is unknown, so the budget is too: the checker names no length class either way.
-            "an unbindable positivesOnly beside a 17-character length" to emptyList(),
+            // A12 does not read the model (KF569), and with the sign unknown the budget is too: no length class.
+            "an unbindable positivesOnly beside a 17-character length" to listOf("CK_MODEL_NOT_BUILDABLE"),
         )
         assertEquals<Map<String, List<String>>>(expected, actual)
     }

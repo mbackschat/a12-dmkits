@@ -498,8 +498,7 @@ public final class ModelReader {
             // and on a fractional number (A12 refuses the model, `asBoolean` truncates and answers).
             JsonNode flag = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG)
                     .path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED);
-            boolean allowShortNames = ConfigFlag.ofJsonText(flag.isMissingNode() ? null : flag.toString())
-                    == ConfigFlag.ON;
+            boolean allowShortNames = ConfigFlag.ofMember(flag) == ConfigFlag.ON;
             return new ModelSymbols(paths, fields, allowShortNames);
         }
 

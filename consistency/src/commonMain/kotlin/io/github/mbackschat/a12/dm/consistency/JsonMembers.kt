@@ -6,11 +6,10 @@ import kotlinx.serialization.json.JsonObject
  * A member A12 binds to a primitive `boolean`, read the way A12's reader binds it ([configFlag]); `false` when
  * the member is absent, which is every such member's declared default. **A null result is the answer A12 has no
  * binding for**, and a law asking this reader must then say nothing: the model is never built, so no coded
- * class exists ([unbindableFlag] reports that).
+ * class exists ([unbindableFlag] reports that, through [fieldTypeBindingFindings]).
  *
- * The String flags were measured on the same rows as `modelConfig`'s flag ([KERNEL-FINDINGS KF569],
- * `adapter.laws.CheckerDeclarationAdmissionAgreementTest`); `positivesOnly` is the same Java type on the same
- * reader, measured on one row.
+ * Measured on every such member of a field declaration ([KERNEL-FINDINGS KF569],
+ * `adapter.laws.CheckerDeclarationAdmissionAgreementTest`).
  */
 internal fun JsonObject.flag(member: String): Boolean? = when (configFlag(this[member])) {
     ConfigFlag.ON -> true

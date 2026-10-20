@@ -61,7 +61,7 @@ final class AuthoredStateReader {
         var requirements = new ModelDocument.FieldRequirements(
                 Requiredness.fromMode(required.path("mode").asText(null)), localized(required, DmKeys.ERROR_MESSAGE));
         var meta = new FieldMeta(localized(body, DmKeys.LABEL), annotations(node),
-                body.path("global").asBoolean(false), body.path("transient").asBoolean(false),
+                A12Booleans.isSet(body.path("global")), A12Booleans.isSet(body.path("transient")),
                 localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION),
                 localized(body, "helperText"));
         return new ModelDocument.FieldState(path, FieldTypeSpecReader.read(body.path(DmKeys.FIELD_TYPE)),

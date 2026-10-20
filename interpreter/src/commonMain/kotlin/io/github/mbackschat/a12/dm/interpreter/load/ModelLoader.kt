@@ -424,7 +424,7 @@ object ModelLoader {
         amountTrait = "amount" == numberTypeText(node, "trait"),
         numberMinLength = typedInt(node, "NumberType", "minLength"),
         numberMaxLength = typedInt(node, "NumberType", "maxLength"),
-        global = node.path("Field").path("global").asBoolean(false),
+        global = configFlag(node.path("Field").path("global")) == ConfigFlag.ON,
         )
     }
 
@@ -599,7 +599,7 @@ object ModelLoader {
 
     /** Whether a NUMBER field is signed (unsigned iff `NumberType.positivesOnly`); non-number defaults to signed. */
     private fun signed(fieldNode: JsonElement?): Boolean =
-        !fieldNode.path("Field").path("fieldType").path("NumberType").path("positivesOnly").asBoolean(false)
+        configFlag(fieldNode.path("Field").path("fieldType").path("NumberType").path("positivesOnly")) != ConfigFlag.ON
 
     /** A `CustomFieldType` field's validator name and optional length-bound inputs; else null. */
     private fun customFieldTypeOf(fieldNode: JsonElement?): CustomFieldTypeDeclaration? {
@@ -632,9 +632,11 @@ object ModelLoader {
         return if (v.isIntNode()) v.asInt(0) else null
     }
 
-    /** A `boolean` property of a `<typeName>` field type (absent → false, the kernel default). */
+    /** A `boolean` property of a `<typeName>` field type, bound as A12's POJO reader binds it — `1` and `" TRUE"`
+     *  set it, `0` and `"null"` clear it (KF569) — rather than as a JSON boolean, which read both set spellings
+     *  as the default (IF404). Absent → false, the kernel default. */
     private fun typedBool(fieldNode: JsonElement?, typeName: String, prop: String): Boolean =
-        typed(fieldNode, typeName).path(prop).asBoolean(false)
+        configFlag(typed(fieldNode, typeName).path(prop)) == ConfigFlag.ON
 
     /** The `Field.fieldType.<typeName>` object, but only when the field's declared `type` matches (else null). */
     private fun typed(fieldNode: JsonElement?, typeName: String): JsonElement? {
@@ -731,16 +733,6 @@ object ModelLoader {
         val p = this as? JsonPrimitive ?: return default
         if (p is JsonNull) return default
         return p.content.toIntOrNull() ?: p.content.toDoubleOrNull()?.toInt() ?: default
-    }
-
-    private fun JsonElement?.asBoolean(default: Boolean): Boolean {
-        val p = this as? JsonPrimitive ?: return default
-        if (p is JsonNull) return default
-        return when (p.content) {
-            "true" -> true
-            "false" -> false
-            else -> default
-        }
     }
 
     /** Jackson `isInt()` — a plain integer literal that fits an `Int` (not a string, not a decimal/oversized). */

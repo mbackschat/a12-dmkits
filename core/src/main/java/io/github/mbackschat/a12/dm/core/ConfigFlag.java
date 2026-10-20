@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.dm.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.predicates.A12BooleanBinding;
 import io.github.mbackschat.a12.dm.predicates.BooleanBindingPredicatesKt;
 
 /**
- * How A12 reads a JSON value bound to a {@code boolean} member of {@code content.modelConfig}.
+ * How A12 reads a JSON value bound to a primitive {@code boolean} member of a model POJO — of
+ * {@code content.modelConfig}, of a {@code Field}, or of a field type (KERNEL-FINDINGS KF569).
  *
  * <p><b>Three outcomes, because folding {@link #UNREADABLE} into {@link #OFF} analyses a model that never
  * loads.</b> Jackson refuses the whole {@code DocumentModelConfig} binding for a value it cannot take, so A12
@@ -68,6 +70,11 @@ public enum ConfigFlag {
             case FALSE -> OFF;
             case UNREADABLE -> UNREADABLE;
         };
+    }
+
+    /** {@link #ofJsonText} for a member as this package holds it; a missing node is the absent member. */
+    static ConfigFlag ofMember(JsonNode member) {
+        return ofJsonText(member.isMissingNode() ? null : member.toString());
     }
 
     private static String decodedString(String jsonText) {

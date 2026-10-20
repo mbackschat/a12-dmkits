@@ -150,6 +150,61 @@ class CheckerDeclarationAdmissionAgreementTest {
         assertEquals(emptyList<String>(), wrong)
     }
 
+    /**
+     * Every primitive `boolean` member of a field declaration takes the same binding (IF404), so the same
+     * spellings leave the model unbuilt — enumerated from the kernel's `a12internal` model classes: the field
+     * types' members and `Field.global`/`transient`. Each is put on a field the default variant keeps and on one
+     * it deletes, because binding precedes the variant filter. The `" TRUE"` row per member is the control: A12
+     * binds it, so the refusal belongs to the spelling and not to the member.
+     */
+    @Test
+    fun everyBooleanMemberOfADeclarationIsUnbindableTheSameWay() {
+        val members = listOf(
+            "StringType" to "noValueValidation", "StringType" to "lineBreaksPermitted",
+            "StringType" to "alphabeticalSorting", "NumberType" to "zeroNotAllowed",
+            "NumberType" to "positivesOnly", "NumberType" to "leadingZerosAllowed",
+            "DateType" to "youngerThan1900Check", "DateRangeType" to "youngerThan1900Check",
+            "DateFragmentType" to "youngerThan1900Check", "EnumerationType" to "alphabeticalSorting",
+            "Field" to "global", "Field" to "transient",
+        )
+        val carriers = members.flatMap { (type, member) ->
+            listOf(Triple(type, member, null), Triple(type, member, ONLY))
+        }
+        val wrong = carriers.flatMap { (type, member, filter) ->
+            listOf<Any>("tRUE", 1.5, " TRUE").mapNotNull { raw ->
+                val json = member(type, member, raw, filter)
+                val refused = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
+                    .refusedBinding()
+                val ours = ours(json)
+                val row = "$type.$member=${mapper.writeValueAsString(raw)}" + if (filter == null) "" else " (deleted)"
+                when {
+                    raw == " TRUE" && refused -> "A12 refused $row"
+                    raw == " TRUE" && NOT_BUILDABLE in ours -> "ours $ours on $row"
+                    raw != " TRUE" && !refused -> "A12 bound $row"
+                    raw != " TRUE" && ours != listOf(NOT_BUILDABLE) -> "ours $ours on $row"
+                    else -> null
+                }
+            }
+        }
+        assertEquals(emptyList<String>(), wrong)
+    }
+
+    /**
+     * The header's two `boolean` members (`DocumentModelInfo.immutable`/`metaData`) bind by the same law: A12
+     * alone, because the checker's verdict on them is the open CONSISTENCY-GAPS DG139.
+     */
+    @Test
+    fun theHeaderBooleansBindTheSameWay() {
+        val refused = listOf("immutable", "metaData").flatMap { member ->
+            listOf<Any>("tRUE", 1.5, " TRUE").map { raw ->
+                "$member=${mapper.writeValueAsString(raw)}" to runCatching {
+                    oracle.checkConsistency(header(member, raw), ReferenceResolvers.selfContained())
+                }.refusedBinding()
+            }
+        }
+        assertEquals(refused.map { (row, _) -> row to !row.endsWith("\" TRUE\"") }, refused)
+    }
+
     // ---- the instrument ----
 
     private fun Result<*>.refusedBinding() =
@@ -232,6 +287,28 @@ class CheckerDeclarationAdmissionAgreementTest {
         val body = nodes.objectNode().put("maxFractionalDigits", 0).put("maxLength", 16)
         body.set<ObjectNode>("positivesOnly", mapper.valueToTree(positivesOnly))
         field(model, "Instalments", "NumberType", body)
+    }.toString()
+
+    private fun member(type: String, member: String, raw: Any, filter: ObjectNode?): String =
+        policy().also { model -> declare(model, type, member, raw, filter) }.toString()
+
+    private fun declare(model: ObjectNode, type: String, member: String, raw: Any, filter: ObjectNode?) {
+        val fieldType = if (type == "Field") "StringType" else type
+        val body = nodes.objectNode()
+        when (fieldType) {
+            "EnumerationType" -> body.putArray("values").add(value("BASIC")).add(value("PLUS"))
+            "DateFragmentType" -> body.put("formatOfFragment", "yyyy")
+            "DateRangeType" -> body.put("format", "dd.MM.yyyy").put("rangeSeparator", "-")
+        }
+        if (type != "Field") body.set<ObjectNode>(member, mapper.valueToTree(raw))
+        field(model, "Cover", fieldType, body, filter)
+        if (type == "Field") {
+            (elements(model).last().path("Field") as ObjectNode).set<ObjectNode>(member, mapper.valueToTree(raw))
+        }
+    }
+
+    private fun header(member: String, raw: Any): String = policy().also { model ->
+        (model.path("content").path("modelInfo") as ObjectNode).set<ObjectNode>(member, mapper.valueToTree(raw))
     }.toString()
 
     private val started = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS"))

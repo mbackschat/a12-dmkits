@@ -22,15 +22,15 @@ final class FieldTypeSpecReader {
             case "StringType" -> string(config);
             case "NumberType" -> number(config);
             case "DateType" -> new FieldTypeSpec.DateSpec(text(config, "format"), text(config, "datePrecision"),
-                    config.path("youngerThan1900Check").asBoolean(false));
+                    A12Booleans.isSet(config.path("youngerThan1900Check")));
             case "TimeType" -> new FieldTypeSpec.TimeSpec(text(config, "format"));
             case "DateTimeType" -> new FieldTypeSpec.DateTimeSpec(text(config, "format"));
             case "DateRangeType" -> new FieldTypeSpec.DateRangeSpec(
                     text(config, "format"), text(config, "rangeSeparator"),
                     RangeYearInterpretation.fromJson(text(config, "interpretationOfYear")),
-                    config.path("youngerThan1900Check").asBoolean(false));
+                    A12Booleans.isSet(config.path("youngerThan1900Check")));
             case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"),
-                    config.path("youngerThan1900Check").asBoolean(false));
+                    A12Booleans.isSet(config.path("youngerThan1900Check")));
             case "TypeDefType" -> new FieldTypeSpec.TypeDefRef(config.path(DmKeys.TYPE_DEFINITION_ID).asText());
             case "BooleanType" -> new FieldTypeSpec.BooleanSpec(
                     text(config, "notInDCustomTrueValue"), text(config, "notInDCustomFalseValue"));
@@ -48,9 +48,9 @@ final class FieldTypeSpecReader {
         String pattern = text(config, "pattern");
         String fallbackMessage = pattern == null || messages.isEmpty() ? null : messages.values().iterator().next();
         return new FieldTypeSpec.StringSpec(integer(config, "minLength"), integer(config, "maxLength"),
-                pattern, fallbackMessage, config.path("lineBreaksPermitted").asBoolean(false),
-                config.path("alphabeticalSorting").asBoolean(false), suggestions(config.path("hintList")),
-                config.path("noValueValidation").asBoolean(false), messages);
+                pattern, fallbackMessage, A12Booleans.isSet(config.path("lineBreaksPermitted")),
+                A12Booleans.isSet(config.path("alphabeticalSorting")), suggestions(config.path("hintList")),
+                A12Booleans.isSet(config.path("noValueValidation")), messages);
     }
 
     private static FieldTypeSpec.NumberSpec number(JsonNode config) {
@@ -59,14 +59,13 @@ final class FieldTypeSpecReader {
                 .maxFractionalDigits(integer(config, "maxFractionalDigits"))
                 .minValue(decimal(config, "minValue"))
                 .maxValue(decimal(config, "maxValue"))
-                .zeroNotAllowed(config.path("zeroNotAllowed").asBoolean(false))
-                .positivesOnly(config.path("positivesOnly").asBoolean(false))
-                .leadingZerosAllowed(config.path("leadingZerosAllowed").asBoolean(false))
+                .zeroNotAllowed(A12Booleans.isSet(config.path("zeroNotAllowed")))
+                .positivesOnly(A12Booleans.isSet(config.path("positivesOnly")))
+                .leadingZerosAllowed(A12Booleans.isSet(config.path("leadingZerosAllowed")))
                 .trait(numberTrait(text(config, "trait")))
                 .minLength(integer(config, "minLength"))
                 .maxLength(integer(config, "maxLength"))
                 .maxIntegerDigits(integer(config, "maxIntegerDigits"))
-                .positivesOnly(config.path("positivesOnly").asBoolean(false))
                 .build();
     }
 
@@ -86,7 +85,7 @@ final class FieldTypeSpecReader {
         Map<String, String> messages = localized(config.path(DmKeys.ERROR_MESSAGE));
         String fallbackMessage = messages.isEmpty() ? null : messages.values().iterator().next();
         return new FieldTypeSpec.EnumSpec(values, categories,
-                config.path("alphabeticalSorting").asBoolean(false), fallbackMessage, messages,
+                A12Booleans.isSet(config.path("alphabeticalSorting")), fallbackMessage, messages,
                 text(config, "sValue"));
     }
 

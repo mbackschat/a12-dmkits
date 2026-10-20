@@ -614,9 +614,9 @@ public final class DocumentModelDraft {
                 copyText(c, "pattern", b, "pattern");
                 copyInt(c, "minLength", b, "minLength");
                 copyInt(c, "maxLength", b, "maxLength");
-                if (c.path("lineBreaksPermitted").asBoolean(false)) b.put("lineBreaks", true);
-                if (c.path("noValueValidation").asBoolean(false)) b.put("noValueValidation", true);
-                if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                if (A12Booleans.isSet(c.path("lineBreaksPermitted"))) b.put("lineBreaks", true);
+                if (A12Booleans.isSet(c.path("noValueValidation"))) b.put("noValueValidation", true);
+                if (A12Booleans.isSet(c.path("alphabeticalSorting"))) b.put("alphabeticalSorting", true);
                 localizedMap(c.path(DmKeys.ERROR_MESSAGE)).ifPresent(m -> b.set("patternMessages", m));
                 suggestionsMap(c.path("hintList")).ifPresent(m -> b.set("suggestions", m));
                 if (!b.isEmpty()) out.set("string", b);
@@ -631,9 +631,9 @@ public final class DocumentModelDraft {
                 copyInt(c, "minLength", b, "minLength");
                 copyInt(c, "maxLength", b, "maxLength");
                 copyInt(c, "maxIntegerDigits", b, "maxIntegerDigits");
-                if (c.path("zeroNotAllowed").asBoolean(false)) b.put("zeroNotAllowed", true);
-                if (c.path("leadingZerosAllowed").asBoolean(false)) b.put("leadingZerosAllowed", true);
-                if (c.path("positivesOnly").asBoolean(false)) b.put("positivesOnly", true);
+                if (A12Booleans.isSet(c.path("zeroNotAllowed"))) b.put("zeroNotAllowed", true);
+                if (A12Booleans.isSet(c.path("leadingZerosAllowed"))) b.put("leadingZerosAllowed", true);
+                if (A12Booleans.isSet(c.path("positivesOnly"))) b.put("positivesOnly", true);
                 if (!b.isEmpty()) out.set("number", b);
             }
             case "EnumerationType" -> {
@@ -655,7 +655,7 @@ public final class DocumentModelDraft {
                         cat.path(DmKeys.VALUES).forEach(val -> vals.add(val.asText()));
                     }
                 }
-                if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                if (A12Booleans.isSet(c.path("alphabeticalSorting"))) b.put("alphabeticalSorting", true);
                 copyText(c, "sValue", b, "sValue");   // the index-default stored token — must survive a read→modify round-trip
                 localizedMap(c.path(DmKeys.ERROR_MESSAGE)).ifPresent(m -> b.set("errorMessages", m));
                 out.set("enum", b);
@@ -664,7 +664,7 @@ public final class DocumentModelDraft {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "datePrecision", b, "precision");
-                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
+                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("date", b);
             }
             case "TimeType" -> {
@@ -684,13 +684,13 @@ public final class DocumentModelDraft {
                 // Absent when the declaration omits it, which is how STANDARD is expressed — so the read block
                 // stays a legal `field add`/`field modify` input in both cases.
                 copyText(c, "interpretationOfYear", b, "interpretationOfYear");
-                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
+                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "formatOfFragment", b, "format");
-                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
+                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("dateFragment", b);
             }
             case "CustomFieldType" -> {

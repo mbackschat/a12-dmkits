@@ -34,14 +34,64 @@ import kotlinx.serialization.json.JsonPrimitive
  * carried none, which means those fixtures had been models A12 could not have built.
  */
 internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val declared = field.body?.get("fieldType")
-            ?: return@mapNotNull unbuildable(
-                field,
-                "this field declares no `fieldType`, which A12 binds as non-null with no default",
-            )
-        unbindableFieldType(field, declared, declaredTypeDefinitionIds)
+        val typeFinding = if (declared == null) {
+            unbuildable(field, "this field declares no `fieldType`, which A12 binds as non-null with no default")
+        } else {
+            unbindableFieldType(field, declared, declaredTypeDefinitionIds)
+        }
+        listOfNotNull(typeFinding) + unbindableBooleanMembers(field)
     }
+
+/**
+ * The primitive `boolean` members of one field declaration that A12's reader cannot bind as written.
+ *
+ * Jackson binds every such member with one law ([configFlag]; [KERNEL-FINDINGS KF569]), and a spelling it has
+ * no binding for refuses the whole source, so the field's variant filter never runs — a field the default
+ * variant deletes is refused the same way (`adapter.laws.CheckerDeclarationAdmissionAgreementTest`, measured on
+ * every member below on both carriers).
+ */
+private fun unbindableBooleanMembers(field: TrackedDeclaration): List<Finding> {
+    val fieldBody = field.body ?: return emptyList()
+    val declared = fieldBody["fieldType"] as? JsonObject
+    val type = declared?.namedFieldType()
+    val typeBody = type?.bodyIn(declared)
+    val onField = FIELD_BOOLEAN_MEMBERS.mapNotNull { unbindableMember(field, fieldBody, it, it) }
+    val onType = typeBody?.let { body ->
+        type.booleanMembers.mapNotNull { unbindableMember(field, body, it, "$type.$it") }
+    }
+    return onField + onType.orEmpty()
+}
+
+private fun unbindableMember(field: TrackedDeclaration, owner: JsonObject, member: String, spelled: String) =
+    if (owner.unbindableFlag(member)) {
+        unbindable(
+            field,
+            "`$spelled` holds `${owner[member]}`, which A12 cannot bind as a boolean — write `true` or `false`",
+        )
+    } else {
+        null
+    }
+
+/**
+ * The primitive `boolean` members each type's body declares — enumerated from kernel `30.8.1`'s
+ * `kernel-md-a12internal` classes (`fieldtypes.*`), which `FieldtypeDeserializer` binds with `treeToValue`.
+ * Exhaustive, so a type added to [FieldType] has to say whether it carries any.
+ */
+private val FieldType.booleanMembers: List<String>
+    get() = when (this) {
+        FieldType.STRING -> listOf("lineBreaksPermitted", "noValueValidation", "alphabeticalSorting")
+        FieldType.NUMBER -> listOf("zeroNotAllowed", "positivesOnly", "leadingZerosAllowed")
+        FieldType.DATE, FieldType.DATE_RANGE, FieldType.DATE_FRAGMENT -> listOf("youngerThan1900Check")
+        FieldType.ENUMERATION -> listOf("alphabeticalSorting")
+        FieldType.DATE_TIME, FieldType.TIME, FieldType.TYPE_DEF, FieldType.CUSTOM_FIELD, FieldType.CONFIRM,
+        FieldType.BOOLEAN, FieldType.UNSPECIFIED,
+        -> emptyList()
+    }
+
+/** `Field`'s own two (`isGlobal`, `isTransient` in the same package), under their JSON names. */
+private val FIELD_BOOLEAN_MEMBERS = listOf("global", "transient")
 
 /**
  * The range pairs this family stayed silent about, so silence is never read as agreement.

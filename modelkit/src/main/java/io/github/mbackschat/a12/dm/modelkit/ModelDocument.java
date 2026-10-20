@@ -269,8 +269,7 @@ public final class ModelDocument {
      * enabled, and this record is what {@code dmtool config read} prints.
      */
     private static ConfigFlag shortNameFlag(JsonNode config) {
-        JsonNode flag = config.path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED);
-        return ConfigFlag.ofJsonText(flag.isMissingNode() ? null : flag.toString());
+        return A12Booleans.of(config.path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED));
     }
 
     /** The number of validation rules declared anywhere in the element tree (kernel-free count). */
