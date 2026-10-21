@@ -337,7 +337,8 @@ internal object PerfObservations {
 
     /**
      * Delete the oldest committed run files until this environment has room for one more, **never touching a run
-     * some document cites, nor one not yet committed**.
+     * some document cites, nor one not yet committed**, and return the cited runs that would still have to be
+     * retired by hand when citations alone fill the bound.
      *
      * The citation check is what makes the pruning safe rather than merely bounded: `perf-results/README.md`
      * states that past the horizon the durable references are the committed anchor and the checkpoints that cite
@@ -352,16 +353,17 @@ internal object PerfObservations {
      * That cost a v0.13.0 release-path investigation — the mechanism was correct and documented, and the only
      * thing missing was the one line saying it had happened.
      */
-    internal fun pruneToRetentionBound(dir: File) {
-        val runs = dir.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") }?.sortedBy { it.name } ?: return
-        val excess = runs.size - (MAX_RUNS_PER_ENVIRONMENT - 1)
-        if (excess <= 0) return
-        val cited = citedRunStems(dir)
+    internal fun pruneToRetentionBound(dir: File): List<String> {
         val committed = committedRunNames(dir)
+        val runs = dir.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") && f.name in committed }
+            ?.sortedBy { it.name } ?: return emptyList()
+        val excess = runs.size - (MAX_RUNS_PER_ENVIRONMENT - 1)
+        if (excess <= 0) return emptyList()
+        val cited = citedRunStems(dir)
         val pruned = mutableListOf<String>()
         for (run in runs) {
             if (pruned.size >= excess) break
-            if (run.nameWithoutExtension in cited || run.name !in committed) continue
+            if (run.nameWithoutExtension in cited) continue
             if (run.delete()) pruned += run.nameWithoutExtension
         }
         if (pruned.isNotEmpty()) {
@@ -371,16 +373,26 @@ internal object PerfObservations {
                     "deletions in git status",
             )
         }
+        val blocking = runs.map { it.nameWithoutExtension }.filter { it in cited }.take(excess - pruned.size)
+        if (blocking.isNotEmpty()) {
+            println(
+                "[perf][retention] WARNING: ${dir.name} keeps only cited committed runs, so this run would carry it " +
+                    "past the $MAX_RUNS_PER_ENVIRONMENT-run bound and PerformanceRecordShapeGuardTest fails once it is " +
+                    "committed. Retire ${blocking.joinToString(", ")} by hand, leaving the citation as a plain run id " +
+                    "(perf-results/README.md)",
+            )
+        }
+        return blocking
     }
 
     /**
-     * The run files git tracks in [dir]; empty when git cannot say. Retention bounds the COMMITTED history, so an
-     * untracked run is still awaiting the maintainer's decision and is not this prune's to delete: when every
-     * committed run was cited, the oldest uncited run was the newest one, and a filtered run on 2026-10-21 deleted
-     * the full gate run written before it.
+     * The run files committed in [dir] at `HEAD`; empty when git cannot say. Retention bounds the COMMITTED history,
+     * so a run not yet committed — untracked, or only staged — is still awaiting the maintainer's decision and is
+     * neither counted nor this prune's to delete: when every committed run was cited, the oldest uncited run was the
+     * newest one, and a filtered run on 2026-10-21 deleted the full gate run written before it.
      */
     private fun committedRunNames(dir: File): Set<String> =
-        git(dir, "ls-files", "--", ".")?.lines()?.filter { it.isNotEmpty() }?.map { File(it).name }?.toSet()
+        git(dir, "ls-tree", "--name-only", "HEAD", "--", ".")?.lines()?.filter { it.isNotEmpty() }?.toSet()
             ?: emptySet()
 
     /** Run-file stems named anywhere in the committed prose — a cited run is never pruned. */

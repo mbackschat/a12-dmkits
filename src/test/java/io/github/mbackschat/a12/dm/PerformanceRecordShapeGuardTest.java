@@ -413,8 +413,10 @@ class PerformanceRecordShapeGuardTest {
                 .toList();
         assertEquals(List.of(), over, () -> "the committed record has outgrown its retention bound of "
                 + MAX_RUNS_PER_ENVIRONMENT + " runs per environment:\n  " + String.join("\n  ", over)
-                + "\n\nDelete the oldest files: past this horizon the durable references are the committed anchor "
-                + "and the checkpoints that cite a run, never the raw runs of superseded revisions. See "
+                + "\n\nRemove untracked ad-hoc runs (`git clean -f perf-results`), then retire the oldest committed "
+                + "runs, cited ones included, leaving each citation as a plain run id: past this horizon the durable "
+                + "references are the committed anchor and the checkpoints that cite a run, never the raw runs of "
+                + "superseded revisions. See "
                 + "perf-results/README.md, \"What gets committed, and what does not\"");
     }
 

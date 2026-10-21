@@ -149,8 +149,8 @@ class PerfObservationWriteTest {
      * **A record nobody has committed yet is never pruned.** Retention bounds the committed history; an untracked
      * record is a run still awaiting the maintainer's decision to keep it. When every committed run was cited, the
      * oldest uncited run was the newest one, so on 2026-10-21 a filtered diagnostic run deleted the full gate run
-     * written half an hour before it. With nothing committed left to prune, the tree may now exceed the bound, and
-     * `PerformanceRecordShapeGuardTest` refuses the commit that would carry it over, which is the loud outcome.
+     * written half an hour before it. With nothing committed left to prune, the writer names the cited runs to
+     * retire instead ([aSaturatedRecordNamesTheCitedRunsToRetire]).
      */
     @Test
     fun anUncommittedRunSurvivesThePruneEvenWhenEveryCommittedRunIsCited(@TempDir dir: File) {
@@ -166,6 +166,46 @@ class PerfObservationWriteTest {
         assertTrue(pending.exists(), "the uncommitted gate run must survive its successor's prune")
         assertEquals(PerfObservations.MAX_RUNS_PER_ENVIRONMENT, env.listFiles()!!.size,
             "and no cited committed run is deleted to make room either")
+    }
+
+    /**
+     * **The bound counts committed runs only, and a staged run is not committed.** Untracked ad-hoc runs used to
+     * count toward the bound, so five of them beside twenty-five committed runs cost one committed run its place;
+     * and the index is not history, so a run that was only `git add`ed counted as committed and could be pruned.
+     */
+    @Test
+    fun theBoundCountsCommittedRunsAndAStagedRunIsNotOne(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        val committed = (1..25).map { String.format("2026-01-%02dT000000Z", it) }
+        committed.forEach { env.resolve("$it.jsonl").writeText("{}") }
+        commitAll(dir)
+        val adHoc = (1..5).map { env.resolve(String.format("2026-02-%02dT000000Z.jsonl", it)).apply { writeText("{}") } }
+        git(dir, "add", "--", adHoc.first().relativeTo(dir).path)
+
+        val blocking = PerfObservations.pruneToRetentionBound(env)
+
+        assertEquals(30, env.listFiles()!!.size, "nothing is pruned while 25 committed runs leave room")
+        assertEquals(emptyList<String>(), blocking)
+    }
+
+    /**
+     * **A saturated record SAYS so.** When every committed run is cited the prune can delete nothing, and the run
+     * about to be written would carry the environment past the bound; the guard counting files only sees it after
+     * the fact, so the writer names the cited runs a maintainer has to retire.
+     */
+    @Test
+    fun aSaturatedRecordNamesTheCitedRunsToRetire(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        val committed = (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
+        committed.forEach { env.resolve("$it.jsonl").writeText("{}") }
+        dir.resolve("docs").apply { mkdirs() }.resolve("CHECKPOINTS.md").writeText(committed.joinToString("\n") { "`$it`" })
+        commitAll(dir)
+        val staged = env.resolve("2026-02-01T000000Z.jsonl").apply { writeText("{}") }
+        git(dir, "add", "--", staged.relativeTo(dir).path)
+
+        assertEquals(committed.take(1), PerfObservations.pruneToRetentionBound(env),
+            "one slot is needed and only the oldest cited run would free it")
+        assertTrue(staged.exists(), "a staged run is not committed history, so it is not the prune's to delete")
     }
 
     /** Outside a repository nothing is known to be committed, so nothing is pruned: a prune is best-effort. */
