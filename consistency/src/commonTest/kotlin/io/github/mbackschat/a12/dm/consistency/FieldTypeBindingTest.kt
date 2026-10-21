@@ -36,6 +36,7 @@ class FieldTypeBindingTest {
         checkRead(typed(fieldType)).findings.map { it.code }.distinct()
 
     private val unbuildable = listOf(CK_MODEL_NOT_BUILDABLE)
+    private val rangeFormat = listOf("RK_DATE_RANGE_FORMAT_INVALID")
 
     @Test
     fun everyTypeA12DeclaresBindsAndDrawsNothing() {
@@ -64,11 +65,15 @@ class FieldTypeBindingTest {
             "CustomFieldType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            // With a body PRESENT the custom type parts from the other four: A12 reads it, finds no usable
-            // `name` and says so under its own class, where the rest die with nothing to report. With the
-            // body ABSENT all five are alike — A12's reader refuses the declaration before any of it.
-            expected["$type, body present"] =
-                if (type == "CustomFieldType") listOf(codenameMissing) else unbuildable
+            // With a body PRESENT two part from the other three: the custom type finds no usable `name` and
+            // says so under its own class, and the range composes its absent format as `null` and draws the
+            // range-format sentence (KF581), where the rest die with nothing to report. With the body ABSENT
+            // all five are alike — A12's reader refuses the declaration before any of it.
+            expected["$type, body present"] = when (type) {
+                "CustomFieldType" -> listOf(codenameMissing)
+                "DateRangeType" -> rangeFormat
+                else -> unbuildable
+            }
             expected["$type, body absent"] = unbuildable
         }
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
@@ -115,10 +120,14 @@ class FieldTypeBindingTest {
             actual["$type with an optional member only"] = codes("""{"type":"$type","$type":$optional}""")
             actual["$type with an empty body"] = codes("""{"type":"$type","$type":$empty}""")
             expected["$type with the member it builds from"] = emptyList()
-            // Three of the four die at the BUILD tier with no class of A12's own; the custom type is the one
-            // that reaches a verdict, so it is reported under the class A12 answers with rather than under
-            // this checker's own "not buildable".
-            val absent = if (type == "CustomFieldType") listOf(codenameMissing) else unbuildable
+            // Two of the four die at the BUILD tier with no class of A12's own; the custom type reaches a verdict
+            // under its own class, and the range composes its absent format as `null` and draws the range-format
+            // sentence (KF581), so neither is reported as this checker's own "not buildable".
+            val absent = when (type) {
+                "CustomFieldType" -> listOf(codenameMissing)
+                "DateRangeType" -> rangeFormat
+                else -> unbuildable
+            }
             expected["$type with an optional member only"] = absent
             expected["$type with an empty body"] = absent
         }
@@ -149,9 +158,10 @@ class FieldTypeBindingTest {
      * The `DateRangeType` pair, which is the measured case saying the required member is not sufficient.
      *
      * Every row mirrors one in `rulekit.validate.laws.DateRangePairAdmissionLawsTest`
-     * ([KERNEL-FINDINGS KF316]). The two silent tail rows carry the over-rejection risk: a format or a
-     * separator the sweep never put to the kernel is undiscovered rather than refused, so reporting one
-     * would rest a refusal on the limit of a probe.
+     * ([KERNEL-FINDINGS KF316]), and each refusal is A12's range-format sentence (KF581). The tail rows carry the
+     * over-rejection risk: a format or a separator the sweep never put to the kernel is undiscovered rather than
+     * refused for the pair, so that sentence would rest a refusal on the limit of a probe. The separator's own
+     * sentence is the one exception, as A12 states it for every separator outside `-` and `/`.
      */
     @Test
     fun aDateRangeIsJudgedOnItsFormatAndSeparatorTogether() {
@@ -166,24 +176,24 @@ class FieldTypeBindingTest {
             """{"format":"dd.MM.yyyy","rangeSeparator":"-"}""", emptyList())
         // Each half of these two appears in a control above, which is what makes the pair the subject.
         row("ISO with the German pair's separator",
-            """{"format":"yyyy-MM-dd","rangeSeparator":"-"}""", unbuildable)
+            """{"format":"yyyy-MM-dd","rangeSeparator":"-"}""", rangeFormat)
         row("German with the ISO pair's separator",
-            """{"format":"dd.MM.yyyy","rangeSeparator":"/"}""", unbuildable)
+            """{"format":"dd.MM.yyyy","rangeSeparator":"/"}""", rangeFormat)
         row("ISO, separator omitted", """{"format":"yyyy-MM-dd"}""", emptyList())
-        row("German, separator omitted", """{"format":"dd.MM.yyyy"}""", unbuildable)
+        row("German, separator omitted", """{"format":"dd.MM.yyyy"}""", rangeFormat)
         // The empty separator is a declaration of its own, so omission cannot be read as it.
         row("ISO with an explicit empty separator",
-            """{"format":"yyyy-MM-dd","rangeSeparator":""}""", unbuildable)
+            """{"format":"yyyy-MM-dd","rangeSeparator":""}""", rangeFormat)
         row("month with an explicit empty separator", """{"format":"MM","rangeSeparator":""}""", emptyList())
         // The two directions in which the range domain is not the field vocabulary.
         row("a field-admitted format with no admitted pair", """{"format":"yyyyMM","rangeSeparator":"/"}""",
-            unbuildable)
+            rangeFormat)
         row("a field-REFUSED format admitted on a range", """{"format":"dd.MM","rangeSeparator":"-"}""",
             emptyList())
         row("a format the sweep never put to the kernel",
             """{"format":"MM.yyyy","rangeSeparator":"/"}""", emptyList())
         row("a separator the sweep never put to the kernel",
-            """{"format":"yyyy-MM-dd","rangeSeparator":"~"}""", emptyList())
+            """{"format":"yyyy-MM-dd","rangeSeparator":"~"}""", listOf("RK_DATE_RANGE_SEPARATOR_INVALID"))
         row("a separator that is not a string at all",
             """{"format":"yyyy-MM-dd","rangeSeparator":7}""", emptyList())
         assertEquals(expected, actual, "a DATERANGE's format and separator are allowlisted as a pair")

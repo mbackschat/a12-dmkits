@@ -200,7 +200,7 @@ internal object FieldVariantPopulation {
         Witness("absent date body", "Placed", "CK_MODEL_NOT_BUILDABLE", FilterEffect.RETAINS_REFUSAL) { _, _, f ->
             f.putObject("fieldType").put("type", "DateType")
         },
-        Witness("absent range format", "Placed", UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("absent range format", "Placed", "RK_DATE_RANGE_FORMAT_INVALID") { _, _, f ->
             f.putObject("fieldType").put("type", "DateRangeType").putObject("DateRangeType")
         },
         Witness("absent fragment format", "Placed", "CK_MODEL_NOT_BUILDABLE") { _, _, f ->
@@ -219,7 +219,7 @@ internal object FieldVariantPopulation {
             f.putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType")
                 .put("typeDefinitionId", "missing")
         },
-        Witness("incompatible range pair", "Placed", UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("incompatible range pair", "Placed", "RK_DATE_RANGE_FORMAT_INVALID") { _, _, f ->
             f.putObject("fieldType").put("type", "DateRangeType").putObject("DateRangeType")
                 .put("format", "yyyy-MM").put("rangeSeparator", "-")
         },

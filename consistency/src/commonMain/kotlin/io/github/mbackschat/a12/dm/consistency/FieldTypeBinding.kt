@@ -41,7 +41,10 @@ internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
         } else {
             unbindableFieldType(field, declared, declaredTypeDefinitionIds)
         }
-        listOfNotNull(typeFinding) + unbindableBooleanMembers(field)
+        val booleanFindings = unbindableBooleanMembers(field)
+        // A source A12 cannot read reaches no verdict, so a range is judged only beside a type and members that bind.
+        val rangeFindings = if (typeFinding == null && booleanFindings.isEmpty()) dateRangeFindings(field) else emptyList()
+        listOfNotNull(typeFinding) + rangeFindings + booleanFindings
     }
 
 /**
@@ -112,21 +115,21 @@ internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
         CoverageGap(field.path, "this range's (format, separator) pair was left to A12: $unmeasured")
     }
 
-/** Why a declared pair falls outside what the sweep measured, or null when the pair was judged. */
+/** Whether a declared pair lies inside what was put to the kernel, so its range-format verdict is known. */
+private fun JsonObject.rangePairMeasured(): Boolean = unmeasuredRangePair() == null
+
+/** Why a declared pair falls outside what was measured, or null when the pair was judged. */
 private fun JsonObject.unmeasuredRangePair(): String? {
-    val format = (this["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-        ?: return "its `format` is present and is not a string"
-    val declared = this["rangeSeparator"]
-    val separator = when {
-        declared == null -> DEFAULT_RANGE_SEPARATOR
-        declared is JsonPrimitive && declared.isString -> declared.content
-        else -> return "its `rangeSeparator` is present and is not a string"
-    }
+    val format = rangeMember("format", ABSENT_RANGE_FORMAT) ?: return "its `format` is present and is not a string"
+    val separator = rangeMember("rangeSeparator", DEFAULT_RANGE_SEPARATOR)
+        ?: return "its `rangeSeparator` is present and is not a string"
     return when {
-        format !in ADMITTED_RANGE_SEPARATORS ->
+        !(format + separator).namedByA12() ->
+            "it carries a supplementary character, which A12 answers with its charset sentence alone"
+        format != ABSENT_RANGE_FORMAT && !format.isA12Blank() && format !in ADMITTED_RANGE_SEPARATORS ->
             "the format `$format` was never put to the kernel as a RANGE format, so its admission there is " +
                 "undiscovered rather than refused"
-        separator !in PROBED_RANGE_SEPARATORS ->
+        separator !in PROBED_RANGE_SEPARATORS && separator !in MEASURED_RANGE_SEPARATORS ->
             "the separator `$separator` was never put to the kernel beside `$format`"
         else -> null
     }
@@ -216,59 +219,69 @@ private fun unbindableFieldType(
             ?.let { Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, it, explain, field.path) }
             ?: unbuildable(field, explain)
     }
-    if (type == FieldType.DATE_RANGE && body is JsonObject) {
-        return inadmissibleRangePair(field, body)
-    }
     return null
 }
 
 /**
- * A `DateRangeType`'s `format` and `rangeSeparator` judged TOGETHER, because A12 allowlists the pair.
+ * A `DateRangeType`'s `format` and `rangeSeparator`, answered as A12 answers them: with three verdicts on the one
+ * range format it composes (KERNEL-FINDINGS KF581).
  *
- * The member above is necessary and not sufficient, and this is the measured case that says so
- * ([KERNEL-FINDINGS KF316], `rulekit.validate.laws.DateRangePairAdmissionLawsTest`): every half of a refused
- * pair appears in an admitted pair, so neither half can be judged alone. KF498 measures a codeless refusal
- * for an incompatible pair that disappears when the field is filtered; only surviving fields reach here.
+ * A12 does not judge the two members, it judges `format + rangeSeparator + format`, the range format
+ * `FieldDataCollector.addDateRangeType` writes, and an absent format composes as the text `null`. A composite that
+ * is blank once Java-trimmed is `MVK_FORMAT_DATE_RANGE_MISSING`. Otherwise the separator draws a sentence of its own
+ * when, trimmed, it is not empty, `-` or `/` — on every format measured, so it is stated for any — and the pair draws
+ * the range-format sentence when it is not one A12 allowlists. Every half of a refused pair appears in an admitted
+ * pair, so neither half can be judged alone (KF316), and the pair is judged on the raw separator: `/ ` is refused
+ * beside a format `/` is admitted with.
  *
  * **An ABSENT `rangeSeparator` is `/`**, the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`
  * pre-initialised by `DateRangeTypeBuilder`, and measured as such on a format `/` admits and one it does
  * not. An explicit `""` is a different declaration with admitted pairs of its own, so the two cannot be
- * folded.
+ * folded. A member that is present and not a string, and a value carrying a supplementary character (which A12
+ * answers with its charset sentence alone, KF551), are left to A12.
  */
-private fun inadmissibleRangePair(field: TrackedDeclaration, body: JsonObject): Finding? {
-    val format = (body["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
-    val admitted = ADMITTED_RANGE_SEPARATORS[format] ?: return null
-    val declared = body["rangeSeparator"]
-    // Three readings, and only the first two are measured: the member is absent, or it holds a string. A
-    // separator that is present and not a string is a shape nobody has run.
-    val separator = when {
-        declared == null -> DEFAULT_RANGE_SEPARATOR
-        declared is JsonPrimitive && declared.isString -> declared.content
-        else -> return null
+private fun dateRangeFindings(field: TrackedDeclaration): List<Finding> {
+    if (field.body.deletesAtDefaultVariant()) return emptyList()
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
+    if (declared.namedFieldType() != FieldType.DATE_RANGE) return emptyList()
+    val body = FieldType.DATE_RANGE.bodyIn(declared) ?: return emptyList()
+    val format = body.rangeMember("format", ABSENT_RANGE_FORMAT) ?: return emptyList()
+    val separator = body.rangeMember("rangeSeparator", DEFAULT_RANGE_SEPARATOR) ?: return emptyList()
+    val composite = format + separator + format
+    if (!composite.namedByA12()) return emptyList()
+    if (composite.javaTrimmed().isEmpty()) {
+        return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "MVK_FORMAT_DATE_RANGE_MISSING",
+            "this range composes the format `$composite` from its format and separator, which is blank", field.path))
     }
-    // A separator outside the probed set was never put to the kernel beside this format, so its pair is
-    // undiscovered rather than refused — the same limit the format vocabulary states about itself.
-    if (separator in admitted || separator !in PROBED_RANGE_SEPARATORS) {
-        return null
+    val separatorFinding = separator.takeIf { it.javaTrimmed() !in RANGE_SEPARATOR_ALPHABET }?.let {
+        sentence(field, RK_DATE_RANGE_SEPARATOR_INVALID, "the range separator `$it` is not `-` or `/`")
     }
-    val declaredAs = if (declared == null) {
-        "no `rangeSeparator`, so A12 uses its default `/`"
+    val formatFinding = if (separator in ADMITTED_RANGE_SEPARATORS[format].orEmpty() || !body.rangePairMeasured()) {
+        null
     } else {
-        "the range separator `$separator`"
-    }
-    val admits = if (admitted.isEmpty()) {
-        "A12 admits `$format` on a range with none of the separators it has been measured with"
-    } else {
-        "A12 admits `$format` on a range only with " + admitted.sorted().joinToString(" and ") {
-            if (it.isEmpty()) "no separator at all" else "`$it`"
+        val admitted = ADMITTED_RANGE_SEPARATORS[format]
+        val admits = when {
+            admitted == null -> "`$format` is in no pair A12 admits"
+            admitted.isEmpty() -> "A12 admits `$format` on a range with none of the separators it has been measured with"
+            else -> "A12 admits `$format` on a range only with " + admitted.sorted().joinToString(" and ") {
+                if (it.isEmpty()) "no separator at all" else "`$it`"
+            }
         }
+        sentence(field, RK_DATE_RANGE_FORMAT_INVALID,
+            "this range composes the format `$composite`, and A12 allowlists the PAIR rather than either half — $admits")
     }
-    return unbuildable(
-        field,
-        "`fieldType` names `DateRangeType` with the format `$format` and $declaredAs, and A12 allowlists " +
-            "the PAIR rather than either half — $admits",
-    )
+    return listOfNotNull(separatorFinding, formatFinding)
 }
+
+/** The member as A12 reads it, [absent] when it is omitted, or null for a present non-string nobody has measured. */
+private fun JsonObject.rangeMember(name: String, absent: String): String? = when (val declared = this[name]) {
+    null -> absent
+    is JsonPrimitive -> declared.takeIf { it.isString }?.content
+    else -> null
+}
+
+private fun sentence(field: TrackedDeclaration, code: String, explain: String) =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, field.path)
 
 /**
  * A `TypeDefType`'s reference — the one reference in this checker whose referent is not an element.
@@ -342,16 +355,17 @@ private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
  * not that one. The measurement agrees with the builder.
  *
  * **The member is NECESSARY and not sufficient**, which is why its absence is what gets reported and its
- * presence, on its own, draws nothing. Two measured rows have the member and are still refused. The
- * `DateRangeType` one — a format not admitted with the separator beside it — is this family's, judged by
- * [inadmissibleRangePair], because it dies at the same build tier. The `DateFragmentType` one — a 1900 check
- * on a format with no year — is A12's own consistency verdict and belongs to [temporalConfigFindings].
+ * presence, on its own, draws nothing. A measured row has the member and is still refused: the
+ * `DateFragmentType` one — a 1900 check on a format with no year — is A12's own consistency verdict and belongs to
+ * [temporalConfigFindings].
+ *
+ * `DateRangeType` is absent although its builder needs `format`: A12 composes an omitted format as the text `null`
+ * and answers it with a verdict rather than a build failure, so [dateRangeFindings] judges it (KF581).
  *
  * `TypeDefType` is the fifth constructing type and is absent here: its member is a REFERENCE, which
  * [unresolvedTypeDefinition] resolves rather than merely finds.
  */
 private val REQUIRED_BODY_MEMBER = mapOf(
-    FieldType.DATE_RANGE to "format",
     FieldType.DATE_FRAGMENT to "formatOfFragment",
     FieldType.ENUMERATION to "values",
     FieldType.CUSTOM_FIELD to "name",
@@ -383,6 +397,21 @@ private fun JsonObject.lacks(member: String): Boolean = when (val declared = thi
 
 /** The kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, source-read of `30.8.1` and measured. */
 private const val DEFAULT_RANGE_SEPARATOR = "/"
+
+/** How A12 composes an omitted format: `getFormatOfDate()` concatenated as `null` (KF581, measured). */
+private const val ABSENT_RANGE_FORMAT = "null"
+
+/** The trimmed separators the separator sentence admits (KF581). */
+private val RANGE_SEPARATOR_ALPHABET = setOf("", "-", "/")
+
+/**
+ * Separators put to the kernel beside every [ADMITTED_RANGE_SEPARATORS] format besides the sweep's own axis, by
+ * `adapter.laws.CheckerDateRangeSentenceAgreementTest` (KF581); none admits a pair.
+ */
+private val MEASURED_RANGE_SEPARATORS = setOf(" ", "\t", "x", "\u2013", "//", "/ ", " /", "/\t", "\u00A0")
+
+internal const val RK_DATE_RANGE_FORMAT_INVALID = "RK_DATE_RANGE_FORMAT_INVALID"
+internal const val RK_DATE_RANGE_SEPARATOR_INVALID = "RK_DATE_RANGE_SEPARATOR_INVALID"
 
 /**
  * The separators the derived sweep put to the kernel beside every candidate format. A pair naming any other

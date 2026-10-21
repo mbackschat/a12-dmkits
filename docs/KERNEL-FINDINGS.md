@@ -7598,7 +7598,7 @@ Reported by the portable checker's `CheckFamily.HINT_LIST_VALUES`.
 
 | the declaration | A12's sentence |
 |---|---|
-| a `DateRangeType` whose `(format, rangeSeparator)` pair is not allowlisted — including a format alone, a separator alone, and an explicit `""` | `The date range format is invalid.` |
+| a `DateRangeType` whose `(format, rangeSeparator)` pair is not allowlisted — including a format alone, a separator alone, and an explicit `""` | `The date range format is invalid.` *(2026-10-21: and a separator outside `-` and `/` draws a second sentence beside it; [KF581](#kf581))* |
 | a `maxFractionalDigits` of 15 | `Only values smaller than or equal to 14 are allowed.` |
 | a `maxIntegerDigits` past the budget | `Only values smaller than or equal to 15 are allowed.` *(Corrected 2026-10-13: this row had merged it into the 14 sentence; [KF559](#kf559))* |
 | a group name of 61 characters | `A group name may only contain letters, numbers or underscores. … Name parts may not be longer than 60 characters …`, once at the group and once at each element beneath it *(Corrected 2026-10-13: this row named "Only values with up to 60 characters are allowed.", which the same nested shape does not draw. Corrected 2026-10-21: "each field inside it" was the fields only; groups, rules and computations beneath it draw it too, [KF580](#kf580))* |
@@ -9209,7 +9209,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 | the four `*_H_DV` name laws, and `MVK_ROW_TOO_BIG` | all gated on `ModelProperties/oldWorld`, which `addIsOldWorld` writes only for an H model |
 | `MVK_MAX_DIGITS_MISSING`, `MVK_PROGRAMMING_LANGUAGE_MISSING` | written from `IProjectSpecificSettings.MAXDIGITS_IN_NUMBERS` and the codegen parameter — constants, always present |
 | `MVK_NAME_MISSING` (five carriers), `MVK_TYPE_MISSING` | the collector writes a name and a type for every element it emits |
-| `MVK_FORMAT_MISSING`, `MVK_FORMAT_DATE_RANGE_MISSING` | `addDateType` and `addDateRangeType` write the format unconditionally, the builder having filled a default |
+| `MVK_FORMAT_MISSING`, `MVK_FORMAT_DATE_RANGE_MISSING` | `addDateType` and `addDateRangeType` write the format unconditionally, the builder having filled a default *(Corrected 2026-10-21: written is not filled. `addDateRangeType` writes the composite `format + separator + format`, which an empty format and a blank separator leave blank, and that draws `MVK_FORMAT_DATE_RANGE_MISSING`; [KF581](#kf581))* |
 | `MVK_DATE_RANGE_FORMAT_INVALID_CODEGEN` | its trigger values carry a `…vonReferenzjahr` suffix the collector never writes: it composes `format + separator + format` and puts the year interpretation in a member of its own |
 | `MVK_ROW_INVALID` | `maxRows` is a field's row count, and an A12 document model's field has no row dimension |
 
@@ -14001,3 +14001,19 @@ Three boundaries. A supplementary character in the judged value replaces every o
 **Measured but not explained:** a name carrying `/` splits its path off the declaration tree, and A12 then attaches the sentences to some elements beneath it and not others — a nested `Co/-de` draws the group-path sentence at itself and at `Bin`, not at the fields beside them; a root `-Co/de` draws the root sentence unattached to any element. The portable checker states none of the four sentences on such a path.
 
 *Locked by:* `adapter.laws.CheckerElementPathSentenceAgreementTest`, every class with the path it attaches to, A12 against the portable checker, which publishes the sentences as `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_MEMBER_ABOVE_60_CHARACTERS` and `RK_FIELD_NAME_ALPHABET`; and `adapter.laws.ElementPathStageLawsTest`, whose 540-model population now disagrees only on names carrying `/`.
+
+## §8 supplement — a date range is judged on the format A12 COMPOSES, `format + separator + format`, with three verdicts (source-verified + model check, 2026-10-21) <a id="kf581"></a>
+
+> Fold: not-foldable — declaration-admission laws beside [KF316](#kf316)'s pair allowlist and [KF420](#kf420)'s codeless tier.
+
+`FieldDataCollector.addDateRangeType` (kernel `30.8.1`) writes one range format, `getFormatOfDate() + separator + getFormatOfDate()`, and the separator beside it; A12's verdicts are about those two values, not about the declared members. An omitted format composes as the text `null`, an omitted separator is `/` ([KF316](#kf316)). Measured over every format the range table names, an omitted, an empty and two blank formats, against the sweep's seven separators and ten more:
+
+| the composite / the separator | A12 states |
+|---|---|
+| composite blank once Java-trimmed (`""` or a blank format, with `""`, a blank or a tab separator) | `MVK_FORMAT_DATE_RANGE_MISSING`, nothing else |
+| separator, trimmed, not `""`, `-` or `/` (`.` `:` `_` `x` `–` `//` NBSP) | *"Only minus (-) or slash (/) may be used for date range types."*, on every format, the named ones and `MM.yyyy`, `dd.MM.yy`, `foo` alike |
+| the raw pair not one of the eight allowlisted | *"The date range format is invalid."* — raw, so `/ `, ` /` and `/<TAB>` draw it beside a format `/` is admitted with, while passing the separator sentence |
+
+So an omitted format is a verdict, not a build failure: `{}` composes `null/null` and draws the range-format sentence. The sentences attach to the field, a field the default variant deletes draws none, and a supplementary character in either member replaces all three with the charset refusal ([KF551](#kf551)). This corrects [KF367](#kf367)'s reachability row, which read "written unconditionally" as "never missing": the collector always writes the composite, and a blank one is not filled.
+
+*Locked by:* `adapter.laws.CheckerDateRangeSentenceAgreementTest`, 309 models, A12 against the portable checker class by class with the path each attaches to, which publishes the sentences as `RK_DATE_RANGE_SEPARATOR_INVALID` and `RK_DATE_RANGE_FORMAT_INVALID`, states the pair verdict only on the formats the range table names and the separators put to the kernel, and discloses a coverage gap elsewhere.

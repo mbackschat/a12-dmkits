@@ -32,17 +32,18 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Sixteen sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * Eighteen sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words, while each maximum is a sentence of its own. Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
-    else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+    else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
+        DATE_RANGE_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -77,6 +78,11 @@ private val PATH_NAME_SENTENCES = mapOf(
     "A field name may only contain letters, digits or underscores. Field names must not begin with a digit." to
         "RK_FIELD_NAME_ALPHABET",
     "Only values with up to 60 characters are allowed." to "RK_MEMBER_ABOVE_60_CHARACTERS",
+)
+
+private val DATE_RANGE_SENTENCES = mapOf(
+    "The date range format is invalid." to "RK_DATE_RANGE_FORMAT_INVALID",
+    "Only minus (-) or slash (/) may be used for date range types." to "RK_DATE_RANGE_SEPARATOR_INVALID",
 )
 
 private val BOUND_SENTENCES = mapOf(

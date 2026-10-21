@@ -502,6 +502,54 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf581": {
+      "sha256": "e270ac7ffb90e3b66feb6789cfa375bb5a1e114c484d8e8f280d4afcb9308955",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["date range verdicts"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["date range verdicts"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["date range verdicts"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, and the typed builder refuses every defective range before a model exists.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The field-type family judges the composed range format: the coded class for a blank composite, the separator sentence on the trimmed separator, the pair sentence inside the measured domain, and a coverage gap outside it.", "evidence": {"date range verdicts": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldTypeBindingTest.kt#aDateRangeIsJudgedOnItsFormatAndSeparatorTogether", "witness": "Each refused pair draws the range-format sentence, and an unmeasured separator outside - and / draws the separator sentence alone."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints range types through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared over 309 range declarations crossing 18 formats with 17 separators, beside variant-deleted, supplementary and unmeasured rows.", "evidence": {"date range verdicts": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateRangeSentenceAgreementTest.kt#theCheckerStatesA12sRangeVerdictsOnEveryPair", "witness": "Every grid row's classes and paths agree, and A12's own stream is pinned on the rows that separate the three verdicts."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no range logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf367": {
+      "sha256": "c9b0daad5def6ca8c7540dda2a45e12786d2f36abaea7f00a305f8bb7ebe323e",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["date range format missing"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["date range format missing"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["date range format missing"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, and the typed builder refuses every defective range before a model exists.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The field-type family reports MVK_FORMAT_DATE_RANGE_MISSING for a composite that is blank once trimmed.", "evidence": {"date range format missing": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FieldTypeBindingTest.kt#aDateRangeIsJudgedOnItsFormatAndSeparatorTogether", "witness": "The range family's grid in the unit suite pairs each refusal with its class."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints range types through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker agree on the empty and blank formats with blank separators, which draw the class alone.", "evidence": {"date range format missing": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateRangeSentenceAgreementTest.kt#theCheckerStatesA12sRangeVerdictsOnEveryPair", "witness": "Every grid row's classes and paths agree, and A12's own stream is pinned on the rows that separate the three verdicts."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no range logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf580": {
       "sha256": "15ab9a07279023bf24522f3cae73f48562089601e74fbcb7f4bad61401f68bd6",
       "task": "F-USE-BACKLOG",
@@ -11040,7 +11088,7 @@
       }
     },
     "kf420": {
-      "sha256": "010a6e32c173074f0a6f176ecde5f439ffdb121bc19cba75dcb5405ee388d686",
+      "sha256": "96b0815a61a32f1776850343c263574aa7555720b632da85a8633f16a2d9f3eb",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
