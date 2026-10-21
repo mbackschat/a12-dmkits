@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.FORM_CONSTRUCTS
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.isNameLetterOrDigit
 
 /** KF282 distinguishes the form-name action from the count's completed-call action, in German only. */
 internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> =
@@ -77,4 +78,4 @@ private fun String.namesWholeWord(word: String): Boolean {
     return false
 }
 
-private fun Char?.isIdentifierPart(): Boolean = this != null && (isLetterOrDigit() || this == '_')
+private fun Char?.isIdentifierPart(): Boolean = this != null && (isNameLetterOrDigit() || this == '_')

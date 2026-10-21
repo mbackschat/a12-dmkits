@@ -251,4 +251,11 @@ private fun Char.isNamePart(): Boolean = isNameStart() || isAsciiDigit()
 private const val NAME_EXTRA = "_ÄÜÖäüöß:"
 
 /** KF493: an Arabic digit is a lexical error; A12's digit terminal is ASCII. */
-private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
+internal fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
+
+/**
+ * A letter or digit a NAME token can carry: [isNamePart] without its `_` and `:`. The checker asks this where it
+ * once asked a platform's `isLetterOrDigit`, whose Unicode tables differ between the JVM and Node and from A12's
+ * lexer (KERNEL-FINDINGS KF587).
+ */
+internal fun Char.isNameLetterOrDigit(): Boolean = isNamePart() && this != '_' && this != ':'

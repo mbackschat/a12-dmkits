@@ -74,9 +74,8 @@ class CheckerComputedPathAgreementTest {
             }
         }
         assertEquals(emptyList<String>(), wrong)
-        // The computed field is left out: its renamed relative path is LEXED, and the lexer refusal it draws is
-        // CONSISTENCY-GAPS DG143, not a name law.
-        for (at in At.entries - At.LABEL) {
+        // The computed field's renamed relative path is also LEXED, so its row carries the lexer class (KF586).
+        for (at in At.entries) {
             val json = model(Row(mapOf(at to "\u00A0")))
             assertEquals(kernel(json), ours(json), "$at named a no-break space")
         }

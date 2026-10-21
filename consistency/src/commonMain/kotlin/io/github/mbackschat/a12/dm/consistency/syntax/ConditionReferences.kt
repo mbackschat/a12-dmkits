@@ -173,7 +173,7 @@ private fun pathRunAt(tokens: List<Token>, from: Int): Pair<String, Int>? {
         afterName = isName
         at++
     }
-    return run.toString().takeIf { it.isNotEmpty() && it.any { c -> c.isLetterOrDigit() } }
+    return run.toString().takeIf { it.isNotEmpty() && it.any { c -> c.isNameLetterOrDigit() } }
         ?.let { it to tokens[at - 1].end }
 }
 

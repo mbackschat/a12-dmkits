@@ -194,13 +194,16 @@ private const val INDEX_CATEGORY = 8
 private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
         "|\\\$" + GAP + terminals.baseYear + GAP + "([+-]" + GAP + "\\d+)?" + GAP + "\\\$" +
-        "|\\\$#" + GAP + "([\\w/.']+(?:" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)" +
+        "|\\\$#" + GAP + "([" + NAME_PART + "/.']+(?:" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[" + NAME_PART + "/.']+))?)" +
         GAP + "\\\$" +
-        "|\\\$" + GAP + "((?:\\.\\./)*[\\w/']+)(?:" + GAP + "\\." + GAP + "(" + terminals.value + ")|" + GAP + "->" + GAP +
-        "(\\w+))?" + "(" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?" + GAP + "\\\$" +
-        "|\\\$" + GAP + "index" + GAP + "\\(" + GAP + "([\\w']+)" + GAP + "\\)" + GAP + "(?:\\." + GAP + terminals.value + "|->" + GAP +
-        "([\\w']+))" + GAP + "\\\$",
+        "|\\\$" + GAP + "((?:\\.\\./)*[" + NAME_PART + "/']+)(?:" + GAP + "\\." + GAP + "(" + terminals.value + ")|" + GAP + "->" + GAP +
+        "([" + NAME_PART + "]+))?" + "(" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[" + NAME_PART + "/.']+))?" + GAP + "\\\$" +
+        "|\\\$" + GAP + "index" + GAP + "\\(" + GAP + "([" + NAME_PART + "']+)" + GAP + "\\)" + GAP + "(?:\\." + GAP + terminals.value + "|->" + GAP +
+        "([" + NAME_PART + "']+))" + GAP + "\\\$",
 )
+
+/** A character of a name inside a parameter: the error-text lexer's own letters, not a platform's `\w`. */
+private const val NAME_PART = A12Lexis.NAME_PART_CLASS_BODY
 
 /** Optional whitespace between two tokens of a parameter. */
 private const val GAP = A12Lexis.SPACE_CLASS + "*"

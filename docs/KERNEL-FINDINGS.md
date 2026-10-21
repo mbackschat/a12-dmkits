@@ -14065,7 +14065,7 @@ Measured with whole-model `checkConsistency` on [KF580](#kf580)'s host: `/Order`
 
 **A name blank as Java's `isBlank` reads it leaves the model unbuilt.** The builder's `Entity` and `PathElement` assert `Validate.notBlank(name)`; a rule's and a computation's name fail the same way. Measured on the root, `Part`, `Bin`, `Slot`, `Label`, `Check` and `Fill`, the empty name, a space, a tab, a line break and an em space each throw *"The validated character sequence is blank"* (an empty ROOT name throws earlier still, an `IllegalArgumentException` for an illegal relative path). A no-break space and a figure space are not blank, and reach the ordinary name gates. A blank `Label`, `Check` or `Fill` that an `ONLY` filter deletes is admitted, because only the default-variant model is built.
 
-*Locked by:* `adapter.laws.CheckerComputedPathAgreementTest`, A12 against the portable checker class by class with the path each attaches to, which states `MVK_ERROR_INVALID_FIELDNAME` from the computed-target family after its index gate, the underscore class independently of the prefix classes, and `CK_MODEL_NOT_BUILDABLE` for a blank default-variant name; replayed on both checker runtimes by `consistency.ElementNameKf583Test`. A computed field named with a no-break space also draws `MVK_LEXER_STANDARD_ERROR` at the computation, which the checker does not state ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG143).
+*Locked by:* `adapter.laws.CheckerComputedPathAgreementTest`, A12 against the portable checker class by class with the path each attaches to, which states `MVK_ERROR_INVALID_FIELDNAME` from the computed-target family after its index gate, the underscore class independently of the prefix classes, and `CK_MODEL_NOT_BUILDABLE` for a blank default-variant name; replayed on both checker runtimes by `consistency.ElementNameKf583Test`. A computed field named with a no-break space also draws `MVK_LEXER_STANDARD_ERROR` at the computation, because its path is lexed ([KF586](#kf586)). *Corrected 2026-10-21:* the checker states that class now; this entry first recorded it as unstated.
 
 ## §6 supplement — a blank date `format` leaves the model unbuilt on all three types that construct from it, where an absent one is the default (source-verified + model check, 2026-10-21) <a id="kf584"></a>
 
@@ -14086,3 +14086,56 @@ Measured with whole-model `checkConsistency` on one field `/Policy/Start`, with 
 `DateFragmentType`'s `formatOfFragment`, which has no default ([KF312](#kf312)), is refused when blank as before, and that row is the control. "Blank" is Java's `Character.isWhitespace` class, the same class [KF310](#kf310) measured for member presence: the em space is blank and the no-break space is not.
 
 *Locked by:* `adapter.laws.CheckerBlankDateFormatAgreementTest`. It compares A12 against the portable checker row by row. The checker states `CK_MODEL_NOT_BUILDABLE` for a blank inline format. It leaves the no-break-space sentence to A12 under its standing format-vocabulary gap. For a field typed by a definition, it records a coverage gap at that field. The test is replayed on both checker runtimes by `consistency.BlankDateFormatKf584Test`.
+
+## §13 supplement — a message parameter reads a group name with the error-text lexer's own letters, the German ones included (source-read + both strategies, 2026-10-21) <a id="kf585"></a>
+
+> Fold: not-foldable — a lexer-alphabet fact beside [KF575](#kf575)'s whitespace and [KF315](#kf315)'s group names.
+
+`BaseErrorTextParameterLexer.g4` (kernel-core-service, 30.8.1) builds every name in a parameter from `STR`: the ASCII letters, `_`, `ÄÖÜäöüß` and `:`, followed by `STR` or the ASCII `DIGIT`. A field name may not carry the German letters (`RK_FIELD_NAME_ALPHABET`, and `MVK_PATH_INVALID` at the field), but a group name may ([KF315](#kf315)). So a parameter whose path runs through such a group is lexed and rendered.
+
+Measured on `/Police/Schäden` (repeatable) holding `Size`, with one rule iterating it, both kernel strategies, two rows:
+
+| parameter | rendered |
+|---|---|
+| `$/Police/Schäden/Size.value$` | the row's value |
+| `$/Police/Schäden/Size$` | the label (here the name, `Size`) |
+| `$#/Police/Schäden$` | the row's repetition index |
+| `$../Schäden/Size.value$` | the row's value |
+
+A12's pointer STRING grammar is narrower and stays ASCII: `DocumentPointerImpl.pathPartPattern` is `([\w_-]+)(\[(\d+)?\])?`, compiled without `UNICODE_CHARACTER_CLASS`, so its `\w` takes no German letter.
+
+*Locked by:* `adapter.laws.MessageTokenNameAlphabetDiffTest`, which runs both kernel strategies and the interpreter ([IF424](INTERPRETER-FINDINGS.md#if424)).
+
+## §12 supplement — a computation's `computedFieldRelPath` is lexed as a condition operand, ahead of the computed target's other gates (model check, 2026-10-21) <a id="kf586"></a>
+
+> Fold: not-foldable — a lexer gate beside [KF583](#kf583)'s computed-path gates and [KF309](#kf309)'s character class.
+
+Measured with whole-model `checkConsistency` on `/Order/Bin` holding `Slot` and the computed field, with the computation `Fill` writing `"bin"` into it under `FieldFilled(Slot)`. The computed field is renamed, and its path updated with it:
+
+| computed field named | A12 at `Fill` | beside it |
+|---|---|---|
+| `La_bel` (control) | nothing | — |
+| `Laßbel` (control: `ß` is in `STR`) | nothing | the name and path classes at the field |
+| `La`+U+00A0, U+2007, U+0663, U+FF15, U+00E9 or U+000B+`bel`; `Label`+U+0663 | `MVK_LEXER_STANDARD_ERROR` | the same |
+| U+00A0 in a field the repeatable `Bin` is indexed by | `MVK_LEXER_STANDARD_ERROR` only, no `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` | the same, and the field-name sentence a second time |
+| U+00A0 beside a dot in the same name | `MVK_LEXER_STANDARD_ERROR` only, no `MVK_ERROR_INVALID_FIELDNAME` | the same |
+| U+00A0, with `Fill`'s operation `[Nope]` | `MVK_LEXER_STANDARD_ERROR` only | the same |
+
+A rule's `errorEntityRelPath` is not lexed. A rule at `/Order` reporting on the group `B`+U+00A0+`in`, which its condition `FieldFilled(Slot)` never names, draws the group's own classes and no lexer class. So the gate is the computed target's alone, and it is the first gate of that target: it withholds the index gate, the dotted-path gate and the operation's refusal. The characters are exactly those `Base_ConditionLexer.g4` has no terminal for ([KF309](#kf309)).
+
+*Locked by:* `adapter.laws.CheckerComputedPathLexerAgreementTest`, A12 against the portable checker class by class with multiplicity. The checker states the class from the computed-target family ahead of its index and dot gates. The indexed row's second field-name sentence is not yet stated by the checker ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG144).
+
+## §6 supplement — a date constant's digits are ASCII, so another script's digit makes it a string (source-read + model check, 2026-10-21) <a id="kf587"></a>
+
+> Fold: not-foldable — the date-constant half of [KF575](#kf575)'s ASCII digits.
+
+`DateUtils` (kernel-core-parser, 30.8.1) recognises the four date-constant shapes with patterns that spell `[0-9]` and its bounded ranges. A quoted constant spelled with an Arabic-Indic digit is therefore no date. The lexer takes it, because a string literal admits any character. Measured with whole-model `checkConsistency` on `/Order` with `ShippedOn` (`dd.MM.yyyy`) and `Quantity`, each condition beside `FieldFilled(Reference)`:
+
+| condition | A12 |
+|---|---|
+| `[ShippedOn] > AddDays("03.02.2024", 7)`, `[ShippedOn] > "03.02.2024"` (controls) | admitted |
+| `[ShippedOn] > AddDays("0`+U+0663+`.02.2024", 7)`, and its year-less `"0`+U+0663+`.02."` | `MVK_INVALID_DATE_STRING` |
+| `[ShippedOn] > "0`+U+0663+`.02.2024"` | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `RoundDownValue(Quantity, 2) > 1` (control) / `RoundDownValue(Quantity, `+U+0663+`) > 1` | admitted / `MVK_LEXER_STANDARD_ERROR` |
+
+*Locked by:* `adapter.laws.CheckerAsciiDigitAgreementTest`, A12 against the portable checker. The checker's date-constant shape, rounding digits, pragma name and reference runs now read the tokenizer's ASCII and lexer classes. `consistency.PlatformCharacterTableJvmTest` refuses any platform `Char` classifier in the checker's shared sources and in the shared regex translator.

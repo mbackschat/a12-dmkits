@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
 
 /**
  * What rounding and absolute-value operations demand of their immediate operands.
@@ -158,7 +159,7 @@ private fun TrackedFactBase.operationDefect(
  */
 private fun digitsDefect(call: ConditionCall): RoundingDefect? {
     val written = call.operands.getOrNull(1)?.text?.trim() ?: return null
-    if (written.isEmpty() || !written.all { it.isDigit() }) {
+    if (written.isEmpty() || !written.all { it.isAsciiDigit() }) {
         return null
     }
     // Three digits or more is above the ceiling whatever it says, which keeps the parse off a long literal.

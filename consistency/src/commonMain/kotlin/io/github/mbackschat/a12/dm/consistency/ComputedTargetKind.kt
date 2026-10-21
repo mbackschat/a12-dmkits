@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailureKind
+import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -60,6 +62,7 @@ internal fun TrackedFactBase.computedTargetKindFindings(): List<Finding> = compu
  */
 internal fun TrackedFactBase.computedTargetIndexFieldFindings(): List<Finding> = computedTargets()
     .mapNotNull { declared ->
+        unlexableTargetFinding(declared)?.let { return@mapNotNull it }
         val path = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
         val group = path.substringBeforeLast('/', missingDelimiterValue = "")
         if (indexFieldOf(group) == path.substringAfterLast('/')) {
@@ -75,6 +78,28 @@ internal fun TrackedFactBase.computedTargetIndexFieldFindings(): List<Finding> =
         } else {
             dottedTargetFinding(path, declared)
         }
+    }
+
+/**
+ * …and, ahead of both, that A12's condition lexer can read the computed field's relative path at all.
+ *
+ * A12 lexes `computedFieldRelPath` as it lexes a condition operand, so a name carrying a character no terminal
+ * begins — a no-break or figure space, an Arabic-Indic or full-width digit, `é` — draws `MVK_LEXER_STANDARD_ERROR` at
+ * the computation, and that refusal withholds the index and dot gates and the operation's own class
+ * ([KERNEL-FINDINGS KF586], `adapter.laws.CheckerComputedPathLexerAgreementTest`). A rule's `errorEntityRelPath` is
+ * measured NOT lexed, so this belongs to the computed target alone.
+ */
+private fun unlexableTargetFinding(declared: DeclaredReference): Finding? =
+    // Only the measured class: a quote A12 cannot pair was never put to it in this slot.
+    lexicalFailure(declared.written)?.takeIf { it.kind == LexicalFailureKind.ILLEGAL_CHARACTER }?.let { failure ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_LEXER_STANDARD_ERROR",
+            "in `computedFieldRelPath`: `${declared.written}` carries `${failure.text}`, which A12's condition " +
+                "lexer has no terminal for — A12 reads the computed field's path as it reads a condition operand",
+            declared.declaredAt,
+        )
     }
 
 /**

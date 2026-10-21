@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -129,7 +130,7 @@ private val Token.isUnlexable: Boolean
 
 /** A name the pragma takes: the tokenizer's NAME minus a digit-led one and minus a keyword of [language]. */
 private fun Token.isPragmaName(language: ConditionLanguage): Boolean =
-    kind == TokenKind.NAME && !text.first().isDigit() && text !in CONDITION_KEYWORDS.getValue(language)
+    kind == TokenKind.NAME && !text.first().isAsciiDigit() && text !in CONDITION_KEYWORDS.getValue(language)
 
 private fun unbuildable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

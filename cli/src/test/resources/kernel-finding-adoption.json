@@ -502,6 +502,78 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf585": {
+      "sha256": "02420da4d899ae0d7e395761c8fa63ea1cc57af1d39c4477b71a55f9d30386e2",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["group name parameters"],
+        "interpreter": ["group name parameters"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["group name parameters"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave condition and message-text acceptance to the kernel check.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The checker's message-parameter reader already lexes names with the tokenizer's STR set.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no condition or message text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read condition or message text.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter render value, label, repetition and relative parameters through a group named with an umlaut.", "evidence": {"group name parameters": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageTokenNameAlphabetDiffTest.kt#allThreeEnginesAgreeOnEveryMessageSignature", "witness": "Two rows, four parameters each, identical texts and signatures on all three engines."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Message tokens read A12Lexis.NAME_PART_CLASS_BODY instead of the ASCII word class (IF424).", "evidence": {"group name parameters": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageTokenNameAlphabetDiffTest.kt#allThreeEnginesAgreeOnEveryMessageSignature", "witness": "The interpreter renders the umlaut-path parameters it used to leave literal."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf586": {
+      "sha256": "f6110b3f4f75965f13bb9ed012803698cfa376946fd9e81e50b400952c9f4473",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["computed path lexer"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["computed path lexer"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["computed path lexer"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave condition and message-text acceptance to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The computed-target family states MVK_LEXER_STANDARD_ERROR for an unlexable computedFieldRelPath ahead of its index and dot gates.", "evidence": {"computed path lexer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathLexerAgreementTest.kt#theLexerGateBesideTheComputedTargetsOtherGates", "witness": "The index, dot and refused-operation rows draw the lexer class alone on both sides."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no condition or message text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read condition or message text.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on nine computed-field names, three gate-order rows and a rule-slot pair.", "evidence": {"computed path lexer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathLexerAgreementTest.kt#theCheckerStatesA12sLexerClassAtTheComputation", "witness": "Every name's classes agree with multiplicity; the controls draw no lexer class."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf587": {
+      "sha256": "0db327d6d713a50e9d108535096e60ee30f523be9027e929361fd770a7ff1e23",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["ascii date constants"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["ascii date constants"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["ascii date constants"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave condition and message-text acceptance to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The date-constant shape, rounding digits, pragma name and reference runs read the tokenizer's ASCII and lexer classes; a source guard refuses platform classifiers.", "evidence": {"ascii date constants": {"reference": "consistency/src/jvmTest/kotlin/io/github/mbackschat/a12/dm/consistency/PlatformCharacterTableJvmTest.kt#sharedCodeClassifiesNoCharacterThroughAPlatformTable", "witness": "No platform Char classifier remains in the checker's shared sources or the shared regex translator."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no condition or message text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read condition or message text.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on seven conditions, three of them carrying an Arabic-Indic digit in a date constant.", "evidence": {"ascii date constants": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerAsciiDigitAgreementTest.kt#theCheckerReadsOnlyAsciiDigitsWhereA12Does", "witness": "Each row's classes agree; the date constants draw MVK_INVALID_DATE_STRING or MVK_INVALID_TYPE_FOR_COMPARISON."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted; its own date-constant reading is IF415's.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf584": {
       "sha256": "f9dd11fee0e978129156254afb5a1778f36833661b311441a637dfc5055baf7f",
       "task": "F-USE-BACKLOG",
@@ -527,7 +599,7 @@
       }
     },
     "kf583": {
-      "sha256": "1bb739ed428b22bed3e7b6ccb7eb98601c491ec4f57ae4c2a3ccd3aef013de2b",
+      "sha256": "020313bc64b1326dc166fe8b4e08ec29f684d7f06b0e49116f9c46ed38eba78b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11836,7 +11908,7 @@
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
-        "checker": [],
+        "checker": ["a condition literal's digits"],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [],
@@ -11846,7 +11918,7 @@
       },
       "consumers": {
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave condition and message-text acceptance to the kernel check.", "evidence": {}},
-        "checker": {"state": "OPEN", "basis": "The portable checker still reads names and digits with Kotlin's Unicode classifiers in ConditionReferences, SuppressedWarnings, RoundingOperands and TemporalFormat.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The portable checker reads names and digits with the tokenizer's ASCII and lexer classes (KF587).", "evidence": {"a condition literal's digits": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerAsciiDigitAgreementTest.kt#theCheckerReadsOnlyAsciiDigitsWhereA12Does", "witness": "The rounding row with an Arabic-Indic digit draws the lexer class on both sides."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no condition or message text.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read condition or message text.", "evidence": {}},
         "adapter": {"state": "NOT_APPLICABLE", "basis": "The admission rows are locked by validate.laws.NonAsciiLexemeLawsTest, outside the adapter.", "evidence": {}},

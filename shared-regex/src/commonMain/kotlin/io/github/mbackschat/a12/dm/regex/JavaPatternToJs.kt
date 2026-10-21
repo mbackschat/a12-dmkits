@@ -11,6 +11,13 @@ internal object JavaPatternToJs {
     private const val H = "\\t\\x20\\xA0\\u1680\\u180E\\u2000-\\u200A\\u202F\\u205F\\u3000"
     private const val V = "\\n\\x0B\\f\\r\\x85\\u2028\\u2029"
     private const val S = "\\t\\n\\x0B\\f\\r\\x20"
+
+    /** `Pattern`'s own `ASCII.isSpace`, which COMMENTS mode skips; a platform's `isWhitespace` also skips NBSP. */
+    private const val JAVA_ASCII_SPACE = " \t\n\u000B\u000C\r"
+
+    /** `Pattern`'s own `ASCII.isHexDigit`, which an `\x` or `\u` escape reads; a platform's digit table is wider. */
+    private const val JAVA_ASCII_HEX = "0123456789abcdefABCDEF"
+
     // DG102-E: CRLF is one final terminator; its interior is not an end-anchor position.
     private const val JAVA_FINAL_ANCHOR = "(?:(?![\\s\\S])|(?=\\r\\n(?![\\s\\S]))|(?=[\\r\\u0085\\u2028\\u2029](?![\\s\\S]))|(?<!\\r)(?=\\n(?![\\s\\S])))"
     private const val DOT_TERMINATORS = "\\n\\r\\u0085\\u2028\\u2029"
@@ -159,11 +166,16 @@ internal object JavaPatternToJs {
             return Sequence(out.toString(), flags)
         }
 
+        /**
+         * `Pattern`'s COMMENTS mode, which reads both of its rules through its own ASCII tables rather than
+         * Unicode's: it skips the six ASCII whitespace characters only, and a `#` comment runs to a line feed, or to
+         * a carriage return unless UNIX_LINES is on (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`).
+         */
         private fun skipCommentSpace(flags: Flags): Boolean {
             if (!flags.comments) return false
-            if (source[index].isWhitespace()) { index++; return true }
+            if (source[index] in JAVA_ASCII_SPACE) { index++; return true }
             if (source[index] != '#') return false
-            while (index < source.length && source[index] != '\n' && source[index] != '\r') index++
+            while (index < source.length && source[index] != '\n' && (flags.unixLines || source[index] != '\r')) index++
             return true
         }
 
@@ -269,9 +281,11 @@ internal object JavaPatternToJs {
             if (index >= source.length) throw UnsupportedJavaPattern("trailing escape")
             val e = source[index++]
             if (e in '1'..'9') {
-                var number = e.digitToInt()
-                while (index < source.length && source[index].isDigit()) {
-                    val candidate = number * 10 + source[index].digitToInt()
+                var number = e - '0'
+                // Only an ASCII digit extends the number, as in `Pattern`: `\1` and an Arabic-Indic three is
+                // backreference 1 and a literal, even beside a thirteenth group.
+                while (index < source.length && source[index] in '0'..'9') {
+                    val candidate = number * 10 + (source[index] - '0')
                     if (candidate > javaCaptureCount) break
                     number = candidate
                     index++
@@ -341,7 +355,12 @@ internal object JavaPatternToJs {
                     else hasUnverifiedMapping = true
                     "\\$e{$property}"
                 }
-                else -> {
+                // `Pattern` reads a backslash before a non-ASCII character as that character, where JavaScript's
+                // unicode mode refuses the escape (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`).
+                else -> if (e.code >= 0x80) {
+                    if (flags.caseInsensitive) hasUnverifiedMapping = true
+                    buildString { appendLiteral(this, e, flags) }
+                } else {
                     hasUnverifiedMapping = true
                     "\\$e"
                 }
@@ -630,7 +649,7 @@ internal object JavaPatternToJs {
             if (escaped in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" || escaped in "tnrfbae") return 2
             val digits = when (escaped) { 'x' -> 2; 'u' -> 4; else -> return 0 }
             if (at + 2 + digits > raw.length) return 0
-            for (i in at + 2 until at + 2 + digits) if (raw[i].digitToIntOrNull(16) == null) return 0
+            for (i in at + 2 until at + 2 + digits) if (raw[i] !in JAVA_ASCII_HEX) return 0
             return digits + 2
         }
 

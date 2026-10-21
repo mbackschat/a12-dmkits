@@ -15,6 +15,12 @@ package io.github.mbackschat.a12.dm.interpreter.parse
 internal object A12Lexis {
     private const val GERMAN_LETTERS = "ÄÖÜäöüß"
 
+    /**
+     * [isNamePart] as the body of a regex character class, for patterns built from strings. A Kotlin `\w` is
+     * ASCII on both platforms and so misses the German letters a group name carries (KERNEL-FINDINGS KF585).
+     */
+    const val NAME_PART_CLASS_BODY: String = "A-Za-z0-9_$GERMAN_LETTERS"
+
     /** The kernel lexers' whitespace, as a regex character class for patterns built from strings. */
     const val SPACE_CLASS: String = "[ \\t\\n\\f\\r]"
 

@@ -4884,3 +4884,22 @@ A keyed or ordered `$` correlation over a required column handed the whole scope
 The old gate looked at the starred column only, so an unavailable join field reached the indexed tallies, which read it as an ordinary empty key. A12 keeps no row on it: an empty `$Alias` matched a row whose required `Reference` was empty, and an ordered `<` ranked that empty below every value, where both kernel strategies kept neither row. Both now take the re-read.
 
 Locked by `adapter.laws.UnavailableCorrelationRowDiffTest` (five documents covering the self-excluded row, an unavailable join field beside an empty outer key, and the ordered plan; nine rules, dynamic Groovy, static Java and the interpreter), `UnavailableCorrelationTallyPropertyTest`, which holds the keyed and ordered tallies equal to the general scan under random unavailable cells on JVM and Node, and `UnavailableCorrelationWorkTest`, which bars the work growth at linear by condition-node count with a compound filter as its quadratic control.
+
+### IF424: message names and Java pattern syntax read the sets A12 and `Pattern` spell out, not a platform's (2026-10-21) <a id="if424"></a>
+
+Two readers in shared code classified a character through a table that neither A12 nor `java.util.regex.Pattern` uses. This is the class [IF415](#if415) fixed in the condition lexer.
+
+**Message parameters.** The token pattern spelled names with `\w`, which is ASCII on both platforms and so misses the German letters the error-text lexer's `STR` takes ([KF585](KERNEL-FINDINGS.md#kf585)). A parameter whose path ran through a group named `Schäden` was left in the text as written, where both kernel strategies render it. The pattern now uses `A12Lexis.NAME_PART_CLASS_BODY`, the same set `isNamePart` reads.
+
+**The Java-to-JavaScript pattern translator**, shared by the interpreter and the portable checker. `Pattern` reads four pieces of syntax through its own ASCII tables. Each was measured on JDK 21.0.12, and the JVM actual is `Pattern` itself:
+
+| syntax | `Pattern` | the translator read |
+|---|---|---|
+| whitespace COMMENTS mode skips | space, TAB, LF, VT, FF, CR only; U+00A0, U+2003, U+0085 are literals | `isWhitespace`, which skips all of them |
+| where a `#` comment ends | LF; CR too unless UNIX_LINES is on | LF or CR regardless |
+| digits that extend a backreference | ASCII: thirteen groups then `\1`+U+0663 is backreference 1 and a literal | `isDigit`, giving backreference 13 |
+| a class's `\x`/`\u` hex digits | ASCII hex; `[\x`+U+0663+U+0663+`]` is refused | `digitToIntOrNull(16)`, accepting it as `3` |
+
+A backslash before a non-ASCII character is that character to `Pattern` (`(a)\`+U+0663 matches `a`+U+0663). The translator passed the escape through, and JavaScript's unicode mode refuses it, so it is now emitted as a literal.
+
+Locked by `adapter.laws.MessageTokenNameAlphabetDiffTest` (both kernel strategies and the interpreter) and `regex.PatternCommentModeParityTest` (every row on the JVM, where it is `Pattern`, and on Node, where it is the translation).

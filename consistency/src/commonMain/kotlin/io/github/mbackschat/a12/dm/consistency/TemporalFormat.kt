@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -161,7 +162,8 @@ internal const val STAMP_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
  *
  * The kernel writes four `Pattern` constants; this is the same four written once, because they differ only
  * in which positions are bounded — the hour's first digit is `[0-2]`, the minute's `[0-5]`, the second's
- * `[0-6]` (leap seconds, per the kernel's own comment), the year's `[1-2]`, and the rest are `[0-9]`.
+ * `[0-6]` (leap seconds, per the kernel's own comment), the year's `[1-2]`, and the rest are `[0-9]`. Each class
+ * is ASCII, so an Arabic-Indic digit makes the constant a string to A12 (KERNEL-FINDINGS KF587).
  */
 private fun String.matchesShape(shape: String): Boolean {
     if (length != shape.length) {
@@ -170,9 +172,9 @@ private fun String.matchesShape(shape: String): Boolean {
     return shape.withIndex().all { (at, expected) ->
         val actual = this[at]
         when (expected) {
-            'd', 'm', 's' -> actual.isDigit()
-            'y' -> if (at == shape.indexOf('y')) actual in '1'..'2' else actual.isDigit()
-            'h' -> if (at == shape.indexOf('h')) actual in '0'..'2' else actual.isDigit()
+            'd', 'm', 's' -> actual.isAsciiDigit()
+            'y' -> if (at == shape.indexOf('y')) actual in '1'..'2' else actual.isAsciiDigit()
+            'h' -> if (at == shape.indexOf('h')) actual in '0'..'2' else actual.isAsciiDigit()
             else -> actual == expected
         }
     }
