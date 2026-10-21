@@ -68,7 +68,7 @@ internal data class ScopeText(val text: String, val bare: String?)
 internal fun scopeTextOf(operand: CallOperand, scopeKeyword: String): ScopeText? {
     val clauses = operand.clauses.dropWhile { it.keyword != scopeKeyword }
     val scope = clauses.firstOrNull() ?: return null
-    return ScopeText(operand.text.substring(scope.at - operand.at).trim(), scope.path.takeIf { clauses.size == 1 })
+    return ScopeText(operand.text.substring(scope.at - operand.at).javaTrimmed(), scope.path.takeIf { clauses.size == 1 })
 }
 
 /**

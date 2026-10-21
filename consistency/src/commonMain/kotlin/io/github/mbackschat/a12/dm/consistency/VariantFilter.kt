@@ -50,10 +50,10 @@ internal fun TrackedFactBase.variantFilterGaps(): List<CoverageGap> =
  * whole declaration instead of one family — three predictions that the declaration's own slots would still be
  * judged were wrong, and a checker built on them would have reported six findings A12 does not make.
  *
- * **The seventh break is why [CK_MODEL_NOT_BUILDABLE] is exempt at the call site.** An empty `errorCode` still
- * refuses the model under `ONLY`, carrying no `MVK_*` code at all. A filter suppresses what A12 SAYS ABOUT a
- * declaration; it cannot rescue a model that fails to BUILD — so a finding that the model does not load is
- * not a verdict this filter can hide, and dropping it would report a model A12 refuses as merely unexamined.
+ * **The seventh break is why [VARIANT_BLIND_CODES] exist at the call site.** An empty `errorCode` still refuses
+ * the model under `ONLY`, with the codeless sentence A12 states before it applies the filter ([KERNEL-FINDINGS
+ * KF579]). And a filter suppresses what A12 SAYS ABOUT a declaration; it cannot rescue a model that fails to
+ * BUILD — so a finding that the model does not load is not a verdict this filter can hide either.
  */
 internal fun TrackedFactBase.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
 

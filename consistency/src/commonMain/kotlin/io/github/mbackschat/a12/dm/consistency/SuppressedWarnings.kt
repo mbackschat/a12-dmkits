@@ -74,7 +74,7 @@ private fun TrackedFactBase.suppressionFindings(element: TrackedDeclaration): Li
                 "`@SuppressWarning(...)` pragma that takes exactly one — a second entry fails to parse " +
                 "whatever it spells. Keep at most `$SUPPRESSIBLE`."
         code == INVALID_SUPPRESSED_WARNING ->
-            "`${rendered.trim()}` is not a warning A12 lets a computation suppress — `$SUPPRESSIBLE` is the only one"
+            "`${rendered.javaTrimmed()}` is not a warning A12 lets a computation suppress — `$SUPPRESSIBLE` is the only one"
         code == LEXER_STANDARD_ERROR ->
             "`errorCodesToSuppress` renders into `@SuppressWarning($rendered)`, which holds a character A12's " +
                 "condition lexer cannot read — the only suppressible code is `$SUPPRESSIBLE`"

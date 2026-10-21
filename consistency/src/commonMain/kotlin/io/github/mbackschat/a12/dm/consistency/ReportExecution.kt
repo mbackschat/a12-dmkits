@@ -94,10 +94,13 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
         .filterNot { it is ConditionFinding } + targets + conditions)
     val computations = facts.declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }
         .mapTo(mutableSetOf()) { it.key }
-    val model = local.filterIsInstance<ModelFinding>()
     val suppressed = facts.variantFilterSuppressed()
     fun visible(finding: Finding): Boolean =
         finding.code in VARIANT_BLIND_CODES || finding.at == null || finding.at !in suppressed
+    val reported = local.filterIsInstance<ModelFinding>()
+    // A12's ordering gates run only on a model its earlier entity walk admitted (KERNEL-FINDINGS KF589).
+    val walkRefused = local.any { visible(it.finding) && facts.refusesTheEntityWalk(it.finding) }
+    val model = if (walkRefused) reported.filterNot { it.finding.code in ORDERING_GATE_CODES } else reported
     val selected = (model.filter { it.stage == ModelStage.DECLARATION } +
         declarations.filter { it.owner in computations } +
         model.filter { it.stage == ModelStage.METAMODEL } +

@@ -263,7 +263,7 @@ private fun JsonObject.lookupDomain(category: String?): List<String>? {
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
 private fun CallOperand.namesAFieldEntry(): Boolean =
-    text.trim().startsWith("[") && text.trim().endsWith("]")
+    text.javaTrimmed().startsWith("[") && text.javaTrimmed().endsWith("]")
 
 /** Whether this operand is one number constant — the spelling A12's grammar sorts into a `numberListe`. */
 private fun CallOperand.isNumberLiteral(): Boolean = isNumberLiteral(tokenize(text))

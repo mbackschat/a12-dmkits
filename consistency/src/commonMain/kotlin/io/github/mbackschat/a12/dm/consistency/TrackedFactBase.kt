@@ -319,6 +319,12 @@ internal class TrackedFactBase private constructor(
         return views.repeatable
     }
 
+    /** The paths of the groups declaring a count below 1, charged as [ModelFact.NON_POSITIVE_COUNT_GROUPS]. */
+    fun nonPositiveCountGroupPaths(): Set<String> {
+        transcript.record(FactRead.ModelMember(ModelFact.NON_POSITIVE_COUNT_GROUPS))
+        return model.nonPositiveCountGroupPaths
+    }
+
     /**
      * Whether [path] names a declaration a reference may resolve to.
      *

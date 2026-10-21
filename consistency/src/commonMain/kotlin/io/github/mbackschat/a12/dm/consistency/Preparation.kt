@@ -306,6 +306,11 @@ data class PreparedModel(
         elements.filter { it.isRepeatableGroup }.map { it.path }
     }
 
+    /** The groups declaring a count below 1, as the value behind [ModelFact.NON_POSITIVE_COUNT_GROUPS]; untracked as above. */
+    internal val nonPositiveCountGroupPaths: Set<String> by lazy {
+        elements.filter { it.declaredKind == DeclaredKind.GROUP && it.body.declaresNonPositiveCount() }.mapTo(HashSet()) { it.path }
+    }
+
     /**
      * Every declaration's own target reference, computed ONCE per model.
      *
@@ -434,7 +439,9 @@ fun prepare(
     providers: Map<String, Admission.Admitted> = emptyMap(),
 ): PreparedModel {
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
-    val declaredCode = content.conditionLanguageCode()?.takeIf { it.isNotBlank() }
+    // Any present code is parsed as a locale, an empty or blank one included, and one A12 does not support refuses
+    // the model (`CheckerUnicodeBlankAgreementTest`): blank is no absence here.
+    val declaredCode = content.conditionLanguageCode()
     val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
     val entry = Scope(
         header = (admitted.parsed as? JsonObject)?.get("header") as? JsonObject,
@@ -942,7 +949,9 @@ private fun JsonObject?.singleRootRepeatabilityRefusal(): String? {
     // An explicit JSON null reads as absence, which A12 admits and defaults to one.
     val content = primitive.contentOrNull ?: return null
     val rows = if (primitive.isString) {
-        content.trim().ifEmpty { "0" }.toIntOrNull() ?: return UNREADABLE_REPEATABILITY
+        // Jackson's coercion strips what Java's `trim` strips and nothing more, so a no-break or em space
+        // leaves a count it cannot read (`CheckerUnicodeBlankAgreementTest`).
+        content.javaTrimmed().ifEmpty { "0" }.toIntOrNull() ?: return UNREADABLE_REPEATABILITY
     } else {
         content.toDoubleOrNull()?.toInt() ?: return UNREADABLE_REPEATABILITY
     }
@@ -1033,7 +1042,7 @@ private fun JsonObject?.referenceForAlias(alias: String): String? =
         ?.filterIsInstance<JsonObject>()
         ?.firstOrNull { it.text("alias") == alias }
         ?.text("reference")
-        ?.takeIf { it.isNotBlank() }
+        ?.takeIf { !it.isUnicodeBlank() }
 
 /**
  * Whether a mount flag is ON. Only the JSON BOOLEAN `true` counts: the Kernel reads every non-Boolean

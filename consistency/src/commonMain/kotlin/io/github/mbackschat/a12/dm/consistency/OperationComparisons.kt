@@ -149,7 +149,7 @@ private fun OperationAnalysis.comparisonFinding(
         "`${comparison.left}` / `${comparison.right}` compare a number with a boolean constant; use a number on both sides")
     val partner = partnerValue.numeric ?: return null
     val suppressed = (element.body?.get("errorCodesToSuppress") as? JsonArray).orEmpty()
-        .any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE } || text.trimStart().startsWith("@") &&
+        .any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE } || text.javaTrimmedStart().startsWith("@") &&
         text.substringBefore(')').contains(SUPPRESSIBLE)
     if (suppressed) return null
     val x = number.scale

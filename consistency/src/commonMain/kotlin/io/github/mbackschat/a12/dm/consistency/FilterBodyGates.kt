@@ -2,16 +2,17 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
-import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
@@ -226,7 +227,7 @@ private fun TrackedFactBase.filterVerdictOf(
     val (markedUses, uses) = indexKeyword
         ?.let { semanticIndexUsesIn(text, conditionLanguage, it) }
         .orEmpty()
-        .partition { use -> marked.any { it.end <= use.keywordAt && text.substring(it.end, use.keywordAt).isBlank() } }
+        .partition { use -> marked.any { it.end <= use.keywordAt && text.substring(it.end, use.keywordAt).isLexerBlank() } }
     // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
     // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
     // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks. On a
@@ -235,7 +236,7 @@ private fun TrackedFactBase.filterVerdictOf(
         return null
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }
-    val markedKeyedRead = markedUses.firstOrNull()?.let { text.substring(it.start, it.end).trim() }
+    val markedKeyedRead = markedUses.firstOrNull()?.let { text.substring(it.start, it.end).javaTrimmed() }
     fun verdict(defect: FilterDefect?) = FilterVerdict(defect, markedKeyedRead)
     var boundSeen = false
     // Every spec in the body is walked, a nested aggregate's operand and a nested filter's body included

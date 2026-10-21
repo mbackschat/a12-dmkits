@@ -134,7 +134,7 @@ private fun TrackedFactBase.operationDefect(
     if (rounded.constant) {
         return RoundingDefect(
             "MVK_NO_CONST",
-            "takes the constant `${rounded.text.trim()}`, but requires a nonconstant numeric operation",
+            "takes the constant `${rounded.text.javaTrimmed()}`, but requires a nonconstant numeric operation",
         )
     }
     // A12 types the whole operation; this reader types only a bare field reference, so an expression is left
@@ -158,7 +158,7 @@ private fun TrackedFactBase.operationDefect(
  * read. Absent digits are A12's own default of zero.
  */
 private fun digitsDefect(call: ConditionCall): RoundingDefect? {
-    val written = call.operands.getOrNull(1)?.text?.trim() ?: return null
+    val written = call.operands.getOrNull(1)?.text?.javaTrimmed() ?: return null
     if (written.isEmpty() || !written.all { it.isAsciiDigit() }) {
         return null
     }

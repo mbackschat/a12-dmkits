@@ -75,11 +75,13 @@ class CheckCellKeyTest {
         // which is exactly why this fact exists rather than riding the set's shape: the shape carries path,
         // name, kind, id and origin, so it cannot see this edit at all.
         ModelFact.REPEATABLE_GROUP_SET to prepared(second = repeatableGroup()),
+        // A group counted 0 repeats at most once, so the repeatable set stays put while this fact moves.
+        ModelFact.NON_POSITIVE_COUNT_GROUPS to prepared(second = repeatableGroup(count = 0)),
     )
 
-    /** A repeatable group appended after `Code`, carrying one field so it is a group worth declaring. */
-    private fun repeatableGroup() =
-        """,{"type":"Group","id":"g9","name":"Lines","Group":{"repeatability":4,"elements":[
+    /** A group appended after `Code`, repeating [count] times and carrying one field so it is worth declaring. */
+    private fun repeatableGroup(count: Int = 4) =
+        """,{"type":"Group","id":"g9","name":"Lines","Group":{"repeatability":$count,"elements":[
              {"type":"Field","id":"f9","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
            ]}}"""
 

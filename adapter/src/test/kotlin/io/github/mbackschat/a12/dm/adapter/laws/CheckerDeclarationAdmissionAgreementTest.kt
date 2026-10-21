@@ -35,6 +35,8 @@ class CheckerDeclarationAdmissionAgreementTest {
         "labels started" to enumRow(started) to setOf(COUNT),
         "a blank label, ONLY-filtered" to enumRow(blank, ONLY) to admitted,
         "a blank label" to enumRow(blank) to setOf(INCOMPLETE),
+        // Kotlin's isBlank reads a no-break space as blank where Java's String.isBlank does not.
+        "a no-break-space label" to enumRow(noBreakSpaceLabel) to admitted,
         "a repeated label, ONLY-filtered" to enumRow(repeatedLabel, ONLY) to admitted,
         "a repeated label" to enumRow(repeatedLabel) to setOf("MVK_DISPLAY_VALUES_DUPLICATE"),
         // A12 still refuses the filtered duplicate, with its codeless repeated-value sentence alone (KF551).
@@ -175,6 +177,13 @@ class CheckerDeclarationAdmissionAgreementTest {
                 setOf(TOO_LONG, MIN_MAGNITUDE),
             "999999999999999.4 rounded at scale 0, the control" to boundsJson(0, "999999999999999.4", "1") to
                 setOf(INVERTED, MIN_MAGNITUDE),
+            // A fractional count outside A12's range is no scale the printed form is rounded to: each bound keeps
+            // its digits, and the count draws its own range sentence.
+            "-0.4 under a count of 20" to boundsJson(20, "1", "-0.4") to
+                setOf(INVERTED, "RK_MEMBER_ABOVE_SCALE_LIMIT", "RK_NUMBER_MIN_VALUE_EXCEEDED"),
+            "-0.5 under a count of -2" to boundsJson(-2, "1", "-0.5") to setOf(INVERTED, "RK_MEMBER_SIGNED"),
+            "0.123456789012345 under a count of 15" to boundsJson(15, "2", "0.123456789012345") to
+                setOf(TOO_LONG, "RK_MEMBER_ABOVE_SCALE_LIMIT", "RK_NUMBER_MIN_VALUE_EXCEEDED"),
         )
         val observed = rows.entries.associate { (row, _) ->
             val a12 = oracle.checkConsistency(row.second, ReferenceResolvers.selfContained())
@@ -276,6 +285,42 @@ class CheckerDeclarationAdmissionAgreementTest {
                     raw != " TRUE" && ours != listOf(NOT_BUILDABLE) -> "ours $ours on $row"
                     else -> null
                 }
+            }
+        }
+        assertEquals(emptyList<String>(), wrong)
+    }
+
+    /**
+     * The model-level carriers bind the whole value domain a declaration's member does, not only the three values the
+     * test above samples: an empty string and `"null"` are off, a whole number other than 0 or 1 and any container
+     * refuse the source. A type definition with no `id` is bound like any other entry. Each row compares A12's
+     * binding refusal with the checker's unbuildable verdict.
+     */
+    @Test
+    fun aModelLevelBooleanBindsTheWholeDomain() {
+        val withoutId = { json: String ->
+            (mapper.readTree(json) as ObjectNode).also { (it.at("/content/typeDefinitions/0") as ObjectNode).remove("id") }.toString()
+        }
+        val carriers: List<Pair<String, (Any) -> String>> = listOf(
+            "modelInfo.immutable" to { raw: Any -> modelMember("modelInfo", "immutable", raw) },
+            "modelConfig.fieldRefByShortNameAllowed" to { raw: Any -> modelMember("modelConfig", "fieldRefByShortNameAllowed", raw) },
+            "typeDefinitions StringType.noValueValidation" to
+                { raw: Any -> typeDefinition("StringType", "noValueValidation", raw, referenced = false) },
+            "typeDefinitions NumberType.positivesOnly (referenced)" to
+                { raw: Any -> typeDefinition("NumberType", "positivesOnly", raw, referenced = true) },
+            "typeDefinitions StringType.alphabeticalSorting, no id" to
+                { raw: Any -> withoutId(typeDefinition("StringType", "alphabeticalSorting", raw, referenced = false)) },
+        )
+        val domain = listOf<Any>("", "null", "1", "0", "TRUE", 0, 1, 2, -1, true, false, emptyMap<String, Any>(), listOf(true))
+        val wrong = carriers.flatMap { (carrier, build) ->
+            domain.mapNotNull { raw ->
+                val json = build(raw)
+                val refused = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
+                    .refusedBinding()
+                val unbuilt = NOT_BUILDABLE in ours(json)
+                if (refused == unbuilt) null
+                else "$carrier=${mapper.writeValueAsString(raw)}: A12 ${if (refused) "refused" else "bound"}, ours " +
+                    if (unbuilt) "unbuilt" else "built"
             }
         }
         assertEquals(emptyList<String>(), wrong)
@@ -416,6 +461,7 @@ class CheckerDeclarationAdmissionAgreementTest {
 
     private val started = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS"))
     private val blank = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS", "en_US" to " "))
+    private val noBreakSpaceLabel = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS", "en_US" to "\u00A0"))
     private val repeatedLabel = listOf(value("BASIC", "en_US" to "Same"), value("PLUS", "en_US" to "Same"))
 
     private val ONLY = nodes.objectNode().put("filterType", "ONLY").also { it.putArray("variants").add("Broker") }

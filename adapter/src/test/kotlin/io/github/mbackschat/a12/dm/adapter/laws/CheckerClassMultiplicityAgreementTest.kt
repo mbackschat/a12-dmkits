@@ -69,6 +69,14 @@ class CheckerClassMultiplicityAgreementTest {
                 messages.addObject().put("locale", "en_US").put("text", "")
                 messages.addObject().put("locale", "de_DE").put("text", "")
             }.toString(),
+            // Kotlin's isBlank reads a no-break space as blank where Java's String.isBlank does not.
+            "no-break-space texts in two locales" to draft(bilingual = true).also { r ->
+                val rule = fields(r).addObject().put("type", "Rule").put("id", "r1").put("name", "Probe")
+                val messages = rule.putObject("Rule").put("errorCondition", "FieldFilled(Reference)")
+                    .put("errorEntityRelPath", "../Reference").put("errorCode", "C1").put("severity", "ERROR").putArray("errorMessage")
+                messages.addObject().put("locale", "en_US").put("text", "\u00A0")
+                messages.addObject().put("locale", "de_DE").put("text", "\u2007")
+            }.toString(),
             "an enum value repeated under two categories" to draft().also { r ->
                 val enumeration = field(r, "Note").putObject("fieldType").put("type", "EnumerationType")
                     .putObject("EnumerationType")

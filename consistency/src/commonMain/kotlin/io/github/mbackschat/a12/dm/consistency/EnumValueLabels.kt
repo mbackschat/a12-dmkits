@@ -82,7 +82,7 @@ private fun TrackedFactBase.labelFindings(
         return emptyList()
     }
     val unanswered = declaredLocales.filter { locale ->
-        texts.any { value -> value[locale]?.string("text").isNullOrBlank() }
+        texts.any { value -> value[locale]?.string("text")?.isA12Blank() != false }
     }
     if (unanswered.isNotEmpty()) {
         return unanswered.map { locale ->

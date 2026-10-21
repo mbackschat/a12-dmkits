@@ -39,6 +39,9 @@ class CheckerComputedPathLexerAgreementTest {
             "the index field" to model(nbsp, indexed = true),
             "a dot beside it" to model("La.b" + Char(0x00A0) + "el"),
             "a refused operation" to model(nbsp, operation = "[Nope]"),
+            "a refused precondition" to model(nbsp, precondition = "FieldFilled(Nope)"),
+            "a rule's target naming the field, no computation" to model(nbsp, computation = false, rule = true),
+            "a rule's target naming the field, beside the computation" to model(nbsp, rule = true),
         )
         val observed = rows.mapValues { (_, json) -> kernel(json) to ours(json) }
         assertEquals(observed.mapValues { it.value.first to it.value.first }, observed, "each row as (A12, ours)")
@@ -76,16 +79,31 @@ class CheckerComputedPathLexerAgreementTest {
         .rootGroup("Order") { order -> order.group("Bin") { bin -> bin.stringField("Slot") { }.stringField("Label") { } } }
         .build().toJson()
 
-    private fun model(label: String, indexed: Boolean = false, operation: String = "\"bin\""): String {
+    private fun model(
+        label: String,
+        indexed: Boolean = false,
+        operation: String = "\"bin\"",
+        precondition: String = "FieldFilled(Slot)",
+        computation: Boolean = true,
+        rule: Boolean = false,
+    ): String {
         val tree = mapper.readTree(base)
         val binGroup = tree.at("/content/modelRoot/rootGroups/0/Group/elements/0/Group") as ObjectNode
         if (indexed) binGroup.put("repeatability", 5).put("indexFieldName", label)
         val bin = binGroup.path("elements") as ArrayNode
         (bin[1] as ObjectNode).put("name", label).put("id", "/Order/Bin/$label")
-        val body = bin.addObject().put("type", "Computation").put("name", "Fill").put("id", "/Order/Bin/Fill")
-            .putObject("Computation").put("computedFieldRelPath", "../$label").put("commonPrecondition", "FieldFilled(Slot)")
-        body.putArray("computationAlternatives").addObject().put("precondition", "FieldFilled(Slot)").put("operation", operation)
-        body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", "Label from the slot")
+        if (computation) {
+            val body = bin.addObject().put("type", "Computation").put("name", "Fill").put("id", "/Order/Bin/Fill")
+                .putObject("Computation").put("computedFieldRelPath", "../$label").put("commonPrecondition", precondition)
+            body.putArray("computationAlternatives").addObject().put("precondition", precondition).put("operation", operation)
+            body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", "Label from the slot")
+        }
+        if (rule) {
+            val body = bin.addObject().put("type", "Rule").put("name", "Check").put("id", "/Order/Bin/Check")
+                .putObject("Rule").put("errorCondition", "FieldFilled(Slot)").put("errorEntityRelPath", "../$label")
+                .put("errorCode", "C1").put("severity", "ERROR")
+            body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", "Label the slot")
+        }
         return mapper.writeValueAsString(tree)
     }
 

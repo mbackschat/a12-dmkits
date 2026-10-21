@@ -262,9 +262,9 @@ private fun TrackedFactBase.keyedIdentityOf(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    val written = operand.text.trimStart()
+    val written = operand.text.javaTrimmedStart()
     val captured = written.startsWith(OUTER_MARKER)
-    val text = if (captured) written.removePrefix(OUTER_MARKER).trimStart() else operand.text
+    val text = if (captured) written.removePrefix(OUTER_MARKER).javaTrimmedStart() else operand.text
     val read = operandReferenceIn(text, declaringGroup, element) { null }?.takeIf { it.indexSelected }
         ?: return null
     val path = (resolveEntity(declaringGroup, read.reference, element.origin) as? Reference.Resolved)?.path

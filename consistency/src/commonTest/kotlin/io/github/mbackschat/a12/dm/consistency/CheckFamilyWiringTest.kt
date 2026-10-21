@@ -475,8 +475,6 @@ class CheckFamilyWiringTest {
         CheckFamily.RULE_CONDITION_AND_TARGET to (CK_MODEL_NOT_BUILDABLE to "/Catalog/NoCondition"),
         CheckFamily.ELEMENT_NAME_UNIQUENESS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Twin"),
         CheckFamily.GROUP_ORDERING_REFERENCES to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Ordered"),
-        CheckFamily.GROUP_ORDERING_FIELD_TYPE to
-            ("MVK_INDEX_FIELD_NO_VALUE_VALIDATION" to "/Catalog/BadKey/Key"),
         CheckFamily.COMPUTATION_ROUNDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/BadRounding"),
         CheckFamily.SUPPRESSED_WARNINGS to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/BadSuppression"),
         CheckFamily.CONDITION_LEXICALITY to ("MVK_LEXER_STANDARD_ERROR" to "/Catalog/Unlexable"),
@@ -845,8 +843,33 @@ class CheckFamilyWiringTest {
         CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
     )
 
+    /**
+     * A model whose only defect is an ordering key A12 never validates, because A12 asks the ordering gates only
+     * of a model its entity walk admitted ([KERNEL-FINDINGS KF589]) and the fixture above refuses several
+     * elements there.
+     */
+    private val orderingSource = ModelSource(
+        """
+        {"header":{"id":"wiring-ordering","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"go0","name":"Catalog","Group":{"elements":[
+            {"type":"Group","id":"go1","name":"BadKey","Group":{"repeatability":20,
+              "indexFieldName":"Key","elements":[
+                {"type":"Field","id":"fo0","name":"Key","Field":{
+                  "fieldType":{"StringType":{"noValueValidation":true,"lineBreaks":true}}}}
+              ]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    private val orderingEvidence = mapOf(
+        CheckFamily.GROUP_ORDERING_FIELD_TYPE to ("MVK_INDEX_FIELD_NO_VALUE_VALIDATION" to "/Catalog/BadKey/Key"),
+    )
+
     /** The models beside [source], each carrying the families only it can reach, with what each proves. */
-    private val sideModels = listOf(germanSource to germanEvidence, cycleSource to cycleEvidence)
+    private val sideModels =
+        listOf(germanSource to germanEvidence, cycleSource to cycleEvidence, orderingSource to orderingEvidence)
 
     @Test
     fun theFieldReadProducerOwnsTheFilterRead() {

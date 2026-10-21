@@ -647,7 +647,7 @@ private fun TrackedFactBase.keyedReferenceIn(
     }
     val sound = bareKey && tokenize(inner.substring(use.end)).isEmpty() &&
         admitsSemanticIndex(use, declaringGroup, element)
-    return if (sound) OperandReference(value, indexSelected = true, category = category, key = key.trim()) else null
+    return if (sound) OperandReference(value, indexSelected = true, category = category, key = key.javaTrimmed()) else null
 }
 
 /** Whether [text] writes a semantic index anywhere, which is what routes it to [operandReferenceIn]. */

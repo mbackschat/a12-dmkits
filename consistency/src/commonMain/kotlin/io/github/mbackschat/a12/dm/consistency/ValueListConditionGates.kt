@@ -263,7 +263,7 @@ private fun TrackedFactBase.constantDomainFinding(
     listed.forEach { entry ->
         domain += entry.contributedValues() ?: return null
     }
-    val offending = opposite.map { it.trim().decodeAuthoredStringLiteral() }
+    val offending = opposite.map { it.javaTrimmed().decodeAuthoredStringLiteral() }
         .firstOrNull { it !in domain } ?: return null
     return Finding(
         FindingCategory.A12_CONSTRAINT,

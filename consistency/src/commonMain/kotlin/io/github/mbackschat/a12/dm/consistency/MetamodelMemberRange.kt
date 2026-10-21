@@ -67,6 +67,9 @@ internal class MemberRange(
 
         /** A number's fractional places: 0 to the scale cap of 14, `-1` meaning "not declared". */
         val FRACTIONAL_PLACES = MemberRange(0, 14, MemberRangeViolation.ABOVE_SCALE_LIMIT, admitsUndefined = true)
+
+        /** A group's `repeatability`: at least 1, the cap being a class of its own ([KF365]) rather than a sentence. */
+        val REPEATABILITY = MemberRange(1, Int.MAX_VALUE, MemberRangeViolation.NOT_POSITIVE, admitsUndefined = false)
     }
 }
 

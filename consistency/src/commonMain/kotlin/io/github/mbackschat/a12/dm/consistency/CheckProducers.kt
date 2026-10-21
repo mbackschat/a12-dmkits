@@ -292,7 +292,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         findings = { it.groupOrderingFindings() },
     ),
     perDeclaration(CheckFamily.GROUP_REPETITION_COUNT, DeclarationStage.INDEPENDENT) { base, at ->
-        listOfNotNull(base.groupRepetitionCountFinding(at))
+        base.groupRepetitionCountFindings(at)
     },
     perDeclarationWalk(CheckFamily.RULE_PRESENTATION_MEMBERS, DeclarationStage.INDEPENDENT) { it.presentationMemberFindings() },
     perDeclaration(CheckFamily.STRING_SLOT_BINDING, DeclarationStage.INDEPENDENT) { base, at -> base.stringSlotFindings(at) },

@@ -133,8 +133,8 @@ private fun TrackedFactBase.rangeDefect(
  * already have refused, so there is nothing here to judge.
  */
 private fun intervalDefect(call: ConditionCall): SubstringDefect? {
-    val begin = call.operands[1].text.trim().toIntOrNull() ?: return null
-    val end = call.operands[2].text.trim().toIntOrNull() ?: return null
+    val begin = call.operands[1].text.javaTrimmed().toIntOrNull() ?: return null
+    val end = call.operands[2].text.javaTrimmed().toIntOrNull() ?: return null
     return if (begin < 1 || begin > end) {
         SubstringDefect(
             "MVK_INVALID_INTERVAL",

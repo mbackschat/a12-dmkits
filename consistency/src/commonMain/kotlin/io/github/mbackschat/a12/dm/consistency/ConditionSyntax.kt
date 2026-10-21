@@ -93,7 +93,7 @@ internal fun ConditionExecution.syntaxContribution(family: CheckFamily): Conditi
     val authored = carrier.parts.single { it.authored && it.member == member }
     val text = carrier.text.substring(authored.start, authored.end)
     // Presence families own absent text, but blank work still fails at its reached parse site (R5).
-    if (failure.kind != SyntaxFailureKind.LEXICAL && text.isBlank() && member == "errorCondition") return null
+    if (failure.kind != SyntaxFailureKind.LEXICAL && text.isA12Blank() && member == "errorCondition") return null
     val generated = at?.authored != true
     val ownerFamily = when {
         failure.kind == SyntaxFailureKind.LEXICAL -> CheckFamily.CONDITION_LEXICALITY
@@ -105,7 +105,7 @@ internal fun ConditionExecution.syntaxContribution(family: CheckFamily): Conditi
     if (ownerFamily != family) return null
     val start = if (generated) text.length else (failure.at - authored.start).coerceIn(0, text.length)
     val end = if (generated) start else (failure.end - authored.start).coerceIn(start, text.length)
-    val context = if (failure.found.isEmpty() || generated) "ends after `${text.trimEnd().takeLast(40)}`"
+    val context = if (failure.found.isEmpty() || generated) "ends after `${text.javaTrimmedEnd().takeLast(40)}`"
         else "carries `${text.substring(start, end)}`"
     val explanation = if (failure.kind == SyntaxFailureKind.LEXICAL) {
         if (failure.found.firstOrNull() in listOf('\'', '"'))

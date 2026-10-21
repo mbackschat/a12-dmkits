@@ -61,11 +61,9 @@ internal fun TrackedFactBase.groupOrderingFindings(): List<Finding> =
 private fun TrackedFactBase.indexFindings(group: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val declared = (body?.get("indexFieldName") as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
         ?: return emptyList()
-    return listOfNotNull(
-        orderingFinding(
-            group, declared, "indexFieldName",
-            "MVK_INVALID_INDEX_FIELD", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION",
-        ),
+    return orderingFindings(
+        group, declared, "indexFieldName",
+        "MVK_INVALID_INDEX_FIELD", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION", statesName = true,
     )
 }
 
@@ -74,8 +72,8 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
     // Each NAME is judged once, however often the list repeats it, and wherever it stands — beyond the
     // list's capacity too ([KERNEL-FINDINGS KF345]).
     val judged = mutableSetOf<String>()
-    return group.unsortableCarrier(entries) + group.repeatedSortField(entries) + group.sortCapacityFindings(entries) +
-        entries.flatMap { entry ->
+    val refusedNames = mutableSetOf<String>()
+    val perEntry = entries.withIndex().flatMap { (position, entry) ->
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
         // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
         // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
@@ -84,14 +82,17 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
         when {
             name == null -> listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
             !judged.add(name) -> emptyList()
-            else -> listOfNotNull(
-                orderingFinding(
-                    group, name, "sortFields[].name",
-                    "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
-                ),
-            )
+            // The name sentence is A12's metamodel reading of the list, which holds three entries; the
+            // gates below read every entry ([KERNEL-FINDINGS KF589]).
+            else -> orderingFindings(
+                group, name, "sortFields[].name",
+                "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
+                statesName = position < SORT_CAPACITY,
+            ).also { found -> if (found.any { it.code == RK_FIELD_NAME_ALPHABET }) refusedNames += name }
         }
     }
+    return group.unsortableCarrier(entries) + group.repeatedSortField(entries, refusedNames) +
+        group.sortCapacityFindings(entries) + perEntry
 }
 
 /**
@@ -153,12 +154,14 @@ private fun TrackedDeclaration.unsortableCarrier(entries: JsonArray): List<Findi
  * It reads only the entries within the list's capacity: a name repeated at the fourth entry draws nothing.
  *
  * It rides beside whatever the entries themselves draw — the duplicate does not withhold the type class, and
- * the type class does not withhold it.
+ * the type class does not withhold it. A name the field-name sentence refuses is no value it compares, so a
+ * refused name repeated draws no duplicate while a sound one repeated beside it still does ([KERNEL-FINDINGS
+ * KF589]).
  */
-private fun TrackedDeclaration.repeatedSortField(entries: JsonArray): List<Finding> {
+private fun TrackedDeclaration.repeatedSortField(entries: JsonArray, refusedNames: Set<String>): List<Finding> {
     val names = entries.take(SORT_CAPACITY).mapNotNull { entry ->
         ((entry as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
-    }
+    }.filterNot { it in refusedNames }
     if (names.size == names.distinct().size) {
         return emptyList()
     }
@@ -182,34 +185,37 @@ private fun TrackedDeclaration.repeatedSortField(entries: JsonArray): List<Findi
  *     index and `MVK_INVALID_SORT_FIELD` for the sort, and each was measured on its own member rather than
  *     transferred from the other.
  * @param noValueValidationCode the member's own code for the third gate, likewise unshared.
+ * @param statesName whether A12's metamodel reads this entry at all, and so states its name sentence.
  */
-private fun TrackedFactBase.orderingFinding(
+private fun TrackedFactBase.orderingFindings(
     group: TrackedDeclaration,
     written: String,
     member: String,
     outsideCode: String,
     noValueValidationCode: String,
-): Finding? {
+    statesName: Boolean,
+): List<Finding> {
     if (written.startsWith("/")) {
-        return unbuildable(group, "`$member` is `$written`, which A12 refuses as an illegal relative path")
+        return listOf(unbuildable(group, "`$member` is `$written`, which A12 refuses as an illegal relative path"))
     }
     // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
     // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
     val target = declarationAt(landed)
     if (target == null || target.declaredKind != DeclaredKind.FIELD) {
-        return unbuildable(
+        return listOf(unbuildable(
             group,
             "`$member` is `$written`, which names no field at all — a blank or unresolvable one included, " +
                 "and a GROUP of that name does not count",
-        )
+        ))
     }
     // KF295's filter and twin controls require a surviving local cursor, after the original binding above.
     val shortName = landed.substringAfterLast('/')
-    // The short name A12 keeps is judged as a field name before either later gate, and a refused one takes their
-    // place: it is stated once more for the member, and neither the outside code nor the type code is (KERNEL-FINDINGS KF589).
-    if (shortName.refusedAsFieldName()) {
-        return Finding(
+    // The short name A12 keeps is judged as a field name, in a sentence of its own that neither withholds the
+    // later gates nor is withheld by them (KERNEL-FINDINGS KF589). The gates are A12's later check, which it
+    // skips whenever an earlier one refused the model ([ORDERING_GATE_CODES]).
+    val sentence = if (statesName && shortName.refusedAsFieldName()) {
+        Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             RK_FIELD_NAME_ALPHABET,
@@ -217,7 +223,21 @@ private fun TrackedFactBase.orderingFinding(
                 FIELD_NAME_ALPHABET,
             group.path,
         )
+    } else {
+        null
     }
+    return listOfNotNull(sentence, gateFinding(group, written, member, landed, shortName, outsideCode, noValueValidationCode))
+}
+
+private fun TrackedFactBase.gateFinding(
+    group: TrackedDeclaration,
+    written: String,
+    member: String,
+    landed: String,
+    shortName: String,
+    outsideCode: String,
+    noValueValidationCode: String,
+): Finding? {
     val own = defaultVariantFieldAt("${group.path}/$shortName")
     if (own != null) {
         // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
@@ -285,3 +305,35 @@ private fun unbuildable(group: TrackedDeclaration, explain: String) = Finding(
     "$explain — so A12 never builds the model and no consistency verdict about it exists",
     group.path,
 )
+
+/**
+ * The ordering gates, which A12's `NoMetaModelChecks` reaches only when every check it runs before them passed
+ * ([KERNEL-FINDINGS KF589]): a model refused there is never asked about its ordering members, so these classes are
+ * withheld whenever [refusesTheEntityWalk] holds of a reported finding. The duplicate verdict and the name sentence are read
+ * elsewhere and are not withheld.
+ */
+internal val ORDERING_GATE_CODES = setOf(
+    "MVK_INVALID_INDEX_FIELD", "MVK_INVALID_SORT_FIELD",
+    "MVK_INDEX_FIELD_NO_VALUE_VALIDATION", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
+)
+
+/**
+ * Whether [finding] is one of the classes `NoMetaModelChecks.check` reports before its ordering gates: the entity walk (paths,
+ * repetition layers, a field's own message, an enumeration's characters) and the model-wide settings it reads
+ * beside it. Measured on the path and repetition-layer carriers; the others share the one `return false`.
+ */
+internal fun TrackedFactBase.refusesTheEntityWalk(finding: Finding): Boolean = finding.justifiesRejection && (
+    finding.code in PRE_ORDERING_CODES ||
+        // A rule's message carries the same codes, and A12 judges it later, so only a FIELD's own message counts.
+        finding.code in FIELD_MESSAGE_CODES && finding.at?.let { declarationAt(it)?.declaredKind } == DeclaredKind.FIELD
+    )
+
+private val PRE_ORDERING_CODES = setOf(
+    "MVK_PATH_INVALID", "MVK_PATHS_INCONSISTENT", "MVK_FIELD_WITH_CONTAINED_ENTITIES", "MVK_PARENT_ENTITY_MISSING",
+    "MVK_MAX_VALUES_INVALID", "MVK_MAX_VALUES_INCONSISTENT", "MVK_FIELD_NO_PARENT",
+    "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER", "MVK_INVALID_TIME_ZONE", "MVK_DUPLICATE_DYNAMIC_ENUM",
+    "MVK_NO_PROJECT_LANGUAGE_SETTINGS", "MVK_INVALID_NAME_4_GENERATED_CODE", "MVK_INVALID_PACKAGE_NAME_4_GENERATED_CODE",
+)
+
+private val FIELD_MESSAGE_CODES =
+    setOf("WRONG_ENCODING", "INVALID_LINEBREAK", "INVALID_CHARACTERS", "WRONG_NUMBER_OF_DOLLARS", "INVALID_PARAMETER")

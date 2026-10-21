@@ -159,7 +159,7 @@ private fun TrackedFactBase.constantKindFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             arm.code,
-            "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts `${constantText.trim()}`, a point in time — this " +
+            "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts `${constantText.javaTrimmed()}`, a point in time — this " +
                 "operator counts a number, a text or a boolean constant and nothing else, whatever the " +
                 "listed declarations are. Compare the date against a field instead of counting it",
             element.path,
@@ -173,7 +173,7 @@ private fun TrackedFactBase.constantKindFinding(
     val defect = when (val verdict = typeWalkVerdict(fields, arm, constantText)) {
         is ListVerdict.Offender -> ListDefect(
             arm.code,
-            "counts `${constantText.trim()}`, and `${verdict.field.path}` is declared " +
+            "counts `${constantText.javaTrimmed()}`, and `${verdict.field.path}` is declared " +
                 "`${verdict.field.declaredFieldType()}` — that constant only counts " +
                 arm.admitted.joinToString { "`$it`" } +
                 " declarations; drop the field from the list, or count a constant of its own kind",
@@ -221,7 +221,7 @@ private fun stringArmTailDefect(
     fields.firstOrNull { it.waivesValueValidation() }?.let { raw ->
         return ListDefect(
             "MVK_INVALID_RAW_TYPE",
-            "counts `${constantText.trim()}` over `${raw.path}`, which waives value validation — A12 holds " +
+            "counts `${constantText.javaTrimmed()}` over `${raw.path}`, which waives value validation — A12 holds " +
                 "its content unparsed and cannot compare it against a value",
         )
     }
@@ -323,7 +323,7 @@ private fun unexpectedConstantToken(constantText: String, element: TrackedDeclar
         FindingSeverity.ERROR,
         "MVK_UNEXPECTED_TOKEN",
         "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts " +
-            (constantText.trim().takeIf { it.isNotEmpty() }?.let { "`$it`, which is not a constant" }
+            (constantText.javaTrimmed().takeIf { it.isNotEmpty() }?.let { "`$it`, which is not a constant" }
                 ?: "nothing — the slot before `In` is empty") +
             ". That position takes a number, a text, `True`, `False` or a point in time, and nothing " +
             "assembled from them, so even parentheses around a legal constant are refused",

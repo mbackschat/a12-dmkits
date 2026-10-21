@@ -1,13 +1,13 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
-
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
-import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
+import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
+import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
+import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
@@ -90,7 +90,7 @@ internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclarati
 
 /** Whether the reference ending at [end] is the value this index keys, written right before its keyword. */
 private fun SemanticIndexUse.indexes(end: Int, text: String): Boolean =
-    end <= keywordAt && text.substring(end, keywordAt).isBlank()
+    end <= keywordAt && text.substring(end, keywordAt).isLexerBlank()
 
 /**
  * The references [element] reads as the rule's own — the ones A12 checks against the rule's target

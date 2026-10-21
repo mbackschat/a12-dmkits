@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
+import io.github.mbackschat.a12.dm.consistency.javaTrimmed
+
 /**
  * The operator calls a condition or operation text makes, each with its own operand list.
  *
@@ -426,8 +428,8 @@ fun ConditionCall.splitAtInfix(keyword: String): Pair<List<String>, List<String>
         return null
     }
     val cut = infixAt(operands[at].text, keyword) ?: return null
-    val left = operands.take(at).map { it.text } + operands[at].text.substring(0, cut.first).trim()
-    val right = listOf(operands[at].text.substring(cut.second).trim()) + operands.drop(at + 1).map { it.text }
+    val left = operands.take(at).map { it.text } + operands[at].text.substring(0, cut.first).javaTrimmed()
+    val right = listOf(operands[at].text.substring(cut.second).javaTrimmed()) + operands.drop(at + 1).map { it.text }
     return left.filter { it.isNotEmpty() } to right.filter { it.isNotEmpty() }
 }
 

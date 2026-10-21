@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
@@ -31,7 +32,70 @@ import kotlinx.serialization.json.longOrNull
  * `MVK_MAX_MISSING` cannot fire on a stored model — an omitted `repeatability` is simply a group that
  * repeats once.
  */
-internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaration): Finding? {
+internal fun TrackedFactBase.groupRepetitionCountFindings(element: TrackedDeclaration): List<Finding> {
+    val own = groupRepetitionCountFinding(element)
+    // The class is one verdict per element, so a group refused on its own count does not draw it again.
+    val inherited = if (own?.code == "MVK_MAX_VALUES_INVALID" || own?.code == CK_MODEL_NOT_BUILDABLE) null
+    else inheritedInvalidCount(element)
+    return listOfNotNull(own, inherited, countSentence(element))
+}
+
+/**
+ * The class an element draws for a non-positive count declared by a group ABOVE it ([KERNEL-FINDINGS KF590]).
+ * A12 judges each element's repetition layers, which it derives from every ancestor, so one group's `0` is a
+ * defect in each group and field beneath it, and every one of them carries the class once.
+ */
+private fun TrackedFactBase.inheritedInvalidCount(element: TrackedDeclaration): Finding? {
+    val refused = nonPositiveCountGroupPaths()
+    if (refused.isEmpty()) {
+        return null
+    }
+    val ancestor = element.path.split('/').filter { it.isNotEmpty() }.dropLast(1)
+        .runningFold("") { prefix, segment -> "$prefix/$segment" }.drop(1)
+        .firstOrNull { it in refused } ?: return null
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_MAX_VALUES_INVALID",
+        "`$ancestor` above it declares a `repeatability` below 1, and A12 derives each element's repetition " +
+            "from its ancestors, so every element beneath that group is refused with it",
+        element.path,
+    )
+}
+
+/** The metamodel's range sentence for the member itself, which A12 states beside the class ([KF590]). */
+private fun countSentence(group: TrackedDeclaration): Finding? {
+    if (group.declaredKind != DeclaredKind.GROUP) {
+        return null
+    }
+    val member = group.body?.get("repeatability") ?: return null
+    // A literal null is held as no count at all, which the metamodel reads as not greater than 0.
+    val declared = if (member is JsonNull) 0L else (member as? JsonPrimitive)?.boundRepetitionCount() ?: return null
+    if (declared > READABLE_CEILING || declared < READABLE_FLOOR) {
+        return null
+    }
+    val violation = MemberRange.REPEATABILITY.violationOf(declared.toInt()) ?: return null
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        violation.code,
+        "this group declares `repeatability` $member, outside the range A12 admits; it refuses that with no " +
+            "class: \"${violation.sentence}\"",
+        group.path,
+    )
+}
+
+/** Whether a group's [JsonObject] body declares a count A12 reads and holds below 1, the literal null included. */
+internal fun JsonObject?.declaresNonPositiveCount(): Boolean {
+    val member = this?.get("repeatability") ?: return false
+    if (member is JsonNull) {
+        return true
+    }
+    val declared = (member as? JsonPrimitive)?.boundRepetitionCount() ?: return false
+    return declared in READABLE_FLOOR..0L
+}
+
+private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaration): Finding? {
     if (group.declaredKind != DeclaredKind.GROUP) {
         return null
     }
@@ -44,7 +108,8 @@ internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclarati
     if (member is JsonNull) {
         return group.invalidCount("null")
     }
-    val declared = (member as? JsonPrimitive)?.longOrNull ?: return null
+    val primitive = member as? JsonPrimitive ?: return null
+    val declared = primitive.boundRepetitionCount() ?: return if (primitive.isString) unreadableCount(group, primitive) else null
     return when {
         // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
         // they share one message rather than stating it twice.
@@ -72,6 +137,21 @@ internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclarati
         else -> null
     }
 }
+
+/**
+ * The count Jackson binds a stored `repeatability` to: a string is read after Java's `trim`, so `" 3 "` is 3 while
+ * a no-break or em space leaves no number (`CheckerUnicodeBlankAgreementTest`); null when no whole number results.
+ */
+private fun JsonPrimitive.boundRepetitionCount(): Long? = if (isString) content.javaTrimmed().toLongOrNull() else longOrNull
+
+private fun unreadableCount(group: TrackedDeclaration, member: JsonPrimitive) = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    CK_MODEL_NOT_BUILDABLE,
+    "`${group.path}` declares the `repeatability` \"${member.content}\", which A12's reader cannot bind as a " +
+        "whole number — the source is refused before any check runs, so no verdict about this model exists",
+    group.path,
+)
 
 /** The domain's own class, for a count A12 requires to be at least 1 — `0`, a negative, or a literal null. */
 private fun TrackedDeclaration.invalidCount(declared: String): Finding = Finding(

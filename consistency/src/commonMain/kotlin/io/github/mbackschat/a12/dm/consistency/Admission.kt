@@ -126,7 +126,7 @@ fun admit(source: ModelSource): Admission {
     val root = parsed as? JsonObject
     val modelId = (root?.get("header") as? JsonObject)
         ?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
-    if (modelId.isNullOrBlank()) {
+    if (modelId == null || modelId.isUnicodeBlank()) {
         return source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
     }
     if (root["content"] !is JsonObject) {

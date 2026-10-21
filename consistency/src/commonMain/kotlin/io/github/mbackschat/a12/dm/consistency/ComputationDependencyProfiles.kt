@@ -21,7 +21,7 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
             val implicit = repeatable.filter { target.startsWith("$it/") }.maxByOrNull { it.length }
             (body["computationAlternatives"] as? JsonArray).orEmpty().mapNotNull { alternative ->
                 val own = ((alternative as? JsonObject)?.get("precondition") as? JsonPrimitive)?.contentOrNull
-                val present = listOfNotNull(common, own).filter { it.isNotBlank() }
+                val present = listOfNotNull(common, own).filter { !it.isA12Blank() }
                 if (present.isEmpty() && implicit == null) null
                 else present.flatMap { profile(it, writer, target) }.toSet() + ancestors(implicit)
             }

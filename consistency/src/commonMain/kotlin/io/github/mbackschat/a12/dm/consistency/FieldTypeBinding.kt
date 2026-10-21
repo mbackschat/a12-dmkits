@@ -245,7 +245,8 @@ private fun unbindableFieldType(
  * A12 does not judge the two members, it judges `format + rangeSeparator + format`, the range format
  * `FieldDataCollector.addDateRangeType` writes, and an absent format composes as the text `null`. A composite that
  * is blank once Java-trimmed is `MVK_FORMAT_DATE_RANGE_MISSING`. Otherwise the separator draws a sentence of its own
- * when, trimmed, it is not empty, `-` or `/` — on every format measured, so it is stated for any — and the pair draws
+ * when, trimmed, it is not empty, `-` or `/` — on every format and every one of the [MEASURED_RANGE_SEPARATORS] put
+ * beside it, a letter, a symbol and two characters among them, so it is stated for any — and the pair draws
  * the range-format sentence when it is not one A12 allowlists. Every half of a refused pair appears in an admitted
  * pair, so neither half can be judged alone (KF316), and the pair is judged on the raw separator: `/ ` is refused
  * beside a format `/` is admitted with.
@@ -442,7 +443,7 @@ private val RANGE_SEPARATOR_ALPHABET = setOf("", "-", "/")
  * Separators put to the kernel beside every [ADMITTED_RANGE_SEPARATORS] format besides the sweep's own axis, by
  * `adapter.laws.CheckerDateRangeSentenceAgreementTest` (KF581); none admits a pair.
  */
-private val MEASURED_RANGE_SEPARATORS = setOf(" ", "\t", "x", "\u2013", "//", "/ ", " /", "/\t", "\u00A0")
+private val MEASURED_RANGE_SEPARATORS = setOf(" ", "\t", "x", "\u2013", "//", "/ ", " /", "/\t", "\u00A0", "|", "\u00E4", "ab")
 
 internal const val RK_DATE_RANGE_FORMAT_INVALID = "RK_DATE_RANGE_FORMAT_INVALID"
 internal const val RK_DATE_RANGE_SEPARATOR_INVALID = "RK_DATE_RANGE_SEPARATOR_INVALID"

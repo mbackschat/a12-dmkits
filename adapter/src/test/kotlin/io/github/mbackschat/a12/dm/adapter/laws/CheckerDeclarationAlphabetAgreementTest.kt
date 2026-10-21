@@ -32,6 +32,7 @@ class CheckerDeclarationAlphabetAgreementTest {
         val only: Boolean = false,
         val condition: String = "FieldFilled(Reference)",
         val target: String = "../Reference",
+        val numericCode: Number? = null,
     )
 
     private val rows = linkedMapOf(
@@ -81,6 +82,21 @@ class CheckerDeclarationAlphabetAgreementTest {
         "a computation named with a space" to Row(name = "Prem ium", computation = true),
         "a computation named with an umlaut" to Row(name = "Prämie", computation = true),
         "a dotted computation, deleted at the default variant" to Row(name = "Prem.ium", computation = true, only = true),
+        // Whether the two alphabets read the value Java-trimmed, as the element-path sentences do (KF580).
+        "a name with a trailing space" to Row(name = "Probe "),
+        "a name with a leading space" to Row(name = " Probe"),
+        "a name with a trailing tab" to Row(name = "Probe\t"),
+        "a code with a trailing tab" to Row(code = "C\t"),
+        "a code with a leading tab" to Row(code = "\tC"),
+        "a code with a trailing line feed" to Row(code = "C\n"),
+        "a computation named with a trailing space" to Row(name = "Premium ", computation = true),
+        // Java's trim stops at U+0020, so an em space is kept and judged; a strip would remove it.
+        "a name with a trailing em space" to Row(name = "Probe\u2003"),
+        "a code with a trailing em space" to Row(code = "C\u2003"),
+        // A number written as the code is coerced to its text.
+        "a negative number as the code" to Row(numericCode = -7),
+        "a decimal number as the code" to Row(numericCode = 1.5),
+        "a whole number as the code" to Row(numericCode = 7),
     )
 
     @Test
@@ -145,7 +161,11 @@ class CheckerDeclarationAlphabetAgreementTest {
         element.put("name", row.name).put("id", "/Policy/${row.name}")
         val body = element.path(if (row.computation) "Computation" else "Rule") as ObjectNode
         if (!row.computation) {
-            if (row.code == null) body.remove("errorCode") else body.put("errorCode", row.code)
+            when {
+                row.numericCode != null -> body.set<ObjectNode>("errorCode", mapper.valueToTree(row.numericCode))
+                row.code == null -> body.remove("errorCode")
+                else -> body.put("errorCode", row.code)
+            }
         }
         if (row.only) body.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Broker")
         return mapper.writeValueAsString(root)

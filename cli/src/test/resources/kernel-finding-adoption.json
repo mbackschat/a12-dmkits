@@ -502,8 +502,80 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf590": {
+      "sha256": "a3f0af4443a83537ac6ffad0826769bd7ae4950e4aa174db5554940c98c0bab7",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["repetition count cascade"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["repetition count cascade"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["repetition count cascade"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author models through the typed builder and leave these verdicts to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "Each element beneath a group counted below 1 draws MVK_MAX_VALUES_INVALID, keyed on a dedicated model fact, and the group states the member's range sentence.", "evidence": {"repetition count cascade": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/GroupRepetitionCountTest.kt#aNonPositiveCountIsInvalidOnEitherCarrier", "witness": "Nested and root carriers at 0, -1, the floor and null replay the class beneath and the sentence on JVM and Node."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on twelve rows over three carriers and four counts, with every attachment path.", "evidence": {"repetition count cascade": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRepeatabilityCascadeAgreementTest.kt#theCheckerReportsA12sClassesWhereA12Does", "witness": "Every row's classes and paths agree; A12's answer on the nested zero row is pinned."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf310": {
+      "sha256": "1d559b09951c8027c9bc29e23ab7b04548c7b514f5e14fe4ebd0a1018eed091a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["unicode blank members"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["unicode blank members"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["unicode blank members"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author models through the typed builder and leave these verdicts to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "Presence and trimming tests ask isA12Blank, isLexerBlank, isUnicodeBlank or the javaTrimmed family, and the platform guard refuses Kotlin's blank and trim calls.", "evidence": {"unicode blank members": {"reference": "consistency/src/jvmTest/kotlin/io/github/mbackschat/a12/dm/consistency/PlatformCharacterTableJvmTest.kt#theScanCatchesEveryClassifierSpelling", "witness": "Every planted spelling is caught and the A12 helpers are not."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on the condition language, condition, precondition, message parameter and stored count over the no-break and em spaces.", "evidence": {"unicode blank members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnicodeBlankAgreementTest.kt#theCheckerReadsEachMemberAsA12Does", "witness": "Every row agrees class for class."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf299": {
+      "sha256": "1c47177dfa580dbc3183602f57c7390219f166a2cdc90573247dee78abdca0a6",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["variant-blind codes"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["variant-blind codes"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author models through the typed builder and leave these verdicts to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "VARIANT_BLIND_CODES keeps the unbuildable verdict and the empty-code sentence under an ONLY filter.", "evidence": {"variant-blind codes": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAlphabetAgreementTest.kt#theCheckerNamesA12sSentencesOnEveryRow", "witness": "Refused names and codes under an ONLY filter draw nothing on both sides."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The filter rows are compared with the kernel in the declaration agreement tests.", "evidence": {"variant-blind codes": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAlphabetAgreementTest.kt#theCheckerNamesA12sSentencesOnEveryRow", "witness": "Every row agrees."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A correction to this repository's own wording, with no claim in their spec.", "evidence": {}}
+      }
+    },
     "kf589": {
-      "sha256": "1dc39d3596013197462b46bdcd47379e74aace825557c8609fecf61718edf21b",
+      "sha256": "e1ca449360cc4677c3527b24ab1406eec724299996aabc7fcb3c50dc607698d1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -517,10 +589,10 @@
       },
       "consumers": {
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builder refuses these field names before an ordering member can name them.", "evidence": {}},
-        "checker": {"state": "APPLIED", "basis": "The group-ordering family judges the short name a landed member keeps with the field-name pattern and states the sentence in place of the outside and type codes.", "evidence": {"ordering member short name": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/OrderingMemberFieldNameKf589Test.kt#aRefusedShortNameIsStatedOnceMoreForEachMember", "witness": "Own, path-spelled and outside landings each draw one more sentence on JVM and Node; a good path spelling draws nothing."}}},
+        "checker": {"state": "APPLIED", "basis": "The group-ordering family states the sentence for a landed member's refused short name beside its own codes, and report assembly withholds the ordering gates whenever an entity-walk class is reported.", "evidence": {"ordering member short name": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/OrderingMemberFieldNameKf589Test.kt#theSentenceRidesBesideTheGatesTheWalkLetsThrough", "witness": "A deleted landed field draws the sentence and the outside code; a refused name repeated draws no duplicate while a sound one does; a fourth entry states nothing."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints fields through the typed builder.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
-        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 30 rows over both members, three refused characters, path spellings, an outside landing and a noValueValidation field.", "evidence": {"ordering member short name": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOrderingNameSentenceAgreementTest.kt#theCheckerStatesA12sSentencesForEachOrderingMember", "witness": "Every row's classes agree with their multiplicity."}}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared code by code with attachment path, over the confound's carriers, deletion, multiplicity, capacity and nine short names, with A12's answer pinned on three rows.", "evidence": {"ordering member short name": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOrderingNameSentenceAgreementTest.kt#theCheckerStatesA12sSentencesForEachOrderingMember", "witness": "Every row's classes and attachment paths agree with their multiplicity."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
@@ -599,7 +671,7 @@
       }
     },
     "kf586": {
-      "sha256": "613ecfe8c15df11047e17bbb72d08a0b391847c0e8e7c18538afe4edd70bdd6e",
+      "sha256": "98c22fb5d621d1e843090520e412aac0dc721b08481909312de28c4ff52ceefe",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -623,7 +695,7 @@
       }
     },
     "kf587": {
-      "sha256": "0db327d6d713a50e9d108535096e60ee30f523be9027e929361fd770a7ff1e23",
+      "sha256": "c7e831ccc08ad75522c37fa61e89b396d7eaa7edf153ef76316546817ef42d75",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -839,7 +911,7 @@
       }
     },
     "kf578": {
-      "sha256": "c3d8bf95810e1f25e1a6a97de37b836ee850f87dd90b7b65d61dcba140ee7f43",
+      "sha256": "c7e31416e4119f57f853b2745c8ad3e4b63cabe38a72546edf48f39f9b6fce99",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11688,7 +11760,7 @@
       }
     },
     "kf569": {
-      "sha256": "b1717924dcc65584a9863c5f8970608af85e80e4437f0bcec9a595a1234c1595",
+      "sha256": "03476608163ef99a0e30299b6f248fdab949a1e7e5e93ceefb5ab95dff35d5c9",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the Number bound comparison", "the boolean-member binding", "the trimmed sValue"],
@@ -12024,7 +12096,7 @@
       }
     },
     "kf577": {
-      "sha256": "4dd1279277424e76c30f244d52753a57d01a3fb5548a7c42a7d05070feccc31e",
+      "sha256": "27b5fc8b418056a790654bfb85174c679e776001a1a141b6ba719656da91b294",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],

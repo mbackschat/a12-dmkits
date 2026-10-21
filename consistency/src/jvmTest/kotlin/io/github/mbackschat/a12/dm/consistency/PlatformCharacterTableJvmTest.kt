@@ -13,21 +13,47 @@ import kotlin.test.assertTrue
  * whose lexers and patterns spell their sets out. The tokenizer's lexer classes and `isJavaWhitespace` carry those
  * sets instead. The shared regex translator is scanned too, because both checkers compile it; its emitted `\s`
  * is JavaScript pattern text rather than a classification, so only the classifier calls are refused there.
+ *
+ * Kotlin's blank tests and its argument-free trims ask the same tables, and they are the sharper case, because Java
+ * reads the no-break spaces as text where Kotlin strips them: a no-break-space message text or enum label, which A12
+ * admits, was reported missing that way (KERNEL-FINDINGS KF310). `isA12Blank`, `isLexerBlank`, `isUnicodeBlank` and
+ * the `javaTrimmed` family name which reading each site takes.
  */
 class PlatformCharacterTableJvmTest {
 
     @Test
     fun sharedCodeClassifiesNoCharacterThroughAPlatformTable() {
-        val classifier = Regex("""\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|digitToInt|digitToIntOrNull)\(|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace)\b""")
-        val roots = listOf(File("src/commonMain/kotlin"), File("../shared-regex/src/commonMain/kotlin"))
+        val roots = listOf(File("src/commonMain/kotlin"), File("../shared-regex/src/commonMain/kotlin"),
+            File("../predicates/src/commonMain/kotlin"))
         val sources = roots.flatMap { root -> root.walk().filter { it.extension == "kt" }.map { root to it } }
         assertTrue(sources.size > 100, "scanned ${sources.size} files under ${roots.map { it.absolutePath }}")
         val hits = sources.flatMap { (root, file) ->
             file.readLines().withIndex()
                 .filter { (_, line) -> !line.trimStart().startsWith("*") && !line.trimStart().startsWith("//") }
-                .filter { (_, line) -> classifier.containsMatchIn(line.substringBefore("//")) }
+                .filter { (_, line) -> CLASSIFIER.containsMatchIn(line.substringBefore("//")) }
                 .map { (at, line) -> "${file.relativeTo(root)}:${at + 1}: ${line.trim()}" }
         }
         assertEquals(emptyList(), hits)
+    }
+
+    /** The pattern catches each spelling it names, so an empty scan is evidence rather than a mismatch. */
+    @Test
+    fun theScanCatchesEveryClassifierSpelling() {
+        val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.trim()",
+            "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x")
+        val missed = planted.filterNot { CLASSIFIER.containsMatchIn(it) }
+        assertEquals(emptyList(), missed)
+        assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "s.isA12Blank()", "s.javaTrimmed()").filter { CLASSIFIER.containsMatchIn(it) })
+    }
+
+    private companion object {
+        /** A platform classifier call, a blank test, or an argument-free trim; a trim with a predicate is A12's own. */
+        val CLASSIFIER = Regex(
+            """\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|digitToInt|digitToIntOrNull)\(""" +
+                """|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace)\b""" +
+                """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace)\(\)""" +
+                """|\.(isBlank|isNotBlank|isNullOrBlank|ifBlank)\(|\.(trim|trimStart|trimEnd)\(\)""" +
+                """|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""",
+        )
     }
 }

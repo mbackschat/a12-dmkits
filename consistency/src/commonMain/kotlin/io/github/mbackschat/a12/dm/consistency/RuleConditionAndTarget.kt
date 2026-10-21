@@ -78,7 +78,7 @@ private val CONDITION = RequiredMember(
  */
 private val ERROR_TARGET = RequiredMember(
     "errorEntityRelPath",
-    { text -> if (text.isBlank()) listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD) else emptyList() },
+    { text -> if (text.isUnicodeBlank()) listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD) else emptyList() },
     "A12's own reader refuses the source",
 )
 

@@ -26,7 +26,25 @@ internal fun Char.isJavaWhitespace(): Boolean = when (this) {
 }
 
 /**
+ * Whether every character is a Unicode space: Java's whitespace together with the three no-break spaces it excludes,
+ * which is what Kotlin's `isBlank` answers on the JVM, spelled out so Node answers it alike.
+ *
+ * For the members whose blank reading is NOT Java's presence test: a rule's target, which A12 answers with the
+ * same pair for any text of spaces whichever spaces they are (`RuleConditionAndTarget`), and the checker's own
+ * admission and mount lookups, which are its contract rather than an A12 verdict.
+ */
+internal fun String.isUnicodeBlank(): Boolean = all { it.isJavaWhitespace() || it in NO_BREAK_SPACES }
+
+private const val NO_BREAK_SPACES = "\u00A0\u2007\u202F"
+
+/**
  * Java's `String.trim`: strips every character up to U+0020 from both ends, and nothing else — the no-break
  * space and the other Unicode spaces survive. `A12BlankJvmTest` compares it with the JDK's own answer.
  */
 internal fun String.javaTrimmed(): String = trim { it <= ' ' }
+
+/** [javaTrimmed] at the start alone. */
+internal fun String.javaTrimmedStart(): String = trimStart { it <= ' ' }
+
+/** [javaTrimmed] at the end alone. */
+internal fun String.javaTrimmedEnd(): String = trimEnd { it <= ' ' }

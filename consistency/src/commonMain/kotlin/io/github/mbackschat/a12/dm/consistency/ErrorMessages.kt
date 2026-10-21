@@ -67,7 +67,7 @@ internal fun JsonObject.authoredMessages(): AuthoredMessages {
  * whether or not it has a text, and a BLANK text is no message rather than an empty one.
  */
 internal fun List<AuthoredMessage>.coveredLocales(declaredLocales: List<String>): Set<String> =
-    collectedTexts(declaredLocales).filterValues { it.isNotBlank() }.keys
+    collectedTexts(declaredLocales).filterValues { !it.isA12Blank() }.keys
 
 /**
  * The text A12 ends up holding for each declared locale — the last entry for one wins, undeclared ones drop.

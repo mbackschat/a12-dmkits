@@ -84,6 +84,13 @@ internal enum class ModelFact {
      * precise than the shape would be — adding an unrelated declaration no longer falls these cells.
      */
     REPEATABLE_GROUP_SET,
+
+    /**
+     * Which groups declare a count below 1 — a body member, for the same reason as [REPEATABLE_GROUP_SET], and asked
+     * of every element because A12 refuses each element beneath such a group. Reading the ancestors' bodies instead
+     * would key every element's cell on its parent's whole body, which a sibling's edit moves.
+     */
+    NON_POSITIVE_COUNT_GROUPS,
 }
 
 /**

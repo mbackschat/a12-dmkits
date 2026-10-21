@@ -191,6 +191,7 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.UNBINDABLE_BOOLEANS -> unbindableBooleans
         ModelFact.TYPE_DEFINITIONS -> declaredTypeDefinitionIds to typeDefinitionBodies
         ModelFact.REPEATABLE_GROUP_SET -> repeatableGroupPathList
+        ModelFact.NON_POSITIVE_COUNT_GROUPS -> nonPositiveCountGroupPaths
     }
 }
 

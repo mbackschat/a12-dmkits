@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Test
  * ten labels 1582-10-05 to 1582-10-14 are no date and a Julian leap day such as 29.02.1500 is one. Each row is A12
  * against the portable checker.
  *
- * The rival reading is the proleptic Gregorian calendar, which answers the opposite on both; 04.10.1582, 15.10.1582
- * and 29.02.1700 (unreal in both) are the rows the two calendars agree on. The conditions are written out because
+ * The rival reading is the proleptic Gregorian calendar, which answers the opposite on both; 04.10.1582 and
+ * 15.10.1582 (real in both) and 29.02.1700 (unreal in both) are the rows the two calendars agree on. The date-time
+ * stamp shape is judged by the same day rule. The conditions are written out because
  * the spelling is the subject. Own domain (an order's shipping date).
  */
 class CheckerHybridDateConstantAgreementTest {
@@ -32,7 +33,7 @@ class CheckerHybridDateConstantAgreementTest {
 
     private val base: String = DocumentModelDraft.named("order-digits").locale("en_US")
         .rootGroup("Order") { o -> o.stringField("Reference") { }.numberField("Quantity") { it.fractionDigits(0) }
-            .dateField("ShippedOn") { it.format("dd.MM.yyyy") } }
+            .dateField("ShippedOn") { it.format("dd.MM.yyyy") }.dateTimeField("PackedAt") { it.format("yyyy-MM-dd'T'HH:mm:ss") } }
         .build().toJson()
 
     private fun model(condition: String): String =
@@ -52,6 +53,7 @@ class CheckerHybridDateConstantAgreementTest {
         val CONDITIONS = listOf("04.10.1582", "05.10.1582", "14.10.1582", "15.10.1582", "29.02.1500", "29.02.1300", "29.02.1700")
             .flatMap { listOf("[ShippedOn] > AddDays(\"$it\", 7)", "[ShippedOn] > \"$it\"") } + listOf(
             "[ShippedOn] > AddDays(\"29.02.\", 7)",
-        )
+        ) + listOf("04.10.1582", "05.10.1582", "14.10.1582", "15.10.1582", "29.02.1500", "29.02.1700")
+            .map { "[PackedAt] > \"${it}T00:00:00\"" }
     }
 }

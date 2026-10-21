@@ -88,19 +88,23 @@ class GroupRepetitionCountTest {
         actual["an explicit null count"] = codes(nested = """"repeatability":null,""")
         actual["the count as TEXT, which A12 coerces"] = codes(nested = """"repeatability":"3",""")
 
+        // Each refused group carries the class, the member's range sentence, and the class once more for every
+        // element beneath it — A12 derives an element's repetition from its ancestors (KERNEL-FINDINGS KF590).
+        val notPositive = MemberRangeViolation.NOT_POSITIVE.code
+        val signed = MemberRangeViolation.SIGNED.code
         val expected = mutableMapOf<String, List<String>>()
         expected["the minimum A12 admits"] = emptyList()
-        expected["a nested group at zero"] = listOf(invalid)
-        expected["a nested group at minus one"] = listOf(invalid)
+        expected["a nested group at zero"] = listOf(invalid, notPositive, invalid)
+        expected["a nested group at minus one"] = listOf(invalid, signed, invalid)
         // The floor is NOT carrier-dependent, unlike the cap — stated as its own row rather than assumed.
-        expected["a ROOT group at zero"] = listOf(invalid)
-        expected["a nested group at the signed 32-bit floor"] = listOf(invalid)
+        expected["a ROOT group at zero"] = listOf(invalid, notPositive, invalid, invalid, invalid)
+        expected["a nested group at the signed 32-bit floor"] = listOf(invalid, signed, invalid)
         // Below the floor A12's reader refuses the source, so naming a class would claim a verdict it never
         // reached — the same honest report the ceiling's overflow row makes.
         expected["a nested group one below that floor"] = listOf(CK_MODEL_NOT_BUILDABLE)
         // KF221 measures an explicit `null` drawing the class with the *greater than 0* wording, so it is
         // the same defect as `0` and NOT the absent key, which simply means non-repeatable.
-        expected["an explicit null count"] = listOf(invalid)
+        expected["an explicit null count"] = listOf(invalid, notPositive, invalid)
         // …and the text form is coerced by A12 and admitted, so a reader that refused it would diverge.
         expected["the count as TEXT, which A12 coerces"] = emptyList()
         assertEquals(expected, actual, "a group's repetition count against A12's floor")

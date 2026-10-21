@@ -132,7 +132,7 @@ private fun TrackedFactBase.keyListOf(
 private fun keyTextOf(operand: CallOperand, scopeKeyword: String?): String {
     val scope = operand.clauses.firstOrNull { it.keyword == scopeKeyword } ?: return operand.text
     val keywordAt = operand.text.lastIndexOf(scope.keyword, scope.at - operand.at - 1)
-    return operand.text.substring(0, keywordAt).trimEnd()
+    return operand.text.substring(0, keywordAt).javaTrimmedEnd()
 }
 
 private fun finding(

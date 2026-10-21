@@ -119,7 +119,7 @@ class CheckerDateRangeSentenceAgreementTest {
         val FORMATS = listOf("MM", "MM-dd", "dd.MM", "dd.MM.yyyy", "yyyy", "yyyy-MM", "yyyy-MM-dd", "HH:mm:ss", "MMdd",
             "ddMM", "dd.MM.", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd", null, "", " ", "\t")
         val SEPARATORS = listOf(null, "/", "-", ".", "", " - ", ":", "_", " ", "\t", "x", "\u2013", "//", "/ ", " /",
-            "/\t", "\u00A0")
+            "/\t", "\u00A0", "|", "\u00E4", "ab")
         val PINNED = listOf(Row("yyyy-MM-dd", "/"), Row("yyyy-MM-dd", null), Row("MM", ""), Row("dd.MM.yyyy", "/"),
             Row("yyyy-MM-dd", "x"), Row("yyyy-MM-dd", "/ "), Row("MM", "\u00A0"), Row(null, null), Row("", ""),
             Row(" ", "\t"), Row("", "/"), Row("yyyy-MM-dd", "-", only = true))
