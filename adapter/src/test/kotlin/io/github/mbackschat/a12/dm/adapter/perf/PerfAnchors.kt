@@ -411,7 +411,30 @@ internal object PerfObservations {
      * has marked exactly this since it was written, and the record did not, so an uncommitted change could be
      * compared against its own baseline without anything saying so.
      */
-    internal fun headCommit(): String = headCommitIn(File("."))
+    internal fun headCommit(): String =
+        measuredLabel(System.getProperty(BUILD_SOURCE_PROPERTY), headCommitIn(File(".")))
+
+    /**
+     * The tree state Gradle saw when its task graph was ready, before any compile task ran: `<head>` or
+     * `<head>-DIRTY` under the same rule as [headCommitIn]. This header is written at the first observation,
+     * minutes after the measured classes were compiled, so the tree can change in between: a `git stash` 21 seconds
+     * before one header labelled an edited tree's measurement as its clean parent (INTERPRETER-FINDINGS IF421).
+     */
+    internal const val BUILD_SOURCE_PROPERTY = "perf.build.source"
+
+    /**
+     * The label of what this run measured: the revision the build started from, marked DIRTY when the tree was
+     * edited at build start OR when this header was written. The classes were compiled from the build-start tree,
+     * so its revision is the one measured even if HEAD moved since; an edit seen only at the header may have
+     * reached compilation, so it marks the record too. Without a build-start state the header's own reading stands.
+     */
+    internal fun measuredLabel(atBuildStart: String?, atHeader: String): String {
+        if (atBuildStart.isNullOrEmpty()) return atHeader
+        val head = atBuildStart.removeSuffix(DIRTY_SUFFIX)
+        return commitLabel(head, dirty = atBuildStart.endsWith(DIRTY_SUFFIX) || atHeader.endsWith(DIRTY_SUFFIX))
+    }
+
+    private const val DIRTY_SUFFIX = "-DIRTY"
 
     /**
      * The working directory is a parameter so the rule can be exercised against a REAL throwaway repository.
@@ -431,7 +454,7 @@ internal object PerfObservations {
     }
 
     /** The rule, apart from the process call so it can be checked without a repository. */
-    internal fun commitLabel(head: String, dirty: Boolean): String = if (dirty) "$head-DIRTY" else head
+    internal fun commitLabel(head: String, dirty: Boolean): String = if (dirty) "$head$DIRTY_SUFFIX" else head
 
     /** Trimmed stdout of a git command run in [dir], or `null` if it could not be run or failed. */
     private fun git(dir: File, vararg args: String): String? = capture(dir, "git", *args)

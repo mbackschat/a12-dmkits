@@ -61,6 +61,21 @@ class PerfObservationWriteTest {
             "and an edit anywhere else means the run did not measure the commit it names")
     }
 
+    /**
+     * The measured classes were compiled from the tree the build STARTED with, so that state decides the label.
+     * The incident shape: edits present at build start, stashed before the header was written, so the header alone
+     * read a clean tree and named the parent commit.
+     */
+    @Test
+    fun anEditedTreeAtBuildStartMarksTheRecordWhateverTheHeaderSees() {
+        assertEquals("c223b0f-DIRTY", PerfObservations.measuredLabel("c223b0f-DIRTY", atHeader = "c223b0f"))
+        assertEquals("c223b0f-DIRTY", PerfObservations.measuredLabel("c223b0f", atHeader = "c223b0f-DIRTY"))
+        assertEquals("c223b0f", PerfObservations.measuredLabel("c223b0f", atHeader = "c223b0f"))
+        // A commit made during the run moves HEAD, not the classes already compiled from the build-start tree.
+        assertEquals("c223b0f", PerfObservations.measuredLabel("c223b0f", atHeader = "abdc13a"))
+        assertEquals("abdc13a", PerfObservations.measuredLabel(null, atHeader = "abdc13a"))
+    }
+
     /** A directory that is not a repository cannot be labelled, and must not be labelled CLEAN. */
     @Test
     fun aTreeGitCannotReadIsUnknownRatherThanClean(@TempDir dir: File) {

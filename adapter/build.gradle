@@ -589,6 +589,30 @@ tasks.register('verifyNfr1StandingAnchor', Test) {
     outputs.cacheIf { false }
 }
 
+// The tree a performance record measured, read when the task graph is ready and so before any compile task runs:
+// the record's own header is written minutes later, and a stash in between once labelled an edited tree's
+// measurement as its clean parent (INTERPRETER-FINDINGS IF421). Same rule as PerfObservations.headCommitIn. Only
+// the tasks that write a record receive it, so an ordinary `test` run keeps its inputs, and its cache, unchanged.
+gradle.taskGraph.whenReady { graph ->
+    def recording = [tasks.named('perfGateTest').get()]
+    if (project.hasProperty('runPerf') || project.hasProperty('allTests')) recording << tasks.named('test').get()
+    recording = recording.findAll { graph.hasTask(it) }
+    if (recording.isEmpty()) return
+    def git = { List<String> args ->
+        def run = providers.exec {
+            commandLine(['git'] + args)
+            workingDir rootDir
+            ignoreExitValue = true
+        }
+        run.result.get().exitValue == 0 ? run.standardOutput.asText.get().trim() : null
+    }
+    def head = git(['rev-parse', '--short', 'HEAD'])
+    def status = git(['status', '--porcelain', '--', '.', ':(exclude)perf-results'])
+    if (head == null || status == null) return
+    def label = status.isEmpty() ? head : "${head}-DIRTY"
+    recording.each { it.systemProperty 'perf.build.source', label }
+}
+
 tasks.register('perfGateTest', Test) {
     description = 'Run the isolated routine interpreter performance gate.'
     group = 'verification'
