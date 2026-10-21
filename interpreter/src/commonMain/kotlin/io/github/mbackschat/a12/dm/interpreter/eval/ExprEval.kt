@@ -926,6 +926,22 @@ private fun Interpreter.extentUnknown(star: Expr.Star, gate: (String, Int, List<
     return gated.filterIsInstance<Expr.Star>().any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }
 }
 
+/**
+ * `CurrentRepetition`'s value for [index], one immutable instance per index below [REPETITION_NUMBER_CACHE].
+ * A correlated filter reads it once per candidate row, so building a fresh decimal there was 30 % of the bytes
+ * the compute-overlay correlation lane allocated (2026-10-21). The table and its entries are created on first
+ * use, so a process that never reads the function holds neither; a racing fill on the JVM only builds an equal
+ * immutable value twice.
+ */
+private fun repetitionNumber(index: Int): Val.Num {
+    if (index !in 0 until REPETITION_NUMBER_CACHE) return Val.Num(dec(index))
+    val table = REPETITION_NUMBERS.value
+    return table[index] ?: Val.Num(dec(index)).also { table[index] = it }
+}
+
+private const val REPETITION_NUMBER_CACHE = 1 shl 14
+private val REPETITION_NUMBERS = lazy(LazyThreadSafetyMode.PUBLICATION) { arrayOfNulls<Val.Num>(REPETITION_NUMBER_CACHE) }
+
 private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
     // Partial validation chooses the extent predicate by operator family. Most direct starred functions use
@@ -1099,8 +1115,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
     FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
     // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
-    FunctionOp.CURRENT_REPETITION ->
-        Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
+    FunctionOp.CURRENT_REPETITION -> repetitionNumber(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last())
     null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
     if (memo != null && memoKey != null) memo[memoKey] = result

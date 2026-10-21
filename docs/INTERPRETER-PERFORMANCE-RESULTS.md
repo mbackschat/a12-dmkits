@@ -21,6 +21,18 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-21 — the compute-overlay `$`-correlation lane's per-row cost, cut at its profile
+
+Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to `computeOverlayCorrelationStaysSubQuadratic` (the lane alone), at `0267314b8` and at that commit plus the change, uncommitted; every record was deleted afterwards. The full gate in the canonical order had read 158.8 to 161.1 ms at n = 6000 against a 157.09 ms ceiling ([IF422](INTERPRETER-FINDINGS.md#if422)).
+
+| reading | before | after (two runs) |
+|---|---|---|
+| CPU median, n = 1500 | 35.5 ms | 28.8, 29.7 ms |
+| CPU median, n = 6000 | 141.2 ms | 112.3, 114.3 ms |
+| steady bytes per evaluation, n = 6000 | 210.8 MB | 65.7, 65.8 MB |
+
+A JFR profile of the lane put half its samples in `HashMap.getNode`, at the bucket load: the filter visits about fifty candidate rows per outer row, and each read probed maps that were cold. The value-admission memo (22 % of samples) keyed one table by a freshly allocated `(path, raw)` pair across every field, and each row context's repetition cache (15 %) was a map of its own. The memo is now a map per path, and a path directly under the row's group resolves without a map. Of the bytes, 30 % were `CurrentRepetition` building a new decimal for every candidate, now one shared value per index, and 21 % were `scale19` padding each stored computed value past `BigDecimal`'s compact form, then stripping the zeros again by `BigInteger` division; a value within 19 fractional digits is now returned as it is, which every reading of it already treated as equal (`Scale19JvmTest`).
+
 ### Checkpoint 2026-10-21 — one unavailable cell no longer makes a correlated scope quadratic (IG179 → IF423)
 
 Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to a throwaway probe over `RequiredColumnCorrelationPerfTest`'s one-unavailable scenario, at `da88569f0` plus the IF423 change, uncommitted; the probe and its record were deleted afterwards. Three warmups and three timed evaluations per scale, single run, so the interpreter's small-scale medians are noise-level:

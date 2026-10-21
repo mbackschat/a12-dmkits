@@ -1244,7 +1244,26 @@ class Document(internal val config: DocumentConfig) {
         // FormalCache key, the suppressor scan) and recomputed every time. Caching also returns the SAME list
         // instance, so the FormalCache `Pair` key stops re-allocating it. (Stable: the document is immutable.)
         private val repsCache = HashMap<String, List<Int>>()
-        private fun reps(path: String): List<Int> = repsCache.getOrPut(path) { repsFor(path, group, rowReps) }
+        private fun reps(path: String): List<Int> {
+            // Every path directly under this row's group resolves to the same list, so it needs no map: each row
+            // owns its cache, and a filter visiting thousands of rows met each map cold — the table load alone was
+            // 15 % of the compute-overlay correlation lane's samples (2026-10-21).
+            // The last child asked is remembered by identity, since a scan asks for one path's instance in row
+            // after row and comparing the strings' prefixes cost half again what the map lookup had.
+            if (path === lastChild) return childReps!!
+            if (isDirectChild(path)) {
+                lastChild = path
+                return childReps ?: repsFor(path, group, rowReps).also { childReps = it }
+            }
+            return repsCache.getOrPut(path) { repsFor(path, group, rowReps) }
+        }
+
+        private var childReps: List<Int>? = null
+        private var lastChild: String? = null
+
+        private fun isDirectChild(path: String): Boolean =
+            path.length > group.length + 1 && path[group.length] == '/' && path.startsWith(group) &&
+                path.indexOf('/', group.length + 1) < 0
 
         private val placeCache = HashMap<String, Placement?>()
         private fun placeOf(path: String): Placement? {

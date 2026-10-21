@@ -30,10 +30,11 @@ expect class Dec : Comparable<Dec> {
     override fun compareTo(other: Dec): Int
 
     /**
-     * This value rounded to **scale 19** `HALF_UP` — the kernel's `VkBigDecimal.DEFAULT_SCALE` pre-rounding that
+     * This value rounded to at most **scale 19** `HALF_UP` — the kernel's `VkBigDecimal.DEFAULT_SCALE` pre-rounding that
      * `BedingungsOperatorHelper.vergleiche` applies to BOTH operands before a NUMBER comparison (`<`/`>`/`==`/…).
      * Observable only beyond 19 fractional digits (e.g. a scale-10 × scale-10 product → scale 20); for ≤19
-     * fractional digits it only pads zeros, a no-op for the comparison outcome. NOT applied to `min`/`max`
+     * fractional digits it only pads zeros, a no-op for every value reading, so an actual may return the value as
+     * is there. NOT applied to `min`/`max`
      * selection — the kernel does those at full precision (`VkBigDecimal.compareTo`).
      */
     fun scale19(): Dec

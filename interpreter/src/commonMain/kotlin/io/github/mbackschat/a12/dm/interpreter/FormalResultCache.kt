@@ -59,14 +59,17 @@ internal class ValueAdmissionCache(
     val overRepetitionGateNeeded: Boolean,
 ) {
     /**
-     * `(path, raw)` — **not** the cell. What this memoizes is a function of the field and the value, so every cell
-     * holding that value shares one entry and the key is two Strings whose hashes the platform has already cached.
+     * Path, then value — **not** the cell. What this memoizes is a function of the field and the value, so every
+     * cell holding that value shares one entry, keyed by two Strings whose hashes the platform has already cached.
      *
      * The repetition list used to ride in here, and it cost more than the check it protected: hashing the key walked
      * the list on every lookup and comparing it walked the list again, so `HashMap` mechanics plus `ArrayList`/`Key`
-     * equality were 79 % of the time inside this family against 2.6 % in the work being cached.
+     * equality were 79 % of the time inside this family against 2.6 % in the work being cached. One map keyed by a
+     * `(path, raw)` pair then still allocated that pair per lookup and spread one field's few values across a table
+     * sized for every field's, which missed the cache on most probes (2026-10-21: 22 % of the compute-overlay
+     * correlation lane's samples); a map per path keeps a field's values together.
      */
-    private data class ValueKey(val path: String, val raw: String)
+    private val byValue = HashMap<String, HashMap<String, FormalResult>>()
 
     /**
      * `(path, reps, raw)` — the cell, kept for the one field kind whose admission is NOT a pure function of the
@@ -76,7 +79,6 @@ internal class ValueAdmissionCache(
      */
     private data class CellKey(val path: String, val reps: List<Int>, val raw: String)
 
-    private val byValue = HashMap<ValueKey, FormalResult>()
     private val byCell = HashMap<CellKey, FormalResult>()
     private val computedAdmissions = HashSet<CellKey>()
 
@@ -108,7 +110,7 @@ internal class ValueAdmissionCache(
             // Value-keyed although a converted Number meets no length guard and kept text does: on one field the two
             // never share a text, since kept text is either unconvertible or carries the ASCII leading zero no
             // converted rendering has (KF564).
-            byValue.getOrPut(ValueKey(path, input)) {
+            byValue.getOrPut(path) { HashMap() }.getOrPut(input) {
                 checks.computeValueAdmissionAt(path, raw, locale, input) { document.lengthGuardedAt(path, reps) }
             }
         }
