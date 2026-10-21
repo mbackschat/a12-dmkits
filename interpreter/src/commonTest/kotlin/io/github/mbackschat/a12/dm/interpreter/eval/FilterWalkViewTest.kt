@@ -47,7 +47,7 @@ class FilterWalkViewTest {
         }
     }
 
-    private fun view(widths: IntArray) = FilterWalkView(scope, widths, emptyMap()) { error("no row is read") }
+    private fun view(widths: IntArray) = FilterWalkView(scope, widths, emptyList()) { error("no row is read") }
 
     private fun grid(widths: IntArray): List<List<Int>> =
         widths.fold(listOf(scope)) { frontier, width -> frontier.flatMap { prefix -> (1..width).map { prefix + it } } }

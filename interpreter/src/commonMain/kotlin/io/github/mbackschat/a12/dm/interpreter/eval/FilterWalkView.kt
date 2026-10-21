@@ -5,29 +5,57 @@ package io.github.mbackschat.a12.dm.interpreter.eval
  * the walk's widths span, in coordinate order, the stored rows where they exist and a missing row elsewhere
  * (KERNEL-FINDINGS KF528). The grid spans each starred level up to the highest repetition stored at that depth
  * in ANY row, so one wide row widens every sibling's grid; a missing row is therefore built only when the walk
- * reaches it, and never kept, or the walks of N sibling rows would retain N² of them (IG172,
+ * reaches it, and never kept, or the walks of N sibling rows would retain N² of them (INTERPRETER-FINDINGS IF413,
  * `SkewedFilterWalkPerfTest`).
  */
-internal class FilterWalkView(
+internal class FilterWalkView private constructor(
     private val scope: List<Int>,
     private val widths: IntArray,
-    private val stored: Map<List<Int>, EvalContext>,
+    private val storedIndices: IntArray,
+    private val storedRows: List<EvalContext>,
     private val missing: (List<Int>) -> EvalContext,
 ) : AbstractList<EvalContext>() {
+
+    /** [stored] holds the rows on the grid in coordinate order, with their coordinates; reading one is then a
+     *  search of an index array rather than a coordinate list built and hashed per access, which the per-row
+     *  re-walks of a correlated filter pay for every candidate. */
+    constructor(
+        scope: List<Int>,
+        widths: IntArray,
+        stored: List<Pair<List<Int>, EvalContext>>,
+        missing: (List<Int>) -> EvalContext,
+    ) : this(scope, widths, IntArray(stored.size) { i -> indexOf(widths, scope.size, stored[i].first) },
+        stored.map { it.second }, missing)
 
     override val size: Int = widths.fold(1) { cells, width -> cells * width }
 
     override fun get(index: Int): EvalContext {
         if (index !in 0 until size) throw IndexOutOfBoundsException("index $index, size $size")
-        val coordinates = coordinatesAt(index)
-        return stored[coordinates] ?: missing(coordinates)
+        val slot = storedSlotOf(index)
+        return if (slot >= 0) storedRows[slot] else missing(coordinatesAt(index))
+    }
+
+    // Hand-written because `IntArray.binarySearch` is JVM-only, and this view is common code.
+    private fun storedSlotOf(index: Int): Int {
+        var low = 0
+        var high = storedIndices.size - 1
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val at = storedIndices[mid]
+            when {
+                at < index -> low = mid + 1
+                at > index -> high = mid - 1
+                else -> return mid
+            }
+        }
+        return -1
     }
 
     fun coordinatesAt(index: Int): List<Int> = scope + digitsAt(index).toList()
 
     /** The same walk with every row passed through [transform]: the stored ones once, a missing one when reached. */
     fun mapRows(transform: (EvalContext) -> EvalContext): FilterWalkView =
-        FilterWalkView(scope, widths, stored.mapValues { (_, row) -> transform(row) }) { transform(missing(it)) }
+        FilterWalkView(scope, widths, storedIndices, storedRows.map(transform)) { transform(missing(it)) }
 
     /**
      * The first index at or after [from] that A12's sparse walk does not skip while [kept] is the pending kept row:
@@ -70,6 +98,11 @@ internal class FilterWalkView(
     }
 
     private fun indexOf(digits: IntArray): Int = digits.indices.fold(0) { index, level -> index * widths[level] + digits[level] - 1 }
+
+    private companion object {
+        fun indexOf(widths: IntArray, base: Int, coordinates: List<Int>): Int =
+            widths.indices.fold(0) { index, level -> index * widths[level] + coordinates[base + level] - 1 }
+    }
 }
 
 /** The coordinate prefixes some counted row occupies (`Document.sparseFilterPrefixes`), with each prefix's occupied

@@ -735,10 +735,14 @@ class Document(internal val config: DocumentConfig) {
         filterWalkCache.getOrPut(Triple(groupPath, scope, selectedFilterGroups(counts))) {
             val stored = rowContextsScoped(groupPath, scope).associateBy { it.coordinates() }
             val widths = filterWalkWidths(groupPath, scope.size, counts).toIntArray()
-            val onGrid = widths.fold(1L) { cells, width -> cells * width } <= Int.MAX_VALUE && stored.keys.all { reps ->
+            val cells = widths.fold(1L) { total, width -> total * width }
+            val onGrid = cells <= Int.MAX_VALUE && stored.keys.all { reps ->
                 reps.size == scope.size + widths.size && widths.indices.all { reps[scope.size + it] in 1..widths[it] }
             }
-            if (onGrid) return@getOrPut FilterWalkView(scope, widths, stored) { reps -> RowContext(groupPath, reps, evaluated = true) }
+            // A walk that misses no coordinate is its stored rows, so it stays the plain list a re-walk reads fastest.
+            if (onGrid && cells == stored.size.toLong()) return@getOrPut stored.values.toList()
+            if (onGrid) return@getOrPut FilterWalkView(scope, widths, stored.entries.sortedWith { a, b -> COORDINATE_ORDER.compare(a.key, b.key) }
+                .map { it.key to it.value }) { reps -> RowContext(groupPath, reps, evaluated = true) }
             val missing = filterWalkCoordinates(groupPath, scope, counts).filter { it !in stored }
             if (missing.isEmpty()) stored.values.toList()
             else (stored.keys + missing).sortedWith(COORDINATE_ORDER)
