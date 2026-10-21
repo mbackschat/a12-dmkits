@@ -42,13 +42,18 @@ class ModelTextReadingDiffTest {
             val root = cover { it }
             (root.at("/content/modelInfo") as ObjectNode).set<ObjectNode>("baseYear", MAPPER.valueToTree(row.first))
             val json = RuntimeLaws.withRule(root.toString(), "/Cover", "RBY", "../Amount", "BY", "FieldFilled(Amount) And BaseYear == 2024")
-            // The checker's column is whether it states the missing base year; an unbuildable base year is DG145's.
-            val checker = check(ModelSource(json)).findings.any { it.code == "MVK_NO_BASE_YEAR" }
+            // The checker's column is what it states about the base year: missing, unbuildable, or nothing.
+            val codes = check(ModelSource(json)).findings.map { it.code }
+            val checker = when {
+                "MVK_NO_BASE_YEAR" in codes -> NO_BASE_YEAR
+                "CK_MODEL_NOT_BUILDABLE" in codes -> NOT_BUILT
+                else -> "silent"
+            }
             "A12 ${a12(json) { kernelFired(json, AMOUNT).isNotEmpty() }}, interpreter ${interpreter(json) { interpreterFired(json, AMOUNT).isNotEmpty() }}, " +
-                "checker ${if (checker) NO_BASE_YEAR else "silent"}"
+                "checker $checker"
         }
         assertEquals(rows.mapValues { (_, row) ->
-            "A12 ${row.second}, interpreter ${row.second.forInterpreter()}, checker ${if (row.second == NO_BASE_YEAR) NO_BASE_YEAR else "silent"}"
+            "A12 ${row.second}, interpreter ${row.second.forInterpreter()}, checker ${if (row.second == NO_BASE_YEAR || row.second == NOT_BUILT) row.second else "silent"}"
         }, observed)
     }
 

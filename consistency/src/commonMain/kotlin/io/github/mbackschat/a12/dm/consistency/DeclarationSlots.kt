@@ -42,7 +42,7 @@ import kotlinx.serialization.json.contentOrNull
  * would refuse a model the Kernel accepts, in the direction no consumer can detect.
  */
 internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
-    unbindableBooleanFindings() + declaredLocaleFindings() +
+    unbindableBooleanFindings() + unbindableBaseYearFindings() + declaredLocaleFindings() +
         declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
             alphabetFindings(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
@@ -63,6 +63,18 @@ private fun TrackedFactBase.unbindableBooleanFindings(): List<Finding> = unbinda
         CK_MODEL_NOT_BUILDABLE,
         "$member, which A12 cannot bind as a boolean — write `true` or `false`. A12's reader refuses the " +
             "source, so the model never loads and nothing else in this report is A12's verdict about it",
+    )
+}
+
+/** The model's base year A12's reader cannot bind ([PreparedModel.unbindableBaseYear]): the same source refusal. */
+private fun TrackedFactBase.unbindableBaseYearFindings(): List<Finding> = listOfNotNull(unbindableBaseYear).map { text ->
+    Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        CK_MODEL_NOT_BUILDABLE,
+        "`content.modelInfo.baseYear` holds `$text`, which A12 cannot bind as a whole number — write a year such " +
+            "as `2024`. A12's reader refuses the source, so the model never loads and nothing else in this report " +
+            "is A12's verdict about it",
     )
 }
 

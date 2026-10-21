@@ -356,8 +356,14 @@ internal class TrackedFactBase private constructor(
 
     val hasBaseYear: Boolean
         get() {
-            transcript.record(FactRead.ModelMember(ModelFact.HAS_BASE_YEAR))
+            transcript.record(FactRead.ModelMember(ModelFact.BASE_YEAR))
             return model.hasBaseYear
+        }
+
+    val unbindableBaseYear: String?
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.BASE_YEAR))
+            return model.unbindableBaseYear
         }
 
     val supportedCharacters: List<String>

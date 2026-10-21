@@ -190,6 +190,8 @@ class ReadTranscriptTest {
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "hasBaseYear" to transcriptOf(source) { hasBaseYear }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "unbindableBaseYear" to transcriptOf(source) { unbindableBaseYear }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
             "supportedCharacters" to transcriptOf(source) { supportedCharacters }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "unreadableLocaleCodes" to transcriptOf(source) { unreadableLocaleCodes }
@@ -206,7 +208,8 @@ class ReadTranscriptTest {
             mapOf(
                 "conditionLanguage" to setOf(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE)),
                 "declaredLocales" to setOf(FactRead.ModelMember(ModelFact.DECLARED_LOCALES)),
-                "hasBaseYear" to setOf(FactRead.ModelMember(ModelFact.HAS_BASE_YEAR)),
+                "hasBaseYear" to setOf(FactRead.ModelMember(ModelFact.BASE_YEAR)),
+                "unbindableBaseYear" to setOf(FactRead.ModelMember(ModelFact.BASE_YEAR)),
                 "supportedCharacters" to setOf(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS)),
                 "unreadableLocaleCodes" to setOf(FactRead.ModelMember(ModelFact.UNREADABLE_LOCALE_CODES)),
                 "unbindableBooleans" to setOf(FactRead.ModelMember(ModelFact.UNBINDABLE_BOOLEANS)),

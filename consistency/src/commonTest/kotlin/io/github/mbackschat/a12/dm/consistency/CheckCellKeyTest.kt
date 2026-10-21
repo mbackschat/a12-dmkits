@@ -58,7 +58,7 @@ class CheckCellKeyTest {
         ModelFact.DECLARED_LOCALES to prepared(locales = """[{"code":"en_US"},{"code":"de_DE"}]"""),
         ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED to
             prepared(modelConfig = """"modelConfig":{"fieldRefByShortNameAllowed":true},"""),
-        ModelFact.HAS_BASE_YEAR to prepared(modelInfo = """"modelInfo":{"baseYear":2024},"""),
+        ModelFact.BASE_YEAR to prepared(modelInfo = """"modelInfo":{"baseYear":2024},"""),
         ModelFact.SUPPORTED_CHARACTERS to
             prepared(modelConfig = """"modelConfig":{"supportedCharacters":["A-Z"]},"""),
         // A code A12's own reader yields no locale KEY for. It moves the unreadable list and leaves

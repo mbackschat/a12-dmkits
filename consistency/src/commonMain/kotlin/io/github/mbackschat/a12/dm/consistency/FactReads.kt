@@ -68,7 +68,9 @@ internal enum class ModelFact {
     CONDITION_LANGUAGE,
     DECLARED_LOCALES,
     FIELD_REF_BY_SHORT_NAME_ALLOWED,
-    HAS_BASE_YEAR,
+
+    /** Whether a base year is bound, and the text A12 cannot bind: one member, `content.modelInfo.baseYear`. */
+    BASE_YEAR,
     SUPPORTED_CHARACTERS,
     UNREADABLE_LOCALE_CODES,
     UNBINDABLE_BOOLEANS,

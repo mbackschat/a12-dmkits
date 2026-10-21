@@ -173,8 +173,14 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     value. A12's temporal gates read it as a presence (`modelSpecificSettings.getBaseYear().isPresent()`), and
  *     a declared base year SUPPLEMENTS the year component of every operand before they are compared. The empty
  *     text and the text `null` bind no value ([JavaIntBinding], KF593), so A12 reads them as no base year at
- *     all. A value the reader cannot bind leaves no model; it still counts as present here, which leaves this
- *     checker silent on a model A12 refuses, the safe direction.
+ *     all. A value the reader cannot bind leaves no model; it still counts as present here, so the temporal
+ *     laws stay silent and [unbindableBaseYear] carries the refusal alone.
+ * @param unbindableBaseYear the ENTRY model's `content.modelInfo.baseYear` as written, when A12's reader cannot
+ *     bind it as an `Integer` ([JavaIntBinding.Unbindable]: a text `parseInt` refuses, a number outside `Int`,
+ *     a Boolean, an object or an array); `null` otherwise. A12 then builds no model (KF591, KF593,
+ *     `adapter.laws.ModelTextReadingDiffTest`), so the declaration-slot family reports it as
+ *     [CK_MODEL_NOT_BUILDABLE]. A member of its own rather than a row of [unbindableBooleans], whose sentence
+ *     names a boolean.
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -194,6 +200,7 @@ data class PreparedModel(
     val unreadableLocaleCodes: List<String> = emptyList(),
     val supportedCharacters: List<String> = emptyList(),
     val hasBaseYear: Boolean = false,
+    val unbindableBaseYear: String? = null,
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
     /**
@@ -456,6 +463,7 @@ fun prepare(
         collector.collect(it, "", null, entry)
     }
     val definitions = typeDefinitionsInClosure(admitted, providers)
+    val baseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = collector.flag(content),
@@ -464,8 +472,9 @@ fun prepare(
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = content.declaredSupportedCharacters(),
-        hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
-            ?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
+        hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
+        unbindableBaseYear = baseYear?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
+            ?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,

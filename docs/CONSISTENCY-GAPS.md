@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG145 — an unbindable `baseYear` reads as buildable.** Input: `content.modelInfo.baseYear` of `2147483647.5`, `"NULL"` or `{}`. A12 measured: no model (`ModelTextReadingDiffTest`, KF591, KF593). The checker states nothing, an under-report. Missing structure: the base year lives outside every declaration, and the published `PreparedModel` carries only unbindable Booleans, so widening that member's meaning would mislabel it; the fix is an additive `PreparedModel` member the declaration-slot family reports as `CK_MODEL_NOT_BUILDABLE`, which changes the published ABI.
+_None open._
 
 ## 2. Out of scope
 

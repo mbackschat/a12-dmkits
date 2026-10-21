@@ -185,7 +185,7 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.CONDITION_LANGUAGE -> conditionLanguage
         ModelFact.DECLARED_LOCALES -> declaredLocales
         ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED -> fieldRefByShortNameAllowed
-        ModelFact.HAS_BASE_YEAR -> hasBaseYear
+        ModelFact.BASE_YEAR -> hasBaseYear to unbindableBaseYear
         ModelFact.SUPPORTED_CHARACTERS -> supportedCharacters
         ModelFact.UNREADABLE_LOCALE_CODES -> unreadableLocaleCodes
         ModelFact.UNBINDABLE_BOOLEANS -> unbindableBooleans
