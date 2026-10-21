@@ -13831,3 +13831,20 @@ So a digit A12 converts inside a Document value is refused as a literal. Both gr
 **A12's two runtimes read a quoted Number differently (source-read, not run).** The JVM Document JSON ingress converts with `java.math.BigDecimal` before the formal check, so `"٣"` is `3` ([KF564](#kf564), measured). The TypeScript runtime's `FormatDefinitionZahl` tests `NumberUtil.NUMBER_PATTERN`, `[0-9]`, first and reports `zahlMitUngueltigenZeichen`; its converter is `@com.mgmtp.a12.utils/utils-localization`'s `BigDecimal` over big.js 7.0.1, whose `NUMERIC` pattern uses `\d`, ASCII in JavaScript. Dynamic Groovy is normative ([IF136](INTERPRETER-FINDINGS.md#if136)), so the JVM reading is the one to match.
 
 *Locked by:* `rulekit.validate.laws.NonAsciiLexemeLawsTest` (both grids, each with its ASCII control). The interpreter's side is [IF415](INTERPRETER-FINDINGS.md#if415).
+
+## §6 supplement — `Today` and `Now` are read through a `GregorianCalendar` in the model's zone, so before 1582-10-15 their day and month are Julian (tri-engine differential, 2026-10-21) <a id="kf576"></a>
+
+> Fold: pending — beside §6's date arithmetic, which already carries the hybrid calendar for `Date(...)`.
+
+`RuntimeController` builds `new GregorianCalendar(timeZone)` and sets it to `currentDateForTest` (source-read); the rows show what that does to the clock constants. Model in Europe/Berlin; one rule per candidate value of `DayFromDate(Today)`, `MonthFromDate(Today)`, `YearFromDate(Today)` and `DayFromDate(Now)`:
+
+| pinned instant | both strategies fire | proleptic reading would fire |
+|---|---|---|
+| 1500-03-10T12:00Z | day 29, month 2, year 1500; `Now` day 29 | day 10, month 3 |
+| 1582-10-14T12:00Z | day 4, month 10; `Now` day 4 | day 14 |
+| 1582-10-15T12:00Z, the first Gregorian day | day 15, month 10 | the same |
+| 2025-06-23T10:00Z | day 23, month 6, and `[OrderDate] == Today` for a stored 2025-06-23 | the same |
+
+So the clock's calendar fields are Julian before the cutover, 1500-02-29 included, which proleptic Gregorian does not have. A stored date cannot meet that clock in a comparison: every stored or computed date before 1583-10-16 is `datumFalsch` ([IF88](INTERPRETER-FINDINGS.md#if88)). The wall offset is `java.util.TimeZone`'s, which gives Berlin +1:00 before 1893 where `java.time` gives its local mean time, +0:53:28.
+
+*Locked by:* `adapter.laws.HybridCalendarClockDiffTest` (both strategies and the interpreter, with the two agreeing controls). The interpreter's side is [IF416](INTERPRETER-FINDINGS.md#if416).

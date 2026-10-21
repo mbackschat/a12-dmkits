@@ -11614,6 +11614,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel and evaluates through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
       }
+    },
+    "kf576": {
+      "sha256": "1076978f3752f1d05cb9d768555f054b8562107e09b118fb6cce81f0f7bd9549",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the clock's calendar fields"],
+        "interpreter": ["the clock's calendar fields"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits do not evaluate.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The checker does not evaluate the clock.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import does not evaluate.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not evaluate.", "evidence": {}},
+        "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned at four instants, two before the cutover and two agreeing controls.", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "Day 29, month 2 at 1500-03-10T12:00Z and day 4 at 1582-10-14T12:00Z on both strategies."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Today and Now enter the temporal path with the hybrid basis Date(...) carries (IF416).", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "The interpreter fires the same day, month, year and Now-day rules as both strategies at every instant."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's --clock reaches the clock through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+      }
     }
   }
 }

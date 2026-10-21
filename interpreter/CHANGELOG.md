@@ -13,6 +13,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **`Today` and `Now` read their day, month and year as A12 does before 1582-10-15**, on the Julian side of its calendar; a pinned instant that early answered with the proleptic Gregorian date.
 - **The JVM and JavaScript packages classify every character alike.** A quoted Number's non-ASCII digits are read as A12's JVM runtime reads them on both, and conditions and message tokens keep A12's ASCII digits, names and whitespace, so a no-break space inside `$…$` no longer renders a token in JavaScript alone.
 - **`RepetitionNotUnique` keys in sibling fixed groups of one repeatable row now evaluate**, compared per that row in either key order, as in the Kernel; the model was refused as unsupported.
 - **A computation copying an empty Confirm field now leaves its Confirm target empty**, as the Kernel does; it used to store `false` there and report the target erroneous.

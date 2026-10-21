@@ -655,7 +655,7 @@ private fun Interpreter.indexFieldOf(fieldPath: String): String? = nearestIndexF
 private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(name)) {
     ConstantOp.TODAY -> Val.Txt(clock?.today
         ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
-    ConstantOp.NOW -> Val.Txt(nowTemporalValue().text)
+    ConstantOp.NOW -> Val.Txt(clockNow().first)
     // The kernel parse tree defaults BaseYear to NUMBER; date-only positions convert it explicitly. Comparisons
     // resolve it from the other operand in [evalCmpOperand], while [evalTemporal] supplies the date form.
     ConstantOp.BASE_YEAR -> baseYearNumber()
@@ -1745,6 +1745,12 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
     if (e is Expr.Const) {
         when (ConstantOp.byName(e.name)) {
             ConstantOp.NOW -> return Evaluated.Present(nowTemporalValue())
+            ConstantOp.TODAY -> {
+                val today = clock?.today
+                    ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock")
+                return clockReading(today, 0L)?.let { Evaluated.Present(it) }
+                    ?: throw UnsupportedConstructException("EvalClock.today is not a real date in the model time zone: $today")
+            }
             ConstantOp.BASE_YEAR -> {
                 val text = (baseYearDate() as Val.Txt).v
                 return temporalText(text, DateCalendarBasis.PROLEPTIC_GREGORIAN)
@@ -1770,18 +1776,34 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
     }
 }
 
-private fun Interpreter.nowTemporalValue(): TemporalValue {
+/** [EvalClock.now]'s proleptic date-time and its millisecond remainder. */
+private fun Interpreter.clockNow(): Pair<String, Long> {
     val raw = clock?.now
         ?: throw UnsupportedConstructException(
             "Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)",
         )
     val match = CLOCK_DATE_TIME.matchEntire(raw)
         ?: throw UnsupportedConstructException("EvalClock.now must be yyyy-MM-dd'T'HH:mm:ss or yyyy-MM-dd'T'HH:mm:ss.SSS")
-    val text = match.groupValues[1]
-    val epochSecond = calendarOperandInstant(text, timeZone, DateCalendarBasis.PROLEPTIC_GREGORIAN)
-        ?: throw UnsupportedConstructException("EvalClock.now is not a real date-time in the model time zone: $raw")
-    val millis = match.groupValues[2].ifEmpty { "0" }.toLong()
-    return TemporalValue(text, DateCalendarBasis.PROLEPTIC_GREGORIAN, epochSecond * 1_000L + millis)
+    return match.groupValues[1] to match.groupValues[2].ifEmpty { "0" }.toLong()
+}
+
+private fun Interpreter.nowTemporalValue(): TemporalValue {
+    val (text, millis) = clockNow()
+    return clockReading(text, millis)
+        ?: throw UnsupportedConstructException("EvalClock.now is not a real date-time in the model time zone: ${clock?.now}")
+}
+
+/**
+ * A clock reading as A12 holds it. A12 sets a `GregorianCalendar` in the model's zone to its clock instant, and that
+ * calendar is Julian before 1582-10-15, so `DayFromDate(Today)` at 1500-03-10T12:00Z is 29 (of February) on both
+ * strategies (KF576). [EvalClock] carries proleptic labels, which a stored value compares against as text, so the
+ * temporal reading re-labels the same instant under the hybrid calendar; after the cutover the two labels agree.
+ */
+private fun Interpreter.clockReading(prolepticText: String, millis: Long): TemporalValue? {
+    val epochSecond = calendarOperandInstant(prolepticText, timeZone, DateCalendarBasis.PROLEPTIC_GREGORIAN) ?: return null
+    val hybrid = isoFromCalendarInstant(epochSecond, timeZone, DateCalendarBasis.LEGACY_HYBRID)
+    val text = if ('T' in prolepticText) hybrid else hybrid.substringBefore('T')
+    return TemporalValue(text, DateCalendarBasis.LEGACY_HYBRID, epochSecond * 1_000L + millis)
 }
 
 private fun Interpreter.temporalText(
