@@ -2066,16 +2066,21 @@ class Document(internal val config: DocumentConfig) {
         override fun firstFilledRows(groupPath: String, bindDepth: Int): Sequence<EvalContext> =
             groupDomain(groupPath, bindDepth).firstFilledRows(groupPath, bindDepth)
 
-        // A starred operand carries its own binding level. An unstarred one (`-1`) binds its own path, which from a
-        // joined row is the joined row itself, and stays unmodeled, as do the bare-group scans below.
+        // A starred operand carries its own binding level. An unstarred one (`-1`), and a bare group's scan, bind
+        // their own path: a side's joined row, its `-5` row when the side has none for this key, which reads empty
+        // (`adapter.laws.JoinedRowFillScopeDiffTest`), and the common parent's row outside the sides.
         override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope =
             fillScope(scopePath, isGroup, bindDepth) { _, _, stored -> stored }
         override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int, cellValue: CellValueSource): FillScope =
-            if (bindDepth < 0) unboundInParallel(scopePath)
-            else domainFor(scopePath, bindDepth).fillScope(scopePath, isGroup, bindDepth, cellValue)
+            (if (bindDepth < 0) unstarredDomain(scopePath) else domainFor(scopePath, bindDepth))
+                .fillScope(scopePath, isGroup, bindDepth, cellValue)
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
-            unboundInParallel(groupPath)
-        override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> = unboundInParallel(groupPath)
+            unstarredDomain(groupPath).containedFieldCells(groupPath, declaredRange)
+        override fun firstFilledContainedCells(groupPath: String): Sequence<ScanCell> =
+            unstarredDomain(groupPath).firstFilledContainedCells(groupPath)
+
+        /** The row an unstarred [path] reads: every level down to its own is bound, none iterates. */
+        private fun unstarredDomain(path: String): RowContext = domainFor(path, partsOf(path).size)
 
         // The model's declared fields under a group: structural, so no row binds it.
         override fun containedFields(groupPath: String): List<String> = common.containedFields(groupPath)
@@ -2121,9 +2126,6 @@ class Document(internal val config: DocumentConfig) {
             Map<List<Val>, IntArray> = groupDomain(groupPath, bindDepth).correlationBuckets(groupPath, joinFields, starPath, bindDepth)
         override fun orderedCorrelation(groupPath: String, innerField: String, starPath: String, bindDepth: Int):
             OrderedCorrelation = groupDomain(groupPath, bindDepth).orderedCorrelation(groupPath, innerField, starPath, bindDepth)
-
-        private fun unboundInParallel(path: String): Nothing = throw UnsupportedConstructException(
-            "an unstarred read of $path inside a parallel iteration is not modeled")
     }
 
     /**

@@ -13,6 +13,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **A joined rule's unstarred fill quantifiers and group first-filled reads now evaluate**, reading the key's own rows, empty for a side without one, as in the Kernel; they were reported unsupported.
 - **A computation reading a computed date, range or Number now computes under a model charset that excludes its characters**, as in the Kernel, which checks a computed value only against its field's format; it used to clear.
 - **A model `boolean` member A12 cannot bind now refuses the model**, as A12 refuses it: `"yes"`, `1.5` or `{}` on `positivesOnly`, `global` or any other boolean used to load as unset.
 - **An index field whose enumeration `sValue` is padded or blank now evaluates**, staged as written like the Kernel stages it; the model was declined as unsupported.

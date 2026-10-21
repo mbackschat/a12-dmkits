@@ -13804,6 +13804,8 @@ So the domain of a star below a side is that side's joined row. The read also pu
 
 *(Locked: `adapter.laws.JoinedSideChildReadDiffTest`. a12-kernel-lean's `parallel-child-reads-2026-10-14` captures replay to the same messages here, references included.)*
 
+*Added 2026-10-21:* an unstarred fill scope binds the joined row too. Orders and Stock joined by `Sku`, each with a non-repeatable subgroup (`Window`, `Levels`): `NotAllFieldsFilled(Qty, OnHand)`, `NumberOfFilledFields(Qty, OnHand) = 1`, `NoFieldFilled(Stock/Levels)`, `AtLeastOneFieldFilled(Orders/Window)` and `FirstFilledValue(Stock/Levels) > 2` each read the SKU's own rows, and a side without a row for the SKU reads its `-5` row empty: an order without stock fires `NoFieldFilled(Stock/Levels)` at `Stock[-5]`, and stock without an order never sees a window, on both strategies. Locked by `adapter.laws.JoinedRowFillScopeDiffTest`.
+
 ## §8 supplement — a padded or blank `sValue` is staged as written, and read without a formal check (tri-engine differential, 2026-10-21) <a id="kf574"></a>
 
 > Fold: pending — beside the index-default staging of SPEC-2026-07-23-14.

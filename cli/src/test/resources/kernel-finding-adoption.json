@@ -11520,7 +11520,7 @@
       }
     },
     "kf573": {
-      "sha256": "04e74ee75671c5950f04cd36300b91dd47469fa86691c15de2a46761e52309ef",
+      "sha256": "4cb8d00b1d2305e0d1ee5e830cb96f68c41dd2a05b3a7bc4d03aee78cf9170af",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["a star below a joined group"],
