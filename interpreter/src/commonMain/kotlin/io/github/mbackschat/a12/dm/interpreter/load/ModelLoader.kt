@@ -2,6 +2,10 @@ package io.github.mbackschat.a12.dm.interpreter.load
 
 import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
+import io.github.mbackschat.a12.dm.interpreter.asciiLongOrNull
+import io.github.mbackschat.a12.dm.interpreter.javaIntOrNull
+import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.configFlag
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlin.jvm.JvmStatic
@@ -21,6 +25,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.isA12DecimalText
 import io.github.mbackschat.a12.dm.interpreter.model.printedNumberBound
 import io.github.mbackschat.a12.dm.interpreter.model.resolveFractionalPair
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
@@ -78,9 +83,8 @@ object ModelLoader {
         val rootGroups = requirePrepared(root)
         val sink = Sink()
         rootGroups.forEach { walk(it, sink, parentPath = "", rootElement = true) }
-        // The model's base year (content.modelInfo.baseYear, a string) — the value of the BaseYear constant.
-        val by = root.path("content").path("modelInfo").path("baseYear").asText()
-        val baseYear = if (by.isEmpty()) null else by.trim().toIntOrNull()
+        // The model's base year, the value of the BaseYear constant: an `Integer`, so blank text is no base year.
+        val baseYear = boundJavaInt(root.path("content").path("modelInfo").path("baseYear"), "modelInfo.baseYear")
         // content.modelConfig.fieldRefByShortNameAllowed (default false) — enables the bare cross-group
         // short-name resolution the condition parser applies (IF119).
         val modelConfig = root.path("content").path("modelConfig")
@@ -298,9 +302,11 @@ object ModelLoader {
                             "be mounted before loading",
                     )
                 }
-                if (structure.body.path("repeatability").asInt(0) > 1) {
+                // A primitive `int`: blank text and a JSON null are 0, which the consistency check refuses.
+                val repeatability = boundJavaInt(structure.body.path("repeatability"), "$id: repeatability") ?: 0
+                if (repeatability > 1) {
                     sink.repeatable.add(id)
-                    sink.declaredReps[id] = structure.body.path("repeatability").asInt(0)
+                    sink.declaredReps[id] = repeatability
                 }
                 val indexField = structure.body.path("indexFieldName").asTextOrNull()
                 if (!indexField.isNullOrEmpty()) {
@@ -413,10 +419,10 @@ object ModelLoader {
         requiredMessages = localizedTexts(node.path("Field").path("requirednessConfig").path("errorMessage")),
         noValueValidation = typedBool(node, id, "StringType", "noValueValidation"),
         minValue = declaredMaximumFraction?.let {
-            printedNumberBound(numberTypeText(node, "minValue"), declaredMinimumFraction, it)
+            printedNumberBound(numberBoundText(node, id, "minValue"), declaredMinimumFraction, it)
         },
         maxValue = declaredMaximumFraction?.let {
-            printedNumberBound(numberTypeText(node, "maxValue"), declaredMinimumFraction, it)
+            printedNumberBound(numberBoundText(node, id, "maxValue"), declaredMinimumFraction, it)
         },
         minFractionalDigits = fraction?.minimum,
         lineBreaksPermitted = typedBool(node, id, "StringType", "lineBreaksPermitted"),
@@ -734,25 +740,56 @@ object ModelLoader {
         return if (p is JsonNull) null else p.content
     }
 
+    /**
+     * A model member A12's reader binds to a Java `int` or `Integer` (KF590): text after Java's `trim`, through
+     * `Integer.parseInt`, so `"\u0663"` is 3; a JSON number truncated toward zero, so `3.7` is 3 and `1e1` is 10.
+     * Null for an absent member, a JSON null and blank text. A fraction or exponent in text, a value past `Int`, a
+     * no-break space or a boolean leaves A12 with no model, so this refuses it, naming [member].
+     */
+    private fun boundJavaInt(value: JsonElement?, member: String): Int? {
+        val p = value as? JsonPrimitive ?: return null
+        if (p is JsonNull) return null
+        val bound = when {
+            p.isString -> p.content.javaTrimmed().let { if (it.isEmpty()) return null else it.javaIntOrNull() }
+            p.content == "true" || p.content == "false" -> null
+            // A JSON number's lexeme is ASCII; an integral one is read exactly, any other truncated.
+            else -> (p.content.asciiLongOrNull() ?: p.content.toDouble().toLong())
+                .takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
+        }
+        return bound ?: throw invalidElement(member, "$member ${p.content} is not a whole number A12 can bind, so A12 does not load the model")
+    }
+
+    /**
+     * A NUMBER field's `minValue` or `maxValue` text, which A12's reader binds to a `BigDecimal` (KF591): after Java's
+     * `trim` it must spell an ASCII decimal, so a no-break space, a non-ASCII digit or a word leaves A12 with no model
+     * and this refuses it. An unquoted number is a JSON lexeme and always reads.
+     */
+    private fun numberBoundText(fieldNode: JsonElement?, id: String, prop: String): String? {
+        val text = numberTypeText(fieldNode, prop) ?: return null
+        if (!typed(fieldNode, "NumberType").path(prop).isTextual()) return text
+        val trimmed = text.javaTrimmed()
+        if (trimmed.isEmpty() || isA12DecimalText(trimmed)) return text
+        throw invalidElement("$id: NumberType.$prop", "$id: NumberType.$prop '$text' is not a decimal A12 can bind, so A12 does not load the model")
+    }
+
     private fun JsonElement?.asInt(default: Int): Int {
         val p = this as? JsonPrimitive ?: return default
-        if (p is JsonNull) return default
-        return p.content.toIntOrNull() ?: p.content.toDoubleOrNull()?.toInt() ?: default
+        if (p is JsonNull || p.isString) return default
+        return p.content.asciiIntOrNull() ?: default
     }
 
     /** Jackson `isInt()` — a plain integer literal that fits an `Int` (not a string, not a decimal/oversized). */
     private fun JsonElement?.isIntNode(): Boolean {
         val p = this as? JsonPrimitive ?: return false
         if (p is JsonNull || p.isString) return false
-        return p.content.toIntOrNull() != null
+        return p.content.asciiIntOrNull() != null
     }
 
-    /** Jackson `isNumber()` — a numeric literal (not a string, not a boolean). */
+    /** Jackson `isNumber()` — a numeric literal: an unquoted primitive that is neither null nor a boolean. */
     private fun JsonElement?.isNumberNode(): Boolean {
         val p = this as? JsonPrimitive ?: return false
         if (p is JsonNull || p.isString) return false
-        if (p.content == "true" || p.content == "false") return false
-        return p.content.toDoubleOrNull() != null
+        return p.content != "true" && p.content != "false"
     }
 
     /** Jackson `isTextual()` — a JSON string. */

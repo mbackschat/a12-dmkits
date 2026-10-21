@@ -214,7 +214,7 @@ private fun alternativeMemberOf(member: String): Pair<Int, String>? {
     if (close < 0) {
         return null
     }
-    val index = member.substring(prefix.length, close).toIntOrNull() ?: return null
+    val index = member.substring(prefix.length, close).asciiIntOrNull() ?: return null
     val key = member.substring(close + 1).removePrefix(".")
     return if (key.isEmpty()) null else index to key
 }

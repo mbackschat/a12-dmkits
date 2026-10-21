@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
+import io.github.mbackschat.a12.dm.consistency.equalsIgnoringAsciiCase
 import io.github.mbackschat.a12.dm.consistency.javaTrimmed
 
 /**
@@ -440,7 +441,7 @@ private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
         when {
             token.kind == TokenKind.PUNCTUATION && token.text in OPENING_DELIMITERS -> depth++
             token.kind == TokenKind.PUNCTUATION && token.text in CLOSING_DELIMITERS -> depth--
-            depth == 0 && token.kind == TokenKind.NAME && token.text.equals(keyword, ignoreCase = true) ->
+            depth == 0 && token.kind == TokenKind.NAME && token.text.equalsIgnoringAsciiCase(keyword) ->
                 return token.start to token.end
         }
     }

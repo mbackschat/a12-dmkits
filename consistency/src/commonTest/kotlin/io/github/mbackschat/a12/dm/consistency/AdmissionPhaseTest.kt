@@ -41,11 +41,20 @@ class AdmissionPhaseTest {
 
     @Test
     fun aSourceWithoutAHeaderIdCannotBeAdmitted() {
-        listOf("""{"content":{}}""", """{"header":{},"content":{}}""", """{"header":{"id":"  "}}""")
+        listOf("""{"content":{}}""", """{"header":{},"content":{}}""", """{"header":{"id":null},"content":{}}""")
             .forEach { json ->
                 val rejected = assertIs<Admission.Rejected>(admit(ModelSource(json)), json)
                 assertEquals(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, rejected.diagnostic.code, json)
             }
+    }
+
+    /** A12 admits a model whose `header.id` is empty or spaces, so that text is its identity (`WorkspaceBlankTextDiffTest`). */
+    @Test
+    fun anIdOfSpacesIsStillTheSourcesIdentity() {
+        listOf("", " ", "\u00A0").forEach { id ->
+            val admitted = assertIs<Admission.Admitted>(admit(ModelSource("""{"header":{"id":"$id"},"content":{}}""")), id)
+            assertEquals(id, admitted.modelId)
+        }
     }
 
     /**

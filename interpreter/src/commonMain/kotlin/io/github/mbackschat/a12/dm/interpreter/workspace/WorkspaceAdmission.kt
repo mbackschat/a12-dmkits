@@ -294,7 +294,8 @@ internal object WorkspaceSourceAdmission {
             )
             return null
         }
-        if (id.isNullOrBlank()) {
+        // A12 reads and admits a model whatever text its header.id holds, the empty text and spaces included.
+        if (id == null) {
             diagnostics += InvalidModelSourceDiagnostic(
                 label,
                 if (root == null) "model source is not valid JSON object" else "model source requires a string header.id",

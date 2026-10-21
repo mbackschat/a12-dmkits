@@ -23,5 +23,7 @@ private const val RESERVED_NAME_PREFIX = "vk_vk"
  * law. That miss is the argument for this function existing rather than for a fourth copy of the comparison.
  */
 fun isReservedElementName(name: String): Boolean =
-    name.regionMatches(0, RESERVED_NAME_PREFIX, 0, RESERVED_NAME_PREFIX.length, ignoreCase = true) &&
-        name.length <= 100 && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' }
+    name.length <= 100 && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' } &&
+        name.length >= RESERVED_NAME_PREFIX.length &&
+        // The conjunct above confines the name to ASCII, where every platform folds case alike.
+        RESERVED_NAME_PREFIX.indices.all { name[it].lowercaseChar() == RESERVED_NAME_PREFIX[it] }

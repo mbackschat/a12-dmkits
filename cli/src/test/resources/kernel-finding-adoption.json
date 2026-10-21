@@ -502,8 +502,56 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf591": {
+      "sha256": "5e6cfb29cfa9c5bc21a863022dd84a81360cd6a32472d1592aacd81ddd599795",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["model text readings"],
+        "interpreter": ["model text readings"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["model text readings"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author through the typed builder, which writes none of these spellings.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "The checker does not bind baseYear, number bounds, labels or Boolean cells beyond the readings its own findings already record.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12 and the interpreter are compared row by row on every reading.", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "Ten base-year values, seven bounds, five labels and seven Boolean cells agree."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The loader binds baseYear like a count and gates a bound on an ASCII decimal; labels are kept as written and Boolean cells fold as equalsIgnoreCase does (IF426).", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBooleanCellIsComparedAsJavaComparesIgnoringCase", "witness": "fal\\u017Fe reads false on both engines."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
+    "kf592": {
+      "sha256": "f1258084fd337ca12d30ce1c8d164b89abd96da939b035c2df8b9c26f6ca1c02",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["identifying text of spaces"],
+        "checker": ["identifying text of spaces"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["identifying text of spaces"],
+        "interpreter": ["identifying text of spaces"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["identifying text of spaces"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "The core ModelReader refuses a mount whose include entry carries no reference Java reads as text, and an empty modelAlias, instead of reading the alias as the reference.", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anIncludeFindsItsModelOnlyThroughAReferenceJavaReadsAsText", "witness": "The reader expands exactly where A12 does on all ten reference rows."}}},
+        "checker": {"state": "APPLIED", "basis": "Admission takes any text header.id as the identity, and a mount resolves through a reference Java reads as text.", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anIncludeFindsItsModelOnlyThroughAReferenceJavaReadsAsText", "witness": "The checker mounts exactly where A12 expands, under all ten reference rows."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter workspace, the core reader and the checker on every row.", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anIdOfSpacesIdentifiesTheModelEverywhere", "witness": "Six header ids admitted on all four."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Preparation finds an include only through its declared non-blank reference and refuses only the empty alias and type-definition id (IF427).", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#onlyTheEmptyAliasNamesNoInclude", "witness": "Seven aliases: the interpreter refuses exactly where A12 fails the expansion."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
     "kf590": {
-      "sha256": "a3f0af4443a83537ac6ffad0826769bd7ae4950e4aa174db5554940c98c0bab7",
+      "sha256": "4c3f73ab1243959b7e61742760a51fefb47dd86ac54e02b61b3a9717400d6d97",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -511,7 +559,7 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["repetition count cascade"],
-        "interpreter": [],
+        "interpreter": ["repetition count binding"],
         "dmtool-cli": [],
         "a12-kernel-lean": ["repetition count cascade"]
       },
@@ -521,7 +569,7 @@
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on twelve rows over three carriers and four counts, with every attachment path.", "evidence": {"repetition count cascade": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRepeatabilityCascadeAgreementTest.kt#theCheckerReportsA12sClassesWhereA12Does", "witness": "Every row's classes and paths agree; A12's answer on the nested zero row is pinned."}}},
-        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "interpreter": {"state": "APPLIED", "basis": "The loader binds repeatability through Java's trim and Integer.parseInt, truncates a JSON number, and refuses every value A12 builds no model from (IF426).", "evidence": {"repetition count binding": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepeatabilityTextReadingDiffTest.kt#theCheckerAndTheInterpreterBindTheCountAsA12Does", "witness": "23 values agree with A12 on build and refusal; every built model's count draws the same over-repetition pair on all three engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
       }

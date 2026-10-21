@@ -210,7 +210,7 @@ internal object A12DocumentJson {
     private fun scaleOrNull(fractionPart: String, exponentPart: String): Long? {
         if (exponentPart.isEmpty()) return fractionPart.length.toLong()
         // Refusing an exponent past the bound first also keeps the subtraction from wrapping.
-        val exponent = exponentPart.toLongOrNull()?.takeIf { it in -EXPONENT_BOUND..EXPONENT_BOUND } ?: return null
+        val exponent = exponentPart.asciiLongOrNull()?.takeIf { it in -EXPONENT_BOUND..EXPONENT_BOUND } ?: return null
         return (fractionPart.length - exponent).takeIf { it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }
     }
 
@@ -328,13 +328,13 @@ internal object A12DocumentJson {
         }
         Kind.BOOLEAN -> when {
             raw.isEmpty() -> CellText.EMPTY
-            raw.equals(TRUE_LITERAL, ignoreCase = true) -> CellText(TRUE_LITERAL)
-            raw.equals(FALSE_LITERAL, ignoreCase = true) -> CellText(FALSE_LITERAL)
+            raw.equalsIgnoringCaseAsJavaDoes(TRUE_LITERAL) -> CellText(TRUE_LITERAL)
+            raw.equalsIgnoringCaseAsJavaDoes(FALSE_LITERAL) -> CellText(FALSE_LITERAL)
             else -> CellText(raw)
         }
         Kind.CONFIRM -> when {
             raw.isEmpty() -> CellText.EMPTY
-            raw.equals(TRUE_LITERAL, ignoreCase = true) -> CellText(TRUE_LITERAL)
+            raw.equalsIgnoringCaseAsJavaDoes(TRUE_LITERAL) -> CellText(TRUE_LITERAL)
             else -> CellText(raw)
         }
         Kind.DATE, Kind.DATE_TIME, Kind.TIME -> CellText(raw.ifEmpty { null })

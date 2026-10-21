@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.isJavaBlank
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelReferencePurpose
@@ -159,7 +160,8 @@ internal class TypeDefinitionRegistry(
             val path = "typeDefinitions/$index"
             val definition = candidate as? JsonObject
                 ?: throw invalidTypeDefinition(model.source.modelId, path, "declaration must be an object")
-            val definitionId = definition.strictString("id")?.takeIf(String::isNotBlank)
+            // A12 names only the empty id ("The id is empty"); an id of spaces declares and resolves like any other.
+            val definitionId = definition.strictString("id")?.takeIf(String::isNotEmpty)
                 ?: throw invalidTypeDefinition(model.source.modelId, path, "id must be a non-empty string")
             val fieldType = definition.objectMember("fieldType")
                 ?: throw invalidTypeDefinition(model.source.modelId, path, "fieldType must be an object")
@@ -278,7 +280,7 @@ internal class TypeDefinitionRegistry(
         }
         val reference = fieldType.objectMember(TYPE_DEF_TYPE)
             ?.strictString("typeDefinitionId")
-            ?.takeIf(String::isNotBlank)
+            ?.takeIf(String::isNotEmpty)
         if (reference == null) {
             throw invalidTypeDefinition(
                 modelId,
@@ -471,16 +473,23 @@ internal fun JsonObject.objectMember(key: String): JsonObject? = get(key) as? Js
 
 internal fun JsonObject.arrayMember(key: String): JsonArray? = get(key) as? JsonArray
 
-internal fun JsonObject.includeReference(alias: String): String {
-    val references = objectMember("header")?.arrayMember("modelReferences") ?: return alias
-    for (candidate in references) {
-        val reference = candidate as? JsonObject ?: continue
-        if (
-            reference.strictString("purpose") == ModelReferencePurpose.INCLUDE.wireName &&
-            reference.strictString("alias") == alias
-        ) {
-            return reference.strictString("reference").orEmpty().ifBlank { alias }
+/**
+ * The model the include mount at [path] names through [alias]: the `reference` of this model's include entry for
+ * that alias. A12 finds no included model when the entry is missing or its reference is absent, null or blank as
+ * Java's `Character.isWhitespace` reads it, and refuses the expansion ("cannot be found"), so this refuses too
+ * rather than reading the alias as the reference; a no-break-space reference is text and resolves exactly.
+ */
+internal fun JsonObject.includeReference(modelId: String, path: String, alias: String): String {
+    val entry = objectMember("header")?.arrayMember("modelReferences")
+        ?.filterIsInstance<JsonObject>()
+        ?.firstOrNull {
+            it.strictString("purpose") == ModelReferencePurpose.INCLUDE.wireName && it.strictString("alias") == alias
         }
-    }
-    return alias
+    return entry?.strictString("reference")?.takeUnless { it.isJavaBlank() }
+        ?: throw invalidIncludeMount(
+            modelId,
+            path,
+            "no header.modelReferences include entry for alias '$alias' names a model, so A12 cannot find the " +
+                "included model; declare its non-blank reference",
+        )
 }

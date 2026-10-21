@@ -263,7 +263,7 @@ internal class OperationAnalysis(
             "AbsValue" -> fields()?.singleOrNull()?.derived() ?: UNKNOWN
             "RoundUp", "RoundDown", "RoundAccounting", "RoundUpValue", "RoundDownValue", "RoundAccountingValue" -> {
                 if (shape.operands.firstOrNull() != null && operands.first().type == OperationType.Unknown) return UNKNOWN
-                val scale = shape.call.operands.getOrNull(1)?.let { shape.call.textOf(it).toIntOrNull() } ?: 0
+                val scale = shape.call.operands.getOrNull(1)?.let { shape.call.textOf(it).asciiIntOrNull() } ?: 0
                 OperationValue(OperationType.Number(scale))
             }
             "FieldValueAsString" -> OperationValue(OperationType.Text)

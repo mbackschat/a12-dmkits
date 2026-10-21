@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.parse
 
+import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
@@ -513,7 +514,8 @@ private class ConditionParser(
     private fun readGroupRef(): String {
         val start = pos
         while (peek() != ')' && peek() != '\u0000') next()
-        return src.substring(start, pos).trim()
+        // The condition lexer's whitespace is five ASCII characters, so Java's trim is exact on admitted text.
+        return src.substring(start, pos).javaTrimmed()
     }
 
     private fun readNumber(): Expr.NumLit {

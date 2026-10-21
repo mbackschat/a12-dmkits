@@ -330,9 +330,15 @@ public final class ModelReader {
             String groupPath = parentPath + "/" + groupNode.path(DmKeys.NAME).asText();
             String alias = body.path(DmKeys.MODEL_ALIAS).asText("");
             JsonNode existing = body.path(DmKeys.ELEMENTS);
+            boolean unexpanded = existing.isMissingNode() || existing.isEmpty();
+            // An empty alias names no include entry, so A12 cannot find the included model and fails the expansion.
+            if (alias.isEmpty() && body.path(DmKeys.MODEL_ALIAS).isTextual() && unexpanded) {
+                throw new UnresolvedReferenceException(alias,
+                        "the include group " + groupPath + " has an empty modelAlias, so A12 cannot find the included model");
+            }
             // A modelAlias group is an unexpanded mount only while its elements are empty — the kernel's
             // idempotency guard (an already-mounted group is not re-expanded).
-            if (!alias.isEmpty() && (existing.isMissingNode() || existing.isEmpty())) {
+            if (!alias.isEmpty() && unexpanded) {
                 mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals,
                         origins, conditionLanguages, groupPath);
             } else {
@@ -437,16 +443,22 @@ public final class ModelReader {
         return mountBody.path(directive).isBoolean() && mountBody.path(directive).booleanValue();
     }
 
-    /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences};
-     *  falls back to the alias itself when no entry declares a distinct {@code reference}. */
+    /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences}.
+     *  A12 finds no included model when no entry carries the alias or the entry's {@code reference} is absent,
+     *  null or blank as {@code String.isBlank} reads it, and fails the expansion, so this refuses there too
+     *  rather than reading the alias as the reference. */
     private static String referenceForAlias(ObjectNode baseRoot, String alias) {
         for (JsonNode ref : baseRoot.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
             if (alias.equals(ref.path(DmKeys.ALIAS).asText())) {
-                String reference = ref.path(DmKeys.REFERENCE).asText();
-                return reference.isEmpty() ? alias : reference;
+                JsonNode reference = ref.path(DmKeys.REFERENCE);
+                if (reference.isTextual() && !reference.asText().isBlank()) {
+                    return reference.asText();
+                }
+                break;
             }
         }
-        return alias;
+        throw new UnresolvedReferenceException(alias,
+                "no header.modelReferences entry for alias \"" + alias + "\" names a model, so A12 cannot find the included model");
     }
 
     /** Drop {@code Rule}/{@code Computation} elements per the mount's exclude flags (recursively, but never under

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.dec
@@ -161,7 +162,7 @@ object ArithFill {
     }
 
     private fun isWhole(v: Dec): Boolean = v.compareTo(dec(v.display().substringBefore('.'))) == 0
-    private fun isEven(v: Dec): Boolean = (v.display().toIntOrNull() ?: 0) % 2 == 0
+    private fun isEven(v: Dec): Boolean = (v.display().asciiIntOrNull() ?: 0) % 2 == 0
 
     private val FIXED = Fill.of(canGrow = false, canShrink = false)
     private val GROW_ONLY = Fill.of(canGrow = true, canShrink = false)

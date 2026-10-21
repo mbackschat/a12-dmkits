@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.ast
 
+import io.github.mbackschat.a12.dm.interpreter.equalsIgnoringCaseAsJavaDoes
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
@@ -214,7 +215,7 @@ sealed interface Expr {
 fun typedValue(kind: Kind, raw: String): Val = when (kind) {
     Kind.NUMBER -> decOrNull(raw)?.let { Val.Num(it) } ?: Val.Unknown
     Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
-    Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equals("true", ignoreCase = true))
+    Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equalsIgnoringCaseAsJavaDoes("true"))
     // A DATE_RANGE needs its field's format + separator to parse — the general Document resolves it
     // format-aware; this meta-less path (the flat spike contexts) does not model ranges.
     Kind.DATE_RANGE -> Val.Unknown

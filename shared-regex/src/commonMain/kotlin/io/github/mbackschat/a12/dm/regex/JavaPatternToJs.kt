@@ -195,7 +195,7 @@ internal object JavaPatternToJs {
             val bounds = raw.toString().split(',')
             if (bounds.size !in 1..2 || bounds[0].isEmpty() ||
                 bounds.any { bound -> bound.any { it !in '0'..'9' } ||
-                    (bound.isNotEmpty() && bound.toIntOrNull() == null) }) {
+                    (bound.isNotEmpty() && bound.asciiRadixIntOrNull(10) == null) }) {
                 throw UnsupportedJavaPattern("malformed repetition")
             }
             return "{$raw}"
@@ -580,7 +580,7 @@ internal object JavaPatternToJs {
                     val end = raw.indexOf('}', i + 3)
                     if (end < 0) throw UnsupportedJavaPattern("unclosed class code point")
                     val hex = certifiedCodePoint(raw.substring(i + 3, end))
-                    val codePoint = hex.toIntOrNull(16)
+                    val codePoint = hex.asciiRadixIntOrNull(16)
                     if (hex.isEmpty() || codePoint == null || codePoint > 0x10ffff || codePoint in 0xd800..0xdfff) {
                         throw UnsupportedJavaPattern("unrepresented class code point")
                     }
@@ -710,7 +710,7 @@ internal object JavaPatternToJs {
 
         private fun scalarEscape(hex: String, encoded: String, flags: Flags): String {
             if (!flags.caseInsensitive) return encoded
-            val code = hex.toIntOrNull(16)
+            val code = hex.asciiRadixIntOrNull(16)
             if (code == null || code !in 'A'.code..'Z'.code && code !in 'a'.code..'z'.code) return encoded
             // DG102-F: escape spelling does not change a decoded letter's effective case flag.
             return buildString { appendLiteral(this, code.toChar(), flags) }
@@ -724,7 +724,7 @@ internal object JavaPatternToJs {
         private fun certifiedCodePoint(hex: String): String {
             if (hex.any { it !in JAVA_ASCII_HEX }) throw UnsupportedJavaPattern("non-ASCII hex digit")
             if (!forConsistency || !globalUnicodeCase) return hex
-            val codePoint = hex.toIntOrNull(16)
+            val codePoint = hex.asciiRadixIntOrNull(16)
             if (codePoint == null || codePoint !in 0..0xff) hasUnverifiedMapping = true
             return hex
         }
@@ -752,4 +752,24 @@ internal object JavaPatternToJs {
     }
 
     private val FLAG_LETTERS = setOf('d', 'i', 'x', 'm', 's', 'u', 'U')
+}
+
+/**
+ * Unsigned ASCII digits of [radix] (10 or 16), within `Int`'s range; null otherwise. `java.util.regex.Pattern` reads
+ * repetition bounds and hex escapes in ASCII only, while Kotlin's `toIntOrNull` reads each platform's digit table.
+ */
+private fun String.asciiRadixIntOrNull(radix: Int): Int? {
+    if (isEmpty()) return null
+    var value = 0L
+    for (c in this) {
+        val digit = when (c) {
+            in '0'..'9' -> c - '0'
+            in 'a'..'f' -> if (radix == 16) c - 'a' + 10 else return null
+            in 'A'..'F' -> if (radix == 16) c - 'A' + 10 else return null
+            else -> return null
+        }
+        value = value * radix + digit
+        if (value > Int.MAX_VALUE) return null
+    }
+    return value.toInt()
 }

@@ -126,7 +126,9 @@ fun admit(source: ModelSource): Admission {
     val root = parsed as? JsonObject
     val modelId = (root?.get("header") as? JsonObject)
         ?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
-    if (modelId == null || modelId.isUnicodeBlank()) {
+    // A12 reads and admits a model whatever text its header.id holds, the empty text and spaces included
+    // (WorkspaceBlankTextDiffTest), so only a source with no text there goes unidentified.
+    if (modelId == null) {
         return source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
     }
     if (root["content"] !is JsonObject) {

@@ -101,7 +101,7 @@ internal object WorkspaceReferenceDiscovery {
             when (val assembly = classifyGroup(structure.body, children, this, path)) {
                 is GroupAssembly.Include -> references += ModelReferenceStep.include(
                     fromModelId = source.modelId,
-                    toModelId = root.includeReference(assembly.directive.alias),
+                    toModelId = root.includeReference(source.modelId, path, assembly.directive.alias),
                     alias = assembly.directive.alias,
                 )
                 is GroupAssembly.Ordinary -> assembly.elements

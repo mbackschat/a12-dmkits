@@ -39,8 +39,9 @@ class PlatformCharacterTableJvmTest {
     /** The pattern catches each spelling it names, so an empty scan is evidence rather than a mismatch. */
     @Test
     fun theScanCatchesEveryClassifierSpelling() {
-        val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.trim()",
-            "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x")
+        val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.ifBlank { x }",
+            "s.trim()", "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x", "s.toIntOrNull()",
+            "s.toLongOrNull()", "a.equals(b, ignoreCase = true)")
         val missed = planted.filterNot { CLASSIFIER.containsMatchIn(it) }
         assertEquals(emptyList(), missed)
         assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "s.isA12Blank()", "s.javaTrimmed()").filter { CLASSIFIER.containsMatchIn(it) })
@@ -52,8 +53,9 @@ class PlatformCharacterTableJvmTest {
             """\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|digitToInt|digitToIntOrNull)\(""" +
                 """|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace)\b""" +
                 """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace)\(\)""" +
-                """|\.(isBlank|isNotBlank|isNullOrBlank|ifBlank)\(|\.(trim|trimStart|trimEnd)\(\)""" +
-                """|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""",
+                """|\.(isBlank|isNotBlank|isNullOrBlank)\(|\.ifBlank\b|\.(trim|trimStart|trimEnd)\(\)""" +
+                """|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""" +
+                """|\.(toIntOrNull|toLongOrNull|toDoubleOrNull|toFloatOrNull|toShortOrNull|toByteOrNull)\(|ignoreCase\s*=\s*true""",
         )
     }
 }

@@ -137,6 +137,8 @@ class GroupNameAlphabetLawsTest {
         actual.put("ID", declaredRoot("ID"));
         actual.put("id", declaredRoot("id"));
         actual.put("iD", declaredRoot("iD"));
+        actual.put("\u0131d — a dotless i, which Java's case fold maps onto I", declaredRoot("\u0131d"));
+        actual.put("\u0130d — a dotted capital I, which it maps onto i", declaredRoot("\u0130d"));
         actual.put("Identity — the reserved name as a PREFIX", declaredRoot("Identity"));
         actual.put("BinId — the reserved name as a SUFFIX", declaredRoot("BinId"));
         actual.put("a NESTED group of that name", declared("Id"));
@@ -148,6 +150,9 @@ class GroupNameAlphabetLawsTest {
         expected.put("ID", "MVK_ROOT_GROUP_NAME_INVALID");
         expected.put("id", "MVK_ROOT_GROUP_NAME_INVALID");
         expected.put("iD", "MVK_ROOT_GROUP_NAME_INVALID");
+        // The alphabet answers first, so the reservation only ever meets ASCII letters and an ASCII fold is exact.
+        expected.put("\u0131d — a dotless i, which Java's case fold maps onto I", "MVK_PATH_INVALID");
+        expected.put("\u0130d — a dotted capital I, which it maps onto i", "MVK_PATH_INVALID");
         // The match is WHOLE-name, so the reservation costs a modeller nothing but the two characters alone.
         expected.put("Identity — the reserved name as a PREFIX", KernelLaws.ADMITTED);
         expected.put("BinId — the reserved name as a SUFFIX", KernelLaws.ADMITTED);

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.isJavaBlank
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.eval.dateStoreFormat
@@ -800,13 +801,13 @@ data class ModelDef(
 
     /**
      * The text a rule message's `$field.value$` renders for an ENUMERATION cell holding [storedValue]: the
-     * declared label for [locale] when there is a non-blank one, else the stored token itself. Null when the
+     * declared label for [locale] whenever there is one, a no-break space included, else the stored token itself.
+     * A12 asks only whether the label exists; a Java-blank one is refused at admission. Null when the
      * field is not an enumeration, so a caller falls back to the ordinary display value ([KF198]).
      */
     internal fun enumValueTextOf(path: String, storedValue: String, locale: String): String? {
         if (enumValues[path] == null) return null
-        return enumValueLabelsByPath[path]?.get(storedValue)?.get(locale)?.takeIf { it.isNotBlank() }
-            ?: storedValue
+        return enumValueLabelsByPath[path]?.get(storedValue)?.get(locale) ?: storedValue
     }
 
     /**
@@ -825,13 +826,12 @@ data class ModelDef(
 
     /**
      * The display string for the `$field$` placeholder: the field's [FieldDef.labels] entry for [locale]
-     * when defined (and non-blank), else the field NAME — the last path segment. This mirrors the kernel's
-     * `identifierToString` under an `ILabelProvider` that returns the model label or the field name (the
-     * dmtool/`RuntimeLaws` provider does exactly this); with no label the kernel and the interpreter both
-     * yield the name. (A blank label falls through to the name, matching the kernel's empty-text handling.)
+     * when defined and not blank as Java's `String.isBlank` reads it, else the field NAME — the last path segment.
+     * This mirrors the kernel's `identifierToString` under the dmtool/`RuntimeLaws` `ILabelProvider`, which returns
+     * the model label or the field name by that test, so a no-break-space label is the label.
      */
     fun labelOf(path: String, locale: String): String =
-        labelsByPath[path]?.get(locale)?.takeIf { it.isNotBlank() } ?: path.trimEnd('/').substringAfterLast('/')
+        labelsByPath[path]?.get(locale)?.takeUnless { it.isJavaBlank() } ?: path.trimEnd('/').substringAfterLast('/')
 
     /**
      * This model with an extra, non-stored [rule] appended — the interpreter's twin of the kernel's rule-inject

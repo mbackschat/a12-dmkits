@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.gen
 
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -548,7 +549,7 @@ object ValidValues : ValueStrategy {
         pattern[qi] == '+' -> 1
         pattern[qi] == '*' || pattern[qi] == '?' -> 0
         pattern[qi] == '{' -> pattern.substring(qi + 1, pattern.indexOf('}', qi).coerceAtLeast(qi + 1))
-            .substringBefore(',').trim().toIntOrNull() ?: 1
+            .substringBefore(',').asciiIntOrNull() ?: 1
         else -> 1
     }
 

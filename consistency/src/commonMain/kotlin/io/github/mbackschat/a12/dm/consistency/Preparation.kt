@@ -726,7 +726,8 @@ private class Collector(
                 "and nothing here is a verdict about it",
         )
         val reference = scope.header.referenceForAlias(alias)
-            ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias")
+            ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias with a non-blank " +
+                "`reference`, so A12 cannot find the included model")
         if (reference in scope.visiting) {
             return unexpanded(path, alias, "`$reference` is already being included, so the mount is a cycle")
         }
@@ -947,14 +948,10 @@ private fun JsonObject?.singleRootRepeatabilityRefusal(): String? {
     val declared = this?.get("repeatability") ?: return null
     val primitive = declared as? JsonPrimitive ?: return UNREADABLE_REPEATABILITY
     // An explicit JSON null reads as absence, which A12 admits and defaults to one.
-    val content = primitive.contentOrNull ?: return null
-    val rows = if (primitive.isString) {
-        // Jackson's coercion strips what Java's `trim` strips and nothing more, so a no-break or em space
-        // leaves a count it cannot read (`CheckerUnicodeBlankAgreementTest`).
-        content.javaTrimmed().ifEmpty { "0" }.toIntOrNull() ?: return UNREADABLE_REPEATABILITY
-    } else {
-        content.toDoubleOrNull()?.toInt() ?: return UNREADABLE_REPEATABILITY
-    }
+    if (primitive.contentOrNull == null) return null
+    // The group reader's own binding: past `Int`, A12 holds no count at all.
+    val rows = primitive.boundRepetitionCount()?.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }
+        ?: return UNREADABLE_REPEATABILITY
     return if (rows > 1) REPEATABLE_ROOT else null
 }
 
@@ -1042,7 +1039,8 @@ private fun JsonObject?.referenceForAlias(alias: String): String? =
         ?.filterIsInstance<JsonObject>()
         ?.firstOrNull { it.text("alias") == alias }
         ?.text("reference")
-        ?.takeIf { !it.isUnicodeBlank() }
+        // StringUtils.isBlank, so a no-break-space reference names a model (measured: WorkspaceBlankTextDiffTest).
+        ?.takeUnless { it.isA12Blank() }
 
 /**
  * Whether a mount flag is ON. Only the JSON BOOLEAN `true` counts: the Kernel reads every non-Boolean

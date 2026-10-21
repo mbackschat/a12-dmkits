@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 
 /**
@@ -29,7 +30,7 @@ internal data class DecimalObjectIdentity(
             val match = DECIMAL.matchEntire(text) ?: return null
             val (sign, integerPart, fractionPart, exponentPart) = match.destructured
             if (integerPart.isEmpty() && fractionPart.isEmpty()) return null
-            val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
+            val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.asciiIntOrNull() ?: return null
             val scale = fractionPart.length.toLong() - exponent
             if (scale !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) return null
             val magnitude = (integerPart + fractionPart).trimStart('0').ifEmpty { "0" }

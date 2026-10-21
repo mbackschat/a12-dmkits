@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
+import io.github.mbackschat.a12.dm.interpreter.javaIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.DecimalDigits
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
@@ -877,7 +879,7 @@ private fun Interpreter.evalArith(a: Expr.Arith): Val {
  * (operators.json Arithmetic.)
  */
 private fun power(base: Dec, exp: Dec): Val {
-    val e = exp.display().toIntOrNull() ?: return Val.Unknown
+    val e = exp.display().asciiIntOrNull() ?: return Val.Unknown
     if (e !in -1000..1000) return Val.DomainFailure
     if (base.compareTo(DEC_ZERO) == 0 && e < 0) return Val.DomainFailure
     return Val.Num(base.pow(e))
@@ -1169,7 +1171,7 @@ private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
         else {
             val placeValue = evalExpr(args[1])
             if (placeValue !is Val.Num) return placeValue.numericNonValue()
-            placeValue.v.display().toIntOrNull() ?: return Val.Unknown
+            placeValue.v.display().asciiIntOrNull() ?: return Val.Unknown
         }
     return Val.Num(value.v.roundTo(places, mode))
 }
@@ -1532,7 +1534,7 @@ private fun Interpreter.temporalConstructionComponentInt(e: Expr): Evaluated<Int
     if (malformedField(e)) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     if (emptyCheckRelevant(e)) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
     if (e is Expr.Field && ctxOf(e).declaredKind(e.path) == Kind.DATE && ctxOf(e).dateFormatOf(e.path) == "yyyy") {
-        return ctxOf(e).displayValue(e.path)?.toIntOrNull()?.let { Evaluated.Present(it) }
+        return ctxOf(e).displayValue(e.path)?.javaIntOrNull()?.let { Evaluated.Present(it) }
             ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
     if (e is Expr.Func) {
@@ -2015,8 +2017,9 @@ internal fun Interpreter.dateStatusOf(arg: Expr): DateStatus {
 
 /** An integer from a number value or a digit-string constant (the `Date`/`Time` components); null otherwise. */
 private fun valToInt(v: Val): Int? = when (v) {
-    is Val.Num -> v.v.display().toIntOrNull()
-    is Val.Txt -> v.v.toIntOrNull()
+    is Val.Num -> v.v.display().asciiIntOrNull()
+    // A12 reads a text component's digits in any script: "\u0661\u0660" is 10 (DateComponentConstantDiffTest).
+    is Val.Txt -> v.v.javaIntOrNull()
     else -> null
 }
 

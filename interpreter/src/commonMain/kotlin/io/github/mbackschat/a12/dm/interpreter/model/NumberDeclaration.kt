@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.A12DocumentJson
 import io.github.mbackschat.a12.dm.interpreter.dec
 
@@ -44,9 +45,17 @@ internal fun resolveFractionalPair(declaredMinimum: Int?, declaredMaximum: Int):
  * readable bound, which is how an unreadable bound behaved before.
  */
 internal fun printedNumberBound(authored: String?, declaredMinimum: Int?, declaredMaximum: Int): String? {
-    val double = authored?.trim()?.toDoubleOrNull()?.takeIf { it.isFinite() } ?: return authored
+    val double = authored?.javaTrimmed()?.takeIf(::isA12DecimalText)?.toDouble()?.takeIf { it.isFinite() } ?: return authored
     val shortest = A12DocumentJson.canonicalNumberOrNull(double.toString()) ?: return authored
     val places = declaredMinimum ?: 0
     return if (places >= 0 && places == declaredMaximum) dec(shortest).displayAtScale(places)
     else dec(shortest).display()
 }
+
+/**
+ * Whether Java-trimmed [text] is a decimal A12's reader binds to a `BigDecimal`: Jackson's
+ * `NumberInput.looksLikeValidNumber` gate, ASCII digits only, so `"\u0665"` and `"abc"` are not (KF591).
+ */
+internal fun isA12DecimalText(text: String): Boolean = A12_DECIMAL_TEXT.matches(text)
+
+private val A12_DECIMAL_TEXT = Regex("[+-]?[0-9]*\\.?[0-9]+(?:[eE][+-]?[0-9]+)?|[+-]?[0-9]+\\.")

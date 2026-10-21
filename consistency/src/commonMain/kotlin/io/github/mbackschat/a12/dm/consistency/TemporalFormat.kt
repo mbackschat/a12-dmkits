@@ -188,12 +188,12 @@ private fun String.matchesShape(shape: String): Boolean {
  * `29.02.1500` is a date. Reading it proleptically would refuse that constant, which A12 admits.
  */
 private fun String.namesARealDay(day: Int, month: Int, year: Int?): Boolean {
-    val d = substring(day, day + 2).toIntOrNull() ?: return false
-    val m = substring(month, month + 2).toIntOrNull() ?: return false
+    val d = substring(day, day + 2).asciiIntOrNull() ?: return false
+    val m = substring(month, month + 2).asciiIntOrNull() ?: return false
     if (m !in 1..12 || d < 1) {
         return false
     }
-    val y = year?.let { substring(it, it + 4).toIntOrNull() ?: return false } ?: YEARLESS_DEFAULT_YEAR
+    val y = year?.let { substring(it, it + 4).asciiIntOrNull() ?: return false } ?: YEARLESS_DEFAULT_YEAR
     if (y == 1582 && m == 10 && d in 5..14) {
         return false
     }
@@ -202,9 +202,9 @@ private fun String.namesARealDay(day: Int, month: Int, year: Int?): Boolean {
 
 /** Whether the `HH:mm:ss` at the start of this string names a time, on the kernel's own bounds. */
 private fun String.namesARealTime(): Boolean {
-    val h = substring(0, 2).toIntOrNull() ?: return false
-    val min = substring(3, 5).toIntOrNull() ?: return false
-    val s = substring(6, 8).toIntOrNull() ?: return false
+    val h = substring(0, 2).asciiIntOrNull() ?: return false
+    val min = substring(3, 5).asciiIntOrNull() ?: return false
+    val s = substring(6, 8).asciiIntOrNull() ?: return false
     return h <= 23 && min <= 59 && s <= 59
 }
 

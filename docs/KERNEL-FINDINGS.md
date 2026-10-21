@@ -14241,4 +14241,38 @@ A12 derives each element's repetition layers from every ancestor (`NoMetaModelCh
 
 A stored count written as text is read after Java's `trim`: `" 3 "` is admitted and `" 0 "` is the class, while a no-break or em space, or `"three"`, leaves no number and the model is not built (`CheckerUnicodeBlankAgreementTest`).
 
-*Locked by:* `adapter.laws.CheckerRepeatabilityCascadeAgreementTest`, A12 against the portable checker with every attachment path; `consistency.GroupRepetitionCountTest` replays it.
+*Extended 2026-10-21 — the binding behind the text reading.* The member is a Java `int`, and the reader reads text with `Integer.parseInt`, so a decimal digit of any script counts: `"\u0663"` and the fullwidth `"\uFF13"` are 3, as are `"+3"` and `"03"`. A fraction, an exponent or a radix prefix in the text (`"3.7"`, `"1e1"`, `"0x3"`) or a count past `Int` (`"99999999999"`) leaves no model, and the empty text reads 0 and draws the class. A JSON number is truncated toward zero instead: `3.7` reads 3, `1e1` reads 10 and `-3.7` reads −3, the class. A number past `Int` (`2147483648`, `4294967298`, `3e10`) or a JSON boolean leaves no model. Four rows draw the over-repetition pair under a count of 3 and not under `1e1`, which shows that the count itself was read, not only that a count existed.
+
+*Locked by:* `adapter.laws.CheckerRepeatabilityCascadeAgreementTest`, A12 against the portable checker with every attachment path; `consistency.GroupRepetitionCountTest` replays it. `adapter.laws.RepeatabilityTextReadingDiffTest` holds the binding for 23 values: A12 against the checker and the interpreter, with the count's runtime effect on every built model.
+
+## §13 supplement — a base year binds like a count, a number bound reads ASCII decimal text, a label is kept as written, and a Boolean cell folds case as Java does (serializer + tri-engine differential, 2026-10-21) <a id="kf591"></a>
+
+> Fold: pending — beside [KF590](#kf590)'s count binding and [KF564](#kf564)'s quoted Number.
+
+Four readings of text, measured on a cover model, its rule `FieldFilled(Amount) And BaseYear == 2024`, and a message `tier=[$Tier.value$] field=[$Amount$]`:
+
+| member | read as | admitted | no model |
+|---|---|---|---|
+| `modelInfo.baseYear` (an `Integer`) | Java `trim`, then `Integer.parseInt`; a JSON number truncated | `"2024"`, `" 2024 "`, `"\u0662\u0660\u0662\u0664"`, `2024`, and `2024.7`, under which the rule fires | `"\u00A02024"`, `"2024.0"`, `"x"` |
+| `NumberType.minValue` / `maxValue` (a `BigDecimal`) | Java `trim`, then an ASCII decimal syntax | `"5"`, `" 5 "`, `"5.0"`, `5` | `"\u00A05"`, `"\u0665"`, `"abc"` |
+
+A base year of blank text binds to no year, so a rule that reads `BaseYear` draws `MVK_NO_BASE_YEAR`. An enumeration label that Java reads as blank (`""`, `" "`, an em space) is refused with `MVK_INTERNAL_VALUES_AND_DISPLAY_VAL`. A no-break-space label is admitted and rendered as written, so the message reads `tier=[\u00A0]`. A Boolean cell is compared with `equalsIgnoreCase` against `true` and `false`, which folds the long s onto `s`, so `fal\u017Fe` and `FAL\u017FE` read false. A lone `\u017F` is not a Boolean, and `" true"` draws the leading-blank class.
+
+*Locked by:* `adapter.laws.ModelTextReadingDiffTest`, A12 against the interpreter on every row.
+
+## §13 supplement — identifying text of spaces: a header id, an alias and a type-definition id are plain text, an include reference must not be Java-blank, and no text of spaces is a time zone (expansion + `checkConsistency`, 2026-10-21) <a id="kf592"></a>
+
+> Fold: pending — beside [KF3](#kf3)'s include resolution.
+
+Six texts separate the readings: the empty text, a space, a tab and an em space are blank to Java's `Character.isWhitespace`, while the no-break and figure spaces are not.
+
+| text in | A12 |
+|---|---|
+| `header.id` | admits every one |
+| an include entry's `reference` | expands under a no-break or figure space; under a Java-blank one, an absent or `null` member, or no `modelReferences` at all, fails the expansion: *"The corresponding model reference of the include group … cannot be found."* It never reads the alias as the reference |
+| a mount's `modelAlias`, the entry's `alias` the same | expands under every one but the empty text, which fails the same way |
+| a type definition's `id`, referenced by the same text | admits every one but the empty text: *"The id is empty."* |
+| `modelConfig.timeZone` | `MVK_INVALID_TIME_ZONE` for every one |
+
+*Locked by:* `adapter.WorkspaceBlankTextDiffTest`, A12 against the interpreter's workspace, the core reader and the portable checker.
+

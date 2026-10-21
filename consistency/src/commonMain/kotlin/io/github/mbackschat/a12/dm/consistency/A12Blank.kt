@@ -29,9 +29,8 @@ internal fun Char.isJavaWhitespace(): Boolean = when (this) {
  * Whether every character is a Unicode space: Java's whitespace together with the three no-break spaces it excludes,
  * which is what Kotlin's `isBlank` answers on the JVM, spelled out so Node answers it alike.
  *
- * For the members whose blank reading is NOT Java's presence test: a rule's target, which A12 answers with the
- * same pair for any text of spaces whichever spaces they are (`RuleConditionAndTarget`), and the checker's own
- * admission and mount lookups, which are its contract rather than an A12 verdict.
+ * For the member whose blank reading is NOT Java's presence test: a rule's target, which A12 answers with the
+ * same pair for any text of spaces whichever spaces they are (`RuleConditionAndTarget`).
  */
 internal fun String.isUnicodeBlank(): Boolean = all { it.isJavaWhitespace() || it in NO_BREAK_SPACES }
 

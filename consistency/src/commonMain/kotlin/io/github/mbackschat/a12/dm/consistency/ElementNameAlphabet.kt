@@ -26,14 +26,14 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
         // class at its own path too, however it is named itself — unless the path is already refused above it
         // (KERNEL-FINDINGS KF558).
         val segments = element.path.removePrefix("/")
-        val xmlAncestor = segments.split('/').dropLast(1).firstOrNull { it.startsWith("xml", ignoreCase = true) }
+        val xmlAncestor = segments.split('/').dropLast(1).firstOrNull { it.startsWithIgnoringAsciiCase("xml") }
             ?.takeIf { segments.invalidElementPathOffset(root = true, field = false) == null }
         val refusal = when {
-            root && element.name.equals("Id", ignoreCase = true) -> "MVK_ROOT_GROUP_NAME_INVALID" to
+            root && element.name.equalsIgnoringAsciiCase("Id") -> "MVK_ROOT_GROUP_NAME_INVALID" to
                 "A12 reserves `Id` as a root group's whole name, ignoring case"
             element.name.first().isAsciiDigit() -> "MVK_NAME_STARTS_WITH_DIGIT" to
                 "this root group's name begins with a digit; A12 requires a letter or underscore"
-            element.name.startsWith("xml", ignoreCase = true) -> "MVK_NAME_STARTS_WITH_XML" to
+            element.name.startsWithIgnoringAsciiCase("xml") -> "MVK_NAME_STARTS_WITH_XML" to
                 "this group's name begins with the reserved prefix `xml`"
             xmlAncestor != null -> "MVK_NAME_STARTS_WITH_XML" to
                 "this group sits below `$xmlAncestor`, and A12 reads that group's reserved prefix `xml` into every " +
@@ -53,7 +53,7 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
         if (element.name.any { it == '.' || it == ':' }) {
             findings += element.nameFinding("MVK_NAME_INVALID_DOT_COLON_A12_DV",
                 "this field's name contains a dot or colon, which A12's field-name gate refuses")
-        } else if (element.name.startsWith("xml", ignoreCase = true)) {
+        } else if (element.name.startsWithIgnoringAsciiCase("xml")) {
             findings += element.nameFinding("MVK_NAME_STARTS_WITH_XML_A12_DV",
                 "this field's name begins with the reserved prefix `xml`")
         }

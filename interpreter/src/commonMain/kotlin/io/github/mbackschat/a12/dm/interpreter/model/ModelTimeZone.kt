@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.isUnicodeBlank
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException
 
@@ -23,10 +24,11 @@ enum class ModelTimeZone {
 
     companion object {
         /** Map an explicitly configured `modelConfig.timeZone`: `UTC`/`GMT` → [UTC], `Europe/Berlin` →
-         *  [EUROPE_BERLIN], blank/null → invalid configuration, and any other id → a neutral supported-set
+         *  [EUROPE_BERLIN], null or any text of spaces → invalid configuration (A12 answers MVK_INVALID_TIME_ZONE
+         *  whichever spaces they are, the no-break ones included), and any other id → a neutral supported-set
          *  refusal. A genuinely absent slot is defaulted by the loader before this method is called. */
         fun of(id: String?): ModelTimeZone = when {
-            id.isNullOrBlank() -> throw InvalidModelTimeZoneException(
+            id == null || id.isUnicodeBlank() -> throw InvalidModelTimeZoneException(
                 id,
                 "invalid modelConfig.timeZone '${id ?: "null"}' — an explicitly present value must be a nonblank " +
                     "Java time-zone id; omit the slot to use the UTC default")

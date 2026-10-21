@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
 /**
@@ -109,7 +110,7 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
         return group.invalidCount("null")
     }
     val primitive = member as? JsonPrimitive ?: return null
-    val declared = primitive.boundRepetitionCount() ?: return if (primitive.isString) unreadableCount(group, primitive) else null
+    val declared = primitive.boundRepetitionCount() ?: return unreadableCount(group, primitive)
     return when {
         // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
         // they share one message rather than stating it twice.
@@ -139,10 +140,15 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
 }
 
 /**
- * The count Jackson binds a stored `repeatability` to: a string is read after Java's `trim`, so `" 3 "` is 3 while
- * a no-break or em space leaves no number (`CheckerUnicodeBlankAgreementTest`); null when no whole number results.
+ * The count Jackson binds a stored `repeatability` to ([KF590]): text after Java's `trim` through `Long.parseLong`,
+ * so `" 3 "` and `"\u0663"` are 3, the empty text 0, and a no-break space, a fraction or an exponent no number; a
+ * JSON number truncated toward zero, so `3.7` is 3 and `1e1` is 10. Null where A12's reader binds nothing, a boolean
+ * included (`RepeatabilityTextReadingDiffTest`). A count past `Int` is returned as read, for the caller to refuse.
  */
-private fun JsonPrimitive.boundRepetitionCount(): Long? = if (isString) content.javaTrimmed().toLongOrNull() else longOrNull
+internal fun JsonPrimitive.boundRepetitionCount(): Long? = when {
+    isString -> content.javaTrimmed().let { if (it.isEmpty()) 0L else it.javaLongOrNull() }
+    else -> longOrNull ?: doubleOrNull?.toLong()
+}
 
 private fun unreadableCount(group: TrackedDeclaration, member: JsonPrimitive) = Finding(
     FindingCategory.A12_CONSTRAINT,

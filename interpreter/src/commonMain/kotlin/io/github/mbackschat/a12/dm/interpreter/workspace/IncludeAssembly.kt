@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
@@ -339,7 +340,7 @@ private class IncludeMounter(
     ): JsonObject {
         val step = ModelReferenceStep.include(
             fromModelId = owningSource.source.modelId,
-            toModelId = owningSource.root.includeReference(directive.alias),
+            toModelId = owningSource.root.includeReference(owningSource.source.modelId, mountPath, directive.alias),
             alias = directive.alias,
         )
         val includedSource = context.resolvedSource(step)
@@ -417,7 +418,7 @@ private class IncludeMounter(
             }
             children += mounted
             mounted.strictString("name")
-                ?.takeIf(String::isNotBlank)
+                ?.takeIf(String::isNotEmpty)
                 ?.let { name ->
                     prefixes += MountedPrefix(
                         sourcePrefix = "/$name",
@@ -637,7 +638,8 @@ internal fun classifyGroup(
     val alias = (aliasNode as? JsonPrimitive)
         ?.takeIf(JsonPrimitive::isString)
         ?.content
-        ?.takeIf(String::isNotBlank)
+        // A12 expands a mount whose alias is spaces when an include entry carries that alias; only "" finds none.
+        ?.takeIf(String::isNotEmpty)
         ?: throw invalidIncludeMount(
             source.source.modelId,
             path,
@@ -828,7 +830,7 @@ private enum class IncludeExclusion {
 
 private fun JsonObject.singleRootRepeatabilityOrNull(): Int? {
     val value = get("repeatability") ?: return 1
-    return (value as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toIntOrNull()
+    return (value as? JsonPrimitive)?.takeIf { !it.isString }?.content?.asciiIntOrNull()
 }
 
 private fun JsonObject.withoutIncludeDirectives(): JsonObject =

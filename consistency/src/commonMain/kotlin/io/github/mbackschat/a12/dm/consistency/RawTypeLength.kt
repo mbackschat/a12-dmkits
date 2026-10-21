@@ -101,7 +101,7 @@ private fun rawLengthOffence(
                 "max-length declaration A12 lifts out of the generated validation, not a comparison to embed",
             element.path,
         )
-    if (constant.toIntOrNull() != null) {
+    if (constant.asciiIntOrNull() != null) {
         return null
     }
     return finding(
