@@ -1074,8 +1074,8 @@ class Document(internal val config: DocumentConfig) {
 
     private fun contentTrie(): ContentTrie<Placement> {
         val idx = index()
-        return idx.contentTrie ?: ContentTrie<Placement>().also { trie ->
-            for (p in idx.content) trie.add(partsOf(p.path), p.reps, p)
+        return idx.contentTrie ?: ContentTrie<Placement> { it.reps }.also { trie ->
+            for (p in idx.content) trie.add(p.path, partsOf(p.path), p)
             idx.contentTrie = trie
         }
     }

@@ -17,8 +17,8 @@ class ContentTrieTest {
         val random = Random(20261021)
         repeat(200) { round ->
             val content = List(random.nextInt(0, 12)) { randomPlacement(random) }
-            val trie = ContentTrie<Pair<List<String>, List<Int>>>()
-            content.forEach { (parts, reps) -> trie.add(parts, reps, parts to reps) }
+            val trie = ContentTrie<Pair<List<String>, List<Int>>> { it.second }
+            content.forEach { placed -> trie.add(placed.first.joinToString("/", "/"), placed.first, placed) }
             for (group in GROUPS) {
                 val gate = trie.gateFor(group)
                 for (reps in rowsOf(group.size)) {
@@ -33,8 +33,8 @@ class ContentTrieTest {
         val random = Random(7)
         repeat(100) { round ->
             val content = List(random.nextInt(0, 12)) { randomPlacement(random) }
-            val trie = ContentTrie<Pair<List<String>, List<Int>>>()
-            content.forEach { (parts, reps) -> trie.add(parts, reps, parts to reps) }
+            val trie = ContentTrie<Pair<List<String>, List<Int>>> { it.second }
+            content.forEach { placed -> trie.add(placed.first.joinToString("/", "/"), placed.first, placed) }
             for (group in GROUPS) {
                 val below = ArrayList<Pair<List<String>, List<Int>>>()
                 trie.forEachBelow(group) { below += it }

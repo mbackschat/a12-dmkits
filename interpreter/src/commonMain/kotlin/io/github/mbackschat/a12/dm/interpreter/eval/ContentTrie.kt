@@ -4,25 +4,24 @@ package io.github.mbackschat.a12.dm.interpreter.eval
  * A document's content keyed by the model path it lies under, so that a question about one group reads only the
  * nodes along that group's path instead of every placement.
  *
- * Each node at depth `d` records, for every index prefix of length `d` its subtree holds, which branch holds it:
+ * Each node at depth `d` answers, for every index prefix of length `d` its subtree holds, which branch holds it:
  * the content placed at the node itself, one child, or more than one. That is exactly what the attach gate needs,
  * because a placement whose path leaves the group's path after `d` shared parts makes the group's rows with the
  * same first `d` indices evaluated, and a placement that follows the path further is counted deeper instead.
+ *
+ * A node builds that answer only when a gate first asks for it, from its own subtree. Building it for every node
+ * up front made each call on a fresh document pay for nodes no gate reads: `testRule` and `applyComputations`,
+ * which index a new document per call, ran 5–10 % slower than the per-group scan this replaced (measured
+ * 2026-10-21, interleaved against `58201827b`).
  */
-internal class ContentTrie<T : Any> {
-    private val root = Node<T>()
+internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
+    private val root = Node<T>(depth = 0)
+    private val nodeByPath = HashMap<String, Node<T>>()
 
-    fun add(parts: List<String>, reps: List<Int>, item: T) {
-        var node = root
-        for (depth in 1..parts.size) {
-            node = node.children.getOrPut(parts[depth - 1]) { Node() }
-            val branch = if (depth == parts.size) SELF else parts[depth]
-            // A view, not a copy: every placement's indices live as long as the document does.
-            val key = reps.subList(0, depth)
-            val held = node.branches[key]
-            if (held == null) node.branches[key] = branch else if (held != branch) node.branches[key] = MANY
-        }
-        node.here += item
+    fun add(path: String, parts: List<String>, item: T) {
+        nodeByPath.getOrPut(path) {
+            parts.fold(root) { node, part -> node.children.getOrPut(part) { Node(node.depth + 1) } }
+        }.here += item
     }
 
     /** The gate for the group whose path is [groupParts]: the nodes on its path, each with the child it continues into. */
@@ -31,7 +30,7 @@ internal class ContentTrie<T : Any> {
         var node = root
         for (depth in 1..groupParts.size) {
             node = node.children[groupParts[depth - 1]] ?: break
-            levels += AttachGate.Level(depth, node.branches, if (depth < groupParts.size) groupParts[depth] else null)
+            levels += AttachGate.Level(depth, branchesOf(node), if (depth < groupParts.size) groupParts[depth] else null)
         }
         return AttachGate(levels)
     }
@@ -40,12 +39,7 @@ internal class ContentTrie<T : Any> {
     fun forEachBelow(parts: List<String>, action: (T) -> Unit) {
         var node = root
         for (part in parts) node = node.children[part] ?: return
-        val pending = ArrayDeque(node.children.values)
-        while (pending.isNotEmpty()) {
-            val next = pending.removeLast()
-            next.here.forEach(action)
-            pending.addAll(next.children.values)
-        }
+        for (child in node.children.values) child.forEachInSubtree(action)
     }
 
     fun nodeCount(): Int {
@@ -53,16 +47,52 @@ internal class ContentTrie<T : Any> {
         val pending = ArrayDeque(listOf(root))
         while (pending.isNotEmpty()) {
             val next = pending.removeLast()
-            count += 1 + next.branches.size
+            count += 1 + (next.branches?.size ?: 0)
             pending.addAll(next.children.values)
         }
         return count
     }
 
-    private class Node<T> {
+    private fun branchesOf(node: Node<T>): Map<List<Int>, String> = node.branches ?: HashMap<List<Int>, String>().also { held ->
+        record(held, node.depth, SELF) { node.here.forEach(it) }
+        for ((name, child) in node.children) record(held, node.depth, name) { child.forEachInSubtree(it) }
+        node.branches = held
+    }
+
+    private inline fun record(held: HashMap<List<Int>, String>, depth: Int, branch: String, items: ((T) -> Unit) -> Unit) {
+        var previous: List<Int>? = null
+        items { item ->
+            val reps = repsOf(item)
+            // One branch's placements arrive path by path, so a run of them often shares this depth's prefix: the
+            // same key with the same branch, already recorded.
+            if (previous?.let { sharesPrefix(it, reps, depth) } != true) {
+                // A view, not a copy: every placement's indices live as long as the document does.
+                val key = reps.subList(0, depth)
+                val was = held[key]
+                if (was == null) held[key] = branch else if (was != branch) held[key] = MANY
+                previous = reps
+            }
+        }
+    }
+
+    private fun sharesPrefix(a: List<Int>, b: List<Int>, depth: Int): Boolean {
+        for (i in 0 until depth) if (a[i] != b[i]) return false
+        return true
+    }
+
+    private class Node<T>(val depth: Int) {
         val children = HashMap<String, Node<T>>()
-        val branches = HashMap<List<Int>, String>()
         val here = ArrayList<T>()
+        var branches: Map<List<Int>, String>? = null
+
+        fun forEachInSubtree(action: (T) -> Unit) {
+            val pending = ArrayDeque(listOf(this))
+            while (pending.isNotEmpty()) {
+                val next = pending.removeLast()
+                next.here.forEach(action)
+                pending.addAll(next.children.values)
+            }
+        }
     }
 
     internal companion object {
