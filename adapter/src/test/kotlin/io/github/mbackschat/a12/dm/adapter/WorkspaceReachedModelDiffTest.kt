@@ -91,6 +91,64 @@ class WorkspaceReachedModelDiffTest {
         assertEquals(rows.mapValues { (row, _) -> if (row.endsWith("missing de_DE")) NOT_BUILT else BUILT }, rows)
     }
 
+    /**
+     * Which declared locale codes leave the entry unbuilt, by the model that declares them. A code A12's reader
+     * refuses (`en_us`) does so in every model the entry reaches. A locale declared twice, in one spelling or two
+     * (`en_US`, `en-US`), and the empty code are carrier-dependent: an entry declaring them builds but A12's consistency
+     * check cannot read it, an included model declaring them is not expanded, and a type-definition library declaring
+     * them is (`DocumentModelExpandSanityChecks`, kernel `30.8.1`). The interpreter answers A12's build and the checker
+     * its consistency check; `en_US` and `en-US` alone are the controls.
+     */
+    @Test
+    fun aLocaleCodeA12CannotUseLeavesTheEntryUnbuilt() {
+        val sets = linkedMapOf(
+            "en_US" to listOf("en_US"), "en-US" to listOf("en-US"), "en_US twice" to listOf("en_US", "en_US"),
+            "en_US + en-US" to listOf("en_US", "en-US"), "en_US + en_us" to listOf("en_US", "en_us"),
+            "en_US + \"\"" to listOf("en_US", ""), "en_us" to listOf("en_us"), "\"\"" to listOf(""),
+        )
+        val observed = linkedMapOf<String, String>()
+        for (carrier in Carrier.entries) {
+            for ((label, codes) in sets) {
+                // A provider must still cover the entry's en_US, or the coverage demand answers the row instead.
+                if (carrier != Carrier.ENTRY && codes.none { it.replace('-', '_') == "en_US" }) continue
+                val (entry, provider) = when (carrier) {
+                    Carrier.ENTRY -> cover() to null
+                    Carrier.INCLUDE -> permit() to MAPPER.readTree(COMPONENT) as ObjectNode
+                    Carrier.TYPE_DEFINITIONS -> coded() to MAPPER.readTree(TYPES) as ObjectNode
+                }
+                (provider ?: entry).withLocales(codes)
+                observed["$carrier [$label]"] = observeWithConsistency(entry.toString(), provider?.toString())
+            }
+        }
+        val usable = setOf("[en_US]", "[en-US]")
+        val unreadable = setOf("[en_US + en_us]", "[en_us]")
+        assertEquals(observed.mapValues { (row, _) ->
+            val codes = row.substringAfter(' ')
+            when {
+                codes in usable -> BUILT_AND_CHECKED
+                codes in unreadable -> NOT_BUILT_OR_CHECKED
+                row.startsWith("ENTRY") -> BUILT_NOT_CHECKED
+                row.startsWith("INCLUDE") -> NOT_BUILT_OR_CHECKED
+                else -> BUILT_AND_CHECKED
+            }
+        }, observed)
+    }
+
+    /** [observe]'s three answers, with A12's consistency verdict beside its build: the checker's oracle. */
+    private fun observeWithConsistency(entry: String, provider: String?): String {
+        val providerId = provider?.let { MAPPER.readTree(it).at("/header/id").asText() }
+        val checked = try {
+            KernelConsistencyOracle().checkConsistency(entry) { if (it == providerId) provider else null }
+            true
+        } catch (unbuildable: RuntimeException) {
+            // An included model's repeated locale escapes A12's check as a bare IllegalStateException and its empty
+            // code as a NullPointerException, where the entry's surface as ConsistencyCheckFailedException: each is
+            // a check that returned no verdict.
+            false
+        }
+        return observe(entry, provider).replace(", interpreter", ", A12 consistency ${if (checked) "checks" else "unbuilt"}, interpreter")
+    }
+
     private fun ObjectNode.withLocales(codes: List<String>) {
         val locales = (path("header") as ObjectNode).putArray("locales")
         codes.forEach { locales.addObject().put("code", it) }
@@ -161,5 +219,8 @@ class WorkspaceReachedModelDiffTest {
 
         const val BUILT = "A12 built, interpreter prepares, checker silent"
         const val NOT_BUILT = "A12 not built, interpreter refuses, checker not built"
+        const val BUILT_AND_CHECKED = "A12 built, A12 consistency checks, interpreter prepares, checker silent"
+        const val BUILT_NOT_CHECKED = "A12 built, A12 consistency unbuilt, interpreter prepares, checker not built"
+        const val NOT_BUILT_OR_CHECKED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not built"
     }
 }

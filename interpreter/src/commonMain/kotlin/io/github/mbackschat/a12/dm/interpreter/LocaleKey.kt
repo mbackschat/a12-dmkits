@@ -27,13 +27,15 @@ internal fun a12LocaleKeyOrNull(code: String): String? {
     return segments.joinToString("_")
 }
 
-/** The keys of the locales a model's `header.locales` declares, each entry an object with a `code` or a bare text. */
-internal fun JsonObject.declaredLocaleKeys(): Set<String> =
-    ((this["header"] as? JsonObject)?.get("locales") as? JsonArray).orEmpty().mapNotNullTo(linkedSetOf()) { entry ->
-        val code = when (entry) {
+/** The keys of the locales a model's `header.locales` declares, without repeats. */
+internal fun JsonObject.declaredLocaleKeys(): Set<String> = declaredLocaleCodes().mapNotNullTo(linkedSetOf(), ::a12LocaleKeyOrNull)
+
+/** The codes a model's `header.locales` declares, verbatim and in order, each entry an object with a `code` or a bare text. */
+internal fun JsonObject.declaredLocaleCodes(): List<String> =
+    ((this["header"] as? JsonObject)?.get("locales") as? JsonArray).orEmpty().mapNotNull { entry ->
+        when (entry) {
             is JsonObject -> (entry["code"] as? JsonPrimitive)?.takeIf { it.isString }?.content
             is JsonPrimitive -> entry.takeIf { it.isString }?.content
             else -> null
         }
-        code?.let(::a12LocaleKeyOrNull)
     }

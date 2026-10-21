@@ -191,11 +191,13 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     Each refuses the whole source before any check runs, exactly as a field declaration's does
  *     ([KERNEL-FINDINGS KF569], `adapter.laws.CheckerDeclarationAdmissionAgreementTest`), so the declaration-slot
  *     family reports each as [CK_MODEL_NOT_BUILDABLE].
- * @param reachedModelRefusals what leaves A12 unable to build the entry from a model it reaches, an included model or
- *     a type-definition library, one sentence each naming that model: a model-level member its reader cannot bind,
- *     an entry locale it does not declare, or a library's root group ([KERNEL-FINDINGS KF594],
- *     `adapter.WorkspaceReachedModelDiffTest`). The entry's own members are [unbindableBaseYear] and
- *     [unbindableBooleans].
+ * @param reachedModelRefusals what leaves A12 unable to build or check the entry from a model it reads, one complete
+ *     sentence each naming that model ([KERNEL-FINDINGS KF594], `adapter.WorkspaceReachedModelDiffTest`). From an
+ *     included model or a type-definition library: a model-level member its reader cannot bind, a locale code it
+ *     cannot parse, an entry locale it does not declare, or a library's root group; from an included model also a
+ *     locale declared twice or the empty code. From the entry itself: a locale declared twice, which A12 builds but
+ *     cannot check. The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
+ *     [unreadableLocaleCodes].
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -550,10 +552,9 @@ private fun JsonObject.unbindableTypeDefinitionBooleans(): List<String> {
 
 /**
  * One walk over every model the entry reaches, the entry included: the type definitions they declare, and what
- * leaves A12 unable to build the entry from a model it reaches (KF594). That is a model-level member its reader
- * cannot bind, a locale of the entry's the reached model does not declare, or a root group in a type-definition
- * library, which A12 does not expand as an import. The locale demand is measured one reference deep and applied to
- * every depth, as the mount path applies it.
+ * leaves A12 unable to build or check the entry ([PreparedModel.reachedModelRefusals], KF594). A model reached by
+ * both purposes meets both purposes' demands. The locale demand is measured one reference deep and applied to every
+ * depth, as the mount path applies it.
  */
 private fun readClosure(
     entry: Admission.Admitted,
@@ -564,8 +565,17 @@ private fun readClosure(
     val ambiguous = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
     val reachedRefusals = mutableListOf<String>()
-    val entryLocales = ((entry.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales().keys.toSet()
+    val entryDeclared = ((entry.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales()
+    val entryLocales = entryDeclared.keys.toSet()
+    // A12 gathers the entry's locales into one map for its check, so a repeat leaves no verdict to mirror.
+    if (entryDeclared.repeated.isNotEmpty()) {
+        reachedRefusals += "The entry model `${entry.modelId}` declares the locale " +
+            "${entryDeclared.repeated.joinToString(", ")} twice, so A12 builds it but its consistency check cannot run"
+    }
+    fun unbuilt(sentence: String) = "$sentence. A12 reads every model the entry reaches before it builds the entry, " +
+        "so the entry model never loads"
     val libraries = linkedSetOf<String>()
+    val includes = linkedSetOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
@@ -573,11 +583,16 @@ private fun readClosure(
         val root = source.parsed as? JsonObject
         val content = root?.get("content") as? JsonObject
         if (source !== entry) {
-            reachedRefusals += content.unbindableModelMembers().map { "In the model `${source.modelId}`, $it, which A12 cannot bind" }
-            val uncovered = entryLocales - (root?.get("header") as? JsonObject).declaredLocales().keys.toSet()
+            reachedRefusals += content.unbindableModelMembers().map { unbuilt("In the model `${source.modelId}`, $it, which A12 cannot bind") }
+            val declared = (root?.get("header") as? JsonObject).declaredLocales()
+            // The empty code is read and costs only an include, which the include pass below answers.
+            reachedRefusals += declared.unreadable.filter { it.isNotEmpty() }.map {
+                unbuilt("In the model `${source.modelId}`, `header.locales` declares `$it`, which A12 cannot use as a locale")
+            }
+            val uncovered = entryLocales - declared.keys.toSet()
             if (uncovered.isNotEmpty()) {
-                reachedRefusals += "The model `${source.modelId}` does not declare the entry model's locale " +
-                    "${uncovered.joinToString(", ")}, so A12 does not expand it"
+                reachedRefusals += unbuilt("The model `${source.modelId}` does not declare the entry model's locale " +
+                    "${uncovered.joinToString(", ")}, so A12 does not expand it")
             }
         }
         val definitions = (content?.get("typeDefinitions") as? JsonArray)
@@ -599,7 +614,10 @@ private fun readClosure(
             ?.filterIsInstance<JsonObject>()
             ?.forEach { reference ->
                 val referenced = reference.text("reference") ?: return@forEach
-                if (reference.text("purpose") == "typeDefinitions") libraries += referenced
+                when (reference.text("purpose")) {
+                    "typeDefinitions" -> libraries += referenced
+                    "include" -> includes += referenced
+                }
                 if (visited.add(referenced)) {
                     providers[referenced]?.let { pending += it }
                 }
@@ -609,8 +627,17 @@ private fun readClosure(
         val content = (providers[library]?.parsed as? JsonObject)?.get("content") as? JsonObject
         val rootGroups = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray
         if (!rootGroups.isNullOrEmpty()) {
-            reachedRefusals += "The type-definition library `$library` declares a root group, so A12 cannot expand " +
-                "the import"
+            reachedRefusals += unbuilt("The type-definition library `$library` declares a root group, so A12 cannot " +
+                "expand the import")
+        }
+    }
+    // An included model's locales are gathered into one map keyed by locale, which a repeat breaks and the empty
+    // code, read as no locale, breaks too; a library is expanded without that map.
+    for (include in includes) {
+        val declared = ((providers[include]?.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales()
+        if (declared.repeated.isNotEmpty() || "" in declared.unreadable) {
+            reachedRefusals += unbuilt("The included model `$include` declares a locale twice or an empty locale " +
+                "code, so A12 cannot expand the include")
         }
     }
     return ClosureReading(ids, bodies, unbindable, reachedRefusals)
@@ -1064,8 +1091,9 @@ private fun JsonObject?.declaresShortNameFallback(): Boolean =
  *     a coverage gap for a model A12 admits.
  * @param unreadable the codes that yielded no key, verbatim and in declaration order. Dropping them silently
  *     would analyse a model that never loads; each makes the model unusable and is reported as such.
+ * @param repeated the keys declared more than once, in one spelling or two, each once.
  */
-private data class DeclaredLocales(val keys: List<String>, val unreadable: List<String>)
+private data class DeclaredLocales(val keys: List<String>, val unreadable: List<String>, val repeated: List<String>)
 
 /**
  * Read a header's declared locales.
@@ -1078,6 +1106,7 @@ private data class DeclaredLocales(val keys: List<String>, val unreadable: List<
 private fun JsonObject?.declaredLocales(): DeclaredLocales {
     val keys = mutableListOf<String>()
     val unreadable = mutableListOf<String>()
+    val repeated = linkedSetOf<String>()
     for (entry in (this?.get("locales") as? JsonArray).orEmpty()) {
         val code = when (entry) {
             is JsonObject -> entry.text("code")
@@ -1087,10 +1116,11 @@ private fun JsonObject?.declaredLocales(): DeclaredLocales {
         val key = localeKeyOrNull(code)
         when {
             key == null -> unreadable += code
-            key !in keys -> keys += key
+            key in keys -> repeated += key
+            else -> keys += key
         }
     }
-    return DeclaredLocales(keys, unreadable)
+    return DeclaredLocales(keys, unreadable, repeated.toList())
 }
 
 /**

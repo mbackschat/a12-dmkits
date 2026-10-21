@@ -6,12 +6,15 @@ import kotlinx.serialization.json.JsonObject
 /**
  * The first of a model's own model-level members A12's reader cannot bind, as its path, or null.
  *
- * `DocumentModelInfo` and `DocumentModelConfig` hold four members that are not text: the `Integer` `baseYear` and the
- * primitive `boolean`s `immutable`, `metaData` and `fieldRefByShortNameAllowed` (kernel `30.8.1` source). A12 reads
- * every model a workspace reaches whole, the entry, an included model and a type-definition library alike, so one
- * such member in any of them leaves the entry model unbuilt (KF591, KF577; `adapter.WorkspaceBlankTextDiffTest`).
+ * The header's `locales` binds each code as a locale, so one A12 cannot parse (`en_us`) refuses; the empty code is
+ * read, and what it costs depends on which model declares it ([a12LocaleKeyOrNull]). `DocumentModelInfo` and
+ * `DocumentModelConfig` hold four members that are not text: the `Integer` `baseYear` and the primitive `boolean`s
+ * `immutable`, `metaData` and `fieldRefByShortNameAllowed` (kernel `30.8.1` source). A12 reads every model a
+ * workspace reaches whole, the entry, an included model and a type-definition library alike, so one such member in
+ * any of them leaves the entry model unbuilt (KF594; `adapter.WorkspaceReachedModelDiffTest`).
  */
 internal fun JsonObject.unbindableModelMember(): String? {
+    if (declaredLocaleCodes().any { it.isNotEmpty() && a12LocaleKeyOrNull(it) == null }) return "header.locales"
     val content = this["content"] as? JsonObject
     val info = content?.get("modelInfo") as? JsonObject
     if (info?.get("baseYear").bindJavaInt() == JavaIntBinding.Unbindable) return "content.modelInfo.baseYear"

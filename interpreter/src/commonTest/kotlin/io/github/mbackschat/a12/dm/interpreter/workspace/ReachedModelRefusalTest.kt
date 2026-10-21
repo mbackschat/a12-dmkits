@@ -16,7 +16,8 @@ import kotlin.test.assertEquals
 /**
  * What leaves A12 unable to build the entry refuses preparation in whichever model the entry reaches: the entry, an
  * included model, a model that one includes, and a type-definition library (KF594). That is a model-level member A12
- * cannot bind, an entry locale a reached model does not declare, and a root group in a library. A12's side of it is
+ * cannot bind or a locale code it cannot parse, an entry locale a reached model does not declare, a root group in a
+ * library, and a locale an included model declares twice or as the empty code. A12's side of it is
  * `adapter.WorkspaceReachedModelDiffTest`; this holds the same reading on every platform the workspace runs on.
  */
 class ReachedModelRefusalTest {
@@ -60,6 +61,27 @@ class ReachedModelRefusalTest {
         assertEquals("prepares", refusal(bilingual.mapValues { (id, json) ->
             if (id == entryId) json else json.setting("header.locales", locales("en_US", "de_DE", "fr_FR"))
         }))
+    }
+
+    /**
+     * A locale code A12 cannot parse refuses in every model; a locale declared twice, in one spelling or two, and the
+     * empty code refuse only in an included model, here `permit-section` and the `inspection-checks` it includes. The
+     * entry and the library declaring them prepare, as A12 builds them.
+     */
+    @Test
+    fun aLocaleCodeRefusesByTheModelDeclaringIt() {
+        val sources = WorkspacePreparationFixtureJson.sources(caseId)
+        fun locales(vararg codes: String) = JsonArray(codes.map { JsonObject(mapOf("code" to JsonPrimitive(it))) })
+        val sets = linkedMapOf("unreadable" to locales("en_US", "en_us"), "twice" to locales("en_US", "en-US"),
+            "empty" to locales("en_US", ""))
+        val observed = sets.flatMap { (label, codes) ->
+            sources.keys.map { modelId -> "$modelId $label" to refusal(sources + (modelId to sources.getValue(modelId).setting("header.locales", codes))) }
+        }.toMap()
+        val included = setOf("permit-section", "inspection-checks")
+        assertEquals(observed.mapValues { (row, _) ->
+            val (modelId, label) = row.split(' ')
+            if (label == "unreadable" || modelId in included) "$modelId header.locales" else "prepares"
+        }, observed)
     }
 
     @Test

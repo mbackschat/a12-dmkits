@@ -14312,7 +14312,7 @@ A `typeDefinitions` entry's reference is resolved whatever its text, so an empty
 *Locked by:* `adapter.laws.JsonLiteralStrictnessDiffTest` (literals, A12 against the interpreter and the checker); `adapter.laws.RepeatabilityTextReadingDiffTest` and `adapter.laws.ModelTextReadingDiffTest` (the `int` and decimal rows, A12 against the interpreter, and the checker on `repeatability`, on `baseYear` and on the decimal bounds); `adapter.WorkspaceBlankTextDiffTest` (include entries, type-definition references and ids, against the interpreter, the core reader and the checker); `adapter.laws.YearOnlyDateDigitsDiffTest` (the year).
 
 
-## §13 supplement — every model the entry reaches is read whole and must suit the entry, so an unbindable model-level member, a missing entry locale or a library's root group in an included model or a type-definition library leaves the entry unbuilt (serializer + expansion differential, 2026-10-22) <a id="kf594"></a>
+## §13 supplement — every model the entry reaches is read whole and must suit the entry, so an unbindable model-level member or locale code, a missing entry locale, an include's repeated or empty locale or a library's root group leaves the entry unbuilt (serializer + expansion differential, 2026-10-22) <a id="kf594"></a>
 
 > Fold: pending — beside [KF593](#kf593)'s `int` binding and [KF577](#kf577)'s flag binding.
 
@@ -14343,4 +14343,15 @@ A type-definition library's `content.modelRoot`:
 
 The locale rows extend [KF288](#kf288)'s include table to a library, where the same check runs (`DocumentModelExpandSanityChecks.checkImportedDocModelForCompatibility`, which also holds the root-group demand).
 
-*Locked by:* `adapter.WorkspaceReachedModelDiffTest` (A12 against the interpreter's workspace and the checker's, every carrier, member, locale set and root shape).
+A declared locale CODE depends on which model declares it. The entry declares the codes itself, or declares `en_US` while the included model or the library declares them; each provider row still covers `en_US`, so the coverage demand above does not answer it. "Checked" means A12's consistency check returns a verdict; a throw is no verdict.
+
+| codes declared | in the entry | in an included model | in a type-definition library |
+|---|---|---|---|
+| `en_US`, or `en-US` alone | built, checked | built, checked | built, checked |
+| `en_US` and `en_us`; `en_us` alone (entry) | not built: *"Invalid locale format: en_us"* | not built, the same | not built, the same |
+| `en_US` twice, or `en_US` and `en-US` | built; the check throws `ConsistencyCheckFailedException` *"Duplicate key en_US"* | not built: `IllegalStateException` *"Duplicate key en_US"*, raised in `A12SpecificSettings.<init>` under the include expansion | built, checked |
+| `en_US` and the empty code; the empty code alone (entry) | built; the check throws *"The validated character sequence is empty"* | not built: `NullPointerException` in `Locale.getLanguage` | built, checked |
+
+So a code A12's reader cannot parse refuses wherever it stands. A locale declared twice, in one spelling or two, and the empty code leave an entry buildable but uncheckable, refuse an included model, and cost a library nothing. The `A12SpecificSettings` frame is the observed stack of the include row, not a reading of why the library is spared.
+
+*Locked by:* `adapter.WorkspaceReachedModelDiffTest` (A12's build and check against the interpreter's workspace and the checker's, every carrier, member, locale set, locale code and root shape).

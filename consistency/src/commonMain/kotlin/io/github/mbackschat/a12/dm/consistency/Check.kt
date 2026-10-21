@@ -995,8 +995,8 @@ internal fun checkRun(
         )
     }
     if (prepared.reachedModelRefusals.isNotEmpty()) {
-        // A12 reads every model the entry reaches before it builds the entry (KF594), so a refusal raised there
-        // leaves no model whose references or declarations any family could judge as A12 would.
+        // A12 reads every model the entry reaches before it builds or checks the entry (KF594), so a refusal raised
+        // there leaves no model whose references or declarations any family could judge as A12 would.
         return unexamined(ConsistencyReport(
             modelId = modelId,
             status = ConsistencyStatus.Invalid,
@@ -1005,8 +1005,7 @@ internal fun checkRun(
                     FindingCategory.A12_CONSTRAINT,
                     FindingSeverity.ERROR,
                     CK_MODEL_NOT_BUILDABLE,
-                    "$refusal. A12 reads every model the entry reaches before it builds the entry, so the entry " +
-                        "model never loads",
+                    refusal,
                 )
             },
             diagnostics = inherited + prepared.diagnostics,
