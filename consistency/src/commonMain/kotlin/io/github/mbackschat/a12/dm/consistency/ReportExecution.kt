@@ -108,8 +108,6 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
 
 /**
  * The codes a variant filter never takes away: a source A12 cannot build is unbuildable whatever the filter
- * deletes, the empty-code sentence is stated before the filter is applied ([KERNEL-FINDINGS KF579]), and the
- * bound-magnitude sentences are asked of every field of the stored model ([KERNEL-FINDINGS KF582]).
+ * deletes, and the empty-code sentence is stated before the filter is applied ([KERNEL-FINDINGS KF579]).
  */
-internal val VARIANT_BLIND_CODES =
-    setOf(CK_MODEL_NOT_BUILDABLE, RK_ERROR_CODE_EMPTY, RK_NUMBER_MIN_VALUE_EXCEEDED, RK_NUMBER_MAX_VALUE_EXCEEDED)
+internal val VARIANT_BLIND_CODES = setOf(CK_MODEL_NOT_BUILDABLE, RK_ERROR_CODE_EMPTY)
