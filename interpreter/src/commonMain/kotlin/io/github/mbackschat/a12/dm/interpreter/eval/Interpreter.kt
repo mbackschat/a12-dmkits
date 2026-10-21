@@ -1131,9 +1131,10 @@ class Interpreter(
         val fields = (listOf(star.path) + plan.innerFields).filter(emptyMayBeUnavailable)
         if (fields.isEmpty()) return UnavailableRows.NONE
         val group = star.path.substringBeforeLast('/')
-        return config.unavailableRows(listOf(star.path, plan.innerFields, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0)))) {
-            UnavailableRows(filterCandidates(ctx, group, star.bindDepth).filter { row -> fields.any { unavailableEmpty(row, it) } })
-        }
+        val scan = { UnavailableRows(filterCandidates(ctx, group, star.bindDepth).filter { row -> fields.any { unavailableEmpty(row, it) } }) }
+        // Only a validation call owns a memo; a low-level interpreter rescans, since its config may meet another document.
+        val memo = scopeMemo ?: return scan()
+        return memo.unavailableRows.getOrPut(listOf(star.path, plan.innerFields, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0))), scan)
     }
 
     /** Whether the iterated row is itself one of [unavailableRows]: the cells are its own under a self-exclusion. */

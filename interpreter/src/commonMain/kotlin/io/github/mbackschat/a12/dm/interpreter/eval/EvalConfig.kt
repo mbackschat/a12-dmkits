@@ -137,16 +137,9 @@ class EvalConfig(
 
     private var correlationShapes: MutableMap<Expr.Star, PreparedCorrelationShape>? = null
 
-    private var unavailableScopes: MutableMap<List<Any>, UnavailableRows>? = null
-
-    /** A correlated scope's rows holding an unavailable empty cell; the answer is call-owned, because
-     *  unavailability is the call's relevance and formal results, which no document-level cache may keep. */
-    internal fun unavailableRows(key: List<Any>, scan: () -> UnavailableRows): UnavailableRows {
-        val scopes = unavailableScopes ?: mutableMapOf<List<Any>, UnavailableRows>().also { unavailableScopes = it }
-        return scopes.getOrPut(key, scan)
-    }
-
-    /** SPEC-2026-10-10-02's dispatch and tally inspect the same immutable star across rows; recognition is call-owned. */
+    /** SPEC-2026-10-10-02's dispatch and tally inspect the same immutable star across rows. The shape is a function
+     *  of the expression alone, so it may outlive a document; anything read from a document may not
+     *  ([ScopeMemo.unavailableRows]). */
     internal fun correlationShape(star: Expr.Star): PreparedCorrelationShape {
         val shapes = correlationShapes ?: mutableMapOf<Expr.Star, PreparedCorrelationShape>()
             .also { correlationShapes = it }
