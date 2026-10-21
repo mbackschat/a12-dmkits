@@ -55,6 +55,8 @@ Each doubling costs about 3.8× on all three engines, so the lane is held to the
 
 `applyComputations` at n = 600 stays about 4 % above `58201827b` alone (median 71.7 against 68.4 ms, four rounds), and none of 1500 stack samples of its loop lands in a content-trie, gate, root-instance or index-build frame, so no code this period changed executes there.
 
+The new lanes' darwin anchors are the per-key median of three gates at `38dbea615` (records `2026-10-21T044033Z`, `2026-10-21T044903Z`, `2026-10-21T045950Z`); no existing key moved except the compute-overlay n = 1500 relevel recorded under [IG171](INTERPRETER-GAPS.md).
+
 **Linear on first measurement, so only anchored:** the joined-row aggregate (4.8×), the star-only join (3.4×), required-column correlation with every cell filled (3.8×), index-default staging (4.2×), the unavailable-empty walks (3.7×), keyed message tokens (4.0×) and `FirstFilledValue` (1.6×).
 
 ### Checkpoint 2026-10-13 — the correlated quantifiers' required-empty walk slowed multi-star correlation by a third
