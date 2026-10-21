@@ -20,13 +20,15 @@ import org.junit.jupiter.api.Test
 /** Consumer-owned custom-validator messages preserve plain text and replace every literal `$<fieldName>$`. */
 class CustomFieldTypeMessageDiffTest {
 
-    private val model = DocumentModelDraft.named("projectcodes")
+    private val model = labelled("Project code")
+
+    private fun labelled(english: String) = DocumentModelDraft.named("projectcodes")
         .locale("en_US")
         .locale("de_DE")
         .rootGroup("Order", Consumer { group ->
             group.customField("Code", Consumer<CustomFieldBuilder> { field ->
                 field.type("ProjectCode")
-                    .label("en_US", "Project code")
+                    .label("en_US", english)
                     .label("de_DE", "Projektcode")
             })
         })
@@ -52,7 +54,13 @@ class CustomFieldTypeMessageDiffTest {
         )
     }
 
-    private fun assertMessage(locale: Locale, template: String, expected: String) {
+    /** A no-break space is no blank to Java, so a label of one is substituted as written (KF591). */
+    @Test
+    fun aNoBreakSpaceLabelIsSubstitutedAsWritten() {
+        assertMessage(Locale.US, "Invalid [\$<fieldName>\$]", "Invalid [\u00A0]", labelled("\u00A0"))
+    }
+
+    private fun assertMessage(locale: Locale, template: String, expected: String, model: String = this.model) {
         val factory = rejectingFactory(template)
         val doc = RuntimeLaws.doc().group("/Order", 1).field(CODE, "bad", 1, 1)
         val dynamic = RuntimeLaws.customFieldErrorTextOf(model, REJECTION, doc, factory, locale).orElseThrow()

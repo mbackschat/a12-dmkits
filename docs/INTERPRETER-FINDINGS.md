@@ -4920,7 +4920,7 @@ Kotlin's blank tests and argument-free trims count the three no-break spaces as 
 
 `JavaText.kt` now spells each reading out: `isJavaWhitespace`, `isJavaBlank`, `javaTrimmed`, `javaIntOrNull` over [IF415](#if415)'s digit table, `asciiIntOrNull` for text a lexer or formatter has already confined to ASCII, and `equalsIgnoringCaseAsJavaDoes`. The loader binds `repeatability` and `baseYear` through `boundJavaInt` and gates a number bound on `isA12DecimalText`. `DecimalDigitsJvmOracleTest` now refuses every platform-table spelling in `commonMain`, including blank tests, trims, parses and case folds, and it plants each spelling as its own positive control. Model.kt's Java-pattern sites are exempt from the regex `\s` check only. `JavaTextJvmTest` holds each helper to the JDK, the whitespace and case-fold rows over every `char`.
 
-*Locked:* `adapter.laws.RepeatabilityTextReadingDiffTest`, `adapter.laws.ModelTextReadingDiffTest`, `JavaTextJvmTest`, `DecimalDigitsJvmOracleTest`.
+*Locked:* `adapter.laws.RepeatabilityTextReadingDiffTest`, `adapter.laws.ModelTextReadingDiffTest`, `adapter.laws.CustomFieldTypeMessageDiffTest.aNoBreakSpaceLabelIsSubstitutedAsWritten` (a custom type's `$<fieldName>$`, on both kernel strategies), `JavaTextJvmTest`, `DecimalDigitsJvmOracleTest`.
 
 ### IF427: workspace preparation finds an include only through its declared reference, and refuses no identifier A12 accepts (2026-10-21) <a id="if427"></a>
 
