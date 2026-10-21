@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.modelMemberText
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
+import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
@@ -162,11 +164,21 @@ internal class WorkspaceAssemblyContext(
             "workspace edge was not resolved during closure discovery: $step"
         }
 
+    /**
+     * Every source the closure reaches passes through here once, the entry included, which is where a model-level
+     * member A12 cannot bind refuses: A12 reads each reached model whole, so such a member in any of them leaves the
+     * entry unbuilt ([unbindableModelMember]).
+     */
     private fun parsed(source: AdmittedWorkspaceModelSource): ParsedWorkspaceSource =
         parsedSources.getOrPut(source.modelId) {
             val root = parseA12Json(source.json) as? JsonObject
                 ?: error("admission accepted a non-object model source")
-            ParsedWorkspaceSource(source, root)
+            val parsedSource = ParsedWorkspaceSource(source, root)
+            root.unbindableModelMember()?.let { member ->
+                throw invalidModelElement(parsedSource, member,
+                    "$member holds ${root.modelMemberText(member)}, which A12 cannot bind, so A12 does not load the model")
+            }
+            parsedSource
         }
 
 }

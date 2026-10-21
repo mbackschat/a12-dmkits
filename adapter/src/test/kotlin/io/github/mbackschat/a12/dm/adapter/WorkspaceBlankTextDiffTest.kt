@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.github.mbackschat.a12.dm.consistency.CK_MODEL_NOT_BUILDABLE
 import io.github.mbackschat.a12.dm.consistency.ConsistencyWorkspace
 import io.github.mbackschat.a12.dm.consistency.DiagnosticCode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
@@ -136,6 +137,76 @@ class WorkspaceBlankTextDiffTest {
     }
 
     /**
+     * Every model the entry reaches is read whole, the entry itself, an included model and a type-definition library
+     * alike, so a model-level member A12 cannot bind in any of them leaves the entry model unbuilt (KF591, KF577): the
+     * base year and the three primitive `boolean`s. The interpreter and the checker refuse it as A12 does. Each
+     * carrier's untouched and bound rows are the controls.
+     */
+    @Test
+    fun aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt() {
+        val members = linkedMapOf<String, Any?>(
+            "modelInfo.baseYear \"NULL\"" to ("modelInfo" to "baseYear" to "NULL"),
+            "modelInfo.immutable 1.5" to ("modelInfo" to "immutable" to 1.5),
+            "modelInfo.metaData 1.5" to ("modelInfo" to "metaData" to 1.5),
+            "modelConfig.fieldRefByShortNameAllowed 1.5" to ("modelConfig" to "fieldRefByShortNameAllowed" to 1.5),
+        )
+        val bound = listOf("modelInfo" to "baseYear" to 2024, "modelInfo" to "immutable" to false,
+            "modelInfo" to "metaData" to false, "modelConfig" to "fieldRefByShortNameAllowed" to false)
+        val observed = linkedMapOf<String, String>()
+        for (carrier in listOf("entry", "include", "typeDefinitions")) {
+            observed["$carrier untouched"] = reached(carrier, emptyList())
+            observed["$carrier bound"] = reached(carrier, bound)
+            @Suppress("UNCHECKED_CAST")
+            members.forEach { (row, edit) -> observed["$carrier $row"] = reached(carrier, listOf(edit as Pair<Pair<String, String>, Any>)) }
+        }
+        assertEquals(observed.mapValues { (row, _) ->
+            if (row.endsWith("untouched") || row.endsWith("bound")) "A12 built, interpreter prepares, checker silent"
+            else "A12 not built, interpreter refuses, checker not built"
+        }, observed)
+    }
+
+    /**
+     * A12's build, the interpreter's preparation and the checker's refusal of an entry model, with [edits] applied to
+     * the model [carrier] names: the entry itself, the model it includes, or its type-definition library.
+     */
+    private fun reached(carrier: String, edits: List<Pair<Pair<String, String>, Any>>): String {
+        val entry = when (carrier) {
+            "entry" -> cover()
+            "include" -> permit()
+            else -> MAPPER.readTree(library()) as ObjectNode
+        }
+        val provider = when (carrier) {
+            "include" -> MAPPER.readTree(COMPONENT) as ObjectNode
+            "typeDefinitions" -> MAPPER.readTree(TYPES) as ObjectNode
+            else -> null
+        }
+        val content = (provider ?: entry).path("content") as ObjectNode
+        edits.forEach { (slot, value) ->
+            ((content.get(slot.first) as? ObjectNode) ?: content.putObject(slot.first)).set<ObjectNode>(slot.second, MAPPER.valueToTree(value))
+        }
+        val sources = listOfNotNull(entry.toString(), provider?.toString())
+        val providerId = provider?.at("/header/id")?.asText()
+        val entryId = entry.at("/header/id").asText()
+        val a12 = runCatching { KernelModelOracle.of(sources[0]) { if (it == providerId) sources[1] else null } }.isSuccess
+        val interpreter = runCatching {
+            ModelWorkspace.fromSources(sources.map { WorkspaceModelSource.builder().json(it).build() }).prepare(entryId)
+        }.isSuccess
+        val checker = ConsistencyWorkspace.fromSources(sources.map(::ModelSource))
+            .check(entryId).findings.any { it.code == CK_MODEL_NOT_BUILDABLE }
+        return "A12 ${if (a12) "built" else "not built"}, interpreter ${if (interpreter) "prepares" else "refuses"}, " +
+            "checker ${if (checker) "not built" else "silent"}"
+    }
+
+    /** `cover` with a `Code` field of the library type `CoverCode`, which `types` declares. */
+    private fun library(): String = cover().also { root ->
+        (root.path("header") as ObjectNode).putArray("modelReferences").addObject()
+            .put("alias", "types").put("modelType", "document").put("purpose", "typeDefinitions").put("reference", "types")
+        (root.at("/content/modelRoot/rootGroups/0/Group/elements") as ArrayNode).addObject()
+            .put("type", "Field").put("id", "/Cover/Code").put("name", "Code").putObject("Field")
+            .putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType").put("typeDefinitionId", "CoverCode")
+    }.toString()
+
+    /**
      * A `typeDefinitions` reference is resolved whatever its text, so one that names no supplied model refuses the
      * model even when it is empty or blank (KF593); the core reader once skipped the empty one.
      */
@@ -205,6 +276,14 @@ class WorkspaceBlankTextDiffTest {
         val MAPPER = ObjectMapper()
         val COMPONENT: String = DocumentModelDraft.named("component").locale("en_US")
             .rootGroup("Component") { c -> c.stringField("Description") {} }.build().toJson()
+        // A library declares no root group: even an empty one is "contents" to A12, which then cannot expand the import.
+        val TYPES: String = (MAPPER.readTree(DocumentModelDraft.named("types").locale("en_US")
+            .rootGroup("Types") { t -> t.stringField("Note") {} }.build().toJson()) as ObjectNode).also { root ->
+            (root.at("/content/modelRoot/rootGroups") as ArrayNode).removeAll()
+            (root.path("content") as ObjectNode).putArray("typeDefinitions").addObject().put("id", "CoverCode")
+                .put("name", "CoverCode").put("revision", "1")
+                .putObject("fieldType").put("type", "StringType").putObject("StringType").put("maxLength", 12)
+        }.toString()
         const val MOUNTS = "A12 mounts, interpreter mounts, reader mounts, checker mounts"
         const val REFUSES = "A12 refuses, interpreter refuses, reader refuses, checker refuses"
     }

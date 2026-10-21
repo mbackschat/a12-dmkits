@@ -198,6 +198,8 @@ class ReadTranscriptTest {
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "unbindableBooleans" to transcriptOf(source) { unbindableBooleans }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "unbindableReachedMembers" to transcriptOf(source) { unbindableReachedMembers }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
             "declaredTypeDefinitionIds" to transcriptOf(source) { declaredTypeDefinitionIds }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "typeDefinitionBody" to transcriptOf(source) { typeDefinitionBody("Missing") }
@@ -213,6 +215,7 @@ class ReadTranscriptTest {
                 "supportedCharacters" to setOf(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS)),
                 "unreadableLocaleCodes" to setOf(FactRead.ModelMember(ModelFact.UNREADABLE_LOCALE_CODES)),
                 "unbindableBooleans" to setOf(FactRead.ModelMember(ModelFact.UNBINDABLE_BOOLEANS)),
+                "unbindableReachedMembers" to setOf(FactRead.ModelMember(ModelFact.UNBINDABLE_REACHED_MEMBERS)),
                 "declaredTypeDefinitionIds" to
                     setOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)),
                 "typeDefinitionBody" to setOf(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS)),

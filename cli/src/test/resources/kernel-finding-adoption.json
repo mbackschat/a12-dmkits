@@ -526,6 +526,30 @@
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
       }
     },
+    "kf594": {
+      "sha256": "f465b744cc6eea3b9725ca8e4cbacc390a035556dd68b18b8ee2b35984e5161b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["a reached model's members"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["A12's reached-model reading"],
+        "interpreter": ["a reached model's members"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["A12's reached-model reading"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The core reader refuses no model-level member, the entry's included; refusing a model is preparation's job.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The closure walk reads every reached model's four members and reports each unbindable one as CK_MODEL_NOT_BUILDABLE, naming its model.", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The checker refuses the entry on every carrier and member A12 does not build, and on none of the controls."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no reached model.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on three carriers and four members.", "evidence": {"A12's reached-model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "Every carrier and member agrees, and each control builds."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Workspace preparation binds the four members of every source it parses, and the loader binds them on a model it is given (IF429).", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The workspace refuses on every carrier and member A12 does not build, and prepares each control."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
     "kf593": {
       "sha256": "f8a0254456769e7742595612c5c2e9881f54db78f4542baf613cb1bbc988ec40",
       "task": "F-USE-BACKLOG",

@@ -191,6 +191,10 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     Each refuses the whole source before any check runs, exactly as a field declaration's does
  *     ([KERNEL-FINDINGS KF569], `adapter.laws.CheckerDeclarationAdmissionAgreementTest`), so the declaration-slot
  *     family reports each as [CK_MODEL_NOT_BUILDABLE].
+ * @param unbindableReachedMembers the model-level members A12's reader cannot bind in a model the entry reaches,
+ *     an included model or a type-definition library, one sentence each naming that model: its base year and its
+ *     three `boolean`s. A12 reads every reached model whole, so each leaves the entry model unbuilt ([KERNEL-FINDINGS
+ *     KF594], `adapter.WorkspaceBlankTextDiffTest`). The entry's own are [unbindableBaseYear] and [unbindableBooleans].
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -215,6 +219,7 @@ data class PreparedModel(
     /** Unambiguous authored definitions; a duplicate id stays unjudged on the index-key path. */
     val typeDefinitionBodies: Map<String, JsonObject> = emptyMap(),
     val unbindableBooleans: List<String> = emptyList(),
+    val unbindableReachedMembers: List<String> = emptyList(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -463,7 +468,7 @@ fun prepare(
     collector.each(root, at = null, what = "content.modelRoot.rootGroups", scope = entry) {
         collector.collect(it, "", null, entry)
     }
-    val definitions = typeDefinitionsInClosure(admitted, providers)
+    val definitions = readClosure(admitted, providers)
     val baseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
     return PreparedModel(
         elements = collector.elements,
@@ -477,6 +482,7 @@ fun prepare(
         unbindableBaseYear = baseYear?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
             ?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
+        unbindableReachedMembers = definitions.unbindableReachedMembers,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = definitions.ids,
@@ -503,11 +509,19 @@ fun prepare(
  * consumer refuses a field whose id is ABSENT from it, so a member too many under-reports and a member too
  * few rejects a model A12 accepts.
  */
-private data class TypeDefinitions(
+private data class ClosureReading(
     val ids: Set<String>,
     val bodies: Map<String, JsonObject>,
     val unbindableBooleans: List<String>,
+    val unbindableReachedMembers: List<String>,
 )
+
+/** A model's own members A12's reader cannot bind: its base year, then its three `boolean`s. */
+private fun JsonObject?.unbindableModelMembers(): List<String> {
+    val baseYear = (this?.get("modelInfo") as? JsonObject)?.get("baseYear")
+        ?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
+    return listOfNotNull(baseYear?.let { "`content.modelInfo.baseYear` holds `$it`" }) + unbindableModelBooleans()
+}
 
 /** The model's own two `boolean` holders' members, as [PreparedModel.unbindableBooleans] spells them. */
 private fun JsonObject?.unbindableModelBooleans(): List<String> = MODEL_BOOLEAN_MEMBERS.mapNotNull { (owner, member) ->
@@ -533,20 +547,29 @@ private fun JsonObject.unbindableTypeDefinitionBooleans(): List<String> {
     }
 }
 
-private fun typeDefinitionsInClosure(
+/**
+ * One walk over every model the entry reaches, the entry included: the type definitions they declare, and the
+ * model-level members of every model but the entry that A12's reader cannot bind.
+ */
+private fun readClosure(
     entry: Admission.Admitted,
     providers: Map<String, Admission.Admitted>,
-): TypeDefinitions {
+): ClosureReading {
     val ids = mutableSetOf<String>()
     val bodies = mutableMapOf<String, JsonObject>()
     val ambiguous = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
+    val unbindableReached = mutableListOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
         val source = pending.removeFirst()
         val root = source.parsed as? JsonObject
-        val definitions = ((root?.get("content") as? JsonObject)?.get("typeDefinitions") as? JsonArray)
+        val content = root?.get("content") as? JsonObject
+        if (source !== entry) {
+            unbindableReached += content.unbindableModelMembers().map { "In the model `${source.modelId}`, $it" }
+        }
+        val definitions = (content?.get("typeDefinitions") as? JsonArray)
             ?.filterIsInstance<JsonObject>().orEmpty()
         for (definition in definitions) {
             // Before the id check: A12's reader binds every entry, so an id-less or repeated one refuses too.
@@ -570,7 +593,7 @@ private fun typeDefinitionsInClosure(
                 }
             }
     }
-    return TypeDefinitions(ids, bodies, unbindable)
+    return ClosureReading(ids, bodies, unbindable, unbindableReached)
 }
 
 /**

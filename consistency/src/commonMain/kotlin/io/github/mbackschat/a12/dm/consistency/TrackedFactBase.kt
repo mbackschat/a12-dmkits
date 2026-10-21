@@ -384,6 +384,12 @@ internal class TrackedFactBase private constructor(
             return model.unbindableBooleans
         }
 
+    val unbindableReachedMembers: List<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.UNBINDABLE_REACHED_MEMBERS))
+            return model.unbindableReachedMembers
+        }
+
     val declaredTypeDefinitionIds: Set<String>
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS))

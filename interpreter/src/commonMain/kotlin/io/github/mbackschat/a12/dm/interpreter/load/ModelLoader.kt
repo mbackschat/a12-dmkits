@@ -7,7 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
+import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.configFlag
+import io.github.mbackschat.a12.dm.interpreter.modelMemberText
+import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
@@ -82,18 +85,24 @@ object ModelLoader {
             throw IllegalArgumentException("not valid DM-JSON", e)
         }
         val rootGroups = requirePrepared(root)
+        // A12 binds the model-level members whole, so one it cannot bind refuses the model before any is read.
+        (root as? JsonObject)?.let { model ->
+            model.unbindableModelMember()?.let { member ->
+                throw invalidElement(member,
+                    "$member holds ${model.modelMemberText(member)}, which A12 cannot bind, so A12 does not load the model")
+            }
+        }
         val sink = Sink()
         rootGroups.forEach { walk(it, sink, parentPath = "", rootElement = true) }
         // The model's base year, the value of the BaseYear constant: an `Integer`, so blank text is no base year.
-        val baseYear = boundJavaInt(root.path("content").path("modelInfo").path("baseYear"), "modelInfo.baseYear")
+        val baseYear = (root.path("content").path("modelInfo").path("baseYear").bindJavaInt() as? JavaIntBinding.Bound)?.value
         // content.modelConfig.fieldRefByShortNameAllowed (default false) — enables the bare cross-group
         // short-name resolution the condition parser applies (IF119).
         val modelConfig = root.path("content").path("modelConfig")
         // Through the kernel's own POJO binding rather than `asBoolean`: the two disagree on a capitalized
         // `"True"` (kernel ON, asBoolean OFF, so every model-wide short name would go unresolved) and on a
         // fractional number (kernel refuses the model, asBoolean truncates and answers). KF289 has the table.
-        val shortNameRefs = configFlag(modelConfig.path("fieldRefByShortNameAllowed"))
-            .orRefuse { throw unbindableFlag("content.modelConfig.fieldRefByShortNameAllowed") }
+        val shortNameRefs = configFlag(modelConfig.path("fieldRefByShortNameAllowed")) == ConfigFlag.ON
         // content.modelConfig.supportedCharacters (a list of single chars / "X-Y" ranges) — the model-declared
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(

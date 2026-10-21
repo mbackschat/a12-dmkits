@@ -14311,3 +14311,21 @@ A `typeDefinitions` entry's reference is resolved whatever its text, so an empty
 
 *Locked by:* `adapter.laws.JsonLiteralStrictnessDiffTest` (literals, A12 against the interpreter and the checker); `adapter.laws.RepeatabilityTextReadingDiffTest` and `adapter.laws.ModelTextReadingDiffTest` (the `int` and decimal rows, A12 against the interpreter, and the checker on `repeatability`, on `baseYear` and on the decimal bounds); `adapter.WorkspaceBlankTextDiffTest` (include entries, type-definition references and ids, against the interpreter, the core reader and the checker); `adapter.laws.YearOnlyDateDigitsDiffTest` (the year).
 
+
+## §13 supplement — every model the entry reaches is read whole, so a model-level member A12 cannot bind in an included model or a type-definition library leaves the entry unbuilt (serializer + expansion differential, 2026-10-22) <a id="kf594"></a>
+
+> Fold: pending — beside [KF593](#kf593)'s `int` binding and [KF577](#kf577)'s flag binding.
+
+`DocumentModelInfo` and `DocumentModelConfig` hold four members that are not text: the `Integer` `baseYear` and the primitive `boolean`s `immutable`, `metaData` and `fieldRefByShortNameAllowed`. The entry `cover`, its included model `component` and its type-definition library `types` each had one member edited. Each untouched carrier and each one holding bound values (`2024`, `false`) is the control.
+
+| member edited, in each of the three carriers | A12 |
+|---|---|
+| none, or bound values | built |
+| `modelInfo.baseYear` `"NULL"` | not built |
+| `modelInfo.immutable` `1.5` | not built |
+| `modelInfo.metaData` `1.5` | not built |
+| `modelConfig.fieldRefByShortNameAllowed` `1.5` | not built |
+
+A type-definition library declares no root group. Even an empty one is refused: *"Cannot expand import because the root group of the imported model [=types] contains elements."*
+
+*Locked by:* `adapter.WorkspaceBlankTextDiffTest.aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt` (A12 against the interpreter's workspace and the checker's, every carrier and member).

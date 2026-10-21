@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.workspace
 
 import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
 import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
-import io.github.mbackschat.a12.dm.interpreter.orRefuse
+import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
@@ -378,11 +378,7 @@ private class IncludeMounter(
                 sourceModelId = includedSource.source.modelId,
                 diagnosticLabel = includedSource.source.diagnosticLabel,
                 referenceChain = includeReferenceChain,
-                fieldRefByShortNameAllowed = includedSource.root.fieldRefByShortNameAllowed {
-                    throw invalidModelElement(
-                        includedSource, SHORT_NAME_FLAG, "$SHORT_NAME_FLAG is not a boolean A12 can bind, so A12 does not load the model",
-                    )
-                },
+                fieldRefByShortNameAllowed = includedSource.root.fieldRefByShortNameAllowed(),
                 conditionLanguageCode = includedSource.root.conditionLanguageCode(),
                 prefixes = mounted.prefixes,
             ),
@@ -878,13 +874,11 @@ internal fun JsonObject.withoutModelReferences(): JsonObject {
  *
  * The earlier reading here refused every STRING spelling outright, so a model declaring `"true"` — which the
  * kernel takes as on — had its short-name tier silently disabled at assembly, retargeting bare references
- * across the whole included tree. A value A12 cannot bind goes to [refuse], since A12 does not load such a model at
- * all (KF577).
+ * across the whole included tree. A value A12 cannot bind never arrives: the source was refused when it was parsed
+ * (`unbindableModelMember`).
  */
-private inline fun JsonObject.fieldRefByShortNameAllowed(refuse: () -> Nothing): Boolean =
-    configFlag(objectMember("content")?.objectMember("modelConfig")?.get("fieldRefByShortNameAllowed")).orRefuse(refuse)
-
-private const val SHORT_NAME_FLAG = "content.modelConfig.fieldRefByShortNameAllowed"
+private fun JsonObject.fieldRefByShortNameAllowed(): Boolean =
+    configFlag(objectMember("content")?.objectMember("modelConfig")?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
 
 internal fun JsonObject.conditionLanguageCode(): String? =
     objectMember("content")
