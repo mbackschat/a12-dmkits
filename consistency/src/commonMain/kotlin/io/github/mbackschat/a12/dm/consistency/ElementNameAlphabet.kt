@@ -38,13 +38,16 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
             xmlAncestor != null -> "MVK_NAME_STARTS_WITH_XML" to
                 "this group sits below `$xmlAncestor`, and A12 reads that group's reserved prefix `xml` into every " +
                     "group beneath it"
-            !root && element.name.startsWith('_') && !element.name.isReservedUnderscoreGroupName() ->
-                "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN" to
-                    "A12 admits a leading underscore below the root only for `__meta` itself or a name beginning " +
-                    "with `__attachment_meta`"
             else -> null
         }
         if (refusal != null) findings += element.nameFinding(refusal.first, refusal.second)
+        // Asked independently of the prefix classes: below an `xml…` ancestor A12 states both (KERNEL-FINDINGS
+        // KF583). Its own `xml` prefix, a leading digit and the root's reserved `Id` cannot begin with `_`.
+        if (!root && element.name.startsWith('_') && !element.name.isReservedUnderscoreGroupName()) {
+            findings += element.nameFinding("NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN",
+                "A12 admits a leading underscore below the root only for `__meta` itself or a name beginning " +
+                    "with `__attachment_meta`")
+        }
     } else if (ElementPathPart.FIELD_NAME.invalidOffset(element.name) == null) {
         // R4-N's 1Co.de reaches both name gates even though the ordinary field path refuses its digit.
         if (element.name.any { it == '.' || it == ':' }) {

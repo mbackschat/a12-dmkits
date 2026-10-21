@@ -20,7 +20,7 @@ package io.github.mbackschat.a12.dm.consistency
  * reports no `MVK_*` code at all, so every other finding in the same report is this checker's own reading —
  * which is what [CK_MODEL_NOT_BUILDABLE] and the coverage gap beside it say.
  */
-internal fun TrackedFactBase.elementNameFindings(): List<Finding> =
+internal fun TrackedFactBase.elementNameFindings(): List<Finding> = blankNameFindings() +
     // Keyed by PATH, which is the parent plus the name — so a collision is by construction between
     // declarations of one parent, and `at` names the collision itself rather than the parent it sits in.
     allDefaultVariantDeclarations().groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
@@ -32,5 +32,25 @@ internal fun TrackedFactBase.elementNameFindings(): List<Finding> =
                 "(${collided.joinToString(", ") { it.kind }}) — A12 cannot build a model in which two " +
                 "declarations of one parent share a name, whatever kinds they are, so nothing in it is judged",
             path,
+        )
+    }
+
+/**
+ * A declaration whose name is blank as Java's `isBlank` reads it, which A12 cannot build a model through.
+ *
+ * Its builder asserts a non-blank name for every group and field it maps, and a rule or computation fails the
+ * same way ([KERNEL-FINDINGS KF583], `adapter.laws.CheckerComputedPathAgreementTest`). The empty name, a space, a
+ * tab, a line break and an em space are blank; a no-break space is not, so it reaches the ordinary name gates
+ * instead. Only the default-variant model is built: a blank name an `ONLY` filter deletes is admitted.
+ */
+private fun TrackedFactBase.blankNameFindings(): List<Finding> =
+    allDefaultVariantDeclarations().filter { it.name.isA12Blank() }.map { blank ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "this ${blank.kind}'s name is blank, and A12 cannot build a model in which a declaration has no name, " +
+                "so nothing in it is judged",
+            blank.path,
         )
     }

@@ -502,6 +502,54 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf583": {
+      "sha256": "1bb739ed428b22bed3e7b6ccb7eb98601c491ec4f57ae4c2a3ccd3aef013de2b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["element name laws"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["element name laws"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["element name laws"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, and the typed builder refuses these names before a model exists.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The computed-target family states the dotted-path class after its index gate, the alphabet family states the underscore class beside the prefix class, and the name family reports a blank default-variant name as unbuildable.", "evidence": {"element name laws": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ElementNameKf583Test.kt#aComputedPathCarryingADotOrAColonIsRefusedAfterTheIndexGate", "witness": "A dotted part, a colon root and a dotted computed field draw the class; an index target and a refused operation pre-empt it."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints elements through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 26 renamed hosts with every class and its path, beside a blank-name grid over seven elements and five blanks.", "evidence": {"element name laws": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathAgreementTest.kt#theCheckerStatesA12sDottedPathAndUnderscoreClasses", "witness": "Every row's classes and paths agree, and A12's own classes are pinned on the rows that separate the readings."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
+    "kf415": {
+      "sha256": "0bf7b6d6a456058f28a663d29c3d5d6d9773c89a9a28d076d985ae6902c04dc3",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["computed path"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["computed path"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, and the typed builder refuses these names before a model exists.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The computed-target family states the dotted-path class beside the carriers' own refusals, which do not withhold it.", "evidence": {"computed path": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ElementNameKf583Test.kt#aComputedPathCarryingADotOrAColonIsRefusedAfterTheIndexGate", "witness": "A dotted part draws the class beside the path class."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints elements through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker agree on every dotted and colon carrier of a computed path.", "evidence": {"computed path": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathAgreementTest.kt#theCheckerStatesA12sDottedPathAndUnderscoreClasses", "witness": "Each carrier row draws the class at the computation beside its own refusal."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A correction of this repository's own reading; the measured rows travel with KF583.", "evidence": {}}
+      }
+    },
     "kf582": {
       "sha256": "bd88b1db88fac57f305a0432533357187b79fe7fd3cff033f22d755bf56fcf38",
       "task": "F-USE-BACKLOG",

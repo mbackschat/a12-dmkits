@@ -320,7 +320,8 @@ enum class CheckFamily {
      * That a computation does not compute into the field a repeatable group is INDEXED by. A12 answers with
      * a key of its own rather than refusing to build, and the law follows the resolved TARGET rather than
      * the computation's own group. A `sortFields` entry is named by the same kind of member and carries no
-     * such restriction, which is the control that keeps the two apart.
+     * such restriction, which is the control that keeps the two apart. A12's next gate on the same target,
+     * which this family also answers, refuses a computed field whose path carries a dot or a colon.
      */
     COMPUTED_TARGET_INDEX_FIELD,
 

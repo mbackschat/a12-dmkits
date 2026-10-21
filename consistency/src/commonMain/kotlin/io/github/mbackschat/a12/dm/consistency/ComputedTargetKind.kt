@@ -62,16 +62,38 @@ internal fun TrackedFactBase.computedTargetIndexFieldFindings(): List<Finding> =
     .mapNotNull { declared ->
         val path = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
         val group = path.substringBeforeLast('/', missingDelimiterValue = "")
-        if (indexFieldOf(group) != path.substringAfterLast('/')) {
-            return@mapNotNull null
+        if (indexFieldOf(group) == path.substringAfterLast('/')) {
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                "MVK_ERROR_INDEX_AS_CALCULATED_FIELD",
+                "in `computedFieldRelPath`: `$path` is the field `$group` declares as its `indexFieldName`, " +
+                    "which identifies a row so two repetitions can be read in lockstep — A12 refuses to let a " +
+                    "computation decide it. A `sortFields` entry carries no such restriction",
+                declared.declaredAt,
+            )
+        } else {
+            dottedTargetFinding(path, declared)
         }
+    }
+
+/**
+ * …and, A12's next gate in the same order, that the computed field's PATH carries no dot or colon.
+ *
+ * A12 tests the field's full name, so a dot or colon on ANY segment refuses it: the field's own name, which its
+ * name gate refuses too, or a group above it, which its path gate refuses ([KERNEL-FINDINGS KF583],
+ * `adapter.laws.CheckerComputedPathAgreementTest`). That second carrier is why the class is reachable at all,
+ * beside another refusal. The index gate comes first and pre-empts it, and a refused condition pre-empts both,
+ * which the stage this family is asked in already gives.
+ */
+private fun dottedTargetFinding(path: String, declared: DeclaredReference): Finding? =
+    path.takeIf { '.' in it || ':' in it }?.let {
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
-            "MVK_ERROR_INDEX_AS_CALCULATED_FIELD",
-            "in `computedFieldRelPath`: `$path` is the field `$group` declares as its `indexFieldName`, " +
-                "which identifies a row so two repetitions can be read in lockstep — A12 refuses to let a " +
-                "computation decide it. A `sortFields` entry carries no such restriction",
+            "MVK_ERROR_INVALID_FIELDNAME",
+            "in `computedFieldRelPath`: the computed field's path `$path` carries a dot or a colon, and A12 " +
+                "refuses a computed field whose path does, whichever segment carries it",
             declared.declaredAt,
         )
     }
