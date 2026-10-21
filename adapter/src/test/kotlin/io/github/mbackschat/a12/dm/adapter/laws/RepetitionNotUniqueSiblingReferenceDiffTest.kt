@@ -68,7 +68,12 @@ class RepetitionNotUniqueSiblingReferenceDiffTest {
             "Bins[2]/Qty" to listOf("Bins[1]/Code", "Bins[2]/Code", "Bins[2]/Qty"))
         assertEquals(cluster, refs("duplicate fires"))
         assertEquals(cluster, refs("duplicate and sibling"))
-        assertEquals(listOf("Bins[1]/Qty" to listOf("Bins[1]/Qty")), refs("sibling here, duplicate in the other aisle").take(1))
+        // The sibling's aisle refers to its own field alone; the other aisle's duplicate keeps its own cluster.
+        val other = "/Warehouse[1]/Aisles[2]/"
+        assertEquals(listOf("Bins[1]/Qty" to listOf("Bins[1]/Qty"),
+            "${other}Bins[1]/Qty" to listOf("${other}Bins[1]/Code", "${other}Bins[1]/Qty", "${other}Bins[2]/Code"),
+            "${other}Bins[2]/Qty" to listOf("${other}Bins[1]/Code", "${other}Bins[2]/Code", "${other}Bins[2]/Qty")),
+            refs("sibling here, duplicate in the other aisle"))
     }
 
     private companion object {

@@ -1,11 +1,13 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.Locale
 
 /**
  * Where A12's generated requiredness runs (KERNEL-FINDINGS KF552, a12-kernel-lean SPEC-2026-10-13-06): per
@@ -97,6 +99,25 @@ class GeneratedRequirednessScopeDiffTest {
         assertEquals(listOf("STREET_MISSING@Holder[1]/Street", "mandatoryField@Covers[1]/Terms[1]/Wording",
             "mandatoryField@Covers[2]/Terms[1]/Wording", "mandatoryField@Covers[3]/Terms[1]/Wording",
             "mandatoryField@Holder[1]/Phone", "zuGrosseZeile@Covers"), findings("a fourth cover above capacity"))
+    }
+
+    /**
+     * The report lists every generated requirement before any authored rule's message (a12-kernel-lean
+     * SPEC-2026-10-13-06). Compared in report order, not sorted: sorted, `mandatoryField` would come last.
+     */
+    @Test
+    fun generatedRequirednessIsReportedBeforeAuthoredRules() {
+        val input = """{"Policy":{"Premium":50,"Holder":{}}}"""
+        fun kernel(dynamic: Boolean) = (if (dynamic) RuntimeLaws.kernelEngine(model).let { it.validationMessages(it.instance(input), null, Locale.US) }
+            else RuntimeLaws.kernelJavaEngine(model).let { it.validationMessages(it.instance(input), null, Locale.US) })
+            .map { "${it.errorCode}@${DocumentDifferential.pointer(it.errorFieldPointer).removePrefix("/Policy[1]/")}" }
+        val prepared = PreparedModel.loadExpandedJson(model)
+        val interpreted = prepared.createInterpreter().validateFull(prepared.documents.readDocument(input)).findings
+            .map { "${it.code}@${DocumentDifferential.pointer(it.errorPath).removePrefix("/Policy[1]/")}" }
+        val expected = listOf("mandatoryField@Holder[1]/Phone[1]", "STREET_MISSING@Holder[1]/Street[1]", "PREMIUM_CAP@Premium[1]")
+        assertEquals(expected, kernel(dynamic = true), "dynamic Groovy")
+        assertEquals(expected, kernel(dynamic = false), "static Java")
+        assertEquals(expected, interpreted, "interpreter")
     }
 
     /** Partial validation: the field must be selected, and the parent gate reads selected content only. A

@@ -70,11 +70,17 @@ class OverRepetitionOccurrenceScopeDiffTest {
     /** Full validation: one finding per written entity in the excess row, and none for an in-capacity sibling. */
     @Test
     fun everyWrittenEntityIsJudgedOnItsOwnAncestry() {
-        fun count(document: String) = DocumentDifferential.kernelMessages(model, documents.getValue(document), true).size
-        assertEquals(2, count("an excess row holding only its nonrepeatable group"))
-        assertEquals(5, count("an excess row with null and empty cells"))
-        assertEquals(2, count("siblings sharing the excess row's coordinate"))
-        assertEquals(3, count("an excess bay holding a computed target"), "validation also names the computed target")
+        fun findings(document: String) = DocumentDifferential.kernelMessages(model, documents.getValue(document), true)
+            .map { "${it.code}@${it.pointer.removePrefix("/Shipment[1]/")}" }
+        val excessRow = "zuGrosseKontextnummer@Rows[3]/Detail"
+        val rowCapacity = "zuGrosseZeile@Rows"
+        assertEquals(listOf(excessRow, rowCapacity), findings("an excess row holding only its nonrepeatable group"))
+        assertEquals(listOf("zuGrosseKontextnummer@Rows[3]/Count", "zuGrosseKontextnummer@Rows[3]/Detail[1]/Weight", excessRow,
+            "zuGrosseKontextnummer@Rows[3]/Unread", rowCapacity), findings("an excess row with null and empty cells"))
+        // The third note and the third bay share the excess row's leading coordinate and stay clean.
+        assertEquals(listOf(excessRow, rowCapacity), findings("siblings sharing the excess row's coordinate"))
+        assertEquals(listOf("zuGrosseKontextnummer@Bays[6]/Fix[1]/Mark", "zuGrosseKontextnummer@Bays[6]/Fix", "zuGrosseZeile@Bays"),
+            findings("an excess bay holding a computed target"), "validation also names the computed target")
         assertEquals(DocumentDifferential.kernelMessages(model, documents.getValue("a malformed cell in the excess row"), true)
             .map { it.code }.toSet(), setOf("zuGrosseZeile", "zuGrosseKontextnummer"))
     }
