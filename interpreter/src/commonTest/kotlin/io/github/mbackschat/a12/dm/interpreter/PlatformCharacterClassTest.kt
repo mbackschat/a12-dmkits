@@ -22,7 +22,7 @@ class PlatformCharacterClassTest {
     fun aValueDigitIsWhatTheJvmReadsAsOne() {
         val rows = mapOf(
             '7' to 7, '٣' to 3, '５' to 5, '߉' to 9, '༩' to 9, '꯰' to 0,
-            '²' to -1, '٪' to -1, '\u065F' to -1, '༪' to -1, '᧚' to -1, '\uD835' to -1, 'a' to -1,
+            '²' to -1, '٪' to -1, '\u065F' to -1, '༪' to -1, '᧚' to -1, Char(0xD835) to -1, 'a' to -1,
         )
         assertEquals(rows, rows.mapValues { (c, _) -> DecimalDigits.valueOf(c) })
     }
@@ -45,7 +45,7 @@ class PlatformCharacterClassTest {
     fun aMessageTokenGapIsTheKernelsAsciiWhitespace() {
         val ctx = SingleRowDoc("/G", mapOf("/G/N" to "4"), mapOf("/G/N" to Kind.NUMBER))
         assertEquals("n=4", renderMessage("n=\$ N.value\$", "/G", ctx))
-        assertEquals("n=\$ N.value\$", renderMessage("n=\$ N.value\$", "/G", ctx))
-        assertEquals("n=\$ N.value\$", renderMessage("n=\$ N.value\$", "/G", ctx))
+        assertEquals("n=\$\u00A0N.value\$", renderMessage("n=\$\u00A0N.value\$", "/G", ctx))
+        assertEquals("n=\$\u2003N.value\$", renderMessage("n=\$\u2003N.value\$", "/G", ctx))
     }
 }
