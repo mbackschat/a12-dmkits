@@ -100,7 +100,7 @@ class GroupScopedFillPerfTest {
     fun groupScopedFillMatchesKernelComplexityClass() {
         val accepted = PerfHarness.assertCrossEngineClassHolds(
             label = "group-scope fill",
-            ceiling = CROSS_ENGINE_CEILING,
+            ceiling = PerfBounds.CROSS_ENGINE_CEILING,
         ) {
             // All four in ONE pass, so they share a load slice. Only the INTERPRETER arms are batched: this lane
             // measures ~9 ms at n=8000 with ±28.4 % run-to-run noise (see NOISE_BATCH) and a ratio of ratios
@@ -134,10 +134,6 @@ class GroupScopedFillPerfTest {
     private companion object {
         /** See `PerfGateTest.NOISE_BATCH`: this lane measured 9.06 ms at n=8000 with ±28.4% run-to-run noise. */
         const val NOISE_BATCH = 3
-
-        /** The ratio may not worsen by more than this between the two scales. Unchanged by the 2026-08-16
-         *  instrument fix — what changed is that a breach is now re-measured, not that the bar moved. */
-        const val CROSS_ENGINE_CEILING = 2.5
 
         const val N = 2000
         const val MAX = 200_000   // Items repeatability — FAR above 4×N, so the kernel evaluates group-fill at scale

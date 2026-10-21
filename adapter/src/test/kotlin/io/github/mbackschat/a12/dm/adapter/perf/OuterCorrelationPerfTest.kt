@@ -142,12 +142,12 @@ class OuterCorrelationPerfTest {
      */
     @Test
     fun equalityOuterCorrelationDoesNotWorsenAgainstKernel() {
-        // The ratio must not GROW materially with N. Generous 2.5x headroom for timing noise; a reverted nested
+        // The ratio must not GROW materially with N. Generous headroom for timing noise; a reverted nested
         // interpreter scan should widen it materially at 4x rows. Both arms measured in ONE pass so they share a
         // load slice, and a breach re-measured — this site had neither, on the weakest warmup in the class.
         val accepted = PerfHarness.assertCrossEngineClassHolds(
             label = "\$ correlation",
-            ceiling = 2.5,
+            ceiling = PerfBounds.CROSS_ENGINE_CEILING,
         ) {
             PerfHarness.RatioGrowth(
                 iSmall = medianMs(defEq, N, ::spread),
