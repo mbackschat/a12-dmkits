@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-import io.github.mbackschat.a12.dm.interpreter.ast.Val
-import io.github.mbackschat.a12.dm.interpreter.eval.AggregateMemoKey
+import io.github.mbackschat.a12.dm.interpreter.eval.ScopeMemo
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
@@ -70,7 +69,7 @@ internal class ValidationPass(
         if (invalidOperand(ctx, path)) null else ctx.displayValue(path)
 
     val partial: Boolean = config.cellRelevant != null
-    private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
+    private val scopeMemo = ScopeMemo()
 
     /** The call's relevance-scoped index columns ([Interpreter.indexColumnOf]). Empty and unread in a FULL
      *  validation, where the document's own column memo already answers every gate. */
@@ -136,6 +135,6 @@ internal class ValidationPass(
             invalid = invalidOperand,
             rnuOutcome = rnuOutcome,
             customFormallyIncorrect = formallyIncorrect)
-            .sharingAggregateMemo(aggregateMemo)
+            .sharingScopeMemo(scopeMemo)
             .sharingIndexColumns(resolveIndexColumn)
 }

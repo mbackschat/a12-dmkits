@@ -120,14 +120,14 @@ class Interpreter(
     internal val computeMode get() = config.computeMode
     internal val filterWalkGroups get() = config.filterWalkGroups
 
-    /** Validation-call-local aggregate results, installed only by [ValidationPass]. A direct low-level
+    /** Validation-call-local scope results, installed only by [ValidationPass]. A direct low-level
      * [Interpreter] and every compute interpreter deliberately keep this null, so reusing an [EvalConfig] across
      * documents cannot carry values between calls and a mutable computation overlay is never cached. */
-    internal var aggregateMemo: MutableMap<AggregateMemoKey, Val>? = null
+    internal var scopeMemo: ScopeMemo? = null
         private set
 
-    internal fun sharingAggregateMemo(memo: MutableMap<AggregateMemoKey, Val>): Interpreter = apply {
-        aggregateMemo = memo
+    internal fun sharingScopeMemo(memo: ScopeMemo): Interpreter = apply {
+        scopeMemo = memo
     }
 
     /** A scoped [IndexColumn] resolver. Validation owns relevance-filtered columns for one call because a
@@ -227,7 +227,7 @@ class Interpreter(
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
     internal fun havingInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer = ctx).also {
-            it.aggregateMemo = aggregateMemo
+            it.scopeMemo = scopeMemo
             it.indexColumnMemo = indexColumnMemo
         }
 
@@ -550,9 +550,24 @@ class Interpreter(
                 else combined(expandOneGroupOperand(a).map { operandFillScope(it) })
             // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
             // means "cap at the operand's own path depth".
-            else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
-                bindDepth = (a as? Expr.Star)?.bindDepth ?: -1, cellValue = availableCells(c))
+            a is Expr.Star && !a.outer -> memoizedFillScope(c, a)
+            else -> plainFillScope(c, a, path)
         }
+    }
+
+    private fun plainFillScope(c: EvalContext, a: Expr, path: String): FillScope =
+        c.fillScope(path, isGroup = c.declaredKind(path) == null,
+            bindDepth = (a as? Expr.Star)?.bindDepth ?: -1, cellValue = availableCells(c))
+
+    /** An unfiltered star's tally reads only its scope's cells, each judged available by its own coordinates, so
+     *  every row of one scope shares it, as [scopeMemo]'s aggregates do; a per-row rule otherwise re-walks the
+     *  whole scope once per row (IG172, `RowInvariantStarReaderPerfTest`). */
+    private fun memoizedFillScope(c: EvalContext, a: Expr.Star): FillScope {
+        val memo = scopeMemo?.fillScopes ?: return plainFillScope(c, a, a.path)
+        val isGroup = c.declaredKind(a.path) == null
+        val groupPath = if (isGroup) a.path else a.path.substringBeforeLast('/')
+        val key = FillScopeMemoKey(a.path, a.bindDepth, c.scopePrefixOf(groupPath, a.bindDepth).toList())
+        return memo.getOrPut(key) { plainFillScope(c, a, a.path) }
     }
 
     /** The tally's cell source in [c]: an [unavailableEmpty] cell, a required-empty one above all, is undecided

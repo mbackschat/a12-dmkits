@@ -17,19 +17,20 @@ class AggregateMemoScopeTest {
             FunctionOp.MIN_VALUE to listOf(A),
             FunctionOp.NUMBER_OF_DIFFERENT_VALUES to listOf(A),
             FunctionOp.SUM_OF_PRODUCTS to listOf(A, B),
+            FunctionOp.NUMBER_OF_FILLED_FIELDS to listOf(A),
         )
         for ((op, paths) in cases) {
             val reads = ReadCount()
             val config = EvalConfig()
-            val memo = HashMap<AggregateMemoKey, Val>()
+            val memo = ScopeMemo()
             val expression = Expr.Func(op.kernelName, paths.map { Expr.Star(it, bindDepth = 1) })
 
             val first = Interpreter(context(prefix = listOf(1), row = 1, reads), config)
-                .sharingAggregateMemo(memo).evalExpression(expression)
+                .sharingScopeMemo(memo).evalExpression(expression)
             val sameScope = Interpreter(context(prefix = listOf(1), row = 2, reads), config)
-                .sharingAggregateMemo(memo).evalExpression(expression)
+                .sharingScopeMemo(memo).evalExpression(expression)
             val siblingScope = Interpreter(context(prefix = listOf(2), row = 1, reads), config)
-                .sharingAggregateMemo(memo).evalExpression(expression)
+                .sharingScopeMemo(memo).evalExpression(expression)
 
             assertEquals(expected(op, listOf(2, 3), listOf(5, 7)), first, "$op first scope")
             assertEquals(first, sameScope, "$op same scope")
@@ -43,20 +44,20 @@ class AggregateMemoScopeTest {
         val reads = ReadCount()
         var values = listOf(num(2), num(3))
         val config = EvalConfig(computeMode = true)
-        val memo = HashMap<AggregateMemoKey, Val>()
+        val memo = ScopeMemo()
         val expression = Expr.Func(FunctionOp.SUM.kernelName, listOf(Expr.Star(A, bindDepth = 1)))
         val context = CountingContext(listOf(1), 1, reads) { values }
 
-        assertEquals(num(5), Interpreter(context, config).sharingAggregateMemo(memo).evalExpression(expression))
+        assertEquals(num(5), Interpreter(context, config).sharingScopeMemo(memo).evalExpression(expression))
         values = listOf(num(11), num(13))
-        assertEquals(num(24), Interpreter(context, config).sharingAggregateMemo(memo).evalExpression(expression))
+        assertEquals(num(24), Interpreter(context, config).sharingScopeMemo(memo).evalExpression(expression))
         assertEquals(2, reads.value)
     }
 
     @Test
     fun everyOperandScopeParticipatesInAMultiStarKey() {
         val reads = ReadCount()
-        val memo = HashMap<AggregateMemoKey, Val>()
+        val memo = ScopeMemo()
         val expression = Expr.Func(FunctionOp.SUM_OF_PRODUCTS.kernelName, listOf(
             Expr.Star(LEFT, bindDepth = 1),
             Expr.Star(RIGHT, bindDepth = 1),
@@ -76,8 +77,8 @@ class AggregateMemoScopeTest {
             scopePrefixes = mapOf("/Root/LeftRows" to listOf(1), "/Root/RightRows" to listOf(2)),
         )
 
-        assertEquals(num(6), Interpreter(leftScope).sharingAggregateMemo(memo).evalExpression(expression))
-        assertEquals(num(10), Interpreter(differentRightScope).sharingAggregateMemo(memo).evalExpression(expression))
+        assertEquals(num(6), Interpreter(leftScope).sharingScopeMemo(memo).evalExpression(expression))
+        assertEquals(num(10), Interpreter(differentRightScope).sharingScopeMemo(memo).evalExpression(expression))
         assertEquals(4, reads.value)
     }
 
@@ -93,6 +94,7 @@ class AggregateMemoScopeTest {
         FunctionOp.MIN_VALUE -> num(a.min())
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> num(a.distinct().size)
         FunctionOp.SUM_OF_PRODUCTS -> num(a.zip(b).sumOf { (left, right) -> left * right })
+        FunctionOp.NUMBER_OF_FILLED_FIELDS -> num(a.size)
         else -> error("not a memoized aggregate: $op")
     }
 

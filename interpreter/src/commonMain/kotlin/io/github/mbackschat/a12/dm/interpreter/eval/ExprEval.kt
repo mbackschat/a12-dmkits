@@ -55,13 +55,16 @@ private val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN
 /** The operators whose result is one of their operands' values, so their operands type it ([producesTemporal]). */
 private val OPERAND_TYPED_FUNCS = MIN_MAX_FUNCS + FunctionOp.FIRST_FILLED_VALUE
 
-/** Starred value aggregates whose result can be memoized by expression + aggregate-scope prefixes. */
+/** Starred readers whose result can be memoized by expression + aggregate-scope prefixes: each reads only the
+ *  cells of its star scopes, and a cell's availability is the cell's own, never the evaluating row's. */
 private val MEMOIZED_STAR_AGGREGATES = setOf(
     FunctionOp.SUM,
     FunctionOp.MAX_VALUE,
     FunctionOp.MIN_VALUE,
     FunctionOp.NUMBER_OF_DIFFERENT_VALUES,
     FunctionOp.SUM_OF_PRODUCTS,
+    FunctionOp.NUMBER_OF_FILLED_FIELDS,
+    FunctionOp.NUMBER_OF_FILLED_GROUPS,
 )
 
 /** A validation-call cache key for a starred aggregate value and the exact star scopes it ranges over. */
@@ -951,7 +954,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
                 }
             }) return Val.Unknown
     }
-    val memo = aggregateMemo
+    val memo = scopeMemo?.aggregates
     val memoKey = if (memo == null) null else invariantAggregateMemoKey(f, op)
     if (memo != null && memoKey != null) memo[memoKey]?.let { return it }
     val result = when (op) {
@@ -1111,6 +1114,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
 private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?): AggregateMemoKey? {
     if (computeMode) return null
     if (op !in MEMOIZED_STAR_AGGREGATES) return null
+    // Under partial validation the count asks its [GroupCountGate] inside the fold, keyed by the gate's own
+    // bound prefix; the memo key derives its prefix separately, so the two are not assumed to coincide there.
+    if (op == FunctionOp.NUMBER_OF_FILLED_GROUPS && groupCountGate != null) return null
     val stars = f.args.map { it as? Expr.Star ?: return null }
     if (stars.any { it.having != null || it.outer }) return null
     val scopes = stars.map { star ->
