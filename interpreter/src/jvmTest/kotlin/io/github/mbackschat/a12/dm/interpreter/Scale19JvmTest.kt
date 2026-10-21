@@ -21,7 +21,12 @@ class Scale19JvmTest {
             val padded = Dec(BigDecimal(text).setScale(19, RoundingMode.HALF_UP))
             ours != padded || ours.fractionalDigits() != padded.fractionalDigits() ||
                 ours.strippedPrecision() != padded.strippedPrecision() || ours.display() != padded.display() ||
-                ours.displayAtScale(4) != padded.displayAtScale(4) || ours.hashCode() != padded.hashCode()
+                ours.displayAtScale(4) != padded.displayAtScale(4) || ours.hashCode() != padded.hashCode() ||
+                ours.display(2) != padded.display(2) ||
+                ours.roundTo(1, RoundMode.HALF_UP) != padded.roundTo(1, RoundMode.HALF_UP) ||
+                ours.roundTo(1, RoundMode.HALF_UP).display() != padded.roundTo(1, RoundMode.HALF_UP).display() ||
+                (ours - Dec(BigDecimal("0.5")).scale19()).abs().compareTo(Dec(BigDecimal("1E-19"))) !=
+                (padded - Dec(BigDecimal("0.5")).scale19()).abs().compareTo(Dec(BigDecimal("1E-19")))
         }
         assertEquals(emptyList(), wrong)
     }

@@ -1252,8 +1252,9 @@ class Document(internal val config: DocumentConfig) {
             // after row and comparing the strings' prefixes cost half again what the map lookup had.
             if (path === lastChild) return childReps!!
             if (isDirectChild(path)) {
+                val reps = childReps ?: repsFor(path, group, rowReps).also { childReps = it }
                 lastChild = path
-                return childReps ?: repsFor(path, group, rowReps).also { childReps = it }
+                return reps
             }
             return repsCache.getOrPut(path) { repsFor(path, group, rowReps) }
         }

@@ -24,9 +24,10 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     // At 19 fractional digits or fewer the rounding only appends zeros, and every caller reads the result by value.
-    // Appending them is not free: at scale 19 any value of magnitude 0.93 or more outgrows BigDecimal's compact
-    // `long` form, and stripping the zeros back off then divides a BigInteger nineteen times (2026-10-21: 21 % of
-    // the bytes the compute-overlay correlation lane allocated, from storing each computed value).
+    // Appending them is not free: at scale 19 any value of magnitude above Long.MAX_VALUE / 10^19 (about 0.922)
+    // outgrows BigDecimal's compact `long` form, and stripping the zeros back off then divides a BigInteger once per
+    // trailing zero, on every strip (2026-10-21: 21 % of the bytes the compute-overlay correlation lane allocated,
+    // from storing each computed value).
     actual fun scale19(): Dec = if (v.scale() <= 19) this else Dec(v.setScale(19, RoundingMode.HALF_UP))
     actual fun compareScaled19(other: Dec): Int =
         // Fast path: at ≤19 fractional digits, setScale(19, HALF_UP) only appends trailing zeros (it never

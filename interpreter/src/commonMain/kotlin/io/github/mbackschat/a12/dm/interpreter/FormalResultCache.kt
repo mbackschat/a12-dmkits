@@ -66,7 +66,7 @@ internal class ValueAdmissionCache(
      * the list on every lookup and comparing it walked the list again, so `HashMap` mechanics plus `ArrayList`/`Key`
      * equality were 79 % of the time inside this family against 2.6 % in the work being cached. One map keyed by a
      * `(path, raw)` pair then still allocated that pair per lookup and spread one field's few values across a table
-     * sized for every field's, which missed the cache on most probes (2026-10-21: 22 % of the compute-overlay
+     * sized for every field's, whose bucket loads missed the CPU cache on most probes (2026-10-21: 22 % of the compute-overlay
      * correlation lane's samples); a map per path keeps a field's values together.
      */
     private val byValue = HashMap<String, HashMap<String, FormalResult>>()
