@@ -29,6 +29,15 @@ internal class FilterWalkView private constructor(
 
     override val size: Int = widths.fold(1) { cells, width -> cells * width }
 
+    init {
+        // [storedSlotOf] binary-searches the stored rows, so each must lie on the grid once and in coordinate order.
+        for (i in storedIndices.indices) {
+            require(storedIndices[i] in 0 until size && (i == 0 || storedIndices[i - 1] < storedIndices[i])) {
+                "stored row $i is off the grid or out of coordinate order"
+            }
+        }
+    }
+
     override fun get(index: Int): EvalContext {
         if (index !in 0 until size) throw IndexOutOfBoundsException("index $index, size $size")
         val slot = storedSlotOf(index)

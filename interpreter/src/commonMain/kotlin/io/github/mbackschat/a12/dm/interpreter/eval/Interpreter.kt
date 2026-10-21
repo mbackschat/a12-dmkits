@@ -563,6 +563,8 @@ class Interpreter(
      *  every row of one scope shares it, as [scopeMemo]'s aggregates do; a per-row rule otherwise re-walks the
      *  whole scope once per row (IF411, `RowInvariantStarReaderPerfTest`). */
     private fun memoizedFillScope(c: EvalContext, a: Expr.Star): FillScope {
+        // A filter or an outer read varies per row, so its tally is never shared; [invariantAggregateMemoKey] refuses the same.
+        require(a.having == null && !a.outer) { "a filtered or outer star has no row-invariant fill scope: ${a.path}" }
         val memo = scopeMemo?.fillScopes ?: return plainFillScope(c, a, a.path)
         val isGroup = c.declaredKind(a.path) == null
         val groupPath = if (isGroup) a.path else a.path.substringBeforeLast('/')
