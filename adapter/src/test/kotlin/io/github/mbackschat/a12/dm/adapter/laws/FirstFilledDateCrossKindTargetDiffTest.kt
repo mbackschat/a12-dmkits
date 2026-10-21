@@ -16,7 +16,9 @@ import org.junit.jupiter.api.Test
  * A computed value stored into a temporal target whose declared FORMAT belongs to another kind (KERNEL-FINDINGS
  * KF222, KF550, IF397): the format string, not the declared kind, renders the stored text. A `FirstFilledValue`
  * Date goes into TIME-kind targets declared ISO and dotted, with a DATE-kind dotted target as the control, so a
- * store keyed on the kind shows as the two dotted rows disagreeing; constants cross the kinds both ways.
+ * store keyed on the kind shows as the two dotted rows disagreeing; constants cross the kinds both ways. The same
+ * selection also goes into a DATE_TIME-kind target declared as a date; a DATE-kind target declared as a date-time
+ * cannot take it at all, which [aDateTimeDeclaredDateTargetRefusesTheSelection] holds.
  *
  * Own domain (an insurance claim's reported and confirmed dates).
  */
@@ -28,6 +30,7 @@ class FirstFilledDateCrossKindTargetDiffTest {
                 .dateField("Reported") { it.format(ISO) }.dateField("Confirmed") { it.format(ISO) }
                 .timeField("TimeIso") { it.format(ISO) }.timeField("TimeDot") { it.format(DOTTED) }
                 .dateField("DateDot") { it.format(DOTTED) }.dateField("Alternate") { it.format(DOTTED) }
+                .dateTimeField("StampDot") { it.format(DOTTED) }
                 .timeField("ConstIso") { it.format(ISO) }.timeField("ConstDot") { it.format(DOTTED) }
                 .dateField("ConstClock") { it.format("HH:mm:ss") }
                 .dateField("Chained") { it.format(ISO) }
@@ -36,7 +39,7 @@ class FirstFilledDateCrossKindTargetDiffTest {
                 .group("Review") { r -> r.timeField("NotedOn") { it.format(DOTTED) } } }
             .build().toJson())
         val claim = session.group("/Claim")
-        for (target in TARGETS.take(3)) claim.addComputation(claim.date(target)) {
+        for (target in TARGETS.take(3) + CROSS_KIND) claim.addComputation(claim.date(target)) {
             it.name("Compute$target").calc(Dsl.firstFilledDate(claim.date("Reported"), claim.date("Confirmed")))
                 .message(Dsl.en("The first known claim date.")).build()
         }
@@ -121,14 +124,44 @@ class FirstFilledDateCrossKindTargetDiffTest {
         assertEquals("VALUE|2022-06-15", outcomes("nothing filled")["Chained"])
     }
 
-    private fun outcomes(document: String): Map<String, String> =
+    /** A DATE_TIME-kind target declared as a date takes the selection in its declared format (KF550). */
+    @Test
+    fun aDateDeclaredDateTimeTargetRendersTheDeclaredFormat() {
+        val observed = documents.keys.associateWith { outcomes(it, CROSS_KIND) }
+        assertEquals(EXPECTED_CROSS_KIND, observed)
+    }
+
+    /**
+     * The other crossing is refused at admission: a Date selection is not a "fitting date" for a DATE-kind target
+     * declared `yyyy-MM-dd'T'HH:mm:ss`, so no document ever stores into one (KF550). The portable checker is asked the
+     * same model.
+     */
+    @Test
+    fun aDateTimeDeclaredDateTargetRefusesTheSelection() {
+        // Raw, because the typed session asks A12 first and refuses to add it.
+        val refused = RuntimeLaws.withComputation(DocumentModelDraft.named("claim-first-date-stamp").locale("en_US")
+            .rootGroup("Claim") { c -> c
+                .dateField("Reported") { it.format(ISO) }.dateField("Confirmed") { it.format(ISO) }
+                .dateField("DateStamp") { it.format(STAMP) } }
+            .build().toJson(), "/Claim", "ComputeDateStamp", "../DateStamp", "FirstFilledValue(Reported, Confirmed)")
+        val kernel = MessageParameterProbes.kernel(refused)
+        val portable = check(ModelSource(refused)).findings.filter { it.justifiesRejection }.map { it.code }
+        assertTrue(kernel.any { "MVK_INVALID_COMPARE_TO_DATE" in it }, "A12: $kernel")
+        assertEquals(listOf("MVK_INVALID_COMPARE_TO_DATE"), portable, "the portable checker")
+    }
+
+    private fun outcomes(document: String, targets: List<String> = TARGETS): Map<String, String> =
         DocumentDifferential.kernel(model, documents.getValue(document), dynamic = true).outcomes
             .mapKeys { (key, _) -> key.substringAfterLast('/').substringBefore('[') }
-            .filterKeys { it in TARGETS }
+            .filterKeys { it in targets }
 
     private companion object {
         const val ISO = "yyyy-MM-dd"
         const val DOTTED = "dd.MM.yyyy"
+        const val STAMP = "yyyy-MM-dd'T'HH:mm:ss"
+        val CROSS_KIND = listOf("StampDot")
+        val EXPECTED_CROSS_KIND = mapOf("the first source filled" to mapOf("StampDot" to "VALUE|05.03.2024"),
+            "the first source empty" to mapOf("StampDot" to "VALUE|30.11.2023"), "nothing filled" to emptyMap())
         val TARGETS = listOf("TimeIso", "TimeDot", "DateDot", "ConstIso", "ConstDot", "ConstClock", "Chained", "FirstSeen",
             "FirstNoted")
     }
