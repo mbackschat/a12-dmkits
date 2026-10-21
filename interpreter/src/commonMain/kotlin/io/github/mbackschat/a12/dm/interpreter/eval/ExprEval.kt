@@ -2111,12 +2111,22 @@ internal fun Interpreter.keptRowsWithSuccessorLookahead(
     having: Cond,
     keeps: ((EvalContext) -> Boolean)? = null,
     eligible: (EvalContext?, EvalContext) -> Boolean = { _, _ -> true },
+    resume: ((from: Int, keptIndex: Int) -> Int)? = null,
 ): Sequence<EvalContext> = sequence {
     var pending: EvalContext? = null
-    for (row in rows) {
-        if (!eligible(pending, row) || !(keeps?.invoke(row) ?: havingInterp(row).keeps(having))) continue
-        pending?.let { yield(it) }
-        pending = row
+    var keptIndex = -1
+    var index = 0
+    while (true) {
+        // [resume] jumps past candidates [eligible] would refuse anyway, once a row is kept.
+        if (resume != null && keptIndex >= 0) index = resume(index, keptIndex)
+        if (index >= rows.size) break
+        val row = rows[index]
+        if (eligible(pending, row) && (keeps?.invoke(row) ?: havingInterp(row).keeps(having))) {
+            pending?.let { yield(it) }
+            pending = row
+            keptIndex = index
+        }
+        index++
     }
     pending?.let { yield(it) }
 }
@@ -2145,14 +2155,17 @@ internal fun Interpreter.filteredRows(
     }
     val having = requireNotNull(star.having)
     if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having, keeps)
-    return keptRowsWithSuccessorLookahead(rows, having, keeps) { previous, row ->
+    // A walk widened by one wide sibling row then costs its occupied rows rather than its whole grid (IG172).
+    if (rows is FilterWalkView && occupied is OccupiedPrefixes) return keptRowsWithSuccessorLookahead(rows, having, keeps,
+        resume = { from, kept -> rows.nextUnskipped(from, rows.coordinatesAt(kept), occupied) })
+    return keptRowsWithSuccessorLookahead(rows, having, keeps, eligible = { previous, row ->
         if (previous == null) true else {
             val coordinates = row.repsOf(group)
             val last = previous.repsOf(group)
             val changed = coordinates.indices.firstOrNull { coordinates[it] != last[it] } ?: -1
             changed < 0 || (if (changed == coordinates.lastIndex) coordinates else coordinates.take(changed + 1)) in occupied
         }
-    }
+    })
 }
 
 /**

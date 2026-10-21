@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.FilterWalkRowProvider
+import io.github.mbackschat.a12.dm.interpreter.eval.OccupiedPrefixes
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -137,7 +138,7 @@ class DocumentIterationRetentionTest {
         for ((owner, name, value) in listOf(
             Triple(document, "filterWalkCache", emptyList<Any>()),
             Triple(index, "highestRepetitionsByCount", intArrayOf()),
-            Triple(index, "filterPrefixesByCount", emptySet<Any>()),
+            Triple(index, "filterPrefixesByCount", OccupiedPrefixes(emptySet())),
         )) {
             var before = 0
             document.observeCacheEntries { _, _, entries -> before = entries }

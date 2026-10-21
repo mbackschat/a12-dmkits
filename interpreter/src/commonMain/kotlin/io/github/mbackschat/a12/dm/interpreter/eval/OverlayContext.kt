@@ -252,8 +252,10 @@ internal class OverlayContext(
     // made a `$`-correlated filter O(rows²) and breached the perf gate's compute-overlay correlation anchor.
     override fun filterWalkRows(groupPath: String, bindDepth: Int, counts: ((String) -> Boolean)?): List<EvalContext> =
         views.filterWalkRows(groupPath, d.scopePrefixOf(groupPath, bindDepth), counts) {
-            d.filterWalkRows(groupPath, bindDepth, counts).map {
-                OverlayContext(it, cascade, emptyOf, minFracOf, views, selfTarget)
+            val wrap = { row: EvalContext -> OverlayContext(row, cascade, emptyOf, minFracOf, views, selfTarget) }
+            when (val rows = d.filterWalkRows(groupPath, bindDepth, counts)) {
+                is FilterWalkView -> rows.mapRows(wrap)
+                else -> rows.map(wrap)
             }
         }
 

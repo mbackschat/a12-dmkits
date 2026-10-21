@@ -254,7 +254,7 @@ class Document(internal val config: DocumentConfig) {
         var occupiedChildren: Map<Int, Map<List<Int>, IntArray>>? = null
         // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
         val highestRepetitionsByCount: MutableMap<Set<String>, IntArray> = HashMap()
-        val filterPrefixesByCount: MutableMap<Set<String>, Set<List<Int>>> = HashMap()
+        val filterPrefixesByCount: MutableMap<Set<String>, OccupiedPrefixes> = HashMap()
         // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
         val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
@@ -698,12 +698,12 @@ class Document(internal val config: DocumentConfig) {
         if (product <= 100) return null
         val groups = selectedFilterGroups(counts)
         return index().filterPrefixesByCount.getOrPut(groups) {
-            buildSet {
+            OccupiedPrefixes(buildSet {
                 for ((group, rows) in index().rowsByGroup) {
                     if (group !in groups) continue
                     for (row in rows) for (depth in 1..row.size) add(row.take(depth))
                 }
-            }
+            })
         }
     }
 
@@ -726,10 +726,19 @@ class Document(internal val config: DocumentConfig) {
         return groups
     }
 
-    /** The stored rows of [groupPath] in [scope] merged in coordinate order with the missing ones the walk visits. */
+    /**
+     * The stored rows of [groupPath] in [scope] merged in coordinate order with the missing ones the walk visits: a
+     * [FilterWalkView] whenever every stored row lies on the walk's grid. A stored row off it, which only a group the
+     * walk's [counts] leave out can hold, keeps the materialized merge.
+     */
     private fun filterWalkRowsScoped(groupPath: String, scope: List<Int>, counts: ((String) -> Boolean)?): List<EvalContext> =
         filterWalkCache.getOrPut(Triple(groupPath, scope, selectedFilterGroups(counts))) {
             val stored = rowContextsScoped(groupPath, scope).associateBy { it.coordinates() }
+            val widths = filterWalkWidths(groupPath, scope.size, counts).toIntArray()
+            val onGrid = widths.fold(1L) { cells, width -> cells * width } <= Int.MAX_VALUE && stored.keys.all { reps ->
+                reps.size == scope.size + widths.size && widths.indices.all { reps[scope.size + it] in 1..widths[it] }
+            }
+            if (onGrid) return@getOrPut FilterWalkView(scope, widths, stored) { reps -> RowContext(groupPath, reps, evaluated = true) }
             val missing = filterWalkCoordinates(groupPath, scope, counts).filter { it !in stored }
             if (missing.isEmpty()) stored.values.toList()
             else (stored.keys + missing).sortedWith(COORDINATE_ORDER)
