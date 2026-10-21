@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-/**
+/*
  * The text readings A12's JVM runtime applies, spelled out so every platform this engine runs on answers alike.
  *
  * Kotlin's blank tests and argument-free trims count the three no-break spaces as whitespace, which Java's

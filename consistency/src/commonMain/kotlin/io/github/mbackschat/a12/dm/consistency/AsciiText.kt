@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-/**
+/*
  * Readings for text A12's own grammar has already confined to ASCII, spelled out so every target answers alike.
  *
  * A condition's digits, keywords and names reach A12 through a lexer that admits only ASCII letters and digits there

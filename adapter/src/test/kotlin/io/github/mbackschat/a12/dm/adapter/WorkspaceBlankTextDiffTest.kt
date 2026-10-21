@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test
  */
 class WorkspaceBlankTextDiffTest {
 
-    private val spaces = listOf("", " ", "\t", " ", " ", " ")
+    private val spaces = listOf("", " ", "\t", "\u00A0", "\u2003", "\u2007")
 
     private fun label(text: String) = text.map { "U+%04X".format(it.code) }.toString()
 
