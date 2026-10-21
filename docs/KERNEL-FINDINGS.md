@@ -13956,3 +13956,19 @@ A12 asks two alphabets of every rule and computation the default variant keeps, 
 So the name is ASCII-only while the code admits the German umlauts and `ß`, a space and the underscore. A computation carries no `errorCode`, and the code sentence reads its name: that is the only reading under which `Prem.ium` draws it and `Prem ium` does not. Neither sentence is withheld by a broken error target (beside `MVK_ERROR_FIELD_MISSING`, `MVK_MISSING_ERROR_FIELD`) or a refused condition (beside `MVK_INVALID_ENTITY`). A blank code, as Java's `isBlank` reads it, is not this alphabet's: a tab-only code draws `MVK_ERROR_CODE_MISSING` alone, though a tab inside `C<TAB>D` draws the sentence, and a no-break space, which is not blank, draws it on its own. A supplementary-plane character withholds both sentences, as it withholds every coded class of an Enumeration's texts ([KF551](#kf551)).
 
 *Locked by:* `adapter.laws.CheckerDeclarationAlphabetAgreementTest`, A12 and the portable checker row by row, which publishes the two sentences as `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET`.
+
+## §13 supplement — "The error code is empty." is drawn by an absent or zero-length code only, and before any variant filter (model check, 2026-10-21) <a id="kf579"></a>
+
+> Fold: not-foldable — declaration-admission laws beside [KF578](#kf578)'s alphabets.
+
+A rule's code draws two refusals that look like one. `MVK_ERROR_CODE_MISSING` is the blank test ([KF291](#kf291)); the codeless sentence *"The error code is empty."* asks a narrower question, and asks it of a rule the default variant deletes:
+
+| `errorCode` | no filter | `ONLY` filter | `ALL_EXCEPT` filter |
+|---|---|---|---|
+| absent | the class and the sentence | the sentence alone | the class and the sentence |
+| `""` | the class and the sentence | the sentence alone | the class and the sentence |
+| `" "` (and `"<TAB>"`, measured without a filter and under `ONLY`) | the class alone | nothing | the class alone |
+
+So the sentence reads emptiness, not blankness, and it is the one refusal of a rule's slots that an `ONLY` filter does not take away; beside a broken error target on a deleted rule it still stands alone. That is what [KF420](#kf420)'s "an empty `errorCode` under an ONLY variant filter" row was: the sentence on its own, not a build failure.
+
+*Locked by:* `adapter.laws.CheckerDeclarationWithholdingAgreementTest`, A12 and the portable checker row by row, which publishes the sentence as `RK_ERROR_CODE_EMPTY` and keeps it through the variant filter's suppression.

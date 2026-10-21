@@ -97,7 +97,7 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     val model = local.filterIsInstance<ModelFinding>()
     val suppressed = facts.variantFilterSuppressed()
     fun visible(finding: Finding): Boolean =
-        finding.code == CK_MODEL_NOT_BUILDABLE || finding.at == null || finding.at !in suppressed
+        finding.code in VARIANT_BLIND_CODES || finding.at == null || finding.at !in suppressed
     val selected = (model.filter { it.stage == ModelStage.DECLARATION } +
         declarations.filter { it.owner in computations } +
         model.filter { it.stage == ModelStage.METAMODEL } +
@@ -105,3 +105,9 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     return if (selected.any { it.justifiesRejection }) selected else selected +
         model.filter { it.stage == ModelStage.GENERATION }.map { it.finding }.filter(::visible)
 }
+
+/**
+ * The codes a variant filter never takes away: a source A12 cannot build is unbuildable whatever the filter
+ * deletes, and the empty-code sentence is stated before the filter is applied ([KERNEL-FINDINGS KF579]).
+ */
+internal val VARIANT_BLIND_CODES = setOf(CK_MODEL_NOT_BUILDABLE, RK_ERROR_CODE_EMPTY)

@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf579": {
+      "sha256": "6146d45f1a6e63ddba93d54df125da99cf83ad7ebb9fe44837db2f62375ac262",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["empty error code"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["empty error code"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["empty error code"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The rule builders refuse a blank code before a model exists, so no authored rule carries an empty one.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The slot family publishes the sentence for an absent or zero-length code, and the report keeps it through the variant filter's suppression.", "evidence": {"empty error code": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DeclarationSlotTest.kt#aRulesErrorCodeIsRequiredNonBlank", "witness": "An absent code draws the class and the sentence, and a blank one the class alone."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no rule.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on absent, empty, blank and tab codes, unfiltered and under ONLY and ALL_EXCEPT filters.", "evidence": {"empty error code": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#everyRowAgrees", "witness": "Every row's class list agrees, and A12's own stream is pinned on the rows that separate emptiness from blankness and the filters."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no code logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf578": {
       "sha256": "c3d8bf95810e1f25e1a6a97de37b836ee850f87dd90b7b65d61dcba140ee7f43",
       "task": "F-USE-BACKLOG",
