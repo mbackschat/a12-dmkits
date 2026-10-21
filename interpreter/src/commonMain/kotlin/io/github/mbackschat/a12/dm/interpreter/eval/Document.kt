@@ -245,7 +245,11 @@ class Document(internal val config: DocumentConfig) {
         // EVERY rule (and every nested row) — into once-per-distinct-group work. This is the lever that keeps the
         // interpreter on-par with the kernel at high rule counts (many rules share a handful of iteration scopes;
         // the kernel computes the row structure once and reuses it across rules — this is the direct analog).
-        val attachByGroup: MutableMap<String, Map<Int, Set<List<Int>>>> = HashMap()
+        val attachByGroup: MutableMap<String, AttachGate> = HashMap()
+        // [content] by model path, built once on the first gate or fill question; see [ContentTrie].
+        var contentTrie: ContentTrie<Placement>? = null
+        // Root path → the root instances any stored row or valued cell at or below it occupies, ascending.
+        var rootInstancesByRoot: Map<String, List<Int>>? = null
         val validationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // Full validation's rule domain (SPEC-2026-10-04-03), distinct from the partial-validation and uniqueness
         // domain above because it can visit declared slots that no stored row holds.
@@ -318,6 +322,8 @@ class Document(internal val config: DocumentConfig) {
                 idx.content.size +
                 idx.partsByPath.size +
                 idx.attachByGroup.size +
+                (idx.contentTrie?.nodeCount() ?: 0) +
+                (idx.rootInstancesByRoot?.size ?: 0) +
                 idx.validationContextsByGroup.size +
                 idx.fullValidationContextsByGroup.size +
                 idx.highestRepetitionsByCount.size +
@@ -650,15 +656,26 @@ class Document(internal val config: DocumentConfig) {
         return frontier.map { storedRows[it] ?: it }
     }
 
-    /** The root's instances the document holds: any stored row or valued cell at or below [root], ascending. */
+    /**
+     * The root's instances the document holds: any stored row or valued cell at or below [root], ascending.
+     * Grouped for every root in one pass, because full validation asks once per iteration group and a scan per
+     * ask made a model of G sibling groups cost O(G × document) (INTERPRETER-FINDINGS IF414).
+     */
     private fun rootInstances(root: String): List<Int> {
-        val instances = HashSet<Int>()
-        for ((group, rows) in index().rowsByGroup) {
-            if (group == root || group.startsWith("$root/")) rows.forEach { instances += it[0] }
+        val idx = index()
+        val byRoot = idx.rootInstancesByRoot ?: run {
+            val instances = HashMap<String, HashSet<Int>>()
+            for ((group, rows) in idx.rowsByGroup) {
+                val bucket = instances.getOrPut(rootOf(group)) { HashSet() }
+                rows.forEach { bucket += it[0] }
+            }
+            for (cell in idx.valued) instances.getOrPut(rootOf(cell.path)) { HashSet() } += cell.reps[0]
+            instances.mapValues { (_, it) -> it.sorted() }.also { idx.rootInstancesByRoot = it }
         }
-        for (cell in index().valued) if (cell.path.startsWith("$root/")) instances += cell.reps[0]
-        return instances.sorted()
+        return byRoot[root] ?: emptyList()
     }
+
+    private fun rootOf(path: String): String = "/" + partsOf(path)[0]
 
     /** The highest repetition any row of a group [counts] admits stores at each depth, index 0 the root's; a blank
      *  row object counts as stored. Every group when [counts] is null. */
@@ -797,8 +814,7 @@ class Document(internal val config: DocumentConfig) {
         val rows = contextsFor(groupPath)
         if (rows.isNotEmpty()) return rows
         val reps = List(parts(groupPath).size) { 1 }
-        val attach = attachByDepth(groupPath)
-        return listOf(RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }))
+        return listOf(RowContext(groupPath, reps, attachGate(groupPath).admits(reps)))
     }
 
     /** The single context of a GLOBAL once rule: the all-ones row of [groupPath], evaluated whatever the
@@ -812,10 +828,8 @@ class Document(internal val config: DocumentConfig) {
 
     private fun contextsForRows(groupPath: String, rows: List<List<Int>>): List<EvalContext> {
         if (rows.isEmpty()) return emptyList()
-        val attach = attachByDepth(groupPath)
-        return rows.map { reps ->
-            RowContext(groupPath, reps, attach.any { (depth, prefixes) -> reps.take(depth) in prefixes })
-        }
+        val gate = attachGate(groupPath)
+        return rows.map { reps -> RowContext(groupPath, reps, gate.admits(reps)) }
     }
 
     private fun iterationRowsOf(groupPath: String): List<List<Int>> =
@@ -1039,32 +1053,32 @@ class Document(internal val config: DocumentConfig) {
     }
 
     /**
-     * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have CONTENT in scope
-     * at that depth`, over [Index.content] (a valued field OR an INSTANTIATED REPEATABLE-group row — the kernel
+     * The per-group attach gate: a row is evaluated iff some CONTENT shares its index prefix at the depth where
+     * the content's path leaves [groupPath], over [Index.content] (a valued field OR an INSTANTIATED REPEATABLE-group row — the kernel
      * treats creating a repeatable row as content in itself, KERNEL-FINDINGS §4/§9). So a rule is EVALUATED on an
      * all-field-empty but instantiated row — a per-row rule on the row itself, an ancestor-scoped aggregate whose
      * descendant rows make the ancestor content-bearing (IF53). A NON-repeatable group's mere structural presence
      * is NOT content (excluded from [Index.content]) — matching the truly-empty `/Order` in `EmptyRowGateDiffTest`.
-     * The O(content) scan that builds it is **memoized per group** (rebuilt with the [Index] on mutation), so many
-     * rules sharing one iteration scope — and nested per-row [rowContextsScoped] lookups — pay it once, not per
-     * rule/row. A row is `evaluated` iff some prefix matches.
+     * The gate is **memoized per group** (rebuilt with the [Index] on mutation), so many rules sharing one
+     * iteration scope — and nested per-row [rowContextsScoped] lookups — pay it once, not per rule/row. It reads
+     * the one [ContentTrie] rather than scanning [Index.content] per group, which cost a model of G sibling groups
+     * O(G × document) on its first evaluation (INTERPRETER-FINDINGS IF414).
      *
      * Content under ANOTHER root group shares no level with [groupPath] (common depth 0) and is never in its scope:
      * the kernel leaves a once rule unevaluated on an empty root however much a sibling root holds, where counting
      * it made every once-frame of an empty root evaluated and fired its comparisons
      * (`adapter.laws.SiblingRootContentGateDiffTest`, both kernel strategies).
      */
-    private fun attachByDepth(groupPath: String): Map<Int, Set<List<Int>>> =
-        index().attachByGroup.getOrPut(groupPath) {
-            val gParts = partsOf(groupPath)
-            val m = HashMap<Int, HashSet<List<Int>>>()
-            for (p in index().content) {
-                val common = commonPrefixLen(partsOf(p.path), gParts)
-                if (common == 0) continue
-                m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
-            }
-            m
+    private fun attachGate(groupPath: String): AttachGate =
+        index().attachByGroup.getOrPut(groupPath) { contentTrie().gateFor(partsOf(groupPath)) }
+
+    private fun contentTrie(): ContentTrie<Placement> {
+        val idx = index()
+        return idx.contentTrie ?: ContentTrie<Placement>().also { trie ->
+            for (p in idx.content) trie.add(partsOf(p.path), p.reps, p)
+            idx.contentTrie = trie
         }
+    }
 
     /**
      * For `groupFilled(nonRepeatableGroupPath)` evaluated from iteration group [group]: `attach-depth →
@@ -1078,10 +1092,9 @@ class Document(internal val config: DocumentConfig) {
     private fun nonRepGroupFilledDepths(groupPath: String, group: String): Map<Int, Set<List<Int>>> =
         index().nonRepFilledByGroup.getOrPut(groupPath to group) {
             val gParts = partsOf(group)
-            val prefix = "$groupPath/"
             val m = HashMap<Int, HashSet<List<Int>>>()
-            for (p in index().content) {
-                if (!p.path.startsWith(prefix)) continue
+            // The trie hands over exactly the content below groupPath, so a pair costs its subtree, not the document.
+            contentTrie().forEachBelow(partsOf(groupPath)) { p ->
                 val common = commonPrefixLen(partsOf(p.path), gParts)
                 m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
             }
@@ -1106,11 +1119,11 @@ class Document(internal val config: DocumentConfig) {
 
     private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<RowContext> =
         rowContextsCache.getOrPut(groupPath to scopeReps) {
-            val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
+            val gate = attachGate(groupPath)   // memoized per group — no O(valued) rescan per nested row
             val overLimit = overLimitRows(groupPath)   // over-limit rows are outside the star/quantifier domain (SPEC-2026-07-23-13)
             rowsWithPrefix(groupPath, scopeReps)
                 .filter { it !in overLimit }
-                .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
+                .map { reps -> RowContext(groupPath, reps, gate.admits(reps)) }
         }
 
     // Hash-join buckets for a `$` equality-correlation Having, cached per (group, scope, joinFields, starPath):
