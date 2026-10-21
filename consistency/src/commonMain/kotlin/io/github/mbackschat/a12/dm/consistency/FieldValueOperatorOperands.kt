@@ -34,7 +34,8 @@ import kotlinx.serialization.json.intOrNull
  *
  * **Its string arm reads the DECLARATION and never a stored value**: a bounded `maxLength` of at most 15 and
  * exactly the pattern `[0-9]+`. A five-character string with no pattern is refused, and so is a `[0-9]+`
- * string with no length bound.
+ * string with no length bound, `-1` included. Any other `maxLength` is read as written, even one outside the range
+ * A12's metamodel admits: a zero or signed maximum passes this gate beside its range sentence (KERNEL-FINDINGS KF556).
  *
  * **Two of this construct's classes are left to A12, both measured rather than assumed.**
  * `MVK_INVALID_RAW_TYPE` sits behind the conversion gate and fires only on a `noValueValidation` string,
@@ -173,7 +174,7 @@ private fun conversionDefect(
     return when (type) {
         FieldType.STRING -> {
             val body = FieldType.STRING.bodyIn(declared.body?.get("fieldType") as? JsonObject)
-            val maxLength = (body?.get("maxLength") as? JsonPrimitive)?.intOrNull
+            val maxLength = (body?.get("maxLength") as? JsonPrimitive)?.intOrNull?.takeIf { it != UNDEFINED }
             val pattern = (body?.get("pattern") as? JsonPrimitive)?.contentOrNull
             when {
                 maxLength == null || maxLength > MOST_CONVERTIBLE_DIGITS ->

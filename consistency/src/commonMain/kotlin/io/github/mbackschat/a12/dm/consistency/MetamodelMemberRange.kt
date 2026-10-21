@@ -92,8 +92,8 @@ private fun JsonObject.intMember(member: String): Int? = (this[member] as? JsonP
 
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
-/** A12's `IFieldType.UNDEFINED`. */
-private const val UNDEFINED = -1
+/** A12's `IFieldType.UNDEFINED`, its spelling of "no bound". */
+internal const val UNDEFINED = -1
 
 /** The longest String value A12 stores, and so the largest length it lets a model declare. */
 private const val TECHNICAL_LENGTH_LIMIT = 99_999

@@ -13406,6 +13406,17 @@ A12 checks a String, Custom or Number type's `minLength` and `maxLength` against
 
 Each sentence is reported once per field: zero on both members draws one sentence, and a signed minimum beside a maximum above the limit draws two. An out-of-range member is no bound for the field's other laws: a minimum of 100,000 beside a maximum of 50 draws only the limit sentence, not `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, and a zero minimum beside `noValueValidation` draws no `MVK_STRING_TYPE_PARAMS_INCONSISTENT`. Nor is it a bound for the hint list: `Basic` beside a maximum of 0 draws only the positive sentence and `abc` beside a minimum of 100,000 only the limit sentence, while a maximum of 3 draws `MVK_VALUE_TOO_LONG` (*added 2026-10-13*). The type's other members are still judged, so a pattern beside `noValueValidation` keeps its two classes. Other fields are unaffected, and a field deleted from the default variant draws nothing, neither these sentences nor its ordering class. A12's order among the sentences is not claimed. Locked by `adapter.laws.CheckerLengthLimitAgreementTest` against the portable checker, which reports the three as `RK_MEMBER_ABOVE_TECHNICAL_LIMIT`, `RK_MEMBER_NOT_POSITIVE` and `RK_MEMBER_SIGNED`; the same sentences answer a number's digit counts, beside two maxima of their own ([KF559](#kf559)).
 
+*Added 2026-10-21:* "judges nothing else" holds for the type's own laws and its hint list, and **not for the rules that read the field**. Three rule-operand readers still judge a String with a length member outside the range, so A12 can report the range sentence and the reader's class side by side, and two of them read such a member differently:
+
+| Reader, member | 0 | 100,000 | `-1` | `-5` |
+|---|---|---|---|---|
+| `FieldValueAsNumber(Code)`, `maxLength` (pattern `[0-9]+`) | positive sentence alone | limit sentence, `MVK_NO_CONVERT_IN_NUMBER` | `MVK_NO_CONVERT_IN_NUMBER` | sign sentence alone |
+| `[Tags/Amount For "AB"]`, key `maxLength` (`minLength` 2) | positive sentence alone | limit sentence alone | admitted | sign sentence alone |
+| the same key, `minLength` (`maxLength` 3) | positive sentence alone | limit sentence, `MVK_INDEX_VALUE_INVALID` | admitted | sign sentence alone |
+| `Date(Day, "01", "2024")`, `maxLength` (pattern `[0-9]+`) | positive sentence, `MVK_WRONG_DATE_FORMAT_FOR_OP` | limit sentence, the same class | the class alone | sign sentence, the same class |
+
+So the conversion's "at most 15" gate takes a zero or signed maximum as written and only `-1` as no bound, the same answer as an absent member; the index key takes a positive member as written, so a minimum of 100,000 refuses a two-character key, and any other member as no bound, so a maximum of 0 admits it. The `Date` component wants exactly its entity's width, which no value outside the range meets, so it separates no reading. The in-range controls (`maxLength` 15 and 2, `minLength` 2) admit. Locked by `adapter.laws.CheckerLengthReaderAgreementTest` against the portable checker, whose conversion reader took `-1` as a maximum of its own until this measurement.
+
 ## §9 supplement — a `RepetitionNotUnique` leaf that does not fire contributes no message reference (both strategies, 2026-10-13) <a id="kf557"></a>
 
 > Fold: pending — belongs in §9's `RepetitionNotUnique` account, beside its duplicate-cluster references.
