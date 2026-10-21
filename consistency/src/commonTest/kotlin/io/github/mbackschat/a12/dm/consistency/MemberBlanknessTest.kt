@@ -78,7 +78,8 @@ class MemberBlanknessTest {
         (nonBreaking + javaWhitespace).forEach { actual[it.label()] = rejections(rule(code = "$it")) }
 
         val expected = linkedMapOf("P — the control" to emptyList(), "   " to listOf("MVK_ERROR_CODE_MISSING"))
-        nonBreaking.forEach { expected[it.label()] = emptyList() }
+        // A non-breaking space is not blank, so it reaches A12's code alphabet, which refuses it (KF578).
+        nonBreaking.forEach { expected[it.label()] = listOf("RK_ERROR_CODE_ALPHABET") }
         javaWhitespace.forEach { expected[it.label()] = listOf("MVK_ERROR_CODE_MISSING") }
         assertEquals(expected, actual, "which spaces make a rule's errorCode blank")
     }

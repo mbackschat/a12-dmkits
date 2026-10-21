@@ -158,7 +158,7 @@ class OutcomeAllChecksPassedTest {
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{
                   "errorEntityRelPath":"../Holder","errorCondition":"FieldFilled(Holder)",
-                  "errorCode":"holder.required",
+                  "errorCode":"HOLDER_REQUIRED",
                   "errorMessage":[{"locale":"en_US","text":"A policy holder is required."}]}},
                 {"type":"Computation","id":"c0","name":"Doubled","Computation":{
                   "computedFieldRelPath":"../Premium","computationAlternatives":[{"operation":"{1 + 1}"}],
@@ -176,7 +176,7 @@ class OutcomeAllChecksPassedTest {
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{
                   "errorEntityRelPath":"../Holder","errorCondition":"FieldFilled(Nonexistent)",
-                  "errorCode":"holder.required",
+                  "errorCode":"HOLDER_REQUIRED",
                   "errorMessage":[{"locale":"en_US","text":"A policy holder is required."}]}},
                 {"type":"Computation","id":"c0","name":"Doubled","Computation":{
                   "computedFieldRelPath":"../Premium","computationAlternatives":[{"operation":"{1 + 1}"}],
@@ -195,7 +195,7 @@ class OutcomeAllChecksPassedTest {
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{
                   "errorEntityRelPath":"../Holder","errorCondition":"FieldFilled(Holder)",
-                  "errorCode":"holder.required",
+                  "errorCode":"HOLDER_REQUIRED",
                   "errorMessage":[{"locale":"en_US","text":"A policy holder is required."}]}},
                 {"type":"Computation","id":"c0","name":"Doubled","Computation":{
                   "computedFieldRelPath":"../Premium","computationAlternatives":[{"operation":"{1 + 1}"}],

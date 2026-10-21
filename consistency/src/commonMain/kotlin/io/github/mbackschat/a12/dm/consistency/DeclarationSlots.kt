@@ -105,7 +105,10 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
  * and `Prämie` are all refused, and `vk_vk.x` draws the sentence without `MVK_RULE_NAME_INVALID`. **The error code takes a wider set**: ASCII letters and digits, the German umlauts and `ß`, a space and
  * the underscore, and nothing else, so `C.1`, `C-1`, `Cé` and a tab are refused. A computation carries no
  * `errorCode`, and A12 asks the code alphabet of its NAME instead, which is why `Ca.lc` draws both sentences and
- * `Ca lc` only the name's. An empty code is [errorCodeFindings]' business, never this alphabet's.
+ * `Ca lc` only the name's. A blank code, a tab-only one included, is [errorCodeFindings]' business, never this
+ * alphabet's, and a no-break space is not blank. A name or code carrying a supplementary-plane character meets
+ * neither alphabet: A12 answers it with the unsupported-signs sentence alone, as it does an enumeration's texts
+ * ([namedByA12]).
  */
 private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
     val code = if (element.kind == "Rule") {
@@ -113,14 +116,18 @@ private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
     } else {
         element.name
     }
-    val codeFinding = code?.takeIf { text -> text.any { it !in ERROR_CODE_CHARACTERS } }?.let { text ->
+    // A blank code is MVK_ERROR_CODE_MISSING's alone: a tab-only code never reaches this alphabet.
+    val refusedCode = code?.takeIf { text ->
+        !text.isA12Blank() && text.namedByA12() && text.any { it !in ERROR_CODE_CHARACTERS }
+    }
+    val codeFinding = refusedCode?.let { text ->
         slotFinding(element, "RK_ERROR_CODE_ALPHABET",
             "the error code `$text` carries a character outside letters, digits, a space and the underscore, " +
                 "which A12 refuses in a sentence with no class; the letters include the German umlauts and `ß`")
     }
     val nameAdmitted = element.name.firstOrNull()?.isAsciiLetter() != false &&
         element.name.all { it.isAsciiLetter() || it in '0'..'9' || it == '_' }
-    val nameFinding = if (nameAdmitted) null else slotFinding(element, "RK_RULE_NAME_ALPHABET",
+    val nameFinding = if (nameAdmitted || !element.name.namedByA12()) null else slotFinding(element, "RK_RULE_NAME_ALPHABET",
         "the name `${element.name}` does not start with an ASCII letter followed by ASCII letters, digits and " +
             "underscores, which A12 refuses in a sentence with no class")
     // The reserved-name predicate admits only names this alphabet admits, so it is silent beside the sentence.

@@ -13948,8 +13948,11 @@ A12 asks two alphabets of every rule and computation the default variant keeps, 
 | error code `C 1`, ` C`, `C_1`, `1C`, `c1`, `Cä`, `CÄÖÜ`, `Cß` | — | — |
 | computation `Prem.ium` | yes | yes |
 | computation `Prem ium`, `1Premium`, `Prämie` | yes | — |
+| error code `<NBSP>`, `<FIGURE SPACE>`, `<NARROW NBSP>`, each alone | — | yes |
+| error code `<TAB>` or `<EM SPACE>` alone | — (`MVK_ERROR_CODE_MISSING` alone) | — |
+| rule name `Probe😀`, error code `C😀`, computation `Prem😀` | — | — (the unsupported-signs sentence alone) |
 | either refused, the executable deleted by an `ONLY` filter | — | — |
 
-So the name is ASCII-only while the code admits the German umlauts and `ß`, a space and the underscore. A computation carries no `errorCode`, and the code sentence reads its name: that is the only reading under which `Prem.ium` draws it and `Prem ium` does not. Neither sentence is withheld by a broken error target (beside `MVK_ERROR_FIELD_MISSING`, `MVK_MISSING_ERROR_FIELD`) or a refused condition (beside `MVK_INVALID_ENTITY`). An empty code is not this alphabet's: it draws `MVK_ERROR_CODE_MISSING`.
+So the name is ASCII-only while the code admits the German umlauts and `ß`, a space and the underscore. A computation carries no `errorCode`, and the code sentence reads its name: that is the only reading under which `Prem.ium` draws it and `Prem ium` does not. Neither sentence is withheld by a broken error target (beside `MVK_ERROR_FIELD_MISSING`, `MVK_MISSING_ERROR_FIELD`) or a refused condition (beside `MVK_INVALID_ENTITY`). A blank code, as Java's `isBlank` reads it, is not this alphabet's: a tab-only code draws `MVK_ERROR_CODE_MISSING` alone, though a tab inside `C<TAB>D` draws the sentence, and a no-break space, which is not blank, draws it on its own. A supplementary-plane character withholds both sentences, as it withholds every coded class of an Enumeration's texts ([KF551](#kf551)).
 
 *Locked by:* `adapter.laws.CheckerDeclarationAlphabetAgreementTest`, A12 and the portable checker row by row, which publishes the two sentences as `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET`.

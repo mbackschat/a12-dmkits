@@ -244,10 +244,10 @@ class ElementNameAlphabetTest {
     }
 
     /**
-     * A RULE's name is asked nothing, and that is measured rather than merely unimplemented.
-     *
-     * A digit-initial or dotted rule name leaves A12 unable to BUILD the model, so no class exists for this
-     * family to reproduce there, and an `xml` prefix on a rule is simply admitted.
+     * A RULE's name is asked none of this family's element-path classes, and that is measured rather than merely
+     * unimplemented: an `xml` prefix on a rule is admitted, and a digit-initial or dotted rule name draws only
+     * A12's codeless rule-name sentence, which the declaration-slot family publishes as `RK_RULE_NAME_ALPHABET`
+     * (KERNEL-FINDINGS KF578; before KF420 this read as a build failure).
      */
     @Test
     fun aRulesOwnNameIsNotJudged() {
@@ -271,7 +271,8 @@ class ElementNameAlphabetTest {
         }
 
         assertEquals(
-            listOf("Sound", "xmlRule", "1Rule", "Some.Rule").associate { "a RULE named `$it`" to emptyList<String>() },
+            mapOf("Sound" to emptyList(), "xmlRule" to emptyList(), "1Rule" to listOf("RK_RULE_NAME_ALPHABET"),
+                "Some.Rule" to listOf("RK_RULE_NAME_ALPHABET")).mapKeys { "a RULE named `${it.key}`" },
             actual,
             "a rule's own name is not judged",
         )

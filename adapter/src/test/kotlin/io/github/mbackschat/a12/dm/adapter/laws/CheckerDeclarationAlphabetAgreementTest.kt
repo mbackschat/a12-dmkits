@@ -62,6 +62,14 @@ class CheckerDeclarationAlphabetAgreementTest {
         "a code with umlauts" to Row(code = "CÄÖÜ"),
         "a code with sharp s" to Row(code = "Cß"),
         "a code starting with a digit" to Row(code = "1C"),
+        "a code that is a tab" to Row(code = "\t"),
+        "a code that is a no-break space" to Row(code = "\u00A0"),
+        "a code that is a figure space" to Row(code = "\u2007"),
+        "a code that is a narrow no-break space" to Row(code = "\u202F"),
+        "a code that is an em space" to Row(code = "\u2003"),
+        "a code with a supplementary character" to Row(code = "C\uD83D\uDE00"),
+        "a name with a supplementary character" to Row(name = "Probe\uD83D\uDE00"),
+        "a computation named with a supplementary character" to Row(name = "Prem\uD83D\uDE00", computation = true),
         "a dotted name and code" to Row(name = "Pro.be", code = "C.1"),
         "a refused name, deleted at the default variant" to Row(name = "1Probe", only = true),
         "a refused code, deleted at the default variant" to Row(code = "C.1", only = true),
@@ -96,6 +104,10 @@ class CheckerDeclarationAlphabetAgreementTest {
             "a computation named with a space" to listOf(NAME),
         ), sentences.filterKeys { it in PINNED })
         assertEquals(listOf("MVK_RULE_NAME_INVALID"), observed.getValue("a reserved name").first)
+        assertEquals(listOf("MVK_ERROR_CODE_MISSING"), observed.getValue("a code that is a tab").first)
+        assertEquals(listOf(CODE), observed.getValue("a code that is a no-break space").first)
+        assertEquals(listOf("RK_UNSUPPORTED_CHARACTER"),
+            observed.getValue("a computation named with a supplementary character").first)
     }
 
     private val oracle = KernelConsistencyOracle()
