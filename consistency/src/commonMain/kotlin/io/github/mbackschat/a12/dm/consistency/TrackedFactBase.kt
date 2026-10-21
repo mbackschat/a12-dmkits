@@ -366,6 +366,12 @@ internal class TrackedFactBase private constructor(
             return model.unreadableLocaleCodes
         }
 
+    val unbindableBooleans: List<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.UNBINDABLE_BOOLEANS))
+            return model.unbindableBooleans
+        }
+
     val declaredTypeDefinitionIds: Set<String>
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.TYPE_DEFINITIONS))

@@ -65,6 +65,8 @@ class CheckCellKeyTest {
         // `declaredLocales` alone, which is what the isolation assertion below then confirms rather than
         // takes on trust.
         ModelFact.UNREADABLE_LOCALE_CODES to prepared(locales = """[{"code":"en_US"},{"code":"!!"}]"""),
+        // A header flag A12's reader refuses. It moves no other fact: the member is read for nothing else.
+        ModelFact.UNBINDABLE_BOOLEANS to prepared(modelInfo = """"modelInfo":{"immutable":"tRUE"},"""),
         ModelFact.TYPE_DEFINITIONS to prepared(
             typeDefinitions =
                 """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",

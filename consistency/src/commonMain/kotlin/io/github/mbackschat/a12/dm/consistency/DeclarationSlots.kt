@@ -42,7 +42,7 @@ import kotlinx.serialization.json.contentOrNull
  * would refuse a model the Kernel accepts, in the direction no consumer can detect.
  */
 internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
-    declaredLocaleFindings() +
+    unbindableBooleanFindings() + declaredLocaleFindings() +
         declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
             reservedNameFinding(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
@@ -50,6 +50,21 @@ internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
 
 /** The two element kinds that carry these slots: A12's executables, the checker's whole subject matter. */
 private val EXECUTABLE_KINDS = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
+
+/**
+ * The model's own `boolean` members A12's reader refuses ([PreparedModel.unbindableBooleans]): the same
+ * source-level refusal as an unusable locale code below, so the same class, and model-level because none
+ * belongs to a declaration.
+ */
+private fun TrackedFactBase.unbindableBooleanFindings(): List<Finding> = unbindableBooleans.map { member ->
+    Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        CK_MODEL_NOT_BUILDABLE,
+        "$member, which A12 cannot bind as a boolean — write `true` or `false`. A12's reader refuses the " +
+            "source, so the model never loads and nothing else in this report is A12's verdict about it",
+    )
+}
 
 /**
  * What the model's own `header.locales` costs it, before any declaration is read.

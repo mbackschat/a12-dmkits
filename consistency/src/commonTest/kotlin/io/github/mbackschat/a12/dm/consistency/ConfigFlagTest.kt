@@ -85,9 +85,9 @@ class ConfigFlagTest {
         val refused = preparedWithFlag("1.5")
         assertEquals(false, refused.fieldRefByShortNameAllowed)
         assertEquals(
-            listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
-            refused.diagnostics.map { it.code },
-            "an unreadable spelling is reported rather than silently read as off: ${refused.diagnostics}",
+            listOf("`content.modelConfig.fieldRefByShortNameAllowed` holds `1.5`"),
+            refused.unbindableBooleans,
+            "an unreadable spelling is carried as the source refusal it is rather than silently read as off",
         )
     }
 

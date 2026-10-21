@@ -178,6 +178,12 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
+ * @param unbindableBooleans the model's own `boolean` members A12's reader cannot bind as written, one sentence
+ *     each: `content.modelInfo.immutable`/`metaData`, `content.modelConfig.fieldRefByShortNameAllowed`, and every
+ *     field-type member of a `content.typeDefinitions` entry in the closure, whether or not a field names it.
+ *     Each refuses the whole source before any check runs, exactly as a field declaration's does
+ *     ([KERNEL-FINDINGS KF569], `adapter.laws.CheckerDeclarationAdmissionAgreementTest`), so the declaration-slot
+ *     family reports each as [CK_MODEL_NOT_BUILDABLE].
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -200,6 +206,7 @@ data class PreparedModel(
     val declaredTypeDefinitionIds: Set<String> = emptySet(),
     /** Unambiguous authored definitions; a duplicate id stays unjudged on the index-key path. */
     val typeDefinitionBodies: Map<String, JsonObject> = emptyMap(),
+    val unbindableBooleans: List<String> = emptyList(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -444,13 +451,14 @@ fun prepare(
     val definitions = typeDefinitionsInClosure(admitted, providers)
     return PreparedModel(
         elements = collector.elements,
-        fieldRefByShortNameAllowed = collector.flag(content, entry),
+        fieldRefByShortNameAllowed = collector.flag(content),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = content.declaredSupportedCharacters(),
         hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.containsKey("baseYear") == true,
+        unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = definitions.ids,
@@ -477,7 +485,35 @@ fun prepare(
  * consumer refuses a field whose id is ABSENT from it, so a member too many under-reports and a member too
  * few rejects a model A12 accepts.
  */
-private data class TypeDefinitions(val ids: Set<String>, val bodies: Map<String, JsonObject>)
+private data class TypeDefinitions(
+    val ids: Set<String>,
+    val bodies: Map<String, JsonObject>,
+    val unbindableBooleans: List<String>,
+)
+
+/** The model's own two `boolean` holders' members, as [PreparedModel.unbindableBooleans] spells them. */
+private fun JsonObject?.unbindableModelBooleans(): List<String> = MODEL_BOOLEAN_MEMBERS.mapNotNull { (owner, member) ->
+    val holder = this?.get(owner) as? JsonObject ?: return@mapNotNull null
+    "`content.$owner.$member` holds `${holder[member]}`".takeIf { holder.unbindableFlag(member) }
+}
+
+/** `DocumentModelInfo`'s and `DocumentModelConfig`'s primitive `boolean` members, from kernel `30.8.1`'s source. */
+private val MODEL_BOOLEAN_MEMBERS = listOf(
+    "modelInfo" to "immutable",
+    "modelInfo" to "metaData",
+    "modelConfig" to "fieldRefByShortNameAllowed",
+)
+
+/** The field-type members of one `content.typeDefinitions` entry that A12's reader cannot bind. */
+private fun JsonObject.unbindableTypeDefinitionBooleans(): List<String> {
+    val declared = this["fieldType"] as? JsonObject ?: return emptyList()
+    val type = declared.namedFieldType() ?: return emptyList()
+    val body = type.bodyIn(declared) ?: return emptyList()
+    val id = this["id"]
+    return type.booleanMembers.filter { body.unbindableFlag(it) }.map { member ->
+        "the `content.typeDefinitions` entry $id declares `${type.wire}.$member` as `${body[member]}`"
+    }
+}
 
 private fun typeDefinitionsInClosure(
     entry: Admission.Admitted,
@@ -486,6 +522,7 @@ private fun typeDefinitionsInClosure(
     val ids = mutableSetOf<String>()
     val bodies = mutableMapOf<String, JsonObject>()
     val ambiguous = mutableSetOf<String>()
+    val unbindable = mutableListOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
@@ -494,6 +531,8 @@ private fun typeDefinitionsInClosure(
         val definitions = ((root?.get("content") as? JsonObject)?.get("typeDefinitions") as? JsonArray)
             ?.filterIsInstance<JsonObject>().orEmpty()
         for (definition in definitions) {
+            // Before the id check: A12's reader binds every entry, so an id-less or repeated one refuses too.
+            unbindable += definition.unbindableTypeDefinitionBooleans()
             val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
             ids += id
             if (id in ambiguous) continue
@@ -513,7 +552,7 @@ private fun typeDefinitionsInClosure(
                 }
             }
     }
-    return TypeDefinitions(ids, bodies)
+    return TypeDefinitions(ids, bodies, unbindable)
 }
 
 /**
@@ -834,16 +873,13 @@ private class Collector(
      * carries the measured table; the unreadable case is diagnosed here because it is a member of the SOURCE
      * rather than of a declaration.
      */
-    fun flag(content: JsonObject?, entry: Scope): Boolean {
+    fun flag(content: JsonObject?): Boolean {
         val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
         return when (configFlag(declared)) {
             ConfigFlag.ON -> true
             ConfigFlag.OFF -> false
-            ConfigFlag.UNREADABLE -> {
-                malformed(null, "`fieldRefByShortNameAllowed` carries a value A12's own reader refuses, so " +
-                    "the model does not load at all and nothing here is a verdict about it", entry)
-                false
-            }
+            // Reported as the source refusal it is, through [PreparedModel.unbindableBooleans].
+            ConfigFlag.UNREADABLE -> false
         }
     }
 

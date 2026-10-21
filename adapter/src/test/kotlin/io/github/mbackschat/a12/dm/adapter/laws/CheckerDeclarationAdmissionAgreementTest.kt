@@ -159,14 +159,7 @@ class CheckerDeclarationAdmissionAgreementTest {
      */
     @Test
     fun everyBooleanMemberOfADeclarationIsUnbindableTheSameWay() {
-        val members = listOf(
-            "StringType" to "noValueValidation", "StringType" to "lineBreaksPermitted",
-            "StringType" to "alphabeticalSorting", "NumberType" to "zeroNotAllowed",
-            "NumberType" to "positivesOnly", "NumberType" to "leadingZerosAllowed",
-            "DateType" to "youngerThan1900Check", "DateRangeType" to "youngerThan1900Check",
-            "DateFragmentType" to "youngerThan1900Check", "EnumerationType" to "alphabeticalSorting",
-            "Field" to "global", "Field" to "transient",
-        )
+        val members = TYPE_MEMBERS + listOf("Field" to "global", "Field" to "transient")
         val carriers = members.flatMap { (type, member) ->
             listOf(Triple(type, member, null), Triple(type, member, ONLY))
         }
@@ -212,19 +205,42 @@ class CheckerDeclarationAdmissionAgreementTest {
     }
 
     /**
-     * The header's two `boolean` members (`DocumentModelInfo.immutable`/`metaData`) bind by the same law: A12
-     * alone, because the checker's verdict on them is the open CONSISTENCY-GAPS DG139.
+     * The model's own `boolean` members bind by the same law as a declaration's, and refuse the source the same way
+     * (KERNEL-FINDINGS KF577): `DocumentModelInfo.immutable`/`metaData`, `DocumentModelConfig`'s
+     * `fieldRefByShortNameAllowed`, and every field-type member written in a `content.typeDefinitions` entry,
+     * whether or not a field names it. That completes the a12internal POJOs' primitive `boolean` members with the
+     * declaration ones above; `Group.excludeRules`/`excludeComputations` take a custom reader that refuses
+     * nothing (KF3). The `" TRUE"` row per member is the control, as above.
      */
     @Test
-    fun theHeaderBooleansBindTheSameWay() {
-        val refused = listOf("immutable", "metaData").flatMap { member ->
-            listOf<Any>("tRUE", 1.5, " TRUE").map { raw ->
-                "$member=${mapper.writeValueAsString(raw)}" to runCatching {
-                    oracle.checkConsistency(header(member, raw), ReferenceResolvers.selfContained())
-                }.refusedBinding()
+    fun everyModelLevelBooleanIsUnbindableTheSameWay() {
+        val carriers: List<Pair<String, (Any) -> String>> = listOf(
+            "modelInfo.immutable" to { raw: Any -> modelMember("modelInfo", "immutable", raw) },
+            "modelInfo.metaData" to { raw: Any -> modelMember("modelInfo", "metaData", raw) },
+            "modelConfig.fieldRefByShortNameAllowed" to { raw: Any -> modelMember("modelConfig", "fieldRefByShortNameAllowed", raw) },
+        ) + TYPE_MEMBERS.flatMap { (type, member) ->
+            listOf(true, false).map { referenced ->
+                "typeDefinitions $type.$member" + (if (referenced) " (referenced)" else "") to
+                    { raw: Any -> typeDefinition(type, member, raw, referenced) }
             }
         }
-        assertEquals(refused.map { (row, _) -> row to !row.endsWith("\" TRUE\"") }, refused)
+        val wrong = carriers.flatMap { (carrier, build) ->
+            listOf<Any>("tRUE", 1.5, " TRUE").mapNotNull { raw ->
+                val json = build(raw)
+                val refused = runCatching { oracle.checkConsistency(json, ReferenceResolvers.selfContained()) }
+                    .refusedBinding()
+                val ours = ours(json)
+                val row = "$carrier=${mapper.writeValueAsString(raw)}"
+                when {
+                    raw == " TRUE" && refused -> "A12 refused $row"
+                    raw == " TRUE" && NOT_BUILDABLE in ours -> "ours $ours on $row"
+                    raw != " TRUE" && !refused -> "A12 bound $row"
+                    raw != " TRUE" && ours != listOf(NOT_BUILDABLE) -> "ours $ours on $row"
+                    else -> null
+                }
+            }
+        }
+        assertEquals(emptyList<String>(), wrong)
     }
 
     // ---- the instrument ----
@@ -329,9 +345,28 @@ class CheckerDeclarationAdmissionAgreementTest {
         }
     }
 
-    private fun header(member: String, raw: Any): String = policy().also { model ->
-        (model.path("content").path("modelInfo") as ObjectNode).set<ObjectNode>(member, mapper.valueToTree(raw))
+    private fun modelMember(owner: String, member: String, raw: Any): String = policy().also { model ->
+        val content = model.path("content") as ObjectNode
+        val target = content.get(owner) as? ObjectNode ?: content.putObject(owner)
+        target.set<ObjectNode>(member, mapper.valueToTree(raw))
     }.toString()
+
+    private fun typeDefinition(type: String, member: String, raw: Any, referenced: Boolean): String =
+        policy().also { model ->
+            val body = nodes.objectNode()
+            when (type) {
+                "EnumerationType" -> body.putArray("values").add(value("BASIC")).add(value("PLUS"))
+                "DateFragmentType" -> body.put("formatOfFragment", "yyyy")
+                "DateRangeType" -> body.put("format", "dd.MM.yyyy").put("rangeSeparator", "-")
+            }
+            body.set<ObjectNode>(member, mapper.valueToTree(raw))
+            val definitions = (model.path("content") as ObjectNode).putArray("typeDefinitions")
+            definitions.addObject().put("id", "CoverType").put("name", "CoverType").put("revision", "1")
+                .putObject("fieldType").put("type", type).set<ObjectNode>(type, body)
+            if (referenced) {
+                field(model, "Cover", "TypeDefType", nodes.objectNode().put("typeDefinitionId", "CoverType"))
+            }
+        }.toString()
 
     private val started = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS"))
     private val blank = listOf(value("BASIC", "en_US" to "Basic"), value("PLUS", "en_US" to " "))
@@ -341,6 +376,13 @@ class CheckerDeclarationAdmissionAgreementTest {
     private val ALL_EXCEPT = nodes.objectNode().put("filterType", "ALL_EXCEPT").also { it.putArray("variants").add("Broker") }
 
     private companion object {
+        val TYPE_MEMBERS = listOf(
+            "StringType" to "noValueValidation", "StringType" to "lineBreaksPermitted",
+            "StringType" to "alphabeticalSorting", "NumberType" to "zeroNotAllowed",
+            "NumberType" to "positivesOnly", "NumberType" to "leadingZerosAllowed",
+            "DateType" to "youngerThan1900Check", "DateRangeType" to "youngerThan1900Check",
+            "DateFragmentType" to "youngerThan1900Check", "EnumerationType" to "alphabeticalSorting",
+        )
         val CLASS = Regex("""\[([A-Z][A-Z0-9_]+)]""")
         const val COUNT = "MVK_COUNT_OF_VALUES_INVALID"
         const val INCOMPLETE = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"

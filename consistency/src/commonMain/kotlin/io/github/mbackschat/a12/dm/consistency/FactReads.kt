@@ -71,6 +71,7 @@ internal enum class ModelFact {
     HAS_BASE_YEAR,
     SUPPORTED_CHARACTERS,
     UNREADABLE_LOCALE_CODES,
+    UNBINDABLE_BOOLEANS,
     TYPE_DEFINITIONS,
 
     /**

@@ -79,7 +79,7 @@ private fun unbindableMember(field: TrackedDeclaration, owner: JsonObject, membe
  * `kernel-md-a12internal` classes (`fieldtypes.*`), which `FieldtypeDeserializer` binds with `treeToValue`.
  * Exhaustive, so a type added to [FieldType] has to say whether it carries any.
  */
-private val FieldType.booleanMembers: List<String>
+internal val FieldType.booleanMembers: List<String>
     get() = when (this) {
         FieldType.STRING -> listOf("lineBreaksPermitted", "noValueValidation", "alphabeticalSorting")
         FieldType.NUMBER -> listOf("zeroNotAllowed", "positivesOnly", "leadingZerosAllowed")
