@@ -22,8 +22,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Portable lock for the legacy-hybrid calendar reality used only by the `Date(...)` constructor.
- * Stored dates and the other date consumers retain their separately specified parsing/arithmetic rules.
+ * Portable lock for the legacy-hybrid calendar reality of the `Date(...)` constructor. Parsing judges reality on
+ * the same calendar, which `ParsedDateCalendarTest` locks.
  */
 class ConstructedDateCalendarTest {
 

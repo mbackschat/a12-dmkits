@@ -180,7 +180,13 @@ private fun String.matchesShape(shape: String): Boolean {
     }
 }
 
-/** Whether the day and month at those offsets name a day the calendar has, the year deciding February. */
+/**
+ * Whether the day and month at those offsets name a day the calendar has, the year deciding February.
+ *
+ * The calendar is the Julian–Gregorian hybrid that A12's non-lenient `SimpleDateFormat` parses on (KERNEL-FINDINGS
+ * KF588): the ten labels 1582-10-05..14 do not exist, and before them a leap year is every fourth one, so
+ * `29.02.1500` is a date. Reading it proleptically would refuse that constant, which A12 admits.
+ */
 private fun String.namesARealDay(day: Int, month: Int, year: Int?): Boolean {
     val d = substring(day, day + 2).toIntOrNull() ?: return false
     val m = substring(month, month + 2).toIntOrNull() ?: return false
@@ -188,6 +194,9 @@ private fun String.namesARealDay(day: Int, month: Int, year: Int?): Boolean {
         return false
     }
     val y = year?.let { substring(it, it + 4).toIntOrNull() ?: return false } ?: YEARLESS_DEFAULT_YEAR
+    if (y == 1582 && m == 10 && d in 5..14) {
+        return false
+    }
     return d <= daysIn(m, y)
 }
 
@@ -212,5 +221,5 @@ private const val YEARLESS_DEFAULT_YEAR = 1970
 private fun daysIn(month: Int, year: Int): Int = when (month) {
     1, 3, 5, 7, 8, 10, 12 -> 31
     4, 6, 9, 11 -> 30
-    else -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+    else -> if (year % 4 == 0 && (year < 1582 || year % 100 != 0 || year % 400 == 0)) 29 else 28
 }

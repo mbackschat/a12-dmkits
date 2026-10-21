@@ -1402,7 +1402,7 @@ So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESEN
 
 Both generated strategies call `RuntimeController.constructDatum`, which delegates to a cleared, non-lenient default `GregorianCalendar` in `modelConfig.timeZone`. Its default cutover is Julian through `1582-10-04`, skips `1582-10-05..14`, and is Gregorian from `1582-10-15`; therefore UTC `1500-02-29` is real. Zone discontinuities also participate: the kernel rejects `Pacific/Apia` `2011-12-30`, while the interpreter deliberately refuses that unsupported zone before evaluation.
 
-The resulting `VkDate` is an instant, so legacy-calendar provenance must survive composition. Numeric extractors preserve `1500/2/29`; `DifferenceInDays(1500-02-29, 1500-03-01) = 1`; AddDays crosses `1582-10-04 → 1582-10-15`; and the same provenance flows through `DifferenceIn{Months,Years}`, `Add{Months,Years}`, direct date `Min`/`Max` operands, and `DateTime(Date(...), Time(...))`. A valueless unreal/incomplete construction is skipped by date `Min`/`Max`, while malformed non-relevance still poisons. This positive operand acceptance does not widen the component-extractor grammar: `YearFromDate(Min(...))` is rejected. The constructor rule is separate from the proleptic-Gregorian helpers used by stored values and from the later always-on `1583-10-16` stored/computed-value floor. *(Locked across Groovy-dynamic, generated Java, JVM, and Node by `ConstructedDateCalendarDiffTest` + `ConstructedDateCalendarTest`.)*
+The resulting `VkDate` is an instant, so legacy-calendar provenance must survive composition. Numeric extractors preserve `1500/2/29`; `DifferenceInDays(1500-02-29, 1500-03-01) = 1`; AddDays crosses `1582-10-04 → 1582-10-15`; and the same provenance flows through `DifferenceIn{Months,Years}`, `Add{Months,Years}`, direct date `Min`/`Max` operands, and `DateTime(Date(...), Time(...))`. A valueless unreal/incomplete construction is skipped by date `Min`/`Max`, while malformed non-relevance still poisons. This positive operand acceptance does not widen the component-extractor grammar: `YearFromDate(Min(...))` is rejected. The constructor rule is separate from the later always-on `1583-10-16` stored/computed-value floor. *Corrected 2026-10-21:* it is not separate from parsing, which judges a stored value or a constant on the same hybrid calendar ([KF588](#kf588)). *(Locked across Groovy-dynamic, generated Java, JVM, and Node by `ConstructedDateCalendarDiffTest` + `ConstructedDateCalendarTest`.)*
 
 **4-arg century form `Date(day, month, century, year)`** (probe-verified 2026-06-26): the year is split into a 2-digit century + 2-digit year, full year = `century*100 + year` (`Date(15,6,20,24)` → 2024). The grammar accepts up to 4 `datumParam` (`datumKonstrukt`), and the runtime evaluates it as a real date through the same REAL/UNREAL/HAS_EMPTY/MALFORMED classification. **Operand constraints:** each `Date` param must be a **field reference** (integer literals are rejected), and the field must carry a **date-compatible NumberType range** or the model fails to build (`MVK_WRONG_DATE_FORMAT_FOR_OP`). Interpreter: arity-flexible `analyzeDate` (IF31); locked by `adapter.laws.Date4ArgConstructionDiffTest`.
 
@@ -14139,3 +14139,23 @@ A rule's `errorEntityRelPath` is not lexed. A rule at `/Order` reporting on the 
 | `RoundDownValue(Quantity, 2) > 1` (control) / `RoundDownValue(Quantity, `+U+0663+`) > 1` | admitted / `MVK_LEXER_STANDARD_ERROR` |
 
 *Locked by:* `adapter.laws.CheckerAsciiDigitAgreementTest`, A12 against the portable checker. The checker's date-constant shape, rounding digits, pragma name and reference runs now read the tokenizer's ASCII and lexer classes. `consistency.PlatformCharacterTableJvmTest` refuses any platform `Char` classifier in the checker's shared sources and in the shared regex translator.
+
+## §6 supplement — a parsed date is real, and counts, on the Julian–Gregorian hybrid calendar (three-engine differential + model check, 2026-10-21) <a id="kf588"></a>
+
+> Fold: pending — beside [KF85](#kf85), which carries the same calendar for `Date(...)`.
+
+A12 parses a stored date, a range endpoint and a date constant with a non-lenient `SimpleDateFormat` (`ValidationDateParser`, `DateUtils`; kernel-conversion-java and kernel-core-parser, 30.8.1), whose calendar is the default hybrid one [KF85](#kf85) measured for `Date(...)`: Julian through 1582-10-04, then the ten labels 1582-10-05..14 missing, then Gregorian. Every row below was predicted from that calendar against the proleptic rival, which answers the opposite on the skipped labels and the Julian leap days.
+
+**Reality of a stored value.** A real date before 1583-10-16 is `datumFalsch` ([KF39](#kf39)) and an unreal one is malformed, so the code says which calendar judged it. The carriers are a `yyyy-MM-dd` and a `dd.MM.yyyy` Date, a `DAY_OPTIONAL` Date, a DateTime, and a `yyyy-MM-dd` range's start (against `1600-01-01`):
+
+| stored | Date, DateTime | range start |
+|---|---|---|
+| `1582-10-04`, `1582-10-15`, `1500-02-29`, `1300-02-29` | `datumFalsch` | `datumBereichDatumFalsch` |
+| `1582-10-05`, `1582-10-14`, `1700-02-29` | `datumFormatFalsch` | `datumBereichFormatFalsch` |
+| `0000-03-01` | `datumFormatFalsch`, except `datumFalsch` on the `DAY_OPTIONAL` Date | `datumBereichFormatFalsch` |
+
+**Admission of a constant.** Whole-model `checkConsistency` admits `AddDays("…", 7)` and a direct comparison on `04.10.1582`, `15.10.1582`, `29.02.1500` and `29.02.1300`, and refuses `05.10.1582`, `14.10.1582` and `29.02.1700` as it refuses any unreal day. The year-less `29.02.` stays refused, because it is judged in 1970.
+
+**Arithmetic on a constant.** A pre-cutover constant is a Julian instant, so the skipped labels are no days. From `"04.10.1582"` to a stored 2024-01-01, `DifferenceInDays` is 161151 and `AddDays(…, 161151)` lands on it, where the proleptic count is 161161. `BaseYear` under a base year of 1500 is the Julian 1500-01-01, so `DifferenceInDays(BaseYear, Inception)` is 191378 rather than 191387. A stored value cannot show this, because every pre-cutover stored date is already a formal error. *(Mechanism, source-read: the parse yields a `java.util.Date` whose instant the arithmetic counts; the rows are what is measured.)*
+
+*Locked by:* `adapter.laws.StoredDateHybridCalendarDiffTest` (dynamic Groovy, generated Java and the interpreter, [IF425](INTERPRETER-FINDINGS.md#if425)) and `adapter.laws.CheckerHybridDateConstantAgreementTest` (A12 against the portable checker).

@@ -1752,8 +1752,9 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
                     ?: throw UnsupportedConstructException("EvalClock.today is not a real date in the model time zone: $today")
             }
             ConstantOp.BASE_YEAR -> {
+                // A pre-cutover base year is its Julian 1 January, as a date literal is (KF588).
                 val text = (baseYearDate() as Val.Txt).v
-                return temporalText(text, DateCalendarBasis.PROLEPTIC_GREGORIAN)
+                return temporalText(text, DateCalendarBasis.LEGACY_HYBRID)
             }
             else -> Unit
         }
@@ -1761,7 +1762,9 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
     // No target or counterpart constrains a literal here, so nothing declares a year and the anchor applies.
     val evaluated = coerceTemporalLiteral(evalExpr(e), declaredFormat = null)
     if (evaluated is Val.Txt) {
-        val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
+        // A12 parses a date literal with a non-lenient `SimpleDateFormat`, whose instant lies on the hybrid calendar
+        // `Date(...)` constructs on, so a pre-cutover literal is Julian in every shift and difference (KF588).
+        val basis = if (e is Expr.StrLit) DateCalendarBasis.LEGACY_HYBRID else DateCalendarBasis.PROLEPTIC_GREGORIAN
         // A pure time-of-day has no date and therefore no model-zone instant; it carries only its decoded
         // time coordinate (the operand-list Min/Max over TIME folds on that, SPEC-2026-07-21-07).
         if (TIME.matchEntire(evaluated.v) != null) return Evaluated.Present(TemporalValue(evaluated.v, basis))

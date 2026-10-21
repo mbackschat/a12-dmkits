@@ -199,9 +199,9 @@ private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): I
     return if (ea <= eb) n else -n
 }
 
-/** Whether (year, month, day) is a real date in the proleptic Gregorian calendar. This remains the helper
- *  for stored-value parsing, fragments, ranges, and arithmetic. `Date(...)` construction deliberately uses
- *  [isConstructibleDate] instead: the kernel constructs through a legacy hybrid calendar in the model zone. */
+/** Whether (year, month, day) is a real date in the proleptic Gregorian calendar, the calendar stored values
+ *  are counted on. Parsing judges reality on the hybrid calendar instead ([isParsedRealDate]), and `Date(...)`
+ *  construction through [isConstructibleDate]. */
 fun isRealDate(year: Int, month: Int, day: Int): Boolean = month in 1..12 && day in 1..daysInMonth(year, month)
 
 /**
@@ -224,6 +224,15 @@ internal fun isConstructibleDate(year: Int, month: Int, day: Int, timeZone: Mode
         ModelTimeZone.UTC, ModelTimeZone.EUROPE_BERLIN -> true
     }
 }
+
+/**
+ * Whether a date A12 PARSES — a stored value, a range endpoint, a completed fragment or a date constant — names
+ * a real day (KERNEL-FINDINGS KF588). A12 parses through a non-lenient `SimpleDateFormat`, whose calendar is the
+ * same hybrid one `Date(...)` constructs on, so the ten labels 1582-10-05..14 are unreal, a Julian leap day such
+ * as 1500-02-29 is real, and so is no day of year 0. From 1582-10-15 this is the proleptic answer of [isRealDate].
+ */
+internal fun isParsedRealDate(year: Int, month: Int, day: Int): Boolean =
+    legacyCalendarSystem(year, month, day) != null && day <= legacyDaysInMonth(year, month)
 
 private fun legacyCalendarSystem(year: Int, month: Int, day: Int): CalendarSystem? {
     if (year <= 0 || month !in 1..12 || day <= 0) return null
@@ -349,7 +358,7 @@ fun beforeGregorianStart(year: Int, month: Int, day: Int): Boolean =
 internal fun partialDateParts(raw: String, format: String, precision: DatePrecision): Triple<Int, Int, Int>? {
     val (y, mo, d) = partialDateRawParts(raw, format) ?: return null
     if (mo > 12) return null
-    if (d > 0 && mo > 0 && y > 0 && d > daysInMonth(y, mo)) return null
+    if (d > 0 && mo > 0 && y > 0 && !isParsedRealDate(y, mo, d)) return null
 
     val dayMayBeUnknown = precision != DatePrecision.FULL && precision != DatePrecision.FRAGMENT
     val monthMayBeUnknown = precision == DatePrecision.MONTH_OPTIONAL || precision == DatePrecision.YEAR_OPTIONAL
@@ -402,7 +411,7 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
     val g = m.groupValues.drop(1)
     var y = baseYear; var mo = 1; var d = 1
     comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
-    if (mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo)) return null
+    if (!isParsedRealDate(y, mo, d)) return null
     return iso(y, mo, d)
 }
 
@@ -588,7 +597,7 @@ private fun buildRangeEndpoint(values: List<String>, comps: List<Char>, baseYear
     if (mo == -1) mo = if (end) 12 else 1                          // missing month → interval bound
     if (mo < 1 || mo > 12) return null                            // a PRESENT month must be real
     if (d == -1) d = if (end) daysInMonth(y, mo) else 1           // missing day → interval bound (leap-aware)
-    if (d < 1 || d > daysInMonth(y, mo)) return null              // a PRESENT day must be real
+    if (!isParsedRealDate(y, mo, d)) return null                  // a PRESENT day must be real
     return iso(y, mo, d)
 }
 
@@ -763,7 +772,7 @@ private fun buildIsoDateTime(values: List<String>, comps: List<Char>): String? {
         val v = values[idx].toInt()
         when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v; 'H' -> h = v; 'm' -> mi = v; 's' -> s = v }
     }
-    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo) || h > 23 || mi > 59 || s > 59) return null
+    if (!isParsedRealDate(y, mo, d) || h > 23 || mi > 59 || s > 59) return null
     return iso(y, mo, d) + "T" + two(h) + ":" + two(mi) + ":" + two(s)
 }
 
@@ -773,7 +782,7 @@ private fun two(n: Int): String = n.toString().padStart(2, '0')
 private fun buildIso(values: List<String>, comps: List<Char>): String? {
     var y = -1; var mo = -1; var d = -1
     comps.forEachIndexed { idx, c -> when (c) { 'y' -> y = values[idx].toInt(); 'M' -> mo = values[idx].toInt(); 'd' -> d = values[idx].toInt() } }
-    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo)) return null
+    if (!isParsedRealDate(y, mo, d)) return null
     return iso(y, mo, d)
 }
 
