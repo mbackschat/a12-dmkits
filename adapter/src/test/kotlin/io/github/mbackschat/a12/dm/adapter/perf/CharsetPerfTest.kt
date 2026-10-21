@@ -109,7 +109,7 @@ class CharsetPerfTest {
             val run = if (rows == GROWTH_N) ::runN else ::runFourN
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
                 repeat(NOISE_BATCH) { run() }
-            }.medianMs
+            }
         }
     }
 

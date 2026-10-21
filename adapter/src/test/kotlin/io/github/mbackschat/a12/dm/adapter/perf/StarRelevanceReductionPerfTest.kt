@@ -57,7 +57,7 @@ class StarRelevanceReductionPerfTest {
             val relevant = relevantSets.getValue(patterns)
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
                 DmInterpreter(model).validatePart(document, relevant)
-            }.medianMs
+            }
         }
 
         // A ratio over two unmeasurably small numbers passes whatever the reduction did. The antichain is built

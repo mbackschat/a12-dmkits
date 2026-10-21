@@ -88,7 +88,7 @@ class GroupStarExpansionPerfTest {
             clock = "cpu",
             unit = "rows",
             batch = NOISE_BATCH,
-        ) { PerfHarness.timeInterpreterCpu(scenario, it, warmup = 5, iters = 5, batch = NOISE_BATCH).medianMs }
+        ) { PerfHarness.timeInterpreterCpu(scenario, it, warmup = 5, iters = 5, batch = NOISE_BATCH) }
     }
 
     private companion object {

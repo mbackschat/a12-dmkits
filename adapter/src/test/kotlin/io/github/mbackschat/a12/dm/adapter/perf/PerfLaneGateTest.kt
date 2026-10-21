@@ -92,6 +92,6 @@ class PerfLaneGateTest {
             label = "a bar nobody put in a lane",
             small = 10,
             identityAt = { n -> PerfHarness.fingerprintedLabel("unlaned", "n=$n") },
-        ) { n -> n.toDouble() }.ratio
+        ) { n -> Stats(n.toDouble(), n.toDouble(), n.toDouble()) }.ratio
     }
 }

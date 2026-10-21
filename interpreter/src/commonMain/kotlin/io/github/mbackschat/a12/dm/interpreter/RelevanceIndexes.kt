@@ -5,7 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 /**
  * Relevant entities indexed by their coordinates, so the entities addressing one row are found along that row's own
  * branch and the wildcard's, instead of by a scan of every entity. A relevant set that names every row grows with the
- * document, and a scan per row then costs O(rows²) (IG172, `GrowingRelevancePartialPerfTest`).
+ * document, and a scan per row then costs O(rows²) (INTERPRETER-FINDINGS IF412, `GrowingRelevancePartialPerfTest`).
  *
  * An entity addresses a row's bound coordinates when every index it carries there is [RelevantEntity.ALL] or the
  * row's own; a level the entity does not carry agrees with any row. [addressing] keeps the entities' given order.

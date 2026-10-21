@@ -21,6 +21,32 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-21 — IG172's new lanes and memory arms found four quadratic paths, a retention the allocation counter could not see, and one shape A12 itself makes quadratic
+
+Darwin-aarch64, `-DIRTY` exploratory runs at `aee4eb841`…`97e3cec75`, each a single targeted `perfGateTest` invocation on a quiet machine; the anchored numbers are the gate runs that follow, not these.
+
+| path | before | after | what it was |
+|---|---|---|---|
+| per-row `NumberOfFilledFields` / `NumberOfFilledGroups` / fill quantifier over a star, 500 → 2000 rows | 13.3× / 14.9× / 15.1× growth (668 ms at 2000) | 1.4× / 3.8× / 3.3× (5 ms) | re-read per row ([IF411](INTERPRETER-FINDINGS.md#if411)) |
+| partial validation, relevant set naming every row, 1000 → 4000 | 15.6×, 9.7 s at 4000 | 10× after the first index, 3.5× after the second, 90 ms | a relevant-set scan per row, at two sites and three siblings ([IF412](INTERPRETER-FINDINGS.md#if412)) |
+| skewed filter walk, one line of N parts | the test JVM died at 2000; 67.6 ms at 1000 against Java's 48.6 ms | 11.2 ms at 2000 against Java's 90.8 ms and Groovy's 97.1 ms; allocation 2.0 → 8.0 MB over 500 → 2000 against the kernel's 38 → 341 MB | N² missing contexts kept per document ([IF413](INTERPRETER-FINDINGS.md#if413)) |
+| wide sibling groups, 50 → 200 groups at 20 rows, first-evaluation allocation | 21.8 → 304 MB, 13.99× | 4.2 → 16.3 MB, 3.91× | content and root instances rescanned per group ([IF414](INTERPRETER-FINDINGS.md#if414)) |
+
+**The retention was invisible to the steady allocation arm, which is why the memory bar has a second one.** Before the fix the skewed lane's timed evaluations allocated 1.4 MB at 500 rows: the walk's contexts were built once, by the first evaluation, and every later one read the cache. Restoring the materialized walk by mutant and reading the first evaluation instead gives 40.6 MB at 250 rows and 558 MB at 1000, a 13.76× step that the first-evaluation arm bars and that the mutant runner reported killed.
+
+**A12 is itself quadratic on one IG172 shape, and the interpreter stays ahead of it there.** A required correlated column holding one unavailable empty cell takes the nested tally ([KF552](KERNEL-FINDINGS.md#kf552)):
+
+| rows | interpreter | Groovy | Java |
+|---|---|---|---|
+| 250 | 15.9 ms | 29.1 ms | 21.8 ms |
+| 500 | 57.8 ms | 98.6 ms | 71.4 ms |
+| 1000 | 210.5 ms | 374.5 ms | 283.6 ms |
+| 2000 | 811.6 ms | 1450.9 ms | 1121.0 ms |
+
+Each doubling costs about 3.8× on all three engines, so the lane is held to the kernel's class (`RequiredColumnCorrelationPerfTest.oneUnavailableCellKeepsTheKernelsClass`) rather than to the sub-quadratic floor.
+
+**Linear on first measurement, so only anchored:** the joined-row aggregate (4.8×), the star-only join (3.4×), required-column correlation with every cell filled (3.8×), index-default staging (4.2×), the unavailable-empty walks (3.7×), keyed message tokens (4.0×) and `FirstFilledValue` (1.6×).
+
 ### Checkpoint 2026-10-13 — the correlated quantifiers' required-empty walk slowed multi-star correlation by a third
 
 After the charset fix two routine gates at `1b3456224` still breached `compute-overlay $-correlation` at n = 6000 (154.3 and 152.0 ms with 280 and 277 collections in the window, ceiling 151.89; records `2026-10-13T160401Z`, `2026-10-13T161924Z`). Measured alone, that lane matched the last clean commit `2293025d6` (135.5 against 133.3 ms), so its own work had not grown. Comparing every lane against `2026-10-12T124213Z` found `multi-star $-correlation` at n = 20000 up from 253.6 to 316.2 ms. That lane still passed its growth guard.

@@ -87,7 +87,7 @@ class CustomTypePerfTest {
         ) { n ->
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
                 repeat(BATCH) { run(docs.getValue(n)) }
-            }.medianMs
+            }
         }
     }
 

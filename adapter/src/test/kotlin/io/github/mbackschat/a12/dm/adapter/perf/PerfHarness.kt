@@ -331,8 +331,22 @@ private class CapturingDocumentSink(
     }
 }
 
-/** Wall-clock distribution (ms) of a timed operation — robust stats, not a single cold number. */
-data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
+/**
+ * The distribution (ms) of a timed operation — robust stats, not a single cold number — plus the median bytes one
+ * timed block allocated on the measuring thread, or `null` on a JVM that does not report thread allocation.
+ * Allocation is sampled outside the timed window, so reading it costs the timing nothing.
+ *
+ * [firstEvaluationBytes] is what a fresh instance's first evaluation allocated, where it builds every per-document
+ * cache, and so bounds what the instance can go on to retain: a timed block reuses those caches and cannot see them.
+ * `null` where the caller prepared its own instance.
+ */
+data class Stats(
+    val medianMs: Double,
+    val minMs: Double,
+    val p90Ms: Double,
+    val allocatedBytes: Long? = null,
+    val firstEvaluationBytes: Long? = null,
+)
 
 /**
  * What one instance's steady-state warm may spend, and when it decides the warm curve has flattened.
@@ -634,8 +648,16 @@ object PerfHarness {
      */
     fun measure(warmup: Int, iters: Int, block: () -> Unit): Stats {
         repeat(warmup) { block() }
-        val times = DoubleArray(iters) { val t = System.nanoTime(); block(); (System.nanoTime() - t) / 1e6 }
-        return stats(times)
+        val bytes = LongArray(iters)
+        val times = DoubleArray(iters) { i ->
+            val allocatedBefore = allocatedSoFar()
+            val t = System.nanoTime()
+            block()
+            val elapsed = System.nanoTime() - t
+            bytes[i] = allocatedSoFar() - allocatedBefore
+            elapsed / 1e6
+        }
+        return stats(times, bytes)
     }
 
     /**
@@ -650,16 +672,33 @@ object PerfHarness {
         require(bean.isCurrentThreadCpuTimeSupported) { "current-thread CPU time is unavailable on this JVM" }
         if (!bean.isThreadCpuTimeEnabled) bean.isThreadCpuTimeEnabled = true
         repeat(warmup) { block() }
-        val times = DoubleArray(iters) {
+        val bytes = LongArray(iters)
+        val times = DoubleArray(iters) { i ->
+            val allocatedBefore = allocatedSoFar()
             val start = bean.currentThreadCpuTime
             require(start >= 0L) { "current-thread CPU time is unavailable on this JVM" }
             block()
             val elapsed = bean.currentThreadCpuTime - start
+            bytes[i] = allocatedSoFar() - allocatedBefore
             require(elapsed > 0L) { "current-thread CPU observation must be positive, got ${elapsed}ns" }
             elapsed / 1e6
         }
-        return stats(times)
+        return stats(times, bytes)
     }
+
+    /**
+     * HotSpot's per-thread allocation counter, or `null` where the platform bean does not offer it. The interface is
+     * `com.sun.management`'s rather than `java.lang.management`'s, so the cast is the capability test.
+     */
+    private val allocationBean: com.sun.management.ThreadMXBean? =
+        (ManagementFactory.getThreadMXBean() as? com.sun.management.ThreadMXBean)
+            ?.takeIf { it.isThreadAllocatedMemorySupported }
+            ?.also { if (!it.isThreadAllocatedMemoryEnabled) it.isThreadAllocatedMemoryEnabled = true }
+
+    /** Bytes the current thread has allocated so far, or [NO_ALLOCATION_READING] without a counter. */
+    private fun allocatedSoFar(): Long = allocationBean?.currentThreadAllocatedBytes ?: NO_ALLOCATION_READING
+
+    private const val NO_ALLOCATION_READING = -1L
 
     /** Cap on the diagnostic document [preflight] materializes. Value-independent support is proved by the
      *  prepared-model audit; exact-N and per-variant outcome checks separately catch data-sensitive callback
@@ -769,16 +808,27 @@ object PerfHarness {
      * factor across N catches a reintroduced cold O(N²)); the repeated median rejects scheduler outliers without
      * cherry-picking the least-contended attempt.
      */
-    fun freshRunMedianMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double {
+    fun freshRunMedianMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double =
+        freshRun(scenario, n, repeats).medianMs
+
+    /** [freshRunMedianMillis] with the first call's allocation, for a growth lane that records it. */
+    fun freshRun(scenario: PerfScenario, n: Int, repeats: Int = 3): Stats {
         require(repeats > 0) { "repeats must be positive" }
         preflight(scenario, n)
         // The cost-capped preflight cannot prove a registered callback for data that appears only after its cap.
         // Use a separate exact-N instance so the timed attempts below remain genuine first calls.
         exactEligibleOutcome(scenario, n)
-        return median(DoubleArray(repeats) {
+        val bytes = LongArray(repeats)
+        val times = DoubleArray(repeats) { i ->
             val inst = InterpreterPerfEngine.build(scenario).instance(n)   // fresh engine + fresh doc (outside timing)
-            val t = System.nanoTime(); inst.run(); (System.nanoTime() - t) / 1e6
-        })
+            val allocatedBefore = allocatedSoFar()
+            val t = System.nanoTime()
+            inst.run()
+            val elapsed = System.nanoTime() - t
+            bytes[i] = allocatedSoFar() - allocatedBefore
+            elapsed / 1e6
+        }
+        return stats(times, bytes)
     }
 
     /**
@@ -905,6 +955,15 @@ object PerfHarness {
      * [identityAt] must produce a label that changes when the measured WORK changes (a scenario fingerprint, not a
      * prose name): the label is part of the anchor key, so a scenario whose content moves drops its anchor rather
      * than silently comparing new work against an old number.
+     *
+     * [measureAt] returns the [Stats] of one measurement. Memory is barred by the same [floor] as time, on two arms
+     * read from the thread allocation counter, which needs no collection and so no GC settling: the bytes a timed
+     * evaluation allocates, and the bytes a fresh instance's first evaluation allocates ([Stats.firstEvaluationBytes]),
+     * which bound what the instance retains because that run builds every cache a timed one then reuses. A
+     * per-document cache retaining N² entries showed nothing in the first arm and exhausted the heap (IF413,
+     * `SkewedFilterWalkPerfTest`). Neither arm is retried: the counter is exact, so a breach is the code's. Each
+     * endpoint's medians are recorded beside its timing; nothing anchors them, because a growth ratio needs no
+     * per-runner budget.
      */
     fun assertSubQuadraticLane(
         label: String,
@@ -917,7 +976,7 @@ object PerfHarness {
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         unit: String? = null,
         batch: Int = 1,
-        measureAt: (Int) -> Double,
+        measureAt: (Int) -> Stats,
     ): Growth {
         PerfLaneGate.requireMeasuringLane()
         require(batch >= 1) { "$label: batch must be at least 1" }
@@ -930,8 +989,16 @@ object PerfHarness {
         // iterations estimate the SAME quantity, a bigger batch is a different one.
         val identityForKey: (Int) -> String =
             if (batch == 1) identityAt else { n -> rebatchedLabel(identityAt(n), batch) }
+        val allocations = mutableMapOf<Int, MutableList<Long>>()
+        val firstEvaluations = mutableMapOf<Int, MutableList<Long>>()
+        val timedAt: (Int) -> Double = { n ->
+            measureAt(n).also { s ->
+                s.allocatedBytes?.let { allocations.getOrPut(n) { mutableListOf() } += it }
+                s.firstEvaluationBytes?.let { firstEvaluations.getOrPut(n) { mutableListOf() } += it }
+            }.medianMs
+        }
         val accepted = assertGrowthBelowCatastropheFloor(label, culprit, floor) {
-            pairedGrowth(small, large, measureAt = measureAt).also { g ->
+            pairedGrowth(small, large, measureAt = timedAt).also { g ->
                 if (unit != null) {
                     println(
                         "[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
@@ -941,8 +1008,56 @@ object PerfHarness {
                 }
             }
         }
-        anchorBothEndpoints(label, identityForKey, clock, engine, accepted, small, large, measureAt)
+        val steady = allocations.mapValues { (_, bytes) -> median(bytes.toLongArray()) / batch }
+        val first = firstEvaluations.mapValues { (_, bytes) -> median(bytes.toLongArray()) }
+        if (unit != null) {
+            for ((arm, bytes) in listOf("steady" to steady, "first-evaluation" to first)) {
+                val atSmall = bytes[small] ?: continue
+                val atLarge = bytes[large] ?: continue
+                println("[perf] %s %s bytes: %d@%d → %d@%d  growth=%.2f×".format(Locale.ROOT, label, arm,
+                    atSmall, small, atLarge, large, atLarge.toDouble() / maxOf(1L, atSmall)))
+            }
+        }
+        for (scale in listOf(small, large)) {
+            val bytes = steady[scale] ?: continue
+            PerfObservations.recordAllocation(
+                ObservationKey(lane = label, identityLabel = identityForKey(scale), n = scale, engine = engine, clock = clock),
+                bytesPerEvaluation = bytes,
+                firstEvaluationBytes = first[scale],
+            )
+        }
+        val memoryBreaches = listOfNotNull(
+            memoryGrowthBreach(label, "allocated per evaluation", small, large, steady, floor),
+            memoryGrowthBreach(label, "allocated by a first evaluation, which bounds what it retains", small, large, first, floor),
+        ).map { breach -> AssertionError(if (culprit == null) breach else "$breach. Likely cause: $culprit.") }
+        try {
+            anchorBothEndpoints(label, identityForKey, clock, engine, accepted, small, large, timedAt)
+        } catch (failure: Throwable) {
+            memoryBreaches.forEach(failure::addSuppressed)
+            throw failure
+        }
+        memoryBreaches.firstOrNull()?.let { breach -> memoryBreaches.drop(1).forEach(breach::addSuppressed); throw breach }
         return accepted
+    }
+
+    /**
+     * Why [bytes] breach a memory arm between [small] and [large], or null: the large endpoint may not exceed
+     * [floor] times the small one, unless it stays under [PerfBounds.MEMORY_NOISE_FLOOR_BYTES]. Null too when either
+     * endpoint has no reading, which is a JVM without an allocation counter or a caller that prepared its instance.
+     */
+    internal fun memoryGrowthBreach(
+        label: String,
+        arm: String,
+        small: Int,
+        large: Int,
+        bytes: Map<Int, Long>,
+        floor: Double,
+    ): String? {
+        val atSmall = bytes[small] ?: return null
+        val atLarge = bytes[large] ?: return null
+        if (atLarge <= PerfBounds.MEMORY_NOISE_FLOOR_BYTES || atLarge <= floor * atSmall) return null
+        return "%s: bytes %s grew %.2f× from N=%d to N=%d (%d → %d), above the %.1f× floor (linear ≈ 4, quadratic ≈ 16)"
+            .format(Locale.ROOT, label, arm, atLarge.toDouble() / maxOf(1L, atSmall), small, large, atSmall, atLarge, floor)
     }
 
     /**
@@ -1546,8 +1661,8 @@ object PerfHarness {
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int, batch: Int = 1): Stats {
-        val inst = preparedInterpreterInstance(scenario, n)
-        return measure(warmup, iters) { repeat(batch) { inst.run() } }
+        val (inst, firstEvaluation) = preparedInterpreterInstance(scenario, n)
+        return measure(warmup, iters) { repeat(batch) { inst.run() } }.copy(firstEvaluationBytes = firstEvaluation)
     }
 
     /**
@@ -1564,25 +1679,28 @@ object PerfHarness {
      * a batch changes what one observation means.
      */
     fun timeInterpreterCpu(scenario: PerfScenario, n: Int, warmup: Int, iters: Int, batch: Int = 1): Stats {
-        val inst = preparedInterpreterInstance(scenario, n)
-        return measureCurrentThreadCpu(warmup, iters) { repeat(batch) { inst.run() } }
+        val (inst, firstEvaluation) = preparedInterpreterInstance(scenario, n)
+        return measureCurrentThreadCpu(warmup, iters) { repeat(batch) { inst.run() } }.copy(firstEvaluationBytes = firstEvaluation)
     }
 
-    /** Preflight, build and prove eligibility, all outside any clock the callers above start. */
-    private fun preparedInterpreterInstance(scenario: PerfScenario, n: Int): RunInstance {
+    /** Preflight, build and prove eligibility, all outside any clock the callers above start; with the bytes the
+     *  instance's first evaluation allocated ([Stats.firstEvaluationBytes]), or null without an allocation counter. */
+    private fun preparedInterpreterInstance(scenario: PerfScenario, n: Int): Pair<RunInstance, Long?> {
         preflight(scenario, n)
         val engine = InterpreterPerfEngine.build(scenario)
         val inst = engine.instance(n)
         // Full outcome-bearing eligibility on the exact instance is outside the clock; it also primes the
         // profiling instance without projecting away `unsupported`.
+        val allocatedBefore = allocatedSoFar()
         val outcome = try {
             inst.outcome()
         } catch (e: UnsupportedConstructException) {
             throw IllegalStateException(
                 "${scenario.name} (N=$n, variant=0): refusing to time — ${e.message}", e)
         }
+        val firstEvaluation = if (allocationBean == null) null else allocatedSoFar() - allocatedBefore
         requireEligible(scenario, n, 0, outcome)
-        return inst
+        return inst to firstEvaluation
     }
 
     /** Median PER-EVAL ms over [timedLoops] loops (each evaluating every instance once) after [warmupLoops]. */
@@ -1596,10 +1714,11 @@ object PerfHarness {
         return stats(perEval)
     }
 
-    private fun stats(samples: DoubleArray): Stats {
+    private fun stats(samples: DoubleArray, allocated: LongArray? = null): Stats {
         samples.sort()
         val p90 = samples[minOf(samples.size - 1, (samples.size * 9) / 10)]
-        return Stats(samples[samples.size / 2], samples.first(), p90)
+        val bytes = allocated?.takeIf { allocationBean != null }?.let { median(it) }
+        return Stats(samples[samples.size / 2], samples.first(), p90, bytes)
     }
 
     internal fun assertSignaturesAgree(

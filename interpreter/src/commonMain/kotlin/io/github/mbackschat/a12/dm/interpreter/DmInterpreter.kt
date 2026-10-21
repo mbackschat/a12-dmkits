@@ -1503,7 +1503,7 @@ class DmInterpreter private constructor(
         }
         val cache = HashMap<String, HashMap<List<Int>, GroupRelevance>>()
         // Both questions are indexed, because a relevant set that names every row would otherwise be scanned once
-        // per group instance (IG172, `GrowingRelevancePartialPerfTest`). An entity TOUCHES a group when one path
+        // per group instance (IF412, `GrowingRelevancePartialPerfTest`). An entity TOUCHES a group when one path
         // is a prefix of the other and its indices agree on the levels both carry; it COVERS one when its own path
         // is the group's or an ancestor's and every index it carries agrees.
         val touching = HashMap<String, IndexTrie>()

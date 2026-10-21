@@ -58,7 +58,7 @@ class RelevanceQueryDepthPerfTest {
             val (interpreter, doc, relevant) = prepared.getValue(depth)
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
                 repeat(BATCH) { interpreter.validatePart(doc, relevant) }
-            }.medianMs
+            }
         }
 
         // A ratio over two unmeasurably small numbers passes no matter what the engine did. The correct query is

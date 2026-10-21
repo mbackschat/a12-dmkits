@@ -561,7 +561,7 @@ class Interpreter(
 
     /** An unfiltered star's tally reads only its scope's cells, each judged available by its own coordinates, so
      *  every row of one scope shares it, as [scopeMemo]'s aggregates do; a per-row rule otherwise re-walks the
-     *  whole scope once per row (IG172, `RowInvariantStarReaderPerfTest`). */
+     *  whole scope once per row (IF411, `RowInvariantStarReaderPerfTest`). */
     private fun memoizedFillScope(c: EvalContext, a: Expr.Star): FillScope {
         val memo = scopeMemo?.fillScopes ?: return plainFillScope(c, a, a.path)
         val isGroup = c.declaredKind(a.path) == null

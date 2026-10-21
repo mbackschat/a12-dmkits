@@ -14,6 +14,17 @@ internal object PerfBounds {
     const val GROWTH_PAIRS = 5          // IF137 paired estimator: interleaved N/4N pairs, median of within-pair ratios
     const val SUB_QUADRATIC_MAX = 9.0   // linear ≈ 4; a quadratic 4×-rows blowup is ≈ 16 — 9 is the trip line
 
+    /** How much the interpreter/kernel time ratio may worsen between a cross-engine lane's two scales
+     *  (`PerfHarness.assertCrossEngineClassHolds`). */
+    const val CROSS_ENGINE_CEILING = 2.5
+
+    /**
+     * Below this many bytes at the large scale a memory arm does not bar its growth: a lane allocating a few
+     * kilobytes is dominated by constant per-call costs, whose ratio says nothing about the rows. The bound is on the
+     * LARGE endpoint, so a quadratic that starts small still trips once it reaches a mebibyte.
+     */
+    const val MEMORY_NOISE_FLOOR_BYTES = 1L shl 20
+
     /**
      * **A deliberately CONSERVATIVE floor (owner, 2026-08-07), not a target: higher is always better.** The
      * entry-point guards ([KernelAdvantage]) trip below it. Measured headroom is never licence to regress

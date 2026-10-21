@@ -105,10 +105,12 @@ class OuterCorrelationPerfTest {
         return d
     }
 
-    private fun medianMs(def: ModelDef, n: Int, count: (Int) -> String): Double {
+    private fun medianMs(def: ModelDef, n: Int, count: (Int) -> String): Double = stats(def, n, count).medianMs
+
+    private fun stats(def: ModelDef, n: Int, count: (Int) -> String): Stats {
         val interp = DmInterpreter(def)
         val d = doc(def, n, count)
-        return PerfHarness.measure(warmup = 2, iters = 3) { interp.validateFull(d) }.medianMs
+        return PerfHarness.measure(warmup = 2, iters = 3) { interp.validateFull(d) }
     }
 
     private fun kernelMedianMs(engine: RuntimeLaws.KernelEngine, n: Int, count: (Int) -> String): Double {
@@ -130,7 +132,7 @@ class OuterCorrelationPerfTest {
             culprit = "the keyed correlation buckets falling back to a nested scan",
             clock = "wall",
             unit = "rows",
-        ) { medianMs(defEq, it, ::spread) }
+        ) { stats(defEq, it, ::spread) }
     }
 
     /**
@@ -173,7 +175,7 @@ class OuterCorrelationPerfTest {
             culprit = "the ordered-correlation tally falling back to a nested scan",
             clock = "wall",
             unit = "rows",
-        ) { medianMs(defGt, it, ::flat) }
+        ) { stats(defGt, it, ::flat) }
 
         // Informative oracle curve only: the kernel currently evaluates this arbitrary Having with its own scan.
         // The interpreter's success criterion is the sub-quadratic curve above, never "as slow as the kernel".

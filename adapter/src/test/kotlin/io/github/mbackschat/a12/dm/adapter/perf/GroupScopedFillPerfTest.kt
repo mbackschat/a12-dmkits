@@ -69,8 +69,10 @@ class GroupScopedFillPerfTest {
      * three-sample median cannot absorb. The deeper warmup also matters here because the first gate run after a
      * rebuild was systematically the slowest of the three.
      */
-    private fun medianMs(n: Int, batch: Int = 1): Double =
-        PerfHarness.timeInterpreter(scenario, n, warmup = 5, iters = 5, batch = batch).medianMs
+    private fun medianMs(n: Int, batch: Int = 1): Double = stats(n, batch).medianMs
+
+    private fun stats(n: Int, batch: Int = 1): Stats =
+        PerfHarness.timeInterpreter(scenario, n, warmup = 5, iters = 5, batch = batch)
 
     private fun kernelMedianMs(n: Int): Double {
         val instance = kernelEngine.instance(kDoc(n))
@@ -91,7 +93,7 @@ class GroupScopedFillPerfTest {
             clock = "wall",
             unit = "rows",
             batch = NOISE_BATCH,
-        ) { medianMs(it, NOISE_BATCH) }
+        ) { stats(it, NOISE_BATCH) }
     }
 
     @Test

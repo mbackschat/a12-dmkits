@@ -2155,7 +2155,7 @@ internal fun Interpreter.filteredRows(
     }
     val having = requireNotNull(star.having)
     if (occupied == null) return keptRowsWithSuccessorLookahead(rows, having, keeps)
-    // A walk widened by one wide sibling row then costs its occupied rows rather than its whole grid (IG172).
+    // A walk widened by one wide sibling row then costs its occupied rows rather than its whole grid (IF413).
     if (rows is FilterWalkView && occupied is OccupiedPrefixes) return keptRowsWithSuccessorLookahead(rows, having, keeps,
         resume = { from, kept -> rows.nextUnskipped(from, rows.coordinatesAt(kept), occupied) })
     return keptRowsWithSuccessorLookahead(rows, having, keeps, eligible = { previous, row ->

@@ -530,6 +530,27 @@ internal object PerfObservations {
         file.appendLine(costRecord(lane, scenario, wallMs))
 
     /**
+     * The bytes one evaluation allocated on the measuring thread at this lane's scale, and, where the harness built
+     * the instance, the bytes its first evaluation allocated (`PerfHarness.assertSubQuadraticLane`). Its own
+     * record kind, like [recordMargin], so `scripts/perf-anchor.sh`, which folds only `observation` records, never
+     * anchors it.
+     */
+    fun recordAllocation(key: ObservationKey, bytesPerEvaluation: Long, firstEvaluationBytes: Long?) =
+        file.appendLine(
+            buildMap {
+                put("kind", "allocation")
+                put("environment", PerfEnvironment.key)
+                put("key", key.text)
+                put("scenario", key.identityLabel)
+                put("lane", key.lane)
+                put("n", key.n)
+                put("engine", key.engine)
+                put("allocatedBytesPerEvaluation", bytesPerEvaluation)
+                firstEvaluationBytes?.let { put("firstEvaluationBytes", it) }
+            },
+        )
+
+    /**
      * One engine arm's cross-engine MARGIN and the committed floor it was held against ([IF292]). Its own
      * record kind rather than a field on `observation`, because a margin is not a measurement of one engine: it
      * joins two arms of the same row, so it has no `medianMs` and would have to null out half an observation's

@@ -45,7 +45,7 @@ class PatternPerfTest {
             clock = "wall",
             unit = "rows",
         ) { rows ->
-            PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3).medianMs
+            PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3)
         }
     }
 

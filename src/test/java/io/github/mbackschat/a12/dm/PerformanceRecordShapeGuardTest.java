@@ -117,7 +117,12 @@ class PerformanceRecordShapeGuardTest {
             List.of("systemCpuUtilisation", "processCpuUtilisation", "foreignCpuUtilisation");
 
     /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
-    private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost", "margin");
+    private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost", "margin", "allocation");
+
+    /** An allocation row's own shape: the bytes per evaluation a lane's memory arm read (`PerfHarness.assertSubQuadraticLane`). A harness-built
+     *  instance adds its first evaluation's bytes, which a caller-prepared one has no reading for. */
+    private static final List<String> REQUIRED_ALLOCATION_FIELDS =
+            List.of("environment", "key", "scenario", "lane", "n", "engine", "allocatedBytesPerEvaluation");
 
     /** A margin row's own shape: the cross-engine headroom and the verdict it was given (IF292). */
     private static final List<String> REQUIRED_MARGIN_FIELDS =
@@ -235,6 +240,11 @@ class PerformanceRecordShapeGuardTest {
                     }
                     warmKeys.add(joinKey(observation) + "  (" + where + ")");
                     warms++;
+                    continue;
+                }
+                if ("allocation".equals(kind)) {
+                    REQUIRED_ALLOCATION_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
+                            .forEach(field -> problems.add(where + ": allocation row lacks " + field));
                     continue;
                 }
                 if ("margin".equals(kind)) {
