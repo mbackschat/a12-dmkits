@@ -608,8 +608,8 @@ gradle.taskGraph.whenReady { graph ->
     }
     def head = git(['rev-parse', '--short', 'HEAD'])
     def status = git(['status', '--porcelain', '--', '.', ':(exclude)perf-results'])
-    if (head == null || status == null) return
-    def label = status.isEmpty() ? head : "${head}-DIRTY"
+    // Always set: the isolated lane refuses to record without it (PerfObservations.buildStartLabel).
+    def label = head == null ? 'unknown' : status == null ? "${head}-UNKNOWN-STATE" : status.isEmpty() ? head : "${head}-DIRTY"
     recording.each { it.systemProperty 'perf.build.source', label }
 }
 

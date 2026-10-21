@@ -76,6 +76,15 @@ class PerfObservationWriteTest {
         assertEquals("abdc13a", PerfObservations.measuredLabel(null, atHeader = "abdc13a"))
     }
 
+    /** The isolated lane refuses a missing build-start label; a broad run, which judges no anchor, may lack it. */
+    @Test
+    fun theIsolatedLaneRefusesToRecordWithoutTheBuildStartLabel() {
+        assertEquals("c223b0f", PerfObservations.buildStartLabel("c223b0f", isolatedLane = true))
+        assertEquals(null, PerfObservations.buildStartLabel(null, isolatedLane = false))
+        assertThrows(IllegalStateException::class.java) { PerfObservations.buildStartLabel(null, isolatedLane = true) }
+        assertThrows(IllegalStateException::class.java) { PerfObservations.buildStartLabel("", isolatedLane = true) }
+    }
+
     /** A directory that is not a repository cannot be labelled, and must not be labelled CLEAN. */
     @Test
     fun aTreeGitCannotReadIsUnknownRatherThanClean(@TempDir dir: File) {

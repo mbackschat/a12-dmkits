@@ -37,6 +37,17 @@ class PerfAllocationMeasurementTest {
         assertTrue(allocating >= MEBIBYTE, "a 1 MiB array per run reported $allocating bytes")
     }
 
+    /**
+     * A fresh run times first evaluations only, so it reads the first-evaluation arm and leaves the steady one empty;
+     * the cold-start lane once recorded first-call bytes as bytes per evaluation, and its first-evaluation arm read nothing.
+     */
+    @Test
+    fun aFreshRunReadsTheFirstEvaluationArmAlone() {
+        val stats = PerfHarness.freshRun(PerfCatalog.b1(), n = 20, repeats = 1)
+        assertTrue(stats.allocatedBytes == null, "a fresh run reported ${stats.allocatedBytes} steady bytes")
+        assertTrue((stats.firstEvaluationBytes ?: 0L) > 0L, "a fresh run reported no first-evaluation bytes")
+    }
+
     /** The memory arms bar growth above the floor, admit linear growth, and leave a lane under the noise floor alone. */
     @Test
     fun aMemoryArmBarsGrowthAboveTheFloorOnlyAboveTheNoiseFloor() {

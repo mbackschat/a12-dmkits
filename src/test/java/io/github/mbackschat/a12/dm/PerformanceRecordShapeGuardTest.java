@@ -119,10 +119,16 @@ class PerformanceRecordShapeGuardTest {
     /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
     private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost", "margin", "allocation");
 
-    /** An allocation row's own shape: the bytes per evaluation a lane's memory arm read (`PerfHarness.assertSubQuadraticLane`). A harness-built
-     *  instance adds its first evaluation's bytes, which a caller-prepared one has no reading for. */
+    /** An allocation row's own shape (`PerfHarness.assertSubQuadraticLane`), plus at least one of its two arms. */
     private static final List<String> REQUIRED_ALLOCATION_FIELDS =
-            List.of("environment", "key", "scenario", "lane", "n", "engine", "allocatedBytesPerEvaluation");
+            List.of("environment", "key", "scenario", "lane", "n", "engine");
+
+    /**
+     * The two memory arms: the bytes a timed evaluation allocated, and the bytes a fresh instance's first evaluation
+     * allocated. A warm lane reads the first and, where the harness built the instance, the second; a cold lane times
+     * first evaluations only, so it has the second alone.
+     */
+    private static final List<String> ALLOCATION_ARMS = List.of("allocatedBytesPerEvaluation", "firstEvaluationBytes");
 
     /** A margin row's own shape: the cross-engine headroom and the verdict it was given (IF292). */
     private static final List<String> REQUIRED_MARGIN_FIELDS =
@@ -245,6 +251,9 @@ class PerformanceRecordShapeGuardTest {
                 if ("allocation".equals(kind)) {
                     REQUIRED_ALLOCATION_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
                             .forEach(field -> problems.add(where + ": allocation row lacks " + field));
+                    if (ALLOCATION_ARMS.stream().allMatch(field -> observation.path(field).isMissingNode())) {
+                        problems.add(where + ": allocation row carries neither of " + ALLOCATION_ARMS);
+                    }
                     continue;
                 }
                 if ("margin".equals(kind)) {

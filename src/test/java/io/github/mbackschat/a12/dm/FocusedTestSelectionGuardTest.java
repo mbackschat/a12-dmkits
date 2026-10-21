@@ -78,6 +78,7 @@ class FocusedTestSelectionGuardTest {
                     apply plugin: 'java'
                     tasks.register('boundedGuard', Test) { filter.includeTestsMatching 'BoundedGuardTest' }
                     tasks.register('taggedLane', Test) { useJUnitPlatform { includeTags 'perf' } }
+                    tasks.register('excludingSuite', Test) { useJUnitPlatform { excludeTags 'perf' } }
                 }
                 apply from: '%s'
                 """.formatted(policy.toString().replace("\\", "\\\\").replace("'", "\\'")));
@@ -89,6 +90,10 @@ class FocusedTestSelectionGuardTest {
         Result relative = run(dir, ":test", "child:test", "--tests", "*Focused", "-Pfast", "--dry-run");
         assertNotEquals(0, relative.code(), relative::output);
         assertTrue(relative.output().contains(":test would run unfiltered"), relative::output);
+        // Excluding tags leaves a JUnit Platform suite unbounded, as `:adapter:test` is: only included tags bound it.
+        Result excluding = run(dir, ":excludingSuite", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run");
+        assertNotEquals(0, excluding.code(), excluding::output);
+        assertTrue(excluding.output().contains(":excludingSuite would run unfiltered"), excluding::output);
 
         for (String[] allowed : List.of(
                 new String[] {":test", "--tests", "*Focused", ":child:test", "--tests", "*Focused", "-Pfast", "--dry-run"},

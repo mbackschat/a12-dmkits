@@ -411,8 +411,23 @@ internal object PerfObservations {
      * has marked exactly this since it was written, and the record did not, so an uncommitted change could be
      * compared against its own baseline without anything saying so.
      */
-    internal fun headCommit(): String =
-        measuredLabel(System.getProperty(BUILD_SOURCE_PROPERTY), headCommitIn(File(".")))
+    internal fun headCommit(): String = measuredLabel(
+        buildStartLabel(System.getProperty(BUILD_SOURCE_PROPERTY), System.getProperty(PerfAnchors.LANE_PROPERTY) == "true"),
+        headCommitIn(File(".")),
+    )
+
+    /**
+     * The build-start label, which the isolated lane must have received. `adapter/build.gradle` hands it to every
+     * recording task, so its absence there means the wiring broke, and the header would silently fall back to the
+     * reading this property exists to replace. A broad `-PrunPerf` run judges no anchor and may go without it.
+     */
+    internal fun buildStartLabel(property: String?, isolatedLane: Boolean): String? {
+        check(!isolatedLane || !property.isNullOrEmpty()) {
+            "the isolated performance lane received no -D$BUILD_SOURCE_PROPERTY, so this record could name a tree " +
+                "it did not measure; adapter/build.gradle sets it on every recording task when the task graph is ready"
+        }
+        return property
+    }
 
     /**
      * The tree state Gradle saw when its task graph was ready, before any compile task ran: `<head>` or
@@ -554,11 +569,11 @@ internal object PerfObservations {
 
     /**
      * The bytes one evaluation allocated on the measuring thread at this lane's scale, and, where the harness built
-     * the instance, the bytes its first evaluation allocated (`PerfHarness.assertSubQuadraticLane`). Its own
-     * record kind, like [recordMargin], so `scripts/perf-anchor.sh`, which folds only `observation` records, never
-     * anchors it.
+     * the instance, the bytes its first evaluation allocated (`PerfHarness.assertSubQuadraticLane`). A cold lane
+     * times first evaluations alone, so it has only the second. Its own record kind, like [recordMargin], so
+     * `scripts/perf-anchor.sh`, which folds only `observation` records, never anchors it.
      */
-    fun recordAllocation(key: ObservationKey, bytesPerEvaluation: Long, firstEvaluationBytes: Long?) =
+    fun recordAllocation(key: ObservationKey, bytesPerEvaluation: Long?, firstEvaluationBytes: Long?) =
         file.appendLine(
             buildMap {
                 put("kind", "allocation")
@@ -568,7 +583,7 @@ internal object PerfObservations {
                 put("lane", key.lane)
                 put("n", key.n)
                 put("engine", key.engine)
-                put("allocatedBytesPerEvaluation", bytesPerEvaluation)
+                bytesPerEvaluation?.let { put("allocatedBytesPerEvaluation", it) }
                 firstEvaluationBytes?.let { put("firstEvaluationBytes", it) }
             },
         )

@@ -811,7 +811,11 @@ object PerfHarness {
     fun freshRunMedianMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double =
         freshRun(scenario, n, repeats).medianMs
 
-    /** [freshRunMedianMillis] with the first call's allocation, for a growth lane that records it. */
+    /**
+     * [freshRunMedianMillis] with the first call's allocation, for a growth lane that records it. Every timed call
+     * here is a fresh instance's first evaluation, so its bytes are [Stats.firstEvaluationBytes]; there is no steady
+     * evaluation to read [Stats.allocatedBytes] from.
+     */
     fun freshRun(scenario: PerfScenario, n: Int, repeats: Int = 3): Stats {
         require(repeats > 0) { "repeats must be positive" }
         preflight(scenario, n)
@@ -828,7 +832,7 @@ object PerfHarness {
             bytes[i] = allocatedSoFar() - allocatedBefore
             elapsed / 1e6
         }
-        return stats(times, bytes)
+        return stats(times).copy(firstEvaluationBytes = if (allocationBean == null) null else median(bytes))
     }
 
     /**
@@ -961,7 +965,10 @@ object PerfHarness {
      * evaluation allocates, and the bytes a fresh instance's first evaluation allocates ([Stats.firstEvaluationBytes]),
      * which bound what the instance retains because that run builds every cache a timed one then reuses. A
      * per-document cache retaining N² entries showed nothing in the first arm and exhausted the heap (IF413,
-     * `SkewedFilterWalkPerfTest`). Neither arm is retried: the counter is exact, so a breach is the code's. Each
+     * `SkewedFilterWalkPerfTest`). Neither arm is retried. The counter is exact, but what it counts moves with JIT
+     * history: twelve fresh runs of `PerfCatalog.b1` at n = 400 in one JVM read 2 084 080 bytes first and settled at
+     * 1 860 144 (−10.7 %), while the warmed steady reading held at 655 816 within 1.3 % (OpenJDK 21, 2026-10-21). A
+     * shift of that size cannot carry a linear lane's 4× past the floor, so a breach is still the code's. Each
      * endpoint's medians are recorded beside its timing; nothing anchors them, because a growth ratio needs no
      * per-runner budget.
      */
@@ -1019,10 +1026,10 @@ object PerfHarness {
             }
         }
         for (scale in listOf(small, large)) {
-            val bytes = steady[scale] ?: continue
+            if (steady[scale] == null && first[scale] == null) continue
             PerfObservations.recordAllocation(
                 ObservationKey(lane = label, identityLabel = identityForKey(scale), n = scale, engine = engine, clock = clock),
-                bytesPerEvaluation = bytes,
+                bytesPerEvaluation = steady[scale],
                 firstEvaluationBytes = first[scale],
             )
         }
