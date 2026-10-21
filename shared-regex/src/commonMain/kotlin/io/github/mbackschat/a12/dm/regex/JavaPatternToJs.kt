@@ -536,7 +536,7 @@ internal object JavaPatternToJs {
                     i++
                     continue
                 }
-                val positive = if (raw[i + 1] in "SDWHV") predefinedClass(raw[i + 1].lowercaseChar(), flags) else null
+                val positive = if (raw[i + 1] in "SDWHV") predefinedClass(raw[i + 1] + ('a' - 'A'), flags) else null
                 if (positive != null) {
                     if (i > start) members += "[${classBody(raw.substring(start, i), flags, followedBySet = true)}]"
                     members += "[^$positive]"
@@ -687,12 +687,13 @@ internal object JavaPatternToJs {
         }
 
         private fun appendLiteral(out: StringBuilder, c: Char, flags: Flags, inClass: Boolean = false) {
+            // Java's CASE_INSENSITIVE folds ASCII letters only, so the other case is a fixed offset away.
             if (flags.caseInsensitive && c in 'a'..'z') {
-                if (inClass) out.append(c).append(c.uppercaseChar())
-                else out.append('[').append(c).append(c.uppercaseChar()).append(']')
+                if (inClass) out.append(c).append(c - ('a' - 'A'))
+                else out.append('[').append(c).append(c - ('a' - 'A')).append(']')
             } else if (flags.caseInsensitive && c in 'A'..'Z') {
-                if (inClass) out.append(c.lowercaseChar()).append(c)
-                else out.append('[').append(c.lowercaseChar()).append(c).append(']')
+                if (inClass) out.append(c + ('a' - 'A')).append(c)
+                else out.append('[').append(c + ('a' - 'A')).append(c).append(']')
             } else {
                 if (inClass) out.append(classLiteral(c)) else out.append(c)
             }

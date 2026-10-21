@@ -84,4 +84,4 @@ internal fun String.carriesAnOffendingCharacter(): Boolean = characterRefusal() 
 private fun Char.isA12LineBreak(): Boolean = code == 0x0A || code == 0x0D || code == 0x2028 || code == 0x2029
 
 /** A code point as `U+` spells it: upper-case hex, at least four digits. */
-internal fun Int.hex(): String = toString(16).uppercase().padStart(4, '0')
+internal fun Int.hex(): String = toString(16).asciiUppercase().padStart(4, '0')

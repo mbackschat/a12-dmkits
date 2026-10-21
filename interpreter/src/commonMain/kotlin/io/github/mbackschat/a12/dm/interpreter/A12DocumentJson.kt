@@ -709,7 +709,7 @@ private data class InvalidDocumentIdDiagnostic(
 ) : DocumentInputDiagnostic {
     override val reasonCode = DocumentInputReasonCode.INVALID_DOCUMENT_ID
     override val message =
-        "the root '${A12DocumentJson.DOCUMENT_ID_KEY}' carries ${nodeType.name.lowercase()}; it must be a string"
+        "the root '${A12DocumentJson.DOCUMENT_ID_KEY}' carries ${nodeType.name.asciiLowercase()}; it must be a string"
 }
 
 private data class ResourceLimitExceededDiagnostic(
@@ -720,5 +720,5 @@ private data class ResourceLimitExceededDiagnostic(
 ) : DocumentInputDiagnostic {
     override val reasonCode = DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED
     override val message =
-        "Document decoding exceeded ${resource.name.lowercase()} limit $maximum (actual $actual)"
+        "Document decoding exceeded ${resource.name.asciiLowercase()} limit $maximum (actual $actual)"
 }

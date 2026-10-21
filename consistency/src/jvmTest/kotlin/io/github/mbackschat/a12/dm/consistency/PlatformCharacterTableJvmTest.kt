@@ -41,10 +41,12 @@ class PlatformCharacterTableJvmTest {
     fun theScanCatchesEveryClassifierSpelling() {
         val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.ifBlank { x }",
             "s.trim()", "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x", "s.toIntOrNull()",
-            "s.toLongOrNull()", "a.equals(b, ignoreCase = true)")
+            "s.toLongOrNull()", "a.equals(b, ignoreCase = true)", "p.doubleOrNull", "p.floatOrNull", "s.lowercase()",
+            "s.uppercase()", "c.lowercaseChar()", "c.uppercaseChar()", "a.equals(b, true)", "s.startsWith(\"x\", true)",
+            "s.endsWith(p, true)", "Regex(p, RegexOption.IGNORE_CASE)")
         val missed = planted.filterNot { CLASSIFIER.containsMatchIn(it) }
         assertEquals(emptyList(), missed)
-        assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "s.isA12Blank()", "s.javaTrimmed()").filter { CLASSIFIER.containsMatchIn(it) })
+        assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "s.isA12Blank()", "s.javaTrimmed()", "a.equals(b)", "s.startsWith(\"x\")").filter { CLASSIFIER.containsMatchIn(it) })
     }
 
     private companion object {
@@ -55,6 +57,8 @@ class PlatformCharacterTableJvmTest {
                 """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace)\(\)""" +
                 """|\.(isBlank|isNotBlank|isNullOrBlank)\(|\.ifBlank\b|\.(trim|trimStart|trimEnd)\(\)""" +
                 """|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""" +
+                """|\.(doubleOrNull|floatOrNull)\b|\.(lowercase|uppercase|lowercaseChar|uppercaseChar|titlecase|titlecaseChar)\(\)""" +
+                """|\.(equals|startsWith|endsWith|contains|compareTo|regionMatches)\([^()]*,\s*true\s*\)|RegexOption\.IGNORE_CASE""" +
                 """|\.(toIntOrNull|toLongOrNull|toDoubleOrNull|toFloatOrNull|toShortOrNull|toByteOrNull)\(|ignoreCase\s*=\s*true""",
         )
     }

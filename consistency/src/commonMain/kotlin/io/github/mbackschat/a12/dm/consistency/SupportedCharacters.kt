@@ -151,4 +151,4 @@ private fun TrackedDeclaration.offendersIn(value: String, admitted: List<CharRan
 
 /** A unit as a finding names it: a surrogate half has no glyph of its own, so it is named by its code. */
 private fun Char.described(): String =
-    if (isSurrogate()) "the surrogate half U+${code.toString(16).uppercase().padStart(4, '0')}" else "`$this`"
+    if (isSurrogate()) "the surrogate half U+${code.toString(16).asciiUppercase().padStart(4, '0')}" else "`$this`"

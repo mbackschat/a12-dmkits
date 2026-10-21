@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG145 — an unbindable `baseYear` or NumberType bound reads as buildable.** Input: `content.modelInfo.baseYear` of `2147483647.5`, or a NumberType `minValue` of 1001 digits or `"1e9999999999"`. A12 measured: no model (`ModelTextReadingDiffTest`, KF591, KF593). The checker states nothing, an under-report. Missing structure: `PreparedModel` carries only unbindable Booleans, and widening that published member's meaning would mislabel it; the fix is an additive member the declaration-slot family reports as `CK_MODEL_NOT_BUILDABLE`.
+- **DG145 — an unbindable `baseYear` reads as buildable.** Input: `content.modelInfo.baseYear` of `2147483647.5`, `"NULL"` or `{}`. A12 measured: no model (`ModelTextReadingDiffTest`, KF591, KF593). The checker states nothing, an under-report. Missing structure: the base year lives outside every declaration, and the published `PreparedModel` carries only unbindable Booleans, so widening that member's meaning would mislabel it; the fix is an additive `PreparedModel` member the declaration-slot family reports as `CK_MODEL_NOT_BUILDABLE`, which changes the published ABI.
 
 ## 2. Out of scope
 

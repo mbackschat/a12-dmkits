@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
+import io.github.mbackschat.a12.dm.consistency.asciiLowercase
+
 /** Recognition outcomes distinguish a required terminal from an unresolved choice (KF493). */
 enum class SyntaxFailureKind { MATCH, DECISION, LEXICAL }
 
@@ -169,7 +171,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             comments()
             val part = conditionPart()
             // SPEC-2026-10-11-01: positive presence needs one AND arm, but every OR arm.
-            proof = when (current.text.lowercase()) {
+            proof = when (current.text.asciiLowercase()) {
                 "and", "und" -> proof || part
                 else -> proof && part
             }

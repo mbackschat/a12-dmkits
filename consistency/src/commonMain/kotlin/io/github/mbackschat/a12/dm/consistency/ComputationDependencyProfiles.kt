@@ -67,12 +67,12 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
                     ")", "]", "}" -> depth--
                 }
                 if (depth == 0 && token.kind == TokenKind.NAME && token.text in
-                    CONDITION_KEYWORDS.getValue(facts.conditionLanguage) && token.text.lowercase() in setOf("and", "und", "or", "oder")) splits += i
+                    CONDITION_KEYWORDS.getValue(facts.conditionLanguage) && token.text.asciiLowercase() in setOf("and", "und", "or", "oder")) splits += i
             }
             if (splits.isNotEmpty()) {
                 val boundaries = listOf(start - 1) + splits + end
                 val parts = boundaries.zipWithNext { left, right -> walk(left + 1, right) }
-                return if (tokens[splits.first()].text.lowercase() in setOf("or", "oder"))
+                return if (tokens[splits.first()].text.asciiLowercase() in setOf("or", "oder"))
                     parts.reduce { left, right -> left intersect right } else parts.flatten().toSet()
             }
             if (tokens[start].text == "(" && tokens[end - 1].text == ")") return walk(start + 1, end - 1)

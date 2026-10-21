@@ -801,8 +801,8 @@ data class ModelDef(
 
     /**
      * The text a rule message's `$field.value$` renders for an ENUMERATION cell holding [storedValue]: the
-     * declared label for [locale] whenever there is one, a no-break space included, else the stored token itself.
-     * A12 asks only whether the label exists; a Java-blank one is refused at admission. Null when the
+     * declared label for [locale] whenever there is one, a no-break space included, else the stored token itself
+     * (`ModelTextReadingDiffTest`); a Java-blank label is refused at admission. Null when the
      * field is not an enumeration, so a caller falls back to the ordinary display value ([KF198]).
      */
     internal fun enumValueTextOf(path: String, storedValue: String, locale: String): String? {

@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.predicates.numberBoundsInverted
 import io.github.mbackschat.a12.dm.predicates.printedNumberBoundDefects
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
@@ -36,6 +35,7 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
+        unbindableBoundFindings(field, body).takeIf { it.isNotEmpty() }?.let { return@flatMap it }
         val digits = DigitCounts.of(body)
         memberRangeFindings(field, body.lengthMembers(admitsUndefined = false) + digits.ranged) +
             digitPairFindings(field, digits) + valueRangeFindings(field, body) + budgetFindings(field, body, digits)
@@ -356,7 +356,22 @@ private fun JsonObject.int(member: String): Int? = (this[member] as? JsonPrimiti
  * losing it can only make two distinguishable bounds compare EQUAL — the admitted side of the law — so it
  * under-reports rather than refusing a model A12 takes.
  */
-private fun JsonObject.number(member: String): Double? = (this[member] as? JsonPrimitive)?.doubleOrNull
+private fun JsonObject.number(member: String): Double? = (this[member] as? JsonPrimitive)?.a12DecimalOrNull()
+
+/**
+ * A bound whose text A12's reader cannot bind ([A12DecimalBinding]) leaves no model, so no verdict about this field
+ * exists and none of its other laws is stated.
+ */
+private fun unbindableBoundFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> =
+    listOf("minValue", "maxValue").filter { (body[it] as? JsonPrimitive)?.bindA12Decimal() == A12DecimalBinding.Unbindable }
+        .map { member ->
+            finding(
+                field,
+                CK_MODEL_NOT_BUILDABLE,
+                "`$member` holds ${body[member]}, which A12's reader cannot bind as a decimal — the source is refused " +
+                    "before any check runs, so no verdict about this model exists",
+            )
+        }
 
 private fun finding(field: TrackedDeclaration, code: String, explain: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, field.path)

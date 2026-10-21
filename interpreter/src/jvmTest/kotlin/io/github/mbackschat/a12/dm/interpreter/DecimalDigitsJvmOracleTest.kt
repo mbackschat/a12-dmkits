@@ -47,9 +47,11 @@ class DecimalDigitsJvmOracleTest {
     fun theScanCatchesEveryClassifierSpelling() {
         val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.ifBlank { x }",
             "s.trim()", "s.trimEnd()", "map(String::trim)", "s.toIntOrNull()", "s.toLongOrNull()", "s.toDoubleOrNull()",
-            "a.equals(b, ignoreCase = true)")
+            "a.equals(b, ignoreCase = true)", "filter { !isWhitespace() }", "p.doubleOrNull", "p.floatOrNull", "s.lowercase()",
+            "s.uppercase()", "c.lowercaseChar()", "c.uppercaseChar()", "a.equals(b, true)", "s.startsWith(\"x\", true)",
+            "s.endsWith(p, true)", "Regex(p, RegexOption.IGNORE_CASE)")
         assertEquals(emptyList(), planted.filterNot { PLATFORM_TABLE.containsMatchIn(it) })
-        assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "n.toInt()", "s.isJavaBlank()").filter { PLATFORM_TABLE.containsMatchIn(it) })
+        assertEquals(emptyList(), listOf("s.trim { it <= ' ' }", "n.toInt()", "s.isJavaBlank()", "c.isJavaWhitespace()", "a.equals(b)", "s.startsWith(\"x\")").filter { PLATFORM_TABLE.containsMatchIn(it) })
     }
 
     private companion object {
@@ -58,11 +60,15 @@ class DecimalDigitsJvmOracleTest {
         /**
          * A platform classifier, a blank test or argument-free trim (Kotlin's whitespace includes the no-break spaces
          * Java's excludes), a string-to-number parse (Kotlin reads digits through its own table), or a case-folding
-         * comparison: each answers from the JVM's tables on one platform and Kotlin/JS's on the other.
+         * comparison or case mapping, positional or by option: each answers from the JVM's tables on one platform and
+         * Kotlin/JS's on the other. kotlinx's `doubleOrNull` and `floatOrNull` are platform parses of the content.
          */
         val PLATFORM_TABLE = Regex(
             """\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|digitToInt|digitToIntOrNull)\(\)|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace)\b""" +
                 """|\.(isBlank|isNotBlank|isNullOrBlank)\(|\.ifBlank\b|\.(trim|trimStart|trimEnd)\(\)|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""" +
+                """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace)\(\)""" +
+                """|\.(doubleOrNull|floatOrNull)\b|\.(lowercase|uppercase|lowercaseChar|uppercaseChar|titlecase|titlecaseChar)\(\)""" +
+                """|\.(equals|startsWith|endsWith|contains|compareTo|regionMatches)\([^()]*,\s*true\s*\)|RegexOption\.IGNORE_CASE""" +
                 """|\.(toIntOrNull|toLongOrNull|toDoubleOrNull|toFloatOrNull|toShortOrNull|toByteOrNull)\(|ignoreCase\s*=\s*true""",
         )
 

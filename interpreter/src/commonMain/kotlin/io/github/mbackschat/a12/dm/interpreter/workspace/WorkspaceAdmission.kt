@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
+import io.github.mbackschat.a12.dm.interpreter.asciiLowercase
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
@@ -109,9 +110,9 @@ internal data class ResourceLimitDiagnostic(
         resource == ModelPreparationResource.PREPARED_BYTES &&
         actual == maximum + 1
     ) {
-        "workspace preparation exceeded ${resource.name.lowercase()} limit $maximum (observed at least $actual)"
+        "workspace preparation exceeded ${resource.name.asciiLowercase()} limit $maximum (observed at least $actual)"
     } else {
-        "workspace preparation exceeded ${resource.name.lowercase()} limit $maximum (actual $actual)"
+        "workspace preparation exceeded ${resource.name.asciiLowercase()} limit $maximum (actual $actual)"
     }
 }
 

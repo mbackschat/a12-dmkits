@@ -25,5 +25,5 @@ private const val RESERVED_NAME_PREFIX = "vk_vk"
 fun isReservedElementName(name: String): Boolean =
     name.length <= 100 && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' } &&
         name.length >= RESERVED_NAME_PREFIX.length &&
-        // The conjunct above confines the name to ASCII, where every platform folds case alike.
-        RESERVED_NAME_PREFIX.indices.all { name[it].lowercaseChar() == RESERVED_NAME_PREFIX[it] }
+        // The conjunct above confines the name to ASCII, so the fold is a fixed offset.
+        RESERVED_NAME_PREFIX.indices.all { (if (name[it] in 'A'..'Z') name[it] + ('a' - 'A') else name[it]) == RESERVED_NAME_PREFIX[it] }

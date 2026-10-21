@@ -30,6 +30,11 @@ internal fun String.isUnicodeBlank(): Boolean = all { it.isJavaWhitespace() || i
 
 private const val NO_BREAK_SPACES = "\u00A0\u2007\u202F"
 
+/** Only ASCII letters change case, for our own identifiers (an enum's name) where Kotlin's `lowercase` reads tables. */
+internal fun String.asciiLowercase(): String = buildString(length) {
+    this@asciiLowercase.forEach { append(if (it in 'A'..'Z') it + ('a' - 'A') else it) }
+}
+
 /** Java's `String.trim`: every character up to U+0020 from both ends, and nothing else. */
 internal fun String.javaTrimmed(): String = trim { it <= ' ' }
 

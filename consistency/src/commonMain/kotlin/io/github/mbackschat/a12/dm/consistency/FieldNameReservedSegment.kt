@@ -55,5 +55,5 @@ private val A12_FIELD_IDENTIFIER = Regex("[a-zA-Z0-9_:]+([.][a-zA-Z][a-zA-Z0-9_:
  */
 private fun String.reservesItsFinalSegment(): Boolean {
     val matched = A12_FIELD_IDENTIFIER.matchEntire(this) ?: return false
-    return matched.groupValues[1].lowercase() == ".value"
+    return matched.groupValues[1].equalsIgnoringAsciiCase(".value")
 }

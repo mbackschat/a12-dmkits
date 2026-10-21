@@ -22,4 +22,11 @@ internal fun String.equalsIgnoringAsciiCase(other: String): Boolean =
 internal fun String.startsWithIgnoringAsciiCase(prefix: String): Boolean =
     length >= prefix.length && prefix.indices.all { this[it].asciiLower() == prefix[it].asciiLower() }
 
+/** Only ASCII letters change case, so every target answers alike where Kotlin's `lowercase` reads its own tables. */
+internal fun String.asciiLowercase(): String = buildString(length) { this@asciiLowercase.forEach { append(it.asciiLower()) } }
+
+/** [asciiLowercase]'s other direction. */
+internal fun String.asciiUppercase(): String =
+    buildString(length) { this@asciiUppercase.forEach { append(if (it in 'a'..'z') it - ('a' - 'A') else it) } }
+
 private fun Char.asciiLower(): Char = if (this in 'A'..'Z') this + ('a' - 'A') else this

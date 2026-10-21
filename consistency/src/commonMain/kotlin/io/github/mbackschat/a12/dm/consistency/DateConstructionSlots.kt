@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
@@ -519,8 +518,8 @@ private fun Slot.numberDefect(body: JsonObject, written: String): SlotDefect? {
     // shape, while the same field with neither the flag nor a minimum, and with `minValue: -1`, are both
     // genuinely refused (`TemporalComponentDeclarationLawsTest`).
     val nonNegative = body.flag("positivesOnly") == true ||
-        (body["minValue"] as? JsonPrimitive)?.doubleOrNull?.let { it >= 0 } == true
-    val maxValue = (body["maxValue"] as? JsonPrimitive)?.doubleOrNull
+        (body["minValue"] as? JsonPrimitive)?.a12DecimalOrNull()?.let { it >= 0 } == true
+    val maxValue = (body["maxValue"] as? JsonPrimitive)?.a12DecimalOrNull()
     val fits = !scaled && nonNegative &&
         (body.declaredInt("maxLength") == entity.maxLength || entity.acceptsDeclaredMaximum(maxValue))
     return if (fits) {

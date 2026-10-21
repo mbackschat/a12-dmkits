@@ -15,6 +15,14 @@ class JavaTextJvmTest {
         assertEquals(emptyList(), wrong.map { "U+%04X".format(it.code) })
     }
 
+    /** Our own classification is the JVM's `isBlank` per character, so Node classifies as the JVM does. */
+    @Test
+    fun unicodeBlankIsJavaWhitespaceOrASpaceCharOverEveryChar() {
+        val wrong = (0..0xFFFF).map(Int::toChar)
+            .filter { "$it".isUnicodeBlank() != (Character.isWhitespace(it) || Character.isSpaceChar(it)) }
+        assertEquals(emptyList(), wrong.map { "U+%04X".format(it.code) })
+    }
+
     @Test
     fun trimAndBlankAreJavas() {
         val texts = listOf("", " ", "\u00A0", " a ", "\u00A0a\u00A0", "\t\u2007\n", "\u3000", "\u001F x \u0000", "\u202F")

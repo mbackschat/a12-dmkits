@@ -790,7 +790,7 @@ class InterpreterIntegrationError private constructor(
     val phase: InterpreterIntegrationPhase,
     val reason: InterpreterIntegrationReason,
     cause: Throwable?,
-) : RuntimeException("interpreter integration failed during ${phase.name.lowercase()}: ${reason.name.lowercase()}", cause) {
+) : RuntimeException("interpreter integration failed during ${phase.name.asciiLowercase()}: ${reason.name.asciiLowercase()}", cause) {
     val code: String = "A12_INTERPRETER_INTEGRATION_FAILED"
 
     companion object {

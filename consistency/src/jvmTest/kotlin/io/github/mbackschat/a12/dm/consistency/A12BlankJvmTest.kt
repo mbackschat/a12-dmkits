@@ -21,6 +21,15 @@ class A12BlankJvmTest {
         assertEquals(emptyList(), disagreeing, "chars where the spelled-out set and Character.isWhitespace differ")
     }
 
+    /** Our own classification is the JVM's `isBlank` per character, so Node classifies as the JVM does. */
+    @Test
+    fun unicodeBlankIsJavaWhitespaceOrASpaceChar() {
+        val disagreeing = (Char.MIN_VALUE..Char.MAX_VALUE)
+            .filter { "$it".isUnicodeBlank() != (Character.isWhitespace(it) || Character.isSpaceChar(it)) }
+            .map { "U+" + it.code.toString(16).uppercase().padStart(4, '0') }
+        assertEquals(emptyList(), disagreeing)
+    }
+
     @Test
     fun theTrimIsTheJdksOwn() {
         // Kotlin's own `trim()` is the Unicode-whitespace trim, so the JDK method is asked for by name.
