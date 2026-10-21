@@ -50,7 +50,9 @@ class RepeatabilityTextReadingDiffTest {
 
     private fun model(value: Any): String {
         val root = MAPPER.readTree(DocumentModelDraft.named("claims").locale("en_US")
-            .rootGroup("Register") { r -> r.group("Claims") { c -> c.repeatable(5).numberField("Amount") { it.fractionDigits(0) } } }
+            .rootGroup("Register") { r ->
+                r.group("Claims") { c -> c.repeatable(5).numberField("Amount") { it.fractionDigits(0) } }.numberField("Total") { it.fractionDigits(0) }
+            }
             .build().toJson()) as ObjectNode
         val claims = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group").path("elements")
             .first { it.path("name").asText() == "Claims" }.path("Group") as ObjectNode
@@ -104,6 +106,24 @@ class RepeatabilityTextReadingDiffTest {
             val overRepetition = DocumentDifferential.kernel(json, fourRows, dynamic = true).messages.isNotEmpty()
             assertEquals(label !in setOf("1e1", "1.0E9"), overRepetition, "$label: four rows exceed a count of 3 and fit 10")
         }
+    }
+
+    /**
+     * The checker reads the same count when it judges a star: every built count above one makes `Claims*` a legal
+     * wildcard, so neither A12 nor the checker states `MVK_INVALID_WILDCARD` for `3.7`, `"\u0663"` or `"\uFF13"`.
+     */
+    @Test
+    fun aStarOverEveryBuiltCountIsAWildcardOnBothSides() {
+        val wildcard = "MVK_INVALID_WILDCARD"
+        fun observe(value: Any): String {
+            val json = RuntimeLaws.withRule(model(value), "/Register", "RS", "../Total", "SR", "AtLeastOneFieldFilled(Claims*/Amount)")
+            val a12 = RuntimeLaws.consistencyMessages(json).any { wildcard in it }
+            val checker = check(ModelSource(json)).findings.any { it.code == wildcard }
+            return "A12 $a12, checker $checker"
+        }
+        val observed = values.filterValues { it.second == A12.BUILT }.mapValues { (_, row) -> observe(row.first) }
+        assertEquals(observed.mapValues { "A12 false, checker false" }, observed)
+        assertEquals("A12 true, checker true", observe(1), "a count of 1 is the control that the class fires")
     }
 
     private companion object {
