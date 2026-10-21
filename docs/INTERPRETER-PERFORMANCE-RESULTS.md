@@ -21,6 +21,24 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-22 — 36 darwin anchors lowered after the day's optimizations; the lanes reading above their anchors are not the day's code
+
+Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, three full `perfGateTest` runs in the canonical order at `3b5794325`, uncontended, all green: `2026-10-21T221550Z`, `222237Z` and `222947Z`. They carry `-DIRTY` because two untracked files outside every source set sat in the tree. Every key whose three-run median fell to 0.95 of its anchor or below was lowered to that median, 36 of the 90; the remaining keys are unchanged. Among the largest moves are relevance depth at n = 24, from 27.8 to 13.15 ms, `$` equality correlation at n = 1600, from 3.65 to 1.79 ms, and FieldValuesNotUnique at n = 20000, from 102.73 to 70.84 ms. Each lowered key's slowest reading in the three runs sits at 0.81 of its new ceiling or less.
+
+The compute-overlay `$`-correlation lane read 118.7 to 129.4 ms at n = 6000 in these gates, against 112 to 114 ms alone (the checkpoint below), so its 94.6 ms anchor stays where it is ([IF422](INTERPRETER-FINDINGS.md#if422)).
+
+Berlin DATE_TIME, Berlin historical AddDays, framed parallel iteration and both charset lanes read 1.2 to 1.5 times their anchors in the gate. Each was run on its own, interleaved, with the interpreter source of `38dbea615` (before the day's interpreter commits) and of `3b5794325`, and every record was deleted afterwards. The table gives CPU medians at the larger scale:
+
+| lane | `38dbea615` | `3b5794325` |
+|---|---|---|
+| Berlin DATE_TIME, n = 20000 | 112.3, 110.4 ms | 106.8, 107.6 ms |
+| Berlin historical AddDays, n = 4000 | 77.3, 77.4 ms | 78.1, 75.9 ms |
+| framed parallel iteration, n = 20000 | 140.1, 134.6 ms | 132.2, 131.8 ms |
+| charset grapheme, n = 32000 | 59.5 ms | 60.6 ms |
+| charset BMP, n = 32000 | 37.1 ms | 36.7 ms |
+
+The charset rows have one pair each, because the later rounds found the task up to date. The day's commits leave these lanes where they were, so their anchors are left as they are. What moved them since the anchors were taken is not measured here.
+
 ### Checkpoint 2026-10-21 — the compute-overlay `$`-correlation lane's per-row cost, cut at its profile
 
 Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to `computeOverlayCorrelationStaysSubQuadratic` (the lane alone), at `0267314b8` and at that commit plus the change, uncommitted; every record was deleted afterwards. The full gate in the canonical order had read 158.8 to 161.1 ms at n = 6000 against a 157.09 ms ceiling ([IF422](INTERPRETER-FINDINGS.md#if422)).
