@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG144 — the field-name sentence for a group's `indexFieldName`** (found 2026-10-21, batch P1). A repeatable group indexed by a field whose name carries a no-break space draws A12's codeless field-name alphabet sentence twice, and the checker states it once (`CheckerComputedPathLexerAgreementTest`, the index row that leaves the sentence out). The second sentence is presumably for the `indexFieldName` member, which names the field again. It under-reports a model A12 refuses. Settles with the sentence measured on `indexFieldName` and `sortFields[].name` across the KF580 characters, then one agreement row per member.
+_None open._
 
 ## 2. Out of scope
 

@@ -14123,7 +14123,7 @@ Measured with whole-model `checkConsistency` on `/Order/Bin` holding `Slot` and 
 
 A rule's `errorEntityRelPath` is not lexed. A rule at `/Order` reporting on the group `B`+U+00A0+`in`, which its condition `FieldFilled(Slot)` never names, draws the group's own classes and no lexer class. So the gate is the computed target's alone, and it is the first gate of that target: it withholds the index gate, the dotted-path gate and the operation's refusal. The characters are exactly those `Base_ConditionLexer.g4` has no terminal for ([KF309](#kf309)).
 
-*Locked by:* `adapter.laws.CheckerComputedPathLexerAgreementTest`, A12 against the portable checker class by class with multiplicity. The checker states the class from the computed-target family ahead of its index and dot gates. The indexed row's second field-name sentence is not yet stated by the checker ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG144).
+*Locked by:* `adapter.laws.CheckerComputedPathLexerAgreementTest`, A12 against the portable checker class by class with multiplicity. The checker states the class from the computed-target family ahead of its index and dot gates. The indexed row's second field-name sentence is the index member's own ([KF589](#kf589)).
 
 ## §6 supplement — a date constant's digits are ASCII, so another script's digit makes it a string (source-read + model check, 2026-10-21) <a id="kf587"></a>
 
@@ -14159,3 +14159,21 @@ A12 parses a stored date, a range endpoint and a date constant with a non-lenien
 **Arithmetic on a constant.** A pre-cutover constant is a Julian instant, so the skipped labels are no days. From `"04.10.1582"` to a stored 2024-01-01, `DifferenceInDays` is 161151 and `AddDays(…, 161151)` lands on it, where the proleptic count is 161161. `BaseYear` under a base year of 1500 is the Julian 1500-01-01, so `DifferenceInDays(BaseYear, Inception)` is 191378 rather than 191387. A stored value cannot show this, because every pre-cutover stored date is already a formal error. *(Mechanism, source-read: the parse yields a `java.util.Date` whose instant the arithmetic counts; the rows are what is measured.)*
 
 *Locked by:* `adapter.laws.StoredDateHybridCalendarDiffTest` (dynamic Groovy, generated Java and the interpreter, [IF425](INTERPRETER-FINDINGS.md#if425)) and `adapter.laws.CheckerHybridDateConstantAgreementTest` (A12 against the portable checker).
+
+## §13 supplement — a group's ordering member states the field-name sentence for the short name it keeps, ahead of its own codes (model check, 2026-10-21) <a id="kf589"></a>
+
+> Fold: pending — beside [KF580](#kf580)'s element-path sentences.
+
+A group's `indexFieldName` and `sortFields[].name` resolve positionally and keep only the landed field's short name (`GroupIndexAndSortReferenceLawsTest`). A12 judges that short name with the same pattern as a field's own name ([KF580](#kf580)), and a refused one draws the codeless field-name sentence once more, in place of both later gates: neither `MVK_INVALID_INDEX_FIELD` / `MVK_INVALID_SORT_FIELD` nor the `noValueValidation` code is stated. Measured with whole-model `checkConsistency` on a repeatable `/Order/Items` holding `Sku`, beside an `/Order`-level field. The member spelled as the bad name was measured over a no-break space, `-` and `.1`; the path, outside and `noValueValidation` rows over the no-break space:
+
+| the member, spelled | lands on | A12, beside the field's own classes |
+|---|---|---|
+| `Sku`, `../Items/Sku` | a good own field | nothing |
+| the bad name, or `../Items/` + it | the badly named own field | one more field-name sentence |
+| `../` + the bad name | a badly named field outside the group | one more field-name sentence, no `MVK_INVALID_…_FIELD` |
+| the bad name, the field a `noValueValidation` string | the badly named own field | one more field-name sentence, no `MVK_…_NO_VALUE_VALIDATION` |
+| a good field, the member a bad name or ` Sku` / `Sku ` | nothing | the model is not built |
+
+The spelling `../Items/Sku` is the discriminator: it would fail the pattern as written, and draws nothing, so the judged value is the kept short name rather than the member's text.
+
+*Locked by:* `adapter.laws.CheckerOrderingNameSentenceAgreementTest`, A12 against the portable checker class by class with multiplicity; `consistency.OrderingMemberFieldNameKf589Test` replays the checker's half on the JVM and Node.

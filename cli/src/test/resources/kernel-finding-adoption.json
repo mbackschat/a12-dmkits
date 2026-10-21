@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf589": {
+      "sha256": "1dc39d3596013197462b46bdcd47379e74aace825557c8609fecf61718edf21b",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["ordering member short name"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["ordering member short name"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["ordering member short name"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builder refuses these field names before an ordering member can name them.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The group-ordering family judges the short name a landed member keeps with the field-name pattern and states the sentence in place of the outside and type codes.", "evidence": {"ordering member short name": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/OrderingMemberFieldNameKf589Test.kt#aRefusedShortNameIsStatedOnceMoreForEachMember", "witness": "Own, path-spelled and outside landings each draw one more sentence on JVM and Node; a good path spelling draws nothing."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints fields through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 30 rows over both members, three refused characters, path spellings, an outside landing and a noValueValidation field.", "evidence": {"ordering member short name": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOrderingNameSentenceAgreementTest.kt#theCheckerStatesA12sSentencesForEachOrderingMember", "witness": "Every row's classes agree with their multiplicity."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf85": {
       "sha256": "76aa6b664281ffb453ef3f7d1023504dde33ebc78ac28674c02786ed5a19a342",
       "task": "F-USE-BACKLOG",
@@ -575,7 +599,7 @@
       }
     },
     "kf586": {
-      "sha256": "f6110b3f4f75965f13bb9ed012803698cfa376946fd9e81e50b400952c9f4473",
+      "sha256": "613ecfe8c15df11047e17bbb72d08a0b391847c0e8e7c18538afe4edd70bdd6e",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],

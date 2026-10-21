@@ -32,12 +32,9 @@ internal fun TrackedFactBase.elementPathSentenceFindings(element: TrackedDeclara
                 "digits and underscores, must begin with a letter or an underscore, and may not exceed " +
                 "$NAME_PART_LIMIT characters")
     }
-    val fieldFinding = element.name.takeIf { kind == DeclaredKind.FIELD && it.namedByA12() }
-        ?.javaTrimmed()?.takeIf { !FIELD_NAME.matches(it) }?.let {
-            element.sentenceFinding(RK_FIELD_NAME_ALPHABET,
-                "this field's name `$it` is not letters, digits, underscores and colons, in dot-separated parts that " +
-                    "each begin with a letter")
-        }
+    val fieldFinding = element.name.takeIf { kind == DeclaredKind.FIELD && it.refusedAsFieldName() }?.let {
+        element.sentenceFinding(RK_FIELD_NAME_ALPHABET, "this field's name `${it.javaTrimmed()}` is $FIELD_NAME_ALPHABET")
+    }
     return listOfNotNull(fieldFinding, groupFinding)
 }
 
@@ -84,6 +81,16 @@ private const val NAME_PART_LIMIT = 60
 
 /** A field name's parts: the first of letters, digits, underscores and colons, each further one after a dot and a letter. */
 private val FIELD_NAME = Regex("[a-zA-Z0-9_:]+([.][a-zA-Z][a-zA-Z0-9_:]*)*")
+
+/** What [RK_FIELD_NAME_ALPHABET] says a name is not. */
+internal const val FIELD_NAME_ALPHABET =
+    "not letters, digits, underscores and colons, in dot-separated parts that each begin with a letter"
+
+/**
+ * Whether A12 states its field-name sentence about this name, judged Java-trimmed. A name carrying a supplementary
+ * character draws the charset refusal instead (KF551), so it is never refused here.
+ */
+internal fun String.refusedAsFieldName(): Boolean = namedByA12() && !FIELD_NAME.matches(javaTrimmed())
 
 internal const val RK_GROUP_PATH_INVALID = "RK_GROUP_PATH_INVALID"
 internal const val RK_ROOT_GROUP_NAME_ALPHABET = "RK_ROOT_GROUP_NAME_ALPHABET"

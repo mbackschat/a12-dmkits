@@ -40,12 +40,11 @@ class CheckerComputedPathLexerAgreementTest {
             "a dot beside it" to model("La.b" + Char(0x00A0) + "el"),
             "a refused operation" to model(nbsp, operation = "[Nope]"),
         )
-        // A12 states the field-name sentence once more for the group's `indexFieldName` naming the field, which the
-        // checker does not (CONSISTENCY-GAPS DG144); the row is about the lexer gate, so that sentence is left out.
         val observed = rows.mapValues { (_, json) -> kernel(json) to ours(json) }
-            .mapValues { (_, pair) -> pair.toList().map { side -> side.filter { it != "RK_FIELD_NAME_ALPHABET" } } }
-        assertEquals(observed.mapValues { listOf(it.value[0], it.value[0]) }, observed, "each row as (A12, ours)")
-        assertEquals(listOf("MVK_LEXER_STANDARD_ERROR", "MVK_PATH_INVALID"), observed.getValue("the index field")[0])
+        assertEquals(observed.mapValues { it.value.first to it.value.first }, observed, "each row as (A12, ours)")
+        // The field's sentence and the index member's own (KF589) beside the lexer class.
+        assertEquals(listOf("MVK_LEXER_STANDARD_ERROR", "MVK_PATH_INVALID", "RK_FIELD_NAME_ALPHABET", "RK_FIELD_NAME_ALPHABET"),
+            observed.getValue("the index field").first)
     }
 
     /** A rule's error target is a relative path too; a group target keeps its name out of the condition text. */

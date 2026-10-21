@@ -206,6 +206,18 @@ private fun TrackedFactBase.orderingFinding(
     }
     // KF295's filter and twin controls require a surviving local cursor, after the original binding above.
     val shortName = landed.substringAfterLast('/')
+    // The short name A12 keeps is judged as a field name before either later gate, and a refused one takes their
+    // place: it is stated once more for the member, and neither the outside code nor the type code is (KERNEL-FINDINGS KF589).
+    if (shortName.refusedAsFieldName()) {
+        return Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            RK_FIELD_NAME_ALPHABET,
+            "`$member` names `$landed`, and the name A12 keeps from it, `${shortName.javaTrimmed()}`, is " +
+                FIELD_NAME_ALPHABET,
+            group.path,
+        )
+    }
     val own = defaultVariantFieldAt("${group.path}/$shortName")
     if (own != null) {
         // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
