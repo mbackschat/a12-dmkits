@@ -21,6 +21,22 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-21 — the compute-overlay `$`-correlation lane reads by its position in the fork, and a breach moved that position (IG171 → IF422)
+
+Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to `computeOverlayCorrelationStaysSubQuadratic`, at `1ddf57628`/`8377c5578` plus an uncommitted build-file probe; every record was deleted afterwards. Interpreter CPU medians at n = 1500 → 6000, single runs.
+
+| configuration | lane position in the fork | n = 1500 | n = 6000 | young collections in the run |
+|---|---|---|---|---|
+| default heap | alone | 35.7 ms | 137.2 ms | 222 |
+| `-Xmn1g` | alone | 34.5 ms | 143.4 ms | 63 |
+| `-Xmn32m` | alone | 34.6 ms | 139.2 ms | 718 |
+| default | after four lane classes (Growing…, Index…, Joined…, Keyed…) | 40.0 ms | 162.7 ms | — |
+| default, same invocation, after that run breached | first; the four ran after it | 34.7 ms | 139.6 ms | — |
+| default, previous results cleared before each run | after the four, twice | 40.0, 41.4 ms | 158.9, 168.6 ms | — |
+| `-XX:TieredStopAtLevel=1` | first (twice) / after the four | 107.6, 108.8 / 111.2 ms | 422.5, 426.0 / 439.0 ms | — |
+
+Allocated bytes per evaluation were the same in every configuration (53.4 to 53.5 MB at n = 1500), as in the gate records on either side of the original flip (200 to 205 MB at n = 6000 with 0 and 260 collections). A tenfold change in young collections moves the median by nothing measurable, since the medians are the measuring thread's CPU and the collector works on its own threads. The position in the fork moves it by 15 %. C1-only compilation shrinks the relative effect to 3 % but the absolute one only from about 5 to 3 ms at n = 1500, so these runs do not separate C2's profiles from heap layout.
+
 ### Checkpoint 2026-10-21 — explicit character sets read faster than the platform tables they replace (IF415)
 
 Measured at `23a24f679` plus the uncommitted [IF415](INTERPRETER-FINDINGS.md#if415) change, on the M1 Mac mini, JDK 21.0.12.1, while an unrelated `rustc` build held the load average between 6 and 21. Old and new primitives ran over the same ASCII inputs in one JVM, interleaved for 41 rounds after 200 warm-up pairs, so the load lands on both arms alike; medians:
@@ -63,12 +79,12 @@ Each doubling costs about 3.8× on all three engines, so the lane is held to the
 | lane | gate, `d26873580` → `76d8111a5` | alone, interleaved | reading |
 |---|---|---|---|
 | wide sibling groups, n = 200 | 2.58 → 3.13–4.24 ms | 3.0–3.8 against 2.5–2.6 ms with a 5-run warmup; 2.17–2.28 against 2.15–2.21 ms with 300 | JIT readiness: the old quadratic first evaluation gave the compiler more time before the five warmups |
-| `compute-overlay $-correlation`, n = 1500 | 37.88 → 38.06–39.64 ms | 34.3 against 34.0 ms with a 120-run warmup | the collection-heavy mode of [IG171](INTERPRETER-GAPS.md) |
+| `compute-overlay $-correlation`, n = 1500 | 37.88 → 38.06–39.64 ms | 34.3 against 34.0 ms with a 120-run warmup | the collection-heavy mode of [IG171](INTERPRETER-FINDINGS.md#if422) |
 | star-relevance dominance reduction, n = 1500 / 3000 | 5.38 / 9.92 → up to 8.29 / 16.61 ms | 5.7–6.5 against 5.9–6.4 ms; 11.1–12.7 against 11.3–11.7 ms | run-to-run mode, no difference alone |
 
 `applyComputations` at n = 600 stays about 4 % above `58201827b` alone (median 71.7 against 68.4 ms, four rounds), and none of 1500 stack samples of its loop lands in a content-trie, gate, root-instance or index-build frame, so no code this period changed executes there.
 
-The new lanes' darwin anchors are the per-key median of three gates at `38dbea615` (records `2026-10-21T044033Z`, `2026-10-21T044903Z`, `2026-10-21T045950Z`); no existing key moved except the compute-overlay n = 1500 relevel recorded under [IG171](INTERPRETER-GAPS.md).
+The new lanes' darwin anchors are the per-key median of three gates at `38dbea615` (records `2026-10-21T044033Z`, `2026-10-21T044903Z`, `2026-10-21T045950Z`); no existing key moved except the compute-overlay n = 1500 relevel recorded under [IG171](INTERPRETER-FINDINGS.md#if422).
 
 **Linear on first measurement, so only anchored:** the joined-row aggregate (4.8×), the star-only join (3.4×), required-column correlation with every cell filled (3.8×), index-default staging (4.2×), the unavailable-empty walks (3.7×), keyed message tokens (4.0×) and `FirstFilledValue` (1.6×).
 
@@ -76,7 +92,7 @@ The new lanes' darwin anchors are the per-key median of three gates at `38dbea61
 
 After the charset fix two routine gates at `1b3456224` still breached `compute-overlay $-correlation` at n = 6000 (154.3 and 152.0 ms with 280 and 277 collections in the window, ceiling 151.89; records `2026-10-13T160401Z`, `2026-10-13T161924Z`). Measured alone, that lane matched the last clean commit `2293025d6` (135.5 against 133.3 ms), so its own work had not grown. Comparing every lane against `2026-10-12T124213Z` found `multi-star $-correlation` at n = 20000 up from 253.6 to 316.2 ms. That lane still passed its growth guard.
 
-A per-commit bisection of the interpreter sources, measuring that lane alone, put the step at `0190a5d78`: 254.6 ms at `7b98fae62`, 346.3 ms at `0190a5d78`. That commit made every correlated plan lookup in validation walk the starred column for a required-empty cell. The walk now runs only where an empty cell of that field can be unavailable, the precondition `27566489c` introduced, and the lane reads 258.1 and 262.0 ms. The compute-overlay breach outlived the fix. At `d8eb58682` it reads 152.9 ms with 274 collections (`2026-10-13T171248Z`), a run in which every lane, including unchanged ones, was 10 to 60 % slower under load. Full gates with only the interpreter sources swapped put its collection flip between `e66cafa18` (151.7 ms, 0 collections) and `7b98fae62` (153.4 ms, 283), one run per point. `7b98fae62` changes message rendering, and this lane renders only the template `x`. Its isolated cost is unchanged and the excess is at most 2.6 %. A further gate on a quiet machine (`2026-10-13T175537Z`, foreign demand 0.21 on that row) breached again at 155.6 ms, so the slower mode is persistent, not load. The owner accepted the deviation, and only this lane's darwin anchor was raised from 91.45 to 94.6 ms, just enough that its ceiling (151.89 → 157.1 ms) covers the slowest run seen (155.9 ms); every other bar is unchanged. The mechanism is open as [IG171](INTERPRETER-GAPS.md).
+A per-commit bisection of the interpreter sources, measuring that lane alone, put the step at `0190a5d78`: 254.6 ms at `7b98fae62`, 346.3 ms at `0190a5d78`. That commit made every correlated plan lookup in validation walk the starred column for a required-empty cell. The walk now runs only where an empty cell of that field can be unavailable, the precondition `27566489c` introduced, and the lane reads 258.1 and 262.0 ms. The compute-overlay breach outlived the fix. At `d8eb58682` it reads 152.9 ms with 274 collections (`2026-10-13T171248Z`), a run in which every lane, including unchanged ones, was 10 to 60 % slower under load. Full gates with only the interpreter sources swapped put its collection flip between `e66cafa18` (151.7 ms, 0 collections) and `7b98fae62` (153.4 ms, 283), one run per point. `7b98fae62` changes message rendering, and this lane renders only the template `x`. Its isolated cost is unchanged and the excess is at most 2.6 %. A further gate on a quiet machine (`2026-10-13T175537Z`, foreign demand 0.21 on that row) breached again at 155.6 ms, so the slower mode is persistent, not load. The owner accepted the deviation, and only this lane's darwin anchor was raised from 91.45 to 94.6 ms, just enough that its ceiling (151.89 → 157.1 ms) covers the slowest run seen (155.9 ms); every other bar is unchanged. The mechanism is open as [IG171](INTERPRETER-FINDINGS.md#if422).
 
 ### Checkpoint 2026-10-13 — a consumer charset copied the whole document on every call
 

@@ -658,6 +658,10 @@ tasks.register('perfGateTest', Test) {
     systemProperty 'perf.anchor.lane', 'true'
     // The measurement RECORD is committed data, never build output (CLAUDE.md; SurvivingDataNotInBuildGuardTest).
     systemProperty 'perf.results.dir', rootProject.file('perf-results')
+    // Gradle runs the classes that failed in the previous run first, so one breach reordered the next gate, and a
+    // lane's reading moves with the classes run before it in the fork (INTERPRETER-FINDINGS IF422). Forgetting the
+    // previous run keeps the order a fresh CI checkout gets, the one the anchors were taken in.
+    doFirst { delete(binaryResultsDirectory) }
     // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
