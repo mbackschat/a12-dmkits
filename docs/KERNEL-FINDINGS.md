@@ -13601,7 +13601,21 @@ So the runtime resolves the `-1` sentinel into an ordinary pair: a `-1` minimum 
 
 A quoted Number converts wherever the host decimal constructor reads it, whose digit test accepts every BMP decimal digit; the leading-zero keep test of a `leadingZerosAllowed` field reads only the ASCII `0`, so `"٠٣"` converts and `"0٣"` stays text that is not a number. A converted value is held as a decimal and never meets the 99,999-unit technical guard of [KF547](#kf547), whichever of its renderings would be long; text the converter kept does meet it. The charset gate after the guard reaches both, so a converted value is not exempt from the input gates as a whole: that was this finding's first account, and the charset row, predicted to stay silent, refuted it before it shipped. The cascade reads the runtime rendering, which strips fractional zeros beyond the minimum, so a long run of fractional zeros draws nothing while a long integer draws `stelligkeitZuLang`.
 
-Locked by `adapter.laws.NumberDeclarationIngressDiffTest` (the Kernel pinned row by row through its own JSON ingress, the interpreter compared against it), with `NumberDeclarationReadTest` holding the interpreter's three primitives on JVM and Node ([IF401](INTERPRETER-FINDINGS.md#if401)). a12-kernel-lean measured the same classes on their own form at a12-dmkits `a4091041`, and their captures replay clean through the interpreter at this revision. Not settled here: quoted `1e2147483648`, whose scale still fits 32 bits, converts and then faults `validateFull` with an arithmetic underflow (their capture), and a computed fractional result into a `(-1, 0)` field, which neither side measured.
+Locked by `adapter.laws.NumberDeclarationIngressDiffTest` (the Kernel pinned row by row through its own JSON ingress, the interpreter compared against it), with `NumberDeclarationReadTest` holding the interpreter's three primitives on JVM and Node ([IF401](INTERPRETER-FINDINGS.md#if401)). a12-kernel-lean measured the same classes on their own form at a12-dmkits `a4091041`, and their captures replay clean through the interpreter at this revision. Not settled here: a computed fractional result into a `(-1, 0)` field, which neither side measured.
+
+*Added 2026-10-21: the exponent edges.* A literal converts exactly when its scale, fraction length minus exponent, fits 32 bits, on either side and however the exponent is spelled; the JDK's own constructor draws the same line (`A12NumberPlainFormTest`). Rows on one premium field `(2, 2)`, both strategies agreeing except where a fault is named:
+
+| value | A12 reports |
+|---|---|
+| `"0e2147483648"`, `"-0e2147483648"`, `"0e99999999"`, native `0e2147483648` | nothing: a zero at a scale of zero or below is `0` |
+| `"0e2147483649"`, `"1.5e-2147483647"` | `zahlHatUngueltigeZeichen`: unconvertible text |
+| native `0e2147483649` in a Number or String field, under an unknown key or inside its subtree, at a group position, as a repetition that is no object, as the root `id` | the Document is not read: `NumberFormatException` from the mapper, before the model is consulted |
+| `"1e1000000"`, `"1e-1000000"` | `stelligkeitZuLang` |
+| `"0e-1000000"` | nothing |
+| `"1e17000000"` | `stelligkeitZuLang`, after 31 s of expansion (dynamic strategy, one run) |
+| `"1e2147483648"`; `"1e2147483647"` | `validateFull` faults: `ArithmeticException` "Underflow"; "BigInteger would overflow supported range" |
+
+A bound printed to fixed places goes through Java's `%.nf`, so it follows the JVM A12 runs on: for the double nearest `282879384806159000`, `%.0f` prints `282879384806159008` on JDK 17 and `282879384806159000` on JDK 21, whose formatter takes its digits from the shortest decimal. On the pinned JDK 21, 27 million sampled (double, places) pairs agree with the shortest decimal rounded half up. Locked by `adapter.laws.NumberExponentEdgeDiffTest` and the interpreter's `PrintedNumberBoundFormatTest` ([IF420](INTERPRETER-FINDINGS.md#if420)).
 
 ## §13 supplement — a condition call standing where an operation is expected draws the token class at its keyword, after every gate of a production completed before it (`checkConsistency`, 2026-10-14) <a id="kf565"></a>
 

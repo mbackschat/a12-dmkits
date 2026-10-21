@@ -36,10 +36,9 @@ internal fun resolveFractionalPair(declaredMinimum: Int?, declaredMaximum: Int):
  * becomes `5.56`; otherwise it prints the shortest decimal that reads back to the double, plain and without
  * trailing zeros, so `1.00000000000000001` becomes `1`.
  *
- * The fixed-places arm reads the SHORTEST decimal. The Kernel's printer (Java's `%.nf`) takes its digits from an
- * older binary-to-decimal conversion that can emit one digit more for a few doubles; a bound whose rounding
- * position falls on that digit would print differently. No such bound is known to be authored, and none is
- * measured (INTERPRETER-GAPS IG173).
+ * The fixed-places arm reads the SHORTEST decimal, as the Kernel's printer, Java's `%.nf`, does on JDK 21. JDK 17's
+ * formatter took an older conversion's digits, one more for a few doubles, so there the Kernel itself prints
+ * `282879384806159008` where this prints `282879384806159000` (INTERPRETER-FINDINGS IF420).
  *
  * Null [authored] text, or text that is no finite number, is returned unchanged: the value check then has no
  * readable bound, which is how an unreadable bound behaved before.

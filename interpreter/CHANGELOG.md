@@ -11,8 +11,13 @@ This changelog covers the independently consumable interpreter packages, API doc
 - **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. In TypeScript a `Date` from another realm is accepted. Rules using either constant used to be reported unsupported.
 - **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired. A starred read below one of the joined groups reads that group's joined row, empty where the group has no row for the key, and joins the group even when nothing else reads it, a rule reading every group only through starred reads included.
 
+### Changed
+
+- **A Number written with an exponent is charged against the raw-value ceilings at the length A12 stores it**, its plain form, so `"1e1000000"` exceeds the default million-unit per-field ceiling and the Document is refused with `RESOURCE_LIMIT_EXCEEDED`. Such a value used to be kept as unconvertible text past 16 million places and expanded below that, uncounted.
+
 ### Fixed
 
+- **A Number's exponent is read to A12's bound**: a zero at any scale A12 holds, such as `"0e2147483648"`, is `0`, and an unquoted number whose scale has no 32-bit form refuses the Document as `MALFORMED_JSON` wherever it stands, as A12 cannot read it. The first was reported as invalid characters and the second was accepted.
 - **A joined rule's unstarred fill quantifiers and group first-filled reads now evaluate**, reading the key's own rows, empty for a side without one, as in the Kernel; they were reported unsupported.
 - **A computation reading a computed date, range or Number now computes under a model charset that excludes its characters**, as in the Kernel, which checks a computed value only against its field's format; it used to clear.
 - **A model `boolean` member A12 cannot bind now refuses the model**, as A12 refuses it: `"yes"`, `1.5` or `{}` on `positivesOnly`, `global` or any other boolean used to load as unset.

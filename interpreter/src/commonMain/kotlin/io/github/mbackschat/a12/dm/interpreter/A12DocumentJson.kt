@@ -68,13 +68,16 @@ internal object A12DocumentJson {
     private val A12_CONVERTER_NUMBER = Regex("([-+]?)([0-9]*)(?:\\.([0-9]*))?(?:[eE]([-+]?[0-9]+))?")
 
     /**
-     * The widest point shift we will materialize. A12 would expand `1e999999999` into a billion characters
-     * (`toPlainString` has no ceiling); at a public ingress that is a twelve-character denial of service, so a
-     * shift beyond the hard per-field ceiling is refused and the value stays verbatim — A12's own pass-through
-     * shape, which can never produce invalid JSON. The significand needs no bound of its own: it cannot be
-     * longer than the literal, which the caller has already charged against `maxRawCodeUnitsPerField`.
+     * The longest plain form we will materialize. A12 would expand `1e999999999` into a billion characters
+     * (`toPlainString` has no ceiling); at a public ingress that is a twelve-character denial of service. The
+     * reader charges a number's stored length against the per-field ceiling before it gets here
+     * ([plainLengthOrNull]), so this hard bound guards every other caller: beyond it the value stays verbatim,
+     * A12's own pass-through shape, which can never produce invalid JSON.
      */
-    private const val MAX_POINT_SHIFT = DocumentDecodeLimits.HARD_MAX_RAW_CODE_UNITS_PER_FIELD.toLong()
+    private const val MAX_PLAIN_LENGTH = DocumentDecodeLimits.HARD_MAX_RAW_CODE_UNITS_PER_FIELD.toLong()
+
+    /** Beyond this exponent no fraction can bring a scale back into 32 bits ([scaleOrNull]). */
+    private const val EXPONENT_BOUND = 1L shl 32
 
     /**
      * [literal] in A12's **plain** number form, or null when it is not a JSON number at all — the WRITE gate.
@@ -108,6 +111,19 @@ internal object A12DocumentJson {
     }
 
     /**
+     * The length of the plain form A12 stores for [literal], or null exactly when A12's converter refuses it — the
+     * gate [canonicalNumberOrNull] applies, measured without materializing anything, so the reader can charge an
+     * exponent's expansion against its ceilings first (`1e999999` is a million code units).
+     */
+    internal fun plainLengthOrNull(literal: String): Long? {
+        val match = A12_CONVERTER_NUMBER.matchEntire(asciiDigits(literal)) ?: return null
+        val (sign, integerPart, fractionPart, exponentPart) = match.destructured
+        if (integerPart.isEmpty() && fractionPart.isEmpty()) return null
+        val scale = scaleOrNull(fractionPart, exponentPart) ?: return null
+        return plainLength(unscaledDigits(integerPart, fractionPart), scale, sign == "-")
+    }
+
+    /**
      * [literal] with every non-ASCII decimal digit replaced by its ASCII twin. A12's converter is the host decimal
      * constructor, which reads any UTF-16 unit its digit test accepts, so Arabic-Indic `٣.٥` and fullwidth `５`
      * convert to `3.5` and `5` (KF564, `NumberDeclarationIngressDiffTest`). A supplementary-plane digit is two
@@ -129,18 +145,23 @@ internal object A12DocumentJson {
      * NUMBER field re-renders it from the value anyway, but a STRING field stores it (KERNEL-FINDINGS KF1,
      * `A12JsonIngressKernelTest`). Purely lexical like [plainForm]; cross-checked against `BigDecimal.toString` by
      * `A12NumberPlainFormTest`.
+     *
+     * A token whose scale has no 32-bit form is no `BigDecimal`, and A12's mapper reads every unquoted token before
+     * it looks at the model, so the whole Document is unreadable to it wherever the token stands: this throws a
+     * [DocumentInputReasonCode.MALFORMED_JSON] refusal rather than returning a text (KF564).
      */
     internal fun numberNodeTextOrNull(literal: String): String? {
         val match = JSON_NUMBER.matchEntire(literal) ?: return null
         val (sign, integerPart, fractionPart, exponentPart) = match.destructured
-        val digits = (integerPart + fractionPart).trimStart('0').ifEmpty { "0" }
+        val digits = unscaledDigits(integerPart, fractionPart)
         val isZero = digits == "0"
         val negative = sign == "-" && !isZero
         if (fractionPart.isEmpty() && exponentPart.isEmpty() && !literal.contains('.')) {
             return if (negative) sign + digits else digits
         }
-        val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
-        val scale = fractionPart.length.toLong() - exponent
+        val scale = scaleOrNull(fractionPart, exponentPart) ?: throw DocumentInputError.from(listOf(
+            MalformedJsonDiagnostic("the number $literal has no 32-bit scale, so A12's reader cannot represent it"),
+        ))
         val adjusted = digits.length - 1 - scale
         // No point-shift ceiling here: the plain branch is reached only at a scale the literal's own length bounds,
         // and the scientific one is as long as the significand, so `1e999999999` stays `1E+999999999`.
@@ -155,14 +176,10 @@ internal object A12DocumentJson {
 
     /** `BigDecimal.toPlainString()` reproduced lexically from an already-validated significand + exponent. */
     private fun plainForm(sign: String, integerPart: String, fractionPart: String, exponentPart: String): String? {
-        val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
-        // A leading zero is not part of the UNSCALED value, so `BigDecimal` never renders one: `007` is `7`
-        // and `00.50` is `0.50`. The scale is untouched by the strip — it comes from the fraction and exponent
-        // alone. (Caught by the `toPlainString` oracle, not by derivation.)
-        val digits = (integerPart + fractionPart).trimStart('0').ifEmpty { "0" }
-        val scale = fractionPart.length.toLong() - exponent
-        if (scale > MAX_POINT_SHIFT || -scale > MAX_POINT_SHIFT) return null
-        val isZero = digits.all { it == '0' }
+        val scale = scaleOrNull(fractionPart, exponentPart) ?: return null
+        val digits = unscaledDigits(integerPart, fractionPart)
+        if (plainLength(digits, scale, sign == "-") > MAX_PLAIN_LENGTH) return null
+        val isZero = digits == "0"
         val plain = when {
             // `BigDecimal.toPlainString` short-circuits zero at a negative scale: `0e5` is "0", not "000000".
             scale <= 0 && isZero -> "0"
@@ -175,6 +192,40 @@ internal object A12DocumentJson {
         }
         // BigDecimal has no negative zero: `-0.0` reads back `0.0`. A leading `+` is never part of its output.
         return if (sign == "-" && !isZero) sign + plain else plain
+    }
+
+    /**
+     * A leading zero is not part of the UNSCALED value, so `BigDecimal` never renders one: `007` is `7` and
+     * `00.50` is `0.50`, and a zero is the single digit `0`. The scale is untouched by the strip — it comes from
+     * the fraction and exponent alone. (Caught by the `toPlainString` oracle, not by derivation.)
+     */
+    private fun unscaledDigits(integerPart: String, fractionPart: String): String =
+        (integerPart + fractionPart).trimStart('0').ifEmpty { "0" }
+
+    /**
+     * The literal's `BigDecimal` scale, fraction length minus exponent, or null when it has no 32-bit form: the
+     * converter refuses exactly that literal, on either side and however the exponent is spelled (`0e2147483648`
+     * converts, `0e2147483649` does not; `A12NumberPlainFormTest` against the JDK, KF564 against A12).
+     */
+    private fun scaleOrNull(fractionPart: String, exponentPart: String): Long? {
+        if (exponentPart.isEmpty()) return fractionPart.length.toLong()
+        // Refusing an exponent past the bound first also keeps the subtraction from wrapping.
+        val exponent = exponentPart.toLongOrNull()?.takeIf { it in -EXPONENT_BOUND..EXPONENT_BOUND } ?: return null
+        return (fractionPart.length - exponent).takeIf { it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }
+    }
+
+    /**
+     * The length of `toPlainString()` for [digits] at [scale]. `BigDecimal` short-circuits a zero at a scale
+     * of zero or below to `0`, whatever the scale, and has no negative zero.
+     */
+    private fun plainLength(digits: String, scale: Long, negative: Boolean): Long {
+        val isZero = digits == "0"
+        val unsigned = when {
+            scale <= 0 -> if (isZero) 1 else digits.length - scale
+            scale < digits.length -> digits.length + 1L
+            else -> 2 + scale
+        }
+        return if (negative && !isZero) unsigned + 1 else unsigned
     }
 
     /**
@@ -253,11 +304,18 @@ internal object A12DocumentJson {
      *   A STRING keeps its `""`.
      *
      * A value the converter cannot parse stays verbatim ([A12K-3638]) and is written back as a JSON string.
+     *
+     * A number with an exponent can be stored far longer than it is written, so its stored length goes to
+     * [chargeStored] before the plain form is built; one kept as text is stored as written and charges nothing.
      */
-    private fun ModelDef.cellText(path: String, raw: String): CellText = when (kinds[path]) {
+    private inline fun ModelDef.cellText(path: String, raw: String, chargeStored: (Long) -> Unit): CellText = when (kinds[path]) {
         Kind.NUMBER -> when {
             raw.isEmpty() -> CellText.EMPTY
             else -> {
+                if (raw.indexOf('e') >= 0 || raw.indexOf('E') >= 0) {
+                    val storedLength = plainLengthOrNull(raw)
+                    if (storedLength != null && !(path in leadingZeroNumbers && hasLeadingZeros(raw))) chargeStored(storedLength)
+                }
                 val converted = canonicalNumberOrNull(raw)
                     ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
                 if (converted == null) CellText(raw)   // A12's pass-through: a String, read back unchanged
@@ -390,7 +448,7 @@ internal object A12DocumentJson {
                 when (kind) {
                     ModelEntityKind.FIELD -> readCell(childPath, ownCoordinates, child)
                     ModelEntityKind.GROUP -> readGroup(childPath, coordinates, child)
-                    null -> Unit
+                    null -> requireReadableNumbers(child)
                 }
             }
         }
@@ -445,9 +503,38 @@ internal object A12DocumentJson {
                     // A12 reads a value as its node's text, so an unquoted number arrives in its BigDecimal or
                     // integer rendering rather than as typed; a quoted one is kept as typed.
                     val text = if (node.isString) raw else numberNodeTextOrNull(raw) ?: raw
-                    pending += Pending(path, coordinates, model.cellText(path, text), isGroup = false)
+                    val cell = model.cellText(path, text) { stored -> chargeExpansion(stored, raw.length, pointer) }
+                    pending += Pending(path, coordinates, cell, isGroup = false)
                 }
-                else -> Unit
+                else -> requireReadableNumbers(node)
+            }
+        }
+
+        /**
+         * The ceilings bound what the Document holds, and A12 holds a number in its plain form, so the growth from
+         * the authored literal to that form is charged too: to the per-field ceiling and to the total.
+         */
+        private fun chargeExpansion(stored: Long, authored: Int, pointer: () -> String) {
+            if (stored <= authored) return
+            requireWithin(stored, limits.maxRawCodeUnitsPerField.toLong(), DocumentInputResource.RAW_CODE_UNITS_PER_FIELD, pointer)
+            totalRawCodeUnits += stored - authored
+            requireWithin(totalRawCodeUnits, limits.maxTotalRawCodeUnits.toLong(), DocumentInputResource.TOTAL_RAW_CODE_UNITS, pointer)
+        }
+
+        /**
+         * A12's mapper reads every unquoted number in the text before it looks at the model, so one it cannot
+         * represent is fatal even where the model reads nothing: an unknown key, a misplaced node, and anything
+         * beneath them ([numberNodeTextOrNull] refuses it). Iterative, so a deep discarded subtree cannot exhaust
+         * the stack.
+         */
+        private fun requireReadableNumbers(node: JsonElement) {
+            val pending = ArrayDeque<JsonElement>().apply { add(node) }
+            while (pending.isNotEmpty()) {
+                when (val next = pending.removeLast()) {
+                    is JsonObject -> pending.addAll(next.values)
+                    is JsonArray -> pending.addAll(next)
+                    is JsonPrimitive -> if (next !== JsonNull && !next.isString) numberNodeTextOrNull(next.content)
+                }
             }
         }
 
@@ -456,11 +543,12 @@ internal object A12DocumentJson {
                 is JsonObject -> readRow(path, parentCoordinates + 1, node)
                 is JsonArray -> {
                     var repetition = 0
-                    for (element in node) if (element is JsonObject) {
-                        readRow(path, parentCoordinates + ++repetition, element)
+                    for (element in node) {
+                        if (element is JsonObject) readRow(path, parentCoordinates + ++repetition, element)
+                        else requireReadableNumbers(element)
                     }
                 }
-                else -> Unit
+                else -> requireReadableNumbers(node)
             }
         }
 
@@ -482,7 +570,7 @@ internal object A12DocumentJson {
          * takes `value.asText()` on the id branch as on a field's).
          */
         private fun readDocumentId(node: JsonElement) {
-            if (node is JsonObject || node is JsonArray) return
+            if (node is JsonObject || node is JsonArray) return requireReadableNumbers(node)
             if (node is JsonPrimitive && node !== JsonNull && node.isString) {
                 documentId = node.content
                 return

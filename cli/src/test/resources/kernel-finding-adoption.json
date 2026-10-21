@@ -11160,25 +11160,25 @@
       }
     },
     "kf564": {
-      "sha256": "3e757cbc2f90f7d0dee50b80971c26bf5af92ed84a2e17cd2f4cca0167a9e1fb",
+      "sha256": "e048c608b5af82820543dfe182008de0b8e65ad69c8627e99ba67084eebac211",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "adapter": ["number declaration runtime reading", "quoted number ingress"],
-        "interpreter": ["number declaration runtime reading", "quoted number ingress"],
+        "adapter": ["number declaration runtime reading", "quoted number ingress", "number exponent edges"],
+        "interpreter": ["number declaration runtime reading", "quoted number ingress", "number exponent edges"],
         "dmtool-cli": [],
-        "a12-kernel-lean": ["number declaration runtime reading", "quoted number ingress"]
+        "a12-kernel-lean": ["number declaration runtime reading", "quoted number ingress", "number exponent edges"]
       },
       "consumers": {
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed Number builder already writes the -1 sentinel and bounds as declared; the runtime reading is the engines'.", "evidence": {}},
         "checker": {"state": "NOT_APPLICABLE", "basis": "This finding is about stored values at runtime; the declaration's own printed-bound check belongs to the consistency rules.", "evidence": {}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes declarations, not stored values.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads declarations, not stored values.", "evidence": {}},
-        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row through A12's own Document JSON ingress, without the write-back a huge plain value cannot survive.", "evidence": {"number declaration runtime reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Sentinel pairs, the zero-maximum exception and four printed bounds on both sides of each."}, "quoted number ingress": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Arabic-Indic and fullwidth digits, the ASCII leading-zero keep test, and converted versus kept 100,000-unit values."}}},
-        "interpreter": {"state": "APPLIED", "basis": "The loader resolves the pair and prints the bounds, the read gate converts BMP decimal digits, and a converted Number meets no input gate.", "evidence": {"number declaration runtime reading": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#theFractionalSentinelResolvesIntoAnOrdinaryPairExceptBesideAZeroMaximum", "witness": "The resolution and printing primitives on JVM and Node."}, "quoted number ingress": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#aQuotedNumberConvertsNonAsciiDecimalDigitsButNotSupplementaryOnes", "witness": "BMP digits convert, a supplementary digit does not."}}},
+        "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row through A12's own Document JSON ingress, without the write-back a huge plain value cannot survive.", "evidence": {"number declaration runtime reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Sentinel pairs, the zero-maximum exception and four printed bounds on both sides of each."}, "quoted number ingress": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberDeclarationIngressDiffTest.kt#theKernelAnswersThePinnedCodesAndTheInterpreterAgrees", "witness": "Arabic-Indic and fullwidth digits, the ASCII leading-zero keep test, and converted versus kept 100,000-unit values."}, "number exponent edges": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumberExponentEdgeDiffTest.kt#anUnquotedTokenPastThirtyTwoBitsLeavesTheDocumentUnreadableWhereverItStands", "witness": "The 32-bit scale line on both sides, an unreadable Document at every position, and the pinned rows past the per-field ceiling."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The loader resolves the pair and prints the bounds, the read gate converts BMP decimal digits, and a converted Number meets no input gate.", "evidence": {"number declaration runtime reading": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#theFractionalSentinelResolvesIntoAnOrdinaryPairExceptBesideAZeroMaximum", "witness": "The resolution and printing primitives on JVM and Node."}, "quoted number ingress": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberDeclarationReadTest.kt#aQuotedNumberConvertsNonAsciiDecimalDigitsButNotSupplementaryOnes", "witness": "BMP digits convert, a supplementary digit does not."}, "number exponent edges": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/NumberExponentIngressTest.kt#anUnquotedTokenWithoutAThirtyTwoBitScaleMakesTheDocumentUnreadableWhereverItStands", "witness": "The scale line, the unreadable Document, and the stored-length charge on JVM and Node."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter it runs.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-14 handback against SPEC-2026-10-13-13 and -15; awaits peer review.", "evidence": {}}
       }

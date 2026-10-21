@@ -106,7 +106,10 @@ enum class DocumentJsonNodeType {
 }
 
 enum class DocumentInputReasonCode {
-    /** The input is not parseable JSON, or its root is not the document's root object. */
+    /**
+     * The input is not parseable JSON, its root is not the document's root object, or it carries an unquoted
+     * number whose scale has no 32-bit form, which A12's reader cannot read wherever it stands.
+     */
     MALFORMED_JSON,
 
     /** A key names no declared field or group of the prepared model. */
@@ -135,10 +138,13 @@ enum class DocumentInputResource {
     /** UTF-16 code units of one model path. */
     PATH_CODE_UNITS,
 
-    /** UTF-16 code units of one field's raw value. */
+    /**
+     * UTF-16 code units of one field's raw value, as written and, for a Number with an exponent, as stored: A12
+     * stores its plain form, so `"1e999999"` counts a million.
+     */
     RAW_CODE_UNITS_PER_FIELD,
 
-    /** UTF-16 code units across every field's raw value. */
+    /** UTF-16 code units across every field's raw value, counted as for [RAW_CODE_UNITS_PER_FIELD]. */
     TOTAL_RAW_CODE_UNITS,
 
     /** Model path parts of one document position. */
