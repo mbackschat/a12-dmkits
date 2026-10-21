@@ -32,17 +32,18 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Seven sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * Nine sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words, while each maximum is a sentence of its own. Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
-    else -> MEMBER_RANGE_SENTENCES.entries.firstOrNull { message.trim().endsWith(it.key) }?.value ?: UNKEYED_A12_CLASS
+    else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+        ?: UNKEYED_A12_CLASS
 }
 
 /** How a ledger row spells a diagnostic A12 raises without a class key. */
@@ -60,6 +61,11 @@ private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values smaller than or equal to 99999 are allowed." to "RK_MEMBER_ABOVE_TECHNICAL_LIMIT",
     "Only values smaller than or equal to 15 are allowed." to "RK_MEMBER_ABOVE_DIGIT_BUDGET",
     "Only values smaller than or equal to 14 are allowed." to "RK_MEMBER_ABOVE_SCALE_LIMIT",
+)
+
+private val BOUND_SENTENCES = mapOf(
+    "The value '0' as well as positive values must be provided without a sign." to "RK_BOUND_SIGNED_ZERO",
+    "Only values with up to 15 digits are allowed." to "RK_BOUND_TOO_MANY_DIGITS",
 )
 
 /** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */

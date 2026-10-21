@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.PrintedBoundDefect
 import io.github.mbackschat.a12.dm.predicates.numberBoundsInverted
+import io.github.mbackschat.a12.dm.predicates.printedNumberBoundDefects
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
@@ -116,10 +118,21 @@ private fun digitPairFindings(field: TrackedDeclaration, digits: DigitCounts): L
     )
 }
 
+/**
+ * The bounds' own formal checks, then the inversion law, which A12 withholds beside a refused bound because its
+ * rule reads the refused value ([printedNumberBoundDefects]). Each sentence is reported once per field, however
+ * many bounds fail it, as A12 reports it.
+ */
 private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
+    val maxFractional = body.int("maxFractionalDigits")
+    val declared = listOfNotNull(body.number("minValue"), body.number("maxValue"))
+    val defects = declared.flatMap { printedNumberBoundDefects(it, maxFractional) }.distinct()
+    if (defects.isNotEmpty()) {
+        return defects.sorted().map { boundDefectFinding(field, it) }
+    }
     val min = body.number("minValue") ?: return emptyList()
     val max = body.number("maxValue") ?: return emptyList()
-    if (!numberBoundsInverted(min, max, body.int("maxFractionalDigits"))) {
+    if (!numberBoundsInverted(min, max, maxFractional)) {
         return emptyList()
     }
     return listOf(
@@ -130,6 +143,20 @@ private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): Lis
                 "equal bounds are admitted, and with no fractional digit allowed A12 compares both rounded " +
                 "half away from zero to whole numbers",
         ),
+    )
+}
+
+private fun boundDefectFinding(field: TrackedDeclaration, defect: PrintedBoundDefect): Finding {
+    val (code, sentence) = when (defect) {
+        PrintedBoundDefect.SIGNED_ZERO ->
+            "RK_BOUND_SIGNED_ZERO" to "The value '0' as well as positive values must be provided without a sign."
+        PrintedBoundDefect.TOO_MANY_DIGITS -> "RK_BOUND_TOO_MANY_DIGITS" to "Only values with up to 15 digits are allowed."
+    }
+    return finding(
+        field,
+        code,
+        "A12 prints this field's `minValue` or `maxValue` — rounded to a whole number when no fractional digit " +
+            "is allowed — and refuses the printed value with no class: \"$sentence\"",
     )
 }
 

@@ -151,6 +151,42 @@ class CheckerDeclarationAdmissionAgreementTest {
     }
 
     /**
+     * A bound A12 prints and then refuses withholds the inversion, whose rule reads the refused value: at scale 0 a
+     * negative bound rounding to `-0`, and a printed form of more than 15 digits (KF569). Each control beside it
+     * moves one variable and draws the inversion. A12's separate "may not exceed" sentence is dropped from its
+     * side here: it does not withhold the inversion, and the checker does not yet name it (CONSISTENCY-GAPS DG142).
+     */
+    @Test
+    fun aRefusedPrintedBoundWithholdsTheInversion() {
+        val rows = linkedMapOf(
+            "-0.4 at scale 0" to boundsJson(0, "1", "-0.4") to setOf(SIGNED_ZERO),
+            "-0.4 at scale 1, the control" to boundsJson(1, "1", "-0.4") to setOf(INVERTED),
+            "-0.04 at scale 1" to boundsJson(1, "1", "-0.04") to setOf(INVERTED),
+            "both bounds rounding to -0, one sentence" to boundsJson(0, "-0.3", "-0.2") to setOf(SIGNED_ZERO),
+            "a lone minimum rounding to -0" to boundsJson(null, "-0.4", null) to setOf(SIGNED_ZERO),
+            "-1e15 at scale 0" to boundsJson(0, "1", "-1e15") to setOf(TOO_LONG),
+            "-999999999999999 at scale 0, the control" to boundsJson(0, "1", "-999999999999999") to setOf(INVERTED),
+            "0.123456789012345 at scale 1" to boundsJson(1, "2", "0.123456789012345") to setOf(TOO_LONG),
+            "0.12345678901234 at scale 1, the control" to boundsJson(1, "2", "0.12345678901234") to setOf(INVERTED),
+            "1e15 over 1 at scale 1" to boundsJson(1, "1e15", "1") to setOf(TOO_LONG),
+            "1e14 over 1 at scale 1, the limit rule alone" to boundsJson(1, "1e14", "1") to setOf(INVERTED),
+            "999999999999999.6 rounded at scale 0" to boundsJson(0, "999999999999999.6", "1") to setOf(TOO_LONG),
+            "999999999999999.4 rounded at scale 0, the control" to boundsJson(0, "999999999999999.4", "1") to
+                setOf(INVERTED),
+        )
+        val observed = rows.entries.associate { (row, _) ->
+            val a12 = oracle.checkConsistency(row.second, ReferenceResolvers.selfContained())
+                .filter { it.severity() == Severity.ERROR }
+                .map { CLASS.find(it.message().trim())?.groupValues?.get(1) ?: codelessClass(it.message()) }
+                .filter { it != UNKEYED_A12_CLASS }.sorted()
+            row.first to (a12 to ours(row.second).sorted())
+        }
+        // Lists, not sets: each sentence is reported once per field however many bounds fail it.
+        assertEquals(rows.entries.associate { (row, expected) -> row.first to (expected.sorted() to expected.sorted()) },
+            observed, "(A12, ours)")
+    }
+
+    /**
      * Every primitive `boolean` member of a field declaration takes the same binding (IF404), so the same
      * spellings leave the model unbuilt — enumerated from the kernel's `a12internal` model classes: the field
      * types' members and `Field.global`/`transient`. Each is put on a field the default variant keeps and on one
@@ -314,6 +350,14 @@ class CheckerDeclarationAdmissionAgreementTest {
         field(model, "Premium", "NumberType", body)
     }.toString()
 
+    private fun boundsJson(maxFractionalDigits: Int?, min: String?, max: String?): String = policy().also { model ->
+        val body = nodes.objectNode()
+        min?.let { body.set<ObjectNode>("minValue", mapper.readTree(it)) }
+        max?.let { body.set<ObjectNode>("maxValue", mapper.readTree(it)) }
+        maxFractionalDigits?.let { body.put("maxFractionalDigits", it) }
+        field(model, "Premium", "NumberType", body)
+    }.toString()
+
     private fun flags(noValueValidation: Any, lineBreaksPermitted: Any?): String = policy().also { model ->
         val body = nodes.objectNode()
         body.set<ObjectNode>("noValueValidation", mapper.valueToTree(noValueValidation))
@@ -383,6 +427,9 @@ class CheckerDeclarationAdmissionAgreementTest {
             "DateType" to "youngerThan1900Check", "DateRangeType" to "youngerThan1900Check",
             "DateFragmentType" to "youngerThan1900Check", "EnumerationType" to "alphabeticalSorting",
         )
+        const val SIGNED_ZERO = "RK_BOUND_SIGNED_ZERO"
+        const val TOO_LONG = "RK_BOUND_TOO_MANY_DIGITS"
+        const val INVERTED = "MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE"
         val CLASS = Regex("""\[([A-Z][A-Z0-9_]+)]""")
         const val COUNT = "MVK_COUNT_OF_VALUES_INVALID"
         const val INCOMPLETE = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
