@@ -78,13 +78,16 @@ class DeclarationSlotTest {
 
     @Test
     fun malformedReservedNamesDoNotInventTheNamedKernelClass() {
+        // A dotted name fails the name alphabet first, which withholds the reserved class (KF578); a
+        // computation's code alphabet reads its name, so the dot draws that sentence too.
+        val dotted = mapOf("Rule" to listOf(NAME_ALPHABET), "Computation" to listOf(CODE_ALPHABET, NAME_ALPHABET))
         for (kind in kinds) for ((name, expected) in listOf(
             "vk_vkProbe" to listOf("MVK_RULE_NAME_INVALID"),
-            "vk_vk.Bad" to emptyList(),
+            "vk_vk.Bad" to dotted.getValue(kind),
             ("vk_vk" + "x".repeat(95)) to listOf("MVK_RULE_NAME_INVALID"),
             ("vk_vk" + "x".repeat(96)) to emptyList(),
         )) assertEquals(expected, codesFor(kind, name, BOTH), "$kind/$name")
-        assertEquals(listOf("MVK_ERROR_CODE_MISSING"),
+        assertEquals(listOf(NAME_ALPHABET, "MVK_ERROR_CODE_MISSING"),
             codesFor("Rule", "vk_vk.Bad", BOTH, slots = "\"errorCode\":\"\""))
     }
 
@@ -380,6 +383,8 @@ class DeclarationSlotTest {
     }
 
     private companion object {
+        const val NAME_ALPHABET = "RK_RULE_NAME_ALPHABET"
+        const val CODE_ALPHABET = "RK_ERROR_CODE_ALPHABET"
         /** What this kind must carry beside its messages to be a legal A12 declaration ([KF291]). */
         fun legalSlotsFor(kind: String) = if (kind == "Rule") """"errorCode":"PROBE"""" else ""
 

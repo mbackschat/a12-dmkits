@@ -13931,3 +13931,25 @@ So an unbindable value is never a third reading of the member: A12 never loads t
 *Locked by:* `adapter.laws.BooleanMemberUnreadableDiffTest` (A12 and the interpreter row by row). The interpreter's side is [IF417](INTERPRETER-FINDINGS.md#if417).
 
 *Added 2026-10-21:* the members outside a field declaration bind the same way, through `checkConsistency`: `"tRUE"` and `1.5` refuse the reader and `" TRUE"` binds, in `content.modelInfo.immutable` and `metaData`, `content.modelConfig.fieldRefByShortNameAllowed`, and every type member above written in a `content.typeDefinitions` entry, whether or not a field names the definition. Those are the primitive `boolean` members of kernel `30.8.1`'s `a12internal` model classes, read from source, besides `Group`'s `excludeRules`/`excludeComputations`, whose custom reader refuses nothing ([KF3](#kf3)); the `header` binds through base-model's `Header` interface, which declares no boolean getter. Locked by `adapter.laws.CheckerDeclarationAdmissionAgreementTest.everyModelLevelBooleanIsUnbindableTheSameWay`, A12 and the portable checker row by row.
+
+## §13 supplement — an executable's name and error code each meet an alphabet A12 answers with a sentence and no class, and a computation's code alphabet reads its name (model check, 2026-10-21) <a id="kf578"></a>
+
+> Fold: not-foldable — declaration-admission laws beside [KF291](#kf291)'s slot readings.
+
+A12 asks two alphabets of every rule and computation the default variant keeps, before its reserved-prefix law, and answers each with a sentence of its own, a codeless verdict in [KF420](#kf420)'s sense, which listed the first for a digit or a dot: *"A rule name must start with a letter followed by letters, digits and underscores."* and *"The error code is only allowed to contain letters, digits, blanks and underscores."*
+
+| declared | name sentence | code sentence |
+|---|---|---|
+| rule name `1Probe`, `_Probe`, `Pro.be`, `Pro-be`, `Pro:be`, `Pro be`, `Prämie`, `Proébe`, `Probe` + Arabic-Indic one | yes | — |
+| rule name `Probe_1`, `P`, a 61-character name | — | — |
+| rule name `vk_vk.x` | yes, and no `MVK_RULE_NAME_INVALID` | — |
+| rule name `vk_vkProbe` | — (`MVK_RULE_NAME_INVALID`) | — |
+| error code `C.1`, `C-1`, `C:1`, `C<TAB>D`, `C<NBSP>D`, `Cé`, `Ç`, `Cœ`, `C` + Arabic-Indic one | — | yes |
+| error code `C 1`, ` C`, `C_1`, `1C`, `c1`, `Cä`, `CÄÖÜ`, `Cß` | — | — |
+| computation `Prem.ium` | yes | yes |
+| computation `Prem ium`, `1Premium`, `Prämie` | yes | — |
+| either refused, the executable deleted by an `ONLY` filter | — | — |
+
+So the name is ASCII-only while the code admits the German umlauts and `ß`, a space and the underscore. A computation carries no `errorCode`, and the code sentence reads its name: that is the only reading under which `Prem.ium` draws it and `Prem ium` does not. Neither sentence is withheld by a broken error target (beside `MVK_ERROR_FIELD_MISSING`, `MVK_MISSING_ERROR_FIELD`) or a refused condition (beside `MVK_INVALID_ENTITY`). An empty code is not this alphabet's: it draws `MVK_ERROR_CODE_MISSING`.
+
+*Locked by:* `adapter.laws.CheckerDeclarationAlphabetAgreementTest`, A12 and the portable checker row by row, which publishes the two sentences as `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET`.

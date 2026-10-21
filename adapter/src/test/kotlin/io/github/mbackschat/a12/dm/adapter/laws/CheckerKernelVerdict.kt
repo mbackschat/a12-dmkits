@@ -32,17 +32,17 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Nine sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * Eleven sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words, while each maximum is a sentence of its own. Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
-    else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+    else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -61,6 +61,11 @@ private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values smaller than or equal to 99999 are allowed." to "RK_MEMBER_ABOVE_TECHNICAL_LIMIT",
     "Only values smaller than or equal to 15 are allowed." to "RK_MEMBER_ABOVE_DIGIT_BUDGET",
     "Only values smaller than or equal to 14 are allowed." to "RK_MEMBER_ABOVE_SCALE_LIMIT",
+)
+
+private val DECLARATION_ALPHABET_SENTENCES = mapOf(
+    "A rule name must start with a letter followed by letters, digits and underscores." to "RK_RULE_NAME_ALPHABET",
+    "The error code is only allowed to contain letters, digits, blanks and underscores." to "RK_ERROR_CODE_ALPHABET",
 )
 
 private val BOUND_SENTENCES = mapOf(

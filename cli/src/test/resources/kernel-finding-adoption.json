@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf578": {
+      "sha256": "b87892d018012ae394b132e7cb9ee528fcc1f121af2138586629fe50ee3abbb2",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["declaration alphabets"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["declaration alphabets"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["declaration alphabets"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, which answers both alphabets itself; the typed builders mint names and codes through their own stricter identifiers.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The slot family publishes both sentences, reads a computation's code alphabet from its name, and withholds the reserved-prefix class beside a refused name.", "evidence": {"declaration alphabets": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DeclarationSlotTest.kt#malformedReservedNamesDoNotInventTheNamedKernelClass", "witness": "A dotted reserved name draws the name sentence alone on a rule and both sentences on a computation."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no rule or computation.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted and judges no name.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 38 name and code shapes over rules and computations, with variant-deleted and withholding rows.", "evidence": {"declaration alphabets": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAlphabetAgreementTest.kt#theCheckerNamesA12sSentencesOnEveryRow", "witness": "Every row's class list agrees, and A12's sentences are pinned on the rows that separate the two alphabets."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf418": {
       "sha256": "98e6f3e3c86175e2f82bc505853133774d4b84fef19c666f04b18e40c7e7cbd8",
       "task": "F-USE-BACKLOG",

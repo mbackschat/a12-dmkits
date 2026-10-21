@@ -44,7 +44,7 @@ import kotlinx.serialization.json.contentOrNull
 internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
     unbindableBooleanFindings() + declaredLocaleFindings() +
         declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
-            reservedNameFinding(element) + errorCodeFindings(element) + severityFindings(element) +
+            alphabetFindings(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
         }
 
@@ -96,6 +96,44 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
     )
     else -> emptyList()
 }
+
+/**
+ * The two alphabets A12 asks of an executable before its reserved-name law, each answered by a sentence with no
+ * class ([KERNEL-FINDINGS KF291]).
+ *
+ * **The name takes ASCII only**: a letter, then letters, digits and underscores, so `1Probe`, `_Probe`, `Pro.be`
+ * and `Prämie` are all refused, and `vk_vk.x` draws the sentence without `MVK_RULE_NAME_INVALID`. **The error code takes a wider set**: ASCII letters and digits, the German umlauts and `ß`, a space and
+ * the underscore, and nothing else, so `C.1`, `C-1`, `Cé` and a tab are refused. A computation carries no
+ * `errorCode`, and A12 asks the code alphabet of its NAME instead, which is why `Ca.lc` draws both sentences and
+ * `Ca lc` only the name's. An empty code is [errorCodeFindings]' business, never this alphabet's.
+ */
+private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
+    val code = if (element.kind == "Rule") {
+        (element.body?.get("errorCode") as? JsonPrimitive)?.takeIf { it.isString }?.content
+    } else {
+        element.name
+    }
+    val codeFinding = code?.takeIf { text -> text.any { it !in ERROR_CODE_CHARACTERS } }?.let { text ->
+        slotFinding(element, "RK_ERROR_CODE_ALPHABET",
+            "the error code `$text` carries a character outside letters, digits, a space and the underscore, " +
+                "which A12 refuses in a sentence with no class; the letters include the German umlauts and `ß`")
+    }
+    val nameAdmitted = element.name.firstOrNull()?.isAsciiLetter() != false &&
+        element.name.all { it.isAsciiLetter() || it in '0'..'9' || it == '_' }
+    val nameFinding = if (nameAdmitted) null else slotFinding(element, "RK_RULE_NAME_ALPHABET",
+        "the name `${element.name}` does not start with an ASCII letter followed by ASCII letters, digits and " +
+            "underscores, which A12 refuses in a sentence with no class")
+    // The reserved-name predicate admits only names this alphabet admits, so it is silent beside the sentence.
+    return listOfNotNull(codeFinding, nameFinding) + reservedNameFinding(element)
+}
+
+private val ERROR_CODE_CHARACTERS: Set<Char> =
+    (('A'..'Z') + ('a'..'z') + ('0'..'9') + "äöüÄÖÜß _".toList()).toSet()
+
+private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
+
+private fun slotFinding(element: TrackedDeclaration, code: String, explain: String) =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path)
 
 /**
  * The reserved-namespace law lives in the shared leaf, not here.
