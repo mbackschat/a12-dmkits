@@ -24,7 +24,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * **The unit of report is the TEXT.** A value carrying both a tab and a pipe draws one finding where the
  * `supportedCharacters` family next door would draw two, because that one reports per (value, character) and
  * this predicate is a single containment test. Two defective values draw two, and each carrier answers on its
- * own account — a value and its own label both defective draw both classes.
+ * own account — a value and its own label both defective draw both classes. A text carrying a supplementary-plane
+ * character draws no class, only the unsupported-signs sentence, as everywhere an enumeration names an entry
+ * ([namedByA12], KERNEL-FINDINGS KF551).
  *
  * **A label is judged only for a DECLARED locale.** A label written for a locale the model does not declare
  * is ADMITTED however it is spelled, which is the row that keeps this family from refusing a model A12 takes:
@@ -45,7 +47,7 @@ internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding>
         // gate is not asked about a text that carries one — but it IS still asked about the others.
         val lineBreak = if (broken.isEmpty()) emptyList() else listOf(field.lineBreakFinding(broken.first()))
         lineBreak + texts.filterNot { it.text.any(::isALineBreak) }
-            .filter { it.text.any { character -> character == '\t' || character == '|' } }
+            .filter { it.text.any { character -> character == '\t' || character == '|' } && it.text.namedByA12() }
             .map { field.codedFinding(it) }
     }
 

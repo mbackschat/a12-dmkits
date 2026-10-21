@@ -16,7 +16,8 @@ import kotlinx.serialization.json.JsonObject
  * and `"BASIC "` match the token `BASIC`, the token `" BASIC"` matches the `sValue` `BASIC`, and an `sValue`
  * that trims to nothing — a space, a tab — is unset, so A12 never asks the question. The no-break space is not
  * trimmed and stays a foreign value, which is the row that separates this from a whitespace-blind comparison;
- * the case of a letter and an inner space still count.
+ * the case of a letter and an inner space still count. An `sValue` carrying a supplementary-plane character is not
+ * named: A12 answers it with the unsupported-signs sentence alone ([namedByA12], KERNEL-FINDINGS KF551).
  */
 internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
     defaultVariantFields().mapNotNull { field ->
@@ -25,7 +26,7 @@ internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
         val declared = (body["values"] as? JsonArray)
             ?.mapNotNull { (it as? JsonObject)?.string("value") }
             ?: return@mapNotNull null
-        if (special.javaTrimmed() in declared.map { it.javaTrimmed() }) {
+        if (!special.namedByA12() || special.javaTrimmed() in declared.map { it.javaTrimmed() }) {
             return@mapNotNull null
         }
         Finding(

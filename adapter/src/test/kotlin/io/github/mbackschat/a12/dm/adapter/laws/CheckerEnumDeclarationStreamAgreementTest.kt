@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Test
  * pairings, the value duplicates and the repeated-value sentence. It keeps one of identical notifications, judges
  * a restricted charset per UTF-16 unit, refusing a supplementary character's high unit even under a range that
  * spans the surrogate block (KF560), and names no value carrying a supplementary-plane character in a coded class
- * other than that charset class. The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
+ * other than that charset class: not the forbidden-text classes of a value, a label or a category token, not
+ * `MVK_S_VALUE_INVALID` for a special value, and not `MVK_DISPLAY_VALUES_DUPLICATE` for a repeated label, each of
+ * which the rows pair with its plain control. The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
  * (a letter beside a supplementary character) and supplementary surplus tokens, which settle that any such
  * character withholds the entry.
  *
@@ -30,7 +32,8 @@ import org.junit.jupiter.api.Test
 class CheckerEnumDeclarationStreamAgreementTest {
 
     private data class Row(val values: List<String>, val categories: List<Pair<String, List<String>>>?,
-        val restricted: Boolean = false, val label: String? = null, val charset: List<String>? = null)
+        val restricted: Boolean = false, val label: String? = null, val charset: List<String>? = null,
+        val sValue: String? = null)
 
     private val rows = linkedMapOf(
         "control" to Row(listOf("BASIC", "PLUS", "GOLD"), listOf(BAND to listOf("STANDARD", "HIGH", "TOP"),
@@ -93,6 +96,20 @@ class CheckerEnumDeclarationStreamAgreementTest {
             Row(listOf("BASIC", "o$CART"), null, charset = listOf("A-Z", "\u3000-\uFFFD")),
         "a supplementary character beside a range missing the block" to
             Row(listOf("BASIC", CART), null, charset = listOf("A-Z", "\u0100-\uD7FF")),
+        "a tab in a value" to Row(listOf("BASIC", "o\tk"), null),
+        "a trailing pipe in a value" to Row(listOf("BASIC", "o|"), null),
+        "an inner tab in a label" to Row(listOf("BASIC"), null, label = "Ba\tsic"),
+        "an inner tab in a category token" to Row(listOf("BASIC"), listOf(BAND to listOf("S\tT"))),
+        "a tab beside a sign in a value" to Row(listOf("BASIC", "o\tk$CART"), null),
+        "a pipe in a label" to Row(listOf("BASIC"), null, label = "Basic|"),
+        "a pipe beside a sign in a label" to Row(listOf("BASIC"), null, label = "Basic|$CART"),
+        "a pipe in a category token" to Row(listOf("BASIC"), listOf(BAND to listOf("ST|"))),
+        "a pipe beside a sign in a category token" to Row(listOf("BASIC"), listOf(BAND to listOf("ST|$CART"))),
+        "a foreign special value" to Row(listOf("BASIC"), null, sValue = "GOLD"),
+        "a sign special value" to Row(listOf("BASIC"), null, sValue = CART),
+        "a mixed sign special value" to Row(listOf("BASIC"), null, sValue = "o$CART"),
+        "two values labelled alike" to Row(listOf("BASIC", "PLUS"), null, label = "Tier"),
+        "two values labelled alike with a sign" to Row(listOf("BASIC", "PLUS"), null, label = "Tier $CART"),
         "shortfall, surplus, shortfall" to Row(listOf("BASIC", "PLUS"), listOf(BAND to listOf("RETAIL"),
             SEGMENT to listOf("STANDARD", "HIGH", "TOP"), REGION to listOf("NORTH"))),
     )
@@ -171,6 +188,14 @@ class CheckerEnumDeclarationStreamAgreementTest {
         assertEquals(listOf(BAD, BAD, SIGNS), kernel(model(rows.getValue("two supplementary values sharing a high unit, spanning"))))
         assertEquals(listOf(BAD, SIGNS), kernel(model(rows.getValue("two supplementary characters in one value, spanning"))))
         assertEquals(listOf(BAD, BAD, SIGNS), kernel(model(rows.getValue("a supplementary character beside a range missing the block"))))
+        for (carrier in listOf("a tab beside a sign in a value", "a pipe beside a sign in a label",
+            "a pipe beside a sign in a category token", "a sign special value", "a mixed sign special value",
+            "two values labelled alike with a sign")) {
+            assertEquals(listOf(SIGNS), kernel(model(rows.getValue(carrier))), carrier)
+        }
+        assertEquals(listOf("MVK_INTERNAL_VALUE_INVALID"), kernel(model(rows.getValue("a tab in a value"))))
+        assertEquals(listOf("MVK_S_VALUE_INVALID"), kernel(model(rows.getValue("a foreign special value"))))
+        assertEquals(listOf("MVK_DISPLAY_VALUES_DUPLICATE"), kernel(model(rows.getValue("two values labelled alike"))))
     }
 
     private val oracle = KernelConsistencyOracle()
@@ -206,6 +231,7 @@ class CheckerEnumDeclarationStreamAgreementTest {
             val entry = values.addObject().put("value", value)
             row.label?.let { entry.putArray("label").addObject().put("locale", "en_US").put("text", it) }
         }
+        row.sValue?.let { enumeration.put("sValue", it) }
         if (row.categories == null) enumeration.remove("categories")
         else {
             val categories = enumeration.putArray("categories")

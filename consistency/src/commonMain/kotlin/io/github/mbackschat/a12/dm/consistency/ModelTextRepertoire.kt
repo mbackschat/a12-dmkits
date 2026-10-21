@@ -15,7 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * **The carriers are measured one by one, and some texts are not among them.** Every text of a rule or a
  * computation is one — its condition or preconditions, operation, error code and message. So are a field's
- * annotations, enum values, enum labels and category tokens ([KF551]), its type's own message (a String type's pattern message, an
+ * annotations, enum values, enum labels, category tokens ([KF551]) and special value (`sValue`, measured 2026-10-21), its type's own message (a String type's pattern message, an
  * Enumeration's invalid-value message), and a group's annotations. The labels of the model, of a group and
  * of a field are NOT, and neither is a message or an enum label written for a locale the model does not
  * declare. Reading the check as "every text of the model" would refuse three kinds of legal model.
@@ -91,7 +91,7 @@ private fun TrackedDeclaration.annotationTexts(): List<CarriedText> =
         )
     }
 
-/** An enum's values, for a declared locale only their labels, and its categories' tokens. */
+/** An enum's values, for a declared locale only their labels, its categories' tokens and its special value. */
 private fun JsonObject.enumTexts(declaredLocales: List<String>): List<CarriedText> =
     (this["values"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { entry ->
         listOfNotNull(entry.string("value")?.let { CarriedText("the enum value `$it`", it) }) +
@@ -103,7 +103,7 @@ private fun JsonObject.enumTexts(declaredLocales: List<String>): List<CarriedTex
             (token as? JsonPrimitive)?.takeIf { it.isString }?.content
                 ?.let { CarriedText("the category token `$it`", it) }
         }
-    }
+    } + listOfNotNull(string("sValue")?.let { CarriedText("the special value `$it`", it) })
 
 private fun TrackedDeclaration.repertoireFinding(found: Unsupported): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

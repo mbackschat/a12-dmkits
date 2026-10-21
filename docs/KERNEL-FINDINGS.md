@@ -13308,6 +13308,18 @@ Blocks 3 and 4 run over every category, so shortfalls precede surpluses whatever
 
 Locked by `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`, which re-expresses the peer's 37-row capture in our own domain, all of whose classes it reproduces, and adds five rows with mixed values and supplementary tokens. The source suggests an account, a hypothesis like [KF559](#kf559)'s and not measured in isolation: A12 checks the declaration as a document of its metamodel ([KF146](#kf146)), whose formal check refuses any UTF-16 surrogate, so such an entry would be unknown to the category rules (*corrected 2026-10-13*, it was stated as settled). Block 7 comes from a separate serializer check over the raw values (`BasicConsistencyCheck.checkEnumerationType`), and identical notifications fall into a set. The portable checker now follows blocks 1 and 3–6 in order and multiplicity; it publishes block 2 as `RK_UNSUPPORTED_CHARACTER`, now for a category token too, after block 5, and block 7 not at all, since a repeated value always also draws block 6 or block 2. Not measured: an order inside a block, a supplementary-plane character in a category name, table-backed enumerations, and the interleaving of two enumeration fields.
 
+*Added 2026-10-21:* the rule holds for every class an Enumeration's texts can draw, not only the pairing and duplicate blocks. Each row against its plain control, which draws the class:
+
+| Text carrying a supplementary character | plain control draws | with the character, A12 reports |
+|---|---|---|
+| a value holding a tab, `o<TAB>k` | `MVK_INTERNAL_VALUE_INVALID` | the unsupported-signs sentence alone |
+| a label holding a pipe | `MVK_DISPLAY_VALUE_INVALID` | the same |
+| a category token holding a pipe | `MVK_CATEGORY_VALUE_INVALID` | the same |
+| an `sValue` that is no declared value, wholly or partly the character | `MVK_S_VALUE_INVALID` | the same |
+| one label on two values | `MVK_DISPLAY_VALUES_DUPLICATE` | the same |
+
+So the `sValue` is a carrier of that sentence too. Locked by the same test, whose checker named all five classes beside the sentence and left the `sValue` unscanned until this measurement.
+
 ## §4 supplement — generated requiredness runs per held row behind held content, and selected content under partial validation; a required-empty field is unavailable to every authored read (both strategies, 2026-10-13) <a id="kf552"></a>
 
 > Fold: pending — the partial scope belongs in §4's generated rule, the unavailable read beside §3's presence 3VL.

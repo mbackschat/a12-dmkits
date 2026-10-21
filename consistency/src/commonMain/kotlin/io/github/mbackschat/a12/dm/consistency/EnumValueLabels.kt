@@ -108,7 +108,8 @@ private fun TrackedFactBase.labelFindings(
  *
  * **It is asked only where the label set is otherwise complete**, which is where it was measured: a set that
  * is short or half-blank draws its own class first, and whether A12 adds this one there is unmeasured.
- * Under-reporting the pair is safe; naming a class on an unmeasured shape is not.
+ * Under-reporting the pair is safe; naming a class on an unmeasured shape is not. A repeated label carrying a
+ * supplementary-plane character is not named: A12 answers the unsupported-signs sentence alone (KF551).
  */
 private fun repeatedLabelFindings(
     field: TrackedDeclaration,
@@ -117,7 +118,8 @@ private fun repeatedLabelFindings(
     val perLocale = mutableMapOf<String, MutableList<String>>()
     for (value in texts) {
         for ((locale, entry) in value) {
-            entry.string("text")?.let { perLocale.getOrPut(locale) { mutableListOf() }.add(it) }
+            entry.string("text")?.takeIf { it.namedByA12() }
+                ?.let { perLocale.getOrPut(locale) { mutableListOf() }.add(it) }
         }
     }
     // Sorted rather than in encounter order, because a report's finding order is part of its contract and
