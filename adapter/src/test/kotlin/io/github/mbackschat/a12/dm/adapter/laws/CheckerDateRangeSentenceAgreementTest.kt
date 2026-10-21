@@ -71,6 +71,17 @@ class CheckerDateRangeSentenceAgreementTest {
         }
     }
 
+    /** A member A12 cannot bind makes the source unreadable, so a refused pair beside it reaches no verdict. */
+    @Test
+    fun aRangeA12CannotReadDrawsNoVerdict() {
+        val tree = mapper.readTree(model(Row("dd.MM.yyyy", "x")))
+        (tree.at("/content/modelRoot/rootGroups/0/Group/elements/1/Field/fieldType/DateRangeType") as ObjectNode)
+            .put("youngerThan1900Check", "yes")
+        val json = mapper.writeValueAsString(tree)
+        assertEquals(setOf("CK_MODEL_NOT_BUILDABLE"), kernelModelClasses(json), "A12 cannot read the source")
+        assertEquals(listOf("CK_MODEL_NOT_BUILDABLE@$FIELD"), ours(json))
+    }
+
     private val oracle = KernelConsistencyOracle()
     private val mapper = ObjectMapper()
 
