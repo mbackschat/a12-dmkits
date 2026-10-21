@@ -1097,8 +1097,8 @@ class Interpreter(
         // for the operators that read `t` or `f == n`; the ones reading `t == n` or `f >= 1` take the declared fill
         // scope ([DECLARED_FILL_OPERATORS]). So the verdicts agree.
         return when (val plan = correlationPlan(star)) {
-            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
-            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
+            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan, unavailableRows(star, plan))
+            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan, unavailableRows(star, plan))
             null -> naiveStarQuantTally(star, group)
         }
     }
@@ -1113,25 +1113,32 @@ class Interpreter(
         val plan = shape.plan ?: return null
         if (shape.multiStar && plan.selfExcluded) return null
         if (plan is OrderedCorrelationPlan && !orderedCorrelationSupported(plan)) return null
-        if (columnHoldsUnavailableEmpty(star)) return null
         return plan
     }
 
     /**
-     * Whether the star's column holds an [unavailableEmpty] cell in this scope. The indexed tallies count every
-     * empty cell as empty, and a required-empty one is undecided instead (KERNEL-FINDINGS KF552), which only
-     * [naiveStarQuantTally] knows, so such a column takes it. Validation only: a computation's gate throws the
-     * poison itself, and probing it here would read the column ahead of the operator. A field none of whose empty
-     * cells can be unavailable skips the walk, which tripled the multi-star correlation gate's allocation
+     * The scope's rows holding an [unavailableEmpty] cell in the starred column or a join field. The indexed tallies
+     * count such a cell as an empty one, as a value or a key, while A12 leaves it undecided: no row is kept on an
+     * unavailable join value, and a kept row's unavailable cell is neither filled nor empty (KERNEL-FINDINGS KF552).
+     * So the indexed tally leaves these rows to [keptTally], each outer row paying for them alone: O(rows × these
+     * rows) where A12 pays O(rows²) (INTERPRETER-FINDINGS IF423). Validation only: a computation's gate throws the
+     * poison itself, and probing it here would read the column ahead of the operator. Fields none of whose empty
+     * cells can be unavailable skip the walk, which tripled the multi-star correlation gate's allocation
      * (`docs/INTERPRETER-PERFORMANCE-RESULTS.md`, 2026-10-13).
      */
-    private fun columnHoldsUnavailableEmpty(star: Expr.Star): Boolean {
-        if (computeMode || !emptyMayBeUnavailable(star.path)) return false
+    private fun unavailableRows(star: Expr.Star, plan: CorrelationPlan): UnavailableRows {
+        if (computeMode) return UnavailableRows.NONE
+        val fields = (listOf(star.path) + plan.innerFields).filter(emptyMayBeUnavailable)
+        if (fields.isEmpty()) return UnavailableRows.NONE
         val group = star.path.substringBeforeLast('/')
-        return config.unavailableColumn(listOf(star.path, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0)))) {
-            filterCandidates(ctx, group, star.bindDepth).any { unavailableEmpty(it, star.path) }
+        return config.unavailableRows(listOf(star.path, plan.innerFields, star.bindDepth, ctx.repsOf(group).take(maxOf(star.bindDepth, 0)))) {
+            UnavailableRows(filterCandidates(ctx, group, star.bindDepth).filter { row -> fields.any { unavailableEmpty(row, it) } })
         }
     }
+
+    /** Whether the iterated row is itself one of [unavailableRows]: the cells are its own under a self-exclusion. */
+    private fun ownRowUnavailable(star: Expr.Star, plan: CorrelationPlan): Boolean =
+        (listOf(star.path) + plan.innerFields).any { emptyMayBeUnavailable(it) && unavailableEmpty(ctx, it) }
 
     private fun orderedCorrelationSupported(plan: OrderedCorrelationPlan): Boolean {
         val innerKind = ctx.declaredKind(plan.innerField)
@@ -1159,12 +1166,14 @@ class Interpreter(
      * `Having` (locked by [correlationTallyBothWays]). Iterates the group's rows, keeps those the filter
      * accepts, and 3-state-counts each kept row's star cell (present / empty / not-check-relevant).
      */
-    private fun naiveStarQuantTally(star: Expr.Star, group: String): Triple<Int, Int, Int> {
+    private fun naiveStarQuantTally(star: Expr.Star, group: String): Triple<Int, Int, Int> =
+        keptTally(star, if (star.having == null) ctx.rowContexts(group, star.bindDepth) else filterCandidates(ctx, group, star.bindDepth))
+
+    /** The `(t, f, n)` of the [rows] the star's filter keeps, each kept cell judged in three states. */
+    private fun keptTally(star: Expr.Star, rows: List<EvalContext>): Triple<Int, Int, Int> {
         var t = 0
         var f = 0
         var n = 0
-        val rows = if (star.having == null) ctx.rowContexts(group, star.bindDepth)
-            else filterCandidates(ctx, group, star.bindDepth)
         for (rc in rows) {
             if (star.having != null && !havingInterp(rc).keeps(star.having)) continue
             n++
@@ -1207,8 +1216,8 @@ class Interpreter(
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
         val group = star.path.substringBeforeLast('/')
         val fast = when (val plan = correlationPlan(star)) {
-            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
-            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
+            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan, unavailableRows(star, plan))
+            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan, unavailableRows(star, plan))
             null -> return null
         }
         return fast to naiveStarQuantTally(star, group)
@@ -1220,14 +1229,22 @@ class Interpreter(
      * OUTER-field values, then remove the outer row's own contribution when a self-exclusion is present (it sits
      * in its own bucket iff its inner-field values equal its outer-field values). Returns exactly what the scan
      * would for well-formed data (the differential + fuzz lock it). Buckets are built + cached by the Document.
+     * The [unavailable] rows are taken out of the bucket and tallied as the general scan tallies them.
      */
-    private fun hashJoinTally(star: Expr.Star, group: String, join: KeyedCorrelationPlan): Triple<Int, Int, Int> {
-        val buckets = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)
+    private fun hashJoinTally(
+        star: Expr.Star,
+        group: String,
+        join: KeyedCorrelationPlan,
+        unavailable: UnavailableRows,
+    ): Triple<Int, Int, Int> {
         val outerKey = join.outerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
         if (outerKey.any { it is Val.Unknown }) return Triple(0, 0, 0)   // an Unknown outer value never matches
-        val tfn = buckets[outerKey] ?: return Triple(0, 0, 0)
-        var tally = Triple(tfn[0], tfn[1], tfn[2])
-        if (join.selfExcluded && ctx.evaluated) {
+        var tally = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)[outerKey].toTally()
+        if (unavailable.rows.isNotEmpty()) {
+            tally = tally - unavailable.buckets(join.innerFields, star.path)[outerKey].toTally() +
+                keptTally(star, unavailable.rows)
+        }
+        if (join.selfExcluded && ctx.evaluated && !(unavailable.rows.isNotEmpty() && ownRowUnavailable(star, join))) {
             val outerInnerKey = join.innerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
             if (outerInnerKey == outerKey) {           // the outer row is in its own bucket → drop it
                 tally = subtractOwnContribution(star, tally)
@@ -1241,11 +1258,16 @@ class Interpreter(
         star: Expr.Star,
         group: String,
         plan: OrderedCorrelationPlan,
+        unavailable: UnavailableRows,
     ): Triple<Int, Int, Int> {
         val outer = if (invalid(ctx, plan.outerField)) Val.Unknown else ctx.field(plan.outerField)
         if (outer is Val.Unknown) return Triple(0, 0, 0)
         var tally = ctx.orderedCorrelation(group, plan.innerField, star.path, star.bindDepth).tally(plan.op, outer)
-        if (plan.selfExcluded && ctx.evaluated) {
+        if (unavailable.rows.isNotEmpty()) {
+            tally = tally - unavailable.ordered(plan.innerField, star.path).tally(plan.op, outer) +
+                keptTally(star, unavailable.rows)
+        }
+        if (plan.selfExcluded && ctx.evaluated && !(unavailable.rows.isNotEmpty() && ownRowUnavailable(star, plan))) {
             val inner = if (invalid(ctx, plan.innerField)) Val.Unknown else ctx.field(plan.innerField)
             if (inner !is Val.Unknown && orderedComparisonMatches(plan.op, inner, outer)) {
                 tally = subtractOwnContribution(star, tally)

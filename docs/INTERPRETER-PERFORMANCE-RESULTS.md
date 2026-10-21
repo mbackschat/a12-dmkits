@@ -21,6 +21,19 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-21 — one unavailable cell no longer makes a correlated scope quadratic (IG179 → IF423)
+
+Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to a throwaway probe over `RequiredColumnCorrelationPerfTest`'s one-unavailable scenario, at `da88569f0` plus the IF423 change, uncommitted; the probe and its record were deleted afterwards. Three warmups and three timed evaluations per scale, single run, so the interpreter's small-scale medians are noise-level:
+
+| rows | interpreter before | interpreter after | allocated after | Groovy | Java |
+|---|---|---|---|---|---|
+| 250 | 15.9 ms | 6.7 ms | 0.8 MB | 29.7 ms | 21.5 ms |
+| 500 | 57.8 ms | 4.0 ms | 1.6 MB | 92.4 ms | 70.6 ms |
+| 1000 | 210.5 ms | 5.6 ms | 3.0 MB | 345.6 ms | 270.3 ms |
+| 2000 | 811.6 ms | 7.0 ms | 5.4 MB | 1399.3 ms | 1102.7 ms |
+
+"Before" is the IG172 checkpoint below, which measured the same scenario. The interpreter's allocation at 2000 rows went from 1.63 GB to 5.4 MB, doubling with the rows, while both kernel strategies stay quadratic, Java allocating 5.17 GB.
+
 ### Checkpoint 2026-10-21 — the compute-overlay `$`-correlation lane reads by its position in the fork, and a breach moved that position (IG171 → IF422)
 
 Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, `perfGateTest` filtered to `computeOverlayCorrelationStaysSubQuadratic`, at `1ddf57628`/`8377c5578` plus an uncommitted build-file probe; every record was deleted afterwards. Interpreter CPU medians at n = 1500 → 6000, single runs.

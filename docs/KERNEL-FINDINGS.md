@@ -13338,6 +13338,8 @@ A reader the known cells decide still fires: two filled rows around the required
 
 *Added 2026-10-21:* in report order, unsorted, the generated requirement comes before every authored message: a policy with a low premium and an empty holder reports `mandatoryField` on `Holder/Phone`, then `STREET_MISSING`, then `PREMIUM_CAP`, on both strategies and the interpreter (`generatedRequirednessIsReportedBeforeAuthoredRules`). The authored rules' order among themselves is pinned there, not explained.
 
+*Added 2026-10-21:* the cell is unavailable as a `Having` join operand too. In a claims register whose `Reference` is required and `Alias` optional, `NoFieldFilled(Claims*/Amount Having [Reference] == [$Alias])` fires on each of four claims, none with an `Alias`, where one has an empty `Reference` beside a filled `Amount`, and `NoFieldFilled(Claims*/Premium Having another row And [Reference] < [$Reference])` fires on a claim whose only lower candidate is that claim. Both strategies keep no row on the unavailable value, against an empty outer key and in an ordered comparison alike. The control is an optional join field: `NoFieldFilled(Claims*/Amount Having another row And [Alias] == [$Alias])` stays silent on every claim without an `Alias` while another such claim holds a filled `Amount`, so an ordinary empty key does match an empty outer key, and the unavailable one is excluded for its unavailability. Locked by `adapter.laws.UnavailableCorrelationRowDiffTest`.
+
 ## §12 supplement — under partial validation an authored rule runs on every declared slot its selection covers, a slot no row holds included (both strategies, 2026-10-13) <a id="kf553"></a>
 
 > Fold: pending — the rule row domain belongs in §12 beside [KF527](#kf527)'s field-list walk.

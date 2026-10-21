@@ -137,13 +137,13 @@ class EvalConfig(
 
     private var correlationShapes: MutableMap<Expr.Star, PreparedCorrelationShape>? = null
 
-    private var unavailableColumns: MutableMap<List<Any>, Boolean>? = null
+    private var unavailableScopes: MutableMap<List<Any>, UnavailableRows>? = null
 
-    /** Whether a correlated column holds an unavailable empty cell in one scope; the answer is call-owned, because
+    /** A correlated scope's rows holding an unavailable empty cell; the answer is call-owned, because
      *  unavailability is the call's relevance and formal results, which no document-level cache may keep. */
-    internal fun unavailableColumn(key: List<Any>, scan: () -> Boolean): Boolean {
-        val columns = unavailableColumns ?: mutableMapOf<List<Any>, Boolean>().also { unavailableColumns = it }
-        return columns.getOrPut(key, scan)
+    internal fun unavailableRows(key: List<Any>, scan: () -> UnavailableRows): UnavailableRows {
+        val scopes = unavailableScopes ?: mutableMapOf<List<Any>, UnavailableRows>().also { unavailableScopes = it }
+        return scopes.getOrPut(key, scan)
     }
 
     /** SPEC-2026-10-10-02's dispatch and tally inspect the same immutable star across rows; recognition is call-owned. */

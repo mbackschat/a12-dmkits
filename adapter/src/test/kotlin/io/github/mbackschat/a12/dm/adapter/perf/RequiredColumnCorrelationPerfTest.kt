@@ -12,17 +12,17 @@ import org.junit.jupiter.api.TestInstance
 
 /**
  * Perf gate — a keyed `$` correlation over a REQUIRED column stays **linear** (INTERPRETER-PERFORMANCE-RESULTS 2026-10-21, the
- * correlation-plan gate). A required column can hold an unavailable empty cell, which forces the nested tally, so
- * the interpreter asks once per scope whether one exists. `OuterCorrelationPerfTest` cannot see that question: its
- * column is not required, and the gate is skipped. Here every cell is filled and every value distinct, so the
- * answer is "none", no witness ends a scan early, and the keyed join must carry every row. Asked once per row
+ * correlation-plan gate). A required column can hold an unavailable empty cell, which the indexed tally must re-read
+ * row by row, so the interpreter asks once per scope which rows hold one. `OuterCorrelationPerfTest` cannot see that
+ * question: its column is not required, and the gate is skipped. Here every cell is filled and every value distinct,
+ * so the answer is "none", no witness ends a scan early, and the keyed join must carry every row. Asked once per row
  * instead of once per scope, the question alone is O(rows) per row.
  *
  * `oneUnavailableCellKeepsTheKernelsClass` holds the other answer. One claim leaves its required reference empty,
- * so its cell is unavailable, and the scope takes the nested tally that the indexed ones cannot replace
- * (KERNEL-FINDINGS KF552): O(rows) per row in the interpreter and in both kernel strategies alike, measured
- * 2026-10-21 at 250 to 2000 rows (INTERPRETER-PERFORMANCE-RESULTS). A sub-quadratic floor would bar A12's own
- * cost, so this shape is held to the kernel's complexity class instead: the interpreter may not fall behind it.
+ * so its cell is unavailable (KERNEL-FINDINGS KF552). Both kernel strategies take O(rows) per row on that shape,
+ * measured 2026-10-21 at 250 to 2000 rows (INTERPRETER-PERFORMANCE-RESULTS); the interpreter keeps the indexed tally
+ * and re-reads only that row (INTERPRETER-FINDINGS IF423), which `UnavailableCorrelationWorkTest` locks as linear
+ * work deterministically. This lane holds the timed half: the interpreter may not fall behind the kernel's class.
  */
 @Tag("perf")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

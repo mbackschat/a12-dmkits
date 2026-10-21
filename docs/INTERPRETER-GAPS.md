@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **IG179 — a correlated column holding one unavailable empty cell takes the nested tally, O(rows) per row** (opened 2026-10-21, [KF552](KERNEL-FINDINGS.md#kf552)). Both kernel strategies are quadratic on this shape too and the interpreter stays about 1.4× ahead of the generated Java ([checkpoint](INTERPRETER-PERFORMANCE-RESULTS.md)), so `RequiredColumnCorrelationPerfTest` holds it to the kernel's class rather than to the sub-quadratic floor. The keyed and ordered tallies are additive per kept row and are exact for every available row, so a scope could keep them and re-read only its unavailable rows nested, O(rows × unavailable rows). That would beat A12's own complexity rather than match it, and it has to settle three cases the indexed path never meets: the outer row itself unavailable under a self-exclusion, an unavailable join field, and the ordered plan. Settles with the owner's decision whether to go below the kernel's class here; a yes needs a differential over those three cases before it lands.
+_None open._
 
 ## 2. Deferred / ongoing-incremental
 

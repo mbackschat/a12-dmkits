@@ -10,13 +10,16 @@ internal data class PreparedCorrelationShape(val plan: CorrelationPlan?, val mul
 /** A recognized, indexable `$` self-correlation shape. */
 internal sealed interface CorrelationPlan {
     val selfExcluded: Boolean
+
+    /** The fields of the filtered rows the join reads, each the inner side of one `$` comparison. */
+    val innerFields: List<String>
 }
 
 /**
  * A conjunction of equality joins (`[innerFields[i]] == [$outerFields[i]]`) served by keyed hash tallies.
  */
 internal data class KeyedCorrelationPlan(
-    val innerFields: List<String>,
+    override val innerFields: List<String>,
     val outerFields: List<String>,
     override val selfExcluded: Boolean,
 ) : CorrelationPlan
@@ -30,7 +33,9 @@ internal data class OrderedCorrelationPlan(
     val outerField: String,
     val op: CmpOp,
     override val selfExcluded: Boolean,
-) : CorrelationPlan
+) : CorrelationPlan {
+    override val innerFields: List<String> get() = listOf(innerField)
+}
 
 /**
  * Pure recognition of the indexable `$` self-correlation boundary. A `Having` is indexable only when it is a
