@@ -42,8 +42,7 @@ import kotlinx.serialization.json.contentOrNull
  * would refuse a model the Kernel accepts, in the direction no consumer can detect.
  */
 internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
-    unbindableBooleanFindings() + unbindableBaseYearFindings() + unbindableReachedMemberFindings() +
-        declaredLocaleFindings() +
+    unbindableBooleanFindings() + unbindableBaseYearFindings() + declaredLocaleFindings() +
         declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
             alphabetFindings(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
@@ -64,20 +63,6 @@ private fun TrackedFactBase.unbindableBooleanFindings(): List<Finding> = unbinda
         CK_MODEL_NOT_BUILDABLE,
         "$member, which A12 cannot bind as a boolean — write `true` or `false`. A12's reader refuses the " +
             "source, so the model never loads and nothing else in this report is A12's verdict about it",
-    )
-}
-
-/**
- * A model-level member A12's reader cannot bind in a model the entry reaches ([PreparedModel.unbindableReachedMembers]).
- * A12 reads that model whole, so it refuses the entry model as well: the same source refusal, raised from elsewhere.
- */
-private fun TrackedFactBase.unbindableReachedMemberFindings(): List<Finding> = unbindableReachedMembers.map { member ->
-    Finding(
-        FindingCategory.A12_CONSTRAINT,
-        FindingSeverity.ERROR,
-        CK_MODEL_NOT_BUILDABLE,
-        "$member, which A12 cannot bind. A12 reads every model the entry reaches whole, so its reader refuses " +
-            "that model and the entry model never loads; nothing else in this report is A12's verdict about it",
     )
 }
 

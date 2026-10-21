@@ -189,7 +189,6 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.SUPPORTED_CHARACTERS -> supportedCharacters
         ModelFact.UNREADABLE_LOCALE_CODES -> unreadableLocaleCodes
         ModelFact.UNBINDABLE_BOOLEANS -> unbindableBooleans
-        ModelFact.UNBINDABLE_REACHED_MEMBERS -> unbindableReachedMembers
         ModelFact.TYPE_DEFINITIONS -> declaredTypeDefinitionIds to typeDefinitionBodies
         ModelFact.REPEATABLE_GROUP_SET -> repeatableGroupPathList
         ModelFact.NON_POSITIVE_COUNT_GROUPS -> nonPositiveCountGroupPaths

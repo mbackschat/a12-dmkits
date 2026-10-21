@@ -29,14 +29,10 @@ class CheckCellKeyTest {
         typeDefinitions: String = "",
         codeType: String = "StringType",
         second: String = "",
-        libraryInfo: String? = null,
     ): PreparedModel {
-        // A reached type-definition library, written only when [libraryInfo] is, so the baseline reaches nothing.
-        val references = if (libraryInfo == null) "" else
-            ""","modelReferences":[{"alias":"lib","modelType":"document","purpose":"typeDefinitions","reference":"lib"}]"""
         val source = ModelSource(
             """
-            {"header":{"id":"keys","locales":$locales$references},
+            {"header":{"id":"keys","locales":$locales},
              "content":{$modelConfig$modelInfo$typeDefinitions
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -48,10 +44,7 @@ class CheckCellKeyTest {
         )
         val admitted = admit(source)
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible: ${source.json}")
-        val library = libraryInfo?.let {
-            admit(ModelSource("""{"header":{"id":"lib","locales":[{"code":"en_US"}]},"content":{$it"modelRoot":{"rootGroups":[]}}}"""))
-        }
-        return prepare(admitted, listOfNotNull(library as? Admission.Admitted).associateBy { it.modelId })
+        return prepare(admitted)
     }
 
     /** A field declared under [name] with [type], appended after `Code`. */
@@ -74,8 +67,6 @@ class CheckCellKeyTest {
         ModelFact.UNREADABLE_LOCALE_CODES to prepared(locales = """[{"code":"en_US"},{"code":"!!"}]"""),
         // A header flag A12's reader refuses. It moves no other fact: the member is read for nothing else.
         ModelFact.UNBINDABLE_BOOLEANS to prepared(modelInfo = """"modelInfo":{"immutable":"tRUE"},"""),
-        // The same flag, in a library the model reaches rather than in the model itself.
-        ModelFact.UNBINDABLE_REACHED_MEMBERS to prepared(libraryInfo = """"modelInfo":{"immutable":"tRUE"},"""),
         ModelFact.TYPE_DEFINITIONS to prepared(
             typeDefinitions =
                 """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -13,11 +14,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * A model-level member A12 cannot bind refuses preparation in whichever model the entry reaches: the entry, an
- * included model, a model that one includes, and a type-definition library (KF594). A12's side of it is
- * `adapter.WorkspaceBlankTextDiffTest`; this holds the same reading on every platform the workspace runs on.
+ * What leaves A12 unable to build the entry refuses preparation in whichever model the entry reaches: the entry, an
+ * included model, a model that one includes, and a type-definition library (KF594). That is a model-level member A12
+ * cannot bind, an entry locale a reached model does not declare, and a root group in a library. A12's side of it is
+ * `adapter.WorkspaceReachedModelDiffTest`; this holds the same reading on every platform the workspace runs on.
  */
-class ReachedModelMemberBindingTest {
+class ReachedModelRefusalTest {
 
     private val caseId = "imported-typedef-nested-single"
     private val members = linkedMapOf(
@@ -42,6 +44,30 @@ class ReachedModelMemberBindingTest {
     @Test
     fun theUntouchedWorkspacePrepares() {
         assertEquals("prepares", refusal(WorkspacePreparationFixtureJson.sources(caseId)))
+    }
+
+    /** Every model declares `de_DE` beside `en_US` but one; a model declaring a third as well is the control. */
+    @Test
+    fun eachReachedModelMissingAnEntryLocaleRefuses() {
+        val sources = WorkspacePreparationFixtureJson.sources(caseId)
+        fun locales(vararg codes: String) = JsonArray(codes.map { JsonObject(mapOf("code" to JsonPrimitive(it))) })
+        val bilingual = sources.mapValues { (_, json) -> json.setting("header.locales", locales("en_US", "de_DE")) }
+        val entryId = WorkspacePreparationFixtureJson.entryModelId(caseId)
+        val observed = sources.keys.filter { it != entryId }.associateWith { narrow ->
+            refusal(bilingual + (narrow to sources.getValue(narrow).setting("header.locales", locales("en_US"))))
+        }
+        assertEquals(observed.mapValues { "${it.key} header.locales" }, observed)
+        assertEquals("prepares", refusal(bilingual.mapValues { (id, json) ->
+            if (id == entryId) json else json.setting("header.locales", locales("en_US", "de_DE", "fr_FR"))
+        }))
+    }
+
+    @Test
+    fun aTypeDefinitionLibraryWithARootGroupRefuses() {
+        val sources = WorkspacePreparationFixtureJson.sources(caseId)
+        val group = Json.parseToJsonElement("""{"type":"Group","id":"/Types","name":"Types","Group":{"elements":[]}}""")
+        assertEquals("permit-types content.modelRoot.rootGroups",
+            refusal(sources + ("permit-types" to sources.getValue("permit-types").setting("content.modelRoot.rootGroups", JsonArray(listOf(group))))))
     }
 
     /** The refused model and member, or `prepares`. */

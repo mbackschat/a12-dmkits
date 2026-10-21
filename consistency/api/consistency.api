@@ -674,12 +674,12 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun getElements ()Ljava/util/List;
 	public final fun getFieldRefByShortNameAllowed ()Z
 	public final fun getHasBaseYear ()Z
+	public final fun getReachedModelRefusals ()Ljava/util/List;
 	public final fun getResolvableElements ()Ljava/util/List;
 	public final fun getSupportedCharacters ()Ljava/util/List;
 	public final fun getTypeDefinitionBodies ()Ljava/util/Map;
 	public final fun getUnbindableBaseYear ()Ljava/lang/String;
 	public final fun getUnbindableBooleans ()Ljava/util/List;
-	public final fun getUnbindableReachedMembers ()Ljava/util/List;
 	public final fun getUnexpandedMounts ()Ljava/util/List;
 	public final fun getUnreadableLocaleCodes ()Ljava/util/List;
 	public final fun getUnsupportedConditionLanguage ()Ljava/lang/String;

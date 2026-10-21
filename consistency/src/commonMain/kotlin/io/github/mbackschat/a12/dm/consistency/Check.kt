@@ -994,6 +994,26 @@ internal fun checkRun(
                 "the fact base is incomplete and no reference check can run over this source",
         )
     }
+    if (prepared.reachedModelRefusals.isNotEmpty()) {
+        // A12 reads every model the entry reaches before it builds the entry (KF594), so a refusal raised there
+        // leaves no model whose references or declarations any family could judge as A12 would.
+        return unexamined(ConsistencyReport(
+            modelId = modelId,
+            status = ConsistencyStatus.Invalid,
+            findings = prepared.reachedModelRefusals.map { refusal ->
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    CK_MODEL_NOT_BUILDABLE,
+                    "$refusal. A12 reads every model the entry reaches before it builds the entry, so the entry " +
+                        "model never loads",
+                )
+            },
+            diagnostics = inherited + prepared.diagnostics,
+            checksCompleted = emptySet(),
+            gaps = prepared.gaps() + unmounted + UNIMPLEMENTED_FAMILIES,
+        ))
+    }
     if (unmounted.isNotEmpty()) {
         // The fact base is INCOMPLETE, so "no declared element matches" is not a verdict this checker may
         // reach: the elements are declared, in a model this source does not carry. Reporting the references

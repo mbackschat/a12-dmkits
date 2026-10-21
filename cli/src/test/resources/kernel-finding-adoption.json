@@ -526,26 +526,50 @@
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
       }
     },
-    "kf594": {
-      "sha256": "f465b744cc6eea3b9725ca8e4cbacc390a035556dd68b18b8ee2b35984e5161b",
+    "kf288": {
+      "sha256": "5772824fe915aa2d6e8f1459396ca20fd0ea4b750b605da23f8dcaee07fb79e0",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
-        "checker": ["a reached model's members"],
+        "checker": ["an include's locales"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["A12's include expansion"],
+        "interpreter": ["an include's locales"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["A12's include expansion"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The core reader refuses no expansion on locales; refusing a model is preparation's job.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The mount is suspended by name and the refusal is reported as CK_MODEL_NOT_BUILDABLE from the walk over every reached model.", "evidence": {"an include's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "An include missing an entry locale is refused and a superset is not."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no included model.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on an include's and a library's locale sets.", "evidence": {"A12's include expansion": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "Each locale set builds or is refused on all three alike."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Each resolved reference is held to the entry's locales (IF429).", "evidence": {"an include's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "The workspace refuses the include missing an entry locale and prepares a superset."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this reading through the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
+    "kf594": {
+      "sha256": "cf30d6f6a51f0e30f9168c9abc109b2087bf8ea56557cfa86e7342d317b42d5a",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["a reached model's members", "a reached model's locales", "a library's root group"],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["A12's reached-model reading"],
-        "interpreter": ["a reached model's members"],
+        "interpreter": ["a reached model's members", "a reached model's locales", "a library's root group"],
         "dmtool-cli": [],
         "a12-kernel-lean": ["A12's reached-model reading"]
       },
       "consumers": {
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The core reader refuses no model-level member, the entry's included; refusing a model is preparation's job.", "evidence": {}},
-        "checker": {"state": "APPLIED", "basis": "The closure walk reads every reached model's four members and reports each unbindable one as CK_MODEL_NOT_BUILDABLE, naming its model.", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The checker refuses the entry on every carrier and member A12 does not build, and on none of the controls."}}},
+        "checker": {"state": "APPLIED", "basis": "The closure walk reads every reached model's four members, its locales and, for a library, its root groups, and reports each refusal as CK_MODEL_NOT_BUILDABLE naming the model, before any family runs.", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The checker refuses the entry on every carrier and member A12 does not build, and on none of the controls."}, "a reached model's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "The checker refuses each entry A12 does not build and none of the controls."}, "a library's root group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aTypeDefinitionLibraryWithARootGroupLeavesTheEntryUnbuilt", "witness": "The checker refuses each library A12 does not expand and no library without a root group."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no reached model.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
-        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on three carriers and four members.", "evidence": {"A12's reached-model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "Every carrier and member agrees, and each control builds."}}},
-        "interpreter": {"state": "APPLIED", "basis": "Workspace preparation binds the four members of every source it parses, and the loader binds them on a model it is given (IF429).", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The workspace refuses on every carrier and member A12 does not build, and prepares each control."}}},
+        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on three carriers, four members, three locale sets and five library roots.", "evidence": {"A12's reached-model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "Every carrier and member agrees, and each control builds."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Workspace preparation binds the four members of every source it parses and holds every resolved reference to the entry's locales and a library to no root group; the loader binds the members on a model it is given (IF429).", "evidence": {"a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The workspace refuses on every carrier and member A12 does not build, and prepares each control."}, "a reached model's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "The workspace refuses each entry A12 does not build and prepares each control."}, "a library's root group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aTypeDefinitionLibraryWithARootGroupLeavesTheEntryUnbuilt", "witness": "The workspace refuses each library A12 does not expand and prepares the libraries without a root group."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
       }

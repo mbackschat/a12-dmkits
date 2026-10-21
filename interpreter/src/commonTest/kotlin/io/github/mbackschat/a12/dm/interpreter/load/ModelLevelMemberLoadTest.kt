@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 
 /**
  * An expanded model loaded directly refuses on each of its model-level members A12 cannot bind, as workspace
- * preparation does for every model it reaches (KF594, `workspace.ReachedModelMemberBindingTest`). The bound row is the
+ * preparation does for every model it reaches (KF594, `workspace.ReachedModelRefusalTest`). The bound row is the
  * control.
  */
 class ModelLevelMemberLoadTest {

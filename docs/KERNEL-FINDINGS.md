@@ -5692,7 +5692,7 @@ The message-coverage law ([§13](#kf158)) is stated over "the declared locales",
 
 The third row is what bounds it: without it "the provider must match the entry" and "the provider must cover the entry" are the same observation on every other row, and a checker built on the first would suspend a mount A12 expands in full.
 
-**Consequence for the portable checker.** It suspends such a mount by name rather than mounting a tree A12 never builds — deliberately UNDER-reporting, since A12's own answer is a refusal to load and the checker owns no code for that beyond `CK_MODEL_NOT_BUILDABLE`, which the mount path cannot yet carry. Same disposition as an `includeLevel` spelling A12's enum refuses, for the same reason.
+**Consequence for the portable checker.** It suspends such a mount by name rather than mounting a tree A12 never builds, and reports the refusal itself as `CK_MODEL_NOT_BUILDABLE` from its walk over every reached model. *Corrected 2026-10-22:* until then the mount path could not carry a finding, so the checker deliberately under-reported with the suspension alone ([KF594](#kf594)). An `includeLevel` spelling A12's enum refuses is still reported by suspension only.
 
 *(Locked: `rulekit.validate.laws.IncludedDeclarationLocaleScopeLawsTest` — all four rows, on the Kernel's own `expand`; the checker's suspension is `consistency.WorkspaceMountTest`.)*
 
@@ -14312,7 +14312,7 @@ A `typeDefinitions` entry's reference is resolved whatever its text, so an empty
 *Locked by:* `adapter.laws.JsonLiteralStrictnessDiffTest` (literals, A12 against the interpreter and the checker); `adapter.laws.RepeatabilityTextReadingDiffTest` and `adapter.laws.ModelTextReadingDiffTest` (the `int` and decimal rows, A12 against the interpreter, and the checker on `repeatability`, on `baseYear` and on the decimal bounds); `adapter.WorkspaceBlankTextDiffTest` (include entries, type-definition references and ids, against the interpreter, the core reader and the checker); `adapter.laws.YearOnlyDateDigitsDiffTest` (the year).
 
 
-## §13 supplement — every model the entry reaches is read whole, so a model-level member A12 cannot bind in an included model or a type-definition library leaves the entry unbuilt (serializer + expansion differential, 2026-10-22) <a id="kf594"></a>
+## §13 supplement — every model the entry reaches is read whole and must suit the entry, so an unbindable model-level member, a missing entry locale or a library's root group in an included model or a type-definition library leaves the entry unbuilt (serializer + expansion differential, 2026-10-22) <a id="kf594"></a>
 
 > Fold: pending — beside [KF593](#kf593)'s `int` binding and [KF577](#kf577)'s flag binding.
 
@@ -14326,6 +14326,21 @@ A `typeDefinitions` entry's reference is resolved whatever its text, so an empty
 | `modelInfo.metaData` `1.5` | not built |
 | `modelConfig.fieldRefByShortNameAllowed` `1.5` | not built |
 
-A type-definition library declares no root group. Even an empty one is refused: *"Cannot expand import because the root group of the imported model [=types] contains elements."*
+The entry declares `en_US` and `de_DE`; the reached model's locales vary, in an included model and in a library alike:
 
-*Locked by:* `adapter.WorkspaceBlankTextDiffTest.aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt` (A12 against the interpreter's workspace and the checker's, every carrier and member).
+| reached model declares | A12 |
+|---|---|
+| `en_US`, `de_DE` | built |
+| `en_US`, `de_DE`, `fr_FR` | built |
+| `en_US` | not built |
+
+A type-definition library's `content.modelRoot`:
+
+| library declares | A12 |
+|---|---|
+| `rootGroups: []`, or no `modelRoot` | built |
+| one root group with no elements, one holding a field, or two empty ones | not built: *"Cannot expand import because the root group of the imported model [=types] contains elements."* |
+
+The locale rows extend [KF288](#kf288)'s include table to a library, where the same check runs (`DocumentModelExpandSanityChecks.checkImportedDocModelForCompatibility`, which also holds the root-group demand).
+
+*Locked by:* `adapter.WorkspaceReachedModelDiffTest` (A12 against the interpreter's workspace and the checker's, every carrier, member, locale set and root shape).

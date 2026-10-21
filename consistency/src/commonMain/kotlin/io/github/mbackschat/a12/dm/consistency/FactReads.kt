@@ -74,9 +74,6 @@ internal enum class ModelFact {
     SUPPORTED_CHARACTERS,
     UNREADABLE_LOCALE_CODES,
     UNBINDABLE_BOOLEANS,
-
-    /** The model-level members A12 cannot bind in the models the entry reaches, read in one closure walk. */
-    UNBINDABLE_REACHED_MEMBERS,
     TYPE_DEFINITIONS,
 
     /**

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.declaredLocaleKeys
 import io.github.mbackschat.a12.dm.interpreter.modelMemberText
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
 import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
@@ -8,7 +9,9 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
+import io.github.mbackschat.a12.dm.interpreter.ModelReferencePurpose
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -98,11 +101,13 @@ internal class WorkspaceAssemblyContext(
     private val resolvedSources = linkedMapOf<ModelReferenceStep, ParsedWorkspaceSource>()
     private val referenceTraversal = WorkspaceReferenceTraversal(limits)
     private var preparedElements = 0
+    /** The entry's locale keys, which every model it reaches must declare; set by [entry] before any [resolve]. */
+    private var entryLocaleKeys: Set<String>? = null
 
     fun entry(modelId: String): ParsedWorkspaceSource {
         val source = workspace.source(modelId)
             ?: throw ModelPreparationError.from(listOf(EntryModelNotFoundDiagnostic(modelId)))
-        return parsed(source)
+        return parsed(source).also { entryLocaleKeys = it.root.declaredLocaleKeys() }
     }
 
     fun resolve(
@@ -123,6 +128,7 @@ internal class WorkspaceAssemblyContext(
                 ),
             )
         val parsedSource = parsed(source)
+        requireExpandable(step, parsedSource)
         if (step !in dependencies) {
             dependencies[step] = ResolvedModelReference(step, source)
         }
@@ -130,6 +136,28 @@ internal class WorkspaceAssemblyContext(
             resolvedSources[step] = parsedSource
         }
         return ResolvedWorkspaceReference(parsedSource, nextChain)
+    }
+
+    /**
+     * What A12's expansion demands of a model the entry reaches, before it reads a declaration of it (KF594): every
+     * locale the entry declares, and, for a type-definition library, no root group at all, since an import whose root
+     * holds one, even empty, is not expanded. Measured one reference deep; a nested reference is held to the entry's
+     * locales as the portable checker holds it, which no measurement has yet separated from its referrer's.
+     */
+    private fun requireExpandable(step: ModelReferenceStep, reached: ParsedWorkspaceSource) {
+        if (step.purpose == ModelReferencePurpose.TYPE_DEFINITIONS &&
+            (((reached.root["content"] as? JsonObject)?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray)
+                .orEmpty().isNotEmpty()
+        ) {
+            throw invalidModelElement(reached, "content.modelRoot.rootGroups",
+                "a type-definition library declares a root group, so A12 cannot expand the import")
+        }
+        val uncovered = checkNotNull(entryLocaleKeys) { "the entry is read before any reference is resolved" } -
+            reached.root.declaredLocaleKeys()
+        if (uncovered.isNotEmpty()) {
+            throw invalidModelElement(reached, "header.locales",
+                "the model does not declare the entry model's ${uncovered.joinToString(", ")}, so A12 does not expand it")
+        }
     }
 
     fun consumePreparedElement() {

@@ -191,10 +191,11 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     Each refuses the whole source before any check runs, exactly as a field declaration's does
  *     ([KERNEL-FINDINGS KF569], `adapter.laws.CheckerDeclarationAdmissionAgreementTest`), so the declaration-slot
  *     family reports each as [CK_MODEL_NOT_BUILDABLE].
- * @param unbindableReachedMembers the model-level members A12's reader cannot bind in a model the entry reaches,
- *     an included model or a type-definition library, one sentence each naming that model: its base year and its
- *     three `boolean`s. A12 reads every reached model whole, so each leaves the entry model unbuilt ([KERNEL-FINDINGS
- *     KF594], `adapter.WorkspaceBlankTextDiffTest`). The entry's own are [unbindableBaseYear] and [unbindableBooleans].
+ * @param reachedModelRefusals what leaves A12 unable to build the entry from a model it reaches, an included model or
+ *     a type-definition library, one sentence each naming that model: a model-level member its reader cannot bind,
+ *     an entry locale it does not declare, or a library's root group ([KERNEL-FINDINGS KF594],
+ *     `adapter.WorkspaceReachedModelDiffTest`). The entry's own members are [unbindableBaseYear] and
+ *     [unbindableBooleans].
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -219,7 +220,7 @@ data class PreparedModel(
     /** Unambiguous authored definitions; a duplicate id stays unjudged on the index-key path. */
     val typeDefinitionBodies: Map<String, JsonObject> = emptyMap(),
     val unbindableBooleans: List<String> = emptyList(),
-    val unbindableReachedMembers: List<String> = emptyList(),
+    val reachedModelRefusals: List<String> = emptyList(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -482,7 +483,7 @@ fun prepare(
         unbindableBaseYear = baseYear?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
             ?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
-        unbindableReachedMembers = definitions.unbindableReachedMembers,
+        reachedModelRefusals = definitions.reachedModelRefusals,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = definitions.ids,
@@ -513,7 +514,7 @@ private data class ClosureReading(
     val ids: Set<String>,
     val bodies: Map<String, JsonObject>,
     val unbindableBooleans: List<String>,
-    val unbindableReachedMembers: List<String>,
+    val reachedModelRefusals: List<String>,
 )
 
 /** A model's own members A12's reader cannot bind: its base year, then its three `boolean`s. */
@@ -548,8 +549,11 @@ private fun JsonObject.unbindableTypeDefinitionBooleans(): List<String> {
 }
 
 /**
- * One walk over every model the entry reaches, the entry included: the type definitions they declare, and the
- * model-level members of every model but the entry that A12's reader cannot bind.
+ * One walk over every model the entry reaches, the entry included: the type definitions they declare, and what
+ * leaves A12 unable to build the entry from a model it reaches (KF594). That is a model-level member its reader
+ * cannot bind, a locale of the entry's the reached model does not declare, or a root group in a type-definition
+ * library, which A12 does not expand as an import. The locale demand is measured one reference deep and applied to
+ * every depth, as the mount path applies it.
  */
 private fun readClosure(
     entry: Admission.Admitted,
@@ -559,7 +563,9 @@ private fun readClosure(
     val bodies = mutableMapOf<String, JsonObject>()
     val ambiguous = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
-    val unbindableReached = mutableListOf<String>()
+    val reachedRefusals = mutableListOf<String>()
+    val entryLocales = ((entry.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales().keys.toSet()
+    val libraries = linkedSetOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
@@ -567,7 +573,12 @@ private fun readClosure(
         val root = source.parsed as? JsonObject
         val content = root?.get("content") as? JsonObject
         if (source !== entry) {
-            unbindableReached += content.unbindableModelMembers().map { "In the model `${source.modelId}`, $it" }
+            reachedRefusals += content.unbindableModelMembers().map { "In the model `${source.modelId}`, $it, which A12 cannot bind" }
+            val uncovered = entryLocales - (root?.get("header") as? JsonObject).declaredLocales().keys.toSet()
+            if (uncovered.isNotEmpty()) {
+                reachedRefusals += "The model `${source.modelId}` does not declare the entry model's locale " +
+                    "${uncovered.joinToString(", ")}, so A12 does not expand it"
+            }
         }
         val definitions = (content?.get("typeDefinitions") as? JsonArray)
             ?.filterIsInstance<JsonObject>().orEmpty()
@@ -588,12 +599,21 @@ private fun readClosure(
             ?.filterIsInstance<JsonObject>()
             ?.forEach { reference ->
                 val referenced = reference.text("reference") ?: return@forEach
+                if (reference.text("purpose") == "typeDefinitions") libraries += referenced
                 if (visited.add(referenced)) {
                     providers[referenced]?.let { pending += it }
                 }
             }
     }
-    return ClosureReading(ids, bodies, unbindable, unbindableReached)
+    for (library in libraries) {
+        val content = (providers[library]?.parsed as? JsonObject)?.get("content") as? JsonObject
+        val rootGroups = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray
+        if (!rootGroups.isNullOrEmpty()) {
+            reachedRefusals += "The type-definition library `$library` declares a root group, so A12 cannot expand " +
+                "the import"
+        }
+    }
+    return ClosureReading(ids, bodies, unbindable, reachedRefusals)
 }
 
 /**
