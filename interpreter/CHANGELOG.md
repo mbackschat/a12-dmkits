@@ -28,6 +28,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Performance
 
+- Partial validation over a relevant set that names every row now decides each row's relevance by index, so its cost grows linearly with the rows rather than with their square.
 - A per-row rule that counts filled fields or groups across a starred column, or asks a fill quantifier over one, now reads the column once per scope instead of once per row, so its cost grows linearly with the rows rather than with their square.
 - **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 

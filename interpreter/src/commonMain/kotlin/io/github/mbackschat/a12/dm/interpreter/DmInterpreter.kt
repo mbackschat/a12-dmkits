@@ -390,13 +390,13 @@ class DmInterpreter private constructor(
      */
     private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
         val candidates = wellFormed(relevant)
-        val reducedByPath = HashMap<String, List<RelevantEntity>>()
+        val reducedByPath = HashMap<String, RowAddressIndex>()
         val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
         return { starPath, bindDepth, rowReps ->
             val scope = starScope(starPath, bindDepth, rowReps)
             decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
                 wildcardsEveryStarredLevel(
-                    reducedByPath.getOrPut(starPath) { reducedStarRelevantCandidates(candidates, starPath) },
+                    reducedByPath.getOrPut(starPath) { RowAddressIndex(reducedStarRelevantCandidates(candidates, starPath)) },
                     scope,
                 )
             }
@@ -407,8 +407,8 @@ class DmInterpreter private constructor(
      * Whether the reduced identifiers that address [scope]'s row establish the extent: at least one does, and
      * none is concrete at a level the star iterates.
      */
-    private fun wildcardsEveryStarredLevel(reduced: List<RelevantEntity>, scope: StarScope): Boolean {
-        val scoped = reduced.filter { addressesRow(it, scope.bound) }
+    private fun wildcardsEveryStarredLevel(reduced: RowAddressIndex, scope: StarScope): Boolean {
+        val scoped = reduced.addressing(scope.bound)
         return scoped.isNotEmpty() && scope.levels.none { level -> scoped.any { it.indices[level] != RelevantEntity.ALL } }
     }
 
@@ -435,7 +435,8 @@ class DmInterpreter private constructor(
      */
     private inner class PartialGroupExtents(relevant: Set<RelevantEntity>) {
         private val candidates = wellFormed(relevant)
-        private val reducedByPath = HashMap<String, List<RelevantEntity>>()
+        private val reducedByPath = HashMap<String, RowAddressIndex>()
+        private val namedByLevel = HashMap<String, Set<Int>>()
         private val absentCoverage = HashMap<Triple<String, Int, List<Int>>, Boolean>()
 
         fun gate(presence: (String, List<Int>) -> GroupPresenceState): GroupCountGate {
@@ -443,7 +444,7 @@ class DmInterpreter private constructor(
             return GroupCountGate { groupPath, bindDepth, rowReps, present ->
                 val scope = starScope(groupPath, bindDepth, rowReps)
                 decided.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
-                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) { ownIdentifiers(groupPath) }, scope) &&
+                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) { RowAddressIndex(ownIdentifiers(groupPath)) }, scope) &&
                         presence(groupPath, firstInstance(groupPath, scope))
                             .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
                         coversAbsent(groupPath, bindDepth, rowReps, present, presence)
@@ -486,11 +487,7 @@ class DmInterpreter private constructor(
             for (level in scope.bound.size until parts.size) {
                 val prefix = "/" + parts.take(level + 1).joinToString("/")
                 val axis = if (prefix !in model.repeatable) listOf(1) else {
-                    val named = HashSet<Int>()
-                    for (e in candidates) {
-                        val index = e.indices.getOrNull(level) ?: continue
-                        if (index != RelevantEntity.ALL && pathParts(e.path).take(level + 1) == parts.take(level + 1)) named += index
-                    }
+                    val named = HashSet(namedIndices(prefix, level))
                     present.mapTo(named) { it[level] }
                     val capacity = model.declaredReps[prefix]
                     (named + generateSequence(1) { it + 1 }.first { it !in named })
@@ -499,6 +496,16 @@ class DmInterpreter private constructor(
                 tuples = tuples.flatMap { tuple -> axis.map { tuple + it } }
             }
             return tuples.filter { it !in present }
+        }
+
+        /** The concrete indices the identifiers on [prefix]'s branch name at its [level], whatever row asks. */
+        private fun namedIndices(prefix: String, level: Int): Set<Int> = namedByLevel.getOrPut(prefix) {
+            val prefixParts = pathParts(prefix)
+            candidates.mapNotNullTo(HashSet()) { e ->
+                e.indices.getOrNull(level)?.takeIf { index ->
+                    index != RelevantEntity.ALL && pathParts(e.path).take(level + 1) == prefixParts
+                }
+            }
         }
     }
 
@@ -516,15 +523,15 @@ class DmInterpreter private constructor(
      * side in `PartialExtentGateShapeDiffTest`; the split is IF264.
      */
     private fun starExtentKnownOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
-        val candidates = wellFormed(relevant)
+        val covering = coveringIndexes(relevant)
         val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
         return { starPath, bindDepth, rowReps ->
             val scope = starScope(starPath, bindDepth, rowReps)
             decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
-                candidates.any { e ->
-                    covers(e, starPath) && addressesRow(e, scope.bound) &&
-                        scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
-                } || coversEveryRepetition(candidates, starPath, scope)
+                val addressing = covering(starPath).addressing(scope.bound)
+                addressing.any { e ->
+                    scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
+                } || coversEveryRepetition(addressing, starPath, scope)
             }
         }
     }
@@ -645,12 +652,6 @@ class DmInterpreter private constructor(
         return eParts.size <= sParts.size && eParts == sParts.take(eParts.size)
     }
 
-    /** Whether [e] says anything about the row [bound] pins — an entity on a different outer row does not. */
-    private fun addressesRow(e: RelevantEntity, bound: List<Int>): Boolean =
-        bound.indices.all { i ->
-            i >= e.indices.size || e.indices[i] == RelevantEntity.ALL || e.indices[i] == bound[i]
-        }
-
     /** The repetition coordinates the current row BINDS for a starred operand, and the levels the star iterates. */
     private class StarScope(val bound: List<Int>, val levels: List<Int>)
 
@@ -707,27 +708,34 @@ class DmInterpreter private constructor(
         // repetition is O(relevant² × reps), and enumerating every row makes the relevant set grow WITH the
         // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest` (a growth
         // figure, so interpreter-only and unaffected by that guard's since-corrected kernel baseline).
-        val candidates = wellFormed(relevant)
+        val covering = coveringIndexes(relevant)
         val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
         return { starPath, bindDepth, rowReps ->
             val scope = starScope(starPath, bindDepth, rowReps)
             decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
-                coversEveryRepetition(candidates, starPath, scope)
+                coversEveryRepetition(covering(starPath).addressing(scope.bound), starPath, scope)
             }
         }
     }
 
+    /** Per star path, the well-formed entities that speak about it ([covers]), indexed by their coordinates. */
+    private fun coveringIndexes(relevant: Set<RelevantEntity>): (String) -> RowAddressIndex {
+        val candidates = wellFormed(relevant)
+        val byPath = HashMap<String, RowAddressIndex>()
+        return { starPath -> byPath.getOrPut(starPath) { RowAddressIndex(candidates.filter { covers(it, starPath) }) } }
+    }
+
     /**
-     * Whether the relevant entities addressing this row cover every declared repetition TUPLE of the levels
+     * Whether the relevant entities [addressing] this row cover every declared repetition TUPLE of the levels
      * [starPath]'s star iterates. Levels **deeper** than an entity's own path need no enumeration: a relevant
      * group makes every descendant relevant, which is the kernel's own rule, so such a level reads as wildcarded.
      */
     private fun coversEveryRepetition(
-        candidates: List<RelevantEntity>,
+        addressing: List<RelevantEntity>,
         starPath: String,
         scope: StarScope,
     ): Boolean {
-        if (scope.levels.isEmpty()) return candidates.any { covers(it, starPath) && addressesRow(it, scope.bound) }
+        if (scope.levels.isEmpty()) return addressing.isNotEmpty()
 
         val parts = pathParts(starPath)
         val declared = IntArray(scope.levels.size) { k ->
@@ -735,9 +743,8 @@ class DmInterpreter private constructor(
         }
         // Each addressing entity becomes a BOX over the iterated levels — a concrete index pins that level,
         // ALL (and any level deeper than the entity's own path) spans it.
-        val boxes = candidates.mapNotNull { e ->
-            if (!covers(e, starPath) || !addressesRow(e, scope.bound)) null
-            else IntArray(scope.levels.size) { k ->
+        val boxes = addressing.map { e ->
+            IntArray(scope.levels.size) { k ->
                 val i = scope.levels[k]
                 if (i >= e.indices.size) RelevantEntity.ALL else e.indices[i]
             }
@@ -1495,22 +1502,39 @@ class DmInterpreter private constructor(
             fields
         }
         val cache = HashMap<String, HashMap<List<Int>, GroupRelevance>>()
-
-        fun touchesGroup(entity: RelevantEntity, groupPath: String, groupReps: List<Int>): Boolean {
-            val entityParts = pathParts(entity.path)
+        // Both questions are indexed, because a relevant set that names every row would otherwise be scanned once
+        // per group instance (IG172, `GrowingRelevancePartialPerfTest`). An entity TOUCHES a group when one path
+        // is a prefix of the other and its indices agree on the levels both carry; it COVERS one when its own path
+        // is the group's or an ancestor's and every index it carries agrees.
+        val touching = HashMap<String, IndexTrie>()
+        fun touchesGroup(groupPath: String, groupReps: List<Int>): Boolean = touching.getOrPut(groupPath) {
             val groupParts = pathParts(groupPath)
-            val common = minOf(entityParts.size, groupParts.size)
-            if (entityParts.take(common) != groupParts.take(common)) return false
-            return (0 until minOf(common, entity.indices.size, groupReps.size)).all { level ->
-                entity.indices[level] == RelevantEntity.ALL || entity.indices[level] == groupReps[level]
+            IndexTrie().also { trie ->
+                for (entity in effective) {
+                    val entityParts = pathParts(entity.path)
+                    val common = minOf(entityParts.size, groupParts.size)
+                    if (entityParts.take(common) == groupParts.take(common)) trie.add(entity.indices.take(common))
+                }
             }
+        }.agreesWithin(groupReps)
+        val covering by lazy {
+            val tries = HashMap<List<String>, IndexTrie>()
+            for (entity in effective) {
+                val entityParts = pathParts(entity.path)
+                if (entity.indices.size == entityParts.size) tries.getOrPut(entityParts) { IndexTrie() }.add(entity.indices)
+            }
+            tries
+        }
+        fun coversGroup(groupPath: String, groupReps: List<Int>): Boolean {
+            val groupParts = pathParts(groupPath)
+            return (1..groupParts.size).any { depth -> covering[groupParts.take(depth)]?.selects(groupReps, depth) == true }
         }
 
         return { groupPath, groupReps ->
             cache.getOrPut(groupPath) { HashMap() }.getOrPut(groupReps) {
-                if (effective.none { touchesGroup(it, groupPath, groupReps) }) {
+                if (!touchesGroup(groupPath, groupReps)) {
                     GroupRelevance.NONE
-                } else if (effective.any { matches(it, groupPath, groupReps) } ||
+                } else if (coversGroup(groupPath, groupReps) ||
                     fieldsByAncestor[groupPath].orEmpty().all { field ->
                         coversField(field, pathParts(groupPath).size, groupReps)
                     }) {
@@ -1520,15 +1544,5 @@ class DmInterpreter private constructor(
                 }
             }
         }
-    }
-
-    /** Whether relevant entity [r] covers the instance at [path]/[reps] — [r.path] a prefix of [path] (== or a
-     *  group ancestor) with each of [r]'s indices either [RelevantEntity.ALL] or equal to the instance's. */
-    private fun matches(r: RelevantEntity, path: String, reps: List<Int>): Boolean {
-        val rParts = pathParts(r.path)
-        val pParts = pathParts(path)
-        if (rParts.size > pParts.size || r.indices.size != rParts.size) return false
-        if (rParts != pParts.take(rParts.size)) return false
-        return r.indices.indices.all { i -> r.indices[i] == RelevantEntity.ALL || r.indices[i] == reps[i] }
     }
 }
