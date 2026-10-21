@@ -174,7 +174,82 @@ class MessageParameterRowDiffTest {
         DocumentDifferential.assertAgree(model, mapOf("the claims document" to document))
     }
 
-    private fun kernelTexts(dynamic: Boolean): List<String> {
+    /**
+     * The three fault shapes IG167 named, on a model of their own because one of them needs a second locale: a key
+     * selecting no row in the text of a locale not rendered, an empty FIELD key, a FIELD key whose value fails its
+     * own pattern but names a row, and two carriers for a level nothing binds.
+     */
+    private val faultBase: String = DocumentModelDraft.named("policy-message-faults").locale("en_US").locale("de_DE")
+        .rootGroup("Policy") { p -> p
+            .stringField("Holder") { }.stringField("Pick") { }.stringField("Code") { it.pattern("[0-9]+", "digits") }
+            .group("Claims") { c -> c.repeatable(5).indexField("Ref").stringField("Ref") { }.stringField("Note") { } }
+            .group("Covers") { c -> c.repeatable(5).stringField("Remark") { } } }
+        .build().toJson()
+
+    private val faultModel: String = run {
+        val session = EditSession.read(faultBase)
+        val policy = session.group("/Policy")
+        val covers = session.group("/Policy/Covers")
+        val holder = policy.str("Holder")
+        val note = policy.str("Claims/Note")
+        val c9 = note.semanticIndex("c9")
+        val byPick = note.semanticIndex(policy.str("Pick").field())
+        val byCode = note.semanticIndex(policy.str("Code").field())
+        val missing = Dsl.fieldValue(c9)
+        // A12 admits a keyed text parameter only beside the same keyed read in the condition (MVK_INDEX_FOR_ERROR_TEXT_INVALID);
+        // the disjunction keeps each rule firing on Holder whatever that read yields.
+        policy.addRule { it.name("OtherLocale").code("OTHER_LOCALE").errorField(holder).`when`(holder.filled().or(c9.filled()))
+            .message(Dsl.en("plain"), Dsl.de("m=[" + missing + "]")).build() }
+        policy.addRule { it.name("EmptyKey").code("EMPTY_KEY").errorField(holder).`when`(holder.filled().or(byPick.filled()))
+            .message(Dsl.en("e=[" + Dsl.fieldValue(byPick) + "]"), Dsl.de("e")).build() }
+        policy.addRule { it.name("InvalidKey").code("INVALID_KEY").errorField(holder).`when`(holder.filled().or(byCode.filled()))
+            .message(Dsl.en("i=[" + Dsl.fieldValue(byCode) + "]"), Dsl.de("i")).build() }
+        // KF561's carrier is a root rule with a keyed and a starred read; this one iterates another repeatable group.
+        val remark = covers.str("Remark")
+        covers.addRule { it.name("FromRow").code("FROM_ROW").errorField(remark)
+            .`when`(remark.filled().and(note.semanticIndex("c1").filled()).and(Dsl.numberOfFilledFields(policy.flatten("Claims*/Note")).gt(0)))
+            .message(Dsl.en("r=[" + Dsl.fieldValue(note.field()) + "] own=[" + Dsl.fieldValue(remark.field()) + "]"), Dsl.de("r")).build() }
+        session.toJson()
+    }
+
+    private val faultDocument = """{"Policy":{"Holder":"Ada","Code":"c1",
+        "Claims":[{"Ref":"c0","Note":"n0"},{"Ref":"c1","Note":"n1"}],
+        "Covers":[{"Remark":"r1"},{"Remark":"r2"}]}}"""
+
+    @Test
+    fun theFaultModelIsKernelConsistent() {
+        assertEquals(emptyList<String>(), MessageParameterProbes.kernel(faultModel))
+    }
+
+    /** A level only a starred read or no read reaches cannot be rendered at all: A12 refuses the text. */
+    @Test
+    fun aLevelNoConditionReadReachesIsRefused() {
+        val starOnly = MessageParameterProbes.rule(faultBase, "/Policy", "Holder", Dsl.en("s=[\$/Policy/Claims/Note.value\$]"), Dsl.de("s")) { e ->
+            e.group("/Policy").str("Holder").filled().and(Dsl.numberOfFilledFields(e.group("/Policy").flatten("Claims*/Note")).gt(0)) }
+        val unread = MessageParameterProbes.rule(faultBase, "/Policy/Covers", "Remark", Dsl.en("r=[\$/Policy/Claims/Note.value\$]"), Dsl.de("r")) { e ->
+            e.group("/Policy/Covers").str("Remark").filled() }
+        val keyedOnly = MessageParameterProbes.rule(faultBase, "/Policy", "Holder", Dsl.en("k=[\$/Policy/Claims/Note.value\$]"), Dsl.de("k")) { e ->
+            e.group("/Policy").str("Holder").filled().and(e.group("/Policy").str("Claims/Note").semanticIndex("c1").filled()) }
+        val observed = mapOf("starred read only" to MessageParameterProbes.kernel(starOnly), "keyed read only" to MessageParameterProbes.kernel(keyedOnly),
+            "no read" to MessageParameterProbes.kernel(unread))
+        assertEquals(mapOf("starred read only" to listOf("PARAM_VALUE_WITH_STARREFERENCE"), "keyed read only" to listOf("INVALID_FIELD"),
+            "no read" to listOf("INVALID_FIELD")), observed)
+    }
+
+    @Test
+    fun theUnmeasuredFaultShapesAgree() {
+        val dynamic = kernelTexts(true, faultModel, faultDocument)
+        val generated = kernelTexts(false, faultModel, faultDocument)
+        val prepared = PreparedModel.loadExpandedJson(faultModel)
+        val report = prepared.createInterpreter().validateFull(prepared.documents.readDocument(faultDocument))
+        val interpreted = report.findings.map { "${it.code} ${DocumentDifferential.pointer(it.errorPath)} ${it.text}" }.sorted()
+        assertEquals(emptyList<Any>(), report.unsupported)
+        assertEquals(EXPECTED_FAULTS, dynamic, "dynamic Groovy")
+        assertEquals(EXPECTED_FAULTS, generated, "static Java")
+        assertEquals(EXPECTED_FAULTS.map(::structure), interpreted.map(::structure), "interpreter")
+    }
+
+    private fun kernelTexts(dynamic: Boolean, model: String = this.model, document: String = this.document): List<String> {
         val messages = if (dynamic) RuntimeLaws.kernelEngine(model).let { it.validationMessages(it.instance(document), null, Locale.US) }
             else RuntimeLaws.kernelJavaEngine(model).let { it.validationMessages(it.instance(document), null, Locale.US) }
         return messages.map { m: IMessage -> "${m.errorCode} ${DocumentDifferential.pointer(m.errorFieldPointer)} ${m.errorText}" }.sorted()
@@ -216,6 +291,18 @@ class MessageParameterRowDiffTest {
             // Beside a keyed and a starred read, the unkeyed value binds no level and renders the FIRST claim's
             // note, not the keyed claim's (n1).
             "UNBOUND /Policy[1]/Holder[1] u=[n0]",
+        )
+
+        val EXPECTED_FAULTS = listOf(
+            // An empty key selects no row; so does a key whose value fails its own pattern, although `c1` names one.
+            "EMPTY_KEY /Policy[1]/Holder[1] $KERNEL_FAULT",
+            // The first claim again, from a rule iterating covers.
+            "FROM_ROW /Policy[1]/Covers[1]/Remark[1] r=[n0] own=[r1]",
+            "FROM_ROW /Policy[1]/Covers[2]/Remark[1] r=[n0] own=[r2]",
+            "INVALID_KEY /Policy[1]/Holder[1] $KERNEL_FAULT",
+            // The German text's unmatched key does not fault the English rendering.
+            "OTHER_LOCALE /Policy[1]/Holder[1] plain",
+            "stringFalschesMuster /Policy[1]/Code[1] digits",
         )
     }
 }
