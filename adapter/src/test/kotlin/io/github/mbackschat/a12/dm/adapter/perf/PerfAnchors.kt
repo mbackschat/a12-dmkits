@@ -336,8 +336,8 @@ internal object PerfObservations {
     )
 
     /**
-     * Delete the oldest run files until this environment has room for one more, **never touching a run some
-     * document cites**.
+     * Delete the oldest committed run files until this environment has room for one more, **never touching a run
+     * some document cites, nor one not yet committed**.
      *
      * The citation check is what makes the pruning safe rather than merely bounded: `perf-results/README.md`
      * states that past the horizon the durable references are the committed anchor and the checkpoints that cite
@@ -357,10 +357,11 @@ internal object PerfObservations {
         val excess = runs.size - (MAX_RUNS_PER_ENVIRONMENT - 1)
         if (excess <= 0) return
         val cited = citedRunStems(dir)
+        val committed = committedRunNames(dir)
         val pruned = mutableListOf<String>()
         for (run in runs) {
             if (pruned.size >= excess) break
-            if (run.nameWithoutExtension in cited) continue
+            if (run.nameWithoutExtension in cited || run.name !in committed) continue
             if (run.delete()) pruned += run.nameWithoutExtension
         }
         if (pruned.isNotEmpty()) {
@@ -371,6 +372,16 @@ internal object PerfObservations {
             )
         }
     }
+
+    /**
+     * The run files git tracks in [dir]; empty when git cannot say. Retention bounds the COMMITTED history, so an
+     * untracked run is still awaiting the maintainer's decision and is not this prune's to delete: when every
+     * committed run was cited, the oldest uncited run was the newest one, and a filtered run on 2026-10-21 deleted
+     * the full gate run written before it.
+     */
+    private fun committedRunNames(dir: File): Set<String> =
+        git(dir, "ls-files", "--", ".")?.lines()?.filter { it.isNotEmpty() }?.map { File(it).name }?.toSet()
+            ?: emptySet()
 
     /** Run-file stems named anywhere in the committed prose — a cited run is never pruned. */
     private fun citedRunStems(dir: File): Set<String> {

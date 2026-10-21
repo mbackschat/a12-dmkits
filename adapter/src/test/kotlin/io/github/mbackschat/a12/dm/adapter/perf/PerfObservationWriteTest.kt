@@ -111,6 +111,7 @@ class PerfObservationWriteTest {
         val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
         val stems = (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
         stems.forEach { env.resolve("$it.jsonl").writeText("{}") }
+        commitAll(dir)
 
         PerfObservations.pruneToRetentionBound(env)
 
@@ -135,12 +136,55 @@ class PerfObservationWriteTest {
             .writeText("The checkpoint measured `perf-results/darwin-aarch64/2026-01-01T000000Z.jsonl`.")
         val stems = (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
         stems.forEach { env.resolve("$it.jsonl").writeText("{}") }
+        commitAll(dir)
 
         PerfObservations.pruneToRetentionBound(env)
 
         val left = env.listFiles()!!.map { it.nameWithoutExtension }
         assertTrue(stems.first() in left, "the cited run is kept even though it is the oldest: $left")
         assertTrue(stems[1] !in left, "…and the next-oldest UNCITED run is pruned instead: $left")
+    }
+
+    /**
+     * **A record nobody has committed yet is never pruned.** Retention bounds the committed history; an untracked
+     * record is a run still awaiting the maintainer's decision to keep it. When every committed run was cited, the
+     * oldest uncited run was the newest one, so on 2026-10-21 a filtered diagnostic run deleted the full gate run
+     * written half an hour before it. With nothing committed left to prune, the tree may now exceed the bound, and
+     * `PerformanceRecordShapeGuardTest` refuses the commit that would carry it over, which is the loud outcome.
+     */
+    @Test
+    fun anUncommittedRunSurvivesThePruneEvenWhenEveryCommittedRunIsCited(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        val committed = (1 until PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
+        committed.forEach { env.resolve("$it.jsonl").writeText("{}") }
+        dir.resolve("docs").apply { mkdirs() }.resolve("CHECKPOINTS.md").writeText(committed.joinToString("\n") { "`$it`" })
+        commitAll(dir)
+        val pending = env.resolve("2026-02-01T000000Z.jsonl").apply { writeText("{}") }
+
+        PerfObservations.pruneToRetentionBound(env)
+
+        assertTrue(pending.exists(), "the uncommitted gate run must survive its successor's prune")
+        assertEquals(PerfObservations.MAX_RUNS_PER_ENVIRONMENT, env.listFiles()!!.size,
+            "and no cited committed run is deleted to make room either")
+    }
+
+    /** Outside a repository nothing is known to be committed, so nothing is pruned: a prune is best-effort. */
+    @Test
+    fun aTreeGitCannotReadPrunesNothing(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).forEach { env.resolve(String.format("2026-01-%02dT000000Z.jsonl", it)).writeText("{}") }
+
+        PerfObservations.pruneToRetentionBound(env)
+
+        assertEquals(PerfObservations.MAX_RUNS_PER_ENVIRONMENT, env.listFiles()!!.size)
+    }
+
+    private fun commitAll(dir: File) {
+        git(dir, "init", "--quiet")
+        git(dir, "config", "user.email", "guard@example.invalid")
+        git(dir, "config", "user.name", "guard")
+        git(dir, "add", "-A")
+        git(dir, "commit", "--quiet", "-m", "record")
     }
 
     @Test
