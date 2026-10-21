@@ -4841,9 +4841,9 @@ A12 reads its clock through a `GregorianCalendar` in the model's zone ([KF576](K
 
 ### IF417: a model `boolean` member A12 cannot bind refuses the model, where it used to read as off (2026-10-21) <a id="if417"></a>
 
-`ConfigFlag.UNREADABLE` was folded into off by every reader, so `"positivesOnly": "yes"`, `1.5` or `{}` loaded as unset and evaluated a model A12 does not load ([KF577](KERNEL-FINDINGS.md#kf577)). Each reader now goes through `ConfigFlag.orRefuse`: `ModelLoader` refuses with an invalid-source error naming the field and member, and include assembly refuses an included model's `fieldRefByShortNameAllowed` as an invalid model element. `positivesOnly` moved onto the same type-matched reader as the other field-type members, so a non-NUMBER field reads as signed without consulting a `NumberType` object it does not declare, where an unmeasured refusal would otherwise sit.
+`ConfigFlag.UNREADABLE` was folded into off by every reader, so `"positivesOnly": "yes"`, `1.5` or `{}` loaded as unset and evaluated a model A12 does not load ([KF577](KERNEL-FINDINGS.md#kf577)). Each reader now goes through `ConfigFlag.orRefuse`: `ModelLoader` refuses with an invalid-source error naming the field and member, and include assembly refuses an included model's `fieldRefByShortNameAllowed` as an invalid model element. `positivesOnly` moved onto the same type-matched reader as the other field-type members, so a non-NUMBER field reads as signed without consulting a `NumberType` object it does not declare. A12 does not bind such an object either, whatever it holds ([KF577](KERNEL-FINDINGS.md#kf577), corrected 2026-10-21 from an unmeasured claim).
 
-*Locked:* `adapter.laws.BooleanMemberUnreadableDiffTest`; `ConfigFlagTest.theLoaderReadsTheShortNameFlagThroughIt` (`1.5` refuses); `IncludeAssemblyTest.anIncludedModelWhoseShortNameFlagA12CannotBindIsRefused`.
+*Locked:* `adapter.laws.BooleanMemberUnreadableDiffTest`, including `aTypeObjectTheFieldDoesNotDeclareIsNeverBound`; `ConfigFlagTest.theLoaderReadsTheShortNameFlagThroughIt` (`1.5` refuses); `IncludeAssemblyTest.anIncludedModelWhoseShortNameFlagA12CannotBindIsRefused`.
 
 ### IF418: a staged index default is read as written and meets no formal check, so a padded or blank `sValue` evaluates as A12 stages it (2026-10-21) <a id="if418"></a>
 

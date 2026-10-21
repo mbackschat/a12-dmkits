@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.github.mbackschat.a12.dm.consistency.ModelSource
+import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -45,6 +47,29 @@ class BooleanMemberUnreadableDiffTest {
         }
         assertEquals(kernel.mapValues { (row, _) -> if (row.endsWith("the control")) LOADS else REFUSED }, kernel, "A12")
         assertEquals(kernel, interpreter, "the interpreter")
+    }
+
+    /**
+     * A type object the field's `type` does not name is not bound at all: A12 loads and admits the model whatever that
+     * object's booleans hold, so a stray `NumberType.positivesOnly` does not refuse a String field (KF577). The
+     * interpreter reads a type member only under the matching `type`, and the portable checker admits the same models.
+     */
+    @Test
+    fun aTypeObjectTheFieldDoesNotDeclareIsNeverBound() {
+        val stray = listOf(
+            Member("NumberType", "positivesOnly") { g -> g.stringField("Probe") {} },
+            Member("NumberType", "zeroNotAllowed") { g -> g.stringField("Probe") {} },
+            Member("StringType", "noValueValidation") { g -> g.numberField("Probe") {} },
+        )
+        val observed = linkedMapOf<String, String>()
+        for (member in stray) for ((label, value) in values) {
+            val json = model(member, value)
+            val kernel = if (RuntimeLaws.deserializes(json) && RuntimeLaws.consistencyMessages(json).isEmpty()) LOADS else REFUSED
+            val interpreter = if (runCatching { ModelLoader.load(json) }.isSuccess) LOADS else REFUSED
+            val checker = if (check(ModelSource(json)).findings.none { it.justifiesRejection }) LOADS else REFUSED
+            observed["${member.type}.${member.name} = $label"] = "A12 $kernel, interpreter $interpreter, checker $checker"
+        }
+        assertEquals(observed.mapValues { "A12 $LOADS, interpreter $LOADS, checker $LOADS" }, observed)
     }
 
     private fun model(member: Member, value: Any): String {
