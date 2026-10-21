@@ -45,6 +45,16 @@ Darwin-aarch64, `-DIRTY` exploratory runs at `aee4eb841`…`97e3cec75`, each a s
 
 Each doubling costs about 3.8× on all three engines, so the lane is held to the kernel's class (`RequiredColumnCorrelationPerfTest.oneUnavailableCellKeepsTheKernelsClass`) rather than to the sub-quadratic floor.
 
+**Three gate movements that targeted interleaved runs attribute elsewhere.** The three gates at `76d8111a5` (records `2026-10-21T033811Z`, `2026-10-21T034638Z`, `2026-10-21T040857Z`) ran several existing lanes above the last committed gate at `d26873580`, so each was measured alone, alternating the two commits' interpreter sources:
+
+| lane | gate, `d26873580` → `76d8111a5` | alone, interleaved | reading |
+|---|---|---|---|
+| wide sibling groups, n = 200 | 2.58 → 3.13–4.24 ms | 3.0–3.8 against 2.5–2.6 ms with a 5-run warmup; 2.17–2.28 against 2.15–2.21 ms with 300 | JIT readiness: the old quadratic first evaluation gave the compiler more time before the five warmups |
+| `compute-overlay $-correlation`, n = 1500 | 37.88 → 38.06–39.64 ms | 34.3 against 34.0 ms with a 120-run warmup | the collection-heavy mode of [IG171](INTERPRETER-GAPS.md) |
+| star-relevance dominance reduction, n = 1500 / 3000 | 5.38 / 9.92 → up to 8.29 / 16.61 ms | 5.7–6.5 against 5.9–6.4 ms; 11.1–12.7 against 11.3–11.7 ms | run-to-run mode, no difference alone |
+
+`applyComputations` at n = 600 stays about 4 % above `58201827b` alone (median 71.7 against 68.4 ms, four rounds), and none of 1500 stack samples of its loop lands in a content-trie, gate, root-instance or index-build frame, so no code this period changed executes there.
+
 **Linear on first measurement, so only anchored:** the joined-row aggregate (4.8×), the star-only join (3.4×), required-column correlation with every cell filled (3.8×), index-default staging (4.2×), the unavailable-empty walks (3.7×), keyed message tokens (4.0×) and `FirstFilledValue` (1.6×).
 
 ### Checkpoint 2026-10-13 — the correlated quantifiers' required-empty walk slowed multi-star correlation by a third
