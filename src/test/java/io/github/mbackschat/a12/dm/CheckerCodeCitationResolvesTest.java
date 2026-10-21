@@ -25,10 +25,12 @@ import org.junit.jupiter.api.Test;
  * same mechanism {@link LockCitationResolvesTest} applies to cited test classes, on the other kind of name a
  * published claim rests on.
  *
- * <p><b>One direction only, deliberately.</b> A cited code must exist; an existing code need not be cited.
- * Requiring the reverse would force a doc paragraph for every code the moment it is minted, which is an
- * editorial decision rather than a drift check — and a code with no prose cannot strand a reader the way a
- * name that resolves to nothing does.
+ * <p><b>Across the docs, one direction only.</b> A cited code must exist; an existing code need not be cited
+ * in every doc. Requiring that would force a paragraph wherever a code is minted, which is an editorial
+ * decision rather than a drift check. <b>The published API reference is the exception</b>
+ * ({@link #everyCodeTheCheckerEmitsIsInItsApiReference}): a code the checker can put in a report is part of
+ * its contract, and a consumer who receives one must find it in {@code docs/CONSISTENCY-API.md}. Two
+ * {@code RK_*} codes reached reports without it (CONSISTENCY-GAPS DG135, 2026-10-13).
  */
 class CheckerCodeCitationResolvesTest {
 
@@ -60,6 +62,32 @@ class CheckerCodeCitationResolvesTest {
             }
         }
         return defined;
+    }
+
+    /** A code the checker emits: a string literal in {@code :consistency}'s main source, of either prefix it mints. */
+    private static final Pattern EMITTED = Pattern.compile("\"((?:CK|RK)_[A-Z][A-Z0-9_]*)\"");
+
+    @Test
+    void everyCodeTheCheckerEmitsIsInItsApiReference() throws IOException {
+        Set<String> emitted = new TreeSet<>();
+        for (Path source : CHECKOUT.sources()) {
+            if (CHECKOUT.relative(source).startsWith("consistency/src/commonMain/")) {
+                Matcher literal = EMITTED.matcher(Files.readString(source));
+                while (literal.find()) {
+                    emitted.add(literal.group(1));
+                }
+            }
+        }
+        assertFalse(emitted.isEmpty(), "no RK_* or CK_* literal was found in consistency/src/commonMain — the scan "
+                + "lost its denominator, which would make the reference pass for the wrong reason");
+        String reference = Files.readString(CHECKOUT.resolve("docs/CONSISTENCY-API.md"));
+        Set<String> undocumented = new TreeSet<>();
+        for (String code : emitted) {
+            if (!Pattern.compile("\\b" + code + "\\b").matcher(reference).find()) {
+                undocumented.add(code);
+            }
+        }
+        assertEquals(Set.of(), undocumented, "the checker emits codes its API reference never names");
     }
 
     @Test

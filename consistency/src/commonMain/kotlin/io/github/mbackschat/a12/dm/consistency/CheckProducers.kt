@@ -106,6 +106,7 @@ internal sealed interface CheckProducer {
         override val completes: Set<CheckFamily>,
         val stage: DeclarationStage,
         val findings: (TrackedFactBase) -> List<Finding>,
+        val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
     ) : CheckProducer
 }
 
@@ -204,7 +205,7 @@ internal fun schedule(
             // gives is empty whatever the declaration holds.
             is CheckProducer.PerDeclarationWalk -> walked.map { (at, _, scoped) ->
                 ScheduledCell(CellKey(producer, at)) {
-                    CheckOutput(producer.findings(scoped).map { DeclarationFinding(at, producer.stage, it) })
+                    CheckOutput(producer.findings(scoped).map { DeclarationFinding(at, producer.stage, it) }, producer.gaps(scoped))
                 }
             }
         }
@@ -444,7 +445,8 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     },
     produces(CheckFamily.FIELD_TYPE_MESSAGE_TEXT) { it.fieldTypeMessageTextFindings() },
     perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS, DeclarationStage.INDEPENDENT) { it.stringTypeParameterFindings() },
-    perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS, DeclarationStage.INDEPENDENT) { it.numberTypeDigitFindings() },
+    CheckProducer.PerDeclarationWalk(setOf(CheckFamily.NUMBER_TYPE_DIGITS), DeclarationStage.INDEPENDENT,
+        findings = { it.numberTypeDigitFindings() }, gaps = { it.boundMagnitudeGaps() }),
     perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS, DeclarationStage.INDEPENDENT) { it.enumValueLabelFindings() },
     perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN, DeclarationStage.INDEPENDENT) { it.enumSpecialValueFindings() },
     // The one producer that completes no family: most type-definition laws are unexamined even though the

@@ -88,8 +88,40 @@ class DeclarationAdmissionReadingsTest {
         assertEquals<Map<String, List<String>>>(expected, actual)
     }
 
+    /**
+     * KF582's magnitude limit, replayed: judged on every field, a deleted one included, and beside the printed-bound
+     * checks; a bound at a limit `Math.pow` need not compute exactly is disclosed rather than judged.
+     */
+    @Test
+    fun aBoundPastItsDigitLimitIsReportedOnEveryField() {
+        val actual = linkedMapOf(
+            "max 999999999999999.4 at scale 0" to codes(number(""""maxFractionalDigits":0,"maxValue":999999999999999.4""")),
+            "min 1e15 at scale 0" to codes(number(""""maxFractionalDigits":0,"minValue":1e15""")),
+            "max -1e15 at scale 0" to codes(number(""""maxFractionalDigits":0,"maxValue":-1e15""")),
+            "max 1e15 on a deleted field" to codes(number(""""maxFractionalDigits":0,"maxValue":1e15"""), ONLY),
+            "max 1e14 over min 1 at scale 1" to codes(number(""""maxFractionalDigits":1,"minValue":1e14,"maxValue":1""")),
+        )
+        val expected = linkedMapOf(
+            "max 999999999999999.4 at scale 0" to listOf(MAX_EXCEEDED),
+            "min 1e15 at scale 0" to listOf("RK_BOUND_TOO_MANY_DIGITS", MIN_EXCEEDED),
+            "max -1e15 at scale 0" to listOf("RK_BOUND_TOO_MANY_DIGITS"),
+            "max 1e15 on a deleted field" to listOf(MAX_EXCEEDED),
+            "max 1e14 over min 1 at scale 1" to listOf("MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE", MIN_EXCEEDED),
+        )
+        assertEquals<Map<String, List<String>>>(expected, actual.mapValues { it.value.sorted() })
+        val atTheLimit = checkRead(ModelSource(
+            """{"header":{"id":"policy","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[{"type":"Field","id":"/Policy/Item",
+              "name":"Item","Field":{"fieldType":${number(""""maxFractionalDigits":-15,"maxValue":${1e30 - 1e15}""")}}}]}}]}}}""",
+        ))
+        assertEquals(emptyList(), atTheLimit.findings.filter { it.code == MAX_EXCEEDED })
+        assertEquals(1, atTheLimit.gaps.count { it.at == "/Policy/Item" && "ulps" in it.reason }, "${atTheLimit.gaps}")
+    }
+
     private companion object {
         const val STRING = """{"type":"StringType"}"""
         const val ONLY = """{"filterType":"ONLY","variants":["Broker"]}"""
+        const val MIN_EXCEEDED = "RK_NUMBER_MIN_VALUE_EXCEEDED"
+        const val MAX_EXCEEDED = "RK_NUMBER_MAX_VALUE_EXCEEDED"
     }
 }

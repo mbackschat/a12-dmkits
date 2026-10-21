@@ -167,10 +167,10 @@ internal object FieldVariantPopulation {
         Witness("number scale limit", "Total", "RK_MEMBER_ABOVE_SCALE_LIMIT") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxFractionalDigits", 15)
         },
-        // The unkeyed half is A12's "may not exceed" rule on the original model (CONSISTENCY-GAPS DG142), which an
-        // `ONLY` filter keeps; the digit sentence is the printed bound's (KF569), judged on the default variant.
-        Witness("original model number limit", "Total", "$UNKEYED_A12_CLASS,RK_BOUND_TOO_MANY_DIGITS",
-            FilterEffect.RETAINS_REFUSAL, filteredCode = UNKEYED_A12_CLASS) { _, _, f ->
+        // The magnitude sentence is asked of the stored model's every field (KF582), so an `ONLY` filter keeps it;
+        // the digit sentence is the printed bound's (KF569), judged on the default variant.
+        Witness("original model number limit", "Total", "RK_NUMBER_MAX_VALUE_EXCEEDED,RK_BOUND_TOO_MANY_DIGITS",
+            FilterEffect.RETAINS_REFUSAL, filteredCode = "RK_NUMBER_MAX_VALUE_EXCEEDED") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxValue", "99999999999999999999")
         },
         Witness("enum values", "Status", "MVK_INTERNAL_VALUES_DUPLICATE,MVK_CATEGORY_VALUE_DUPLICATE,$UNKEYED_A12_CLASS",

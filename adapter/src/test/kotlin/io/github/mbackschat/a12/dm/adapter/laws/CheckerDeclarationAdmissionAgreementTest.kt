@@ -168,11 +168,13 @@ class CheckerDeclarationAdmissionAgreementTest {
             "-999999999999999 at scale 0, the control" to boundsJson(0, "1", "-999999999999999") to setOf(INVERTED),
             "0.123456789012345 at scale 1" to boundsJson(1, "2", "0.123456789012345") to setOf(TOO_LONG),
             "0.12345678901234 at scale 1, the control" to boundsJson(1, "2", "0.12345678901234") to setOf(INVERTED),
-            "1e15 over 1 at scale 1" to boundsJson(1, "1e15", "1") to setOf(TOO_LONG),
-            "1e14 over 1 at scale 1, the limit rule alone" to boundsJson(1, "1e14", "1") to setOf(INVERTED),
-            "999999999999999.6 rounded at scale 0" to boundsJson(0, "999999999999999.6", "1") to setOf(TOO_LONG),
+            "1e15 over 1 at scale 1" to boundsJson(1, "1e15", "1") to setOf(TOO_LONG, MIN_MAGNITUDE),
+            "1e14 over 1 at scale 1, the magnitude beside the inversion" to boundsJson(1, "1e14", "1") to
+                setOf(INVERTED, MIN_MAGNITUDE),
+            "999999999999999.6 rounded at scale 0" to boundsJson(0, "999999999999999.6", "1") to
+                setOf(TOO_LONG, MIN_MAGNITUDE),
             "999999999999999.4 rounded at scale 0, the control" to boundsJson(0, "999999999999999.4", "1") to
-                setOf(INVERTED),
+                setOf(INVERTED, MIN_MAGNITUDE),
         )
         val observed = rows.entries.associate { (row, _) ->
             val a12 = oracle.checkConsistency(row.second, ReferenceResolvers.selfContained())
@@ -430,6 +432,7 @@ class CheckerDeclarationAdmissionAgreementTest {
         const val SIGNED_ZERO = "RK_BOUND_SIGNED_ZERO"
         const val TOO_LONG = "RK_BOUND_TOO_MANY_DIGITS"
         const val INVERTED = "MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE"
+        const val MIN_MAGNITUDE = "RK_NUMBER_MIN_VALUE_EXCEEDED"
         val CLASS = Regex("""\[([A-Z][A-Z0-9_]+)]""")
         const val COUNT = "MVK_COUNT_OF_VALUES_INVALID"
         const val INCOMPLETE = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"

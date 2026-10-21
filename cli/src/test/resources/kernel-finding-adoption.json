@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf582": {
+      "sha256": "bd88b1db88fac57f305a0432533357187b79fe7fd3cff033f22d755bf56fcf38",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["bound magnitude"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["bound magnitude"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["bound magnitude"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits admit a model through the kernel, and the typed builder states no bound past its digits.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The Number digit family judges both bounds against the limit on every field, a deleted one included, and discloses a bound within two ulps of an inexact limit as a coverage gap.", "evidence": {"bound magnitude": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DeclarationAdmissionReadingsTest.kt#aBoundPastItsDigitLimitIsReportedOnEveryField", "witness": "An unrounded maximum, a positive minimum and a deleted field each draw the sentence, a negative maximum does not, and a bound at an inexact limit is a gap."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints Number types through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on thirty bound declarations, each the discriminator of a rival reading, beside a type-definition row.", "evidence": {"bound magnitude": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNumberBoundMagnitudeAgreementTest.kt#theCheckerStatesA12sMagnitudeVerdictOnEveryRow", "witness": "Every row's classes agree with their multiplicity, and A12's own classes are pinned per row."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no bound logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf581": {
       "sha256": "e270ac7ffb90e3b66feb6789cfa375bb5a1e114c484d8e8f280d4afcb9308955",
       "task": "F-USE-BACKLOG",
@@ -11016,7 +11040,7 @@
       }
     },
     "kf559": {
-      "sha256": "d7108628a2309c79b35743226f5f1bc0c1f0ca2ba67fe9d3811a6788ed1cc7c1",
+      "sha256": "1a260b61335945d540efd5be0f0351e6b6464bf9f55f84ebd0d62e6d39b4f39a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -11448,7 +11472,7 @@
       }
     },
     "kf569": {
-      "sha256": "a926debb5e497437011c6783c0fe8dfd673a1fec757e547bef0c12da51cf1fbf",
+      "sha256": "b1717924dcc65584a9863c5f8970608af85e80e4437f0bcec9a595a1234c1595",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the Number bound comparison", "the boolean-member binding", "the trimmed sValue"],

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
@@ -109,6 +110,36 @@ class CheckerDigitMemberRangeAgreementTest {
         assertEquals(listOf("MVK_MAX_LENGTH_TOO_SMALL", ABOVE_SCALE), a12("fractional maximum above beside a length too small"))
         assertEquals(listOf(ABOVE_SCALE, NOT_POSITIVE), a12("amount whose scale derives a zero count"))
         assertEquals(emptyList<String>(), a12("deleted, integer above"))
+    }
+
+    /**
+     * The other numeric members A12's collector writes into its metamodel document are a group's repetitions and a
+     * field's row count (`CodeGenValidationDataCollector`, `FieldDataCollector`), so they are the members that could
+     * draw the 15 or 14 sentence without being a digit count. None does, however large: which is what lets a member
+     * class name the sentence alone.
+     */
+    @Test
+    fun aRepetitionCountDrawsNoDigitSentence() {
+        val counts = listOf(listOf(16), listOf(100000), listOf(1000000), listOf(16, 16), listOf(100000, 100000))
+        val observed = counts.associateWith { repeated(it).let { json -> kernel(json) to ours(json) } }
+        assertEquals(counts.associateWith { emptyList<String>() to emptyList<String>() }, observed, "(A12, ours)")
+    }
+
+    private fun repeated(counts: List<Int>): String {
+        val root = mapper.readTree(base) as ObjectNode
+        var elements = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group").path("elements")
+            as ArrayNode
+        var path = "/Ticket"
+        counts.forEachIndexed { level, count ->
+            val name = "Visit$level"
+            path += "/$name"
+            val group = elements.addObject().put("type", "Group").put("id", path).put("name", name).putObject("Group")
+                .put("repeatability", count)
+            elements = group.putArray("elements")
+        }
+        elements.addObject().put("type", "Field").put("id", "$path/Note").put("name", "Note").putObject("Field")
+            .putObject("fieldType").put("type", "StringType")
+        return mapper.writeValueAsString(root)
     }
 
     private val oracle = KernelConsistencyOracle()

@@ -32,16 +32,21 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Eighteen sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * Twenty sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)). A member class names the sentence, not the member,
- * because A12 answers several members with the same words, while each maximum is a sentence of its own. Any other codeless
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)). A member class names the sentence, not the member,
+ * because A12 answers several members with the same words and names only the field, while each maximum is a sentence of
+ * its own. That keys the two digit maxima faithfully, because among the numeric members A12's collector writes only the
+ * integer places can draw the 15 sentence and only the fractional pair the 14 one: group repetitions, the other
+ * candidate, draw neither (`CheckerDigitMemberRangeAgreementTest.aRepetitionCountDrawsNoDigitSentence`). Any other codeless
  * diagnostic stays unkeyed, so it shows as a disagreement rather than matching by accident.
  */
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
+    MINIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MIN_VALUE_EXCEEDED"
+    MAXIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MAX_VALUE_EXCEEDED"
     else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
         DATE_RANGE_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
@@ -55,6 +60,11 @@ private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
 
 private val SORT_CAPACITY_REFUSAL =
     Regex("""The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with \d+, but at most 3 is allowed\.$""")
+
+private val MINIMUM_MAGNITUDE = Regex(
+    """The minimum value of the number type in field \[id: [^\]]*] is specified with '[^']*'\. It may not exceed '-[^']*'\.$""")
+private val MAXIMUM_MAGNITUDE = Regex(
+    """The maximum value of the number type in field \[id: [^\]]*] is specified with '[^']*'\. It may not exceed '[^']*'\.$""")
 
 private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values without a sign are allowed." to "RK_MEMBER_SIGNED",
