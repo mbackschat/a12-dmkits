@@ -338,9 +338,10 @@ class FieldTypeBindingTest {
 
         // The definitions themselves are read for their IDS alone, so every content law this checker
         // applies to an inline `fieldType` skips whatever they declare. That carrier is visibly in scope in
-        // the same report — the rows above resolve against it — which is why its absence has to be said.
+        // the same report — the rows above resolve against it — which is why its absence has to be said, once
+        // for the model and once at each field whose body A12 builds from a definition (DG135, KF584).
         assertEquals(
-            listOf<String?>(null),
+            listOf<String?>("/Catalog/Tier", null),
             checkRead(typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money))
                 .gaps.filter { it.reason.contains("type definition") }.map { it.at },
         )

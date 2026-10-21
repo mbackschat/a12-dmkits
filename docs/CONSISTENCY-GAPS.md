@@ -9,7 +9,6 @@
 ## 1. Open
 
 - **DG143 — the checker does not lex a computation's `computedFieldRelPath`** (found 2026-10-21, batch C3). A computed field named with a no-break space makes A12 answer `MVK_LEXER_STANDARD_ERROR` at the computation, because the relative path it reads is lexed as a condition operand is; the checker states only the field's own path and name classes (`CheckerComputedPathAgreementTest`, the no-break row it leaves out). It under-reports a model A12 refuses. Settles with the path's lexer gate measured across the characters [KF575](KERNEL-FINDINGS.md#kf575) measured, on both reference slots a declaration carries, then one agreement row per carrier.
-- **DG135 — a TypeDef-typed body is skipped with no `CoverageGap` of its own** (found 2026-10-13, cold review). Settles with a gap or a reading on the typed body.
 
 ## 2. Out of scope
 

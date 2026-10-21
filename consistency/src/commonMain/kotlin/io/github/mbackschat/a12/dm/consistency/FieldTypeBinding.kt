@@ -97,22 +97,30 @@ internal val FieldType.booleanMembers: List<String>
 private val FIELD_BOOLEAN_MEMBERS = listOf("global", "transient")
 
 /**
- * The range pairs this family stayed silent about, so silence is never read as agreement.
+ * The fields whose type body this family stayed silent about, so silence is never read as agreement.
  *
- * The pair table is a probe's universe rather than a law, so a format or a separator outside it is
- * UNDISCOVERED rather than admitted — under-reporting, and safe. What is not safe is leaving that unsaid
- * while the same report's `checksCompleted` names this family: a consumer would read "examined, nothing
- * found" for a declaration the family declined to judge.
+ * Two kinds, each at the field it concerns. The range pair table is a probe's universe rather than a law, so a
+ * format or a separator outside it is UNDISCOVERED rather than admitted — under-reporting, and safe. And a field
+ * typed by a type definition takes its body from `content.typeDefinitions`, which this family does not read, while
+ * A12 builds that body as the field's own (a blank date `format` there leaves the model unbuilt, KF584). What is not
+ * safe is leaving either unsaid while the same report's `checksCompleted` names this family: a consumer would read
+ * "examined, nothing found" for a declaration the family declined to judge.
  */
 internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
     defaultVariantFields().mapNotNull { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
-        if (declared.namedFieldType() != FieldType.DATE_RANGE) {
-            return@mapNotNull null
+        when (declared.namedFieldType()) {
+            FieldType.DATE_RANGE -> {
+                val body = FieldType.DATE_RANGE.bodyIn(declared) ?: return@mapNotNull null
+                val unmeasured = body.unmeasuredRangePair() ?: return@mapNotNull null
+                CoverageGap(field.path, "this range's (format, separator) pair was left to A12: $unmeasured")
+            }
+            FieldType.TYPE_DEF -> field.boundTypeDefinitionId()?.let {
+                CoverageGap(field.path, "this field takes its type from the type definition `$it`, whose body " +
+                    "this family does not read, so what A12 builds from that body here was left to A12")
+            }
+            else -> null
         }
-        val body = FieldType.DATE_RANGE.bodyIn(declared) ?: return@mapNotNull null
-        val unmeasured = body.unmeasuredRangePair() ?: return@mapNotNull null
-        CoverageGap(field.path, "this range's (format, separator) pair was left to A12: $unmeasured")
     }
 
 /** Whether a declared pair lies inside what was put to the kernel, so its range-format verdict is known. */
@@ -218,6 +226,14 @@ private fun unbindableFieldType(
         return VERDICT_FOR_ABSENT_MEMBER[type]
             ?.let { Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, it, explain, field.path) }
             ?: unbuildable(field, explain)
+    }
+    val defaulted = DEFAULTED_BUILD_MEMBER[type]
+    if (defaulted != null && body is JsonObject && body.holdsBlank(defaulted)) {
+        return unbuildable(
+            field,
+            "`fieldType` names `$discriminator` with a blank `$defaulted`, which A12 cannot construct that " +
+                "type from where an omitted `$defaulted` takes the default",
+        )
     }
     return null
 }
@@ -370,6 +386,24 @@ private val REQUIRED_BODY_MEMBER = mapOf(
     FieldType.ENUMERATION to "values",
     FieldType.CUSTOM_FIELD to "name",
 )
+
+/**
+ * The member each date type defaults when it is absent and refuses to construct from when it is blank.
+ *
+ * The three builders pre-initialise `format`, so an omitted member is the type's default and draws nothing; a
+ * present string Java's `isBlank` accepts — the em space included, the no-break space not — leaves the model
+ * unbuilt, and on a field the default variant deletes it does not (`adapter.laws.CheckerBlankDateFormatAgreementTest`,
+ * [KERNEL-FINDINGS KF584]). A present member that is not a string was never measured, so it is not judged.
+ */
+private val DEFAULTED_BUILD_MEMBER = mapOf(
+    FieldType.DATE to "format",
+    FieldType.DATE_TIME to "format",
+    FieldType.TIME to "format",
+)
+
+/** Whether this body holds [member] as a string A12's construction reads as blank. */
+private fun JsonObject.holdsBlank(member: String): Boolean =
+    (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.content?.isA12Blank() == true
 
 /**
  * The types whose absent member A12 answers with a CLASS rather than a silent build refusal.

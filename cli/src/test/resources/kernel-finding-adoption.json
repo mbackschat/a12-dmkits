@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf584": {
+      "sha256": "f9dd11fee0e978129156254afb5a1778f36833661b311441a637dfc5055baf7f",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["blank date format"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["blank date format"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["blank date format"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builder never writes a blank format; it omits the member or declares one.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The type-binding family reports a present blank format on the three date types as unbuildable, leaves an absent one alone, and records a coverage gap at a field typed by a definition.", "evidence": {"blank date format": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/BlankDateFormatKf584Test.kt#aBlankFormatLeavesTheModelUnbuiltOnEachDateType", "witness": "Empty, space and em space are unbuilt on each type; absent, no-break space and a real format draw nothing."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints fields through the typed builder.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 22 rows over the three types, five blanks, an absent control, a filtered field and the fragment control, beside the no-break-space and type-definition rows.", "evidence": {"blank date format": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBlankDateFormatAgreementTest.kt#theCheckerStatesA12sBuildVerdictOnEveryRow", "witness": "Every row's verdict agrees, and A12's codeless format sentence and the unbuilt type definition are pinned beside the checker's gaps."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no format logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf583": {
       "sha256": "1bb739ed428b22bed3e7b6ccb7eb98601c491ec4f57ae4c2a3ccd3aef013de2b",
       "task": "F-USE-BACKLOG",

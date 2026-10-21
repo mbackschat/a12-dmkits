@@ -14066,3 +14066,23 @@ Measured with whole-model `checkConsistency` on [KF580](#kf580)'s host: `/Order`
 **A name blank as Java's `isBlank` reads it leaves the model unbuilt.** The builder's `Entity` and `PathElement` assert `Validate.notBlank(name)`; a rule's and a computation's name fail the same way. Measured on the root, `Part`, `Bin`, `Slot`, `Label`, `Check` and `Fill`, the empty name, a space, a tab, a line break and an em space each throw *"The validated character sequence is blank"* (an empty ROOT name throws earlier still, an `IllegalArgumentException` for an illegal relative path). A no-break space and a figure space are not blank, and reach the ordinary name gates. A blank `Label`, `Check` or `Fill` that an `ONLY` filter deletes is admitted, because only the default-variant model is built.
 
 *Locked by:* `adapter.laws.CheckerComputedPathAgreementTest`, A12 against the portable checker class by class with the path each attaches to, which states `MVK_ERROR_INVALID_FIELDNAME` from the computed-target family after its index gate, the underscore class independently of the prefix classes, and `CK_MODEL_NOT_BUILDABLE` for a blank default-variant name; replayed on both checker runtimes by `consistency.ElementNameKf583Test`. A computed field named with a no-break space also draws `MVK_LEXER_STANDARD_ERROR` at the computation, which the checker does not state ([CONSISTENCY-GAPS](CONSISTENCY-GAPS.md) DG143).
+
+## §6 supplement — a blank date `format` leaves the model unbuilt on all three types that construct from it, where an absent one is the default (source-verified + model check, 2026-10-21) <a id="kf584"></a>
+
+> Fold: not-foldable — a build-tier refusal beside [KF312](#kf312)'s required body members and [KF206](#kf206)'s format vocabulary.
+
+**One gate serves the three types.** `IDateTimeType` and `ITimeType` extend `IDateType`, so `TypeConverter.convert` (kernel-md-model, 30.8.1) sends all three to `convertDate`, which constructs a `DateTypeImpl`; its constructor asserts `Validate.notBlank(dateFormat)`. Each type's Lombok builder pre-initialises `format` to the type's default, so an omitted member never reaches the assertion blank. A `TypeDefType` converts its definition's type through the same switch, so the gate holds there too.
+
+Measured with whole-model `checkConsistency` on one field `/Policy/Start`, with the model left unbuilt when the conversion throws:
+
+| `format` on `DateType`, `DateTimeType` and `TimeType` alike | A12 |
+|---|---|
+| absent | admitted |
+| `""`, a space, a tab, a line break, an em space | the model is not built |
+| `""` on a field an `ONLY` filter deletes | admitted, because only the default-variant model is converted |
+| a no-break space | built, then refused *"The date format is invalid."* with no code |
+| `""` in the `DateType` of a type definition the field names | the model is not built |
+
+`DateFragmentType`'s `formatOfFragment`, which has no default ([KF312](#kf312)), is refused when blank as before, and that row is the control. "Blank" is Java's `Character.isWhitespace` class, the same class [KF310](#kf310) measured for member presence: the em space is blank and the no-break space is not.
+
+*Locked by:* `adapter.laws.CheckerBlankDateFormatAgreementTest`. It compares A12 against the portable checker row by row. The checker states `CK_MODEL_NOT_BUILDABLE` for a blank inline format. It leaves the no-break-space sentence to A12 under its standing format-vocabulary gap. For a field typed by a definition, it records a coverage gap at that field. The test is replayed on both checker runtimes by `consistency.BlankDateFormatKf584Test`.
