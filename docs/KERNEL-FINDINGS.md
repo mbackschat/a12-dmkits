@@ -13811,3 +13811,23 @@ Found by a cold review of [KF569](#kf569)'s trimmed reading: admission trims the
 So staging takes the text as written. The cell counts as filled, which is why no `mandatoryField` fires, and the staged text meets no formal check: the same `" STD"` typed into the cell draws `fuehrendesBlank`. Not claimed: an empty-string `sValue`, a padded token beside an unpadded `sValue`, and partial validation, which stages nothing.
 
 *(Locked: `adapter.laws.IndexDefaultStagingDiffTest#aPaddedOrBlankSValueIsStagedAsWritten`, `ComputationEagerPrepassLawsTest#aPaddedSValueIsStagedAsWrittenForAComputation`.)*
+
+## §1 supplement — a condition literal's digits and a message parameter's whitespace are ASCII only, while a quoted Number value converts any digit the JVM reads (`checkConsistency` + source-read, 2026-10-21) <a id="kf575"></a>
+
+> Fold: pending — beside [KF302](#kf302)'s condition symbols, with the message rows in §13.
+
+Asked when [KF564](#kf564)'s Unicode digits were made platform-independent in the interpreter: does A12 read the same digits wherever it lexes? It does not. One carrier, one character apart per row:
+
+| input | verdict |
+|---|---|
+| condition `[BaseFee] > 3`, the control | ADMITTED |
+| `[BaseFee] > ٣`, `> ５`, `> 1٣`, `> 3.٥` | `MVK_LEXER_STANDARD_ERROR` |
+| message `fee $ BaseFee.value$`, the control | ADMITTED |
+| the same gap as U+00A0 or U+2003 | `MVK_LEXER_STANDARD_ERROR` ("Character ' ' at position 1 is incorrect") |
+| the same gap as U+000B | `INVALID_CHARACTERS`, the message text's control-character gate, one step before the lexer |
+
+So a digit A12 converts inside a Document value is refused as a literal. Both grammars spell their sets out, which is the source-read basis for the rows: `Base_ConditionLexer.g4` and `BaseErrorTextParameterLexer.g4` share `fragment DIGIT: '0'..'9'`, the five-character `WS` (space, CR, tab, form feed, LF) and a name set of the ASCII letters, `_`, `:` and `ÄÖÜäöüß`. No element name reaches the colon (`MVK_NAME_INVALID_DOT_COLON_A12_DV` refuses `Ns:Code`, measured the same day) or any other letter ([KF490](#kf490)).
+
+**A12's two runtimes read a quoted Number differently (source-read, not run).** The JVM Document JSON ingress converts with `java.math.BigDecimal` before the formal check, so `"٣"` is `3` ([KF564](#kf564), measured). The TypeScript runtime's `FormatDefinitionZahl` tests `NumberUtil.NUMBER_PATTERN`, `[0-9]`, first and reports `zahlMitUngueltigenZeichen`; its converter is `@com.mgmtp.a12.utils/utils-localization`'s `BigDecimal` over big.js 7.0.1, whose `NUMERIC` pattern uses `\d`, ASCII in JavaScript. Dynamic Groovy is normative ([IF136](INTERPRETER-FINDINGS.md#if136)), so the JVM reading is the one to match.
+
+*Locked by:* `rulekit.validate.laws.NonAsciiLexemeLawsTest` (both grids, each with its ASCII control). The interpreter's side is [IF415](INTERPRETER-FINDINGS.md#if415).

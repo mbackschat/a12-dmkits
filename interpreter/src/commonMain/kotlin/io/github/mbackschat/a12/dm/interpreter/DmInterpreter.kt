@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.parse.A12Lexis
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
@@ -1394,7 +1395,7 @@ class DmInterpreter private constructor(
      * A `null` return preserves the token when the address names no declared group.
      */
     private fun groupParameterIndex(written: String, ruleGroup: String, pass: ValidationPass, ctx: EvalContext): String? {
-        if (written.any { it.isWhitespace() }) {
+        if (written.any(A12Lexis::isSpace)) {
             val selected = selectedMessageReference(written, ruleGroup) ?: return null
             return selectedMessageRepetitions(selected, pass, ctx)?.lastOrNull()?.toString() ?: "?"
         }

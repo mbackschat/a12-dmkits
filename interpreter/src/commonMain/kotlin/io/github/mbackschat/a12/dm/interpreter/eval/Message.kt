@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.parse.A12Lexis
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /**
@@ -106,7 +107,7 @@ internal fun renderMessage(
     val index = unquoted(token.groupValues[INDEX])
     when {
         token.value == "\$\$" -> "\$"
-        group.isNotEmpty() -> groupIndexOf(if (group.any { it.isWhitespace() }) group else unquoted(group)) ?: token.value
+        group.isNotEmpty() -> groupIndexOf(if (group.any(A12Lexis::isSpace)) group else unquoted(group)) ?: token.value
         index.isNotEmpty() -> indexTextOf(index, unquoted(token.groupValues[INDEX_CATEGORY]).takeIf { it.isNotEmpty() }) ?: token.value
         name.isEmpty() -> baseYearOf(offsetOf(token.groupValues[OFFSET])) ?: token.value
         token.groupValues[SELECTION].isNotEmpty() ->
@@ -193,16 +194,19 @@ private const val INDEX_CATEGORY = 8
 private fun tokenPattern(terminals: MessageTerminals) = Regex(
     "\\\$\\\$" +
         "|\\\$" + GAP + terminals.baseYear + GAP + "([+-]" + GAP + "\\d+)?" + GAP + "\\\$" +
-        "|\\\$#" + GAP + "([\\w/.']+(?:\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)" +
+        "|\\\$#" + GAP + "([\\w/.']+(?:" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?)" +
         GAP + "\\\$" +
         "|\\\$" + GAP + "((?:\\.\\./)*[\\w/']+)(?:" + GAP + "\\." + GAP + "(" + terminals.value + ")|" + GAP + "->" + GAP +
-        "(\\w+))?" + "(\\s+" + terminals.semanticFor + "\\s+(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?" + GAP + "\\\$" +
+        "(\\w+))?" + "(" + RUN + terminals.semanticFor + RUN + "(?:\"(?:[^\"]|\"\")*\"|[\\w/.']+))?" + GAP + "\\\$" +
         "|\\\$" + GAP + "index" + GAP + "\\(" + GAP + "([\\w']+)" + GAP + "\\)" + GAP + "(?:\\." + GAP + terminals.value + "|->" + GAP +
         "([\\w']+))" + GAP + "\\\$",
 )
 
 /** Optional whitespace between two tokens of a parameter. */
-private const val GAP = "\\s*"
+private const val GAP = A12Lexis.SPACE_CLASS + "*"
+
+/** Required whitespace between two tokens of a parameter. */
+private const val RUN = A12Lexis.SPACE_CLASS + "+"
 
 /**
  * The grammar's single-quote escape is PER SEGMENT, not per token — `$#/'Policy'/'Cover'$` reaches the same
@@ -213,7 +217,7 @@ private const val GAP = "\\s*"
 private fun unquoted(captured: String): String = captured.replace("'", "")
 
 /** A bare terminal carries no offset; `+3` / `-1` parse as a signed integer, with no bound. */
-private fun offsetOf(sign: String): Int = if (sign.isEmpty()) 0 else sign.filterNot { it.isWhitespace() }.toInt()
+private fun offsetOf(sign: String): Int = if (sign.isEmpty()) 0 else sign.filterNot(A12Lexis::isSpace).toInt()
 
 /** The stored token behind a cell, for the category lookup; an absent cell reads as empty. */
 private fun storedAt(path: String, messageValueOf: (String) -> String?): String = messageValueOf(path) ?: ""

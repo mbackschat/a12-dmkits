@@ -13,6 +13,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **The JVM and JavaScript packages classify every character alike.** A quoted Number's non-ASCII digits are read as A12's JVM runtime reads them on both, and conditions and message tokens keep A12's ASCII digits, names and whitespace, so a no-break space inside `$…$` no longer renders a token in JavaScript alone.
 - **`RepetitionNotUnique` keys in sibling fixed groups of one repeatable row now evaluate**, compared per that row in either key order, as in the Kernel; the model was refused as unsupported.
 - **A computation copying an empty Confirm field now leaves its Confirm target empty**, as the Kernel does; it used to store `false` there and report the target erroneous.
 - **A rule condition that opens with the scale-gate waiver now loads and evaluates**, in the model's condition language (`@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` or `@UnterdrueckeWarnung(…)`); the model was refused at its first waived rule. The waived comparison is evaluated exactly, as in the Kernel.

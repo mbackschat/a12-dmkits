@@ -226,7 +226,7 @@ private class ConditionParser(
             // (`CurrentRepetition($/G/H)`, `NoFieldFilled($a, $b)`, a value-list `$Group*/field`).
             '$' -> { next(); entitySuffix(readRef(outer = true)) }
             else -> when {
-                c == '-' || c.isDigit() -> readNumber()
+                c == '-' || A12Lexis.isDigit(c) -> readNumber()
                 else -> {
                     val quoted = c == '\''
                     val authoredName = readIdent()
@@ -362,7 +362,7 @@ private class ConditionParser(
     /** Consume (and discard) a `..Name` turning-point label — an identifier read RAW (no whitespace/comment skip,
      *  a path token is contiguous), stopping at the descent `/` or any non-identifier char. */
     private fun skipTurningPointLabel() {
-        while (peek().isLetterOrDigit() || peek() == '_') next()
+        while (A12Lexis.isNamePart(peek())) next()
     }
 
     /**
@@ -523,18 +523,18 @@ private class ConditionParser(
             next()
             separated = skipNumberSpace()
         }
-        while (peek().isDigit()) next()
+        while (A12Lexis.isDigit(peek())) next()
         val integerEnd = pos
         val beforePoint = skipNumberSpace()
         if (peek() == '.') {
             next()
             separated = skipNumberSpace() || beforePoint || separated
-            while (peek().isDigit()) next()
+            while (A12Lexis.isDigit(peek())) next()
         } else {
             pos = integerEnd
         }
         val literal = src.substring(start, pos)
-        return Expr.NumLit(dec(if (separated) literal.filterNot { it.isWhitespace() } else literal))
+        return Expr.NumLit(dec(if (separated) literal.filterNot(A12Lexis::isSpace) else literal))
     }
 
     // ConformanceFrontierTest measures whitespace between numeric tokens, but rejects comments there.
@@ -579,7 +579,7 @@ private class ConditionParser(
             return segment
         }
         val start = pos
-        while (peek().isLetterOrDigit() || peek() == '_') next()
+        while (A12Lexis.isNamePart(peek())) next()
         return src.substring(start, pos)
     }
 

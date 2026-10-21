@@ -117,7 +117,7 @@ internal object A12DocumentJson {
     private fun asciiDigits(literal: String): String {
         if (literal.all { it.code < 0x80 }) return literal
         return buildString(literal.length) {
-            for (c in literal) append(if (c.code >= 0x80 && c.isDigit()) '0' + c.digitToInt() else c)
+            for (c in literal) append(if (c.code >= 0x80 && DecimalDigits.isDigit(c)) '0' + DecimalDigits.valueOf(c) else c)
         }
     }
 

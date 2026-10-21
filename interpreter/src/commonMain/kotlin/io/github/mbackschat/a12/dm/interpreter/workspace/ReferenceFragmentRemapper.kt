@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.parse.A12Lexis
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /** Provider-local entity and field names used to bind a mounted fragment before it moves. */
@@ -245,7 +246,7 @@ private class FragmentScanner(
                 }
                 else -> when {
                     current.isIdentifierStart() -> copyIdentifierOrPath()
-                    current.isDigit() -> {
+                    A12Lexis.isDigit(current) -> {
                         copyNumber()
                         atomContext = AtomContext.COMPLETE
                     }
@@ -526,7 +527,7 @@ private class FragmentScanner(
 
     private fun copyNumber() {
         val start = position
-        while (charAt(position).isDigit() || charAt(position) == '.') {
+        while (A12Lexis.isDigit(charAt(position)) || charAt(position) == '.') {
             position++
         }
         output.append(source, start, position)
@@ -550,7 +551,7 @@ private class FragmentScanner(
 
     private fun skipWhitespace(start: Int): Int {
         var cursor = start
-        while (charAt(cursor).isWhitespace()) {
+        while (A12Lexis.isSpace(charAt(cursor))) {
             cursor++
         }
         return cursor
@@ -661,6 +662,6 @@ private data class Segment(
     val quoted: Boolean,
 )
 
-private fun Char.isIdentifierStart(): Boolean = isLetter() || this == '_'
+private fun Char.isIdentifierStart(): Boolean = A12Lexis.isNameStart(this)
 
-private fun Char.isIdentifierPart(): Boolean = isLetterOrDigit() || this == '_'
+private fun Char.isIdentifierPart(): Boolean = A12Lexis.isNamePart(this)

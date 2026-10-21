@@ -21,6 +21,19 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-21 — explicit character sets read faster than the platform tables they replace (IF415)
+
+Measured at `23a24f679` plus the uncommitted [IF415](INTERPRETER-FINDINGS.md#if415) change, on the M1 Mac mini, JDK 21.0.12.1, while an unrelated `rustc` build held the load average between 6 and 21. Old and new primitives ran over the same ASCII inputs in one JVM, interleaved for 41 rounds after 200 warm-up pairs, so the load lands on both arms alike; medians:
+
+| primitive | input | old | new | new / old |
+|---|---|---|---|---|
+| digit test: `isDigit()` → `A12Lexis.isDigit` | 1.2 M condition characters | 1141.7 µs | 921.2 µs | 0.81 |
+| name test: `isLetterOrDigit()` or `_` → `A12Lexis.isNamePart` | the same | 1736.9 µs | 1124.3 µs | 0.65 |
+| digit value: `digitToIntOrNull()` → `DecimalDigits.valueOf` | 200,000 decimal texts | 2737.0 µs | 1889.2 µs | 0.69 |
+| message-token regex: `\s` → the kernel's five-character class | 20,000 templates | 9601.8 µs | 9575.3 µs | 1.00 |
+
+A targeted gate run of `EntryPointPerfTest` and `KeyedMessageTokenPerfTest` under the same load passed every bar, its medians 10 to 25 % above the three quiet anchoring gates uniformly across lanes the change does and does not touch, so it says nothing about the change; its record was not kept.
+
 ### Checkpoint 2026-10-21 — IG172's new lanes and memory arms found four quadratic paths, a retention the allocation counter could not see, and one shape A12 itself makes quadratic
 
 Darwin-aarch64, `-DIRTY` exploratory runs at `aee4eb841`…`97e3cec75`, each a single targeted `perfGateTest` invocation on a quiet machine; the anchored numbers are the gate runs that follow, not these.

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.DecimalDigits
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
@@ -116,7 +117,7 @@ private fun presentNumber(stored: String, p: DisplayPresentation): String {
     val dot = body.indexOf('.')
     val integer = if (dot < 0) body else body.substring(0, dot)
     val fraction = if (dot < 0) null else body.substring(dot + 1)
-    if (integer.isEmpty() || !integer.all { it.isDigit() } || fraction?.all { it.isDigit() } == false) {
+    if (integer.isEmpty() || !integer.all(DecimalDigits::isDigit) || fraction?.all(DecimalDigits::isDigit) == false) {
         return stored
     }
     val grouped = StringBuilder()
@@ -142,7 +143,7 @@ private fun dateComponentsOf(stored: String, format: String): Map<Char, String>?
             val width = end - atFormat
             if (atValue + width > stored.length) return null
             val text = stored.substring(atValue, atValue + width)
-            if (!text.all { it.isDigit() }) return null
+            if (!text.all(DecimalDigits::isDigit)) return null
             components[c] = text
             atFormat = end
             atValue += width

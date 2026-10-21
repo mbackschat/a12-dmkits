@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.DecimalDigits
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.RoundMode
@@ -1367,7 +1368,7 @@ private fun fieldValueDecimalOrNull(raw: String): Dec? {
             pointSeen = true
             normalized.append(ch)
         } else {
-            val digit = ch.digitToIntOrNull() ?: return null
+            val digit = DecimalDigits.valueOf(ch).takeIf { it >= 0 } ?: return null
             normalized.append(('0'.code + digit).toChar())
             digitCount++
         }

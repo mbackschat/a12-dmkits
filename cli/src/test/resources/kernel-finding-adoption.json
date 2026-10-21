@@ -11590,6 +11590,30 @@
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here after a cold review of KF569; goes back in the next handback.", "evidence": {}}
       }
+    },
+    "kf575": {
+      "sha256": "80078f29293288c2cf47d04af383858d8b919a4f05f762d75eeef3fc4552cbf8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": ["a condition literal's digits", "a message token's whitespace"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave condition and message-text acceptance to the kernel check.", "evidence": {}},
+        "checker": {"state": "OPEN", "basis": "The portable checker still reads names and digits with Kotlin's Unicode classifiers in ConditionReferences, SuppressedWarnings, RoundingOperands and TemporalFormat.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no condition or message text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read condition or message text.", "evidence": {}},
+        "adapter": {"state": "NOT_APPLICABLE", "basis": "The admission rows are locked by validate.laws.NonAsciiLexemeLawsTest, outside the adapter.", "evidence": {}},
+        "interpreter": {"state": "APPLIED", "basis": "Conditions, include remapping and message tokens lex with the kernel grammars' ASCII sets (IF415).", "evidence": {"a condition literal's digits": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PlatformCharacterClassTest.kt#aConditionNumberIsAsciiDigitsOnly", "witness": "The ASCII control parses; four non-ASCII digit literals are refused on JVM and Node."}, "a message token's whitespace": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PlatformCharacterClassTest.kt#aMessageTokenGapIsTheKernelsAsciiWhitespace", "witness": "A space gap renders; a no-break or em space leaves the token literal on JVM and Node."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel and evaluates through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+      }
     }
   }
 }
