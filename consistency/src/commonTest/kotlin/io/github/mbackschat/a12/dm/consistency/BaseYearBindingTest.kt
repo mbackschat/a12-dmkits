@@ -14,12 +14,12 @@ class BaseYearBindingTest {
     @Test
     fun anUnbindableBaseYearIsCarriedAndEveryOtherSpellingIsNot() {
         val spellings = listOf("\"2024\"", "\" 2024 \"", "2024.7", "\"\"", "\"null\"", "null",
-            "\"NULL\"", "\"2024.0\"", "\" 2024\"", "2147483647.5", "{}", "[]", "true")
+            "\"NULL\"", "\"2024.0\"", "\"\u00A02024\"", "2147483647.5", "{}", "[]", "true")
         val actual = spellings.associateWith { prepared(it).unbindableBaseYear }
         assertEquals(
             mapOf("\"2024\"" to null, "\" 2024 \"" to null, "2024.7" to null, "\"\"" to null, "\"null\"" to null,
                 "null" to null, "\"NULL\"" to "\"NULL\"", "\"2024.0\"" to "\"2024.0\"",
-                "\" 2024\"" to "\" 2024\"", "2147483647.5" to "2147483647.5", "{}" to "{}", "[]" to "[]",
+                "\"\u00A02024\"" to "\"\u00A02024\"", "2147483647.5" to "2147483647.5", "{}" to "{}", "[]" to "[]",
                 "true" to "true"),
             actual,
         )
@@ -27,11 +27,11 @@ class BaseYearBindingTest {
 
     @Test
     fun anUnbindableBaseYearIsReportedAsTheSourceRefusalItIs() {
-        val findings = check(source("\"NULL\"")).findings.filter { it.code == CK_MODEL_NOT_BUILDABLE }
+        val findings = checkRead(source("\"NULL\"")).findings.filter { it.code == CK_MODEL_NOT_BUILDABLE }
         assertEquals(1, findings.size, "one model-level refusal: $findings")
         assertEquals(true, findings.single().explain.startsWith("`content.modelInfo.baseYear` holds `\"NULL\"`"),
             findings.single().explain)
-        assertEquals(emptyList(), check(source("\"2024\"")).findings.filter { it.code == CK_MODEL_NOT_BUILDABLE })
+        assertEquals(emptyList(), checkRead(source("\"2024\"")).findings.filter { it.code == CK_MODEL_NOT_BUILDABLE })
     }
 
     private fun prepared(spelling: String) = prepare(admit(source(spelling)) as Admission.Admitted)

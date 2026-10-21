@@ -36,7 +36,7 @@ class ModelTextReadingDiffTest {
             // A JSON number binds only when its exact value fits `Int`, before it is truncated.
             "2147483647.0" to (2147483647.0 to BUILT), "2147483647.5" to (2147483647.5 to NOT_BUILT),
             "-2147483648.5" to (-2147483648.5 to NOT_BUILT), "2147483648.0" to (2147483648.0 to NOT_BUILT),
-            "{}" to (emptyMap<String, Any>() to NOT_BUILT),
+            "{}" to (emptyMap<String, Any>() to NOT_BUILT), "true" to (true to NOT_BUILT), "[2024]" to (listOf(2024) to NOT_BUILT),
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }
