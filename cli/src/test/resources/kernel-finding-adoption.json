@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf418": {
+      "sha256": "98e6f3e3c86175e2f82bc505853133774d4b84fef19c666f04b18e40c7e7cbd8",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["trimmed enum texts"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["trimmed enum texts"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["trimmed enum texts"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The enum builder refuses neither a tab, a pipe nor a repeated value; its one text check, the S-value's membership, already compares trimmed.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The forbidden-text, value-duplicate, label-duplicate and category families read every text trimmed, while the charset family and the rule-constant readers keep the text as written.", "evidence": {"trimmed enum texts": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "Twenty trimmed-text rows agree with A12's coded stream, where the checker had refused a surrounding tab and missed a trim-equal duplicate."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes enum values from schema constants and judges no enum text.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted and judges no enum text.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on every trimmed-text row with a plain control beside it.", "evidence": {"trimmed enum texts": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "A12's own stream is pinned on the admitted, refused and trim-equal rows."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission of declarations; the interpreter neither judges nor compares declared enum texts.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no enum text logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf1": {
       "sha256": "f946625fc486bcea2dbd93d86b7e3e97cea2929fdb91b894a25f57933239c21b",
       "task": "F-USE-BACKLOG",

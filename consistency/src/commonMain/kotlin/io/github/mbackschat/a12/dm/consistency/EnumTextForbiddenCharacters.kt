@@ -21,6 +21,11 @@ import kotlinx.serialization.json.JsonPrimitive
  * sibling value's tab is still reported, and the refusal is raised once for the FIELD however many of its
  * texts carry a break. Both halves are measured, and neither follows from the other.
  *
+ * **Both gates read the text TRIMMED, as Java's `String.trim` trims**, so a tab or a line break before the
+ * first or after the last other character is admitted on every carrier, while a pipe there, or a tab kept inside
+ * by a trailing no-break space, is not ([KERNEL-FINDINGS KF418]). The `supportedCharacters` family next door does
+ * not trim: a trailing space is still a character outside `A-Z` there.
+ *
  * **The unit of report is the TEXT.** A value carrying both a tab and a pipe draws one finding where the
  * `supportedCharacters` family next door would draw two, because that one reports per (value, character) and
  * this predicate is a single containment test. Two defective values draw two, and each carrier answers on its
@@ -42,12 +47,13 @@ internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding>
     defaultVariantFields().flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val texts = declaredTexts(body)
-        val broken = texts.filter { it.text.any(::isALineBreak) }
+        val broken = texts.filter { it.text.javaTrimmed().any(::isALineBreak) }
         // A12 states the line-break refusal once for the field and ahead of every coded class, and the coded
         // gate is not asked about a text that carries one — but it IS still asked about the others.
         val lineBreak = if (broken.isEmpty()) emptyList() else listOf(field.lineBreakFinding(broken.first()))
-        lineBreak + texts.filterNot { it.text.any(::isALineBreak) }
-            .filter { it.text.any { character -> character == '\t' || character == '|' } && it.text.namedByA12() }
+        lineBreak + texts.filterNot { it.text.javaTrimmed().any(::isALineBreak) }
+            .filter { it.text.javaTrimmed().any { character -> character == '\t' || character == '|' } }
+            .filter { it.text.namedByA12() }
             .map { field.codedFinding(it) }
     }
 

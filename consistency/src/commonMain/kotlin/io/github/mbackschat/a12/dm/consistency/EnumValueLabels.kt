@@ -42,7 +42,8 @@ internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
 
 private fun duplicateTokenFindings(field: TrackedDeclaration, values: List<JsonObject?>): List<Finding> {
     // A value with a supplementary-plane character is not named; A12 reports it as an unsupported sign (KF551).
-    val tokens = values.mapNotNull { it?.string("value") }.filter { it.namedByA12() }
+    // A12 compares the values trimmed, as Java's `String.trim` trims: `BASIC` and `BASIC\t` repeat (KF418).
+    val tokens = values.mapNotNull { it?.string("value")?.javaTrimmed() }.filter { it.namedByA12() }
     val repeated = tokens.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
     return repeated.map { token ->
         finding(
@@ -109,7 +110,8 @@ private fun TrackedFactBase.labelFindings(
  * **It is asked only where the label set is otherwise complete**, which is where it was measured: a set that
  * is short or half-blank draws its own class first, and whether A12 adds this one there is unmeasured.
  * Under-reporting the pair is safe; naming a class on an unmeasured shape is not. A repeated label carrying a
- * supplementary-plane character is not named: A12 answers the unsupported-signs sentence alone (KF551).
+ * supplementary-plane character is not named: A12 answers the unsupported-signs sentence alone (KF551). Labels
+ * are compared trimmed, so `Tier` and `Tier ` repeat (KF418).
  */
 private fun repeatedLabelFindings(
     field: TrackedDeclaration,
@@ -118,7 +120,7 @@ private fun repeatedLabelFindings(
     val perLocale = mutableMapOf<String, MutableList<String>>()
     for (value in texts) {
         for ((locale, entry) in value) {
-            entry.string("text")?.takeIf { it.namedByA12() }
+            entry.string("text")?.javaTrimmed()?.takeIf { it.namedByA12() }
                 ?.let { perLocale.getOrPut(locale) { mutableListOf() }.add(it) }
         }
     }

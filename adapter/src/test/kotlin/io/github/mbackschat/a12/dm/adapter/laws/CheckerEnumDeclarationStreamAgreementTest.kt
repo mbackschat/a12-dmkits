@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Test
  * spans the surrogate block (KF560), and names no value carrying a supplementary-plane character in a coded class
  * other than that charset class: not the forbidden-text classes of a value, a label or a category token, not
  * `MVK_S_VALUE_INVALID` for a special value, and not `MVK_DISPLAY_VALUES_DUPLICATE` for a repeated label, each of
- * which the rows pair with its plain control. The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
+ * which the rows pair with its plain control. Those gates, and every comparison that identifies a value, a label or
+ * a token, read the text as Java's `String.trim` leaves it, while the `supportedCharacters` restriction is judged on
+ * every unit as written (KF418). The rows re-express a12-kernel-lean's 37-row capture in our own domain and add five more: mixed values
  * (a letter beside a supplementary character) and supplementary surplus tokens, which settle that any such
  * character withholds the entry.
  *
@@ -33,7 +35,7 @@ class CheckerEnumDeclarationStreamAgreementTest {
 
     private data class Row(val values: List<String>, val categories: List<Pair<String, List<String>>>?,
         val restricted: Boolean = false, val label: String? = null, val charset: List<String>? = null,
-        val sValue: String? = null)
+        val sValue: String? = null, val labels: List<String>? = null)
 
     private val rows = linkedMapOf(
         "control" to Row(listOf("BASIC", "PLUS", "GOLD"), listOf(BAND to listOf("STANDARD", "HIGH", "TOP"),
@@ -110,6 +112,27 @@ class CheckerEnumDeclarationStreamAgreementTest {
         "a mixed sign special value" to Row(listOf("BASIC"), null, sValue = "o$CART"),
         "two values labelled alike" to Row(listOf("BASIC", "PLUS"), null, label = "Tier"),
         "two values labelled alike with a sign" to Row(listOf("BASIC", "PLUS"), null, label = "Tier $CART"),
+        // A12 asks its forbidden-character gates, and identifies values, labels and tokens, on the TRIMMED text.
+        "a leading tab in a value" to Row(listOf("BASIC", "\to"), null),
+        "a trailing tab in a value" to Row(listOf("BASIC", "o\t"), null),
+        "a value that is a tab" to Row(listOf("BASIC", "\t"), null),
+        "a trailing tab in a label" to Row(listOf("BASIC"), null, label = "Basic\t"),
+        "a trailing tab in a category token" to Row(listOf("BASIC"), listOf(BAND to listOf("ST\t"))),
+        "a trailing line feed in a value" to Row(listOf("BASIC", "o\n"), null),
+        "a trailing carriage return in a label" to Row(listOf("BASIC"), null, label = "Basic\r"),
+        "a trailing line feed in a category token" to Row(listOf("BASIC"), listOf(BAND to listOf("ST\n"))),
+        "a leading pipe in a value" to Row(listOf("BASIC", "|o"), null),
+        "an inner pipe before a trailing tab" to Row(listOf("BASIC", "o|\t"), null),
+        "a tab kept inside by a no-break space" to Row(listOf("BASIC", "o\t\u00A0"), null),
+        "a trailing space under a restriction" to Row(listOf("BASIC", "PLUS "), null, restricted = true),
+        "values equal once trimmed" to Row(listOf("BASIC", "BASIC\t"), null),
+        "values equal once a leading space is trimmed" to Row(listOf("BASIC", " BASIC"), null),
+        "labels equal once trimmed" to Row(listOf("BASIC", "PLUS"), null, labels = listOf("Tier", "Tier ")),
+        "labels equal once a tab is trimmed" to Row(listOf("BASIC", "PLUS"), null, labels = listOf("Tier", "\tTier")),
+        "values equal once trimmed, under a category" to Row(listOf("BASIC", "BASIC "), listOf(BAND to listOf("ST", "HI"))),
+        "unclassified values equal once trimmed" to Row(listOf("ST", "BASIC", "BASIC "), listOf(BAND to listOf("X"))),
+        "surplus tokens equal once trimmed" to Row(listOf("BASIC"), listOf(BAND to listOf("ST", "HI", "HI "))),
+        "a special value with a trailing tab" to Row(listOf("BASIC"), null, sValue = "BASIC\t"),
         "shortfall, surplus, shortfall" to Row(listOf("BASIC", "PLUS"), listOf(BAND to listOf("RETAIL"),
             SEGMENT to listOf("STANDARD", "HIGH", "TOP"), REGION to listOf("NORTH"))),
     )
@@ -196,6 +219,16 @@ class CheckerEnumDeclarationStreamAgreementTest {
         assertEquals(listOf("MVK_INTERNAL_VALUE_INVALID"), kernel(model(rows.getValue("a tab in a value"))))
         assertEquals(listOf("MVK_S_VALUE_INVALID"), kernel(model(rows.getValue("a foreign special value"))))
         assertEquals(listOf("MVK_DISPLAY_VALUES_DUPLICATE"), kernel(model(rows.getValue("two values labelled alike"))))
+        for (admitted in listOf("a leading tab in a value", "a trailing tab in a value", "a value that is a tab",
+            "a trailing tab in a label", "a trailing tab in a category token", "a trailing line feed in a value",
+            "a trailing carriage return in a label", "a trailing line feed in a category token")) {
+            assertEquals(emptyList<String>(), kernel(model(rows.getValue(admitted))), admitted)
+        }
+        assertEquals(listOf("MVK_INTERNAL_VALUE_INVALID"), kernel(model(rows.getValue("a tab kept inside by a no-break space"))))
+        assertEquals(listOf(INT_DUP), kernel(model(rows.getValue("values equal once trimmed"))))
+        assertEquals(listOf("MVK_DISPLAY_VALUES_DUPLICATE"), kernel(model(rows.getValue("labels equal once trimmed"))))
+        assertEquals(listOf(MISSING, CAT_DUP, INT_DUP), kernel(model(rows.getValue("unclassified values equal once trimmed"))))
+        assertEquals(listOf(SURPLUS), kernel(model(rows.getValue("surplus tokens equal once trimmed"))))
     }
 
     private val oracle = KernelConsistencyOracle()
@@ -229,7 +262,8 @@ class CheckerEnumDeclarationStreamAgreementTest {
         val values = enumeration.putArray("values")
         row.values.forEach { value ->
             val entry = values.addObject().put("value", value)
-            row.label?.let { entry.putArray("label").addObject().put("locale", "en_US").put("text", it) }
+            (row.labels?.get(row.values.indexOf(value)) ?: row.label)
+                ?.let { entry.putArray("label").addObject().put("locale", "en_US").put("text", it) }
         }
         row.sValue?.let { enumeration.put("sValue", it) }
         if (row.categories == null) enumeration.remove("categories")

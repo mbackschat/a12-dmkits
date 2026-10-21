@@ -27,6 +27,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * read from source, not measured: A12 reads the declaration as a document of its metamodel, whose formal check
  * refuses any UTF-16 surrogate (KERNEL-FINDINGS KF551).
  *
+ * **Values and tokens are identified TRIMMED, as Java's `String.trim` trims**: `BASIC` and `BASIC ` are one value
+ * to the pairing, so they draw `MVK_CATEGORY_VALUE_DUPLICATE` and an unclassified pair is named once, and two
+ * surplus tokens differing in a trailing space are one surplus token (KERNEL-FINDINGS KF418).
+ *
  * **The member names are measured, not read off the Java fields**
  * (`rulekit.validate.laws.EnumCategoryWireShapeLawsTest`), and that grid also settled why a checker cannot
  * be lax about them: A12's reader REFUSES a member it does not know rather than ignoring it, so a body this
@@ -44,7 +48,8 @@ import kotlinx.serialization.json.JsonPrimitive
 internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
-        val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
+        val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.map { it.javaTrimmed() }
+            ?: return@flatMap emptyList()
         val categories = (body["categories"] as? JsonArray ?: return@flatMap emptyList()).mapNotNull { it.pairing() }
         categories.flatMap { field.shortfall(values, it) } + categories.flatMap { field.surplus(values, it) } +
             categories.flatMap { field.spoiltPairing(values, it) }
@@ -139,7 +144,7 @@ private fun TrackedDeclaration.shortfall(values: List<String>, category: Pairing
 
 /** The tokens past this enum's last value, each named once. */
 private fun TrackedDeclaration.surplus(values: List<String>, category: Pairing): List<Finding> =
-    category.tokens.drop(values.size).map { it.tokenText() }.filter { it.namedByA12() }.distinct()
+    category.tokens.drop(values.size).map { it.tokenText().javaTrimmed() }.filter { it.namedByA12() }.distinct()
         .map { unmatched(category.name, it, values.size) }
 
 /**

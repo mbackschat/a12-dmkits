@@ -7632,6 +7632,21 @@ Three further facts a family has to encode rather than infer, each measured: the
 
 *Locked by:* `rulekit.validate.laws.EnumValueForbiddenCharactersLawsTest`.
 
+*Added 2026-10-21:* **both gates read the text as Java's `String.trim` leaves it, and so does every comparison that identifies an Enumeration's value, label or token.** A tab or a line break before the first or after the last other character is admitted on all three carriers, and a value that is only a tab is admitted too:
+
+| declared | A12 |
+|---|---|
+| value `<TAB>o` or `o<TAB>`, label `Basic<TAB>`, token `ST<TAB>` | admitted |
+| value `o<LF>`, label `Basic<CR>`, token `ST<LF>` | admitted, no line-break sentence |
+| value `o<TAB>k`, `|o`, `o|<TAB>` | `MVK_INTERNAL_VALUE_INVALID` |
+| value `o<TAB><NBSP>` (the no-break space is not trimmed) | `MVK_INTERNAL_VALUE_INVALID` |
+| values `BASIC` and `BASIC<TAB>`, or `BASIC` and ` BASIC` | `MVK_INTERNAL_VALUES_DUPLICATE`, without the repeated-value sentence |
+| labels `Tier` and `Tier ` (or `<TAB>Tier`) on two values | `MVK_DISPLAY_VALUES_DUPLICATE` |
+| values `BASIC`, `BASIC ` past a one-token category | one `MVK_MISSING_CATEGORY_VALUE`, then `MVK_CATEGORY_VALUE_DUPLICATE`, `MVK_INTERNAL_VALUES_DUPLICATE` |
+| surplus tokens `HI` and `HI ` | one `MVK_MISSING_INTERNAL_VALUE` |
+
+Two readings do NOT trim, which is what keeps this from being a trimming reader: `supportedCharacters` still refuses the trailing space of `PLUS ` under `A-Z`, and a rule constant meets the value as written, so against the value `BASIC ` the constant `"BASIC"` draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` and the index key `"BASIC"` draws `MVK_INDEX_VALUE_INVALID`, while `"BASIC "` is admitted by both. Locked by `adapter.laws.CheckerEnumDeclarationStreamAgreementTest` against the portable checker, which judged and compared every text as written until this measurement; the constant rows were measured once and already agreed.
+
 ## §8 supplement — `MVK_NAME_INVALID_A12_DV` is a RESERVED final segment, which is why no character sweep could reach it (source-verified + measured, 2026-09-15) <a id="kf419"></a>
 
 > Fold: not-foldable — an authoring-gate account of one diagnostic class, outside KERNEL-SEMANTICS's evaluation scope.
