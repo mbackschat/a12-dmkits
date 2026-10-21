@@ -106,6 +106,16 @@ class CheckCellKeyTest {
             "a new ModelFact needs a row in `moved`, or its key is unmeasured")
     }
 
+    /** The base-year fact carries the unbindable text too: two refusals that bind alike must still key apart. */
+    @Test
+    fun anUnbindableBaseYearsTextMovesItsFactWithoutAPresenceChange() {
+        val upper = prepared(modelInfo = """"modelInfo":{"baseYear":"NULL"},""")
+        val mixed = prepared(modelInfo = """"modelInfo":{"baseYear":"Null"},""")
+        assertEquals(upper.hasBaseYear, mixed.hasBaseYear)
+        assertTrue(upper.valueOf(FactRead.ModelMember(ModelFact.BASE_YEAR)) !=
+            mixed.valueOf(FactRead.ModelMember(ModelFact.BASE_YEAR)))
+    }
+
     @Test
     fun typeDefinitionBodyEditInvalidatesItsFactWithoutAnIdChange() {
         fun withMaximum(maximum: Int) = prepared(typeDefinitions =

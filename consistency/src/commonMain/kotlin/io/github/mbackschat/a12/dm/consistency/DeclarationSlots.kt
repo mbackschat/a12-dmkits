@@ -72,7 +72,7 @@ private fun TrackedFactBase.unbindableBaseYearFindings(): List<Finding> = listOf
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         CK_MODEL_NOT_BUILDABLE,
-        "`content.modelInfo.baseYear` holds `$text`, which A12 cannot bind as a whole number — write a year such " +
+        "`content.modelInfo.baseYear` holds `$text`, which A12 cannot bind as a Java `Integer` — write a year such " +
             "as `2024`. A12's reader refuses the source, so the model never loads and nothing else in this report " +
             "is A12's verdict about it",
     )

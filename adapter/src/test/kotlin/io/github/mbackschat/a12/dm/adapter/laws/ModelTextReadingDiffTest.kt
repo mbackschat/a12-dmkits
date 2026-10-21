@@ -37,6 +37,11 @@ class ModelTextReadingDiffTest {
             "2147483647.0" to (2147483647.0 to BUILT), "2147483647.5" to (2147483647.5 to NOT_BUILT),
             "-2147483648.5" to (-2147483648.5 to NOT_BUILT), "2147483648.0" to (2147483648.0 to NOT_BUILT),
             "{}" to (emptyMap<String, Any>() to NOT_BUILT), "true" to (true to NOT_BUILT), "[2024]" to (listOf(2024) to NOT_BUILT),
+            "false" to (false to NOT_BUILT), "[]" to (emptyList<Int>() to NOT_BUILT),
+            // Past `Int` as text and as an integer token: the boxed `Integer` member, not the primitive `int` of KF590.
+            "\"2147483648\"" to ("2147483648" to NOT_BUILT), "\"99999999999\"" to ("99999999999" to NOT_BUILT),
+            "2147483648" to (2147483648L to NOT_BUILT), "-2147483649" to (-2147483649L to NOT_BUILT),
+            "2147483647" to (2147483647 to BUILT),
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }
@@ -45,6 +50,7 @@ class ModelTextReadingDiffTest {
             // The checker's column is what it states about the base year: missing, unbuildable, or nothing.
             val codes = check(ModelSource(json)).findings.map { it.code }
             val checker = when {
+                "MVK_NO_BASE_YEAR" in codes && "CK_MODEL_NOT_BUILDABLE" in codes -> "both"
                 "MVK_NO_BASE_YEAR" in codes -> NO_BASE_YEAR
                 "CK_MODEL_NOT_BUILDABLE" in codes -> NOT_BUILT
                 else -> "silent"

@@ -174,7 +174,8 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     a declared base year SUPPLEMENTS the year component of every operand before they are compared. The empty
  *     text and the text `null` bind no value ([JavaIntBinding], KF593), so A12 reads them as no base year at
  *     all. A value the reader cannot bind leaves no model; it still counts as present here, so the temporal
- *     laws stay silent and [unbindableBaseYear] carries the refusal alone.
+ *     laws stay silent and [unbindableBaseYear] carries the refusal alone (the checker column of
+ *     `adapter.laws.ModelTextReadingDiffTest` shows the two codes never together).
  * @param unbindableBaseYear the ENTRY model's `content.modelInfo.baseYear` as written, when A12's reader cannot
  *     bind it as an `Integer` ([JavaIntBinding.Unbindable]: a text `parseInt` refuses, a number outside `Int`,
  *     a Boolean, an object or an array); `null` otherwise. A12 then builds no model (KF591, KF593,

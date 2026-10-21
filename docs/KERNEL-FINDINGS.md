@@ -14258,7 +14258,7 @@ Four readings of text, measured on a cover model, its rule `FieldFilled(Amount) 
 
 A base year of blank text binds to no year, so a rule that reads `BaseYear` draws `MVK_NO_BASE_YEAR`. An enumeration label that Java reads as blank (`""`, `" "`, an em space) is refused with `MVK_INTERNAL_VALUES_AND_DISPLAY_VAL`. A no-break-space label is admitted and rendered as written, so the message reads `tier=[\u00A0]`. A Boolean cell is compared with `equalsIgnoreCase` against `true` and `false`, which folds the long s onto `s`, so `fal\u017Fe` and `FAL\u017FE` read false. A lone `\u017F` is not a Boolean, and `" true"` draws the leading-blank class.
 
-*Locked by:* `adapter.laws.ModelTextReadingDiffTest`, A12 against the interpreter on every row.
+*Locked by:* `adapter.laws.ModelTextReadingDiffTest`, A12 against the interpreter on every row, and against the portable checker on the base-year and number-bound rows.
 
 ## §13 supplement — identifying text of spaces: a header id, an alias and a type-definition id are plain text, an include reference must not be Java-blank, and no text of spaces is a time zone (expansion + `checkConsistency`, 2026-10-21) <a id="kf592"></a>
 
