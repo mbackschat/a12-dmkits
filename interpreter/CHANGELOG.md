@@ -13,6 +13,8 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **A model `boolean` member A12 cannot bind now refuses the model**, as A12 refuses it: `"yes"`, `1.5` or `{}` on `positivesOnly`, `global` or any other boolean used to load as unset.
+- **An index field whose enumeration `sValue` is padded or blank now evaluates**, staged as written like the Kernel stages it; the model was declined as unsupported.
 - **`Today` and `Now` read their day, month and year as A12 does before 1582-10-15**, on the Julian side of its calendar; a pinned instant that early answered with the proleptic Gregorian date.
 - **The JVM and JavaScript packages classify every character alike.** A quoted Number's non-ASCII digits are read as A12's JVM runtime reads them on both, and conditions and message tokens keep A12's ASCII digits, names and whitespace, so a no-break space inside `$…$` no longer renders a token in JavaScript alone.
 - **`RepetitionNotUnique` keys in sibling fixed groups of one repeatable row now evaluate**, compared per that row in either key order, as in the Kernel; the model was refused as unsupported.

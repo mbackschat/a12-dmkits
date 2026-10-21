@@ -154,20 +154,16 @@ class IndexDefaultStagingDiffTest {
     /**
      * A12 admits a padded or blank S-value by its trim (KERNEL-FINDINGS KF569), then stages the text as written and
      * reads it without a formal check: the index counts as filled, and a rule comparing it with `STD` sees another
-     * value. The interpreter declines both models (IG178). The blank one is written past the builder, which refuses
-     * it as authoring a no-op (cold review 2026-10-21).
+     * value, on all three engines (KF574). The blank one is written past the builder, which refuses it as authoring
+     * a no-op (cold review 2026-10-21).
      */
     @Test fun aPaddedOrBlankSValueIsStagedAsWritten() {
         val padded = withNotStdRule(withDependentRule(orderModel(sValue = " STD")))
         val blank = withNotStdRule(withDependentRule(orderModel())).replace("\"sValue\" : \"STD\"", "\"sValue\" : \" \"")
         assertTrue("\"sValue\" : \" \"" in blank, "the blank S-value was written")
-        val doc = RuntimeLaws.doc().group(ORDER, 1).group(LINES, 1, 1).field(QTY, "5", 1, 1, 1)
         for ((label, model) in listOf("padded" to padded, "blank" to blank)) {
-            val dynamic = sigs(RuntimeLaws.messages(model, doc).map { it.code() to it.field() })
-            val java = RuntimeLaws.kernelJavaEngine(model).let { e -> sigs(e.messages(e.instance(doc)).map { it.code() to it.field() }) }
-            assertEquals(listOf("SL_OTHER@/Order[1]/Lines[1]/Qty"), dynamic, "$label: A12 stages the S-value as written")
-            assertEquals(dynamic, java, "$label: static-Java vs dynamic-Groovy")
-            assertThrows(UnsupportedConstructException::class.java, { ModelLoader.load(model) }, label)
+            assertEquals(listOf("SL_OTHER@/Order[1]/Lines[1]/Qty"), agreeFull(label, model) { qty(1, "5") },
+                "$label: staged as written")
         }
         // The controls, on all three engines: the unpadded S-value stages `STD`, and the same text typed into the
         // cell is formally checked.

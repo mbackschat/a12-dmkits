@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
 import io.github.mbackschat.a12.dm.interpreter.A12_JSON
-import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.configFlag
+import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
@@ -87,7 +87,8 @@ object ModelLoader {
         // Through the kernel's own POJO binding rather than `asBoolean`: the two disagree on a capitalized
         // `"True"` (kernel ON, asBoolean OFF, so every model-wide short name would go unresolved) and on a
         // fractional number (kernel refuses the model, asBoolean truncates and answers). KF289 has the table.
-        val shortNameRefs = configFlag(modelConfig.path("fieldRefByShortNameAllowed")) == ConfigFlag.ON
+        val shortNameRefs = configFlag(modelConfig.path("fieldRefByShortNameAllowed"))
+            .orRefuse { throw unbindableFlag("content.modelConfig.fieldRefByShortNameAllowed") }
         // content.modelConfig.supportedCharacters (a list of single chars / "X-Y" ranges) — the model-declared
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(
@@ -386,7 +387,7 @@ object ModelLoader {
         labels = localizedTexts(node.path("Field").path("label")),
         scale = fraction?.maximum,
         fractionalPartChecked = fraction?.checked ?: true,
-        signed = signed(node),
+        signed = !typedBool(node, id, "NumberType", "positivesOnly"),
         required = requirednessOf(node),
         format = formatOf(node),
         rangeSeparator = rangeSeparatorOf(node),
@@ -396,9 +397,9 @@ object ModelLoader {
         // `DateFragmentType` and `DateRangeType` each declare `youngerThan1900Check` (kernel-md a12internal
         // fieldtypes at 30.8.1). Reading only `DateType` left the flag inert on the other two, so a legal
         // model carrying it there validated as if it were absent (KF253).
-        rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check")
-            || typedBool(node, "DateFragmentType", "youngerThan1900Check")
-            || typedBool(node, "DateRangeType", "youngerThan1900Check"),
+        rejectBefore1900 = typedBool(node, id, "DateType", "youngerThan1900Check")
+            || typedBool(node, id, "DateFragmentType", "youngerThan1900Check")
+            || typedBool(node, id, "DateRangeType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
         enumValueLabels = enumValueLabelsOf(node),
         enumCategories = enumCategoriesOf(node),
@@ -410,7 +411,7 @@ object ModelLoader {
         patternMessages = localizedTexts((typed(node, "StringType") ?: typed(node, "EnumerationType"))
             .path("errorMessage")),
         requiredMessages = localizedTexts(node.path("Field").path("requirednessConfig").path("errorMessage")),
-        noValueValidation = typedBool(node, "StringType", "noValueValidation"),
+        noValueValidation = typedBool(node, id, "StringType", "noValueValidation"),
         minValue = declaredMaximumFraction?.let {
             printedNumberBound(numberTypeText(node, "minValue"), declaredMinimumFraction, it)
         },
@@ -418,14 +419,14 @@ object ModelLoader {
             printedNumberBound(numberTypeText(node, "maxValue"), declaredMinimumFraction, it)
         },
         minFractionalDigits = fraction?.minimum,
-        lineBreaksPermitted = typedBool(node, "StringType", "lineBreaksPermitted"),
-        leadingZerosAllowed = typedBool(node, "NumberType", "leadingZerosAllowed"),
-        zeroNotAllowed = typedBool(node, "NumberType", "zeroNotAllowed"),
+        lineBreaksPermitted = typedBool(node, id, "StringType", "lineBreaksPermitted"),
+        leadingZerosAllowed = typedBool(node, id, "NumberType", "leadingZerosAllowed"),
+        zeroNotAllowed = typedBool(node, id, "NumberType", "zeroNotAllowed"),
         maxIntegerDigits = typedInt(node, "NumberType", "maxIntegerDigits"),
         amountTrait = "amount" == numberTypeText(node, "trait"),
         numberMinLength = typedInt(node, "NumberType", "minLength"),
         numberMaxLength = typedInt(node, "NumberType", "maxLength"),
-        global = configFlag(node.path("Field").path("global")) == ConfigFlag.ON,
+        global = configFlag(node.path("Field").path("global")).orRefuse { throw unbindableFlag("$id: Field.global") },
         )
     }
 
@@ -440,14 +441,10 @@ object ModelLoader {
     private fun requireConsistentEnumSValue(node: JsonElement, id: String) {
         val sValue = enumSValueOf(node) ?: return
         val values = enumValuesOf(node)
-        // A12 also admits a padded or blank S-value by its trim, Java's `String.trim` (KERNEL-FINDINGS KF569), but
-        // then stages the text as written and reads it without a formal check, which this engine does not model
-        // (IG178): declined loudly here rather than evaluated wrong.
-        if (sValue in values) return
+        // A12 also admits a padded or blank S-value by its trim, Java's `String.trim` (KF569), and then stages the
+        // text as written, filled and without a formal check (KF574), which the staging path does as it stands.
         val trim = { text: String -> text.trim { it <= ' ' } }
-        if (trim(sValue).isEmpty() || values.any { trim(it) == trim(sValue) }) throw UnsupportedConstructException(
-            "Field '$id': A12 admits the S-value '$sValue' by its trim but stages it as written, which the " +
-                "interpreter does not model")
+        if (sValue in values || trim(sValue).isEmpty() || values.any { trim(it) == trim(sValue) }) return
         throw IllegalArgumentException(
             "Field '$id': the enum S-value '$sValue' is not among the declared enumeration values $values " +
                 "(kernel MVK_S_VALUE_INVALID). An out-of-domain s-value makes the model kernel-inconsistent and " +
@@ -605,10 +602,6 @@ object ModelLoader {
         return if (max.isIntNode()) max.asInt(0) else 0
     }
 
-    /** Whether a NUMBER field is signed (unsigned iff `NumberType.positivesOnly`); non-number defaults to signed. */
-    private fun signed(fieldNode: JsonElement?): Boolean =
-        configFlag(fieldNode.path("Field").path("fieldType").path("NumberType").path("positivesOnly")) != ConfigFlag.ON
-
     /** A `CustomFieldType` field's validator name and optional length-bound inputs; else null. */
     private fun customFieldTypeOf(fieldNode: JsonElement?): CustomFieldTypeDeclaration? {
         val type = typed(fieldNode, "CustomFieldType")
@@ -642,9 +635,13 @@ object ModelLoader {
 
     /** A `boolean` property of a `<typeName>` field type, bound as A12's POJO reader binds it — `1` and `" TRUE"`
      *  set it, `0` and `"null"` clear it (KF569) — rather than as a JSON boolean, which read both set spellings
-     *  as the default (IF404). Absent → false, the kernel default. */
-    private fun typedBool(fieldNode: JsonElement?, typeName: String, prop: String): Boolean =
-        configFlag(typed(fieldNode, typeName).path(prop)) == ConfigFlag.ON
+     *  as the default (IF404). Absent → false, the kernel default; a value A12 cannot bind refuses the model. A
+     *  NUMBER field is unsigned iff it declares `positivesOnly`, so any other kind reads as signed. */
+    private fun typedBool(fieldNode: JsonElement?, id: String, typeName: String, prop: String): Boolean =
+        configFlag(typed(fieldNode, typeName).path(prop)).orRefuse { throw unbindableFlag("$id: $typeName.$prop") }
+
+    private fun unbindableFlag(member: String): InvalidPreparedModelSourceException =
+        invalidElement(member, "$member is not a boolean A12 can bind, so A12 does not load the model")
 
     /** The `Field.fieldType.<typeName>` object, but only when the field's declared `type` matches (else null). */
     private fun typed(fieldNode: JsonElement?, typeName: String): JsonElement? {

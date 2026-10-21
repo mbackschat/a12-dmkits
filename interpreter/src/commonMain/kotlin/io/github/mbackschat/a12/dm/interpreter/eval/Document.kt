@@ -130,13 +130,15 @@ class Document(internal val config: DocumentConfig) {
         /** The evaluation text BEFORE the CRLF fold, which the input gates measure (KF547); preserved by the
          *  normalizing `copy`. Differs from [raw] only where [renderedField] re-renders a number. */
         val authored: String? = value,
+        /** A staged index default, which A12 reads as written and never formally checks (KF574). */
+        val unchecked: Boolean = false,
     ) {
         /** The formal check's view of a valued placement: evaluation text plus the authored text it came from. */
-        fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it) }
+        fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it, unchecked) }
     }
 
-    /** The evaluation text of a stored value and the authored text the input gates measure. */
-    private data class FormalInput(val value: String, val authored: String)
+    /** The evaluation text of a stored value, the authored text the input gates measure, and whether they run. */
+    private data class FormalInput(val value: String, val authored: String, val unchecked: Boolean = false)
 
     /** One declared-tail decision for a starred field in a bound row scope (IF194). */
     private data class StarOmissionKey(val path: String, val bindDepth: Int, val scope: List<Int>)
@@ -187,6 +189,7 @@ class Document(internal val config: DocumentConfig) {
         isGroup: Boolean,
         stored: String? = value,
         numberIdentity: DecimalObjectIdentity? = null,
+        unchecked: Boolean = false,
     ): Document {
         val r = reps.toList()
         groupTreeMaterializer.materialize(
@@ -196,7 +199,9 @@ class Document(internal val config: DocumentConfig) {
         )
         if (!isGroup) {
             val evaluationValue = if (value.isNullOrEmpty()) null else value
-            placements += Placement(path, r, evaluationValue, false, raw = stored, numberIdentity = numberIdentity)
+            placements += Placement(path, r, evaluationValue, false, raw = stored, numberIdentity = numberIdentity,
+                unchecked = unchecked)
+            if (unchecked) hasUncheckedCells = true
         }
         invalidateDerivedCaches()   // every mutation clears ALL document-derived caches (IF142)
         return this
@@ -307,6 +312,9 @@ class Document(internal val config: DocumentConfig) {
     }
 
     private var cachedIndex: Index? = null
+
+    /** Whether any placement is a staged index default, so a document without one never looks a cell up for it. */
+    private var hasUncheckedCells = false
 
     private fun index(): Index = cachedIndex ?: build().also { cachedIndex = it }
 
@@ -461,7 +469,10 @@ class Document(internal val config: DocumentConfig) {
      * form-engine validation flow (compute → apply → validate); re-adding through the public builders keeps the
      * indices/auto-grouping invariants and document order intact.
      */
-    internal fun withComputed(overrides: Map<Pair<String, List<Int>>, String?>): Document {
+    internal fun withComputed(
+        overrides: Map<Pair<String, List<Int>>, String?>,
+        unchecked: Set<Pair<String, List<Int>>> = emptySet(),
+    ): Document {
         val copy = emptyCopy()
         val applied = HashSet<Pair<String, List<Int>>>()
         for (p in placements) {
@@ -473,7 +484,7 @@ class Document(internal val config: DocumentConfig) {
             when {
                 key in overrides -> {
                     applied += key
-                    overrides[key]?.let { copy.field(p.path, it, *p.reps.toIntArray()) }
+                    overrides[key]?.let { copy.add(p.path, p.reps.toIntArray(), it, false, unchecked = key in unchecked) }
                         ?: copy.emptyField(p.path, *p.reps.toIntArray())
                 }
                 else -> copy.copyField(p)
@@ -482,7 +493,9 @@ class Document(internal val config: DocumentConfig) {
         // A value computed into a cell with no prior placement (an empty computed field never present as a
         // placement): add it. A null override (clear) for an absent cell is a no-op.
         for ((key, value) in overrides) {
-            if (key !in applied && value != null) copy.field(key.first, value, *key.second.toIntArray())
+            if (key !in applied && value != null) {
+                copy.add(key.first, key.second.toIntArray(), value, false, unchecked = key in unchecked)
+            }
         }
         return copy
     }
@@ -561,6 +574,7 @@ class Document(internal val config: DocumentConfig) {
             isGroup = false,
             stored = placement.raw,
             numberIdentity = placement.numberIdentity,
+            unchecked = placement.unchecked,
         )
     }
 
@@ -1179,6 +1193,10 @@ class Document(internal val config: DocumentConfig) {
     /** The authored text of a stored cell, before evaluated CRLF normalization: the input gates measure it, and it is
      *  the custom validator's input (SPEC-2026-10-10-11, KF547). */
     internal fun formalInputAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.authored
+
+    /** Whether the cell at ([path], [reps]) holds a staged index default, which no formal check reads (KF574). */
+    internal fun isUncheckedAt(path: String, reps: List<Int>): Boolean =
+        hasUncheckedCells && valueAt(path, reps)?.unchecked == true
 
     /**
      * The stored state of the field cell at [path]/[reps] — [StoredCellState.Absent] (no placement),
@@ -2255,15 +2273,16 @@ class Document(internal val config: DocumentConfig) {
      * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
      * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
-    private fun resolveValue(path: String, input: FormalInput): Val = resolveValue(path, input.value, input.authored)
+    private fun resolveValue(path: String, input: FormalInput): Val =
+        resolveValue(path, input.value, input.authored, checked = !input.unchecked)
 
-    private fun resolveValue(path: String, raw: String, authored: String = raw): Val {
+    private fun resolveValue(path: String, raw: String, authored: String = raw, checked: Boolean = true): Val {
         val kind = kindOf(path)
         // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
         // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
-        if (formallyInvalid(path, raw, authored)) return Val.Unknown
+        if (checked && formallyInvalid(path, raw, authored)) return Val.Unknown
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         // The DECLARED FORMAT decides which canonicalization a temporal cell gets, never the field's kind
         // (KF211) — so a TIME field declared `dd.MM.yyyy` canonicalizes to ISO like any date and compares

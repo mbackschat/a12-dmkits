@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlinx.serialization.json.Json
 
 /**
@@ -78,14 +79,15 @@ class ConfigFlagTest {
 
     /**
      * The loaded model goes through that reading, so the table above is not a claim about an unreached
-     * function. `"True"` is the row that was wrong before: the loader read it as off.
+     * function. `"True"` is the row that was wrong before: the loader read it as off. `1.5` was wrong after that:
+     * read as off, it evaluated a model A12 does not load, which now refuses as A12 does (KF577).
      */
     @Test
     fun theLoaderReadsTheShortNameFlagThroughIt() {
         assertEquals(true, ModelLoader.load(modelWithFlag("\"True\"")).fieldRefByShortNameAllowed)
         assertEquals(true, ModelLoader.load(modelWithFlag("2")).fieldRefByShortNameAllowed)
         assertEquals(false, ModelLoader.load(modelWithFlag("0")).fieldRefByShortNameAllowed)
-        assertEquals(false, ModelLoader.load(modelWithFlag("1.5")).fieldRefByShortNameAllowed)
+        assertFailsWith<IllegalArgumentException> { ModelLoader.load(modelWithFlag("1.5")) }
     }
 
     private fun modelWithFlag(spelling: String) =

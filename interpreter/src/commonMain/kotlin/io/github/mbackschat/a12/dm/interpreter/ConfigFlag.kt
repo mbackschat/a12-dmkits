@@ -75,3 +75,14 @@ private fun isIntegerLiteral(text: String): Boolean {
 }
 
 private fun isZeroLiteral(text: String): Boolean = text.removePrefix("-").removePrefix("+").all { it == '0' }
+
+/**
+ * [ConfigFlag.ON] as true and [ConfigFlag.OFF] as false. An [ConfigFlag.UNREADABLE] value goes to [refuse]: A12's
+ * serializer does not read such a model at all, on every `boolean` member the interpreter reads (KF577), so
+ * reading it as off would evaluate a model A12 never loads.
+ */
+internal inline fun ConfigFlag.orRefuse(refuse: () -> Nothing): Boolean = when (this) {
+    ConfigFlag.ON -> true
+    ConfigFlag.OFF -> false
+    ConfigFlag.UNREADABLE -> refuse()
+}

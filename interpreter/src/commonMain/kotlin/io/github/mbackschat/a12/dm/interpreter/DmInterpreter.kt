@@ -801,7 +801,7 @@ class DmInterpreter private constructor(
             // (the `unavailable` seam of the formal-status cache below).
             val indexDefaults = checks.eligibleIndexDefaults(doc)
             val full = isRelevant === ALL_RELEVANT
-            val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults) else doc
+            val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults, indexDefaults.keys) else doc
             val unavailable = if (full) emptySet() else indexDefaults.keys
             // Computed on the STAGED document (the one every gate below consults), once per call (IG127.1).
             val gateNeeded = checks.overRepetitionGateNeeded(call)
@@ -995,7 +995,7 @@ class DmInterpreter private constructor(
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
         // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
         val indexDefaults = checks.eligibleIndexDefaults(doc)
-        val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
+        val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults, indexDefaults.keys)
         val valueAdmissions = ValueAdmissionCache(checks, locale, call, checks.overRepetitionGateNeeded(call))
         val dup = checks.duplicateIndexCells(call, valueAdmissions)
         val relevance = CallRelevance.FULL

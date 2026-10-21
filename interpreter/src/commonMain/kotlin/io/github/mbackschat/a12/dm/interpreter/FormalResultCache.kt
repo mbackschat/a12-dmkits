@@ -93,6 +93,8 @@ internal class ValueAdmissionCache(
         // path's bounds through a map probe BEFORE it can answer "no", and on an ordinary document the answer is
         // "no" for every cell (IG127.1).
         if (overRepetitionGateNeeded) checks.overRepetitionResultAt(path, reps)?.let { return it }
+        // A staged index default is read as written and never formally checked, by either gate it reaches (KF574).
+        if (document.isUncheckedAt(path, reps)) return FormalResult.Valid
         // The input gates measure the AUTHORED text (KF547). It can differ from [raw] only by a folded CRLF, which
         // leaves an LF behind, so a cell without one skips the lookup; keying on it keeps the memo exact.
         val input = if (checks.isCustomAt(path)) {

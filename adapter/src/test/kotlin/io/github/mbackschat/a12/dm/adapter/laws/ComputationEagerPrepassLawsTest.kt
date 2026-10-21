@@ -349,8 +349,8 @@ class ComputationEagerPrepassLawsTest {
 
     /**
      * A padded S-value, which A12 admits by its trim (KERNEL-FINDINGS KF569), is staged as written for a computation
-     * and read without a formal check, as validation stages it (`IndexDefaultStagingDiffTest`); the interpreter
-     * declines the model (IG178; cold review 2026-10-21).
+     * and read without a formal check, as validation stages it (`IndexDefaultStagingDiffTest`), and the interpreter
+     * copies the same text (KF574; cold review 2026-10-21).
      */
     @Test
     fun aPaddedSValueIsStagedAsWrittenForAComputation() {
@@ -359,7 +359,10 @@ class ComputationEagerPrepassLawsTest {
         val doc = RuntimeLaws.doc().group("/Inventory", 1).group("/Inventory/Items", 1, 1)
         assertEquals(emptyList<String>() to listOf(" STD"), dualRouteFormalErrors(model, doc) to
             RuntimeLaws.compute(model, doc).filter { it.path().contains("SkuEcho") }.map { it.value().orElse("") })
-        assertThrows(UnsupportedConstructException::class.java) { ModelLoader.load(model) }
+        val loaded = ModelLoader.load(model)
+        val outcomes = DmInterpreter(loaded).compute(loaded.newDocument().group("/Inventory", 1).group("/Inventory/Items", 1, 1))
+            .associate { it.path to (it.outcome to it.value) }
+        assertEquals(ComputeOutcome.VALUE to " STD", outcomes["/Inventory/Items/SkuEcho"], "the interpreter copies it as written")
     }
 
     @Test

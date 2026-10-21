@@ -276,6 +276,25 @@ class IncludeAssemblyTest {
         assertEquals((maximum + 1).toLong(), diagnostic.actual)
     }
 
+    /** A12 does not load a model whose `boolean` member it cannot bind (KF577), so an included one refuses too. */
+    @Test
+    fun anIncludedModelWhoseShortNameFlagA12CannotBindIsRefused() {
+        val caseId = "nested-rules-excluded"
+        val sources = fixtureSources(caseId).toMutableMap()
+        sources["inspection-checks"] = sources.getValue("inspection-checks").rewriteObjects { node ->
+            if ("fieldRefByShortNameAllowed" in node) node.replacing("fieldRefByShortNameAllowed", JsonPrimitive("yes")) else node
+        }
+
+        val error = assertFailsWith<ModelPreparationError> {
+            WorkspaceIncludeAssembler.assemble(admit(sources), WorkspacePreparationFixtureJson.entryModelId(caseId))
+        }
+        val diagnostic = error.diagnostics.single()
+
+        assertEquals(ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE, diagnostic.code)
+        assertEquals("inspection-checks", diagnostic.modelId)
+        assertEquals("content.modelConfig.fieldRefByShortNameAllowed", diagnostic.path)
+    }
+
     @Test
     fun executableOriginsRetainNestedAndRepeatedMountCoordinates() {
         val outerProvider = assemble("imported-typedef-nested-single")

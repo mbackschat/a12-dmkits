@@ -13848,3 +13848,20 @@ So a digit A12 converts inside a Document value is refused as a literal. Both gr
 So the clock's calendar fields are Julian before the cutover, 1500-02-29 included, which proleptic Gregorian does not have. A stored date cannot meet that clock in a comparison: every stored or computed date before 1583-10-16 is `datumFalsch` ([IF88](INTERPRETER-FINDINGS.md#if88)). The wall offset is `java.util.TimeZone`'s, which gives Berlin +1:00 before 1893 where `java.time` gives its local mean time, +0:53:28.
 
 *Locked by:* `adapter.laws.HybridCalendarClockDiffTest` (both strategies and the interpreter, with the two agreeing controls). The interpreter's side is [IF416](INTERPRETER-FINDINGS.md#if416).
+
+## §13 supplement — every model `boolean` member the interpreter reads refuses the whole model for a value A12's binding cannot take (serializer, 2026-10-21) <a id="kf577"></a>
+
+> Fold: pending — beside [KF569](#kf569)'s boolean binding, which measured the same three values on `fieldRefByShortNameAllowed`.
+
+[KF569](#kf569) measured that `"yes"`, `1.5` and `{}` leave `fieldRefByShortNameAllowed` unbindable, so the model does not deserialize. Asked of the members the binding table did not cover, each in its own one-field model, with A12's own `IDocumentModelSerializer` as the verdict:
+
+| member | `true`, the control | `"yes"` | `1.5` | `{}` |
+|---|---|---|---|---|
+| `Field.global` | loads | refused | refused | refused |
+| `StringType.lineBreaksPermitted`, `StringType.noValueValidation` | loads | refused | refused | refused |
+| `NumberType.zeroNotAllowed`, `.positivesOnly`, `.leadingZerosAllowed` | loads | refused | refused | refused |
+| `DateType`, `DateFragmentType`, `DateRangeType` `.youngerThan1900Check` | loads | refused | refused | refused |
+
+So an unbindable value is never a third reading of the member: A12 never loads the model to judge it. Not asked: a member on a type object the field's declared `type` does not name.
+
+*Locked by:* `adapter.laws.BooleanMemberUnreadableDiffTest` (A12 and the interpreter row by row). The interpreter's side is [IF417](INTERPRETER-FINDINGS.md#if417).

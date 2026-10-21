@@ -156,7 +156,7 @@ internal class ComputationEngine(
         // (CascadeGroupPresenceDiffTest). Rows stay: a stripped cell keeps its placement, empty.
         val indexDefaults = checks.eligibleIndexDefaults(rawDoc)
         val staged = storedComputedCells(rawDoc) + indexDefaults
-        val doc = if (staged.isEmpty()) rawDoc else rawDoc.withComputed(staged)
+        val doc = if (staged.isEmpty()) rawDoc else rawDoc.withComputed(staged, indexDefaults.keys)
         // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): codegen
         // FLATTENS them, in document order, into one per-field first-match table, so the first SELECTED alternative
         // ends the scan for that cell even when it stores nothing; only an UNSELECTED computation (common

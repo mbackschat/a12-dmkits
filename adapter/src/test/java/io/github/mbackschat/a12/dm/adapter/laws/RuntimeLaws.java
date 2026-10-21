@@ -2143,6 +2143,19 @@ public final class RuntimeLaws {
     }
 
     /**
+     * Whether A12's own model serializer reads the JSON at all. A value its POJO binding cannot take refuses the
+     * whole model here, before any consistency check, so a refusal is a verdict about loading, not about content.
+     */
+    static boolean deserializes(String modelJson) {
+        try {
+            new DocumentModelServiceFactory().createDocumentModelSerializer().deserialize(new StringReader(modelJson));
+            return true;
+        } catch (Exception refused) {
+            return false;
+        }
+    }
+
+    /**
      * The kernel's model-CONSISTENCY notifications (the MVK gate: `checkConsistency` after deserialize +
      * expand), each as {@code "SEVERITY: message"} in the kernel's order. The model-check stance oracle for a
      * foreign / hand-authored model the typed builders would refuse (e.g. an out-of-domain enum {@code sValue}).

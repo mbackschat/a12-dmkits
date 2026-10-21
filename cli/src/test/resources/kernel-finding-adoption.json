@@ -11562,7 +11562,7 @@
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes no sValue.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export does not read the sValue.", "evidence": {}},
         "adapter": {"state": "NOT_APPLICABLE", "basis": "The admission row is locked by validate.laws.EnumDeclarationShapeLawsTest, outside the adapter.", "evidence": {}},
-        "interpreter": {"state": "OPEN", "basis": "ModelLoader declines a blank sValue as unsupported, since A12 stages it as written (KF574, IG178).", "evidence": {}},
+        "interpreter": {"state": "APPLIED", "basis": "ModelLoader admits a blank sValue by its trim and stages it as written (IF418).", "evidence": {"a blank sValue": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/IndexDefaultStagingDiffTest.kt#aPaddedOrBlankSValueIsStagedAsWritten", "witness": "SL_OTHER on all three engines for a padded and a blank sValue."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the sValue through the kits, the checker and the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "The correction is to our own reading; the runtime fact travels as KF574.", "evidence": {}}
       }
@@ -11576,7 +11576,7 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["the staged sValue"],
-        "interpreter": [],
+        "interpreter": ["the staged sValue"],
         "dmtool-cli": [],
         "a12-kernel-lean": []
       },
@@ -11586,7 +11586,7 @@
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import stages nothing.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export stages nothing.", "evidence": {}},
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned for a padded and a blank sValue, beside the staged and typed controls.", "evidence": {"the staged sValue": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/IndexDefaultStagingDiffTest.kt#aPaddedOrBlankSValueIsStagedAsWritten", "witness": "SL_OTHER without a formal error on both strategies; the control stages STD and a typed padded value draws fuehrendesBlank."}}},
-        "interpreter": {"state": "OPEN", "basis": "ModelLoader declines the model as unsupported (IG178).", "evidence": {}},
+        "interpreter": {"state": "APPLIED", "basis": "Staged defaults carry an unchecked mark that the formal gates honour (IF418).", "evidence": {"the staged sValue": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/IndexDefaultStagingDiffTest.kt#aPaddedOrBlankSValueIsStagedAsWritten", "witness": "The interpreter agrees with both strategies: SL_OTHER, no formal error, no mandatoryField."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here after a cold review of KF569; goes back in the next handback.", "evidence": {}}
       }
@@ -11636,6 +11636,30 @@
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned at four instants, two before the cutover and two agreeing controls.", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "Day 29, month 2 at 1500-03-10T12:00Z and day 4 at 1582-10-14T12:00Z on both strategies."}}},
         "interpreter": {"state": "APPLIED", "basis": "Today and Now enter the temporal path with the hybrid basis Date(...) carries (IF416).", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "The interpreter fires the same day, month, year and Now-day rules as both strategies at every instant."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's --clock reaches the clock through the interpreter.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
+    "kf577": {
+      "sha256": "ac8f18ece2282ff3275107969162ae2c8b22c9b575b268a53c45291c7280197d",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": ["an unbindable boolean member"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author booleans through typed builders, which write JSON booleans only.", "evidence": {}},
+        "checker": {"state": "NOT_APPLICABLE", "basis": "A model A12 cannot deserialize never reaches the checker's verdict; KF569's checker review covers the binding.", "evidence": {}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Schema import writes JSON booleans only.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Schema export reads a model A12 has loaded.", "evidence": {}},
+        "adapter": {"state": "NOT_APPLICABLE", "basis": "The adapter hands models to A12's own serializer.", "evidence": {}},
+        "interpreter": {"state": "APPLIED", "basis": "Every boolean reader refuses an unbindable value (IF417).", "evidence": {"an unbindable boolean member": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BooleanMemberUnreadableDiffTest.kt#aMemberA12CannotBindRefusesTheModelOnBothSides", "witness": "Nine members, three unbindable values each: A12 and the interpreter both refuse, and both load the true control."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool loads models through A12 and the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
       }
     }
