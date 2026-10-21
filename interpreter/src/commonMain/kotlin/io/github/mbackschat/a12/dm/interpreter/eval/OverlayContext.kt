@@ -83,6 +83,8 @@ internal class OverlayContext(
             else -> d.displayValue(path)
         }
     }
+    override fun holdsComputedValue(path: String): Boolean = entryAt(path) is CascadeOverlay.Entry.Overlaid
+
     override fun cellState(path: String): CellState = when (entryAt(path)) {
         null -> d.cellState(path)
         CascadeOverlay.Entry.Poisoned -> CellState.INVALID
@@ -215,6 +217,7 @@ internal class OverlayContext(
                 raw = renderOverlayValue(cell.path, entry),
                 baseState = CellState.FILLED,
                 value = entry.value,
+                computed = true,
             )
         }
 

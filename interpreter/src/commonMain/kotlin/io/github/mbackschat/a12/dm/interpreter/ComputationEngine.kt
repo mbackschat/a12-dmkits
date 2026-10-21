@@ -251,6 +251,7 @@ internal class ComputationEngine(
                     cell.baseState != CellState.FILLED ->
                         if (cell.path to cell.reps in emptyIndexCells) CellState.INVALID else cell.baseState
                     cell.raw == null -> CellState.EMPTY
+                    cell.computed -> CellState.FILLED
                     formalResults.failureAt(cell.path, cell.reps, cell.raw) != null -> CellState.INVALID
                     else -> CellState.FILLED
                 }
@@ -508,6 +509,7 @@ internal class ComputationEngine(
         if (ctx.displayValue(path) == null) {
             return path to ctx.repsOf(path) in emptyIndexCells   // empty → empty-as-0, unless a preliminary-invalid index
         }
+        if (ctx.holdsComputedValue(path)) return false
         return formalResults.failureAt(path, ctx.repsOf(path), ctx) != null
     }
 

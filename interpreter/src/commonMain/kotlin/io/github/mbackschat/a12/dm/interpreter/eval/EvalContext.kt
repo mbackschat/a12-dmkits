@@ -278,6 +278,13 @@ interface EvalContext {
     fun cellState(path: String): CellState =
         if (displayValue(path) == null) CellState.EMPTY else CellState.FILLED
 
+    /**
+     * Whether [path] holds a value a computation of this call produced. Its computation judged it by the target's
+     * type format, which is all A12 asks of a computed value (KERNEL-FINDINGS KF547), so no read checks it again:
+     * an input gate such as the model charset never reaches it. Only the cascade overlay holds one.
+     */
+    fun holdsComputedValue(path: String): Boolean = false
+
     /** The COMPUTE-mode scan states of a starred field's cells, one per row in row order — the per-cell
      *  [cellState] twin of [starCells] (IF85). The default derives from [starCells] (a [Val.Unknown] cell reads
      *  INVALID); the general [Document] overrides with the precise formal check. */
@@ -373,6 +380,8 @@ data class ScanCell(
     val baseState: CellState,
     /** The field-format-aware evaluation value for this exact cell; null only for an empty cell. */
     val value: Val?,
+    /** Whether a computation of this call produced [value]; see [EvalContext.holdsComputedValue]. */
+    val computed: Boolean = false,
 )
 
 /** What one cell reads as, given [stored] — its value in the context that owns the scope; null is an empty cell. */

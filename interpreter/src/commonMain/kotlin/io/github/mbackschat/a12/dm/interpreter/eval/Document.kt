@@ -2259,9 +2259,13 @@ class Document(internal val config: DocumentConfig) {
     private fun yearInterpretationOf(path: String): RangeYearInterpretation =
         rangeYearInterpretations[path] ?: RangeYearInterpretation.STANDARD
 
-    /** [raw] read as this document would read it stored at [path] — the reader a computed target's dependents use
-     *  (KERNEL-FINDINGS KF540). */
-    internal fun storedValueOf(path: String, raw: String): Val = resolveValue(path, raw)
+    /**
+     * [raw], a value computed into [path], read as this document reads its own stored form — the reader a computed
+     * target's dependents use (KERNEL-FINDINGS KF540). It is not checked again: its computation already judged it by
+     * type format alone, which is all A12 asks of a computed value (KF547), so an input gate such as the model
+     * charset never reaches it (`adapter.laws.ComputedValueInputGateDiffTest`).
+     */
+    internal fun storedValueOf(path: String, raw: String): Val = resolveValue(path, raw, checked = false)
 
     /**
      * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of

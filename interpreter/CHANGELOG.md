@@ -13,6 +13,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **A computation reading a computed date, range or Number now computes under a model charset that excludes its characters**, as in the Kernel, which checks a computed value only against its field's format; it used to clear.
 - **A model `boolean` member A12 cannot bind now refuses the model**, as A12 refuses it: `"yes"`, `1.5` or `{}` on `positivesOnly`, `global` or any other boolean used to load as unset.
 - **An index field whose enumeration `sValue` is padded or blank now evaluates**, staged as written like the Kernel stages it; the model was declined as unsupported.
 - **`Today` and `Now` read their day, month and year as A12 does before 1582-10-15**, on the Julian side of its calendar; a pinned instant that early answered with the proleptic Gregorian date.

@@ -871,6 +871,7 @@ class Interpreter(
             ctx.displayValue(path),
             state,
             if (state == CellState.EMPTY) null else ctx.field(path),
+            computed = state == CellState.FILLED && ctx.holdsComputedValue(path),
         )
     }
 

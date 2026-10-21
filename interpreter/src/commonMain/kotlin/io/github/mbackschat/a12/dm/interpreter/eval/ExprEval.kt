@@ -2414,14 +2414,7 @@ private fun Interpreter.firstFilledStar(
             return FirstFilledStep.Stop(Val.Unknown)
         }
         if (computeMode) {
-            val cell = ScanCell(
-                operand.path,
-                reps,
-                row.displayValue(operand.path),
-                row.cellState(operand.path),
-                row.field(operand.path),
-            )
-            if (!filledOrPoison(cell)) {
+            if (!filledOrPoison(scanCell(operand.path, row))) {
                 walk.fillable = true
                 continue
             }
