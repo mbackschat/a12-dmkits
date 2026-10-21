@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-import io.github.mbackschat.a12.dm.interpreter.eval.DateCalendarBasis
 import io.github.mbackschat.a12.dm.interpreter.eval.isoFromCalendarInstant
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
@@ -46,7 +45,7 @@ class ClockCalendarJvmOracleTest {
                     calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH),
                     calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), calendar.get(Calendar.SECOND),
                 )
-                val actual = isoFromCalendarInstant(second, zone, DateCalendarBasis.LEGACY_HYBRID)
+                val actual = isoFromCalendarInstant(second, zone)
                 "$id $second: $actual, GregorianCalendar $expected".takeIf { actual != expected && calendar.get(Calendar.ERA) == GregorianCalendar.AD }
             }
         }

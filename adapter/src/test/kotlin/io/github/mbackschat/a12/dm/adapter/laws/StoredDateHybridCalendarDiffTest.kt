@@ -2,6 +2,12 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -58,7 +64,8 @@ class StoredDateHybridCalendarDiffTest {
                 "1500-02-29" to row(floor, RANGE_FLOOR),
                 "1300-02-29" to row(floor, RANGE_FLOOR),
                 "1700-02-29" to row(malformed, RANGE_MALFORMED),
-                // Measured: a partially known date puts year 0 below the floor, where every other carrier refuses it.
+                // Measured: a partially known date reports year 0 as datumFalsch where every other carrier finds it
+                // malformed. That code is shared with the floor, so this row does not say which calendar judged it.
                 "0000-03-01" to row(malformed, RANGE_MALFORMED) + ("Renewal" to floor),
             ),
             observed,
@@ -123,7 +130,53 @@ class StoredDateHybridCalendarDiffTest {
             DocumentDifferential.kernelMessages(ruled, document, dynamic = true).map { it.code })
     }
 
+    /**
+     * Every other carrier of a pre-cutover date value is a hybrid instant too, so two of them are compared and
+     * counted as instants, never by their labels: a constructed date against a constant in a UTC model, a range
+     * written as months and completed in base year 1500, two year-less constants completed there, and a date-time
+     * constant shifted across the cutover. Each rule fires on exactly one of the two calendars (KF588).
+     */
+    @Test
+    fun everyPreCutoverValueCountsOnTheHybridCalendar() {
+        val drafted = DocumentModelDraft.named("policy-historic-values").locale("en_US").baseYear(1500)
+            .rootGroup("Policy") { p -> p
+                .stringField("Reference") { }
+                .dateRangeField("Season") { it.format("MM").separator("/") }
+                .numberField("Day") { it.fractionDigits(0, 0).min("1").max("31") }
+                .numberField("Month") { it.fractionDigits(0, 0).min("1").max("12") }
+                .numberField("Year") { it.fractionDigits(0, 0).min("1").max("9999") } }
+            .build().toJson()
+        val utc = ModelDocument.read(drafted).setTimeZone("UTC").toJson()
+        val model = BoundModel.ofJson(utc)
+        val leapDay = Dsl.date(model.num(DAY).asNumber(), model.num(MONTH).asNumber(), model.num(YEAR).asNumber())
+        val marchFirst = Dsl.dateValue("01.03.1500")
+        val season = model.dateRange(SEASON)
+        val shifted = Dsl.addHours(Dsl.dateTimeValue("04.10.1582T23:00:00"), 1)
+        val rules = listOf(
+            hybridRule(model, "CONSTRUCTED_EQUALS", leapDay.eq(marchFirst)),
+            hybridRule(model, "CONSTRUCTED_BEFORE", leapDay.before(marchFirst)),
+            hybridRule(model, "SEASON_ENDS_ON_LEAP_DAY", Dsl.endOfDateRange(season).eq(leapDay)),
+            hybridRule(model, "YEARLESS_SPAN", Dsl.differenceInDays(Dsl.dateValue("28.02."), Dsl.dateValue("01.03.")).eq(2)),
+            hybridRule(model, "DATE_TIME_SHIFT", Dsl.differenceInDays(shifted, Dsl.dateTimeValue("15.10.1582T12:00:00")).eq(0)),
+        )
+        val ruled = rules.fold(utc, TypedRules::inject)
+        val document = """{"Policy":{"Reference":"P-1","Day":29,"Month":2,"Year":1500,"Season":"02/02"}}"""
+        DocumentDifferential.assertAgree(ruled, mapOf("a Julian leap day" to document))
+        assertEquals(listOf("CONSTRUCTED_BEFORE", "DATE_TIME_SHIFT", "SEASON_ENDS_ON_LEAP_DAY", "YEARLESS_SPAN"),
+            DocumentDifferential.kernelMessages(ruled, document, dynamic = true).map { it.code }.sorted())
+    }
+
+    private fun hybridRule(model: BoundModel, code: String, condition: Condition): Rule =
+        model.rule(model.group("/Policy")).name(code).errorField(model.str(REFERENCE))
+            .`when`(model.str(REFERENCE).filled().and(condition))
+            .code(code).severity(Severity.ERROR).message(Dsl.en("Hybrid calendar probe.")).build()
+
     private companion object {
+        const val REFERENCE = "/Policy/Reference"
+        const val SEASON = "/Policy/Season"
+        const val DAY = "/Policy/Day"
+        const val MONTH = "/Policy/Month"
+        const val YEAR = "/Policy/Year"
         val ROWS = listOf("1582-10-04", "1582-10-05", "1582-10-14", "1582-10-15", "1500-02-29", "1300-02-29", "1700-02-29", "0000-03-01")
         val RANGE_FLOOR = listOf("datumBereichDatumFalsch")
         val RANGE_MALFORMED = listOf("datumBereichFormatFalsch")

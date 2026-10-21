@@ -37,6 +37,9 @@ class HybridCalendarClockDiffTest {
             for (month in listOf(2, 3, 6, 10)) add(rule(model, "Month$month", NAME, named.and(Dsl.monthFromDate(today).eq(month.toLong()))))
             for (year in listOf(1500, 1582, 2025)) add(rule(model, "Year$year", NAME, named.and(Dsl.yearFromDate(today).eq(year.toLong()))))
             for (day in listOf(4, 10, 14, 29)) add(rule(model, "NowDay$day", NAME, named.and(Dsl.dayFromDate(Dsl.now()).eq(day.toLong()))))
+            // `Today` compared with a constant: both sides are hybrid instants, so the labels must not be compared.
+            add(rule(model, "TodayBeforeMarch1500", NAME, named.and(today.before(Dsl.dateValue("01.03.1500")))))
+            add(rule(model, "TodayIsLeapDay1500", NAME, named.and(today.eq(Dsl.dateValue("29.02.1500")))))
         }
         val modelJson = rules.fold(base, TypedRules::inject)
         val java = RuntimeLaws.kernelJavaEngine(modelJson)
@@ -53,7 +56,17 @@ class HybridCalendarClockDiffTest {
                 .map { it.code }.toSortedSet()
             observed[instant] = listOf(dynamic, generated, interpreted)
         }
-        println(observed.entries.joinToString("\n") { (row, sets) -> "[clock] $row → dynamic ${sets[0]} java ${sets[1]} interpreter ${sets[2]}" })
+        // KF576's measured values, so agreement cannot pass on three engines sharing one wrong reading.
+        assertEquals(
+            mapOf(
+                "1500-03-10T12:00:00Z" to sortedSetOf("Day29", "Month2", "NowDay29", "TodayBeforeMarch1500", "TodayIsLeapDay1500", "Year1500"),
+                "1582-10-14T12:00:00Z" to sortedSetOf("Day4", "Month10", "NowDay4", "Year1582"),
+                "1582-10-15T12:00:00Z" to sortedSetOf("Day15", "Month10", "Year1582"),
+                "2025-06-23T10:00:00Z" to sortedSetOf("Day23", "Month6", "TodayEquals", "Year2025"),
+            ),
+            observed.mapValues { it.value[0] },
+            "dynamic Groovy",
+        )
         assertEquals(observed.mapValues { it.value[0] }, observed.mapValues { it.value[1] }, "generated Java")
         assertEquals(observed.mapValues { it.value[0] }, observed.mapValues { it.value[2] }, "interpreter")
     }

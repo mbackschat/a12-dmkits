@@ -6,9 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 /**
  * Pure date arithmetic on ISO `yyyy-MM-dd` strings — no `java.time`/luxon, so it stays in commonMain and
- * runs identically on JVM and JS. [epochDay] is the proleptic-Gregorian day number used by stored values;
- * the constructor-specific legacy-hybrid calendar and model-zone calendar-step operations are explicit
- * sibling seams below rather than implicit host date-library behavior.
+ * runs identically on JVM and JS. Evaluation reads every date label on A12's Julian–Gregorian hybrid calendar
+ * ([calendarDateParts], [legacyEpochDay]); [epochDay] is the proleptic day number, the calendar of an
+ * `EvalClock` label and of the zone-gap check, which never meet a date below the cutover. The hybrid calendar and model-zone calendar-step operations are explicit
+ * seams below rather than implicit host date-library behavior.
  */
 // Four or more year digits: calendar arithmetic keeps a five-digit intermediate for the target check to classify
 // (SPEC-2026-10-04-01, `adapter.laws.CalendarTargetCompletionDiffTest`); stored values are parsed by their format.
@@ -54,28 +55,17 @@ fun isoFromEpochDay(z: Long): String {
     return iso(yy.toInt(), mo.toInt(), d.toInt())
 }
 
-/** ISO date [n] days after [iso] (proleptic Gregorian), or null if [iso] is malformed. */
-fun addDays(iso: String, n: Int): String? = epochDay(iso)?.let { isoFromEpochDay(it + n) }
-
-/** Calendar provenance carried by a date-valued expression. Stored values use [PROLEPTIC_GREGORIAN];
- * `Date(...)` and its date-shift descendants use [LEGACY_HYBRID], matching the kernel's `VkDate` instant. */
-internal enum class DateCalendarBasis { PROLEPTIC_GREGORIAN, LEGACY_HYBRID }
-
-/** Absolute local-day number for [iso] under [basis]. */
-internal fun calendarEpochDay(iso: String, basis: DateCalendarBasis): Long? = when (basis) {
-    DateCalendarBasis.PROLEPTIC_GREGORIAN -> epochDay(iso)
-    DateCalendarBasis.LEGACY_HYBRID -> legacyEpochDay(iso)
-}
-
-/** Validated date parts under [basis]. */
-internal fun calendarDateParts(iso: String, basis: DateCalendarBasis): Triple<Int, Int, Int>? {
+/**
+ * The (year, month, day) of a date label on A12's calendar, or null when the label is not a real date there.
+ *
+ * A12 holds every date as a `java.util.Date` instant read through a default `GregorianCalendar`, which is Julian
+ * before 1582-10-15: a stored value, a literal, a clock reading and a constructed `Date(...)` alike. So the evaluator
+ * reads every label on that hybrid calendar; a proleptic reading would differ only below the cutover, where
+ * `1500-02-29` is real and `1582-10-05` is not (KF588, `adapter.laws.StoredDateHybridCalendarDiffTest`).
+ */
+internal fun calendarDateParts(iso: String): Triple<Int, Int, Int>? {
     val parts = dateParts(iso) ?: return null
-    val real = when (basis) {
-        DateCalendarBasis.PROLEPTIC_GREGORIAN -> isRealDate(parts.first, parts.second, parts.third)
-        DateCalendarBasis.LEGACY_HYBRID -> legacyCalendarSystem(parts.first, parts.second, parts.third) != null &&
-            parts.third <= legacyDaysInMonth(parts.first, parts.second)
-    }
-    return parts.takeIf { real }
+    return parts.takeIf { isParsedRealDate(parts.first, parts.second, parts.third) }
 }
 
 /** A legacy-calendar day shift, including the 1582-10-04 → 1582-10-15 cutover step. */
@@ -84,7 +74,7 @@ internal fun addLegacyCalendarDays(iso: String, n: Int): String? =
 
 /** A legacy `Calendar.MONTH` shift. The target day is clamped; a target in the cutover hole normalizes ahead. */
 internal fun addLegacyCalendarMonths(iso: String, n: Int): String? {
-    val (year, month, day) = calendarDateParts(iso, DateCalendarBasis.LEGACY_HYBRID) ?: return null
+    val (year, month, day) = calendarDateParts(iso) ?: return null
     val total = year * 12 + month - 1 + n
     val targetYear = total.floorDiv(12)
     val targetMonth = total.mod(12) + 1
@@ -97,11 +87,11 @@ internal fun addLegacyCalendarMonths(iso: String, n: Int): String? {
  * of the observable 30.8.1 contract.
  */
 internal fun addLegacyCalendarYears(iso: String, n: Int): String? {
-    val (year, month, day) = calendarDateParts(iso, DateCalendarBasis.LEGACY_HYBRID) ?: return null
+    val (year, month, day) = calendarDateParts(iso) ?: return null
     val targetYear = year + n
     var result = normalizedLegacyTarget(targetYear, month, minOf(day, legacyDaysInMonth(targetYear, month)))
         ?: return null
-    val resultParts = calendarDateParts(result, DateCalendarBasis.LEGACY_HYBRID) ?: return null
+    val resultParts = calendarDateParts(result) ?: return null
     if (month == 2 && day == 28 && resultParts.second == 2 && resultParts.third == 28 &&
         !isGregorianLeapYear(year) && isGregorianLeapYear(targetYear)) {
         result = addLegacyCalendarDays(result, 1) ?: return null
@@ -154,56 +144,6 @@ fun isoFromEpochSecond(z: Long): String {
 /** ISO date-time [seconds] after [iso] (carrying across days), or null if [iso] is malformed. */
 fun addDateTimeSeconds(iso: String, seconds: Long): String? = epochSecond(iso)?.let { isoFromEpochSecond(it + seconds) }
 
-/** ISO date [n] months after [iso], clamping the day to the target month's length (e.g. Jan 31 +1mo → Feb 28/29). */
-fun addMonths(iso: String, n: Int): String? {
-    val (y, m, d) = dateParts(iso) ?: return null
-    val total = y * 12 + (m - 1) + n
-    val ny = total.floorDiv(12)
-    val nm = total.mod(12) + 1
-    return iso(ny, nm, minOf(d, daysInMonth(ny, nm)))
-}
-
-/**
- * ISO date [n] years after [iso]. End-of-February is preserved: the LAST day of February maps to the
- * target year's last day of February (Feb 28 of a non-leap year → Feb 29 of a leap year, and vice versa) —
- * matching the kernel's runtime behavior (NOT the same as `+12·n` months, which only clamps downward). Any
- * other day clamps to the target month's length (a no-op outside February, since only February's length
- * varies by year).
- */
-fun addYears(iso: String, n: Int): String? {
-    val (y, m, d) = dateParts(iso) ?: return null
-    val ty = y + n
-    val day = if (m == 2 && d == daysInMonth(y, 2)) daysInMonth(ty, 2) else minOf(d, daysInMonth(ty, m))
-    return iso(ty, m, day)
-}
-
-/**
- * Whole elapsed months from [a] to [b] — signed (negative when [b] precedes [a]), the count of complete
- * months between them. Defined behaviorally as the largest `n` such that [addMonths] of the earlier date by
- * `n` does not pass the later date — so a month-end step counts as full (`2020-01-31`→`2020-02-29` = 1) and a
- * partial month does not (`2020-01-15`→`2020-02-14` = 0). Matches the kernel's runtime; null if malformed.
- */
-fun differenceInMonths(a: String, b: String): Int? = wholePeriods(a, b, ::addMonths)
-
-/** Whole elapsed years from [a] to [b] — signed; the [addYears] (end-of-February-preserving) analogue of [differenceInMonths]. */
-fun differenceInYears(a: String, b: String): Int? = wholePeriods(a, b, ::addYears)
-
-/** Signed count of complete periods between [a] and [b]: the largest n with [add](earlier, n) not past the later date. */
-private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): Int? {
-    val ea = epochDay(a) ?: return null
-    val eb = epochDay(b) ?: return null
-    val lo = if (ea <= eb) a else b
-    val hi = maxOf(ea, eb)
-    var n = 0
-    while ((epochDay(add(lo, n + 1) ?: return null) ?: return null) <= hi) n++
-    return if (ea <= eb) n else -n
-}
-
-/** Whether (year, month, day) is a real date in the proleptic Gregorian calendar, the calendar stored values
- *  are counted on. Parsing judges reality on the hybrid calendar instead ([isParsedRealDate]), and `Date(...)`
- *  construction through [isConstructibleDate]. */
-fun isRealDate(year: Int, month: Int, day: Int): Boolean = month in 1..12 && day in 1..daysInMonth(year, month)
-
 /**
  * Whether `Date(day, month, year)` can be constructed by the kernel's non-lenient legacy calendar in [timeZone].
  *
@@ -229,7 +169,7 @@ internal fun isConstructibleDate(year: Int, month: Int, day: Int, timeZone: Mode
  * Whether a date A12 PARSES — a stored value, a range endpoint, a completed fragment or a date constant — names
  * a real day (KERNEL-FINDINGS KF588). A12 parses through a non-lenient `SimpleDateFormat`, whose calendar is the
  * same hybrid one `Date(...)` constructs on, so the ten labels 1582-10-05..14 are unreal, a Julian leap day such
- * as 1500-02-29 is real, and so is no day of year 0. From 1582-10-15 this is the proleptic answer of [isRealDate].
+ * as 1500-02-29 is real, and so is no day of year 0. From 1582-10-15 it agrees with the proleptic calendar.
  */
 internal fun isParsedRealDate(year: Int, month: Int, day: Int): Boolean =
     legacyCalendarSystem(year, month, day) != null && day <= legacyDaysInMonth(year, month)
@@ -266,7 +206,7 @@ private const val UNIX_EPOCH_JULIAN_DAY = 2_440_588L
 private val LEGACY_GREGORIAN_CUTOVER_DAY = epochDay("1582-10-15")!!
 
 /** Absolute day number of a non-lenient default `GregorianCalendar` civil label. */
-private fun legacyEpochDay(iso: String): Long? {
+internal fun legacyEpochDay(iso: String): Long? {
     val (year, month, day) = dateParts(iso) ?: return null
     val system = legacyCalendarSystem(year, month, day) ?: return null
     if (day > legacyDaysInMonth(year, month)) return null
@@ -332,8 +272,8 @@ private fun orderedLegacyDates(a: String, b: String): OrderedLegacyDates? {
 }
 
 private fun positiveLegacyYearDifference(earlier: String, later: String): Int {
-    val earlierParts = calendarDateParts(earlier, DateCalendarBasis.LEGACY_HYBRID)!!
-    val laterParts = calendarDateParts(later, DateCalendarBasis.LEGACY_HYBRID)!!
+    val earlierParts = calendarDateParts(earlier)!!
+    val laterParts = calendarDateParts(later)!!
     val candidate = laterParts.first - earlierParts.first
     val landing = addLegacyCalendarYears(earlier, candidate)!!
     return if (legacyEpochDay(landing)!! > legacyEpochDay(later)!!) candidate - 1 else candidate
@@ -398,8 +338,9 @@ fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? =
  * INTERVAL_START completion: a missing MONTH → `01`, a missing DAY → `01`, a missing YEAR → [baseYear] (the
  * model's declared base year, else the kernel default 2000). Returns null when the value does not match its
  * format, has an out-of-range month, or is an impossible calendar day (the kernel's `datumFormatFalsch`);
- * a missing day-in-month uses [baseYear]'s leap-ness (so `MM-dd` = `02-29` is real iff [baseYear] is a leap
- * year — matching the kernel completing with the base year before the realness check).
+ * a missing day-in-month uses [baseYear]'s leap-ness on the hybrid calendar (so `MM-dd` = `02-29` is real iff
+ * [baseYear] is a leap year there, Julian below 1582 — matching the kernel completing with the base year before
+ * the realness check).
  *
  * Both kernel strategies read a fragment field through this single completion, so canonicalizing a fragment
  * to this ISO date makes ALL the ordinary date machinery (comparison, `Add*`, extraction) match both — the
@@ -418,7 +359,7 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
 /**
  * Widen a value already completed to its interval START ([completeFragmentToIso]) into the SAME value's
  * interval END, by reading which components [format] actually carries: a format without a month ends in
- * December, a format without a day ends on the completed month's last date (leap-aware); a component the
+ * December, a format without a day ends on the completed month's last date (hybrid leap year); a component the
  * format carries is never touched, so a full format is returned unchanged.
  *
  * This is the endpoint rule of [parseRangeToIso]'s END side, reachable from a value rather than from a raw
@@ -440,7 +381,7 @@ fun intervalEndOfDeclaredFormat(startIso: String, format: String): String? {
     val comps = dateFragment(format)?.second ?: return null
     val (y, m, d) = dateParts(startIso) ?: return null
     val month = if ('M' in comps) m else 12
-    return iso(y, month, if ('d' in comps) d else daysInMonth(y, month))
+    return iso(y, month, if ('d' in comps) d else legacyDaysInMonth(y, month))
 }
 
 /**
@@ -452,7 +393,7 @@ fun resolvePartialDate(raw: String, format: String, precision: DatePrecision, la
     val (y, storedMonth, storedDay) = partialDateParts(raw, format, precision) ?: return null
     if (y == 0) return null
     val month = if (storedMonth != 0) storedMonth else if (lastDay) 12 else 1
-    val day = if (storedDay != 0) storedDay else if (lastDay) daysInMonth(y, month) else 1
+    val day = if (storedDay != 0) storedDay else if (lastDay) legacyDaysInMonth(y, month) else 1
     return iso(y, month, day)
 }
 
@@ -462,12 +403,6 @@ fun resolvePartialDate(raw: String, format: String, lastDay: Boolean): String? =
 
 /** The canonical ISO `yyyy-MM-dd` for (year, month, day) — zero-padded; the `Date(...)` constructor's value. */
 fun isoDate(year: Int, month: Int, day: Int): String = iso(year, month, day)
-
-private fun daysInMonth(year: Int, month: Int): Int = when (month) {
-    1, 3, 5, 7, 8, 10, 12 -> 31
-    4, 6, 9, 11 -> 30
-    else -> if (isGregorianLeapYear(year)) 29 else 28
-}
 
 private fun isGregorianLeapYear(year: Int): Boolean =
     year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
@@ -566,7 +501,7 @@ private const val LEAP_PROBE_YEAR = 2000
  * month present, year absent — so `dd.MM` and `MM-dd` are measured against [baseYear], while a pure `MM`
  * range gets no year appended at all and its endpoint parses at the [RANGE_PARSE_DEFAULT_YEAR] a
  * year-less pattern defaults to. That is above both thresholds, which is why neither position check ever
- * fires on a pure `MM` range whatever the model's base year (KF253, measured on base years 1500/1899/1901
+ * fires on a pure `MM` range whatever the model's base year (KF276, measured on base years 1500/1899/1901
  * with the reversed value as the liveness control).
  *
  * The interpreter's own [parseRangeToIso] deliberately still completes every missing year with [baseYear],
@@ -589,14 +524,14 @@ internal const val RANGE_PARSE_DEFAULT_YEAR = 1970
  * missing DAY → `01` (start) or the completed month's last day (end). A PRESENT-but-out-of-range component
  * → null (the caller's [resolveValue] gates a formally-invalid range to Unknown before this runs, so this is
  * defensive). The END day is filled AFTER the month, so a missing-month end lands on Dec 31 and a `yyyy-MM`
- * end on that month's real last day (leap-aware).
+ * end on that month's real last day (hybrid leap year, so February 1500 ends on the 29th).
  */
 private fun buildRangeEndpoint(values: List<String>, comps: List<Char>, baseYear: Int, end: Boolean): String? {
     var y = baseYear; var mo = -1; var d = -1
     comps.forEachIndexed { i, c -> val v = values[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
     if (mo == -1) mo = if (end) 12 else 1                          // missing month → interval bound
     if (mo < 1 || mo > 12) return null                            // a PRESENT month must be real
-    if (d == -1) d = if (end) daysInMonth(y, mo) else 1           // missing day → interval bound (leap-aware)
+    if (d == -1) d = if (end) legacyDaysInMonth(y, mo) else 1     // missing day → interval bound (hybrid leap year)
     if (!isParsedRealDate(y, mo, d)) return null                  // a PRESENT day must be real
     return iso(y, mo, d)
 }
@@ -946,13 +881,10 @@ fun zonedInstantOf(iso: String, tz: ModelTimeZone): Long? = epochSecond(iso)?.le
 /** The canonical ISO date-time rendering of [instant]'s wall clock under [tz]. */
 fun isoFromZonedInstant(instant: Long, tz: ModelTimeZone): String = isoFromEpochSecond(instantToLocal(instant, tz))
 
-/** Canonical wall rendering of [instant] under the calendar provenance of the producing expression. */
-internal fun isoFromCalendarInstant(instant: Long, tz: ModelTimeZone, basis: DateCalendarBasis): String {
+/** Canonical wall rendering of [instant] on A12's hybrid calendar (see [calendarDateParts]). */
+internal fun isoFromCalendarInstant(instant: Long, tz: ModelTimeZone): String {
     val local = instantToLocal(instant, tz)
-    val date = when (basis) {
-        DateCalendarBasis.PROLEPTIC_GREGORIAN -> isoFromEpochDay(local.floorDiv(86_400L))
-        DateCalendarBasis.LEGACY_HYBRID -> isoFromLegacyEpochDay(local.floorDiv(86_400L))
-    }
+    val date = isoFromLegacyEpochDay(local.floorDiv(86_400L))
     val time = local.mod(86_400L)
     return "$date" + "T" + two((time / 3_600L).toInt()) + ":" +
         two(((time % 3_600L) / 60L).toInt()) + ":" + two((time % 60L).toInt())
@@ -1006,35 +938,25 @@ fun wallDayLandingInstant(sourceInstant: Long, n: Int, tz: ModelTimeZone): Long 
  * The count follows the kernel's legacy calendar stepping, including a special-hour landing under Berlin;
  * sub-day differences remain instant arithmetic in their own operations.
  */
-internal fun differenceInCalendarDays(
-    a: String,
-    b: String,
-    tz: ModelTimeZone,
-    aBasis: DateCalendarBasis = DateCalendarBasis.PROLEPTIC_GREGORIAN,
-    bBasis: DateCalendarBasis = DateCalendarBasis.PROLEPTIC_GREGORIAN,
-): Int? {
-    val aInstant = calendarOperandInstant(a, tz, aBasis) ?: return null
-    val bInstant = calendarOperandInstant(b, tz, bBasis) ?: return null
+internal fun differenceInCalendarDays(a: String, b: String, tz: ModelTimeZone): Int? {
+    val aInstant = calendarOperandInstant(a, tz) ?: return null
+    val bInstant = calendarOperandInstant(b, tz) ?: return null
     return differenceInCalendarDays(aInstant, bInstant, tz)
 }
 
-/** The instant of a canonical local DATE or DATE_TIME operand. */
-internal fun calendarOperandInstant(
-    value: String,
-    tz: ModelTimeZone,
-    basis: DateCalendarBasis = DateCalendarBasis.PROLEPTIC_GREGORIAN,
-): Long? {
+/** The instant of a canonical local DATE or DATE_TIME operand, its label read on A12's hybrid calendar. */
+internal fun calendarOperandInstant(value: String, tz: ModelTimeZone): Long? {
     val local = if ('T' in value) {
         val date = value.substringBefore('T')
         val time = TIME_OF_DAY.matchEntire(value.substringAfter('T')) ?: return null
-        val day = calendarEpochDay(date, basis) ?: return null
+        val day = legacyEpochDay(date) ?: return null
         val hour = time.groupValues[1].toLong()
         val minute = time.groupValues[2].toLong()
         val second = time.groupValues[3].toLong()
         if (hour > 23L || minute > 59L || second > 59L) return null
         day * 86_400L + hour * 3_600L + minute * 60L + second
     } else {
-        calendarEpochDay(value, basis)?.times(86_400L)
+        legacyEpochDay(value)?.times(86_400L)
     }
     return local?.let { localToInstant(it, tz) }
 }
@@ -1109,10 +1031,10 @@ private fun legacyCalendarYearLandingInstant(instant: Long, years: Int, tz: Mode
  * The landing instant of a `Calendar.MONTH`/`Calendar.YEAR` mutation that produced the civil DATE label
  * [isoDate] — midnight of that label, resolved by [fieldMutationLandingInstant]. A Date-valued month/year
  * shift retains this so a consumer observes the instant the mutation selected rather than re-resolving the
- * label (SPEC-2026-07-29-01). Null when the label is not a real date under [basis].
+ * label (SPEC-2026-07-29-01). Null when the label is not a real date on A12's hybrid calendar.
  */
-internal fun fieldMutationInstantOfDate(isoDate: String, tz: ModelTimeZone, basis: DateCalendarBasis): Long? {
-    val day = calendarEpochDay(isoDate, basis) ?: return null
+internal fun fieldMutationInstantOfDate(isoDate: String, tz: ModelTimeZone): Long? {
+    val day = legacyEpochDay(isoDate) ?: return null
     return fieldMutationLandingInstant(day * 86_400L, tz)
 }
 
@@ -1122,8 +1044,8 @@ internal fun fieldMutationInstantOfDate(isoDate: String, tz: ModelTimeZone, basi
  * the LATER copy. Retained on a constructed Date so a comparison against a shifted Date can observe that the
  * two selected different sides of one overlap. Null for a gap label (which the kernel rejects formally).
  */
-internal fun freshDateInstant(isoDate: String, tz: ModelTimeZone, basis: DateCalendarBasis): Long? {
-    val day = calendarEpochDay(isoDate, basis) ?: return null
+internal fun freshDateInstant(isoDate: String, tz: ModelTimeZone): Long? {
+    val day = legacyEpochDay(isoDate) ?: return null
     return localToInstant(day * 86_400L, tz)
 }
 

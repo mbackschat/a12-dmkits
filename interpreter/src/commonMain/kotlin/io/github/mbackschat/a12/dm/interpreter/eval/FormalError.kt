@@ -435,13 +435,10 @@ internal fun typeFormatErrorCached(
             }
             when {
                 invalidPartialShape -> FormalErrorCode.PARTIAL_DATE_INVALID
-                parts == null -> FormalErrorCode.DATE_FORMAT
                 // Year ZERO is an unreal component, not a date below the floor — reality is settled before
                 // position in time (KF207's ordering), so `0000` is `datumFormatFalsch` while `0001` is
-                // `datumFalsch`. Measured uniform across every date-bearing format and all three kinds; we
-                // reported the floor for it, which is the right polarity under the wrong code. A partial
-                // precision cannot reach here with a zero year: an omitted component is substituted above.
-                parts.first == 0 -> FormalErrorCode.DATE_FORMAT
+                // `datumFalsch`. The parse decides it: no calendar A12 reads has a year 0 ([isParsedRealDate]).
+                parts == null -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
                 // The field-owned additional check runs after partial-date completion and the ordinary floor.
@@ -471,10 +468,8 @@ internal fun typeFormatErrorCached(
                 // A DateTime carries the SAME always-on Gregorian floor as a Date (KF207): the kernel has no
                 // DateTime-specific formal code and reports through the Date pair, so a date-bearing instant
                 // before 1583-10-16 is `datumFalsch`, not merely malformed. Only a date-bearing value can be
-                // below the floor — a time-only `HH:mm:ss` canonical names no calendar day. Year ZERO is the
-                // unreal-component case and takes the format code instead, on the same measured ordering as the
-                // date classifier above.
-                isIsoDateTime(canonical) && canonical.startsWith("0000-") -> FormalErrorCode.DATE_FORMAT
+                // below the floor — a time-only `HH:mm:ss` canonical names no calendar day. Year ZERO never
+                // parses, so it takes the format code above, on the same measured ordering as a date.
                 isIsoDateTime(canonical) && dateParts(canonical.substring(0, 10))
                     ?.let { (y, m, d) -> beforeGregorianStart(y, m, d) } == true ->
                     FormalErrorCode.DATE_TOO_EARLY

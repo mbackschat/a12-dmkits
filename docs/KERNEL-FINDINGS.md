@@ -13913,14 +13913,14 @@ So a digit A12 converts inside a Document value is refused as a literal. Both gr
 
 | pinned instant | both strategies fire | proleptic reading would fire |
 |---|---|---|
-| 1500-03-10T12:00Z | day 29, month 2, year 1500; `Now` day 29 | day 10, month 3 |
+| 1500-03-10T12:00Z | day 29, month 2, year 1500; `Now` day 29; `Today < "01.03.1500"` and `Today == "29.02.1500"` | day 10, month 3, and neither comparison |
 | 1582-10-14T12:00Z | day 4, month 10; `Now` day 4 | day 14 |
 | 1582-10-15T12:00Z, the first Gregorian day | day 15, month 10 | the same |
 | 2025-06-23T10:00Z | day 23, month 6, and `[OrderDate] == Today` for a stored 2025-06-23 | the same |
 
-So the clock's calendar fields are Julian before the cutover, 1500-02-29 included, which proleptic Gregorian does not have. A stored date cannot meet that clock in a comparison: every stored or computed date before 1583-10-16 is `datumFalsch` ([IF88](INTERPRETER-FINDINGS.md#if88)). The wall offset is `java.util.TimeZone`'s, which gives Berlin +1:00 before 1893 where `java.time` gives its local mean time, +0:53:28.
+So the clock's calendar fields are Julian before the cutover, 1500-02-29 included, which proleptic Gregorian does not have, and a date constant meets the clock as the same kind of instant ([KF588](#kf588)). A stored date cannot meet that clock in a comparison: every stored or computed date before 1583-10-16 is `datumFalsch` ([IF88](INTERPRETER-FINDINGS.md#if88)). The wall offset is `java.util.TimeZone`'s, which gives Berlin +1:00 before 1893 where `java.time` gives its local mean time, +0:53:28.
 
-*Locked by:* `adapter.laws.HybridCalendarClockDiffTest` (both strategies and the interpreter, with the two agreeing controls). The interpreter's side is [IF416](INTERPRETER-FINDINGS.md#if416).
+*Locked by:* `adapter.laws.HybridCalendarClockDiffTest` (the dynamic strategy pinned to these rows, generated Java and the interpreter agreeing, with the two agreeing controls). The interpreter's side is [IF416](INTERPRETER-FINDINGS.md#if416).
 
 ## §13 supplement — every model `boolean` member the interpreter reads refuses the whole model for a value A12's binding cannot take (serializer, 2026-10-21) <a id="kf577"></a>
 
@@ -14171,7 +14171,19 @@ A12 parses a stored date, a range endpoint and a date constant with a non-lenien
 
 **Admission of a constant.** Whole-model `checkConsistency` admits `AddDays("…", 7)` and a direct comparison on `04.10.1582`, `15.10.1582`, `29.02.1500` and `29.02.1300`, and refuses `05.10.1582`, `14.10.1582` and `29.02.1700` as it refuses any unreal day. The year-less `29.02.` stays refused, because it is judged in 1970.
 
-**Arithmetic on a constant.** A pre-cutover constant is a Julian instant, so the skipped labels are no days. From `"04.10.1582"` to a stored 2024-01-01, `DifferenceInDays` is 161151 and `AddDays(…, 161151)` lands on it, where the proleptic count is 161161. `BaseYear` under a base year of 1500 is the Julian 1500-01-01, so `DifferenceInDays(BaseYear, Inception)` is 191378 rather than 191387. A stored value cannot show this, because every pre-cutover stored date is already a formal error. *(Mechanism, source-read: the parse yields a `java.util.Date` whose instant the arithmetic counts; the rows are what is measured.)*
+**Arithmetic on a constant.** A pre-cutover constant is a Julian instant, so the skipped labels are no days. From `"04.10.1582"` to a stored 2024-01-01, `DifferenceInDays` is 161151 and `AddDays(…, 161151)` lands on it, where the proleptic count is 161161. `BaseYear` under a base year of 1500 is the Julian 1500-01-01, so `DifferenceInDays(BaseYear, Inception)` is 191378 rather than 191387. *(Mechanism, source-read: the parse yields a `java.util.Date` whose instant the arithmetic counts; the rows are what is measured.)*
+
+**Every other pre-cutover value, compared and counted.** *Corrected 2026-10-21:* this entry first said a stored value cannot show the calendar because every pre-cutover stored date is a formal error. A range written as months escapes the floor: its date-position checks never see a year ([KF276](#kf276)) and it is evaluated in the base year. One UTC model with base year 1500, number fields holding 29, 2 and 1500, and a `MM` range stored `02/02`, rule by rule (dynamic Groovy pinned, generated Java and the interpreter agreeing):
+
+| rule | hybrid | proleptic | A12 |
+|---|---|---|---|
+| `Date(29, 2, 1500) == "01.03.1500"` | two days | one day | no |
+| `Date(29, 2, 1500) < "01.03.1500"` | before | same day | fires |
+| `EndOfDateRange(Season) == Date(29, 2, 1500)`, `Season` = `02/02` | ends on the 29th | ends on the 28th | fires, and the range has no formal error |
+| `DifferenceInDays("28.02.", "01.03.") == 2` | 2 | 1 | fires |
+| `DifferenceInDays(AddHours("04.10.1582T23:00:00", 1), "15.10.1582T12:00:00") == 0` | same day | eleven days | fires |
+
+So A12 holds every date as one kind of instant, whichever carrier wrote it: a constructed date, a constant, a completed range end, a year-less constant completed in the base year, and a shifted date-time constant all count Julian days before the cutover.
 
 *Locked by:* `adapter.laws.StoredDateHybridCalendarDiffTest` (dynamic Groovy, generated Java and the interpreter, [IF425](INTERPRETER-FINDINGS.md#if425)) and `adapter.laws.CheckerHybridDateConstantAgreementTest` (A12 against the portable checker).
 

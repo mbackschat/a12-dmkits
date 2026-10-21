@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.isConstructibleDate
-import io.github.mbackschat.a12.dm.interpreter.eval.DateCalendarBasis
 import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarDays
 import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarMonths
 import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarYears
@@ -67,13 +66,12 @@ class ConstructedDateCalendarTest {
 
     @Test
     fun calendarDayDifferenceHandlesTheCutoverAndBoundsTheFullDomainResidual() {
-        val basis = DateCalendarBasis.LEGACY_HYBRID
-        val cutoverStart = calendarOperandInstant("1582-10-04", ModelTimeZone.UTC, basis)!!
-        val cutoverEnd = calendarOperandInstant("1582-10-15", ModelTimeZone.UTC, basis)!!
+        val cutoverStart = calendarOperandInstant("1582-10-04", ModelTimeZone.UTC)!!
+        val cutoverEnd = calendarOperandInstant("1582-10-15", ModelTimeZone.UTC)!!
         assertEquals(1, differenceInCalendarDays(cutoverStart, cutoverEnd, ModelTimeZone.UTC))
 
-        val domainStart = calendarOperandInstant("0001-01-01", ModelTimeZone.UTC, basis)!!
-        val domainEnd = calendarOperandInstant("9999-12-31", ModelTimeZone.UTC, basis)!!
+        val domainStart = calendarOperandInstant("0001-01-01", ModelTimeZone.UTC)!!
+        val domainEnd = calendarOperandInstant("9999-12-31", ModelTimeZone.UTC)!!
         val detail = calendarDayDifferenceDetail(domainStart, domainEnd, ModelTimeZone.UTC)
         assertEquals(3_652_060, detail.days)
         assertTrue(detail.residualSteps < 2_800, "the year seed must bound, not eliminate, residual +1 steps")

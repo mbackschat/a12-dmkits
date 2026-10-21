@@ -1421,12 +1421,9 @@ private fun Interpreter.malformedField(e: Expr): Boolean = when (e) {
 /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; an empty operand reads as the fillable 0
  *  (either empty → 0, kernel `getDatumsDiff`); a malformed operand → Unknown (suppressed). */
 private fun Interpreter.dateDiff(args: List<Expr>, op: FunctionOp): Val = temporalDifference(args) { a, b ->
-    val legacy = a.basis == DateCalendarBasis.LEGACY_HYBRID || b.basis == DateCalendarBasis.LEGACY_HYBRID
     val result = when (op) {
-        FunctionOp.DIFFERENCE_IN_MONTHS ->
-            if (legacy) differenceInLegacyCalendarMonths(a.date, b.date) else differenceInMonths(a.date, b.date)
-        FunctionOp.DIFFERENCE_IN_YEARS ->
-            if (legacy) differenceInLegacyCalendarYears(a.date, b.date) else differenceInYears(a.date, b.date)
+        FunctionOp.DIFFERENCE_IN_MONTHS -> differenceInLegacyCalendarMonths(a.date, b.date)
+        FunctionOp.DIFFERENCE_IN_YEARS -> differenceInLegacyCalendarYears(a.date, b.date)
         else -> error("not a month/year date difference: $op")
     }
     result?.let { Val.Num(dec(it)) } ?: Val.Unknown
@@ -1441,7 +1438,7 @@ private fun Interpreter.dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Va
         is Evaluated.Present -> evaluated.value
         is Evaluated.NoValue -> return evaluated.numericDefault()
     }
-    val parts = calendarDateParts(value.date, value.basis) ?: return Val.Unknown
+    val parts = calendarDateParts(value.date) ?: return Val.Unknown
     return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
 }
 
@@ -1557,7 +1554,7 @@ private fun Interpreter.extractedDateComponent(
     pick: (Int, Int, Int) -> Int,
 ): Evaluated<Int> = when (val source = evalTemporal(extraction.args.single())) {
     is Evaluated.Present -> if (source.value.missing) Evaluated.NoValue(NoValueReason.NOT_GIVEN)
-        else calendarDateParts(source.value.date, source.value.basis)
+        else calendarDateParts(source.value.date)
         ?.let { Evaluated.Present(pick(it.first, it.second, it.third)) }
         ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     is Evaluated.NoValue -> source.asConstructionComponent()
@@ -1617,7 +1614,6 @@ private enum class NoValueReason {
 
 private data class TemporalValue(
     val text: String,
-    val basis: DateCalendarBasis,
     val exactInstantMillis: Long? = null,
     /**
      * A payload that carries missing provenance: a shift whose extracted amount came from an empty source keeps
@@ -1640,8 +1636,8 @@ private data class TemporalValue(
     val isTimeOnly: Boolean get() = TIME.matchEntire(text) != null
 
     fun instantMillis(timeZone: ModelTimeZone): Long =
-        exactInstantMillis ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
-            "real temporal value has no model-zone instant: $text ($basis, $timeZone)"
+        exactInstantMillis ?: checkNotNull(calendarOperandInstant(text, timeZone)) {
+            "real temporal value has no model-zone instant: $text ($timeZone)"
         } * 1_000L
 
     fun instantSeconds(timeZone: ModelTimeZone): Long =
@@ -1692,7 +1688,7 @@ private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
         return when (FunctionOp.byName(e.name)) {
             FunctionOp.DATE -> evaluateDateConstruction(e.args)
             FunctionOp.TIME -> when (val time = evaluateTimeConstruction(e.args)) {
-                is Evaluated.Present -> Evaluated.Present(TemporalValue(time.value, DateCalendarBasis.PROLEPTIC_GREGORIAN))
+                is Evaluated.Present -> Evaluated.Present(TemporalValue(time.value))
                 is Evaluated.NoValue -> time
             }
             FunctionOp.VALUE_AS_DATE -> partialDateValue(e.args)
@@ -1730,8 +1726,7 @@ private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<Te
         DateStatus.REAL -> Evaluated.Present(
             TemporalValue(
                 analysis.iso!!,
-                DateCalendarBasis.LEGACY_HYBRID,
-                freshDateInstant(analysis.iso, timeZone, DateCalendarBasis.LEGACY_HYBRID)?.times(1_000L),
+                freshDateInstant(analysis.iso, timeZone)?.times(1_000L),
             ),
         )
         DateStatus.UNREAL_PRESENT -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
@@ -1751,26 +1746,17 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
                 return clockReading(today, 0L)?.let { Evaluated.Present(it) }
                     ?: throw UnsupportedConstructException("EvalClock.today is not a real date in the model time zone: $today")
             }
-            ConstantOp.BASE_YEAR -> {
-                // A pre-cutover base year is its Julian 1 January, as a date literal is (KF588).
-                val text = (baseYearDate() as Val.Txt).v
-                return temporalText(text, DateCalendarBasis.LEGACY_HYBRID)
-            }
+            ConstantOp.BASE_YEAR -> return temporalText((baseYearDate() as Val.Txt).v)
             else -> Unit
         }
     }
     // No target or counterpart constrains a literal here, so nothing declares a year and the anchor applies.
     val evaluated = coerceTemporalLiteral(evalExpr(e), declaredFormat = null)
     if (evaluated is Val.Txt) {
-        // A12 parses a date literal with a non-lenient `SimpleDateFormat`, whose instant lies on the hybrid calendar
-        // `Date(...)` constructs on, so a pre-cutover literal is Julian in every shift and difference (KF588).
-        val basis = if (e is Expr.StrLit) DateCalendarBasis.LEGACY_HYBRID else DateCalendarBasis.PROLEPTIC_GREGORIAN
         // A pure time-of-day has no date and therefore no model-zone instant; it carries only its decoded
         // time coordinate (the operand-list Min/Max over TIME folds on that, SPEC-2026-07-21-07).
-        if (TIME.matchEntire(evaluated.v) != null) return Evaluated.Present(TemporalValue(evaluated.v, basis))
-        val instant = calendarOperandInstant(evaluated.v, timeZone, basis)
-            ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
-        return Evaluated.Present(TemporalValue(evaluated.v, basis, instant * 1_000L))
+        if (TIME.matchEntire(evaluated.v) != null) return Evaluated.Present(TemporalValue(evaluated.v))
+        return temporalText(evaluated.v)
     }
     return when {
         malformedField(e) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
@@ -1803,19 +1789,21 @@ private fun Interpreter.nowTemporalValue(): TemporalValue {
  * temporal reading re-labels the same instant under the hybrid calendar; after the cutover the two labels agree.
  */
 private fun Interpreter.clockReading(prolepticText: String, millis: Long): TemporalValue? {
-    val epochSecond = calendarOperandInstant(prolepticText, timeZone, DateCalendarBasis.PROLEPTIC_GREGORIAN) ?: return null
-    val hybrid = isoFromCalendarInstant(epochSecond, timeZone, DateCalendarBasis.LEGACY_HYBRID)
+    val local = if ('T' in prolepticText) epochSecond(prolepticText) else epochDay(prolepticText)?.times(86_400L)
+    val instant = local?.let { localToInstant(it, timeZone) } ?: return null
+    val hybrid = isoFromCalendarInstant(instant, timeZone)
     val text = if ('T' in prolepticText) hybrid else hybrid.substringBefore('T')
-    return TemporalValue(text, DateCalendarBasis.LEGACY_HYBRID, epochSecond * 1_000L + millis)
+    return TemporalValue(text, instant * 1_000L + millis)
 }
 
-private fun Interpreter.temporalText(
-    text: String,
-    basis: DateCalendarBasis,
-): Evaluated<TemporalValue> {
-    val epochSecond = calendarOperandInstant(text, timeZone, basis)
+/**
+ * A date or date-time label as A12 holds it: its instant read on the hybrid calendar, so a value below the cutover
+ * is Julian in every shift, difference and comparison, whichever operator produced it (KF588).
+ */
+private fun Interpreter.temporalText(text: String): Evaluated<TemporalValue> {
+    val epochSecond = calendarOperandInstant(text, timeZone)
         ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
-    return Evaluated.Present(TemporalValue(text, basis, epochSecond * 1_000L))
+    return Evaluated.Present(TemporalValue(text, epochSecond * 1_000L))
 }
 
 private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
@@ -1834,9 +1822,9 @@ private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalVal
     val text = "${dateValue.date}T$timeValue"
     // A constructed wall time inside a zone gap is a fixed outcome that clears cleanly, unlike a gap literal,
     // which is a runtime failure (KF513).
-    val instant = calendarOperandInstant(text, timeZone, dateValue.basis)
+    val instant = calendarOperandInstant(text, timeZone)
         ?: return Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
-    return Evaluated.Present(TemporalValue(text, dateValue.basis, instant * 1_000L))
+    return Evaluated.Present(TemporalValue(text, instant * 1_000L))
 }
 
 private fun Interpreter.evalTime(e: Expr): Evaluated<String> {
@@ -1934,34 +1922,26 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
         FunctionOp.ADD_DAYS -> if (value.isDateTime) {
             val landing = wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone)
             val landingMillis = landing * 1_000L + value.instantMillis(timeZone).mod(1_000L)
-            TemporalValue(
-                isoFromCalendarInstant(landing, timeZone, value.basis),
-                value.basis,
-                landingMillis,
-            )
+            TemporalValue(isoFromCalendarInstant(landing, timeZone), landingMillis)
         } else {
-            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarDays(value.date, n) else addDays(value.date, n)
+            val date = addLegacyCalendarDays(value.date, n)
             // The civil label stays label arithmetic (it owns the legacy-hybrid rendering); the retained
             // instant lands from the SOURCE instant on the expected civil date, re-fitting the offset when the
             // shift crosses a transition (IF348, `adapter.laws.DayStepLandingDiffTest`).
             date?.let {
-                TemporalValue(it, value.basis,
-                    wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone) * 1_000L)
+                TemporalValue(it, wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone) * 1_000L)
             }
         }
         // Month and year mutate CIVIL FIELDS, so their landing is resolved at compute time from the resulting
         // label — sign-independently, taking the later copy of an overlap (SPEC-2026-07-29-01). That is a
         // different mechanism from the day arm above, which carries the source instant.
         FunctionOp.ADD_MONTHS -> {
-            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarMonths(value.date, n) else addMonths(value.date, n)
-            date?.let { TemporalValue(it, value.basis, fieldMutationInstantOfDate(it, timeZone, value.basis)?.times(1_000L)) }
+            addLegacyCalendarMonths(value.date, n)
+                ?.let { TemporalValue(it, fieldMutationInstantOfDate(it, timeZone)?.times(1_000L)) }
         }
         FunctionOp.ADD_YEARS -> {
-            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarYears(value.date, n) else addYears(value.date, n)
-            date?.let { TemporalValue(it, value.basis, fieldMutationInstantOfDate(it, timeZone, value.basis)?.times(1_000L)) }
+            addLegacyCalendarYears(value.date, n)
+                ?.let { TemporalValue(it, fieldMutationInstantOfDate(it, timeZone)?.times(1_000L)) }
         }
         FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> {
             val unit = when (FunctionOp.byName(e.name)) {
@@ -1970,11 +1950,7 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
                 else -> 1_000L
             }
             val instantMillis = value.instantMillis(timeZone) + n.toLong() * unit
-            TemporalValue(
-                isoFromCalendarInstant(instantMillis.floorDiv(1_000L), timeZone, value.basis),
-                value.basis,
-                instantMillis,
-            )
+            TemporalValue(isoFromCalendarInstant(instantMillis.floorDiv(1_000L), timeZone), instantMillis)
         }
         else -> error("not a temporal shift: ${e.name}")
     }
@@ -2069,7 +2045,7 @@ internal fun Interpreter.dateInstant(e: Expr): Long? =
 private fun Interpreter.partialDateValue(args: List<Expr>): Evaluated<TemporalValue> =
     when (val value = partialDateSelection(args)) {
         null -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
-        is Val.Txt -> temporalText(value.v, DateCalendarBasis.PROLEPTIC_GREGORIAN)
+        is Val.Txt -> temporalText(value.v)
         else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT, formal = false)
     }
 

@@ -1469,9 +1469,10 @@ class Interpreter(
                 if (li != null && ri != null) return compareInstants(c.op, li, ri)
             }
             // Labels order lexically only while every year has four digits; a calendar shift can reach five
-            // (SPEC-2026-10-04-01), so two dates compare by day number.
-            val ld = epochDay(l.v)
-            val rd = epochDay(r.v)
+            // (SPEC-2026-10-04-01), so two dates compare by day number — on A12's hybrid calendar, where
+            // 1500-02-29 is a day of its own rather than an alias of 1500-03-01 (KF588).
+            val ld = legacyEpochDay(l.v)
+            val rd = legacyEpochDay(r.v)
             if (ld != null && rd != null) return compareInstants(c.op, ld, rd)
         }
         return when (c.op) {
