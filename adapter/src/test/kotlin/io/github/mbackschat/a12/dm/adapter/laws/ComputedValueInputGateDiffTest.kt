@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
  * and the blank, a stored date is `ZeichenNichtImZeichensatz`, while a date built from constants is stored all the
  * same and feeds what reads it: a later date, a range over the two, a copy of that range, and the first filled of a
  * dotted computed column. A computed number, whose digits the charset excludes as well, feeds a sum over its column
- * and a product of that sum. The same model with the default charset is the control that holds every other variable.
+ * and a product of that sum, and the column of dates feeds a count and a fill quantifier over it. The same model with the default charset is the control that holds every other variable.
  *
  * Own domain (a claim's cover period and its instalments).
  */
@@ -29,6 +29,7 @@ class ComputedValueInputGateDiffTest {
                 .dateRangeField("CoverCopy") { it.format("yyyy-MM-dd").separator("/") }
                 .dateField("FirstInstalment") { it.format("dd.MM.yyyy") }
                 .numberField("TotalFee") { it.fractionDigits(0) }.numberField("FeeTwice") { it.fractionDigits(0) }
+                .numberField("OnCount") { it.fractionDigits(0) }.numberField("Scheduled") { it.fractionDigits(0) }
                 .group("Instalments") { i -> i.repeatable(2).dateField("On") { it.format("dd.MM.yyyy") }
                     .numberField("Fee") { it.fractionDigits(0) } } }
             .build().toJson())
@@ -56,6 +57,14 @@ class ComputedValueInputGateDiffTest {
         }
         claim.addComputation(claim.num("FeeTwice")) {
             it.name("FeeTwiceComp").calc(claim.num("TotalFee").times(2)).message(Dsl.en("Check the doubled fee.")).build()
+        }
+        val onColumn = claim.flatten("Instalments*/On")
+        claim.addComputation(claim.num("OnCount")) {
+            it.name("OnCountComp").calc(Dsl.numberOfFilledFields(onColumn)).message(Dsl.en("Check the instalment count.")).build()
+        }
+        claim.addComputation(claim.num("Scheduled")) {
+            it.name("ScheduledComp").`when`(Dsl.atLeastOneFieldFilled(onColumn)).calc(Dsl.number(1))
+                .message(Dsl.en("Check the schedule.")).build()
         }
         claim.addComputation(claim.date("FirstInstalment")) {
             it.name("FirstInstalmentComp").calc(Dsl.firstFilledDate(claim.flatten("Instalments*/On")))
@@ -90,7 +99,7 @@ class ComputedValueInputGateDiffTest {
         val computed = listOf("Cover=VALUE|2024-03-05/2024-03-06", "CoverCopy=VALUE|2024-03-05/2024-03-06",
             "Due=VALUE|2024-03-05", "FeeTwice=VALUE|20", "FirstInstalment=VALUE|05.03.2024", "Instalments/Fee=VALUE|5",
             "Instalments/On=VALUE|05.03.2024", "Instalments[2]/Fee=VALUE|5", "Instalments[2]/On=VALUE|05.03.2024",
-            "Later=VALUE|2024-03-06", "TotalFee=VALUE|10")
+            "Later=VALUE|2024-03-06", "OnCount=VALUE|2", "Scheduled=VALUE|1", "TotalFee=VALUE|10")
         assertEquals(mapOf(
             "letters only" to mapOf("a stored date, the control" to listOf("ZeichenNichtImZeichensatz@Reported") + computed,
                 "nothing stored" to computed),
