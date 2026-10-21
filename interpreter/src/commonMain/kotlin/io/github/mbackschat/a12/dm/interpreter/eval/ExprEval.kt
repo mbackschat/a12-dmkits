@@ -2306,12 +2306,6 @@ private fun Interpreter.firstFilledEntitySpec(
     return FirstFilledStep.Stop(ctxOf(source).enumCategoryValue(source.path, category, step.value))
 }
 
-private val Expr.EntitySource.path: String
-    get() = when (this) {
-        is Expr.Field -> path
-        is Expr.Star -> path
-    }
-
 /** Consume the identity-preserving descendant-cell stream supplied by [EvalContext]. This is the shared
  * implicit-wildcard mechanism used by every bare-group scan: repeatable levels below the authored group are
  * enumerated by the document context, rather than reconstructed as scalar AST paths. */
