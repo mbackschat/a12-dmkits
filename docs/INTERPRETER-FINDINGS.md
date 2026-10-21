@@ -4889,18 +4889,18 @@ Locked by `adapter.laws.UnavailableCorrelationRowDiffTest` (five documents cover
 
 Two readers in shared code classified a character through a table that neither A12 nor `java.util.regex.Pattern` uses. This is the class [IF415](#if415) fixed in the condition lexer.
 
-**Message parameters.** The token pattern spelled names with `\w`, which is ASCII on both platforms and so misses the German letters the error-text lexer's `STR` takes ([KF585](KERNEL-FINDINGS.md#kf585)). A parameter whose path ran through a group named `Schäden` was left in the text as written, where both kernel strategies render it. The pattern now uses `A12Lexis.NAME_PART_CLASS_BODY`, the same set `isNamePart` reads.
+**Message parameters.** The token pattern spelled names with `\w`, which is ASCII on both platforms and so misses the German letters the error-text lexer's `STR` takes ([KF585](KERNEL-FINDINGS.md#kf585)). A parameter whose path ran through a group named `Schäden` was left in the text as written, where both kernel strategies render it. The pattern now uses `A12Lexis.NAME_PART_CLASS_BODY`, the same set `isNamePart` reads. Of the token's name positions, A12 admits a German letter in a value or label path and in a `For` key path; `index(…)` takes the index field's bare short name and a category name is ASCII, so neither can carry one. `STR` also holds `:`, which the set leaves out: A12 refuses it in every name a parameter reaches (`INVALID_ENTITY`), so no admitted text depends on it.
 
 **The Java-to-JavaScript pattern translator**, shared by the interpreter and the portable checker. `Pattern` reads four pieces of syntax through its own ASCII tables. Each was measured on JDK 21.0.12, and the JVM actual is `Pattern` itself:
 
 | syntax | `Pattern` | the translator read |
 |---|---|---|
 | whitespace COMMENTS mode skips | space, TAB, LF, VT, FF, CR only; U+00A0, U+2003, U+0085 are literals | `isWhitespace`, which skips all of them |
-| where a `#` comment ends | LF; CR too unless UNIX_LINES is on | LF or CR regardless |
+| where a `#` comment ends | `Pattern`'s line separator: LF, and unless UNIX_LINES also CR, U+0085, U+2028 and U+2029. The separator is not part of the comment, so a non-ASCII one is then a literal: `(?x)a#c`+U+2028+`b` matches `a`+U+2028+`b` | LF or CR regardless *(corrected 2026-10-21: the first fix still ran on through the three non-ASCII separators, and its row tested only the text `ab`, on which both readings fail)* |
 | digits that extend a backreference | ASCII: thirteen groups then `\1`+U+0663 is backreference 1 and a literal | `isDigit`, giving backreference 13 |
-| a class's `\x`/`\u` hex digits | ASCII hex; `[\x`+U+0663+U+0663+`]` is refused | `digitToIntOrNull(16)`, accepting it as `3` |
+| `\x`, `\x{…}` and `\u` hex digits, in a class or not | ASCII hex; `[\x`+U+0663+U+0663+`]` and `(?i)\x`+U+0664+U+0661 are refused | `digitToIntOrNull(16)` in a class, accepting it as `3`, and `toIntOrNull(16)` outside one, which decoded the second as `A` under `(?i)` *(the second corrected 2026-10-21)* |
 
-A backslash before a non-ASCII character is that character to `Pattern` (`(a)\`+U+0663 matches `a`+U+0663). The translator passed the escape through, and JavaScript's unicode mode refuses it, so it is now emitted as a literal.
+A backslash before a non-ASCII character is that character to `Pattern`, inside a class too (`(a)\`+U+0663 matches `a`+U+0663, and `[\`+U+0660+`-\`+U+0669+`]` matches U+0665). The translator passed the escape through, and JavaScript's unicode mode refuses it, so it is now emitted as a literal. *Corrected 2026-10-21: the first fix covered the escape outside a class only.* A surrogate half still takes the unverified path.
 
 Locked by `adapter.laws.MessageTokenNameAlphabetDiffTest` (both kernel strategies and the interpreter) and `regex.PatternCommentModeParityTest` (every row on the JVM, where it is `Pattern`, and on Node, where it is the translation).
 

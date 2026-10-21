@@ -14119,6 +14119,16 @@ Measured on `/Police/Schäden` (repeatable) holding `Size`, with one rule iterat
 
 A12's pointer STRING grammar is narrower and stays ASCII: `DocumentPointerImpl.pathPartPattern` is `([\w_-]+)(\[(\d+)?\])?`, compiled without `UNICODE_CHARACTER_CLASS`, so its `\w` takes no German letter.
 
+**Which name positions can carry the letters at all (whole-model `checkConsistency` and both strategies, 2026-10-21).** A path in a row-selecting key is the third carrier. On `/Police/Prüfung/Pick` = `r2` selecting a `/Police/Schäden` row by its index field `Ref`, a rule at `/Police` renders `$/Police/Schäden/Status.value For /Police/Prüfung/Pick$` as the selected row's value, `$/Police/Schäden/Status->Band For /Police/Prüfung/Pick$` as its category token, and `$#/Police/Schäden For /Police/Prüfung/Pick$` as `2`. The other two name positions cannot hold a German letter, because A12 refuses one before any text is read:
+
+| position | what A12 admits there | with a German letter or `:` |
+|---|---|---|
+| `index(…)` | the index field's bare short name: `$index(Ref).value$` renders the row's key | `$index(../Schäden/Ref).value$` and `$index(/Police/Schäden/Ref).value$` are `INVALID_INDEX_FIELD`, and a field name refuses the letters anyway |
+| `->` category | a category name, *"starts with a letter and may contain only letters, digits and the underscore"* | `Größe` and `Kl:asse` are refused with that sentence, so "letters" are ASCII ones |
+| any element name | a group or field | `$Si:ze.value$` and `$../Schäden/Si:ze.value$` are `INVALID_ENTITY`: `STR`'s `:` names nothing |
+
+*Locked by:* `adapter.laws.MessageTokenNameAlphabetDiffTest` (the key-path row on both strategies and the interpreter; the refusals by whole-model `checkConsistency`).
+
 *Locked by:* `adapter.laws.MessageTokenNameAlphabetDiffTest`, which runs both kernel strategies and the interpreter ([IF424](INTERPRETER-FINDINGS.md#if424)).
 
 ## §12 supplement — a computation's `computedFieldRelPath` is lexed as a condition operand, ahead of the computed target's other gates (model check, 2026-10-21) <a id="kf586"></a>

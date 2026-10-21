@@ -30,15 +30,29 @@ class PatternCommentModeParityTest {
         )
     }
 
-    /** A comment runs to a line feed, or to a carriage return unless UNIX_LINES is on; no other terminator ends it. */
+    /**
+     * A comment runs to `Pattern`'s line separator: a line feed under UNIX_LINES (`d`), otherwise also a carriage
+     * return, U+0085, U+2028 and U+2029. The separator ends the comment without belonging to it, so an ASCII one is
+     * then skipped as whitespace and a non-ASCII one is a literal; the text `a·b` is what tells those apart.
+     */
     @Test
-    fun aCommentEndsAtTheLineTerminatorsJavaReads() {
-        val observed = listOf(0x000A, 0x000D, 0x0085, 0x2028).associateWith { code ->
-            m("(?x)a#c${char(code)}b", "ab") to m("(?xd)a#c${char(code)}b", "ab")
+    fun aCommentEndsAtTheLineSeparatorsJavaReads() {
+        val observed = listOf(0x000A, 0x000D, 0x0085, 0x2028, 0x2029).associateWith { code ->
+            listOf("(?x)", "(?xd)").map { flags ->
+                m("${flags}a#c${char(code)}b", "ab") to m("${flags}a#c${char(code)}b", "a${char(code)}b")
+            }
         }
+        val skipped = true to false
+        val literal = false to true
+        val eaten = false to false
         assertEquals(
-            mapOf(0x000A to (true to true), 0x000D to (true to false), 0x0085 to (false to false),
-                0x2028 to (false to false)),
+            mapOf(
+                0x000A to listOf(skipped, skipped),
+                0x000D to listOf(skipped, eaten),
+                0x0085 to listOf(literal, eaten),
+                0x2028 to listOf(literal, eaten),
+                0x2029 to listOf(literal, eaten),
+            ),
             observed,
         )
     }
@@ -59,13 +73,34 @@ class PatternCommentModeParityTest {
         )
     }
 
-    /** A class's `\x` and `\u` escapes take ASCII hex digits only; Java refuses the pattern otherwise. */
+    /** A `\x`, `\x{…}` or `\u` escape takes ASCII hex digits only, in a class or not, case-insensitive or not; Java refuses the pattern otherwise. */
     @Test
     fun aHexEscapeTakesAsciiHexDigitsAlone() {
         assertEquals(true, m("[\\x33]", "3"))
+        assertEquals(true, m("(?i)\\x41", "a"))
         val three = char(0x0663)
-        for (pattern in listOf("[\\x$three$three]", "[\\x${char(0xFF13)}${char(0xFF13)}]", "[\\u${char(0x0660)}${char(0x0660)}$three$three]")) {
+        val four = char(0x0664)
+        val one = char(0x0661)
+        val zero = char(0x0660)
+        val classes = listOf("[\\x$three$three]", "[\\x${char(0xFF13)}${char(0xFF13)}]", "[\\u$zero$zero$three$three]")
+        val scalars = listOf("\\x$four$one", "\\x{$four$one}", "\\u$zero$zero$four$one").flatMap { listOf(it, "(?i)$it") }
+        for (pattern in classes + scalars) {
             assertFails(pattern) { compilePattern(pattern) }
         }
+    }
+
+    /** A backslash before a non-ASCII character is that character inside a class too, alone or as a range end. */
+    @Test
+    fun anEscapedNonAsciiClassMemberIsALiteral() {
+        val three = char(0x0663)
+        assertEquals(
+            listOf(true, false, true, false),
+            listOf(
+                m("[\\$three]", three),
+                m("[\\$three]", "3"),
+                m("[\\${char(0x0660)}-\\${char(0x0669)}]", char(0x0665)),
+                m("[\\${char(0x0660)}-\\${char(0x0669)}]", "5"),
+            ),
+        )
     }
 }

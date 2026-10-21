@@ -167,17 +167,21 @@ internal object JavaPatternToJs {
         }
 
         /**
-         * `Pattern`'s COMMENTS mode, which reads both of its rules through its own ASCII tables rather than
-         * Unicode's: it skips the six ASCII whitespace characters only, and a `#` comment runs to a line feed, or to
-         * a carriage return unless UNIX_LINES is on (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`).
+         * `Pattern`'s COMMENTS mode. It skips the six ASCII whitespace characters only, not Unicode's, and a `#`
+         * comment runs to `Pattern`'s line separator: a line feed under UNIX_LINES, otherwise also a carriage return,
+         * U+0085, U+2028 and U+2029. The separator is not part of the comment, so a non-ASCII one is then read as a
+         * literal (JDK 21 `Pattern.parsePastLine`; `PatternCommentModeParityTest`).
          */
         private fun skipCommentSpace(flags: Flags): Boolean {
             if (!flags.comments) return false
             if (source[index] in JAVA_ASCII_SPACE) { index++; return true }
             if (source[index] != '#') return false
-            while (index < source.length && source[index] != '\n' && (flags.unixLines || source[index] != '\r')) index++
+            while (index < source.length && !isJavaLineSeparator(source[index], flags)) index++
             return true
         }
+
+        private fun isJavaLineSeparator(c: Char, flags: Flags): Boolean =
+            if (flags.unixLines) c == '\n' else c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029'
 
         private fun repetition(flags: Flags): String {
             index++
@@ -552,6 +556,7 @@ internal object JavaPatternToJs {
                 val width = classLiteralWidth(raw, i)
                 if (width > 0) {
                     if (width > 2) hasUnverifiedMapping = true
+                    if (width == 2 && flags.caseInsensitive && raw[i + 1].code >= 0x80) hasUnverifiedMapping = true
                     val next = i + width
                     if (followedBySet && next + 1 == raw.length && raw[next] == '-') {
                         throw UnsupportedJavaPattern("range with a set-valued endpoint")
@@ -647,6 +652,9 @@ internal object JavaPatternToJs {
             if (raw[at] != '\\') return 1
             val escaped = raw.getOrNull(at + 1) ?: return 0
             if (escaped in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" || escaped in "tnrfbae") return 2
+            // `Pattern` reads a backslash before a non-ASCII character as that character inside a class too, where
+            // JavaScript's unicode mode refuses the escape. A surrogate half stays on the unverified escape path.
+            if (escaped.code >= 0x80 && !escaped.isSurrogate()) return 2
             val digits = when (escaped) { 'x' -> 2; 'u' -> 4; else -> return 0 }
             if (at + 2 + digits > raw.length) return 0
             for (i in at + 2 until at + 2 + digits) if (raw[i] !in JAVA_ASCII_HEX) return 0
@@ -708,7 +716,13 @@ internal object JavaPatternToJs {
             return buildString { appendLiteral(this, code.toChar(), flags) }
         }
 
+        /**
+         * A hexadecimal escape's digits, which `Pattern` reads through its ASCII table alone and refuses otherwise, so
+         * an Arabic-Indic or fullwidth digit never decodes to a character here (JDK 21 `Pattern.x`/`u`;
+         * `PatternCommentModeParityTest`).
+         */
         private fun certifiedCodePoint(hex: String): String {
+            if (hex.any { it !in JAVA_ASCII_HEX }) throw UnsupportedJavaPattern("non-ASCII hex digit")
             if (!forConsistency || !globalUnicodeCase) return hex
             val codePoint = hex.toIntOrNull(16)
             if (codePoint == null || codePoint !in 0..0xff) hasUnverifiedMapping = true

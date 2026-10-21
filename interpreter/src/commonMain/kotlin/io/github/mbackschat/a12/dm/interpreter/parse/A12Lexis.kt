@@ -10,7 +10,8 @@ package io.github.mbackschat.a12.dm.interpreter.parse
  * and differently from A12, which refuses each of them (IF415).
  *
  * The kernel's name set also admits `:`, which no element name can carry (`MVK_NAME_INVALID_DOT_COLON_A12_DV`), so
- * it stays outside [isNamePart] as before.
+ * it stays outside [isNamePart]. A message parameter naming one is refused at admission (`INVALID_ENTITY`), so the
+ * narrower set reads every admitted text alike (`adapter.laws.MessageTokenNameAlphabetDiffTest`'s KDoc).
  */
 internal object A12Lexis {
     private const val GERMAN_LETTERS = "ÄÖÜäöüß"
