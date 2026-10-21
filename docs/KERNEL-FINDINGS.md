@@ -7601,7 +7601,7 @@ Reported by the portable checker's `CheckFamily.HINT_LIST_VALUES`.
 | a `DateRangeType` whose `(format, rangeSeparator)` pair is not allowlisted — including a format alone, a separator alone, and an explicit `""` | `The date range format is invalid.` |
 | a `maxFractionalDigits` of 15 | `Only values smaller than or equal to 14 are allowed.` |
 | a `maxIntegerDigits` past the budget | `Only values smaller than or equal to 15 are allowed.` *(Corrected 2026-10-13: this row had merged it into the 14 sentence; [KF559](#kf559))* |
-| a group name of 61 characters | `A group name may only contain letters, numbers or underscores. … Name parts may not be longer than 60 characters …`, once at the group and once at each field inside it *(Corrected 2026-10-13: this row named "Only values with up to 60 characters are allowed.", which the same nested shape does not draw)* |
+| a group name of 61 characters | `A group name may only contain letters, numbers or underscores. … Name parts may not be longer than 60 characters …`, once at the group and once at each element beneath it *(Corrected 2026-10-13: this row named "Only values with up to 60 characters are allowed.", which the same nested shape does not draw. Corrected 2026-10-21: "each field inside it" was the fields only; groups, rules and computations beneath it draw it too, [KF580](#kf580))* |
 | a RULE name starting with a digit, or carrying a dot | (per-carrier prose) |
 | an empty `errorCode` under an ONLY variant filter | (per-carrier prose) |
 
@@ -13972,3 +13972,32 @@ A rule's code draws two refusals that look like one. `MVK_ERROR_CODE_MISSING` is
 So the sentence reads emptiness, not blankness, and it is the one refusal of a rule's slots that an `ONLY` filter does not take away; beside a broken error target on a deleted rule it still stands alone. That is what [KF420](#kf420)'s "an empty `errorCode` under an ONLY variant filter" row was: the sentence on its own, not a build failure.
 
 *Locked by:* `adapter.laws.CheckerDeclarationWithholdingAgreementTest`, A12 and the portable checker row by row, which publishes the sentence as `RK_ERROR_CODE_EMPTY` and keeps it through the variant filter's suppression.
+
+## §13 supplement — an element path's names draw four codeless sentences, and the group-path one is stated at EVERY element beneath a bad group (model check, 2026-10-21) <a id="kf580"></a>
+
+> Fold: not-foldable — declaration-admission laws beside [KF420](#kf420)'s codeless tier and [KF578](#kf578)'s alphabets.
+
+Beside `MVK_PATH_INVALID`, A12 judges the names a path is made of with alphabets of its own and answers each refusal with a sentence and no class:
+
+| sentence | judged value | attached to | refused when |
+|---|---|---|---|
+| *"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …"* | the group path the element lives in | every nested group (its own path), and every field, rule and computation (its parent's path) | a part over 60 characters, the root part outside `[a-zA-Z0-9_äöüÄÖÜß]+`, any other part outside `[a-zA-Z_][a-zA-Z0-9_äöüÄÖÜß]*` |
+| *"A root group name may only contain letters, numbers and underscores."* | the root group's name | the root group | outside `[a-zA-Z0-9_äöüÄÖÜß]+` |
+| *"Only values with up to 60 characters are allowed."* | the root group's name | the root group | over 60 characters, and only when the alphabet sentence is not drawn |
+| *"A field name may only contain letters, digits or underscores. Field names must not begin with a digit."* | the field's name | the field | outside `[a-zA-Z0-9_:]+([.][a-zA-Z][a-zA-Z0-9_:]*)*`, which admits the leading digit the sentence forbids |
+
+The discriminating rows, each measured against a nested group `Part` holding two fields and a group `Bin` that holds a field, a rule and a computation:
+
+| `Part` renamed to | A12 states |
+|---|---|
+| `Codeé` | `MVK_PATH_INVALID` at `Part` alone; the group-path sentence at `Part`, at `Bin` and at each of the five elements beneath |
+| `Coäde` | nothing — the umlaut is a group character, though the same name on a field draws both the class and the field-name sentence |
+| `äCode` | the class and the sentence: a nested part must begin with an ASCII letter or `_`; the root part need not, so the root `äCode` and `0Code` draw no sentence anywhere |
+| `Code ` | the class at `Part`, and the sentence only at `Bin` and its elements: the judged value is Java-trimmed whole, so `/Order/Code ` passes for `Part` and its direct children |
+| `C` + 60 × `o` | the sentence at `Part` and everything beneath, and no class; a field or rule name of 61 characters is admitted |
+
+Three boundaries. A supplementary character in the judged value replaces every one of these sentences with the charset refusal ([KF551](#kf551)). A rule or field the default variant deletes states none. And A12's entity walk returns at a refused path without descending, so an element beneath one draws no path class of its own: a field `Codeé` beneath a group `Codeé` draws the field-name sentence and the group-path sentence, but no second `MVK_PATH_INVALID`, while the field-name `_A12_DV` gates (`MVK_NAME_STARTS_WITH_DIGIT_A12_DV`, `…_XML_A12_DV`, `MVK_NAME_INVALID_DOT_COLON_A12_DV`), which sit outside that walk, still speak there.
+
+**Measured but not explained:** a name carrying `/` splits its path off the declaration tree, and A12 then attaches the sentences to some elements beneath it and not others — a nested `Co/-de` draws the group-path sentence at itself and at `Bin`, not at the fields beside them; a root `-Co/de` draws the root sentence unattached to any element. The portable checker states none of the four sentences on such a path.
+
+*Locked by:* `adapter.laws.CheckerElementPathSentenceAgreementTest`, every class with the path it attaches to, A12 against the portable checker, which publishes the sentences as `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_MEMBER_ABOVE_60_CHARACTERS` and `RK_FIELD_NAME_ALPHABET`; and `adapter.laws.ElementPathStageLawsTest`, whose 540-model population now disagrees only on names carrying `/`.

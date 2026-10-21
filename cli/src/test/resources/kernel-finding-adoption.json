@@ -502,6 +502,30 @@
     "kf499": "d3bba50f2b298044e51397683c825b718d27958f326effd7e7ab98ac14497230"
   },
   "reviews": {
+    "kf580": {
+      "sha256": "15ab9a07279023bf24522f3cae73f48562089601e74fbcb7f4bad61401f68bd6",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": ["element path sentences"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["element path sentences"],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["element path sentences"]
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The typed builders refuse every name these sentences answer before a model exists, and the kits admit a model through the kernel.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The element-name family states the four sentences on the Java-trimmed value at every element of a refused group path, and states no path class beneath a refused path.", "evidence": {"element path sentences": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ElementNameAlphabetTest.kt#eachIllegalCharacterDrawsTheCodeItsCarrierGives", "witness": "A refused root group draws the root sentence and the group-path sentence at the field inside it; a refused field draws the field-name sentence."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import mints names through the typed builders.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared class by class with the path each attaches to, over root, nested and field carriers, trim, length, variant-deleted and supplementary rows.", "evidence": {"element path sentences": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerElementPathSentenceAgreementTest.kt#theCheckerStatesA12sPathSentencesAtEveryElement", "witness": "Every row agrees but those whose names carry a slash, and A12's own stream is pinned on the rows that separate the alphabets, the reach and the trim."}}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+      }
+    },
     "kf579": {
       "sha256": "6146d45f1a6e63ddba93d54df125da99cf83ad7ebb9fe44837db2f62375ac262",
       "task": "F-USE-BACKLOG",
@@ -11016,7 +11040,7 @@
       }
     },
     "kf420": {
-      "sha256": "de81bd651f44e3dbea924902e1306b832c38721676d277eee7344e55f7659cd5",
+      "sha256": "010a6e32c173074f0a6f176ecde5f439ffdb121bc19cba75dcb5405ee388d686",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],

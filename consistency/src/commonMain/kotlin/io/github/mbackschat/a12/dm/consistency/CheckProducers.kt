@@ -306,7 +306,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         listOfNotNull(base.fieldNameReservedSegmentFinding(at))
     },
     perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET, DeclarationStage.INDEPENDENT) { base, at ->
-        base.elementNameAlphabetFindings(at)
+        base.elementNameAlphabetFindings(at) + base.elementPathSentenceFindings(at)
     },
     // A12 reports an enumeration's invalid characters before its category alignment (KF551).
     CheckProducer.ModelWide(

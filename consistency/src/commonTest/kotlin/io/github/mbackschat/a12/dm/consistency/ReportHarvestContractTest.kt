@@ -180,6 +180,10 @@ class ReportHarvestContractTest {
         assertEquals(SOURCES.flatMap { (source, count) -> (1..count).map { "$source#$it" } }.toSet(),
             rows.map { it.getValue("id").jsonPrimitive.content }.toSet())
         assertEquals(setOf(
+            // The field `Gift-Note` also draws the field-name sentence A12 states beside its path class (KF580).
+            "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#15",
+            "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#16",
+            "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#17",
             "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1",
             "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2",
             "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1",

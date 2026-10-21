@@ -17,19 +17,18 @@ class ElementPathStageLawsTest {
 
     @Test
     fun pathNamesAndMessagesFollowTheirPredictedStages() {
-        val path = "MVK_PATH_INVALID,$UNKEYED_A12_CLASS"
         val dot = "MVK_NAME_INVALID_DOT_COLON_A12_DV"
         val names = listOf(
             Name("Code"),
-            *listOf("Codeé", "éCode", "Code中", "中Code", "Code١", "١Code").map { Name(it, path) }.toTypedArray(),
-            Name("Codeä", field = path), Name("Codeß", field = path),
-            Name("äCode", nested = path), Name("ßCode", nested = path),
-            Name("1Code", "MVK_NAME_STARTS_WITH_DIGIT", path, "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
+            *listOf("Codeé", "éCode", "Code中", "中Code", "Code١", "١Code").map(::refused).toTypedArray(),
+            Name("Codeä", field = FIELD_PATH), Name("Codeß", field = FIELD_PATH),
+            Name("äCode", nested = NESTED_PATH, field = FIELD_PATH), Name("ßCode", nested = NESTED_PATH, field = FIELD_PATH),
+            Name("1Code", "MVK_NAME_STARTS_WITH_DIGIT", NESTED_PATH, "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
             Name("_Code", nested = "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN", field = ""),
             Name("xmlCode", "MVK_NAME_STARTS_WITH_XML", field = "MVK_NAME_STARTS_WITH_XML_A12_DV"),
-            *listOf("Co.de", "Co:de", ":Code").map { Name(it, path, field = dot) }.toTypedArray(),
-            *listOf("Co.1de", "Co._de", "Co..de", "Co.").map { Name(it, path) }.toTypedArray(),
-            Name("Co/de", "MVK_PATHS_INCONSISTENT"), Name("Co-de", path),
+            *listOf("Co.de", "Co:de", ":Code").map { Name(it, ROOT_PATH, NESTED_PATH, dot) }.toTypedArray(),
+            *listOf("Co.1de", "Co._de", "Co..de", "Co.").map(::refused).toTypedArray(),
+            Name("Co/de", "MVK_PATHS_INCONSISTENT"), refused("Co-de"),
             Name("Id", "MVK_ROOT_GROUP_NAME_INVALID", nested = ""),
         )
         assertEquals(24, names.size)
@@ -38,14 +37,18 @@ class ElementPathStageLawsTest {
 
     @Test
     fun mixedNamesFollowThePredictedPathGate() {
-        val path = "MVK_PATH_INVALID,$UNKEYED_A12_CLASS"
         val names = listOf(
-            Name("1Co.de", path, field = "MVK_PATH_INVALID,MVK_NAME_INVALID_DOT_COLON_A12_DV,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
-            Name("1Codeé", path), Name("xmlCodeé", path), Name("_Codeé", path),
-            Name("Co/-de", "MVK_PATH_INVALID", nested = path), Name("-Co/de", path),
+            Name("1Co.de", ROOT_PATH, NESTED_PATH, "MVK_PATH_INVALID,MVK_NAME_INVALID_DOT_COLON_A12_DV,MVK_NAME_STARTS_WITH_DIGIT_A12_DV"),
+            refused("1Codeé"), refused("xmlCodeé"), refused("_Codeé"),
+            // A name carrying `/` is left to A12 by the checker's sentences (KF580), so these rows keep disagreeing.
+            Name("Co/-de", "MVK_PATH_INVALID", NESTED_PATH, FIELD_PATH),
+            Name("-Co/de", "MVK_PATH_INVALID,RK_ROOT_GROUP_NAME_ALPHABET", NESTED_PATH, "MVK_PATH_INVALID,RK_GROUP_PATH_INVALID"),
         )
         assertPopulation(names, 108, "element-paths-mixed")
     }
+
+    /** A name every carrier refuses, each beside the sentence its own alphabet states (KF580). */
+    private fun refused(text: String) = Name(text, ROOT_PATH, NESTED_PATH, FIELD_PATH)
 
     private fun assertPopulation(names: List<Name>, expectedCount: Int, ledgerName: String) {
         val path = "MVK_PATH_INVALID"
@@ -105,4 +108,10 @@ class ElementPathStageLawsTest {
     }
 
     private fun column(codes: Set<String>) = codes.sorted().joinToString(",").ifEmpty { "(none)" }
+
+    private companion object {
+        const val ROOT_PATH = "MVK_PATH_INVALID,RK_ROOT_GROUP_NAME_ALPHABET,RK_GROUP_PATH_INVALID"
+        const val NESTED_PATH = "MVK_PATH_INVALID,RK_GROUP_PATH_INVALID"
+        const val FIELD_PATH = "MVK_PATH_INVALID,RK_FIELD_NAME_ALPHABET"
+    }
 }

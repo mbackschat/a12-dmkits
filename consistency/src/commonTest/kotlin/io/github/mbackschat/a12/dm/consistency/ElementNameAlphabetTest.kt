@@ -110,9 +110,10 @@ class ElementNameAlphabetTest {
         expected["a NESTED group named __attachment_meta_photo"] = emptyList()
         expected["a NESTED group named __other"] = underscore
         expected["a ROOT group named __other"] = emptyList()
-        // KF315 and the R4 carrier population admit the German letter on groups, but refuse it on fields.
+        // KF315 and the R4 carrier population admit the German letter on groups, but refuse it on fields, where the
+        // field-name sentence stands beside the class (KF580).
         expected["a GROUP with a non-ASCII letter"] = emptyList()
-        expected["a FIELD with a non-ASCII letter"] = pathInvalid
+        expected["a FIELD with a non-ASCII letter"] = pathInvalid + "RK_FIELD_NAME_ALPHABET"
         assertEquals(expected, actual, "the two carriers' own name laws")
     }
 
@@ -135,12 +136,15 @@ class ElementNameAlphabetTest {
         actual["a FIELD beginning with a digit"] = codes("Catalog", "1Price")
 
         val expected = mutableMapOf<String, List<String>>()
+        // Beside each path class stands the carrier's own sentence (KF580): the root group's alphabet at the group, the
+        // group-path one at the field inside it, the field-name one at a field.
+        val refusedRoot = pathInvalid + "RK_ROOT_GROUP_NAME_ALPHABET" + "RK_GROUP_PATH_INVALID"
         for (character in listOf('-', ' ', '%', '@', '*')) {
-            expected["a GROUP with `$character`"] = pathInvalid
-            expected["a FIELD with `$character`"] = pathInvalid
+            expected["a GROUP with `$character`"] = refusedRoot
+            expected["a FIELD with `$character`"] = pathInvalid + "RK_FIELD_NAME_ALPHABET"
         }
         for (character in listOf('.', ':')) {
-            expected["a GROUP with `$character`"] = pathInvalid
+            expected["a GROUP with `$character`"] = refusedRoot
             expected["a FIELD with `$character`"] = listOf("MVK_NAME_INVALID_DOT_COLON_A12_DV")
         }
         // Not a bad name at all: the element's own path stops agreeing with the tree it is declared in.
@@ -149,7 +153,7 @@ class ElementNameAlphabetTest {
         // The digit row parts on depth rather than on kind: the root group answers with its own class and
         // no path one, a group below it with the path class and no name one.
         expected["a ROOT group beginning with a digit"] = listOf("MVK_NAME_STARTS_WITH_DIGIT")
-        expected["a NESTED group beginning with a digit"] = pathInvalid
+        expected["a NESTED group beginning with a digit"] = pathInvalid + "RK_GROUP_PATH_INVALID" + "RK_GROUP_PATH_INVALID"
         // A12 reports BOTH classes for this shape on the field carrier, so both are stated.
         expected["a FIELD beginning with a digit"] = pathInvalid + "MVK_NAME_STARTS_WITH_DIGIT_A12_DV"
         assertEquals(expected, actual, "which code each illegal character draws on each carrier")
@@ -297,7 +301,7 @@ class ElementNameAlphabetTest {
                      ]}}}
                     """.trimIndent(),
                 ),
-            ).findings.single()
+            ).findings.first { it.code.startsWith("MVK_") }
             assertEquals(if (character == '/') "MVK_PATHS_INCONSISTENT" else "MVK_PATH_INVALID", finding.code)
             val offset = if (group == "Catalog") 3 else 4
             assertEquals(true, finding.explain.contains("`$character` at offset $offset"), finding.explain)

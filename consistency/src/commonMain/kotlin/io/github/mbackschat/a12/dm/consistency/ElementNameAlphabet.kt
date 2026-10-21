@@ -6,12 +6,17 @@ internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclara
     if (kind != DeclaredKind.GROUP && kind != DeclaredKind.FIELD || element.name.isEmpty()) return emptyList()
     if (kind == DeclaredKind.FIELD && element.body.deletesAtDefaultVariant()) return emptyList()
     val root = element.path == "/${element.name}"
+    // A12's entity walk stops at a refused path and never descends (KERNEL-FINDINGS KF580), so nothing beneath one
+    // states a path or group class of its own; the field-name gates are not part of that walk and still speak.
+    val belowRefusedPath = !root && element.path.removeSuffix("/${element.name}").removePrefix("/")
+        .invalidElementPathOffset(root = true, field = false) != null
+    if (belowRefusedPath && kind == DeclaredKind.GROUP) return emptyList()
     val invalid = element.name.invalidElementPathOffset(root, kind == DeclaredKind.FIELD)
     val findings = mutableListOf<Finding>()
-    if (invalid != null) {
+    if (!belowRefusedPath && invalid != null) {
         findings += element.nameFinding("MVK_PATH_INVALID",
             "this name carries `${element.name[invalid]}` at offset $invalid, which this path position does not admit")
-    } else if ('/' in element.name) {
+    } else if (!belowRefusedPath && '/' in element.name) {
         return listOf(element.nameFinding("MVK_PATHS_INCONSISTENT",
             "this name carries the path separator `/` at offset ${element.name.indexOf('/')}, so its path disagrees with the declaration tree"))
     }

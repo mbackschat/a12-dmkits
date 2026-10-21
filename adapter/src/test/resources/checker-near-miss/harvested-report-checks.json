@@ -3366,7 +3366,13 @@
           ],
           "modelMiddle": "TotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Subtotal]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]}},\n{\"type\":\"Field\",\"id\":\"fbad\",\"name\":\"Gift-Note\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}",
           "modelSha256": "cfff02759fc0570c4390b93351d7c1d5b3d5f0b87fdaa75d0045be51a83a0cd7",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "expected": [
+              "MVK_PATH_INVALID",
+              "RK_FIELD_NAME_ALPHABET"
+            ]
+          }
         },
         {
           "id": "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#16",
@@ -3377,7 +3383,13 @@
           ],
           "modelMiddle": "TotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Discount]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]}},\n{\"type\":\"Computation\",\"id\":\"cDiscountCalc\",\"name\":\"DiscountCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Discount\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Total]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]}},\n{\"type\":\"Field\",\"id\":\"fbad\",\"name\":\"Gift-Note\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}",
           "modelSha256": "9b1873e87f8cfebb3adb0fb8acf4bdb7514e0b8191ab3f0384106aa3ca45ffe9",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "expected": [
+              "MVK_PATH_INVALID",
+              "RK_FIELD_NAME_ALPHABET"
+            ]
+          }
         },
         {
           "id": "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#17",
@@ -3389,7 +3401,14 @@
           ],
           "modelMiddle": "TotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"roundingMode\":\"RoundUp\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Subtotal]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]}},\n{\"type\":\"Field\",\"id\":\"fbad\",\"name\":\"Gift-Note\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}",
           "modelSha256": "da079f1ea111a5e7adf1b531986d3d3a3b51717153b0b3aeb7c7e8f8510dc460",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK",
+          "replacement": {
+            "expected": [
+              "MVK_ERROR_WRONG_ROUNDING_MODE",
+              "MVK_PATH_INVALID",
+              "RK_FIELD_NAME_ALPHABET"
+            ]
+          }
         }
       ]
     },
