@@ -73,6 +73,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "The condition (or computation) reads the VALUE of a field that declares noValueValidation (a raw-type string) — the kernel forbids every value use of such a field: comparisons, value lists, computations, even \$field.value\$ in a message. Test PRESENCE instead (FieldFilled / FieldNotFilled and the quantifiers work normally), or drop noValueValidation from the field (`field modify`) if its value must participate.",
         meaning = "MVK_INVALID_RAW_TYPE (\"It is not allowed to use a field which defines 'no value validation'\"): a noValueValidation field's value is never interned for evaluation — the kernel caches a pseudo value — so no rule or computation can read it. The only value-shaped construct it permits is the whole-condition `Length(f) > <constant>`, and that is a disguised max-length declaration, not an evaluated rule.",
     ),
+    "MVK_INVALID_TIME_ZONE" to Corrective(
+        fix = "Set modelConfig.timeZone to a nonblank Java time-zone id. Exact UTC, GMT, and Europe/Berlin are accepted by both the kernel and the interpreter-backed evaluator; another known Java id such as America/New_York is kernel-valid but the interpreter will refuse it. Omit the slot to use the UTC default.",
+        meaning = "The kernel resolves modelConfig.timeZone through java.util.TimeZone and rejects an explicit null, blank, or unknown/typo id that silently collapses to GMT. Absence is different: only a missing slot selects the UTC default.",
+    ),
     "MVK_NOT_IN_SAME_PATH" to Corrective(
         fix = "Keep every RepetitionNotUnique key on one repetition path. Do not mix fields from sibling or parallel repeatable groups in one key; choose one path, or enforce the independent uniqueness constraints with separate rules.",
         meaning = "A composite uniqueness key needs one shared repetition lineage so the kernel can form one row tuple. Fields from parallel repeatable groups do not identify a single correlated row.",
