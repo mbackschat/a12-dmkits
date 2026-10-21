@@ -301,8 +301,11 @@ public final class ModelReader {
             if (!"typeDefinitions".equals(ref.path(DmKeys.PURPOSE).asText())) {
                 continue;
             }
-            String reference = ref.path(DmKeys.REFERENCE).asText();
-            if (reference.isEmpty() || visiting.contains(reference)) {
+            // A12 resolves a textual typedef reference even when it is empty or blank and refuses the model when
+            // nothing answers it (KF593), so only an absent or non-text reference, which was not measured, is skipped.
+            JsonNode referenceNode = ref.path(DmKeys.REFERENCE);
+            String reference = referenceNode.asText();
+            if (!referenceNode.isTextual() || visiting.contains(reference)) {
                 continue;
             }
             ObjectNode importedRoot = resolve(resolver, reference);
@@ -443,19 +446,25 @@ public final class ModelReader {
         return mountBody.path(directive).isBoolean() && mountBody.path(directive).booleanValue();
     }
 
-    /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences}.
-     *  A12 finds no included model when no entry carries the alias or the entry's {@code reference} is absent,
-     *  null or blank as {@code String.isBlank} reads it, and fails the expansion, so this refuses there too
-     *  rather than reading the alias as the reference. */
+    /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences}: the
+     *  LAST entry carrying the alias, whatever its purpose, is the one A12 keys it to (KF593). A12 finds no included
+     *  model when no entry carries the alias or that entry's {@code reference} is absent, null or blank as
+     *  {@code String.isBlank} reads it, and fails the expansion, so this refuses there too rather than reading the
+     *  alias as the reference. */
     private static String referenceForAlias(ObjectNode baseRoot, String alias) {
+        JsonNode keyed = null;
         for (JsonNode ref : baseRoot.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
             if (alias.equals(ref.path(DmKeys.ALIAS).asText())) {
-                JsonNode reference = ref.path(DmKeys.REFERENCE);
-                if (reference.isTextual() && !reference.asText().isBlank()) {
-                    return reference.asText();
-                }
-                break;
+                keyed = ref;
             }
+        }
+        if (keyed != null && "typeDefinitions".equals(keyed.path(DmKeys.PURPOSE).asText())) {
+            throw new UnresolvedReferenceException(alias, "the header.modelReferences entry for alias \"" + alias
+                    + "\" has purpose typeDefinitions, and A12 refuses to expand a mount through one");
+        }
+        JsonNode reference = keyed == null ? null : keyed.path(DmKeys.REFERENCE);
+        if (reference != null && reference.isTextual() && !reference.asText().isBlank()) {
+            return reference.asText();
         }
         throw new UnresolvedReferenceException(alias,
                 "no header.modelReferences entry for alias \"" + alias + "\" names a model, so A12 cannot find the included model");
@@ -822,17 +831,13 @@ public final class ModelReader {
     // ── helpers ───────────────────────────────────────────────────────────────────────────────────────────
 
     /**
-     * {@code content.modelInfo.baseYear}, stored as a STRING by A12's own writer, so it is parsed rather than
-     * read as a number; an unparseable or absent declaration is "none" rather than an error, because this is a
-     * read accessor over a model some other tool wrote.
+     * {@code content.modelInfo.baseYear} as A12's reader binds it ({@link A12IntBinding}): A12's own writer stores it
+     * as a string, {@code 2024.7} is 2024, and the text {@code null} is none. An unbindable or absent declaration is
+     * "none" rather than an error, because this is a read accessor over a model some other tool wrote.
      */
     private static Integer readBaseYear(ObjectNode root) {
-        String declared = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR).asText("");
-        try {
-            return declared.isEmpty() ? null : Integer.valueOf(declared.trim());
-        } catch (NumberFormatException notANumber) {
-            return null;
-        }
+        return A12IntBinding.of(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR))
+                instanceof A12IntBinding.Bound(int year) ? year : null;
     }
 
     private static List<String> readLocales(ObjectNode root) {

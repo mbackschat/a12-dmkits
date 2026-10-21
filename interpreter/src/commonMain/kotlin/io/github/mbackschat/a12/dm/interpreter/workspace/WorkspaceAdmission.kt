@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
-import io.github.mbackschat.a12.dm.interpreter.A12_JSON
+import io.github.mbackschat.a12.dm.interpreter.parseA12Json
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -280,13 +281,15 @@ internal object WorkspaceSourceAdmission {
         diagnostics: MutableList<ModelPreparationDiagnostic>,
     ): String? {
         val root = try {
-            A12_JSON.parseToJsonElement(source) as? JsonObject
+            parseA12Json(source) as? JsonObject
         } catch (_: SerializationException) {
             null
         }
         val header = root?.get("header") as? JsonObject
         val idNode = header?.get("id") as? JsonPrimitive
-        val id = idNode?.takeIf { it.isString }?.content
+        // A12 admits a number or a Boolean there as well (KF593), and this keys the source by that scalar's text; a
+        // null or absent id leaves the workspace nothing to key it by.
+        val id = idNode?.takeIf { it !is JsonNull }?.content
         if (root != null && containsUnpairedSurrogate(root)) {
             diagnostics += InvalidModelSourceDiagnostic(
                 label,

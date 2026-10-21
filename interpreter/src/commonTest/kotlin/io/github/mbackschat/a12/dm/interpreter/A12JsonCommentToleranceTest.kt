@@ -83,6 +83,29 @@ class A12JsonCommentToleranceTest {
         }
     }
 
+    /**
+     * kotlinx reads an unquoted token as a literal even in strict mode; A12's parser reads only `true`, `false`,
+     * `null` and RFC 8259 numbers (KERNEL-FINDINGS KF593, `JsonLiteralStrictnessDiffTest`). `-0` and `1E1` are the
+     * controls that each boundary still reads a number in that place.
+     */
+    @Test
+    fun anUnquotedTokenThatIsNoJsonLiteralIsRefusedAtEveryBoundary() {
+        val model = ModelLoader.load(ORDER_MODEL)
+        for (token in listOf("abc", "True", "NaN", "0x10", "01", "1.", ".5", "+1")) {
+            val failure = assertFailsWith<DocumentInputError>(token) { model.readDocumentJson("""{"Order":{"Qty":$token}}""") }
+            assertEquals(listOf(DocumentInputReasonCode.MALFORMED_JSON), failure.diagnostics.map { it.reasonCode }, token)
+            val source = ORDER_MODEL.replace(""""maxFractionalDigits":2}""", """"maxFractionalDigits":2,"maxValue":$token}""")
+            assertFailsWith<IllegalArgumentException>(token) { ModelLoader.load(source) }
+            assertFailsWith<ModelPreparationError>(token) { ModelWorkspace.fromSources(listOf(source(source))).prepare("orders") }
+        }
+        for (token in listOf("-0", "1E1")) {
+            model.readDocumentJson("""{"Order":{"Qty":$token}}""")
+            val source = ORDER_MODEL.replace(""""maxFractionalDigits":2}""", """"maxFractionalDigits":2,"maxValue":$token}""")
+            ModelLoader.load(source)
+            ModelWorkspace.fromSources(listOf(source(source))).prepare("orders")
+        }
+    }
+
     private fun source(json: String): WorkspaceModelSource =
         WorkspaceModelSource.builder().json(json).build()
 

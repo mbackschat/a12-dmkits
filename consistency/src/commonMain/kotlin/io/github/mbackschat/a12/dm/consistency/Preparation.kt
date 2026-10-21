@@ -169,12 +169,12 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     the whole EXPANDED tree — a mounted model's enum values answer to the host's restriction, measured
  *     2026-09-13 (`SupportedCharactersDeclarationGateLawsTest`) — which is why it is carried on the model
  *     rather than looked up per declaration.
- * @param hasBaseYear whether the ENTRY model's `content.modelInfo` declares a `baseYear` at all. A12's
- *     temporal gates read it as a presence (`modelSpecificSettings.getBaseYear().isPresent()`), and a
- *     declared base year SUPPLEMENTS the year component of every operand before they are compared — so
- *     reading it as absent where A12 reads it as present would refuse a model A12 admits. That is why the
- *     value is not parsed: any present member counts, and an unreadable one leaves this checker silent on a
- *     model A12 may refuse, which is the safe direction.
+ * @param hasBaseYear whether the ENTRY model's `content.modelInfo` holds a `baseYear` A12's reader binds to a
+ *     value. A12's temporal gates read it as a presence (`modelSpecificSettings.getBaseYear().isPresent()`), and
+ *     a declared base year SUPPLEMENTS the year component of every operand before they are compared. The empty
+ *     text and the text `null` bind no value ([JavaIntBinding], KF593), so A12 reads them as no base year at
+ *     all. A value the reader cannot bind leaves no model; it still counts as present here, which leaves this
+ *     checker silent on a model A12 refuses, the safe direction.
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -464,7 +464,8 @@ fun prepare(
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = content.declaredSupportedCharacters(),
-        hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.containsKey("baseYear") == true,
+        hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
+            ?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
@@ -701,7 +702,10 @@ private class Collector(
     private fun descendGroup(body: JsonObject?, path: String, scope: Scope) {
         val elements = body?.get("elements")
         val alias = (body?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
-        if (!alias.isNullOrEmpty() && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
+        if (alias != null && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
+            // A12 refuses an empty `modelAlias` on a mount ("cannot be found", KF593), so it is a mount A12 never
+            // expands rather than an ordinary empty group.
+            if (alias.isEmpty()) return unexpanded(path, alias, "the `modelAlias` is empty, so A12 cannot find the included model")
             return mount(alias, path, body, scope)
         }
         val inner = if (body?.text("usageType") == ATTACHMENT_USAGE) {
@@ -725,7 +729,14 @@ private class Collector(
             "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
                 "and nothing here is a verdict about it",
         )
-        val reference = scope.header.referenceForAlias(alias)
+        val entry = scope.header.entryForAlias(alias)
+        if (entry?.text("purpose") == TYPE_DEFINITIONS_PURPOSE) {
+            return unexpanded(path, alias, "the `header.modelReferences` entry for this alias has purpose " +
+                "`typeDefinitions`, and A12 refuses to expand a mount through one")
+        }
+        val reference = entry?.text("reference")
+            // StringUtils.isBlank, so a no-break-space reference names a model (measured: WorkspaceBlankTextDiffTest).
+            ?.takeUnless { it.isA12Blank() }
             ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias with a non-blank " +
                 "`reference`, so A12 cannot find the included model")
         if (reference in scope.visiting) {
@@ -947,12 +958,12 @@ private fun unmountableRoot(root: JsonObject, reference: String): String? = when
 private fun JsonObject?.singleRootRepeatabilityRefusal(): String? {
     val declared = this?.get("repeatability") ?: return null
     val primitive = declared as? JsonPrimitive ?: return UNREADABLE_REPEATABILITY
-    // An explicit JSON null reads as absence, which A12 admits and defaults to one.
-    if (primitive.contentOrNull == null) return null
-    // The group reader's own binding: past `Int`, A12 holds no count at all.
-    val rows = primitive.boundRepetitionCount()?.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }
-        ?: return UNREADABLE_REPEATABILITY
-    return if (rows > 1) REPEATABLE_ROOT else null
+    // The group reader's own binding (KF590, KF593); no value, a JSON or textual null included, is admitted.
+    return when (val binding = primitive.bindJavaInt()) {
+        is JavaIntBinding.Bound -> if (binding.value > 1) REPEATABLE_ROOT else null
+        JavaIntBinding.NoValue -> null
+        JavaIntBinding.Unbindable -> UNREADABLE_REPEATABILITY
+    }
 }
 
 private const val UNREADABLE_REPEATABILITY =
@@ -1030,17 +1041,17 @@ private fun JsonObject?.declaredLocales(): DeclaredLocales {
 }
 
 /**
- * The model reference an alias names. `modelAlias` is only a header lookup key — never a tree node — and the
+ * The model reference entry an alias names. `modelAlias` is only a header lookup key — never a tree node — and the
  * header it is looked up in is the one belonging to the model that WROTE the mount, which is what makes a
- * nested include resolve against its own provider's references rather than the entry model's (KF3).
+ * nested include resolve against its own provider's references rather than the entry model's (KF3). The LAST entry
+ * carrying the alias, whatever its purpose, is the one A12 keys it to (KF593).
  */
-private fun JsonObject?.referenceForAlias(alias: String): String? =
+private fun JsonObject?.entryForAlias(alias: String): JsonObject? =
     (this?.get("modelReferences") as? JsonArray)
         ?.filterIsInstance<JsonObject>()
-        ?.firstOrNull { it.text("alias") == alias }
-        ?.text("reference")
-        // StringUtils.isBlank, so a no-break-space reference names a model (measured: WorkspaceBlankTextDiffTest).
-        ?.takeUnless { it.isA12Blank() }
+        ?.lastOrNull { it.text("alias") == alias }
+
+private const val TYPE_DEFINITIONS_PURPOSE = "typeDefinitions"
 
 /**
  * Whether a mount flag is ON. Only the JSON BOOLEAN `true` counts: the Kernel reads every non-Boolean

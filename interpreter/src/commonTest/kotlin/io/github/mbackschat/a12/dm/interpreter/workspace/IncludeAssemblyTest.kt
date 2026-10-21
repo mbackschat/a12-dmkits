@@ -510,22 +510,41 @@ class IncludeAssemblyTest {
         }
     }
 
+    /**
+     * A12's SINGLE_RG matrix (KERNEL-FINDINGS KF3, `adapter.WorkspaceIncludeStructureKernelTest`): a value its reader
+     * cannot bind, or a bound count above one, refuses the mount; every other count mounts.
+     */
     @Test
-    fun rejectsEveryPresentSingleRootRepeatabilityOtherThanIntegerOne() {
+    fun refusesExactlyTheSingleRootRepeatabilitiesA12Refuses() {
         listOf(
-            JsonNull,
             JsonPrimitive(false),
             JsonPrimitive(true),
             JsonObject(emptyMap()),
             JsonArray(emptyList()),
-            JsonPrimitive("1"),
             JsonPrimitive("one"),
-            JsonPrimitive(1.5),
+            JsonPrimitive("1.5"),
+            JsonPrimitive("2"),
+            JsonPrimitive(2),
+            JsonPrimitive(2.1),
+        ).forEach { value ->
+            assertInvalidIncludeMount(singleMountWithRepeatability(value))
+        }
+        listOf(
+            JsonNull,
+            JsonPrimitive("1"),
+            JsonPrimitive(" 1 "),
+            JsonPrimitive("01"),
+            JsonPrimitive("0"),
+            JsonPrimitive("-1"),
+            JsonPrimitive(""),
+            JsonPrimitive(0.5),
+            JsonPrimitive(1.9),
+            JsonPrimitive(-1.5),
             JsonPrimitive(0),
             JsonPrimitive(-1),
-            JsonPrimitive(2),
         ).forEach { value ->
-            assertInvalidIncludeMount(invalidSingleMountWithRepeatability(value))
+            val (entryModelId, sources) = singleMountWithRepeatability(value)
+            WorkspaceIncludeAssembler.assemble(admit(sources), entryModelId)
         }
     }
 
@@ -784,7 +803,7 @@ class IncludeAssemblyTest {
         return entryModelId to sources
     }
 
-    private fun invalidSingleMountWithRepeatability(
+    private fun singleMountWithRepeatability(
         repeatability: JsonElement,
     ): Pair<String, Map<String, String>> {
         val caseId = "include-contributed-typedef"

@@ -1,9 +1,10 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
-import io.github.mbackschat.a12.dm.interpreter.A12_JSON
+import io.github.mbackschat.a12.dm.interpreter.parseA12Json
+import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
+import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
-import io.github.mbackschat.a12.dm.interpreter.asciiLongOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.configFlag
@@ -48,7 +49,7 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.requirePreparedGroupChi
  * (in `:cli`) is a thin JVM delegate over this.
  *
  * ## Approach — tree API, raw-text fidelity
- * The mapper reads via kotlinx-serialization-json's **tree API** (`A12_JSON.parseToJsonElement` — the shared
+ * The mapper reads via kotlinx-serialization-json's **tree API** (`parseA12Json` — the shared
  * A12-shape parse configuration, so a commented model source loads as it does in A12 — plus a hand-written
  * [JsonElement] → [ModelDef] walk) — no `@Serializable`, no compiler plugin (proposal §11 fork F1). A number's
  * **raw literal is read verbatim** ([JsonPrimitive.content], e.g. `100.50` stays `"100.50"`), never through a parser's
@@ -76,7 +77,7 @@ object ModelLoader {
     @JvmStatic
     fun load(dmJson: String): ModelDef {
         val root = try {
-            A12_JSON.parseToJsonElement(dmJson)
+            parseA12Json(dmJson)
         } catch (e: SerializationException) {
             throw IllegalArgumentException("not valid DM-JSON", e)
         }
@@ -449,8 +450,8 @@ object ModelLoader {
         val values = enumValuesOf(node)
         // A12 also admits a padded or blank S-value by its trim, Java's `String.trim` (KF569), and then stages the
         // text as written, filled and without a formal check (KF574), which the staging path does as it stands.
-        val trim = { text: String -> text.trim { it <= ' ' } }
-        if (sValue in values || trim(sValue).isEmpty() || values.any { trim(it) == trim(sValue) }) return
+        val trimmed = sValue.javaTrimmed()
+        if (sValue in values || trimmed.isEmpty() || values.any { it.javaTrimmed() == trimmed }) return
         throw IllegalArgumentException(
             "Field '$id': the enum S-value '$sValue' is not among the declared enumeration values $values " +
                 "(kernel MVK_S_VALUE_INVALID). An out-of-domain s-value makes the model kernel-inconsistent and " +
@@ -605,7 +606,7 @@ object ModelLoader {
         val type = fieldNode.path("Field").path("fieldType")
         if (type.path("type").asText() != "NumberType") return null
         val max = type.path("NumberType").path("maxFractionalDigits")
-        return if (max.isIntNode()) max.asInt(0) else 0
+        return max.intNodeOrNull() ?: 0
     }
 
     /** A `CustomFieldType` field's validator name and optional length-bound inputs; else null. */
@@ -615,8 +616,8 @@ object ModelLoader {
         if (!name.isTextual()) return null
         return CustomFieldTypeDeclaration(
             name.asText(),
-            type.path("minLength").takeIf { it.isIntNode() }?.asInt(0),
-            type.path("maxLength").takeIf { it.isIntNode() }?.asInt(0),
+            type.path("minLength").intNodeOrNull(),
+            type.path("maxLength").intNodeOrNull(),
         )
     }
 
@@ -636,7 +637,7 @@ object ModelLoader {
     /** An `int` property of a `<typeName>` field type, or null (Jackson `isInt()` — a plain integer literal). */
     private fun typedInt(fieldNode: JsonElement?, typeName: String, prop: String): Int? {
         val v = typed(fieldNode, typeName).path(prop)
-        return if (v.isIntNode()) v.asInt(0) else null
+        return v.intNodeOrNull()
     }
 
     /** A `boolean` property of a `<typeName>` field type, bound as A12's POJO reader binds it — `1` and `" TRUE"`
@@ -741,48 +742,36 @@ object ModelLoader {
     }
 
     /**
-     * A model member A12's reader binds to a Java `int` or `Integer` (KF590): text after Java's `trim`, through
-     * `Integer.parseInt`, so `"\u0663"` is 3; a JSON number truncated toward zero, so `3.7` is 3 and `1e1` is 10.
-     * Null for an absent member, a JSON null and blank text. A fraction or exponent in text, a value past `Int`, a
-     * no-break space or a boolean leaves A12 with no model, so this refuses it, naming [member].
+     * A model member A12's reader binds to a Java `int` or `Integer` ([JavaIntBinding]); null where it binds no value,
+     * and a refusal naming [member] where A12's reader leaves no model.
      */
-    private fun boundJavaInt(value: JsonElement?, member: String): Int? {
-        val p = value as? JsonPrimitive ?: return null
-        if (p is JsonNull) return null
-        val bound = when {
-            p.isString -> p.content.javaTrimmed().let { if (it.isEmpty()) return null else it.javaIntOrNull() }
-            p.content == "true" || p.content == "false" -> null
-            // A JSON number's lexeme is ASCII; an integral one is read exactly, any other truncated.
-            else -> (p.content.asciiLongOrNull() ?: p.content.toDouble().toLong())
-                .takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
-        }
-        return bound ?: throw invalidElement(member, "$member ${p.content} is not a whole number A12 can bind, so A12 does not load the model")
+    private fun boundJavaInt(value: JsonElement?, member: String): Int? = when (val binding = value.bindJavaInt()) {
+        is JavaIntBinding.Bound -> binding.value
+        JavaIntBinding.NoValue -> null
+        JavaIntBinding.Unbindable -> throw invalidElement(
+            member, "$member ${(value as? JsonPrimitive)?.content} is not a whole number A12 can bind, so A12 does not load the model")
     }
 
     /**
      * A NUMBER field's `minValue` or `maxValue` text, which A12's reader binds to a `BigDecimal` (KF591): after Java's
      * `trim` it must spell an ASCII decimal, so a no-break space, a non-ASCII digit or a word leaves A12 with no model
-     * and this refuses it. An unquoted number is a JSON lexeme and always reads.
+     * and this refuses it. The text `null` is the null value to that reader, so it declares no bound (KF593). An
+     * unquoted number is a lexeme the strict parse has already held to JSON's grammar.
      */
     private fun numberBoundText(fieldNode: JsonElement?, id: String, prop: String): String? {
         val text = numberTypeText(fieldNode, prop) ?: return null
         if (!typed(fieldNode, "NumberType").path(prop).isTextual()) return text
         val trimmed = text.javaTrimmed()
+        if (trimmed == "null") return null
         if (trimmed.isEmpty() || isA12DecimalText(trimmed)) return text
         throw invalidElement("$id: NumberType.$prop", "$id: NumberType.$prop '$text' is not a decimal A12 can bind, so A12 does not load the model")
     }
 
-    private fun JsonElement?.asInt(default: Int): Int {
-        val p = this as? JsonPrimitive ?: return default
-        if (p is JsonNull || p.isString) return default
-        return p.content.asciiIntOrNull() ?: default
-    }
-
-    /** Jackson `isInt()` — a plain integer literal that fits an `Int` (not a string, not a decimal/oversized). */
-    private fun JsonElement?.isIntNode(): Boolean {
-        val p = this as? JsonPrimitive ?: return false
-        if (p is JsonNull || p.isString) return false
-        return p.content.asciiIntOrNull() != null
+    /** Jackson `isInt()`'s value — a plain integer literal that fits an `Int`; null for a string, a decimal or an oversized one. */
+    private fun JsonElement?.intNodeOrNull(): Int? {
+        val p = this as? JsonPrimitive ?: return null
+        if (p is JsonNull || p.isString) return null
+        return p.content.asciiIntOrNull()
     }
 
     /** Jackson `isNumber()` — a numeric literal: an unquoted primitive that is neither null nor a boolean. */

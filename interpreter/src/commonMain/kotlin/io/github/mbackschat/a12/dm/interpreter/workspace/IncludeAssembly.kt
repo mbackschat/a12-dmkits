@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
-import io.github.mbackschat.a12.dm.interpreter.asciiIntOrNull
+import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
+import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
@@ -470,9 +471,11 @@ private class IncludeMounter(
             ?: throw invalidIncludeMount(
                 mountModelId,
                 mountPath,
-                "SINGLE_RG root repeatability must be an integer",
+                "SINGLE_RG root repeatability must be a whole number A12 can bind",
             )
-        if (repeatability != 1) {
+        // A12 refuses only a bound count above one: `0`, `-1`, `1.9`, `"01"`, `""` and null all mount
+        // (KERNEL-FINDINGS KF3, `adapter.WorkspaceIncludeStructureKernelTest`).
+        if (repeatability > 1) {
             throw invalidIncludeMount(
                 mountModelId,
                 mountPath,
@@ -828,9 +831,17 @@ private enum class IncludeExclusion {
     COMPUTATIONS,
 }
 
+/**
+ * The provider root's count, bound as A12's reader binds a group's (`" 1 "` and `"01"` are 1, no value is 0); null
+ * where the reader cannot bind it.
+ */
 private fun JsonObject.singleRootRepeatabilityOrNull(): Int? {
     val value = get("repeatability") ?: return 1
-    return (value as? JsonPrimitive)?.takeIf { !it.isString }?.content?.asciiIntOrNull()
+    return when (val binding = value.bindJavaInt()) {
+        is JavaIntBinding.Bound -> binding.value
+        JavaIntBinding.NoValue -> 0
+        JavaIntBinding.Unbindable -> null
+    }
 }
 
 private fun JsonObject.withoutIncludeDirectives(): JsonObject =

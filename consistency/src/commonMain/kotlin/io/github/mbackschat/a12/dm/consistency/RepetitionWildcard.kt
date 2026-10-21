@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /** KF356/R5-PE: the segment's resolution and suffix gates precede its wildcard gate. */
 internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = declarations().flatMap { element ->
@@ -51,5 +50,7 @@ internal val TrackedDeclaration.isRepeatableGroup: Boolean
 internal val TrackedDeclaration.isRepeatable: Boolean
     get() = isRepeatableIn(body)
 
+// The count A12's reader binds (KF590), so `3.7`, `"\u0663"` and `"\uFF13"` are repeatable; a value it cannot bind
+// leaves no model, and reads here as the default.
 private fun isRepeatableIn(body: JsonObject?): Boolean =
-    ((body?.get("repeatability") as? JsonPrimitive)?.intOrNull ?: 1) > 1
+    ((body?.get("repeatability") as? JsonPrimitive)?.boundRepetitionCount() ?: 1) > 1

@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.longOrNull
 
 /**
  * How many times a group may repeat, against the cap A12 puts on it.
@@ -71,11 +70,8 @@ private fun countSentence(group: TrackedDeclaration): Finding? {
     }
     val member = group.body?.get("repeatability") ?: return null
     // A literal null is held as no count at all, which the metamodel reads as not greater than 0.
-    val declared = if (member is JsonNull) 0L else (member as? JsonPrimitive)?.boundRepetitionCount() ?: return null
-    if (declared > READABLE_CEILING || declared < READABLE_FLOOR) {
-        return null
-    }
-    val violation = MemberRange.REPEATABILITY.violationOf(declared.toInt()) ?: return null
+    val declared = (member as? JsonPrimitive)?.boundRepetitionCount() ?: return null
+    val violation = MemberRange.REPEATABILITY.violationOf(declared) ?: return null
     return Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
@@ -93,7 +89,7 @@ internal fun JsonObject?.declaresNonPositiveCount(): Boolean {
         return true
     }
     val declared = (member as? JsonPrimitive)?.boundRepetitionCount() ?: return false
-    return declared in READABLE_FLOOR..0L
+    return declared <= 0
 }
 
 private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaration): Finding? {
@@ -109,22 +105,11 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
     if (member is JsonNull) {
         return group.invalidCount("null")
     }
-    val primitive = member as? JsonPrimitive ?: return null
+    // An object or an array binds no count either, and A12's reader refuses the model (RepeatabilityTextReadingDiffTest).
+    val primitive = member as? JsonPrimitive ?: return unreadableCount(group, member)
     val declared = primitive.boundRepetitionCount() ?: return unreadableCount(group, primitive)
     return when {
-        // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
-        // they share one message rather than stating it twice.
-        declared > READABLE_CEILING || declared < READABLE_FLOOR -> Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            CK_MODEL_NOT_BUILDABLE,
-            "`${group.path}` declares a `repeatability` of $declared, which A12's reader cannot hold " +
-                "in the signed 32-bit member it declares — the source is refused before any check runs, " +
-                "so no verdict about this model exists",
-            group.path,
-        )
-
-        declared <= 0 -> group.invalidCount(declared.toString())
+        declared <= 0 -> group.invalidCount(if (primitive.isString) "\"${primitive.content}\"" else declared.toString())
 
         declared > cap -> Finding(
             FindingCategory.A12_CONSTRAINT,
@@ -140,21 +125,22 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
 }
 
 /**
- * The count Jackson binds a stored `repeatability` to ([KF590]): text after Java's `trim` through `Long.parseLong`,
- * so `" 3 "` and `"\u0663"` are 3, the empty text 0, and a no-break space, a fraction or an exponent no number; a
- * JSON number truncated toward zero, so `3.7` is 3 and `1e1` is 10. Null where A12's reader binds nothing, a boolean
- * included (`RepeatabilityTextReadingDiffTest`). A count past `Int` is returned as read, for the caller to refuse.
+ * The count A12's reader holds for a stored `repeatability` ([JavaIntBinding], KF590, KF593): `" 3 "` and
+ * `"\u0663"` are 3; the empty text, the text `null` and a JSON null bind no value, which the `int` member holds as 0;
+ * `3.7` is 3 and `1e1` is 10. Null where the reader binds nothing and so leaves no model: a no-break space, a fraction
+ * or an exponent in text, a count past `Int`, and a Boolean (`RepeatabilityTextReadingDiffTest`).
  */
-internal fun JsonPrimitive.boundRepetitionCount(): Long? = when {
-    isString -> content.javaTrimmed().let { if (it.isEmpty()) 0L else it.javaLongOrNull() }
-    else -> longOrNull ?: doubleOrNull?.toLong()
+internal fun JsonPrimitive.boundRepetitionCount(): Int? = when (val binding = bindJavaInt()) {
+    is JavaIntBinding.Bound -> binding.value
+    JavaIntBinding.NoValue -> 0
+    JavaIntBinding.Unbindable -> null
 }
 
-private fun unreadableCount(group: TrackedDeclaration, member: JsonPrimitive) = Finding(
+private fun unreadableCount(group: TrackedDeclaration, member: JsonElement) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
-    "`${group.path}` declares the `repeatability` \"${member.content}\", which A12's reader cannot bind as a " +
+    "`${group.path}` declares the `repeatability` $member, which A12's reader cannot bind as a " +
         "whole number — the source is refused before any check runs, so no verdict about this model exists",
     group.path,
 )
@@ -174,9 +160,3 @@ private const val ROOT_GROUP_CAP = 999999999L
 
 /** …and a nested group's, measured on the same walk: an order of magnitude higher. */
 private const val NESTED_GROUP_CAP = 1999999999L
-
-/** Above this the member does not fit A12's `Group.repeatability`, and the source is never read. */
-private const val READABLE_CEILING = 2147483647L
-
-/** …and below this, symmetrically: the signed 32-bit floor, past which the reader refuses the source. */
-private const val READABLE_FLOOR = -2147483648L

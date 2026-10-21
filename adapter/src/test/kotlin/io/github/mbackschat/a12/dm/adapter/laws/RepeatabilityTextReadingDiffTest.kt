@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.util.RawValue
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -13,14 +14,15 @@ import org.junit.jupiter.api.Test
  * How A12's reader binds a group's `repeatability`, and that the portable checker and the interpreter bind it alike
  * (KERNEL-FINDINGS KF590). Text is Java-trimmed and read by `Integer.parseInt`, so a non-ASCII digit counts and the
  * empty text is 0; a JSON number is truncated toward zero; a fraction or exponent in text, a count past `Int`, a
- * no-break space and a boolean leave no model. Each built model then holds four rows, so a count of 3 draws the
+ * no-break space and a boolean leave no model, and so do a JSON number whose exact value lies past `Int` and an
+ * object or an array; the text `null` binds no value, held as 0 (KF593). Each built model then holds four rows, so a count of 3 draws the
  * over-repetition pair and 10 does not, which shows the count itself and not only that one was read.
  *
  * Own domain (a claims register).
  */
 class RepeatabilityTextReadingDiffTest {
 
-    private enum class A12 { BUILT, MAX_VALUES_INVALID, NOT_BUILT }
+    private enum class A12 { BUILT, MAX_VALUES_INVALID, MAX_TOO_BIG, NOT_BUILT }
 
     private val values = linkedMapOf<String, Pair<Any, A12>>(
         "3, the control" to (3 to A12.BUILT), "\"3\"" to ("3" to A12.BUILT), "\" 3 \"" to (" 3 " to A12.BUILT),
@@ -34,6 +36,16 @@ class RepeatabilityTextReadingDiffTest {
         "2147483648" to (2147483648L to A12.NOT_BUILT), "\"99999999999\"" to ("99999999999" to A12.NOT_BUILT),
         "4294967298" to (4294967298L to A12.NOT_BUILT), "3e10" to (3e10 to A12.NOT_BUILT),
         "true" to (true to A12.NOT_BUILT),
+        // The text `null`, in that case only, is the null value, which the `int` member holds as 0 (KF593).
+        "\"null\"" to ("null" to A12.MAX_VALUES_INVALID), "\" null \"" to (" null " to A12.MAX_VALUES_INVALID),
+        "\"NULL\"" to ("NULL" to A12.NOT_BUILT),
+        // A JSON number binds only when its exact value fits `Int`, before it is truncated.
+        "1.0E9" to (1.0E9 to A12.BUILT), "2147483647.0" to (2147483647.0 to A12.MAX_TOO_BIG),
+        "2147483647.5" to (2147483647.5 to A12.NOT_BUILT), "-2147483648.5" to (-2147483648.5 to A12.NOT_BUILT),
+        "2147483648.0" to (2147483648.0 to A12.NOT_BUILT), "-2147483649.0" to (-2147483649.0 to A12.NOT_BUILT),
+        // A12 leaves no model for a scale past `Int`, even where the value would truncate to 0.
+        "1e-2147483649" to (RawValue("1e-2147483649") to A12.NOT_BUILT),
+        "{}" to (emptyMap<String, Any>() to A12.NOT_BUILT), "[]" to (emptyList<Any>() to A12.NOT_BUILT),
     )
 
     private fun model(value: Any): String {
@@ -42,7 +54,8 @@ class RepeatabilityTextReadingDiffTest {
             .build().toJson()) as ObjectNode
         val claims = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group").path("elements")
             .first { it.path("name").asText() == "Claims" }.path("Group") as ObjectNode
-        claims.set<ObjectNode>("repeatability", MAPPER.valueToTree(value))
+        // A lexeme Java's own BigDecimal cannot construct is written as raw JSON text.
+        if (value is RawValue) claims.putRawValue("repeatability", value) else claims.set<ObjectNode>("repeatability", MAPPER.valueToTree(value))
         return root.toString()
     }
 
@@ -53,6 +66,7 @@ class RepeatabilityTextReadingDiffTest {
         return when (codes) {
             emptySet<String>() -> A12.BUILT
             setOf("MVK_MAX_VALUES_INVALID") -> A12.MAX_VALUES_INVALID
+            setOf("MVK_MAX_TOO_BIG") -> A12.MAX_TOO_BIG
             else -> error("unexpected A12 classes $codes")
         }
     }
@@ -63,6 +77,7 @@ class RepeatabilityTextReadingDiffTest {
         return when (codes) {
             emptySet<String>() -> A12.BUILT
             setOf("MVK_MAX_VALUES_INVALID") -> A12.MAX_VALUES_INVALID
+            setOf("MVK_MAX_TOO_BIG") -> A12.MAX_TOO_BIG
             setOf("CK_MODEL_NOT_BUILDABLE") -> A12.NOT_BUILT
             else -> error("unexpected checker classes $codes")
         }
@@ -87,7 +102,7 @@ class RepeatabilityTextReadingDiffTest {
             val json = model(row.first)
             DocumentDifferential.assertAgree(json, mapOf("four claims under $label" to fourRows))
             val overRepetition = DocumentDifferential.kernel(json, fourRows, dynamic = true).messages.isNotEmpty()
-            assertEquals(label != "1e1", overRepetition, "$label: four rows exceed a count of 3 and fit 10")
+            assertEquals(label !in setOf("1e1", "1.0E9"), overRepetition, "$label: four rows exceed a count of 3 and fit 10")
         }
     }
 

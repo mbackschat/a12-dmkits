@@ -1,7 +1,13 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * The one `Json` every parse of an **A12-defined shape** goes through — DM-JSON model sources and canonical
@@ -32,3 +38,31 @@ import kotlinx.serialization.json.Json
  */
 @OptIn(ExperimentalSerializationApi::class)
 internal val A12_JSON: Json = Json { allowComments = true }
+
+/**
+ * Parse [text] with A12's ingress strictness. kotlinx reads any unquoted token as a literal, even in strict mode, so
+ * `abc`, `True`, `NaN`, `01`, `1.`, `.5` and `+1` arrive as primitives, where A12's Jackson parser leaves no model
+ * and no document for each of them (KERNEL-FINDINGS KF593). This refuses a literal that is not `true`, `false`,
+ * `null` or an RFC 8259 number, with the [SerializationException] every caller already treats as unparseable.
+ */
+internal fun parseA12Json(text: String): JsonElement = A12_JSON.parseToJsonElement(text).also(::requireJsonLiterals)
+
+private fun requireJsonLiterals(root: JsonElement) {
+    val pending = ArrayList<JsonElement>()
+    pending += root
+    while (pending.isNotEmpty()) {
+        when (val element = pending.removeAt(pending.lastIndex)) {
+            is JsonObject -> pending.addAll(element.values)
+            is JsonArray -> pending.addAll(element)
+            is JsonNull -> Unit
+            is JsonPrimitive -> if (!element.isString && !element.content.isJsonLiteral()) {
+                throw SerializationException("'${element.content}' is not a JSON literal")
+            }
+        }
+    }
+}
+
+private fun String.isJsonLiteral(): Boolean = this == "true" || this == "false" || JSON_NUMBER.matches(this)
+
+private val JSON_NUMBER = Regex("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
+

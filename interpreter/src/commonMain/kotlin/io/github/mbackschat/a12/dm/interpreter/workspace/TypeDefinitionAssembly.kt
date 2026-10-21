@@ -474,17 +474,24 @@ internal fun JsonObject.objectMember(key: String): JsonObject? = get(key) as? Js
 internal fun JsonObject.arrayMember(key: String): JsonArray? = get(key) as? JsonArray
 
 /**
- * The model the include mount at [path] names through [alias]: the `reference` of this model's include entry for
- * that alias. A12 finds no included model when the entry is missing or its reference is absent, null or blank as
- * Java's `Character.isWhitespace` reads it, and refuses the expansion ("cannot be found"), so this refuses too
- * rather than reading the alias as the reference; a no-break-space reference is text and resolves exactly.
+ * The model the include mount at [path] names through [alias]: the `reference` of the LAST `header.modelReferences`
+ * entry carrying that alias, whatever its `purpose`, which is the entry A12 keys the alias to (KF593). A12 finds no
+ * included model when no entry carries the alias or its reference is absent, null or blank as Java's
+ * `Character.isWhitespace` reads it, and refuses the expansion ("cannot be found"), so this refuses too rather than
+ * reading the alias as the reference; a no-break-space reference is text and resolves exactly (KF592).
  */
 internal fun JsonObject.includeReference(modelId: String, path: String, alias: String): String {
     val entry = objectMember("header")?.arrayMember("modelReferences")
         ?.filterIsInstance<JsonObject>()
-        ?.firstOrNull {
-            it.strictString("purpose") == ModelReferencePurpose.INCLUDE.wireName && it.strictString("alias") == alias
-        }
+        ?.lastOrNull { it.strictString("alias") == alias }
+    if (entry?.strictString("purpose") == ModelReferencePurpose.TYPE_DEFINITIONS.wireName) {
+        throw invalidIncludeMount(
+            modelId,
+            path,
+            "the header.modelReferences entry for alias '$alias' has purpose typeDefinitions, and A12 refuses to " +
+                "expand a mount through one; declare it with purpose include",
+        )
+    }
     return entry?.strictString("reference")?.takeUnless { it.isJavaBlank() }
         ?: throw invalidIncludeMount(
             modelId,

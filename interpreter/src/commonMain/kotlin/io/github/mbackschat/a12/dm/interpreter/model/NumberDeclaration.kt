@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.asciiLongOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.A12DocumentJson
 import io.github.mbackschat.a12.dm.interpreter.dec
@@ -54,8 +55,19 @@ internal fun printedNumberBound(authored: String?, declaredMinimum: Int?, declar
 
 /**
  * Whether Java-trimmed [text] is a decimal A12's reader binds to a `BigDecimal`: Jackson's
- * `NumberInput.looksLikeValidNumber` gate, ASCII digits only, so `"\u0665"` and `"abc"` are not (KF591).
+ * `NumberInput.looksLikeValidNumber` gate, ASCII digits only, so `"\u0665"` and `"abc"` are not (KF591). The
+ * conversion behind it refuses text longer than [MAX_A12_NUMBER_TEXT] and a scale past `Int` too, so a 1001-digit
+ * bound and `1e9999999999` leave no model while `1e2147483648` converts (KF593).
  */
-internal fun isA12DecimalText(text: String): Boolean = A12_DECIMAL_TEXT.matches(text)
+internal fun isA12DecimalText(text: String): Boolean {
+    if (text.length > MAX_A12_NUMBER_TEXT || !A12_DECIMAL_TEXT.matches(text)) return false
+    val mantissa = text.substringBefore('e').substringBefore('E')
+    val exponentText = text.substring(mantissa.length).drop(1)
+    val exponent = if (exponentText.isEmpty()) 0L else exponentText.asciiLongOrNull() ?: return false
+    return mantissa.substringAfter('.', "").length - exponent in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()
+}
+
+/** Jackson's default `StreamReadConstraints.maxNumberLength`, measured on a bound's text (KF593). */
+private const val MAX_A12_NUMBER_TEXT = 1000
 
 private val A12_DECIMAL_TEXT = Regex("[+-]?[0-9]*\\.?[0-9]+(?:[eE][+-]?[0-9]+)?|[+-]?[0-9]+\\.")

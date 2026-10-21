@@ -96,6 +96,20 @@ class AdmissionPhaseTest {
         assertTrue(admit(ModelSource("""{"header":{"id":"order"},}""")) is Admission.Rejected)
     }
 
+    /**
+     * kotlinx reads an unquoted token as a literal even in strict mode; A12's parser reads only `true`, `false`,
+     * `null` and RFC 8259 numbers, so each of these leaves no model (KERNEL-FINDINGS KF593,
+     * `JsonLiteralStrictnessDiffTest`). `-0` and `1E1` are the controls.
+     */
+    @Test
+    fun anUnquotedTokenThatIsNoJsonLiteralIsNotWellFormed() {
+        for (token in listOf("abc", "True", "NaN", "0x10", "01", "1.", ".5", "+1")) {
+            val rejected = assertIs<Admission.Rejected>(admit(ModelSource("""{"header":{"id":"order","n":$token},"content":{}}""")), token)
+            assertEquals(DiagnosticCode.SOURCE_NOT_WELL_FORMED, rejected.diagnostic.code, token)
+        }
+        for (token in listOf("-0", "1E1")) assertIs<Admission.Admitted>(admit(ModelSource("""{"header":{"id":"order","n":$token},"content":{}}""")))
+    }
+
     /** The authored text survives admission — a later check cannot recover what admission normalized away. */
     @Test
     fun wellFormedSourceIsAdmittedWithItsAuthoredTextRetained() {

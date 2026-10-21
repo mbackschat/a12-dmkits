@@ -14241,9 +14241,9 @@ A12 derives each element's repetition layers from every ancestor (`NoMetaModelCh
 
 A stored count written as text is read after Java's `trim`: `" 3 "` is admitted and `" 0 "` is the class, while a no-break or em space, or `"three"`, leaves no number and the model is not built (`CheckerUnicodeBlankAgreementTest`).
 
-*Extended 2026-10-21 — the binding behind the text reading.* The member is a Java `int`, and the reader reads text with `Integer.parseInt`, so a decimal digit of any script counts: `"\u0663"` and the fullwidth `"\uFF13"` are 3, as are `"+3"` and `"03"`. A fraction, an exponent or a radix prefix in the text (`"3.7"`, `"1e1"`, `"0x3"`) or a count past `Int` (`"99999999999"`) leaves no model, and the empty text reads 0 and draws the class. A JSON number is truncated toward zero instead: `3.7` reads 3, `1e1` reads 10 and `-3.7` reads −3, the class. A number past `Int` (`2147483648`, `4294967298`, `3e10`) or a JSON boolean leaves no model. Four rows draw the over-repetition pair under a count of 3 and not under `1e1`, which shows that the count itself was read, not only that a count existed.
+*Extended 2026-10-21 — the binding behind the text reading.* The member is a Java `int`, and the reader reads text with `Integer.parseInt`, so a decimal digit of any script counts: `"\u0663"` and the fullwidth `"\uFF13"` are 3, as are `"+3"` and `"03"`. A fraction, an exponent or a radix prefix in the text (`"3.7"`, `"1e1"`, `"0x3"`) or a count past `Int` (`"99999999999"`) leaves no model, and the empty text reads 0 and draws the class. A JSON number is truncated toward zero instead: `3.7` reads 3 and `1e1` reads 10, while `-3.7` draws the class. A number past `Int` (`2147483648`, `4294967298`, `3e10`) or a JSON boolean leaves no model. *Corrected 2026-10-21:* this said `-3.7` "reads −3"; the class shows only that the count is below 1. Four rows draw the over-repetition pair under a count of 3 and not under `1e1`, which shows that the count itself was read, not only that a count existed.
 
-*Locked by:* `adapter.laws.CheckerRepeatabilityCascadeAgreementTest`, A12 against the portable checker with every attachment path; `consistency.GroupRepetitionCountTest` replays it. `adapter.laws.RepeatabilityTextReadingDiffTest` holds the binding for 23 values: A12 against the checker and the interpreter, with the count's runtime effect on every built model.
+*Locked by:* `adapter.laws.CheckerRepeatabilityCascadeAgreementTest`, A12 against the portable checker with every attachment path; `consistency.GroupRepetitionCountTest` replays it. `adapter.laws.RepeatabilityTextReadingDiffTest` holds the binding, and [KF593](#kf593)'s rows beside it: A12 against the checker and the interpreter, with the count's runtime effect on every built model.
 
 ## §13 supplement — a base year binds like a count, a number bound reads ASCII decimal text, a label is kept as written, and a Boolean cell folds case as Java does (serializer + tri-engine differential, 2026-10-21) <a id="kf591"></a>
 
@@ -14272,7 +14272,42 @@ Six texts separate the readings: the empty text, a space, a tab and an em space 
 | an include entry's `reference` | expands under a no-break or figure space; under a Java-blank one, an absent or `null` member, or no `modelReferences` at all, fails the expansion: *"The corresponding model reference of the include group … cannot be found."* It never reads the alias as the reference |
 | a mount's `modelAlias`, the entry's `alias` the same | expands under every one but the empty text, which fails the same way |
 | a type definition's `id`, referenced by the same text | admits every one but the empty text: *"The id is empty."* |
-| `modelConfig.timeZone` | `MVK_INVALID_TIME_ZONE` for every one |
+| `modelConfig.timeZone` | `MVK_INVALID_TIME_ZONE` for every one, while `UTC` is admitted |
 
-*Locked by:* `adapter.WorkspaceBlankTextDiffTest`, A12 against the interpreter's workspace, the core reader and the portable checker.
+*Locked by:* `adapter.WorkspaceBlankTextDiffTest`: A12 against the interpreter's workspace and the portable checker on the `header.id` rows, the interpreter on the type-definition and time-zone rows, and the interpreter, the core reader and the checker on the include rows. *Corrected 2026-10-21:* this named the reader and the checker for every row, and the checker did not then judge the alias rows.
+
+## §13 supplement — the model reader takes only JSON literals, binds the text `null` as no value and a number only within `Int`, bounds a decimal's text, and keys an alias to its last include entry (serializer + expansion + tri-engine differential, 2026-10-21) <a id="kf593"></a>
+
+> Fold: pending — beside [KF590](#kf590)'s count binding and [KF592](#kf592)'s include resolution.
+
+**Literals.** An unquoted token that is not `true`, `false`, `null` or an RFC 8259 number leaves no model and no document: `abc`, `True`, `NaN`, `0x10`, `01`, `1.`, `.5` and `+1`, measured in a number field's `maxValue` and in a number cell. `-0` and `1E1` read there.
+
+**An `int` member** (`Group.repeatability`, `modelInfo.baseYear`):
+
+| stored | A12 |
+|---|---|
+| `"null"`, `" null "` | no value: `repeatability` draws `MVK_MAX_VALUES_INVALID`, `baseYear` `MVK_NO_BASE_YEAR`, as a JSON `null` does |
+| `"NULL"`, `"Null"` | no model |
+| `2147483647.0` | the count 2147483647, which draws `MVK_MAX_TOO_BIG` on a nested group; as `baseYear`, built |
+| `2147483647.5`, `-2147483648.5`, `2147483648.0`, `-2147483649.0` | no model: the value is held to `Int` before it is truncated |
+| `1.0E9` | the count 1000000000, built |
+| `1e-2147483649` | no model, although the value would truncate to 0 |
+| `{}`, `[]` | no model |
+
+**A NUMBER field's `minValue` text** binds as follows: `"null"` declares no bound, and `"5."`, `".5"`, `"1e5"`, `"+5"` and `"1e2147483648"` are admitted. Text of 1000 digits is admitted, while 1001 digits or `"1e9999999999"` leave no model.
+
+**Include entries.**
+
+| `header.modelReferences` for the mount's alias | A12 |
+|---|---|
+| a blank reference, then the real one | mounts |
+| the real reference, then a blank one | fails: *"…cannot be found."* |
+| one entry with no `purpose`, or `transitiveInclude`, or `other` | mounts |
+| one entry with `purpose` `typeDefinitions` | refuses the expansion |
+
+A `typeDefinitions` entry's reference is resolved whatever its text, so an empty, blank or unknown one that nothing answers refuses the model. A `header.id` of `5` or `true` is admitted, and so is a JSON `null`.
+
+**A `yyyy` date** stored as `"\u0661\u0669\u0666\u0663"` or `"\uFF11\uFF19\uFF16\uFF13"` draws the date-format error, so `Date("01", "01", Built)` reads only an ASCII year; `"1963"` fires the rule.
+
+*Locked by:* `adapter.laws.JsonLiteralStrictnessDiffTest` (literals, A12 against the interpreter and the checker); `adapter.laws.RepeatabilityTextReadingDiffTest` and `adapter.laws.ModelTextReadingDiffTest` (the `int` and decimal rows, A12 against the interpreter, and the checker on `repeatability` and on `baseYear`'s presence); `adapter.WorkspaceBlankTextDiffTest` (include entries, type-definition references and ids, against the interpreter, the core reader and the checker); `adapter.laws.YearOnlyDateDigitsDiffTest` (the year). The portable checker does not yet state an unbindable `baseYear` or number bound: DG145.
 

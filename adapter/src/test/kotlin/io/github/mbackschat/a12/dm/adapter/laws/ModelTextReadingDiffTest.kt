@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.github.mbackschat.a12.dm.consistency.ModelSource
+import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -22,20 +24,32 @@ class ModelTextReadingDiffTest {
 
     @Test
     fun aBaseYearIsBoundAsJavaBindsAnInteger() {
-        val rows = linkedMapOf<String, Pair<Any, String>>(
+        val rows = linkedMapOf<String, Pair<Any?, String>>(
             "\"2024\", the control" to ("2024" to FIRES), "\" 2024 \"" to (" 2024 " to FIRES),
             "\"\\u0662\\u0660\\u0662\\u0664\"" to ("\u0662\u0660\u0662\u0664" to FIRES), "2024" to (2024 to FIRES),
             "2024.7, truncated" to (2024.7 to FIRES),
             "\"\\u00A02024\"" to ("\u00A02024" to NOT_BUILT), "\"2024.0\"" to ("2024.0" to NOT_BUILT), "\"x\"" to ("x" to NOT_BUILT),
             "\"\"" to ("" to NO_BASE_YEAR), "\"  \"" to ("  " to NO_BASE_YEAR),
+            // The text `null`, in that case only, is the null value to A12's reader (KF593).
+            "\"null\"" to ("null" to NO_BASE_YEAR), "\" null \"" to (" null " to NO_BASE_YEAR), "null" to (null to NO_BASE_YEAR),
+            "\"NULL\"" to ("NULL" to NOT_BUILT), "\"Null\"" to ("Null" to NOT_BUILT),
+            // A JSON number binds only when its exact value fits `Int`, before it is truncated.
+            "2147483647.0" to (2147483647.0 to BUILT), "2147483647.5" to (2147483647.5 to NOT_BUILT),
+            "-2147483648.5" to (-2147483648.5 to NOT_BUILT), "2147483648.0" to (2147483648.0 to NOT_BUILT),
+            "{}" to (emptyMap<String, Any>() to NOT_BUILT),
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }
             (root.at("/content/modelInfo") as ObjectNode).set<ObjectNode>("baseYear", MAPPER.valueToTree(row.first))
             val json = RuntimeLaws.withRule(root.toString(), "/Cover", "RBY", "../Amount", "BY", "FieldFilled(Amount) And BaseYear == 2024")
-            "A12 ${a12(json) { kernelFired(json, AMOUNT).isNotEmpty() }}, interpreter ${interpreter(json) { interpreterFired(json, AMOUNT).isNotEmpty() }}"
+            // The checker's column is whether it states the missing base year; an unbuildable row is DG145's.
+            val checker = check(ModelSource(json)).findings.any { it.code == "MVK_NO_BASE_YEAR" }
+            "A12 ${a12(json) { kernelFired(json, AMOUNT).isNotEmpty() }}, interpreter ${interpreter(json) { interpreterFired(json, AMOUNT).isNotEmpty() }}, " +
+                "checker ${if (checker) NO_BASE_YEAR else "silent"}"
         }
-        assertEquals(rows.mapValues { (_, row) -> "A12 ${row.second}, interpreter ${row.second.forInterpreter()}" }, observed)
+        assertEquals(rows.mapValues { (_, row) ->
+            "A12 ${row.second}, interpreter ${row.second.forInterpreter()}, checker ${if (row.second == NO_BASE_YEAR) NO_BASE_YEAR else "silent"}"
+        }, observed)
     }
 
     @Test
@@ -43,6 +57,10 @@ class ModelTextReadingDiffTest {
         val rows = linkedMapOf<String, Pair<Any, String>>(
             "\"5\", the control" to ("5" to BUILT), "\" 5 \"" to (" 5 " to BUILT), "\"5.0\"" to ("5.0" to BUILT), "5" to (5 to BUILT),
             "\"\\u00A05\"" to ("\u00A05" to NOT_BUILT), "\"\\u0665\"" to ("\u0665" to NOT_BUILT), "\"abc\"" to ("abc" to NOT_BUILT),
+            // The text `null` declares no bound; the reader refuses text past 1000 characters and a scale past `Int`.
+            "\"null\"" to ("null" to BUILT), "1000 digits" to ("1".repeat(1000) to BUILT), "1001 digits" to ("1".repeat(1001) to NOT_BUILT),
+            "\"1e2147483648\"" to ("1e2147483648" to BUILT), "\"1e9999999999\"" to ("1e9999999999" to NOT_BUILT),
+            "\"5.\"" to ("5." to BUILT), "\".5\"" to (".5" to BUILT), "\"1e5\"" to ("1e5" to BUILT), "\"+5\"" to ("+5" to BUILT),
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }

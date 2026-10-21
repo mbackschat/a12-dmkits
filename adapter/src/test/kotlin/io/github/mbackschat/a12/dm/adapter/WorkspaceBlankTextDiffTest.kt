@@ -46,6 +46,25 @@ class WorkspaceBlankTextDiffTest {
         assertEquals(observed.mapValues { "A12 admitted, interpreter prepares, checker identifies it" }, observed)
     }
 
+    /**
+     * A number or a Boolean `header.id` is admitted as well and its text identifies the model (KF593). A JSON null id
+     * is the control: A12 admits that model too, but it names no model a workspace could prepare, so the interpreter
+     * and the checker both state that it has no identity.
+     */
+    @Test
+    fun aScalarIdIdentifiesTheModelByItsText() {
+        val observed = listOf<Any?>(5, true, null).associate { id ->
+            val json = cover().also { (it.path("header") as ObjectNode).set<ObjectNode>("id", MAPPER.valueToTree(id)) }.toString()
+            val checker = check(ModelSource(json)).diagnostics.none { it.code == DiagnosticCode.SOURCE_HAS_NO_IDENTITY }
+            "$id" to "A12 ${a12(json)}, interpreter ${prepares("$id", json)}, checker ${if (checker) "identifies it" else "no identity"}"
+        }
+        assertEquals(mapOf(
+            "5" to "A12 admitted, interpreter prepares, checker identifies it",
+            "true" to "A12 admitted, interpreter prepares, checker identifies it",
+            "null" to "A12 admitted, interpreter refuses, checker no identity",
+        ), observed)
+    }
+
     @Test
     fun onlyTheEmptyTypeDefinitionIdIsRefused() {
         val observed = (listOf("CoverType") + spaces).associate { id ->
@@ -84,9 +103,52 @@ class WorkspaceBlankTextDiffTest {
         val observed = (listOf("component") + spaces).associate { alias ->
             val entry = permit().also { reference(it).put("alias", alias) }
             ((entry.at("/content/modelRoot/rootGroups/0/Group/elements/0/Group")) as ObjectNode).put("modelAlias", alias)
-            label(alias) to mountObservation(entry.toString(), "component", checker = false)
+            label(alias) to mountObservation(entry.toString(), "component")
         }
-        assertEquals(observed.mapValues { (alias, _) -> if (alias == "[]") REFUSES_THREE else MOUNTS_THREE }, observed)
+        assertEquals(observed.mapValues { (alias, _) -> if (alias == "[]") REFUSES else MOUNTS }, observed)
+    }
+
+    /**
+     * A12 keys an alias to the LAST `header.modelReferences` entry carrying it, whatever that entry's `purpose`, and
+     * refuses to expand a mount through an entry whose purpose is `typeDefinitions` (KF593). A blank reference first
+     * and a real one last mounts; the reverse order refuses, which shows the order and not merely that one entry was
+     * found.
+     */
+    @Test
+    fun anAliasNamesTheLastEntryCarryingItWhateverItsPurpose() {
+        fun entry(reference: String, purpose: String?) = MAPPER.createObjectNode().put("alias", "component")
+            .put("modelType", "document").also { if (purpose != null) it.put("purpose", purpose) }.put("reference", reference)
+        fun entries(vararg rows: ObjectNode) = permit().also { root ->
+            (root.at("/header/modelReferences") as ArrayNode).removeAll().addAll(rows.toList())
+        }.toString()
+        val rows = linkedMapOf(
+            "a blank entry, then the real one" to entries(entry(" ", "include"), entry("component", "include")),
+            "the real entry, then a blank one" to entries(entry("component", "include"), entry(" ", "include")),
+            "no purpose" to entries(entry("component", null)),
+            "purpose transitiveInclude" to entries(entry("component", "transitiveInclude")),
+            "purpose other" to entries(entry("component", "other")),
+            "purpose typeDefinitions" to entries(entry("component", "typeDefinitions")),
+        )
+        val expected = rows.mapValues { (row, _) ->
+            if (row == "the real entry, then a blank one" || row == "purpose typeDefinitions") REFUSES else MOUNTS
+        }
+        assertEquals(expected, rows.mapValues { (_, json) -> mountObservation(json, "component") })
+    }
+
+    /**
+     * A `typeDefinitions` reference is resolved whatever its text, so one that names no supplied model refuses the
+     * model even when it is empty or blank (KF593); the core reader once skipped the empty one.
+     */
+    @Test
+    fun aTypeDefinitionReferenceIsResolvedWhateverItsText() {
+        val observed = (listOf("types") + spaces).associate { reference ->
+            val json = cover().also { (it.path("header") as ObjectNode).putArray("modelReferences").addObject()
+                .put("alias", "types").put("modelType", "document").put("purpose", "typeDefinitions").put("reference", reference) }.toString()
+            val a12 = runCatching { KernelModelOracle.of(json) { null } }.isSuccess
+            val reader = runCatching { ModelReader.expand(json) { null } }.isSuccess
+            label(reference) to "A12 ${a12.verb()}, interpreter ${prepares("cover", json)}, reader ${reader.verb()}"
+        }
+        assertEquals(observed.mapValues { "A12 refuses, interpreter refuses, reader refuses" }, observed)
     }
 
     @Test
@@ -98,10 +160,14 @@ class WorkspaceBlankTextDiffTest {
             label(zone) to "A12 ${codes.any { "MVK_INVALID_TIME_ZONE" in it }}, interpreter ${interpreter is InvalidModelTimeZoneException}"
         }
         assertEquals(observed.mapValues { "A12 true, interpreter true" }, observed)
+        val control = cover().also { (it.path("content").path("modelConfig") as ObjectNode).put("timeZone", "UTC") }.toString()
+        assertEquals(emptyList<String>(), KernelConsistencyOracle().checkConsistency(control) { null }.map { it.toString() }
+            .filter { "MVK_INVALID_TIME_ZONE" in it }, "UTC is a time zone to A12")
+        ModelLoader.load(control)
     }
 
     /** A12's expansion, the interpreter's preparation, the core reader and the checker's mount, the provider's id being [providerId]. */
-    private fun mountObservation(entry: String, providerId: String, checker: Boolean = true): String {
+    private fun mountObservation(entry: String, providerId: String): String {
         val provider = MAPPER.readTree(COMPONENT).also { (it.path("header") as ObjectNode).put("id", providerId) }.toString()
         val resolver = ModelResolver { reference -> if (reference == providerId) provider else null }
         val a12 = runCatching { KernelModelOracle.of(entry, resolver) }.isSuccess
@@ -110,7 +176,6 @@ class WorkspaceBlankTextDiffTest {
         }.isSuccess
         val reader = runCatching { ModelReader.expand(entry, resolver) }.isSuccess
         val observed = "A12 ${a12.verb()}, interpreter ${interpreter.verb()}, reader ${reader.verb()}"
-        if (!checker) return observed
         val unexpanded = ConsistencyWorkspace.fromSources(listOf(ModelSource(entry), ModelSource(provider))).check("permit")
             .gaps.any { it.at == "/Permit/Details" }
         return "$observed, checker ${(!unexpanded).verb()}"
@@ -142,7 +207,5 @@ class WorkspaceBlankTextDiffTest {
             .rootGroup("Component") { c -> c.stringField("Description") {} }.build().toJson()
         const val MOUNTS = "A12 mounts, interpreter mounts, reader mounts, checker mounts"
         const val REFUSES = "A12 refuses, interpreter refuses, reader refuses, checker refuses"
-        const val MOUNTS_THREE = "A12 mounts, interpreter mounts, reader mounts"
-        const val REFUSES_THREE = "A12 refuses, interpreter refuses, reader refuses"
     }
 }

@@ -506,8 +506,8 @@
       "sha256": "5e6cfb29cfa9c5bc21a863022dd84a81360cd6a32472d1592aacd81ddd599795",
       "task": "F-USE-BACKLOG",
       "scope": {
-        "dmkits": [],
-        "checker": [],
+        "dmkits": ["a base year's binding"],
+        "checker": ["a base year's presence"],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": ["model text readings"],
@@ -516,18 +516,42 @@
         "a12-kernel-lean": ["model text readings"]
       },
       "consumers": {
-        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author through the typed builder, which writes none of these spellings.", "evidence": {}},
-        "checker": {"state": "NOT_APPLICABLE", "basis": "The checker does not bind baseYear, number bounds, labels or Boolean cells beyond the readings its own findings already record.", "evidence": {}},
+        "dmkits": {"state": "APPLIED", "basis": "The core reader binds a base year as A12's reader does: a fraction truncated, any script's digits, and the text null as none.", "evidence": {"a base year's binding": {"reference": "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexIntBindingTest.java#aBaseYearIsTheYearA12Binds", "witness": "2024.7 and Arabic-Indic digits read 2024; the text null and an unbindable value read no base year."}}},
+        "checker": {"state": "APPLIED", "basis": "A base year that binds no value, blank or the text null, counts as absent; an unbindable one still counts as present (DG145).", "evidence": {"a base year's presence": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "The checker states MVK_NO_BASE_YEAR on exactly the rows A12 does."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
-        "adapter": {"state": "APPLIED", "basis": "A12 and the interpreter are compared row by row on every reading.", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "Ten base-year values, seven bounds, five labels and seven Boolean cells agree."}}},
+        "adapter": {"state": "APPLIED", "basis": "A12 and the interpreter are compared row by row on every reading.", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "Every base-year value, bound, label and Boolean cell agrees."}}},
         "interpreter": {"state": "APPLIED", "basis": "The loader binds baseYear like a count and gates a bound on an ASCII decimal; labels are kept as written and Boolean cells fold as equalsIgnoreCase does (IF426).", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBooleanCellIsComparedAsJavaComparesIgnoringCase", "witness": "fal\\u017Fe reads false on both engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
         "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
       }
     },
+    "kf593": {
+      "sha256": "fdf810ee9b84d7cbde39f6bd28ee7dcb9c49e1fe706539e43b149b801deb6274",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": ["an int member's binding", "an include alias's entry"],
+        "checker": ["JSON literals", "an int member's binding", "an include alias's entry"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["A12's model reading"],
+        "interpreter": ["JSON literals", "an int member's binding", "an include alias's entry"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["A12's model reading"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "The core reader binds a base year and a count as A12 does, keys an alias to its last entry of any purpose, and resolves every textual typeDefinitions reference.", "evidence": {"an int member's binding": {"reference": "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexIntBindingTest.java#aRepetitionCountIsTheCountA12Binds", "witness": "A non-ASCII digit, a fraction and the text null read as A12's reader binds them."}, "an include alias's entry": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anAliasNamesTheLastEntryCarryingItWhateverItsPurpose", "witness": "The core reader mounts and refuses exactly where A12 does."}}},
+        "checker": {"state": "APPLIED", "basis": "Admission refuses a non-literal token, a count binds through the int law, and a mount takes the last entry of any purpose.", "evidence": {"JSON literals": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JsonLiteralStrictnessDiffTest.kt#aModelWithAnUnquotedNonLiteralIsReadByNoEngine", "witness": "Each non-literal token is refused by A12 and the checker, and each control reads."}, "an int member's binding": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepeatabilityTextReadingDiffTest.kt#theCheckerAndTheInterpreterBindTheCountAsA12Does", "witness": "The textual null, the Int boundary, the scale and the containers draw A12's class on the checker."}, "an include alias's entry": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anAliasNamesTheLastEntryCarryingItWhateverItsPurpose", "witness": "Both entry orders and four purposes mount or stay unexpanded where A12 mounts or refuses."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes integers and include entries through typed builders.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter, the core reader and the checker on every row.", "evidence": {"A12's model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JsonLiteralStrictnessDiffTest.kt#aDocumentWithAnUnquotedNonLiteralIsReadByNeitherEngine", "witness": "A12 and the interpreter refuse each non-literal number cell and read each control."}}},
+        "interpreter": {"state": "APPLIED", "basis": "Every A12-shape parse refuses a non-literal token, int members bind through JavaIntBinding, and includes key to the last entry of any purpose (IF428).", "evidence": {"JSON literals": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JsonLiteralStrictnessDiffTest.kt#aDocumentWithAnUnquotedNonLiteralIsReadByNeitherEngine", "witness": "Each non-literal number cell is refused by both engines, and each control reads."}, "an int member's binding": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "The textual and JSON null, the Int boundary and an object base year load or refuse as A12 does."}, "an include alias's entry": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anAliasNamesTheLastEntryCarryingItWhateverItsPurpose", "witness": "The workspace mounts and refuses exactly where A12 does."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+      }
+    },
     "kf592": {
-      "sha256": "f1258084fd337ca12d30ce1c8d164b89abd96da939b035c2df8b9c26f6ca1c02",
+      "sha256": "f93ba707f27cba0da35f5756edd46ac591e1d11dc2fa1ae5a72690373b139e19",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["identifying text of spaces"],
@@ -551,7 +575,7 @@
       }
     },
     "kf590": {
-      "sha256": "4c3f73ab1243959b7e61742760a51fefb47dd86ac54e02b61b3a9717400d6d97",
+      "sha256": "f7ed5054cbf144f39bda6f6d3b20d3fe79cff700b9b6f03f4d8b5fa226a39632",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],

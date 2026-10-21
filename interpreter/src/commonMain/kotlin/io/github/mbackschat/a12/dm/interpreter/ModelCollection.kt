@@ -212,7 +212,7 @@ internal object ModelWorkspaceCollector {
                     supplied = loaded,
                     parsed = ParsedWorkspaceSource(
                         source = admittedSource,
-                        root = A12_JSON.parseToJsonElement(admittedSource.json) as JsonObject,
+                        root = parseA12Json(admittedSource.json) as JsonObject,
                     ),
                 ).also { collected[visit.modelId] = it }
             }

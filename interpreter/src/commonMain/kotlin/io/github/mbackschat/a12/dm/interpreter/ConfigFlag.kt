@@ -51,7 +51,7 @@ internal fun configFlag(value: JsonElement?): ConfigFlag {
         // Trimmed as Java's `String.trim` trims (U+0000–U+0020 only), and the empty, blank or `null` text is the
         // type's default (KF569, measured on this member and on `StringType.noValueValidation`). This copy is
         // held to the same rows as `:predicates`' `a12BooleanOfString`, which the interpreter may not depend on.
-        val trimmed = text.trim { it <= ' ' }
+        val trimmed = text.javaTrimmed()
         return when {
             trimmed in TRUE_SPELLINGS -> ConfigFlag.ON
             trimmed in FALSE_SPELLINGS || trimmed.isEmpty() || trimmed == "null" -> ConfigFlag.OFF

@@ -1534,7 +1534,9 @@ private fun Interpreter.temporalConstructionComponentInt(e: Expr): Evaluated<Int
     if (malformedField(e)) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     if (emptyCheckRelevant(e)) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
     if (e is Expr.Field && ctxOf(e).declaredKind(e.path) == Kind.DATE && ctxOf(e).dateFormatOf(e.path) == "yyyy") {
-        return ctxOf(e).displayValue(e.path)?.javaIntOrNull()?.let { Evaluated.Present(it) }
+        // A stored `yyyy` in another script's digits is a formal error and returned above, so only ASCII digits
+        // reach this reading (YearOnlyDateDigitsDiffTest).
+        return ctxOf(e).displayValue(e.path)?.asciiIntOrNull()?.let { Evaluated.Present(it) }
             ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
     if (e is Expr.Func) {
