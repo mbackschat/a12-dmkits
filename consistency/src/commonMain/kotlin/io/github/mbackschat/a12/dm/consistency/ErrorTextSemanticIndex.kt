@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageKey
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.provesPresence
 
 /** A key binds the condition's field/key pair and its index field, not every sibling (KF412). */
 internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, element: TrackedDeclaration): MessageCompletion {
@@ -47,17 +48,17 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
     if (pairs.none(::matches)) return MessageCompletion.Refused("INVALID_GROUP")
     val positive = setOf("FieldFilled", "GroupFilled", "AllFieldsFilled", "AllGroupsFilled")
         .mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
-    val syntax = ConditionRecognizer(text, conditionLanguage) { call ->
+    val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
+        ?: return MessageCompletion.Declined
+    val proven = provesPresence(tree) { call ->
         call.operator in positive && call.operands.any { tokens ->
             val operand = call.source.substring(tokens.first().start, tokens.last().end)
             semanticIndexUsesIn(operand, conditionLanguage, keyword).any { use ->
                 boundPair(use, group, element)?.let(::matches) == true
             }
         }
-    }.recognize(SyntaxEntry.CONDITION)
-    if (syntax.failure != null) return MessageCompletion.Declined
-    return if (syntax.conditionProof == true) MessageCompletion.Accepted
-        else MessageCompletion.Refused("INVALID_USE_OF_SEMANTIC_INDEX")
+    }
+    return if (proven) MessageCompletion.Accepted else MessageCompletion.Refused("INVALID_USE_OF_SEMANTIC_INDEX")
 }
 
 /** An indexed read reduced to what `tryGetFor` keys on: the resolved value path and the key's SPEC. */

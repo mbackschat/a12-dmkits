@@ -21,7 +21,8 @@ internal data class Recognition(
     val unfinishedAt: Int?,
     val sites: List<SyntaxSite>,
     val entities: List<RecognizedEntity>,
-    val conditionProof: Boolean?,
+    /** The condition's connective structure; null for an operation, and for a condition that failed. */
+    val tree: ConditionNode?,
 )
 
 internal data class RecognizedEntity(
@@ -56,9 +57,7 @@ internal sealed interface SyntaxSite : ConditionSite {
 }
 
 /** Model-independent recognition; only completed structures become scanner inputs. */
-internal class ConditionRecognizer(private val source: String, language: ConditionLanguage,
-    private val callProof: ((CallShape) -> Boolean)? = null,
-) {
+internal class ConditionRecognizer(private val source: String, language: ConditionLanguage) {
     private val tokens = tokenize(source)
     private val keywords = CONDITION_KEYWORDS.getValue(language)
     private val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(language)
@@ -73,11 +72,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val openings = mutableListOf<Int>()
     private var cursor = 0
     private var filterActive = false
-    private var conditionProof: Boolean? = null
+    private var tree: ConditionNode? = null
 
     fun recognize(entry: SyntaxEntry): Recognition = recognize {
         when (entry) {
-            SyntaxEntry.CONDITION -> { preamble(); conditionProof = condition() }
+            SyntaxEntry.CONDITION -> { preamble(); tree = condition() }
             SyntaxEntry.OPERATION -> operation()
         }
     }
@@ -93,7 +92,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             stop.failure
         }
         failure?.let { sites += SyntaxSite.Failure(it) }
-        return Recognition(failure, calls, comparisons, operations, fieldReads, completedSteps, openings.lastOrNull(), sites, entities, conditionProof)
+        return Recognition(failure, calls, comparisons, operations, fieldReads, completedSteps, openings.lastOrNull(), sites, entities,
+            tree.takeIf { failure == null })
     }
 
     private fun completed(kind: SyntaxSite.Kind, start: Int, end: Int = tokens[cursor - 1].end, record: Boolean = true) {
@@ -160,20 +160,20 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         completed(SyntaxSite.Kind.PREAMBLE, start)
     }
 
-    private fun condition(): Boolean {
+    private fun condition(): ConditionNode {
         comments()
         var first: Token? = null
-        var proof = conditionPart()
+        val parts = mutableListOf(conditionPart())
+        val connectives = mutableListOf<ConnectiveKind>()
         while (true) {
             comments()
-            if (!connective()) return proof
+            if (!connective()) return parts.singleOrNull() ?: ConditionNode.Junction(parts, connectives)
             val current = take()
             comments()
-            val part = conditionPart()
-            // SPEC-2026-10-11-01: positive presence needs one AND arm, but every OR arm.
-            proof = when (current.text.asciiLowercase()) {
-                "and", "und" -> proof || part
-                else -> proof && part
+            parts += conditionPart()
+            connectives += when (current.text.asciiLowercase()) {
+                "and", "und" -> ConnectiveKind.AND
+                else -> ConnectiveKind.OR
             }
             val previous = first
             if (previous == null) first = current else {
@@ -183,11 +183,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         }
     }
 
-    private fun conditionPart(): Boolean {
-        if (open("(")) { val proof = condition(); require(")"); return proof }
+    private fun conditionPart(): ConditionNode {
+        if (open("(")) { val node = condition(); require(")"); return node }
         val token = peek() ?: fail(SyntaxFailureKind.DECISION)
         val id = identity(token)
-        if (id == "CustomCondition") { take(); requireName(); return false }
+        if (id == "CustomCondition") { take(); requireName(); return ConditionNode.Custom }
         if (kind(token) == KeywordKind.PREDICATE ||
             kind(token) != null && token.text in FORM_CONSTRUCTS ||
             kind(token) == KeywordKind.UNCATALOGED && peek(1)?.text == "(") {
@@ -198,8 +198,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     take(); take(); fail(SyntaxFailureKind.DECISION)
                 }
             }
-            call()
-            return callProof?.invoke(calls.last()) ?: false
+            return ConditionNode.Call(call())
         }
         val left = cursor
         operation()
@@ -215,7 +214,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         comparisons += shape
         peek()
         sites += SyntaxSite.Comparison(shape)
-        return false
+        return ConditionNode.Comparison(shape)
     }
 
     private fun operation(): OperationShape {
