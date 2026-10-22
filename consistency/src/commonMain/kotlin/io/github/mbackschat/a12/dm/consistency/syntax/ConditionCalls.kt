@@ -104,6 +104,11 @@ data class CallOperand(
  */
 internal fun CallOperand.capturedPath(language: ConditionLanguage): String? {
     if (path != null || !clauses.isEmpty()) return null
+    return outerMarkedPathIn(text, language)
+}
+
+/** The path [text] names after a leading `$` capture marker, by [CallOperand.path]'s reduction; null otherwise. */
+internal fun outerMarkedPathIn(text: String, language: ConditionLanguage): String? {
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
     return tokens.takeIf { it.firstOrNull()?.text == "$" }?.drop(1)?.asPath(CONDITION_KEYWORDS.getValue(language))
 }

@@ -14468,3 +14468,35 @@ A shop customer: day, month and year fields bounded as a date's slots, a date `O
 So a `Date` slot asks whether it names a field before it asks about a star: the starred group draws the group class (row 3), against "the star gate runs first", which the starred field beside it (row 4) cannot separate on its own. A `$`-marked operand of `CurrentRepetition` is judged with the same two gates as an unmarked one, the kind first (`$Items/Count`) and the star second. It is addressed by the enclosing rule's own iteration: in a rule that iterates nothing, the marked field draws the reference reader's `MVK_NO_WILDCARD` instead (the last row). `SumOfProducts` refuses a group whatever its operand count, a lone group included, against "the count runs first". It does so at the call's own closing bracket, so the stray comma later in the text never answers (row 11, against "a syntax error outranks every operand gate"). A group that repeats a field named beside it is the list reader's duplicate class instead, and a root group meets its own gate first. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckBaseDateConstructionImpl.checkParamIfEntity` calls `checkIsField`, then `checkNoWildCards`, then the pattern and width tests. `CheckGroupOpImpl` calls `checkIsGroup`, then `checkNoWildCards`. `CheckFeldListenOpImpl` calls `checkOnlyFields` before `checkParamSizeIs2`.
 
 *Locked by:* `adapter.laws.CheckerGroupAndStarOperandAgreementTest` (every row above, with A12 pinned and the checker agreeing) and `adapter.laws.CheckerNearMissSweepTest`, whose ledger these three carriers empty.
+
+## §9 supplement — a `$`-marked operand in a `Having` body meets every gate an unmarked one does, addressed by the rule's own iteration, and an addressed repeatable group is the group class whether starred or not (kernel `checkConsistency`, 2026-10-23) <a id="kf599"></a>
+
+> Fold: pending — beside [KF598](#kf598) (the marked `CurrentRepetition`) and [KF395](#kf395) (the value operators).
+
+A shop customer: `BirthMonth` and `BirthYear`, and `Items`, repeating 20 times, holding a number `Count`, a day number `Day`, a two-decimal `UnitPrice`, a string `Code` and a date `ShipOn`. Each row is one rule at `/Customer` with error field `Items/Count` unless it says `BirthYear`, which iterates nothing. "Alone" is `FieldFilled(Items/Count) And AtLeastOneFieldFilled(Items*/Count Having <body>)`. "Beside" puts `[Items/Count] > 0 And` before the body.
+
+| body | alone | beside |
+|---|---|---|
+| `RoundUpValue($Items, 2) > 0`, `RangeAsString($Items, 1, 3) == "a"`, `ValueAsDate($Items, FirstDay) > "01.01.2020"`, `FieldValueIncludedInValueList($Items, "a")`, `Valid(Date($Items, BirthMonth, BirthYear))`, `FieldFilled($Items)` | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
+| `RoundUpValue($Items*/UnitPrice, 2) > 0` | `MVK_NO_WILDCARDS_ALLOWED` | `MVK_NO_WILDCARDS_ALLOWED` |
+| `DayFromDate($Items/Count) > 1` | `MVK_NO_DATE` | `MVK_NO_DATE` |
+| `ValueAsDate($Items/Count, FirstDay) > "01.01.2020"` | `MVK_INVALID_DATE_TYPE_FOR_OP` | `MVK_INVALID_DATE_TYPE_FOR_OP` |
+| `Valid(Date($Items/Count, BirthMonth, BirthYear))` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `Sum($Items/Count) > 0` | `MVK_PARAMSIZE_INVALIDN` | `MVK_PARAMSIZE_INVALIDN` |
+| `Length($Items/ShipOn) > 1` | `MVK_NO_STRING` | `MVK_NO_STRING` |
+| `RoundUp($Items/Code, 2) > 0` | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` |
+| the sound spellings: `RoundUpValue($Items/UnitPrice, 2)`, `RangeAsString($Items/Code, 1, 3)`, `DayFromDate($Items/ShipOn)`, `FieldValueIncludedInValueList($Items/Code, "a")`, `Valid(Date($Items/Day, BirthMonth, BirthYear))`, `FieldFilled($Items/Count)`, `Length($Items/Code)`, `Sum($Items*/Count, Items*/Count)`, and unmarked `Sum(Items*/Count, Items*/Count)` | `MVK_NO_ITERATION_FOR_WILDCARD` | admitted |
+| `Sum($Items*/Code, Items*/Code) > 0`, or the same unmarked | `MVK_NO_NUMBER` | `MVK_NO_NUMBER` |
+| unmarked: `RangeAsString(Items, 1, 3) == "a"`, `ValueAsDate(Items, FirstDay) > "01.01.2020"` | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
+
+| condition (error field) | A12 |
+|---|---|
+| `FieldFilled(Items/Count) And RangeAsString(Items, 1, 3) == "a"`, the same with `Items*`, or with `ValueAsDate(Items, FirstDay) > "01.01.2020"` (`Items/Count`) | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(Items/Count) And Sum(Items*/Code, Items*/Code) > 0` (`Items/Count`) | `MVK_NO_NUMBER` |
+| `FieldFilled(BirthYear) And RangeAsString(Items, 1, 3) == "a"`, the same with `ValueAsDate(Items, FirstDay)` or `RoundUpValue(Items, 2) > 0` (`BirthYear`) | `MVK_NO_WILDCARD` |
+| `FieldFilled(BirthYear) And AtLeastOneFieldFilled(Items*/Count Having RangeAsString($Items, 1, 3) == "a")`, or with the body `[Items/Count] > 0 And RoundUpValue($Items, 2) > 0`, or `[Items/Count] > 0 And Valid(Date($Items, BirthMonth, BirthYear))` (`BirthYear`) | `MVK_NO_WILDCARD` |
+| `FieldFilled(BirthYear) And AtLeastOneFieldFilled(Items*/Count Having RangeAsString(Items, 1, 3) == "a")` (`BirthYear`) | `MVK_NO_GROUPS_ALLOWED` |
+
+So every operand family measured judges a marked operand with the gates it asks of an unmarked one, in the same order: the defective rows name the family's own class in both carriers, ahead of the filter-end gate. The sound rows separate the two readings of the marker. A marked operand does not reopen the starred level (alone, the filter-end gate answers), but it is a sound operand (beside an unmarked read, it is admitted). It is addressed by the rule's iteration, not the body's: in a rule iterating nothing, the marked group draws the reference reader's `MVK_NO_WILDCARD`, while the same group unmarked in the same body is addressed and draws the group class (the last two rows). A field named twice in `Sum` is no duplicate there, marked or not and inside a body or outside it: the type gate answers `MVK_NO_NUMBER` on a string field, and a number field is admitted, so these rows do not separate the marker's place in an operand's identity. The operation arm of `RoundUp` takes no entity spec, so the marker is a syntax error there. Two of the families once stood down on an unmarked, unstarred repeatable group, on the guess that the reference reader answers it. These rows refute that guess: wherever something addresses the group, the answer is the group class, starred or not, inside a body or outside it. Where nothing addresses it, the answer is `MVK_NO_WILDCARD`, which the reader already gives.
+
+*Locked by:* `adapter.laws.CheckerOuterMarkedOperandAgreementTest` (every row above, with A12 pinned and the checker agreeing).

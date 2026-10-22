@@ -303,7 +303,8 @@ internal fun entityListDuplicateAnswers(reads: List<OperandReference>, targets: 
     // them (`adapter.laws.CheckerKeyedOperandAgreementTest`). Comparing on path alone read that list as nested.
     // The category is the identity's other clause (kf439), so `Tier -> Level` beside `Tier` repeats nothing.
     val operands = reads.map { read ->
-        ListOperand(read.reference, read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
+        ListOperand(read.reference,
+            (if (read.outerMarked) "$" else "") + read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
             read.indexSelected)
     }
     return targets.firstDirectDuplicate(operands) != null || targets.firstNestedEntity(operands) != null

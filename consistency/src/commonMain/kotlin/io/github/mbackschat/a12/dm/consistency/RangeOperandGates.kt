@@ -76,18 +76,15 @@ private fun TrackedFactBase.rangeDefect(
     if (call.operands.size != RANGE_ARITY) {
         return null
     }
-    val (written, keyed, category) = operandSpec(call.operands[0], declaringGroup, element) ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element, keyed, call.inAFilterBody) ?: return null
+    val read = operandSpec(call.operands[0], declaringGroup, element) ?: return null
+    val (written, _, category) = read
+    val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
-        // A repeatable group read without its star iterates, and the gate outside this method answers there;
-        // the starred spelling is the one measured against this family's own group class.
-        return if (declared.isRepeatable && !starred) {
-            null
-        } else {
-            SubstringDefect("MVK_NO_GROUPS_ALLOWED", "cuts `$target`, which is a group — cut one field of it")
-        }
+        // A repeatable group, starred or not: one nothing addresses is the reference reader's `MVK_NO_WILDCARD`,
+        // which [addressedTargetOf] has already stood down for (KERNEL-FINDINGS KF599).
+        return SubstringDefect("MVK_NO_GROUPS_ALLOWED", "cuts `$target`, which is a group — cut one field of it")
     }
     if (declared.declaredKind != DeclaredKind.FIELD) {
         return null

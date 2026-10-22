@@ -723,6 +723,78 @@
       }
      }
     },
+    "kf599": {
+     "sha256": "56be2b741376f358bbe81e45d29242ec7d658f7418176c466a6be0d203b6ef2f",
+     "task": "M1",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "a $-marked operand in a Having body"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's operand gates on a marked operand"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's operand gates on a marked operand"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The kits author a filter body through typed refs that carry no outer marker; a stored condition is the checker's.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The shared operand reader reads the marker and addresses the operand by the rule's own iteration, and the substring and ValueAsDate gates refuse an addressed repeatable group.",
+       "evidence": {
+        "a $-marked operand in a Having body": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedOperandAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker names A12's class on every row, alone and beside an unmarked read."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of the customer model.",
+       "evidence": {
+        "A12's operand gates on a marked operand": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the finding's table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Not yet handed over.",
+       "evidence": {}
+      }
+     }
+    },
     "kf597": {
      "sha256": "9c700acb7f5000f6c2f36e83c763a149396d1b854afdaeefa7eb65cab802c5fc",
      "task": "DG146",

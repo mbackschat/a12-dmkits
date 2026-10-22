@@ -242,11 +242,12 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         operands.take(walked.size).forEachIndexed { at, operand ->
             val slot = walked[at]
             val arm = model.armIn(shape, operand, element, extractOps)
-            val defect = model.groupSlotDefect(slot, arm, element, inAFilterBody) ?: when (arm) {
+            val bodyAddressed = inAFilterBody && !arm.outerMarked
+            val defect = model.groupSlotDefect(slot, arm, element, bodyAddressed) ?: when (arm) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)
                 is SlotArm.Extract -> slot.extractDefect(arm.op, ownFamily)
-                is SlotArm.Entity -> slot.entityDefect(model, element, arm.path, keyed = false, inAFilterBody)
-                is SlotArm.Keyed -> arm.value?.let { slot.entityDefect(model, element, it, keyed = true, inAFilterBody) }
+                is SlotArm.Entity -> slot.entityDefect(model, element, arm.path, keyed = false, bodyAddressed)
+                is SlotArm.Keyed -> arm.value?.let { slot.entityDefect(model, element, it, keyed = true, bodyAddressed) }
                 is SlotArm.Starred -> SlotDefect("MVK_NO_WILDCARDS_ALLOWED", slot.name, arm.written, "a field read without a star")
                 SlotArm.Unjudged -> null
             }
@@ -291,19 +292,25 @@ private sealed interface SlotArm {
     data class Extract(val op: String) : SlotArm
 
     /** A bare entity path — no wildcard, no category selector, no filter. */
-    data class Entity(val path: String) : SlotArm
+    data class Entity(val path: String, override val outerMarked: Boolean = false) : SlotArm
 
     /** An entity spec carrying a semantic index: its value where the chain vouches for the key, else null. */
     data class Keyed(val value: String?) : SlotArm
 
     /** A path crossing a level with a star, as written. */
-    data class Starred(val written: String) : SlotArm
+    data class Starred(val written: String, override val outerMarked: Boolean = false) : SlotArm
 
     /** Any shape this reader did not reduce to one of the arms above. */
     data object Unjudged : SlotArm
 
     /** Whether the slot is A12's `entitySpec` arm, which a keyed spec is as much as a bare one. */
     val namesAnEntity: Boolean get() = this is Entity || this is Keyed
+
+    /**
+     * Whether a `$` capture marker opens the path, which a filter body reads as the enclosing rule's own
+     * reference, addressed by the rule's iteration (KERNEL-FINDINGS KF599).
+     */
+    val outerMarked: Boolean get() = false
 }
 
 private data class SlotDefect(val code: String, val slot: String, val wrote: String, val expected: String)
@@ -335,6 +342,13 @@ private fun TrackedFactBase.armIn(
 
 private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {
     val head = operand.firstOrNull() ?: return SlotArm.Unjudged
+    if (head.text == "$") {
+        return when (val marked = armOf(operand.drop(1), emptyMap())) {
+            is SlotArm.Entity -> marked.copy(outerMarked = true)
+            is SlotArm.Starred -> marked.copy(outerMarked = true)
+            else -> SlotArm.Unjudged
+        }
+    }
     if (operand.size == 1 && head.kind == TokenKind.STRING) {
         return SlotArm.Constant(head.text.decodeAuthoredStringLiteral())
     }

@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
+import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -570,8 +571,7 @@ internal fun TrackedFactBase.bareReferenceField(
     val read = operandReferenceIn(text, declaringGroup, element) {
         bareReferenceIn(text, conditionLanguage)?.let { OperandReference(it) }
     } ?: return null
-    val target = addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected,
-        everyLevelAddressed = inAFilterBody) ?: return null
+    val target = addressedTargetOf(read, declaringGroup, element, inAFilterBody) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
 
@@ -584,12 +584,16 @@ internal fun TrackedFactBase.bareReferenceField(
  * @param key the admitted key as written, which is part of the operand's identity in an entity list: A12 keys
  *     an operand by path, category, index and outer flag (KERNEL-FINDINGS kf439), so two reads of one path
  *     under different keys are different operands.
+ * @param outerMarked whether a `$` capture marker opens the spec, which makes it the enclosing rule's own
+ *     reference inside a `Having` body: its levels are addressed by the rule's iteration rather than the
+ *     filter chain's, and the flag is the fourth component of its identity (KERNEL-FINDINGS kf439).
  */
 internal data class OperandReference(
     val reference: String,
     val indexSelected: Boolean = false,
     val category: String? = null,
     val key: String? = null,
+    val outerMarked: Boolean = false,
 )
 
 /**
@@ -624,6 +628,9 @@ private fun TrackedFactBase.keyedReferenceIn(
     keepsCategory: Boolean,
     plain: () -> OperandReference?,
 ): OperandReference? {
+    // Read here rather than by each family's own reduction, every one of which refused the marker and left a
+    // marked operand unjudged on every gate A12 asks of it (KERNEL-FINDINGS KF599).
+    outerMarkedPathIn(text, conditionLanguage)?.let { return OperandReference(it, outerMarked = true) }
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
     val inner = text.withoutEnclosingBrackets()
     val uses = semanticIndexUsesIn(inner, conditionLanguage, keyword)
@@ -776,6 +783,20 @@ internal fun TrackedFactBase.addressedTargetOf(
     }
     return if (unaddressed) null else target
 }
+
+/**
+ * [addressedTargetOf] for an operand [read] in a call that may sit in a `Having` body, [inAFilterBody].
+ *
+ * A `$`-marked operand there is the enclosing rule's own reference, so its levels are addressed as outside the
+ * body: in a rule iterating nothing, the same marked field draws `MVK_NO_WILDCARD` (KERNEL-FINDINGS KF598, KF599).
+ */
+internal fun TrackedFactBase.addressedTargetOf(
+    read: OperandReference,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    inAFilterBody: Boolean,
+): String? = addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected,
+    everyLevelAddressed = inAFilterBody && !read.outerMarked)
 
 /**
  * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.

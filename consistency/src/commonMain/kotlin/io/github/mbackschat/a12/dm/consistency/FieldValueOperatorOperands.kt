@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -114,13 +113,9 @@ private fun TrackedFactBase.valueOperandDefect(
     element: TrackedDeclaration,
 ): ValueOperandDefect? {
     val operand = call.operands.singleOrNull() ?: return null
-    // A `$`-marked operand in a filter body is the enclosing rule's own reference, so its levels are addressed
-    // as outside the body, as the field-value read takes them (KERNEL-FINDINGS KF598).
-    val captured = operand.capturedPath(conditionLanguage)
-    val (written, keyed, category) = captured?.let { OperandReference(it) }
-        ?: operandSpec(operand, declaringGroup, element) ?: return null
-    val target = addressedTargetOf(written, declaringGroup, element, keyed, call.inAFilterBody && captured == null)
-        ?: return null
+    val read = operandSpec(operand, declaringGroup, element) ?: return null
+    val (written, _, category) = read
+    val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
     val requiredKind = if (arm == ValueOperatorArm.REPETITION) DeclaredKind.GROUP else DeclaredKind.FIELD
     if (declared.declaredKind != requiredKind) {

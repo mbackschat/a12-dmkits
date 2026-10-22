@@ -121,9 +121,9 @@ private fun TrackedFactBase.slotDefect(
             )
         }
     }
-    val (written, keyed) = read ?: return null
+    val written = read?.reference ?: return null
     val target = declaredTargetOf(written, declaringGroup, element) ?: return null
-    if (addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) == null) {
+    if (addressedTargetOf(read, declaringGroup, element, inAFilterBody) == null) {
         return null
     }
     if (target.declaredKind == DeclaredKind.GROUP) {

@@ -74,7 +74,7 @@ private fun TrackedFactBase.operandFinding(
         resolves = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
         isRepeatableGroup = { declarationAt(it)?.isRepeatableGroup == true },
     )
-    val addressed = addressedTargetOf(path, declaringGroup, element, read.indexSelected, call.inAFilterBody)
+    val addressed = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
     if (gate != null || addressed == null) {
         return null
     }

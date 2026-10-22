@@ -145,7 +145,7 @@ private fun TrackedFactBase.constantKindFinding(
         } ?: return null
     }
     val targets = reads.map { read ->
-        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
+        addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
             ?: return null
     }
     if (preEmptedBeforeTheSwitch(reads, targets)) {

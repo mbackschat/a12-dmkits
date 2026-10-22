@@ -109,7 +109,7 @@ private fun TrackedFactBase.categoryGateFinding(
     val reads = call.operands.map { operandSpec(it, declaringGroup, element) ?: return null }
     val categorized = reads.firstOrNull { it.category != null } ?: return null
     val targets = reads.map { read ->
-        addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected, call.inAFilterBody)
+        addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
             ?: return null
     }
     if (reads.indices.any { at -> reads[at].category != null && !declaresTheCategory(targets[at], reads[at]) }) {
