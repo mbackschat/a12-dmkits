@@ -108,19 +108,27 @@ class ModelTextReadingDiffTest {
         ), observed)
     }
 
-    /** Java's `equalsIgnoreCase` folds the long s onto `s`, so `fal\u017Fe` is false; a lone long s is no Boolean. */
+    /**
+     * Java's `equalsIgnoreCase` folds the long s onto `s`, so `fal\u017Fe` is false; a lone long s is no Boolean.
+     *
+     * The long s is the only character outside ASCII that the fold takes onto a letter of `true` or `false` (every
+     * code point enumerated on JDK 21.0.13, 2026-10-22). The dotted capital I and the Kelvin sign fold onto `i` and `k`,
+     * which neither word contains, so each alone reads as the lone long s does \u2014 a12-kernel-lean asked for these rows.
+     */
     @Test
     fun aBooleanCellIsComparedAsJavaComparesIgnoringCase() {
         val base = DocumentModelDraft.named("flags").locale("en_US")
             .rootGroup("Policy") { g -> g.booleanField("Flag") { }.numberField("Amount") { it.fractionDigits(0) } }.build().toJson()
         val json = RuntimeLaws.withRuleMessages(base, "/Policy", "RF", "../Amount", "FT", "FieldFilled(Amount) And FieldFilled(Flag)", "flag=[\$Flag.value\$]", "x")
-        val cells = listOf("true", "TRUE", "tRuE", "fal\u017Fe", "FAL\u017FE", "\u017F", " true")
+        val cells = listOf("true", "TRUE", "tRuE", "fal\u017Fe", "FAL\u017FE", "\u017F", " true", "\u0130", "\u212A")
         // A formal class is compared by its code alone, since the interpreter words its own texts (IF3).
         fun codes(fired: List<String>) = fired.map { if (it.startsWith("FT=")) it else it.substringBefore('=') }
         val kernel = cells.associateWith { codes(kernelFired(json, """{"Policy":{"Flag":"$it","Amount":1}}""")) }
         val interpreter = cells.associateWith { codes(interpreterFired(json, """{"Policy":{"Flag":"$it","Amount":1}}""")) }
         assertEquals(kernel, interpreter)
         assertEquals(listOf("FT=flag=[false]"), kernel.getValue("fal\u017Fe").filter { it.startsWith("FT=") }, "the long s folds onto s")
+        assertEquals(List(2) { kernel.getValue("\u017F") }, listOf(kernel.getValue("\u0130"), kernel.getValue("\u212A")),
+            "the dotted capital I and the Kelvin sign read as the lone long s")
     }
 
     private fun cover(edit: (ObjectNode) -> ObjectNode): ObjectNode = edit(MAPPER.readTree(DocumentModelDraft.named("cover").locale("en_US").baseYear(2000)
