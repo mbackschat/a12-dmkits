@@ -89,6 +89,10 @@ class CheckerGroupAndStarOperandAgreementTest {
                 "FieldFilled(Items/Count) And " + BODY.format("CurrentRepetition(\$Items/Count)"), NO_FIELDS),
             "an unmarked starred repetition in the body" to row("Items/Count",
                 "FieldFilled(Items/Count) And " + BODY.format("CurrentRepetition(Items*)"), NO_WILDCARDS),
+            // A marked operand is addressed by the rule's own iteration, and this rule iterates nothing.
+            "a marked field in a rule iterating nothing" to row("Total",
+                "FieldFilled(Total) And AtLeastOneFieldFilled(Items*/Count Having CurrentRepetition(\$Items/Count) > 0)",
+                "MVK_NO_WILDCARD"),
             "a starred repetition outside a filter" to row("Items/Count",
                 "FieldFilled(Items/Count) And CurrentRepetition(Items*) > 1", NO_WILDCARDS),
             // SumOfProducts: "only fields" before "exactly two" (`CheckFeldListenOpImpl`), and both at the call's
@@ -100,6 +104,9 @@ class CheckerGroupAndStarOperandAgreementTest {
                 "FieldFilled(Total) And [Total] != SumOfProducts(Items*, Items*/UnitWeight)", "MVK_DUPLICATE_PARAM2"),
             "a lone group" to row("Total", "FieldFilled(Total) And [Total] != SumOfProducts(Items*)", NO_GROUPS),
             "two groups" to row("Total", "FieldFilled(Total) And [Total] != SumOfProducts(BillingAddress, Items*)", NO_GROUPS),
+            // The root-group gate runs before "only fields".
+            "a root group" to row("Total", "FieldFilled(Total) And [Total] != SumOfProducts(/Customer)",
+                "MVK_ROOT_GROUP_REFERENCED"),
             "two fields" to row("Total",
                 "FieldFilled(Total) And [Total] != SumOfProducts(Items*/UnitPrice, Items*/UnitWeight)"),
         )
