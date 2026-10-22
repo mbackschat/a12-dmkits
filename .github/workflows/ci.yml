@@ -27,7 +27,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # An uncached run needs ~70–75 min (2026-10-22: setup + :adapter:test ~22 + :cli:test ~16–19 +
+    # :cli:publicContractTest ~23); 60 cancelled every such push from 2026-10-09 on. The cap only stops a hang.
+    timeout-minutes: 90
     env:
       # Hosted runners have no private init scripts, but retain the repo's explicit isolated-home contract.
       # setup-gradle below persists its dependencies, transformed jars, and local build cache across runs.
