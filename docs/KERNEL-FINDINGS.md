@@ -14389,3 +14389,32 @@ None of the three computations is refused. *Reading (hypothesis, source-read):* 
 On `FieldValuesNotUnique` a group operand counts as the fields beneath it, each repeatable level inside the group multiplying as a star would. With the claim's own amount beside a fixed group, A12 refuses beside `Totals` (two fields), `Office` (`Staff` and two `Desks/Seats`) and `Region` (one `Branches/Score`, under a level repeating twice), and admits beside `Levy` (one field). `Region` is the discriminator: counted by fields alone it is one member and below the threshold of two.
 
 *Locked by:* `adapter.laws.CheckerIterationGuardAgreementTest` (every row above, A12 pinned and the checker agreeing), `adapter.laws.CheckerUniquenessGuardAgreementTest` (the group operands).
+
+## §9 supplement — the iteration guard over a constant selection, and six more computations (kernel `checkConsistency`, 2026-10-22) <a id="kf596"></a>
+
+> Fold: pending — beside [KF595](#kf595), on the same order model, which gains `Bows` (3 rows keyed by `BowNo`) inside the unkeyed `Wraps`.
+
+| rule at `/Order` (error field) | A12 |
+|---|---|
+| `FieldNotFilled(Lines/Qty) And FieldFilled(Lines/Sku For "1")` (`Lines/Qty`) | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `FieldFilled(Lines/Qty) And FieldNotFilled(Lines/Sku For "1")` (`Lines/Qty`) | admitted |
+| `NoFieldFilled(Lines/Sku, Picks/Ref For "1")` (`Lines/Sku`) | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `MoreThanOneFieldFilled(Lines/Qty, Picks/Ref For "1") And FieldNotFilled(Lines/Sku)` (`Lines/Sku`) | admitted |
+| `MoreThanOneFieldFilled(Lines/Qty, Picks/Ref For "1", Picks/Ref For "2") And FieldNotFilled(Lines/Sku)` (`Lines/Sku`) | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `FieldFilled(Wraps/Bows/Shade For "a") And FieldNotFilled(Wraps/Style)` (`Wraps/Style`) | admitted |
+| `FieldFilled(Wraps/Style) And FieldNotFilled(Wraps/Bows/Shade For "a")` (`Wraps/Style`) | admitted |
+| `FieldFilled(Lines/Qty) And FieldNotFilled(Picks/Ref For Lines/LineNo)` (`Lines/Qty`) | admitted |
+
+So a selection keyed by a constant fixes the level it selects. The selected level does not iterate, so a selected positive guards nothing there (row 1). It is not parallel, so a selected negative draws the ordinary class, not `MVK_PARALLEL_ITERATION_INVALID` (row 3). It does not multiply, so it counts once under `MoreThanOneFieldFilled` (rows 4 and 5, against "it counts as often as its level repeats"). The levels above it still iterate: a selected positive guards the wrap it sits in (row 6, against "a selected reference iterates nothing"), as [KF64](#kf64) measured on its own carriers. The selections on the `FieldValuesNotUnique` grid of `CheckerUniquenessGuardAgreementTest`, ten of the twenty-five refusals there, follow the same account. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckSemanticIndexImpl` gives the selected level its own index, and the parallel pass `ParserService.setSeparatePathIndexes` marks only an iterated one. Keyed by a field, the selection iterates wherever its key does, and this account does not cover it.
+
+| computation at `/Order` (computed field) | A12 |
+|---|---|
+| precondition `CurrentRepetition(Lines) > 1`, or `FieldNotFilled(Picks/Ref)` (`Lines/Price`) | admitted |
+| common `FieldNotFilled(Lines/Sku)`, alternatives preconditioned `FieldNotFilled(Email)` and `FieldFilled(Email)` (`Lines/Price`) | admitted |
+| no common precondition, alternatives preconditioned `FieldNotFilled(Lines/Sku)` and `FieldNotFilled(Lines/Code)` (`Lines/Price`) | admitted |
+| precondition `NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)` (`Lines/Parts/Count`) | admitted |
+| precondition `NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)`, or `FieldNotFilled(Lines/Parts/PartNo)` (`Lines/Price`) | `MVK_NO_WILDCARD` |
+
+The `Lines/Parts/Count` row is admitted although the same precondition, as a rule on `Lines/Parts/PartNo`, draws `MVK_PARALLEL_ITERATION_INVALID` ([KF595](#kf595)). The text A12 joins it into ([KF471](#kf471)), written as a rule on `Lines/Parts/Count`, is admitted too. *Reading (hypothesis, argued from the rows):* at this check, "a computation is judged on its joined condition" and "a computation is not judged" give the same answer on every computation. The joined condition's leading `FieldFilled(<computed>)` is admitted, and it iterates every level the computed field does. A precondition iterating any other level draws `MVK_NO_WILDCARD` first (the last row). So no computation can tell the two readings apart here, and the checker's verdict is the same under both.
+
+*Locked by:* `adapter.laws.CheckerIterationGuardAgreementTest` (every row above, with A12 pinned and the checker agreeing; the field-keyed row sits among its declined shapes) and `adapter.laws.CheckerUniquenessGuardAgreementTest` (the grid's selections).

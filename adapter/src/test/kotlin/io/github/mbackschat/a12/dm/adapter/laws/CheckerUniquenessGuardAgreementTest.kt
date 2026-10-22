@@ -130,8 +130,8 @@ class CheckerUniquenessGuardAgreementTest {
         // The guard is live on this carrier, so the silence above is not silence on nothing: seven refused shapes
         // per overload and the four nested ones.
         assertEquals(25, verdicts.count { it.value.first == listOf(NEGATIVE) })
-        // Of those, the selections are the shapes the checker leaves to A12, each named at the rule.
-        assertEquals(10, verdicts.count { it.value.first == listOf(NEGATIVE) && it.value.second == listOf(DECLINED) })
+        // The checker answers every one of them itself, the selections included, rather than leaving any to A12.
+        assertEquals(25, verdicts.count { it.value.first == listOf(NEGATIVE) && it.value.second == listOf(NEGATIVE) })
         assertEquals(listOf("MVK_INVALID_WILDCARD") to listOf("MVK_INVALID_WILDCARD"),
             verdicts.getValue("Claims/Amount, Endorsement*/Amount"))
     }

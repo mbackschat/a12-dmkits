@@ -646,7 +646,79 @@
       },
       "a12-kernel-lean": {
        "state": "OPEN",
-       "basis": "To be handed over in the next letter with the measured rows.",
+       "basis": "Handed over in our 2026-10-22b letter; the peer has not answered.",
+       "evidence": {}
+      }
+     }
+    },
+    "kf596": {
+     "sha256": "5580a0fbd6c5f1d889aae70b67ab92aaa23afd389a21aa359627805652fba32d",
+     "task": "DG146",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "a constant selection under the iteration guard"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's iteration-guard reading over selections and computations"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's iteration-guard reading over selections and computations"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The ITERATION_GUARD family fixes a constant selection's own level, never marks it parallel or multiplies it, lets the levels above it iterate, and declines a selection keyed by a field with a coverage gap.",
+       "evidence": {
+        "a constant selection under the iteration guard": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#theCheckerAgreesWithA12OnEveryRow",
+         "witness": "The checker agrees with A12 on every selection row, each against its rival reading."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every selection row and every computation.",
+       "evidence": {
+        "A12's iteration-guard reading over selections and computations": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#aComputationPreconditionAsA12AnswersIt",
+         "witness": "A12 answers every computation as the finding's table states, and the checker agrees."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Written into our next letter, which the owner carries.",
        "evidence": {}
       }
      }
@@ -8146,7 +8218,7 @@
         "adapter": {"state": "APPLIED", "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker draws the negative-iteration class where A12 does, or names the rule in a coverage gap.", "evidence": {"fill quantifiers count independent slots once a rule iterates": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow", "witness": "No row draws a checker class A12 does not."}, "uniqueness guard slots over selections, groups and nested capacity": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/UniquenessGuardSlotLawsTest.java#aSelectionOrGroupGivesOneSlotPerFieldItReadsOnEveryOverload", "witness": "Thirty-nine overload rows on Number, String and Date, each a kernel verdict; the nested-capacity rows and their controls sit in the sibling method."}}},
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave the negative-iteration law to A12; the enricher's existing corrective applies.", "evidence": {}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "A static admission refusal never reaches evaluation.", "evidence": {}},
-        "checker": {"state": "APPLIED", "basis": "The ITERATION_GUARD family reports MVK_NEG_CONDITION_IN_ITERATION, counting a group operand as the fields beneath it (KF595); it declines a selection and names the rule in a coverage gap (CONSISTENCY-GAPS DG146).", "evidence": {"uniqueness guard slots over selections, groups and nested capacity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt", "witness": "Forty-seven rows: the guard's class on fifteen of the twenty-five A12 refuses with it and the other ten, the selections, named in a gap; no admitted one refused, the capacity-1 star's wildcard class shared."}}},
+        "checker": {"state": "APPLIED", "basis": "The ITERATION_GUARD family reports MVK_NEG_CONDITION_IN_ITERATION, counting a group operand as the fields beneath it (KF595); it judges a constant selection as fixing its own level (KF596).", "evidence": {"uniqueness guard slots over selections, groups and nested capacity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt", "witness": "Forty-seven rows: the guard's class on all twenty-five A12 refuses with it, the ten selections included; no admitted one refused, the capacity-1 star's wildcard class shared."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the checker assessed here.", "evidence": {}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema import.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema export.", "evidence": {}},

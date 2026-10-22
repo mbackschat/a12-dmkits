@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 /**
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody filled,
  * `MVK_NEG_CONDITION_IN_ITERATION` on the rule's own iteration and `MVK_PARALLEL_ITERATION_INVALID` across
- * parallel groups (KERNEL-FINDINGS KF537, KF595; the shapes left to A12 are CONSISTENCY-GAPS DG146).
+ * parallel groups (KERNEL-FINDINGS KF537, KF595, KF596; the shapes left to A12 are CONSISTENCY-GAPS DG146).
  *
  * [ROWS] pins A12's own answer on every row, so a kernel bump that moves one fails here before it is mistaken
  * for a checker defect; the checker must then agree with A12 on every row. Each row's comment names the rival
@@ -53,7 +53,10 @@ class CheckerIterationGuardAgreementTest {
             .group("Wraps") { w -> w.repeatable(2)
                 .stringField("Style") { }
                 .group("Ribbon") { r -> r.stringField("Color") { } }
-                .group("Tag") { t -> t.stringField("Label") { } } } }
+                .group("Tag") { t -> t.stringField("Label") { } }
+                .group("Bows") { b -> b.repeatable(3).indexField("BowNo")
+                    .stringField("BowNo") { }
+                    .stringField("Shade") { } } } }
         .build().toJson()
 
     private val validator = RuleValidator()
@@ -123,9 +126,8 @@ class CheckerIterationGuardAgreementTest {
      */
     @Test
     fun aComputationPreconditionAsA12AnswersIt() {
-        val verdicts = COMPUTATIONS.mapValues { (_, precondition) ->
-            val draft = DraftComputation("/Order", "PriceProbe", "../Lines/Price", precondition,
-                listOf(DraftComputation.Alternative(null, "1")))
+        val verdicts = COMPUTATIONS.mapValues { (_, row) ->
+            val draft = DraftComputation("/Order", "PriceProbe", "../${row.computed}", row.precondition, row.alternatives)
             val a12 = validator.check(order, draft).let { r ->
                 if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
             }
@@ -133,8 +135,11 @@ class CheckerIterationGuardAgreementTest {
             a12.sorted() to (report.findings.filter { it.justifiesRejection }.map { it.code } +
                 listOfNotNull(DECLINED_MARK.takeIf { report.gaps.any { it.at == "/Order/PriceProbe" } })).sorted()
         }
-        assertEquals(COMPUTATIONS.mapValues { emptyList<String>() }, verdicts.mapValues { it.value.first })
-        assertEquals(verdicts.mapValues { it.value.first }, verdicts.mapValues { it.value.second })
+        assertEquals(COMPUTATIONS.mapValues { it.value.a12 }, verdicts.mapValues { it.value.first })
+        // As for a rule: where an earlier class answers, a gap beside it is redundant but true.
+        assertEquals(verdicts.mapValues { it.value.first }, verdicts.mapValues { (_, v) ->
+            if (v.first.isNotEmpty() && v.first.none { it == NEG || it == PAR }) v.second - DECLINED_MARK else v.second
+        })
     }
 
     private companion object {
@@ -145,11 +150,37 @@ class CheckerIterationGuardAgreementTest {
             "specified, but the rule can fire for not filled repetitions of this repetition level. " +
             "[MVK_NEG_CONDITION_IN_ITERATION]"
 
-        /** Preconditions of a computation on each line's price; A12 joins each behind `FieldFilled(Lines/Price)`. */
-        val COMPUTATIONS = linkedMapOf(
-            "a per-row negative" to "FieldNotFilled(Lines/Sku)",
-            "a parallel negative" to "NoFieldFilled(Lines/Sku, Picks/Ref)",
-            "a per-row negative under Or" to "FieldNotFilled(Lines/Sku) Or FieldNotFilled(Email)",
+        /**
+         * Computations, each with A12's answer; A12 joins each precondition behind `FieldFilled(<computed>)`. The
+         * last row is the one that separates "the joined condition is judged" from "a computation is not judged":
+         * a positive presence admits an `And` against a negative, but not against a parallel iteration.
+         */
+        val COMPUTATIONS: Map<String, ComputationRow> = linkedMapOf(
+            "a per-row negative" to ComputationRow("FieldNotFilled(Lines/Sku)"),
+            "a parallel negative" to ComputationRow("NoFieldFilled(Lines/Sku, Picks/Ref)"),
+            "a per-row negative under Or" to ComputationRow("FieldNotFilled(Lines/Sku) Or FieldNotFilled(Email)"),
+            "a common and two own preconditions" to ComputationRow("FieldNotFilled(Lines/Sku)", listOf(
+                DraftComputation.Alternative("FieldNotFilled(Email)", "1"),
+                DraftComputation.Alternative("FieldFilled(Email)", "2"))),
+            "per-row negative preconditions under Or" to ComputationRow(null, listOf(
+                DraftComputation.Alternative("FieldNotFilled(Lines/Sku)", "1"),
+                DraftComputation.Alternative("FieldNotFilled(Lines/Code)", "2"))),
+            "the line's own repetition in the precondition" to ComputationRow("CurrentRepetition(Lines) > 1"),
+            "a negative over the picks alone" to ComputationRow("FieldNotFilled(Picks/Ref)"),
+            "a part beside a parallel pick, computing the part" to ComputationRow(
+                "NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)", computed = "Lines/Parts/Count"),
+            // A level the computed field does not iterate is refused earlier, so the gate is never short of one.
+            "a part beside a parallel pick, computing the line" to ComputationRow(
+                "NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)", a12 = listOf("MVK_NO_WILDCARD")),
+            "a part's negative, computing the line" to ComputationRow(
+                "FieldNotFilled(Lines/Parts/PartNo)", a12 = listOf("MVK_NO_WILDCARD")),
+        )
+
+        data class ComputationRow(
+            val precondition: String?,
+            val alternatives: List<DraftComputation.Alternative> = listOf(DraftComputation.Alternative(null, "1")),
+            val computed: String = "Lines/Price",
+            val a12: List<String> = emptyList(),
         )
 
         private fun order(errorField: String, condition: String, vararg a12: String) =
@@ -170,6 +201,9 @@ class CheckerIterationGuardAgreementTest {
                 "FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)", "MVK_ERROR_FIELD_AND_ITERATION_INVALID"),
             // Constants beyond the exact range a double holds: A12 still compares them, the checker declines.
             "sum equals 2^32 times 10^9" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000000", NEG),
+            // A selection keyed by a field iterates wherever its key does, which this reading does not follow.
+            "a field-keyed selection" to
+                order("Lines/Qty", "FieldFilled(Lines/Qty) And FieldNotFilled(Picks/Ref For Lines/LineNo)"),
             // A group as the error target.
             "group target" to order("Lines/Parts", "GroupNotFilled(Lines/Parts)", NEG),
         )
@@ -307,6 +341,28 @@ class CheckerIterationGuardAgreementTest {
             "window overlaps the season" to order("Lines/Window", "DateRangesOverlap(Lines/Window, Season)"),
             // Parallel is decided before the ordinary iteration: both refuse here, and A12 names the parallel one.
             "parallel and nested negative" to order("Lines/Parts/PartNo", "NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)", PAR),
+            // A constant selection fixes the level it selects: it neither iterates it, nor is it parallel, nor does
+            // it multiply. Against "a selected reference iterates its row", "a selection is parallel" and "a
+            // selection counts as its level's repeats", in that order.
+            "a selected positive beside a per-row negative" to
+                order("Lines/Qty", "FieldNotFilled(Lines/Qty) And FieldFilled(Lines/Sku For \"1\")", NEG),
+            "a per-row positive beside a selected negative" to
+                order("Lines/Qty", "FieldFilled(Lines/Qty) And FieldNotFilled(Lines/Sku For \"1\")"),
+            "a selected pick beside a per-row negative" to
+                order("Lines/Sku", "NoFieldFilled(Lines/Sku, Picks/Ref For \"1\")", NEG),
+            "MoreThanOne, one selected member" to order("Lines/Sku",
+                "MoreThanOneFieldFilled(Lines/Qty, Picks/Ref For \"1\") And FieldNotFilled(Lines/Sku)"),
+            "MoreThanOne, two selected members" to order("Lines/Sku",
+                "MoreThanOneFieldFilled(Lines/Qty, Picks/Ref For \"1\", Picks/Ref For \"2\") And FieldNotFilled(Lines/Sku)", NEG),
+            // A selection fixes only its own level: the wrap it sits in still iterates. Against "a selected
+            // reference iterates nothing", which refuses the first row.
+            "a selected bow guarding the wrap" to
+                order("Wraps/Style", "FieldFilled(Wraps/Bows/Shade For \"a\") And FieldNotFilled(Wraps/Style)"),
+            "the wrap guarding a selected bow" to
+                order("Wraps/Style", "FieldFilled(Wraps/Style) And FieldNotFilled(Wraps/Bows/Shade For \"a\")"),
+            // The text A12 joins the parts computation below into, written as a rule: admitted, as the computation is.
+            "a parts computation's joined text" to order("Lines/Parts/Count",
+                "FieldFilled(Lines/Parts/Count) And (NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)\n) And [Lines/Parts/Count] != 1"),
             // An earlier class answers first: a constant with more decimals than the operation carries, which is
             // also why a constant's leading fractional zeros never reach this check.
             "sum equals a 19-digit fraction" to

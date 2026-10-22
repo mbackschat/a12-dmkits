@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody
  * filled. `MVK_PARALLEL_ITERATION_INVALID` answers it across parallel groups and `MVK_NEG_CONDITION_IN_ITERATION`
  * on the rule's own iteration, in that order and after every other whole-rule check
- * ([KERNEL-FINDINGS KF537], [KF595]; `adapter.laws.CheckerIterationGuardAgreementTest`).
+ * ([KERNEL-FINDINGS KF537], [KF595], [KF596]; `adapter.laws.CheckerIterationGuardAgreementTest`).
  *
  * **What it is built on.** The connective tree the recognizer keeps ([ConditionNode]); the starred levels and
  * resolution every family reads; the parallel marking [markedLevelsOf] states for the filtered-entity family, so
@@ -64,8 +64,8 @@ internal fun TrackedFactBase.iterationGuardGaps(element: TrackedDeclaration): Li
         "this ${if (element.declaredKind == DeclaredKind.RULE) "rule" else "computation"} iterates a repetition, and whether its condition can be " +
             "true for a repetition nobody filled (`MVK_NEG_CONDITION_IN_ITERATION`, " +
             "`MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a shape this checker does not judge for " +
-            "that law, such as a `$` marker, a selection, a condition kind outside the measured set or a group " +
-            "error target"))
+            "that law, such as a `$` marker, a selection keyed by a field, a condition kind outside the measured set or a " +
+            "group error target"))
 }
 
 /** The stage that answered and its finding, null when the condition is admitted. */
@@ -389,17 +389,25 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     val targetGroup = target.substringBeforeLast('/')
     val references = mutableListOf<GuardReference>()
     val marked = mutableListOf<MarkedLevels>()
+    var selectionIterates = false
     for (entity in recognition.entities) {
-        if (entity.path.first().text == "$" || entity.indexKey || entity.indexed) return null
+        // A selection's FIELD key iterates wherever the key does, which this reading does not follow: declined.
+        if (entity.path.first().text == "$" || entity.indexKey) return null
         val inBody = bodies.any { entity.site.start in it }
         if (inBody != entity.inFilter) return null
         if (inBody) continue
-        references += guardReferenceOf(entity, group, element) ?: return null
-        marked += markedLevelsOf(normalizedPath(entity.path), group, targetGroup, element) ?: return null
+        val reference = guardReferenceOf(entity, group, element) ?: return null
+        references += reference
+        if (entity.indexed && reference.iterates) selectionIterates = true
+        // A selected level is never marked parallel: A12's pass marks only an iterated one.
+        marked += if (entity.indexed) MarkedLevels(emptyList(), emptyList())
+        else markedLevelsOf(normalizedPath(entity.path), group, targetGroup, element) ?: return null
     }
     // A12's two passes (KF376), read where the filtered-entity family reads them: only once some reference
     // iterates jointly does every reference's keyed level on the error field's path become parallel too.
     if (marked.any { it.joint.isNotEmpty() }) {
+        // How that pass marks the level a selection still iterates is unmeasured.
+        if (selectionIterates) return null
         references.zip(marked).forEach { (reference, levels) ->
             reference.levels.filter { it.mark == LevelMark.ITERATED && it.group in levels.marked }
                 .forEach { it.mark = LevelMark.PARALLEL }
@@ -428,10 +436,14 @@ private fun TrackedFactBase.guardReferenceOf(
     val groups = segments.indices.map { "/" + segments.take(it + 1).joinToString("/") }
         .let { if (declaration.declaredKind == DeclaredKind.FIELD) it.dropLast(1) else it }
     if (declaration.declaredKind == DeclaredKind.GROUP && groups.size == 1) return null
+    // A constant selection fixes the level it selects, which then neither iterates nor multiplies; the levels
+    // above it iterate as they would without it (KERNEL-FINDINGS KF64's "replaces only its own level").
+    val selected = if (entity.indexed) indexGroupOf(resolved.path) ?: return null else null
     val levels = groups.map { path ->
         val group = declarationAt(path) ?: return null
         val repeats = (group.body?.get("repeatability") as? JsonPrimitive)?.boundRepetitionCount() ?: 1
         val mark = when {
+            path == selected -> LevelMark.FIXED
             path in starred -> LevelMark.STARRED
             repeats > 1 -> LevelMark.ITERATED
             else -> LevelMark.FIXED
