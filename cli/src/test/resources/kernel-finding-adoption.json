@@ -5540,16 +5540,7 @@
           "basis": "These DSL/runtime facts do not change JSON Schema export.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The earlier receipt covers only SPEC-2026-10-03-03. The SPEC-2026-10-10-02 extension awaits peer verification.",
-          "evidence": {
-            "filtered field-fill slots and deciding prefixes": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
-              "witness": "KF512's eighteen document/arm rows, 441 full plus 441 whole-root partial signatures."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-03-03 was receipted earlier; the SPEC-2026-10-10-02 extension was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"filtered field-fill slots and deciding prefixes": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03", "witness": "KF512's eighteen document/arm rows, 441 full plus 441 whole-root partial signatures."}, "nested sparse/dense field-fill deciding prefixes": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-02", "witness": "Accepted against SparseFilteredAggregateDiffTest, with SparseFilteredFillDiffTest and DenseUniquenessPrefixDiffTest as additional locks."}}}
       }
     },
     "kf20": {
@@ -5659,20 +5650,7 @@
           "basis": "These DSL/runtime facts do not change JSON Schema export.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The empty-guard boundary was receipted against 35ad60446 (SPEC-2026-10-03-01); the parent-scoped column was accepted under SPEC-2026-10-07-01 at 5472a915 after inspecting dce1d1bc6. The peer did not rerun either. Numeric-token amendment awaits SPEC-2026-10-10-04 verification; prior receipts are retained.",
-          "evidence": {
-            "empty Number computation guard boundary": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
-              "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."
-            },
-            "parent-scoped index column": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-01",
-              "witness": "Parent-local duplicate poison corroborated on both strategies and the peer interpreter (ParentScopedIndexColumnDiffTest; KF20)."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "The empty-guard boundary and the parent-scoped column were receipted earlier (SPEC-2026-10-03-01, -10-07-01). The numeric-token amendment, SPEC-2026-10-10-04, was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"empty Number computation guard boundary": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03", "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."}, "parent-scoped index column": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-01", "witness": "Parent-local duplicate poison corroborated on both strategies and the peer interpreter (ParentScopedIndexColumnDiffTest; KF20)."}, "numeric parallel validation token multiplicity": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest."}, "parallel validation lexical visit order": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest with the amended visit order."}}}
       }
     },
     "kf109": {
@@ -8866,11 +8844,7 @@
             }
           }
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Lean d23d8c86 accepted SPEC-2026-10-10-11 and the modern-route/mode observations for SPEC-2026-10-10-12; the latter awaits peer disposition of the clarified ExtMP/H-DV profile boundary.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "OPEN", "basis": "SPEC-2026-10-10-11 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them. SPEC-2026-10-10-12 is answered, not accepted: the peer's legacy-profile checkpoint owns the unmeasured true-arm continuation limit, and the modern observations stay evidence for its K01 rather than proof of local implementation.", "evidence": {"raw callback input and reserved report admission": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-11", "witness": "Accepted against CustomTestRangeLawsTest."}}}
       }
     },
     "kf542": {
@@ -8957,11 +8931,7 @@
             }
           }
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The newly exposed runtime literal gap accompanies SPEC-2026-10-10-11/12 and awaits peer verification with the final batch revision.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The CRLF normalization of authored constants accompanied SPEC-2026-10-10-11/12 without an entry of its own, and the 2026-10-12 receipt does not name it, so no receipt is inferred.", "evidence": {}}
       }
     },
     "kf543": {
@@ -8991,7 +8961,7 @@
         "dmtool-cli": [
           "reached execution failure"
         ],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": ["reached execution failure"]
       },
       "consumers": {
         "dmkits": {
@@ -9072,11 +9042,7 @@
             }
           }
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-13 awaits peer verification and receipt at the final batch revision.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-13 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"reached execution failure": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-13", "witness": "Accepted against EmptyAuthoredPatternDiffTest."}}}
       }
     },
     "kf114": {
@@ -9164,11 +9130,7 @@
           "basis": "These DSL/runtime facts do not change JSON Schema export.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-04 remains pending; peer verification of this amendment is outstanding. Numeric-token amendment awaits SPEC-2026-10-10-04 verification; prior receipts are retained.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "The numeric-token amendment, SPEC-2026-10-10-04, was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"numeric parallel validation token multiplicity": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest."}, "parallel validation lexical visit order": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest with the amended visit order."}}}
       }
     },
     "kf126": {
@@ -9460,16 +9422,7 @@
           "basis": "No exported keyword or rule carriage changes; this is runtime count semantics.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-17 awaits peer verification; no receipt is claimed.",
-          "evidence": {
-            "reopened count capacities and operand positions": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-17",
-              "witness": "SPEC-2026-10-10-17 awaits peer verification; no receipt is claimed."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-17 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"reopened count capacities and operand positions": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-17", "witness": "Accepted against MultiLevelStarredGroupCountDiffTest, with AncestorStarredGroupCountComputationDiffTest."}}}
       }
     },
     "kf464": {
@@ -9544,16 +9497,7 @@
           "basis": "No exported keyword or rule carriage changes; this is runtime count semantics.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-19 awaits peer verification; no receipt is claimed.",
-          "evidence": {
-            "later counted presence remains three-valued": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-19",
-              "witness": "SPEC-2026-10-10-19 awaits peer verification; no receipt is claimed."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-19 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"later counted presence remains three-valued": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-19", "witness": "Accepted against PartialGroupCountRelevanceDiffTest."}}}
       }
     },
     "kf55": {
@@ -9628,16 +9572,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-15 awaits peer verification.",
-          "evidence": {
-            "ordinary partial declared-list extent": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-15",
-              "witness": "SPEC-2026-10-10-15 awaits peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-15 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"ordinary partial declared-list extent": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-15", "witness": "Accepted against PartialDeclaredListExtentDiffTest."}}}
       }
     },
     "kf120": {
@@ -9722,16 +9657,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-22 awaits peer verification.",
-          "evidence": {
-            "finite descendant coverage of parent groups": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-22",
-              "witness": "SPEC-2026-10-10-22 awaits peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-22 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"finite descendant coverage of parent groups": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-22", "witness": "Accepted against PartialParentGroupCoverageDiffTest."}}}
       }
     },
     "kf13": {
@@ -9806,16 +9732,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
-          "evidence": {
-            "partial starred group missing-position coverage": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
-              "witness": "SPEC-2026-10-10-20/21 await peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-20 and -21 were accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"partial starred group missing-position coverage": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20", "witness": "SPEC-2026-10-10-20 and -21 accepted against PartialStarredGroupCoverageDiffTest."}}}
       }
     },
     "kf229": {
@@ -9890,16 +9807,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
-          "evidence": {
-            "partial starred group missing-position coverage": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
-              "witness": "SPEC-2026-10-10-20/21 await peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-20 and -21 were accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"partial starred group missing-position coverage": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20", "witness": "SPEC-2026-10-10-20 and -21 accepted against PartialStarredGroupCoverageDiffTest."}}}
       }
     },
     "kf461": {
@@ -9974,16 +9882,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-20/21 await peer verification.",
-          "evidence": {
-            "partial starred group missing-position coverage": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20",
-              "witness": "SPEC-2026-10-10-20/21 await peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-20 and -21 were accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"partial starred group missing-position coverage": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-20", "witness": "SPEC-2026-10-10-20 and -21 accepted against PartialStarredGroupCoverageDiffTest."}}}
       }
     },
     "kf187": {
@@ -10087,16 +9986,7 @@
           "basis": "No exported keyword or rule carriage changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-16 retained observations agree; the peer owns acceptance and executable reconciliation.",
-          "evidence": {
-            "selected group value-list admission and read-back": {
-              "reference": "a12-kernel-lean@b04b60464245256e6d769d7dc21ea1f8334c8ee3:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-16",
-              "witness": "SPEC-2026-10-10-16 awaits runtime reconciliation and peer verification."
-            }
-          }
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-16 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"selected group value-list admission and read-back": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-16", "witness": "Accepted against SelectedGroupValueListDiffTest."}}}
       }
     },
     "kf488": {
@@ -10398,11 +10288,7 @@
           "basis": "No exported keyword represents enclosing-row Having evaluation.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "The corrected KF80 claim awaits peer verification; no receipt is inferred.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-12 receipt reviews enclosing-row Having only as a candidate evidence route and leaves its local coverage to the peer's K03/K06, so no receipt of the corrected KF80 claim is inferred.", "evidence": {}}
       }
     },
     "kf68": {
@@ -10477,11 +10363,7 @@
           "basis": "The runtime scan policy changes no exported keyword or rule carriage.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-10-02 and the narrowed KF68 claim await peer verification.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-10-02 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"ordinary filtered membership pass policies and deciding prefixes": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-02", "witness": "Accepted against SparseFilteredAggregateDiffTest, with SparseMembershipTraversalDiffTest."}}}
       }
     },
     "kf544": {
@@ -10679,11 +10561,7 @@
           "basis": "Native constraints and lossless authored-rule carriage are unchanged; the runtime address policy is documented separately.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Lean owns verification; IF376 remains an explicit compatibility difference, and malformed-JSON rows await SPEC07.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "OPEN", "basis": "SPEC-2026-10-10-05, -06, -08, -09 and -10 are answered, not accepted, so the peer owes nothing and no receipt is inferred; the malformed-JSON rows rode SPEC-2026-10-10-07, which was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them. The peer records IF376's first-admitted pointer policy as a compatibility difference, not contrary Kernel evidence.", "evidence": {}}
       }
     },
     "kf546": {
@@ -10782,11 +10660,7 @@
           "basis": "Message strings retain their existing owner-content carriage; no JSON Schema keyword, model shape or conversion changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-11-01 awaits Lean verification of this revision.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-11-01 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"SPEC11-01": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-11-01", "witness": "Accepted against SelectedMessageReferenceDiffTest, with RuleMessageParameterRenderingDiffTest and ParallelValidationDispatchDiffTest."}}}
       }
     },
     "kf280": {
@@ -10936,11 +10810,7 @@
           "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-11-02 awaits peer verification.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-11-02 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"SPEC11-02": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-11-02", "witness": "Accepted against InvalidModelLoadDiagnosticTest, with RuleSlotLawsTest and ComputationSlotLawsTest."}}}
       }
     },
     "kf291": {
@@ -11008,11 +10878,7 @@
           "basis": "Declaration admission and notification attribution change no runtime behavior or JSON Schema model mapping.",
           "evidence": {}
         },
-        "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "SPEC-2026-10-11-02 awaits peer verification.",
-          "evidence": {}
-        }
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-11-02 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"SPEC11-02": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-11-02", "witness": "Accepted against InvalidModelLoadDiagnosticTest, with RuleSlotLawsTest and ComputationSlotLawsTest."}}}
       }
     },
     "kf240": {
@@ -11036,7 +10902,7 @@
         "dmtool-cli": {"state": "ALREADY_CONFORMS", "basis": "The interpreter output reports value/cleared/error, without claiming a Kernel clearing reason.", "evidence": {"computation output": {"reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ComputeDocVerbTest.java#aGuardedNumberComputationClearsWhereUnguardedComputesZero", "witness": "Guarded clear versus numeric empty substitution; current four-row CLI probe additionally matches both Kernel strategies."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "No JSON Schema model mapping or authored computation changes.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Runtime clear state is not a JSON Schema model projection.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Current measured limitation and correction await peer receipt; no Lean repository edits.", "evidence": {}}
+        "a12-kernel-lean": {"state": "ALREADY_CONFORMS", "basis": "The peer audited the KF240 correction on 2026-10-12 as an instrument inquiry: its Lean dependency controls already distinguish clean emptiness from a poisoned read, and the public result API exposes neither per-clear validity nor cause.", "evidence": {"SG4 observability": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-computation-clear-observability", "witness": "Answered with an API boundary; existing Lean dependency controls distinguish clean empty from poisoned reads."}}}
       }
     },
     "kf32": {
@@ -11060,7 +10926,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}}},
         "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,998 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}}},
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-02 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and corrected: the peer now caps a computed String target at its type's maximum, 99,999 when none is declared.", "evidence": {"stored input gate order": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-02", "witness": "Accepted against CheckedInputOrderDiffTest."}, "computed String default maximum": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "correction-a: Lean checks computed String targets under the default maximum."}}}
       }
     },
     "kf36": {
@@ -11084,7 +10950,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}}},
         "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,998 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}}},
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-02 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and corrected: the peer now caps a computed String target at its type's maximum, 99,999 when none is declared.", "evidence": {"stored input gate order": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-02", "witness": "Accepted against CheckedInputOrderDiffTest."}, "computed String default maximum": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "correction-a: Lean checks computed String targets under the default maximum."}}}
       }
     },
     "kf547": {
@@ -11108,7 +10974,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the 99,999/100,000 boundaries, gate order, authored CRLF count with consumers, raw bypass, custom validator calls and computed String/Custom targets.", "evidence": {"stored input gate order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#theGuardCountsTheAuthoredCrlfPairAsTwoUnits", "witness": "100,000 authored units folding to 99,999 are refused on both strategies, the rule and Length computation do not read them, and the 99,999-unit control is read."}, "computed String default maximum": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckedInputOrderDiffTest.kt#aComputedValueMeetsTheTargetTypeNotTheInputGuard", "witness": "A 100,000-unit String target errs on both strategies while the Custom twin is stored, separating the type maximum from a guard on computed values."}, "dependent read of a computed value": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedValueInputGateDiffTest.kt#aDependentReadsTheComputedValueWithoutTheInputGates", "witness": "Both strategies store a stored date as ZeichenNichtImZeichensatz under letters only and compute every dependent of a constant date, range and Number, as under the default charset."}}},
         "interpreter": {"state": "APPLIED", "basis": "The interpreter returns first for a raw String, applies the guard over the authored text before the baseline on every stored kind including Custom, and defaults an undeclared String maximum to 99,999.", "evidence": {"stored input gate order": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#anAuthoredCrlfCountsTwoUnits", "witness": "JVM and Node both refuse 99,998 letters plus an authored CRLF with wertZuLang."}, "computed String default maximum": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CheckedInputOrderTest.kt#aComputedStringMeetsTheDefaultMaximum", "witness": "JVM and Node store a 99,998-unit computed String and err a 100,000-unit one."}, "dependent read of a computed value": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedValueInputGateDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Under a letters-only charset every dependent of a computed date, range or Number cleared until IF419; it now computes as both strategies do."}}},
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter admission.", "evidence": {"stored input gate order": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/CheckedInputOrderCliTest.kt#aRawStringIsNeverCheckedAndAnOverlongValueIsTooLongFirst", "witness": "model eval leaves a raw String with blanks or above the limit unreported and reports an overlong blank-led String as wertZuLang only."}}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-02 in the 2026-10-13 handback, including the correction that a computed String target is capped by its default maximum; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-02 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and corrected: the peer now caps a computed String target at its type's maximum, 99,999 when none is declared.", "evidence": {"stored input gate order": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-02", "witness": "Accepted against CheckedInputOrderDiffTest."}, "computed String default maximum": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "correction-a: Lean checks computed String targets under the default maximum."}}}
       }
     },
     "kf548": {
@@ -11132,7 +10998,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 23 rows, including the whole-list gates and the No, NotAll and scalar siblings.", "evidence": {"membership operand read order": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerMembershipReadOrderAgreementTest.kt#wholeListGatesFollowEveryOperandRead", "witness": "A repeated subject or member before an unbound read answers MVK_NO_WILDCARD, and a kind mismatch before a missing name answers MVK_INVALID_ENTITY."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model consistency is not interpreter behaviour; the interpreter evaluates only models the gate admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs delegate to the kernel by default and to the portable checker under --engine portable; neither path adds a membership gate of its own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-03 in the 2026-10-13 handback as already satisfied, with the new lock; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-03 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"membership operand read order": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-03", "witness": "Accepted against CheckerMembershipReadOrderAgreementTest."}}}
       }
     },
     "kf549": {
@@ -11156,7 +11022,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on the eligibility contrasts, the missing association, an invalid payload, an invalid key and an irrelevant key.", "evidence": {"selected error key read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedErrorReanchorEligibilityDiffTest.kt#anIrrelevantKeyFieldNamesNoRow", "witness": "Under partial validation without the key field, both strategies address Bays[-5] and so does the interpreter."}}},
         "interpreter": {"state": "APPLIED", "basis": "selectedMessageRepetitions reads a field-valued key through ValidationPass.checkedKeyValue, the relevance and formal test the rule operands use.", "evidence": {"selected error key read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedErrorReanchorEligibilityDiffTest.kt#aFormallyInvalidKeyNamesTheUnknownRow", "witness": "A key of two characters in a field of maximum length 1 names Bays[-5] although its text equals the second bay's code; the three-engine comparison of that document fails when the raw read is restored."}}},
         "dmtool-cli": {"state": "APPLIED", "basis": "model eval runs the corrected interpreter address.", "evidence": {"selected error key read": {"reference": "cli/src/test/kotlin/io/github/mbackschat/a12/dm/cli/SelectedErrorKeyCliTest.kt#anInvalidKeyAddressesTheUnknownBay", "witness": "model eval reports the rule at Bays[-5] for an invalid key whose text names a bay."}}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-12-01 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-12-01 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"selected error key read": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-12-01", "witness": "Accepted against SelectedErrorReanchorEligibilityDiffTest."}}}
       }
     },
     "kf483": {
@@ -11180,7 +11046,7 @@
         "adapter": {"state": "APPLIED", "basis": "The direct-copy rows are measured on the kernel beside the first-filled ones.", "evidence": {"year-presence copy": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#aYearlessSourceNeedsABaseYearForADatedTarget", "witness": "The same copy flips from refused to admitted when only the Base Year changes."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model admission is not interpreter behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs delegate to the kernel or the portable checker and add no gate of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-01 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-01 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"year-presence copy": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-01", "witness": "Accepted against FirstFilledDateTargetRenderingDiffTest."}}}
       }
     },
     "kf550": {
@@ -11204,7 +11070,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on five documents, and the kernel against the checker on thirteen admission rows.", "evidence": {"Date target gate": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFirstFilledDateTargetAgreementTest.kt#aYearlessSourceNeedsABaseYearForADatedTarget", "witness": "A yearless source into a dated target is refused without a Base Year and admitted into a yearless target."}, "Date target rendering": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#theTargetFormatRendersTheSelectedDate", "witness": "Each crossed pair stores the target's own spelling, and a yearless source completes with the Base Year."}, "cross-kind Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateCrossKindTargetDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Both strategies and the interpreter agree on TIME-kind Date targets, cross-kind constants and a chained read-back."}}},
         "interpreter": {"state": "APPLIED", "basis": "The interpreter renders the selected Date into the target's declared format and poisons on a reached malformed source. The store asks the target's declared format, not its kind, since IF397.", "evidence": {"Date target rendering": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateTargetRenderingDiffTest.kt#aMalformedFirstSourceClearsTheSeededTarget", "witness": "The interpreter clears every seeded target behind a malformed first source and with nothing filled, as both kernel strategies do."}, "cross-kind Date target": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FirstFilledDateCrossKindTargetDiffTest.kt#theDeclaredFormatRendersOnEitherKind", "witness": "A TIME-kind dotted target stores 05.03.2024 and an ISO one turns a dotted constant into 2024-03-05; both were ERRORED before IF397."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool computes through the interpreter and adds no Date rendering of its own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-01 in the 2026-10-13 handback as already satisfied, with the new locks; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-01 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them; the cross-kind target rows of the 2026-10-21 letter (§1.4) were triaged at bf2216b6 as agreeing.", "evidence": {"Date target gate": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-01", "witness": "Accepted against FirstFilledDateTargetRenderingDiffTest."}, "Date target rendering": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-01", "witness": "Accepted against FirstFilledDateTargetRenderingDiffTest."}, "cross-kind Date target": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-21", "witness": "§1.4 agrees with the peer's spec."}}}
       }
     },
     "kf551": {
@@ -11228,7 +11094,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel's ordered notifications are compared with the portable checker's on 42 own-domain rows, with the two codeless classes pinned separately.", "evidence": {"enumeration notification stream": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodelessClassesArePublishedOrDeliberatelyNot", "witness": "The unsupported-signs sentence is published exactly once wherever A12 raises it, and the repeated-value sentence never stands alone."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model consistency is not interpreter behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's check verbs relay the kernel's or the portable checker's report and add no notification of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-04 in the 2026-10-13 handback, including the supplementary category-token rows; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-04 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"enumeration notification stream": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-04", "witness": "Accepted against CheckerEnumDeclarationStreamAgreementTest."}}}
       }
     },
     "kf552": {
@@ -11252,7 +11118,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on the requiredness domain, the partial selections and every reader family over a required-empty cell, each beside an optional twin.", "evidence": {"generated requiredness scope": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GeneratedRequirednessScopeDiffTest.kt#partialValidationRequiresTheFieldAndReadsSelectedContent", "witness": "Seven selections on one document agree across all three engines and are pinned, including the unselected parent content that leaves Street optional."}, "required-empty reads": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequiredEmptyReadDiffTest.kt#theKernelSilencesEveryReadOfTheRequiredEmptyCell", "witness": "Every silenced reader's optional twin fires in the same document, so each silence is controlled."}}},
         "interpreter": {"state": "APPLIED", "basis": "An empty cell that is not check-relevant is unavailable to presence, counts, first-filled walks, aggregates, value lists and fill tallies through one predicate; the generated requiredness domain already matched.", "evidence": {"generated requiredness scope": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GeneratedRequirednessScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agrees with both strategies on all nine documents, including the capacity and parent-content rows."}, "required-empty reads": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RequiredEmptyReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "Before the change the interpreter fired every reader family over the required-empty cell; it now agrees on all four documents."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no read of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-06 in the 2026-10-13 handback, including the reader sweep and the computation-channel rows; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-06 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them; the report order of the 2026-10-21 letter (§1.6) was triaged at bf2216b6 as matching it.", "evidence": {"generated requiredness scope": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-06", "witness": "Accepted against RequiredEmptyReadDiffTest; the report order matches."}, "required-empty reads": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-06", "witness": "Accepted against RequiredEmptyReadDiffTest."}}}
       }
     },
     "kf553": {
@@ -11276,7 +11142,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter under five selections on three documents, including slots no row holds and a row past capacity.", "evidence": {"partial rule row domain": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredRowDomainDiffTest.kt#partialValidationRunsEveryDeclaredSlotTheSelectionCovers", "witness": "Every selection agrees across the three engines and is pinned, so a missing slot the selection covers carries the rule's finding."}}},
         "interpreter": {"state": "APPLIED", "basis": "A partial validation iterates the declared slot domain a full one does, and relevance alone decides where its rules run.", "evidence": {"partial rule row domain": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredRowDomainDiffTest.kt#partialValidationRunsEveryDeclaredSlotTheSelectionCovers", "witness": "Before the change the interpreter reported nothing on a missing slot; it now matches both strategies on every selection."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and choose no rows of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-06 as an adjacent measurement; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "ALREADY_CONFORMS", "basis": "The 2026-10-13 receipt records that partial validation running a per-row rule on every covered declared slot agrees with the peer's spec/10 §5; no local replay was run.", "evidence": {"partial rule row domain": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "corroborating: KF553 agrees with spec/10 §5."}}}
       }
     },
     "kf554": {
@@ -11300,7 +11166,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on seven keys, with a full selected bin as the closed control.", "evidence": {"unmatched keyed sum polarity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedKeyAggregatePolarityDiffTest.kt#anUnmatchedSelectionKeepsTheStarredSumFillable", "witness": "A full selected bin types the stale total VALUE, while every unmatched, empty, absent or carriage-return key types it OMISSION."}}},
         "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's keyed star already read an unmatched selection as the fillable empty list.", "evidence": {"unmatched keyed sum polarity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedKeyAggregatePolarityDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agreed with both strategies on all seven documents before any change."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and type no message of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-07 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-07 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"unmatched keyed sum polarity": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-07", "witness": "Accepted against UnmatchedKeyAggregatePolarityDiffTest."}}}
       }
     },
     "kf555": {
@@ -11324,7 +11190,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on a direct, a starred and a key read, with a clean document as the control.", "evidence": {"charset-invalid read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersComputeReadDiffTest.kt#aValueOutsideTheDeclaredCharsetPoisonsEveryComputationReadingIt", "witness": "Each lowercase value clears exactly the computations reading it and silences the rule reading it, while the clean document computes all four and fires both rules."}}},
         "interpreter": {"state": "APPLIED", "basis": "Every evaluation entry point reads the document under the effective charset, the consumer-supplied one included.", "evidence": {"charset-invalid read": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersComputeReadDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter counted the lowercase starred tag and fired the tag-count rule before the change, and agrees with both strategies after it."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and read no value of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured row; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "ALREADY_CONFORMS", "basis": "The 2026-10-13 receipt records that a value outside supportedCharacters being formally invalid on every read agrees with the peer's spec/06; no local replay was run.", "evidence": {"charset-invalid read": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "corroborating: KF555 agrees with spec/06."}}}
       }
     },
     "kf556": {
@@ -11348,7 +11214,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 46 length shapes over three carriers, with in-range and sentinel controls.", "evidence": {"declared length range": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLengthLimitAgreementTest.kt#everyRowAgrees", "witness": "Every row's class multiset agrees, including the pre-empted ordering and noValueValidation rows and the deleted-field controls."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no length logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured grid; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt folds the length and digit-count ranges into the peer's spec/01 §1, correcting spec/04's earlier tier (a fractional count below -1 as signed, an integer count above 15 as a codeless verdict). Its model reader does not judge these ranges yet; the peer's K17 carries them.", "evidence": {}}
       }
     },
     "kf339": {
@@ -11372,7 +11238,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared on 29 rule rows and three computation rows, with sound-target twins for every withheld class.", "evidence": {"declaration withholding reach": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#theWithholdingAndTheMultiplicityAreObservable", "witness": "A failed target keeps the reserved-name and missing-message classes and drops RULE_HAS_NO_ERRORTEXT, which its sound twin draws."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check withholding is not evaluation behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and select nothing of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reconciled with SPEC-2026-10-13-08 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-08 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"declaration withholding reach": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-08", "witness": "Accepted against CheckerDeclarationWithholdingAgreementTest."}}}
       }
     },
     "kf345": {
@@ -11396,7 +11262,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel's notification list and the checker are compared on 19 sort lists, multiplicity included.", "evidence": {"sort list multiplicity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#everyRowAgrees", "witness": "Two different opaque fields draw the type class twice on both sides, and a fourth entry draws one capacity class."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Sort lists are model-check behaviour; the interpreter checks no declaration.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reconciled with SPEC-2026-10-13-08 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-08 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them; the peer adopted that every sort entry beyond the third draws its own capacity notification.", "evidence": {"sort list multiplicity": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-13", "witness": "correction-b: each sort entry beyond the third draws its own notification."}}}
       }
     },
     "kf557": {
@@ -11420,7 +11286,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are compared with the interpreter on seven aisles, with the firing leaf as the control.", "evidence": {"non-firing RNU leaf references": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingReferenceDiffTest.kt#aNonFiringLeafContributesNoReference", "witness": "A message fired by the sibling refers to the row's Qty alone, while a firing leaf adds its duplicate cluster's codes."}}},
         "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's RepetitionNotUnique leaf already contributed references only when it fired.", "evidence": {"non-firing RNU leaf references": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepetitionNotUniqueSiblingReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter agreed with both strategies, references included, on all seven documents before any change."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's evaluation verbs run the interpreter and add no reference of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported with SPEC-2026-10-13-09 in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-09 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them.", "evidence": {"non-firing RNU leaf references": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-09", "witness": "Accepted against RepetitionNotUniqueSiblingReferenceDiffTest."}}}
       }
     },
     "kf558": {
@@ -11444,7 +11310,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel's notification list and the checker are compared on fourteen models, single-group controls included.", "evidence": {"class multiplicity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerClassMultiplicityAgreementTest.kt#everyRowAgrees", "witness": "Every row's multiset agrees, the xml subtree and per-locale rows included."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check multiplicity is not evaluation behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and count nothing of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback beside SPEC-2026-10-13-08; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The peer reproduced the per-locale RULE_HAS_NO_ERRORTEXT multiplicity on 2026-10-13. The xml-prefix, value-validation-off String and unspecified-type multiplicities have no local implementation and join its K17.", "evidence": {"class multiplicity": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-kf558-multiplicity", "witness": "Three per-locale rows reproduced at the measurement pin and asserted in the peer's report locks."}}}
       }
     },
     "kf559": {
@@ -11468,7 +11334,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 50 number declarations, with in-range, sentinel and deleted-field controls.", "evidence": {"digit count range": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#everyRowAgrees", "witness": "Every row's class multiset agrees, including the derived amount counts and the three-valued fractional-part rows."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a measured grid; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt folds the length and digit-count ranges into the peer's spec/01 §1, correcting spec/04's earlier tier (a fractional count below -1 as signed, an integer count above 15 as a codeless verdict). Its model reader does not judge these ranges yet; the peer's K17 carries them.", "evidence": {}}
       }
     },
     "kf364": {
@@ -11492,7 +11358,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel's sentence and the checker's class are compared beside an in-range fractional part.", "evidence": {"integer count sentence": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#theSentencesAreObservable", "witness": "An integer count of 16 beside a fractional part draws only the 15 sentence on both sides."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a tier correction; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt folds the length and digit-count ranges into the peer's spec/01 §1, correcting spec/04's earlier tier (a fractional count below -1 as signed, an integer count above 15 as a codeless verdict). Its model reader does not judge these ranges yet; the peer's K17 carries them.", "evidence": {}}
       }
     },
     "kf320": {
@@ -11516,7 +11382,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on every signed fractional row.", "evidence": {"signed digit count": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDigitMemberRangeAgreementTest.kt#everyRowAgrees", "witness": "A signed maximum beside a minimum of 3 draws only the signed sentence on both sides, not the inversion class."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted and checks no declaration range.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a scope correction; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt folds the length and digit-count ranges into the peer's spec/01 §1, correcting spec/04's earlier tier (a fractional count below -1 as signed, an integer count above 15 as a codeless verdict). Its model reader does not judge these ranges yet; the peer's K17 carries them.", "evidence": {}}
       }
     },
     "kf420": {
@@ -11540,7 +11406,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both corrected sentences are read from the kernel's own notifications.", "evidence": {"codeless sentence text": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupNameLengthSentenceLawsTest.kt#sixtyOneCharactersDrawThePathSentenceAtTheGroupAndItsField", "witness": "A 61-character nested group draws the path-shape sentence at the group and at its field, and no class."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Model-check sentences are not evaluation behaviour.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no digit-count logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback as a sentence correction; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt adopts the codeless-verdict tier for count ranges, but does not name the corrected sentence text, so no receipt is inferred for it; the peer's K17 carries the declaration notifications.", "evidence": {}}
       }
     },
     "kf494": {
@@ -11612,7 +11478,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on five spanning and non-spanning rows and five unbuildable restrictions.", "evidence": {"supplementary charset unit": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "Every spanning-range row's coded stream agrees, two values sharing a high unit drawing two classes on both sides."}}},
         "interpreter": {"state": "ALREADY_CONFORMS", "basis": "The interpreter's stored-value charset check already refused a supplementary character under the spanning range.", "evidence": {"stored supplementary value": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SupportedCharactersSupplementaryDiffTest.kt#allThreeEnginesAgreeUnderTheSpanningRange", "witness": "A note carrying U+1F6D2 is formally invalid on both kernel strategies and the interpreter, and a BMP letter inside the range is admitted on all three."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no charset logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-11; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-11 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and corrected: charset notifications collapse per value and unit, and any supportedCharacters entry holding a surrogate unit leaves the model unbuilt.", "evidence": {"supplementary charset unit": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-11", "witness": "Accepted against CheckerEnumDeclarationStreamAgreementTest; correction-c and extension-d adopted."}}}
       }
     },
     "kf561": {
@@ -11636,7 +11502,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies are pinned row by row and compared with the interpreter.", "evidence": {"message parameter row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageParameterRowDiffTest.kt#bothKernelStrategiesRenderTheRowEachParameterReads", "witness": "Both strategies render every spelling at the row it reads and fault an unmatched value read once, at the first row."}}},
         "interpreter": {"state": "APPLIED", "basis": "Field tokens resolve absolute, parent-relative and short names, and a keyed token reads the row its key selects.", "evidence": {"message parameter row": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/MessageParameterRowRenderTest.kt#everySpellingAndKeyReadsItsRow", "witness": "On JVM and Node every spelling reads its row and an unmatched value read ends the rule with one fault message."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool renders messages through the interpreter and carries no rendering of its own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-12 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and extended: an unmatched key faults a value parameter only, reported once at the first row of a rule iterating the keyed group.", "evidence": {"message parameter row": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-12", "witness": "Accepted against MessageParameterRowDiffTest; extension-g-h adopted."}}}
       }
     },
     "kf562": {
@@ -11660,7 +11526,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared row by row, with A12's own verdicts pinned.", "evidence": {"keyed message membership": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedMessageMembershipAgreementTest.kt#theCheckerAgreesWithA12", "witness": "Twenty-three rows agree, refusals and admissions both."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static message admission is the kernel's and the checker's; the interpreter evaluates admitted models only.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel and the portable checker it already runs.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-12 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and extended: an unmatched key faults a value parameter only, reported once at the first row of a rule iterating the keyed group.", "evidence": {"keyed message membership": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-12", "witness": "Accepted against MessageParameterRowDiffTest; extension-g-h adopted."}}}
       }
     },
     "kf563": {
@@ -11684,7 +11550,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the checker are compared row by row, and both strategies' rendering is pinned against the interpreter.", "evidence": {"computation message carrier": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageCarrierAgreementTest.kt#theCheckerAgreesWithA12", "witness": "Eighteen rows agree, A12's refusals pinned."}, "computation message row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageRowDiffTest.kt#bothKernelStrategiesRenderTheFiringRow", "witness": "Only the disagreeing line inside its precondition reports, every parameter at that line."}}},
         "interpreter": {"state": "APPLIED", "basis": "The interpreter already rendered a computation's message at its firing row; the differential now compares it.", "evidence": {"computation message row": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationMessageRowDiffTest.kt#theInterpreterRendersTheSameRow", "witness": "The interpreter renders the kernel's text at the same address."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this law through the kernel, the portable checker and the interpreter it already runs.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback against SPEC-2026-10-13-12; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-13-12 was accepted at d502ca6b after a source reading of our locks at 8addfd0bf; the peer did not rerun them, and extended: an unmatched key faults a value parameter only, reported once at the first row of a rule iterating the keyed group.", "evidence": {"computation message carrier": {"reference": "a12-kernel-lean@d502ca6b4736cbfe0fcadbf5b8c12b96b45ad509:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-13-12", "witness": "Accepted against MessageParameterRowDiffTest; extension-g-h adopted."}}}
       }
     },
     "kf211": {
@@ -11708,7 +11574,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel's verdicts on both strategies are pinned beside a DATE-kind twin.", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#theDeclaredFormatTypesTheLiteral", "witness": "On 05.03.2023 both rules fire on the TIME-kind field exactly as on the DATE-kind twin, and none fires on 05.03.2025."}}},
         "interpreter": {"state": "APPLIED", "basis": "A literal beside a field is typed by the class the field's declared format selects (IF400).", "evidence": {"date literal beside a date-declared TIME field": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateDeclaredTimeComparisonDiffTest.kt#allThreeEnginesAgreeOnEveryDocument", "witness": "The interpreter compared the literal lexically and fired neither TIME-kind rule; it now agrees with both strategies."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and carries no comparison logic of its own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-13 handback; awaits peer review.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The 2026-10-13 receipt notes that our TIME-kind first-filled rows extend KF211's declared-format rule, without a disposition of local adoption, so no receipt is inferred.", "evidence": {}}
       }
     },
     "kf34": {
