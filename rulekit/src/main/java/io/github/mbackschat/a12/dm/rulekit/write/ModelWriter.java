@@ -85,7 +85,7 @@ public final class ModelWriter {
      */
     public static String replaceCondition(String modelJson, String ruleFullName, String newConditionText) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             replaceConditionIn(root, ruleFullName, newConditionText);
             return write(root);
         } catch (IOException e) {
@@ -100,7 +100,7 @@ public final class ModelWriter {
     public static String replaceCondition(String modelJson, String ruleFullName, Condition newCondition) {
         Objects.requireNonNull(newCondition, "newCondition");
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
             String rendered = new DslRenderer(conditionLanguage(root), groupPath).render(newCondition);
             replaceConditionIn(root, ruleFullName, rendered);
@@ -117,13 +117,13 @@ public final class ModelWriter {
     public static String replaceSeverity(String modelJson, String ruleFullName, String severity) {
         try {
             ObjectNode root =
-                    (ObjectNode) MAPPER.readTree(modelJson);
+                    (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
                 throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
             }
             ((ObjectNode) rule.path("Rule")).put("severity", severity);
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
@@ -136,7 +136,7 @@ public final class ModelWriter {
     public static String replaceMessages(String modelJson, String ruleFullName, List<LocalizedText> messages) {
         try {
             ObjectNode root =
-                    (ObjectNode) MAPPER.readTree(modelJson);
+                    (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
                 throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
@@ -145,7 +145,7 @@ public final class ModelWriter {
             for (LocalizedText text : messages) {
                 messageArray.addObject().put("locale", text.locale()).put("text", text.text());
             }
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
@@ -161,7 +161,7 @@ public final class ModelWriter {
      */
     public static List<LocalizedText> readMessages(String modelJson, String ruleFullName) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             List<LocalizedText> out = new ArrayList<>();
             if (rule != null) {
@@ -203,7 +203,7 @@ public final class ModelWriter {
         Objects.requireNonNull(rules, "rules");
         Objects.requireNonNull(computations, "computations");
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ConditionLanguage language = conditionLanguage(root);
             Map<String, ArrayNode> elementsByGroup = new HashMap<>();
             for (Rule rule : rules) {
@@ -251,7 +251,7 @@ public final class ModelWriter {
             String groupPath,
             Function<ConditionLanguage, ObjectNode> element) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ArrayNode elements = DmJson.groupElements(root, groupPath);
             if (elements == null) {
                 throw new IllegalArgumentException("no group at path: " + groupPath);
@@ -282,7 +282,7 @@ public final class ModelWriter {
     }
 
     private static String write(ObjectNode root) throws IOException {
-        return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
     }
 
     /**
@@ -357,8 +357,8 @@ public final class ModelWriter {
      */
     private static String preserveComputationMetadata(String oldModel, String fullName, String newModel) {
         try {
-            ObjectNode oldComp = DmJson.findElement(MAPPER.readTree(oldModel), "Computation", fullName);
-            ObjectNode newRoot = (ObjectNode) MAPPER.readTree(newModel);
+            ObjectNode oldComp = DmJson.findElement(FloatTokens.keep(MAPPER.readTree(oldModel)), "Computation", fullName);
+            ObjectNode newRoot = (ObjectNode) FloatTokens.keep(MAPPER.readTree(newModel));
             ObjectNode newComp = DmJson.findElement(newRoot, "Computation", fullName);
             if (oldComp == null || newComp == null) {
                 return newModel;
@@ -373,7 +373,7 @@ public final class ModelWriter {
             if (oldAlts.isArray() && !oldAlts.isEmpty() && newAlts.isArray() && !newAlts.isEmpty()) {
                 carryLeading(oldAlts.get(0), (ObjectNode) newAlts.get(0), "operation");
             }
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(newRoot);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(newRoot));
         } catch (IOException e) {
             return newModel;
         }
@@ -408,7 +408,7 @@ public final class ModelWriter {
     /** Remove the element of {@code type} at {@code fullName} from its group (the shared half of removeRule/removeComputation). */
     private static String removeElement(String modelJson, String type, String fullName) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             String groupPath = fullName.substring(0, fullName.lastIndexOf('/'));
             ArrayNode elements = DmJson.groupElements(root, groupPath);
             if (elements == null) {
@@ -427,7 +427,7 @@ public final class ModelWriter {
                         "Computation".equals(type) ? RkCode.NO_SUCH_COMPUTATION : RkCode.NO_SUCH_RULE, fullName);
             }
             elements.remove(idx);
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }

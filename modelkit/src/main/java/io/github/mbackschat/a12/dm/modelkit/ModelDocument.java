@@ -82,7 +82,7 @@ public final class ModelDocument {
     /** Read a model from DM-JSON, retaining its authored source tree. */
     public static ModelDocument read(String dmJson) {
         try {
-            JsonNode node = MAPPER.readTree(dmJson);
+            JsonNode node = FloatTokens.keep(MAPPER.readTree(dmJson));
             if (!(node instanceof ObjectNode obj)) {
                 throw new ModelInputException("not a DM-JSON object");
             }
@@ -95,7 +95,7 @@ public final class ModelDocument {
     /** The model as DM-JSON text — the retained tree, pretty-printed (lossless modulo whitespace). */
     public String toJson() {
         try {
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException(new IOException("failed to serialize model", e));
         }
@@ -1872,7 +1872,7 @@ public final class ModelDocument {
         ((ObjectNode) sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT)).putArray(DmKeys.ROOT_GROUPS).add(subGroup);
         String subModelJson;
         try {
-            subModelJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(sub);
+            subModelJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(sub));
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException(new IOException("failed to serialize the extracted sub-model", e));
         }

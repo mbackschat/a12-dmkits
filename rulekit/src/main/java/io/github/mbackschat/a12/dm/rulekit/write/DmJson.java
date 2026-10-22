@@ -42,14 +42,14 @@ final class DmJson {
     /** Return {@code modelJson} with {@code element} appended to the {@code elements} of the group at {@code groupPath} (pretty-printed). */
     static String insertIntoGroup(String modelJson, String groupPath, ObjectNode element) {
         try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode root = (ObjectNode) FloatTokens.keep(MAPPER.readTree(modelJson));
             ArrayNode elements = groupElements(root, groupPath);
             if (elements == null) {
                 throw new IllegalArgumentException("no group at path: " + groupPath);
             }
             elements.add(element);
             // pretty-print so the persisted model stays human-readable and produces reviewable diffs
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(FloatTokens.forWrite(root));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
