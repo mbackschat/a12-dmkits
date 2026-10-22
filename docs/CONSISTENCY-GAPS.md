@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **DG146 — the iteration-guard law: `MVK_NEG_CONDITION_IN_ITERATION` and `MVK_PARALLEL_ITERATION_INVALID` (opened 2026-10-22).** Input: an iterating rule that can fire for a repetition nobody filled, such as a rule at `/Policy` reporting on `../Claims/Amount` with `FieldNotFilled(Claims/Amount)` and no positive guard on the row. A12 refuses it with `MVK_NEG_CONDITION_IN_ITERATION` (kernel 30.8.1, `dmtool model check`), and this checker names nothing; every completed report says so in a model-wide gap (`IterationValidityGapTest`). Both codes are one kernel mechanism ([MVK-LEDGER](MVK-LEDGER.md)), so they ship together. Settled by a clean-room port locked by a kernel differential that shows no over-rejection; the port then deletes this row and the report's gap.
 
 ## 2. Out of scope
 

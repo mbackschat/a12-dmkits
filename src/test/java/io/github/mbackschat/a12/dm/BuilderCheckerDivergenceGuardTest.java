@@ -239,6 +239,11 @@ class BuilderCheckerDivergenceGuardTest {
             // and no family reports it.
             Map.entry("MVK_NEG_CONDITION_IN_ITERATION", Disposition.PROSE_ONLY),
 
+            // Prose on both sides as well: the checker names it only in the model-wide coverage gap that says it
+            // is left to A12 (CONSISTENCY-GAPS DG146), and `Linter` only in the advisory's fix text, which emits
+            // RK_NEG_CONDITION_IN_ITERATION. Neither refuses anything.
+            Map.entry("MVK_PARALLEL_ITERATION_INVALID", Disposition.PROSE_ONLY),
+
             // Both enforce A12's base-kind law over carriers that cannot share a reader: `Dsl`'s entity-list
             // quantifier walks typed operands and knows each one's kind from its handle, while the checker
             // resolves a stored path to a declaration and reads its `fieldType`. The kit's own arm is the

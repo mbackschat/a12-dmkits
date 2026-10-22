@@ -165,6 +165,10 @@
       },
       {
         "at": null,
+        "reason": "an iterating rule that can fire for a repetition nobody filled is refused by A12 with `MVK_NEG_CONDITION_IN_ITERATION`, or `MVK_PARALLEL_ITERATION_INVALID` when it iterates two groups in parallel, and neither is reported here: the rule that decides them is not yet reproduced, so such a rule is left to A12"
+      },
+      {
+        "at": null,
         "reason": "only the families named by `CheckFamily` are implemented; every other required family of the pinned profile was not examined"
       }
     ]
@@ -327,6 +331,10 @@
       {
         "at": null,
         "reason": "a computation that READS its own computed field is refused by A12 and is not reported here: a projected read draws a different class than a plain one, and a derived-scale mismatch in the same operation pre-empts both — neither is decidable without inferring an operation's scale, which this checker does not do. Re-open when it can"
+      },
+      {
+        "at": null,
+        "reason": "an iterating rule that can fire for a repetition nobody filled is refused by A12 with `MVK_NEG_CONDITION_IN_ITERATION`, or `MVK_PARALLEL_ITERATION_INVALID` when it iterates two groups in parallel, and neither is reported here: the rule that decides them is not yet reproduced, so such a rule is left to A12"
       },
       {
         "at": null,

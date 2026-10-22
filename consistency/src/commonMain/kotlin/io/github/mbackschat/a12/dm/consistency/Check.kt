@@ -1148,7 +1148,7 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
     }
 
 /**
- * What this checker reads only PART of, and the one law it reads fully and deliberately does not reproduce.
+ * What this checker reads only PART of, and the measured laws it does not reproduce.
  *
  * Stated on every report rather than only in the plan, because a consumer cannot otherwise tell a clean
  * result from an unexamined one. An entry earns its place by naming what would settle it, so a later session
@@ -1197,6 +1197,16 @@ private val UNREAD_MEMBERS = listOf(
             "here: a projected read draws a different class than a plain one, and a derived-scale mismatch " +
             "in the same operation pre-empts both — neither is decidable without inferring an operation's " +
             "scale, which this checker does not do. Re-open when it can",
+    ),
+    // Named rather than left to the generic family gap: this checker reports eight other iteration classes, so
+    // a clean iteration result would otherwise read as covering these two, and agents hit the first on a first
+    // attempt in several evaluations (`eval/RESULTS.md`). Retire this entry with the port that reproduces them (MVK-LEDGER).
+    CoverageGap(
+        at = null,
+        reason = "an iterating rule that can fire for a repetition nobody filled is refused by A12 with " +
+            "`MVK_NEG_CONDITION_IN_ITERATION`, or `MVK_PARALLEL_ITERATION_INVALID` when it iterates two groups " +
+            "in parallel, and neither is reported here: the rule that decides them is not yet reproduced, so " +
+            "such a rule is left to A12",
     ),
 )
 
