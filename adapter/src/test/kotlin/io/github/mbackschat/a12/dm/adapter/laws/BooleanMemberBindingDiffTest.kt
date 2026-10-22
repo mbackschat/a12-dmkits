@@ -33,8 +33,20 @@ class BooleanMemberBindingDiffTest {
 
     private companion object {
         val SET = listOf<Any>(1, " TRUE")
-        val CLEARED = listOf<Any>(0, "null")
+        val CLEARED = listOf<Any>(0, "null", Raw("-0"))
         val MAPPER = ObjectMapper()
+        const val PLACEHOLDER = "boolean-member-token-placeholder"
+    }
+
+    /** A number token written into the model text verbatim: no node spells `-0`, and a serialized one would respell `1e0`. */
+    private data class Raw(val token: String)
+
+    private fun label(spelling: Any) = if (spelling is Raw) spelling.token else MAPPER.writeValueAsString(spelling)
+
+    /** [node] with [spelling] set as its [name] member, a [Raw] token written verbatim into the returned text. */
+    private fun write(root: ObjectNode, node: ObjectNode, name: String, spelling: Any): String {
+        node.set<ObjectNode>(name, MAPPER.valueToTree(if (spelling is Raw) PLACEHOLDER else spelling))
+        return if (spelling is Raw) root.toString().replace("\"$PLACEHOLDER\"", spelling.token) else root.toString()
     }
 
     /** One member of one field type, the value that member decides, and a rule when only a rule shows it. */
@@ -70,8 +82,7 @@ class BooleanMemberBindingDiffTest {
             .first { it.path("name").asText() == member.field }
         val fieldType = element.path("Field").path("fieldType") as ObjectNode
         val body = (fieldType.get(member.type) as? ObjectNode) ?: fieldType.putObject(member.type)
-        body.set<ObjectNode>(member.name, MAPPER.valueToTree(spelling))
-        return root.toString()
+        return write(root, body, member.name, spelling)
     }
 
     /** The message codes per engine — (groovy, java-static, interpreter) — for [member] written as [spelling]. */
@@ -103,12 +114,30 @@ class BooleanMemberBindingDiffTest {
             for ((spelling, observed) in set + cleared) {
                 val (groovy, java, interpreter) = observed
                 if (java != groovy || interpreter != groovy) {
-                    disagreements += "${member.name}=${MAPPER.writeValueAsString(spelling)}: " +
+                    disagreements += "${member.name}=${label(spelling)}: " +
                         "groovy=$groovy java=$java interpreter=$interpreter"
                 }
             }
         }
         assertEquals(emptyList<String>(), disagreements)
+    }
+
+    /**
+     * Only an integer token binds: one with an exponent or a fraction leaves the model unread on every member, even
+     * where its value is the integer `1` or `0`, and the interpreter refuses it as A12 does. The tokens reach A12's
+     * own reader verbatim; routed through our model writer instead, `1e0` and `1.0e1` would arrive respelled as
+     * `1` and `10` and read as set (measured 2026-10-22), which is why this lock writes the text itself.
+     */
+    @Test
+    fun aNumberTokenWithAnExponentOrAFractionLeavesEveryMemberUnread() {
+        val tokens = listOf("1e0", "1E+0", "0e0", "1.0e1", "0.1e1", "1.0", "10e-1", "1e1", "-0.0")
+        val observed = members.flatMap { member ->
+            tokens.map { token ->
+                val modelJson = model(member, Raw(token))
+                "${member.name}=$token" to (RuntimeLaws.deserializes(modelJson) to runCatching { ModelLoader.load(modelJson) }.isSuccess)
+            }
+        }
+        assertEquals(observed.map { it.first to (false to false) }, observed)
     }
 
     @Test
@@ -125,8 +154,7 @@ class BooleanMemberBindingDiffTest {
                 as ObjectNode
             val element = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group")
                 .path("elements").first { it.path("name").asText() == "RiskScore" }
-            (element.path("Field") as ObjectNode).set<ObjectNode>("global", MAPPER.valueToTree(spelling))
-            val modelJson = root.toString()
+            val modelJson = write(root, element.path("Field") as ObjectNode, "global", spelling)
             val kDoc = RuntimeLaws.doc().group("/Policy", 1).field(premium, "100", 1, 1).field(risk, "-5", 1, 1)
             val kernel = RuntimeLaws.firedCodesPart(modelJson, kDoc, setOf(Relevant.of(premium, 0, 0)))
                 .contains("RISK")
@@ -134,10 +162,10 @@ class BooleanMemberBindingDiffTest {
             val iDoc = def.newDocument().group("/Policy", 1).field(premium, "100", 1, 1).field(risk, "-5", 1, 1)
             val interpreter = DmInterpreter(def).validatePart(iDoc, setOf(RelevantEntity.anyRep(premium)))
                 .messages.any { it.code == "RISK" }
-            MAPPER.writeValueAsString(spelling) to (kernel to interpreter)
+            label(spelling) to (kernel to interpreter)
         }
         // The control: a set spelling makes the error field relevant in the kernel, a cleared one does not.
-        assertEquals(listOf(true, true, false, false), observed.map { it.second.first }, "kernel: $observed")
+        assertEquals(SET.map { true } + CLEARED.map { false }, observed.map { it.second.first }, "kernel: $observed")
         assertEquals(observed.map { it.first to it.second.first }, observed.map { it.first to it.second.second })
     }
 }

@@ -131,6 +131,30 @@ class ModelTextReadingDiffTest {
             "the dotted capital I and the Kelvin sign read as the lone long s")
     }
 
+    /**
+     * A model-level `boolean` member reads only an integer token, `-0` included; one with an exponent or a fraction
+     * leaves the model unbuilt, even where its value is `1` or `0`, as on every field-type member
+     * (`BooleanMemberBindingDiffTest`). Each token is written into the text verbatim, because our model writer would
+     * respell `1e0` as `1` (measured 2026-10-22); a12-kernel-lean asked for these rows.
+     */
+    @Test
+    fun aModelLevelBooleanMemberReadsOnlyAnIntegerToken() {
+        val tokens = listOf("1", "0", "-0", "1e0", "0e0", "1.0e1", "0.1e1", "1.0", "1e1", "10e-1", "-0.0")
+        val members = listOf("modelInfo" to "immutable", "modelInfo" to "metaData", "modelConfig" to "fieldRefByShortNameAllowed")
+        val observed = members.flatMap { (holder, member) ->
+            tokens.map { token ->
+                val root = cover { it }
+                val node = (root.path("content").get(holder) as? ObjectNode) ?: (root.path("content") as ObjectNode).putObject(holder)
+                node.put(member, "boolean-member-token-placeholder")
+                val json = root.toString().replace("\"boolean-member-token-placeholder\"", token)
+                val checker = "CK_MODEL_NOT_BUILDABLE" in check(ModelSource(json)).findings.map { it.code }
+                "$member=$token" to listOf(RuntimeLaws.deserializes(json), runCatching { ModelLoader.load(json) }.isSuccess, !checker)
+            }
+        }
+        val integer = setOf("1", "0", "-0")
+        assertEquals(observed.map { (row, _) -> row to List(3) { row.substringAfter('=') in integer } }, observed)
+    }
+
     private fun cover(edit: (ObjectNode) -> ObjectNode): ObjectNode = edit(MAPPER.readTree(DocumentModelDraft.named("cover").locale("en_US").baseYear(2000)
         .rootGroup("Cover") { g -> g.numberField("Amount") { it.fractionDigits(0) } }.build().toJson()) as ObjectNode)
 

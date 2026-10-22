@@ -75,9 +75,22 @@ public enum ConfigFlag {
         };
     }
 
-    /** {@link #ofJsonText} for a member as this package holds it; a missing node is the absent member. */
+    /**
+     * {@link #ofJsonText} for a member a JSON reader has parsed, which may have respelled its number: a decimal node
+     * prints {@code 1e0} as {@code 1}. A12 binds only an integer token, so a floating-point one, a token with an
+     * exponent or a fraction, is {@link #UNREADABLE} whatever it prints (KERNEL-FINDINGS KF569, corrected 2026-10-22).
+     *
+     * @param jsonText as for {@link #ofJsonText}
+     * @param floatingPointToken whether the parser read the member as a floating-point number
+     *     ({@code JsonNode.isFloatingPointNumber()})
+     */
+    public static ConfigFlag ofParsedMember(String jsonText, boolean floatingPointToken) {
+        return floatingPointToken ? UNREADABLE : ofJsonText(jsonText);
+    }
+
+    /** {@link #ofParsedMember} for a member as this package holds it; a missing node is the absent member. */
     static ConfigFlag ofMember(JsonNode member) {
-        return ofJsonText(member.isMissingNode() ? null : member.toString());
+        return ofParsedMember(member.isMissingNode() ? null : member.toString(), member.isFloatingPointNumber());
     }
 
     private static String decodedString(String jsonText) {

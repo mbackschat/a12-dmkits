@@ -126,7 +126,7 @@ public class InterpreterConditionReadBack : ConditionReadBack {
         private fun shortNameRefsAllowed(modelJson: String): Boolean = try {
             val flag = MAPPER.readTree(modelJson).path("content").path("modelConfig")
                 .path("fieldRefByShortNameAllowed")
-            ConfigFlag.ofJsonText(if (flag.isMissingNode) null else flag.toString()) == ConfigFlag.ON
+            ConfigFlag.ofParsedMember(if (flag.isMissingNode) null else flag.toString(), flag.isFloatingPointNumber) == ConfigFlag.ON
         } catch (e: Exception) {
             false
         }

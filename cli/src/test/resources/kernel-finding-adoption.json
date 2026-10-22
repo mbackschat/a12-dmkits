@@ -11880,7 +11880,7 @@
       }
     },
     "kf569": {
-      "sha256": "03476608163ef99a0e30299b6f248fdab949a1e7e5e93ceefb5ab95dff35d5c9",
+      "sha256": "69514eb101c3eb730179b9ae13b3c9236f4918c6bdda358824a3e0b37887a7f1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the Number bound comparison", "the boolean-member binding", "the trimmed sValue"],
@@ -11928,7 +11928,7 @@
       }
     },
     "kf289": {
-      "sha256": "c2f6027287c27ee972f8a4486d4e69bfe3d1e4d8b8fd60fcda41d6fdfbfe5053",
+      "sha256": "e9ca513a2d4ff0f05db15b897844f8b0791797508a5b9ae1bbcb26cffde3cdd5",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the spelling of a boolean model-config flag"],

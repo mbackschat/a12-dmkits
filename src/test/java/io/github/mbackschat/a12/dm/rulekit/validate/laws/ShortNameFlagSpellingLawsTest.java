@@ -156,7 +156,7 @@ class ShortNameFlagSpellingLawsTest {
         actual.put("\" null\"", readAs(TextNode.valueOf(" null")));
         actual.put("\"NULL\"", readAs(TextNode.valueOf("NULL")));
         actual.put("\"FaLsE\"", readAs(TextNode.valueOf("FaLsE")));
-        actual.put("1e0", readAs(DoubleNode.valueOf(1.0)));
+        actual.put("1.0", readAs(DoubleNode.valueOf(1.0)));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("\" true\"", ON);
@@ -170,7 +170,7 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("\" null\"", OFF);
         expected.put("\"NULL\"", UNREADABLE);
         expected.put("\"FaLsE\"", UNREADABLE);
-        expected.put("1e0", UNREADABLE);
+        expected.put("1.0", UNREADABLE);
         assertEquals(expected, actual, "how A12 reads a padded or null-text spelling of fieldRefByShortNameAllowed");
     }
 

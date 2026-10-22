@@ -83,4 +83,26 @@ class ConfigFlagTest {
         assertEquals(ConfigFlag.ON, ConfigFlag.ofJsonText("9".repeat(26)));
         assertEquals(ConfigFlag.OFF, ConfigFlag.ofJsonText("0".repeat(26)));
     }
+
+    /**
+     * A member as the model reader parsed it keeps the kind of token written: A12 reads only an integer token
+     * ({@code adapter.laws.ModelTextReadingDiffTest.aModelLevelBooleanMemberReadsOnlyAnIntegerToken}), while the
+     * parsed decimal prints {@code 1e0} as {@code 1} and {@code 1.0e1} as {@code 10}, so judging the printed text
+     * would read both as set for a model A12 does not load.
+     */
+    @Test
+    void aParsedMemberIsReadByTheTokenWrittenNotItsPrintedValue() throws Exception {
+        Map<String, ConfigFlag> actual = new LinkedHashMap<>();
+        for (String token : List.of("1", "0", "-0", "1e0", "0e0", "1.0e1", "0.1e1", "1.0", "1e1", "-0.0")) {
+            actual.put(token, ConfigFlag.ofMember(ModelReader.MAPPER.readTree("{\"m\":" + token + "}").path("m")));
+        }
+        Map<String, ConfigFlag> expected = new LinkedHashMap<>();
+        expected.put("1", ConfigFlag.ON);
+        expected.put("0", ConfigFlag.OFF);
+        expected.put("-0", ConfigFlag.OFF);
+        for (String token : List.of("1e0", "0e0", "1.0e1", "0.1e1", "1.0", "1e1", "-0.0")) {
+            expected.put(token, ConfigFlag.UNREADABLE);
+        }
+        assertEquals(expected, actual);
+    }
 }

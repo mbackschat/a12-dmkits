@@ -17,7 +17,7 @@ final class A12Booleans {
     private A12Booleans() {}
 
     static ConfigFlag of(JsonNode member) {
-        return ConfigFlag.ofJsonText(member.isMissingNode() ? null : member.toString());
+        return ConfigFlag.ofParsedMember(member.isMissingNode() ? null : member.toString(), member.isFloatingPointNumber());
     }
 
     /** Whether the member is set; an unreadable spelling is not, since A12 never loads that model to say. */

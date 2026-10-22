@@ -29,6 +29,15 @@ class BooleanMemberReadTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final List<Object> SET = List.of(1, " TRUE");
     private static final List<Object> CLEARED = List.of(0, "null");
+    /**
+     * Tokens A12 refuses the model for, so none is set (KF569): an exponent or a fraction, whatever the value. Written
+     * verbatim, because the parsed decimal prints {@code 1e0} as {@code 1} and a reader judging that text sets it.
+     */
+    private static final List<Object> UNREAD = List.of(new Raw("1e0"), new Raw("1.0e1"), new Raw("0.1e1"));
+    private static final String PLACEHOLDER = "boolean-member-token-placeholder";
+
+    /** A number token written into the model text as it stands. */
+    private record Raw(String token) {}
 
     /** Where one member lives, and what each read path answers for it ({@code null}: that path does not carry it). */
     private record Member(String type, String member, String field,
@@ -71,7 +80,7 @@ class BooleanMemberReadTest {
         Map<String, Boolean> expected = new LinkedHashMap<>();
         Map<String, Boolean> observed = new LinkedHashMap<>();
         for (Member m : MEMBERS) {
-            for (Object spelling : concat(SET, CLEARED)) {
+            for (Object spelling : concat(concat(SET, CLEARED), UNREAD)) {
                 boolean set = SET.contains(spelling);
                 String json = model(m, spelling);
                 String row = m.type() + "." + m.member() + "=" + text(spelling);
@@ -113,12 +122,12 @@ class BooleanMemberReadTest {
             ObjectNode fieldType = (ObjectNode) field.path("fieldType");
             ObjectNode owner = m.type().equals("Field") ? field
                     : fieldType.get(m.type()) instanceof ObjectNode body ? body : fieldType.putObject(m.type());
-            owner.set(m.member(), MAPPER.valueToTree(spelling));
+            owner.set(m.member(), MAPPER.valueToTree(spelling instanceof Raw ? PLACEHOLDER : spelling));
             if (m.member().equals("noValueValidation")) {
                 owner.put("lineBreaksPermitted", true); // A12's co-requirement, so the set rows stay buildable
             }
         }
-        return root.toString();
+        return spelling instanceof Raw raw ? root.toString().replace("\"" + PLACEHOLDER + "\"", raw.token()) : root.toString();
     }
 
     private static JsonNode tree(String json) {
@@ -130,7 +139,7 @@ class BooleanMemberReadTest {
     }
 
     private static String text(Object spelling) {
-        return spelling instanceof String s ? "\"" + s + "\"" : spelling.toString();
+        return spelling instanceof String s ? "\"" + s + "\"" : spelling instanceof Raw raw ? raw.token() : spelling.toString();
     }
 
     private static List<Object> concat(List<Object> a, List<Object> b) {

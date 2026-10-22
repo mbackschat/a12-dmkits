@@ -29,6 +29,7 @@ public enum io.github.mbackschat.a12.dm.core.ConfigFlag
   public static final io.github.mbackschat.a12.dm.core.ConfigFlag ON
   public static final io.github.mbackschat.a12.dm.core.ConfigFlag UNREADABLE
   public static io.github.mbackschat.a12.dm.core.ConfigFlag ofJsonText(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ConfigFlag ofParsedMember(java.lang.String, boolean)
   public static io.github.mbackschat.a12.dm.core.ConfigFlag valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.core.ConfigFlag[] values()
 
