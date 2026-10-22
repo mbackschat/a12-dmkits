@@ -14418,3 +14418,22 @@ So a selection keyed by a constant fixes the level it selects. The selected leve
 The `Lines/Parts/Count` row is admitted although the same precondition, as a rule on `Lines/Parts/PartNo`, draws `MVK_PARALLEL_ITERATION_INVALID` ([KF595](#kf595)). The text A12 joins it into ([KF471](#kf471)), written as a rule on `Lines/Parts/Count`, is admitted too. *Reading (hypothesis, argued from the rows):* at this check, "a computation is judged on its joined condition" and "a computation is not judged" give the same answer on every computation. The joined condition's leading `FieldFilled(<computed>)` is admitted, and it iterates every level the computed field does. A precondition iterating any other level draws `MVK_NO_WILDCARD` first (the last row). So no computation can tell the two readings apart here, and the checker's verdict is the same under both.
 
 *Locked by:* `adapter.laws.CheckerIterationGuardAgreementTest` (every row above, with A12 pinned and the checker agreeing; the field-keyed row sits among its declined shapes) and `adapter.laws.CheckerUniquenessGuardAgreementTest` (the grid's selections).
+
+## §9 supplement — a parallel iteration is bound only by a reference naming the error field that iterates in parallel, and a star never does (kernel `checkConsistency`, 2026-10-22) <a id="kf597"></a>
+
+> Fold: pending — beside [KF417](#kf417)'s per-level account.
+
+A staffing plan: `Demand` and `Supply` each repeat 6 times, keyed by `Shift`. Each row is one rule at `/Plan`, with error field `Demand/Headcount`.
+
+| condition | A12 |
+|---|---|
+| `FieldsNotCollectivelyFilled(Demand*/Headcount, Supply/Headcount)` | `MVK_ERROR_FIELD_AND_ITERATION_INVALID` |
+| `FieldFilled(Demand/Note) And NoFieldFilled(Demand*/Headcount, Supply/Headcount)` | `MVK_ERROR_FIELD_AND_ITERATION_INVALID` |
+| `Sum(Demand*/Headcount) > 0 And FieldFilled(Supply/Note)` | `MVK_ERROR_FIELD_AND_ITERATION_INVALID` |
+| `FieldFilled(Demand/Headcount) And FieldsNotCollectivelyFilled(Demand*/Headcount, Supply/Headcount)` | admitted |
+| `AtLeastOneFieldFilled(Demand/Headcount, Supply/Headcount)` | admitted |
+| `Sum(Demand*/Headcount) > 0` | admitted |
+
+So once a rule iterates a group off its error field's path in parallel, some reference naming the error field must iterate in parallel as well. The only reference naming it in the first three rows is starred, and a star leaves its level a wildcard. The second row separates this from "any reference on the error field's path will do": `Demand/Note` iterates the demand rows in parallel and binds nothing, because it does not name the error field. The fourth row adds the error field's own unstarred reference and is admitted. *Basis beyond the rows (source-read, kernel 30.8.1):* `IterationChecker.checkIteration4NotOnlyVRefs` asks, after its per-level loop, whether any reference of the error field carries a parallel index. `ParserService.setIndexesForParallelIteration` gives that index only to an iterated keyed level on the error field's path, never to a wildcard. The arm that a rule takes when only a root group names its error field asks the question differently, and these rows do not cover it.
+
+*Locked by:* `adapter.laws.CheckerIterationBindingAgreementTest.aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference` (A12 pinned on every row, the checker agreeing).

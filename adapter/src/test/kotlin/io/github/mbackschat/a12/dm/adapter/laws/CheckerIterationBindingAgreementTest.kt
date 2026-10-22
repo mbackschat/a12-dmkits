@@ -71,6 +71,19 @@ class CheckerIterationBindingAgreementTest {
                 .numberField("Fuel") { n -> n.fractionDigits(0) } } }
         .build().toJson()
 
+    /** A staffing plan: demand and supply per shift, keyed alike, so a rule can iterate them in parallel. */
+    private val staffing = DocumentModelDraft.named("staffing-plan").locale("en_US")
+        .rootGroup("Plan") { p -> p
+            .group("Demand") { d -> d.repeatable(6).indexField("Shift")
+                .stringField("Shift") { }
+                .numberField("Headcount") { n -> n.fractionDigits(0) }
+                .stringField("Note") { } }
+            .group("Supply") { s -> s.repeatable(6).indexField("Shift")
+                .stringField("Shift") { }
+                .numberField("Headcount") { n -> n.fractionDigits(0) }
+                .stringField("Note") { } } }
+        .build().toJson()
+
     private val validator = RuleValidator()
 
     /** A12's rejection classes and ours, for one rule. */
@@ -165,6 +178,21 @@ class CheckerIterationBindingAgreementTest {
         )
     }
 
+    /**
+     * Once a rule iterates another group in parallel, a reference naming the error field must iterate in parallel
+     * too, and a starred one never does (`IterationChecker.checkIteration4NotOnlyVRefs`, kernel 30.8.1). Against
+     * "any reference on the error field's path will do" (the second row) and "a level off the path is not this
+     * class's business" (the first three).
+     */
+    @Test
+    fun aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference() {
+        val verdicts = PARALLEL.mapValues { (condition, _) -> rule(staffing, "/Plan", "Demand/Headcount", condition) }
+        assertEquals(PARALLEL, verdicts.mapValues { it.value.first })
+        // The iteration guard, which A12 never reaches past this class, names the rule in a gap: redundant but true.
+        assertEquals(verdicts.mapValues { it.value.first },
+            verdicts.mapValues { (_, v) -> if (BINDS in v.first) v.second - DECLINED else v.second })
+    }
+
     private data class Shape(val name: String, val errorField: String, val operands: String, val guarded: Boolean)
 
     private companion object {
@@ -229,6 +257,14 @@ class CheckerIterationBindingAgreementTest {
                 Triple("/Region/Branch", "Claims/Amount", "GroupFilled(/Region/Branch) And FieldFilled(Claims/Reserve)"),
             "rule at the claims, naming the claims" to
                 Triple("/Region/Branch/Claims", "Amount", "GroupFilled(/Region/Branch/Claims) And [Reserve] > 0"),
+        )
+        val PARALLEL = linkedMapOf(
+            "FieldsNotCollectivelyFilled(Demand*/Headcount, Supply/Headcount)" to listOf(BINDS),
+            "FieldFilled(Demand/Note) And NoFieldFilled(Demand*/Headcount, Supply/Headcount)" to listOf(BINDS),
+            "Sum(Demand*/Headcount) > 0 And FieldFilled(Supply/Note)" to listOf(BINDS),
+            "FieldFilled(Demand/Headcount) And FieldsNotCollectivelyFilled(Demand*/Headcount, Supply/Headcount)" to emptyList(),
+            "AtLeastOneFieldFilled(Demand/Headcount, Supply/Headcount)" to emptyList(),
+            "Sum(Demand*/Headcount) > 0" to emptyList(),
         )
         val PINNED = listOf(
             "Sum(Claims*/Amount) > 0, plain", "Sum(Claims*/Amount) > 0, sibling",

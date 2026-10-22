@@ -651,6 +651,78 @@
       }
      }
     },
+    "kf597": {
+     "sha256": "83db57dfa3398f997ae70e8fab2e1015c3ed058c4fa008ee26a7c1ae4b2a012d",
+     "task": "DG146",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "the binding class's parallel arm"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's binding reading under parallel iteration"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's binding reading under parallel iteration"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The kits leave the binding class to A12; the enricher's existing corrective applies.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The ERROR_FIELD_ITERATION_BINDING family reports the class when a rule iterates in parallel and no reference naming the error field is marked parallel, reusing the parallel marking the filtered-entity family states.",
+       "evidence": {
+        "the binding class's parallel arm": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference",
+         "witness": "The checker draws the binding class on the three starred rows and admits the three controls, as A12 does."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of the staffing plan.",
+       "evidence": {
+        "A12's binding reading under parallel iteration": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference",
+         "witness": "A12 answers every row as the finding's table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Written into our next letter, which the owner carries.",
+       "evidence": {}
+      }
+     }
+    },
     "kf596": {
      "sha256": "5580a0fbd6c5f1d889aae70b67ab92aaa23afd389a21aa359627805652fba32d",
      "task": "DG146",

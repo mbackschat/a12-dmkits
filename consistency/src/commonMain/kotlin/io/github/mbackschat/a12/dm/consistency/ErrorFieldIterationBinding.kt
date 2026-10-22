@@ -24,9 +24,11 @@ package io.github.mbackschat.a12.dm.consistency
  * [errorTargetIterationFindings] owns and asks this one at the root level alone, so this family speaks there
  * only when the root is the one level iterated — the row measured on a repeatable root.
  *
+ * **A parallel iteration is bound only in parallel** ([parallelBindingFindings], [KERNEL-FINDINGS KF597]).
+ *
  * **Silent wherever another class answers first, or the shape is unmeasured.** An iteration of a level OFF the
- * error field's path is the wildcard or parallel classes' business; an unresolved operand pre-empts the whole
- * pass; the rule-context keyword names the rule's group without a path; and a GROUP error target is left
+ * error field's path that the parallel marking does not reach is the wildcard classes' business; an unresolved
+ * operand pre-empts the whole pass; the rule-context keyword names the rule's group without a path; and a GROUP error target is left
  * alone — the one measured row, a starred group beside a per-row read, is admitted, and which of its own levels
  * A12 asks is not known beyond it (`adapter.laws.CheckerIterationBindingAgreementTest`).
  */
@@ -45,9 +47,11 @@ internal fun TrackedFactBase.errorFieldIterationBindingFindings(element: Tracked
         ordinaryLevels[reference.written].orEmpty()
     }
     val levels = iteratedLevels(target)
-    if (iterating.values.flatten().any { it !in levels }) return emptyList()
     val naming = iterating.keys.filter { it.reaches(target) }
     if (naming.isEmpty()) return emptyList()
+    if (iterating.values.flatten().any { it !in levels }) {
+        return parallelBindingFindings(element, target, iterating, naming, levels) ?: emptyList()
+    }
     val asked = if (naming.all { (it.target as Reference.Resolved).path.isRootPath() }) {
         val root = levels.firstOrNull()?.takeIf { it.isRootPath() } ?: return emptyList()
         if (iterating.values.flatten().any { it != root }) return emptyList()
@@ -59,16 +63,54 @@ internal fun TrackedFactBase.errorFieldIterationBindingFindings(element: Tracked
         iterating.values.any { level in it } && naming.none { level in iterating.getValue(it) }
     } ?: return emptyList()
     val by = iterating.entries.first { unbound in it.value }.key.written
-    return listOf(Finding(
-        FindingCategory.A12_CONSTRAINT,
-        FindingSeverity.ERROR,
-        "MVK_ERROR_FIELD_AND_ITERATION_INVALID",
-        "this rule runs once per repetition of `$unbound` because it reads `$by` per row, but no reference " +
-            "naming its error field `$target` reads that repetition per row — a star names the field without " +
-            "saying which row; read the error field itself, unstarred, in the condition",
-        element.path,
-    ))
+    return listOf(bindingFinding(element, unbound, by, target))
 }
+
+/**
+ * The parallel arm: a rule iterating a level off its error field's path iterates it in parallel, A12 then
+ * marks every keyed level on that path parallel too, and a reference naming the error field has to be among
+ * those marked. A star leaves its level a wildcard, which neither pass marks, so `Demand*\/Headcount` beside
+ * `Supply/Headcount` names the error field and binds nothing (`IterationChecker.checkIteration4NotOnlyVRefs`,
+ * kernel 30.8.1, read 2026-10-22; [KERNEL-FINDINGS KF597], `adapter.laws.CheckerIterationBindingAgreementTest`).
+ *
+ * Null wherever this reading has no verdict: an off-path level the parallel marking does not reach is another
+ * class's business, and so is a rule only a root group names, whose arm asks the parallel question differently.
+ */
+private fun TrackedFactBase.parallelBindingFindings(
+    element: TrackedDeclaration,
+    target: String,
+    iterating: Map<ConditionReference, Set<String>>,
+    naming: List<ConditionReference>,
+    levels: List<String>,
+): List<Finding>? {
+    if (naming.all { (it.target as Reference.Resolved).path.isRootPath() }) return null
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val targetGroup = target.substringBeforeLast('/')
+    val marks = iterating.keys.associateWith { reference ->
+        markedLevelsOf(reference.written, declaringGroup, targetGroup, element) ?: return null
+    }
+    val joint = iterating.entries.firstOrNull { (reference, iterated) ->
+        iterated.any { it !in levels && it in marks.getValue(reference).joint }
+    } ?: return null
+    if (iterating.any { (reference, iterated) -> iterated.any { it !in levels && it !in marks.getValue(reference).joint } }) {
+        return null
+    }
+    if (naming.any { reference -> iterating.getValue(reference).any { it in marks.getValue(reference).marked } }) {
+        return emptyList()
+    }
+    val level = joint.value.first { it !in levels }
+    return listOf(bindingFinding(element, level, joint.key.written, target))
+}
+
+private fun bindingFinding(element: TrackedDeclaration, level: String, by: String, target: String) = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "MVK_ERROR_FIELD_AND_ITERATION_INVALID",
+    "this rule runs once per repetition of `$level` because it reads `$by` per row, but no reference " +
+        "naming its error field `$target` reads that repetition per row — a star names the field without " +
+        "saying which row; read the error field itself, unstarred, in the condition",
+    element.path,
+)
 
 /** Whether [this] names a root group: one segment below the model root. */
 internal fun String.isRootPath(): Boolean = lastIndexOf('/') == 0
