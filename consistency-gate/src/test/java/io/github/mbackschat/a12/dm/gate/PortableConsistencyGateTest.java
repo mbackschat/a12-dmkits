@@ -290,15 +290,12 @@ class PortableConsistencyGateTest {
             """;
     }
 
+    /** A library declares no root group: A12 does not expand an import whose root holds one (KF594). */
     private static String types() {
         return """
             {"header":{"id":"types","locales":[{"code":"en_US"}]},
              "content":{"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
-              "modelRoot":{"rootGroups":[
-               {"type":"Group","id":"tg0","name":"Shared","Group":{"elements":[
-                 {"type":"Field","id":"tf0","name":"Unused","Field":{"fieldType":{"type":"StringType"}}}
-               ]}}
-              ]}}}
+              "modelRoot":{"rootGroups":[]}}}
             """;
     }
 
