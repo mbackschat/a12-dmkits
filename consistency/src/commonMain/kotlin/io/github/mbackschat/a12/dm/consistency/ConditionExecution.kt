@@ -20,7 +20,7 @@ internal data class ConditionFinding(override val owner: DeclarationKey, val sit
 /** The implemented normal-rule checks in proposal Appendix A.3 order; codes do not select a stage. */
 internal enum class PostParseCheck : ConditionSite {
     PARALLEL_ITERATION, FILTERED_ENTITY, FILTER_PARALLEL_ITERATION, FILTER_SEMANTIC_INDEX,
-    REPEATED_UNIQUENESS, RAW_LENGTH, ERROR_TARGET_ITERATION,
+    REPEATED_UNIQUENESS, RAW_LENGTH, ERROR_TARGET_ITERATION, PARALLEL_ITERATION_GUARD, ITERATION_GUARD,
 }
 
 /** The entity action's local gates (proposal A.2); each gate can issue several notifications. */

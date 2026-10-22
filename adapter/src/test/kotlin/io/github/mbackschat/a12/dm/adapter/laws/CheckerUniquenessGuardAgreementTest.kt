@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test
  * `rulekit.validate.laws.UniquenessGuardSlotLawsTest`): selections, root, selected and claim groups, nested
  * repeatable children, on the Number, String and Date overloads.
  *
- * `MVK_NEG_CONDITION_IN_ITERATION` is kernel-delegated by design (MVK-LEDGER), so where A12 answers with it the
- * checker must report NOTHING, and where A12 admits it must not refuse. Both are asserted rather than filtered.
+ * Where A12 answers `MVK_NEG_CONDITION_IN_ITERATION` the checker must answer it too, or decline the shape and name
+ * the rule in a gap ([DECLINED]); where A12 admits, the checker must not refuse.
  *
  * Own domain (an insurance policy, its claims, riders and keyed covers).
  */
@@ -80,7 +80,10 @@ class CheckerUniquenessGuardAgreementTest {
         val a12 = validator.check(policy, draft).let { r ->
             if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
         }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings.filter { it.justifiesRejection }.map { it.code }
+        val report = check(ModelSource(validator.inject(policy, draft)))
+        // The probe is the model's only rule, so a declaration-level gap naming the code is its own.
+        val declined = report.gaps.any { it.at != null && NEGATIVE in it.reason }
+        val ours = report.findings.filter { it.justifiesRejection }.map { it.code } + listOfNotNull(DECLINED.takeIf { declined })
         return a12.sorted() to ours.sorted()
     }
 
@@ -120,17 +123,22 @@ class CheckerUniquenessGuardAgreementTest {
     @Test
     fun theCheckerAgreesWithA12OrLeavesTheGuardToIt() {
         val verdicts = rows().mapValues { (_, row) -> rule(row.first, "FieldValuesNotUnique(${row.second})") }
-        val wrong = verdicts.filter { (_, v) -> v.second != if (v.first == listOf(NEGATIVE)) emptyList() else v.first }
+        val wrong = verdicts.filter { (_, v) ->
+            v.second - DECLINED != v.first && !(v.first == listOf(NEGATIVE) && v.second == listOf(DECLINED))
+        }
             .map { (row, v) -> "$row: A12 ${v.first}, ours ${v.second}" }
         assertEquals(emptyList<String>(), wrong)
         // The guard is live on this carrier, so the silence above is not silence on nothing: seven refused shapes
         // per overload and the four nested ones.
         assertEquals(25, verdicts.count { it.value.first == listOf(NEGATIVE) })
+        // Of those, the selections are the shapes the checker leaves to A12, each named at the rule.
+        assertEquals(10, verdicts.count { it.value.first == listOf(NEGATIVE) && it.value.second == listOf(DECLINED) })
         assertEquals(listOf("MVK_INVALID_WILDCARD") to listOf("MVK_INVALID_WILDCARD"),
             verdicts.getValue("Claims/Amount, Endorsement*/Amount"))
     }
 
     private companion object {
         const val NEGATIVE = "MVK_NEG_CONDITION_IN_ITERATION"
+        const val DECLINED = "(declined, named in a gap)"
     }
 }

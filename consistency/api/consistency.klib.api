@@ -161,6 +161,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry HINT_LIST_VALUES // io.github.mbackschat.a12.dm.consistency/CheckFamily.HINT_LIST_VALUES|null[0]
     enum entry H_MODEL_FORM_CONSTRUCT // io.github.mbackschat.a12.dm.consistency/CheckFamily.H_MODEL_FORM_CONSTRUCT|null[0]
     enum entry H_MODEL_PATH_SUFFIX // io.github.mbackschat.a12.dm.consistency/CheckFamily.H_MODEL_PATH_SUFFIX|null[0]
+    enum entry ITERATION_GUARD // io.github.mbackschat.a12.dm.consistency/CheckFamily.ITERATION_GUARD|null[0]
     enum entry MESSAGE_BASE_YEAR // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_BASE_YEAR|null[0]
     enum entry MESSAGE_GROUP_PARAMETER // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_GROUP_PARAMETER|null[0]
     enum entry MESSAGE_PARAMETER_REFERENCE // io.github.mbackschat.a12.dm.consistency/CheckFamily.MESSAGE_PARAMETER_REFERENCE|null[0]

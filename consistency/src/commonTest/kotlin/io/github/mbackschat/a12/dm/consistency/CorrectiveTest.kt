@@ -120,6 +120,10 @@ class CorrectiveTest {
               "errorCondition":"FieldFilled(Shelves/ShelfQty) And NumberOfFilledFields(Shelves*/ShelfCode) > 0",
               "errorEntityRelPath":"../Shelves/ShelfCode",
               "errorCode":"C191","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r192","name":"ShelfCodeMissing","Rule":{
+              "errorCondition":"FieldNotFilled(Shelves/ShelfCode)",
+              "errorEntityRelPath":"../Shelves/ShelfCode",
+              "errorCode":"C192","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r13","name":"UnstarredRepetitionRead","Rule":{
               "errorCondition":"FieldFilled(Note) And FieldFilled(Shelves/ShelfQty)",
               "errorEntityRelPath":"../Note",

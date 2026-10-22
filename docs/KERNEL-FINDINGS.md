@@ -14355,3 +14355,29 @@ A declared locale CODE depends on which model declares it. The entry declares th
 So a code A12's reader cannot parse refuses wherever it stands. A locale declared twice, in one spelling or two, and the empty code leave an entry buildable but uncheckable, refuse an included model, and cost a library nothing. The `A12SpecificSettings` frame is the observed stack of the include row, not a reading of why the library is spared.
 
 *Locked by:* `adapter.WorkspaceReachedModelDiffTest` (A12's build and check against the interpreter's workspace and the checker's, every carrier, member, locale set, locale code and root shape).
+
+## §9 supplement — the iteration guard's constants, its exempt level, a group operand under `FieldValuesNotUnique` and the computation precondition, measured on one order model (kernel `checkConsistency`, 2026-10-22) <a id="kf595"></a>
+
+> Fold: pending — beside [KF537](#kf537)'s connective account.
+
+One e-commerce order: `Lines` repeats 50 times keyed by `LineNo`, `Gifts` repeats twice keyed by `GiftNo`, `Wraps` repeats twice with no index field. Each row is one rule at `/Order`, or one computation for the precondition row.
+
+| rule (error field) | A12 |
+|---|---|
+| `Sum(Lines/Qty, Lines/Price) == 0.4` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `… == 0.5` | admitted |
+| `… == 4294967296` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `… == -0.4`; `… == -0.5` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `… == -0.6` | admitted |
+| `FieldNotFilled(Gifts/Card/Text)`; `FieldNotFilled(Gifts/Note)` | admitted |
+| `FieldNotFilled(Wraps/Ribbon/Color)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `FieldNotFilled(Lines/Sku)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `GroupFilled(/Order) And FieldNotFilled(Lines/Sku)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `[Lines/Code] PatternViolated "[0-9]+"` | admitted |
+| computation on `Lines/Price`, precondition `FieldNotFilled(Lines/Sku)` | admitted |
+
+So the constant a count or a sum is compared against is rounded half up on its sign and then narrowed to 32 bits before the zero arm reads it: `0.4`, `-0.4`, `-0.5` and `2^32` all compare as zero, `0.5` and `-0.6` do not. A level repeating exactly twice with an index field is exempt, for the level's own field as well as a deeper one; the unkeyed two-row level and the keyed fifty-row level are not. A computation's precondition is not judged at all.
+
+On `FieldValuesNotUnique` a group operand counts as the fields beneath it, each repeatable level inside the group multiplying as a star would. With the claim's own amount beside a fixed group, A12 refuses beside `Totals` (two fields), `Office` (`Staff` and two `Desks/Seats`) and `Region` (one `Branches/Score`, under a level repeating twice), and admits beside `Levy` (one field). `Region` is the discriminator: counted by fields alone it is one member and below the threshold of two.
+
+*Locked by:* `adapter.laws.CheckerIterationGuardAgreementTest` (every row above, A12 pinned and the checker agreeing), `adapter.laws.CheckerUniquenessGuardAgreementTest` (the group operands).

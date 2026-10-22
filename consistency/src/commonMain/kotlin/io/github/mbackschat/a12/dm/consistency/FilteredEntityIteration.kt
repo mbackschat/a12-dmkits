@@ -227,10 +227,10 @@ private fun TrackedFactBase.parallelIterates(
  * @param marked those plus the levels the SECOND pass adds, which only runs once some reference contributed
  *     a joint one.
  */
-private data class MarkedLevels(val joint: List<String>, val marked: List<String>)
+internal data class MarkedLevels(val joint: List<String>, val marked: List<String>)
 
 /** Null wherever the scope chain refuses the reference outright, since A12 answers it during the parse. */
-private fun TrackedFactBase.markedLevelsOf(
+internal fun TrackedFactBase.markedLevelsOf(
     written: String,
     declaringGroup: String,
     targetGroup: String,

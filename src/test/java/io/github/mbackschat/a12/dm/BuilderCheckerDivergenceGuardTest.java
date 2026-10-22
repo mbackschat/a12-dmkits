@@ -233,15 +233,12 @@ class BuilderCheckerDivergenceGuardTest {
             // declared kind each resolves to. Neither refuses what A12 admits.
             Map.entry("MVK_PARAMSIZE_INVALIDGN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // The checker's only statement of it is inside the PROJECTED corrective for
-            // MVK_PARAMSIZE_INVALIDGN, whose owner prose names it as what the kernel's own suggested fix can
-            // draw instead. Prose on both sides: the enricher owns the hint, `Linter` names it in a javadoc,
-            // and no family reports it.
+            // The kit names it, the checker reports it: the enricher owns the hint, `Linter` names it in a
+            // javadoc, and the checker's ITERATION_GUARD family refuses it.
             Map.entry("MVK_NEG_CONDITION_IN_ITERATION", Disposition.PROSE_ONLY),
 
-            // Prose on both sides as well: the checker names it only in the model-wide coverage gap that says it
-            // is left to A12 (CONSISTENCY-GAPS DG146), and `Linter` only in the advisory's fix text, which emits
-            // RK_NEG_CONDITION_IN_ITERATION. Neither refuses anything.
+            // The kit names it, the checker reports it: `Linter` only in the advisory's fix text, which emits
+            // RK_NEG_CONDITION_IN_ITERATION, while the checker's ITERATION_GUARD family refuses it.
             Map.entry("MVK_PARALLEL_ITERATION_INVALID", Disposition.PROSE_ONLY),
 
             // Both enforce A12's base-kind law over carriers that cannot share a reader: `Dsl`'s entity-list

@@ -148,6 +148,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Pallets/PalletQty) And NumberOfFilledFields(Pallets*/PalletNote) > 0",
               "errorEntityRelPath":"../Pallets/PalletNote",
               "errorCode":"C190","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r191","name":"PalletNoteMissing","Rule":{
+              "errorCondition":"FieldNotFilled(Pallets/PalletNote)",
+              "errorEntityRelPath":"../Pallets/PalletNote",
+              "errorCode":"C191","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r25","name":"StarInsideAFilter","Rule":{
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
@@ -778,6 +782,10 @@ class CheckFamilyWiringTest {
         // nothing naming that field says which pallet is meant.
         CheckFamily.ERROR_FIELD_ITERATION_BINDING to
             ("MVK_ERROR_FIELD_AND_ITERATION_INVALID" to "/Catalog/StarredErrorFieldUnbound"),
+        // The rule runs once per pallet and reports a note nobody filled, so it would also fire for every
+        // pallet nobody entered at all.
+        CheckFamily.ITERATION_GUARD to
+            ("MVK_NEG_CONDITION_IN_ITERATION" to "/Catalog/PalletNoteMissing"),
     )
 
     /**
@@ -903,6 +911,8 @@ class CheckFamilyWiringTest {
                 { facts.errorTargetIterationContributions(it) }),
             Triple(CheckFamily.ERROR_FIELD_ITERATION_BINDING, PostParseCheck.ERROR_TARGET_ITERATION,
                 { facts.errorFieldIterationBindingContributions(it) }),
+            Triple(CheckFamily.ITERATION_GUARD, PostParseCheck.ITERATION_GUARD,
+                { facts.iterationGuardContributions(it) }),
         )
         for ((family, site, produce) in producers) {
             val (code, path) = evidence.getValue(family)

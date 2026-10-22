@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test
  * `rulekit.validate.laws.IterationBindingLawsTest` (a fixed root reporting on a repeatable claim, every row also
  * as a computation precondition) and the repeatable-root rows of `…RootRepetitionIterationAgreementLawsTest`.
  *
- * `MVK_NEG_CONDITION_IN_ITERATION` is kernel-delegated by design (MVK-LEDGER), so on the rows A12 answers with it
- * the checker must report NOTHING — neither that class nor this one — which is asserted rather than filtered.
+ * Where A12 answers `MVK_NEG_CONDITION_IN_ITERATION` the checker must answer it too, or decline the shape and name
+ * the rule in a gap ([DECLINED]); silence without that gap is a disagreement like any other.
  *
  * Own domain (an insurance policy's claims, a fleet of vehicles).
  */
@@ -89,8 +89,17 @@ class CheckerIterationBindingAgreementTest {
         }, validator.inject(policy, draft))
     }
 
-    private fun judge(a12: List<String>, injected: String) =
-        a12.sorted() to check(ModelSource(injected)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+    private fun judge(a12: List<String>, injected: String): Pair<List<String>, List<String>> {
+        val report = check(ModelSource(injected))
+        // The probe is the model's only iterating rule, so a declaration-level gap naming the code is its own.
+        val declined = report.gaps.any { it.at != null && NEGATIVE in it.reason }
+        return a12.sorted() to (report.findings.filter { it.justifiesRejection }.map { it.code } +
+            listOfNotNull(DECLINED.takeIf { declined })).sorted()
+    }
+
+    /** A12's answer and ours agree, or A12 refuses on the iteration guard where this checker declined the shape. */
+    private fun agrees(a12: List<String>, ours: List<String>) =
+        ours - DECLINED == a12 || (a12 == listOf(NEGATIVE) && ours == listOf(DECLINED))
 
     @Test
     fun theCheckerNamesA12sBindingClassOnEveryRow() {
@@ -129,7 +138,7 @@ class CheckerIterationBindingAgreementTest {
 
         val wrong = rows.filter { (_, verdicts) ->
             val (a12, ours) = verdicts
-            ours != if (a12 == listOf(NEGATIVE)) emptyList() else a12
+            !agrees(a12, ours)
         }.map { (row, v) -> "$row: A12 ${v.first}, ours ${v.second}" }
         assertEquals(emptyList<String>(), wrong)
         // A12's own answer on the rows that separate the accounts, so the agreement cannot follow a drift on both sides.
@@ -162,6 +171,7 @@ class CheckerIterationBindingAgreementTest {
     private companion object {
         const val BINDS = "MVK_ERROR_FIELD_AND_ITERATION_INVALID"
         const val NEGATIVE = "MVK_NEG_CONDITION_IN_ITERATION"
+        const val DECLINED = "(declined, named in a gap)"
         const val ROOT_MARKED = " Having (GroupFilled(\$/Policy) And CurrentRepetition(Claims) > 0)"
         const val MARKED = "Claims*/Amount Having (FieldFilled(\$Claims/Detail/Units) And CurrentRepetition(Claims) > 0)"
 

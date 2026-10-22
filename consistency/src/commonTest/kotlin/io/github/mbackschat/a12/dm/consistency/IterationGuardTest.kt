@@ -5,28 +5,41 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A completed report names the two iteration codes this checker does not reproduce, so a consumer who sees the
- * eight iteration codes it does report cannot read their absence as "iteration checked".
- *
- * Agents hit `MVK_NEG_CONDITION_IN_ITERATION` on a first attempt in several of our evaluations
- * (`eval/RESULTS.md`), which is why the generic "every other required family" gap is not disclosure enough
- * (MVK-LEDGER, re-opened 2026-10-22). The iterating rule is the control that the checker stays silent on a
- * model A12 refuses under that code, rather than the gap describing a shape nobody reaches.
+ * The iteration guard on the fixture kernel 30.8.1 was measured on (`dmtool model check`, 2026-10-22): the
+ * unguarded negative draws `MVK_NEG_CONDITION_IN_ITERATION`, its guarded twin draws nothing, and a rule whose
+ * shape this checker does not judge for the law carries a gap at the rule instead of reading as examined. The
+ * full row grid against A12 is `CheckerIterationGuardAgreementTest` in `:adapter`.
  */
-class IterationValidityGapTest {
+class IterationGuardTest {
+
+    private fun withCondition(condition: String, errorPath: String = "../Claims/Amount") =
+        checkRead(ModelSource(UNGUARDED_NEGATIVE
+            .replace("FieldNotFilled(Claims/Amount)", condition)
+            .replace("\"../Claims/Amount\"", "\"$errorPath\"")))
 
     @Test
-    fun aCompletedReportNamesTheIterationCodesItLeavesToA12() {
-        val report = checkRead(ModelSource(UNGUARDED_NEGATIVE))
+    fun anUnguardedNegativeIsRefusedAtTheRepetitionItRunsOver() {
+        val report = withCondition("FieldNotFilled(Claims/Amount)")
+        assertEquals(listOf("MVK_NEG_CONDITION_IN_ITERATION" to "/Policy/AmountMissing"),
+            report.findings.map { it.code to it.at })
+        assertTrue("/Policy/Claims" in report.findings.single().explain, report.findings.single().explain)
+        assertEquals(emptyList(), report.gaps.filter { it.at == "/Policy/AmountMissing" })
+    }
 
-        assertTrue(report.checksCompleted.isNotEmpty(), "the gap belongs to a run that completed")
-        assertEquals(emptyList(), report.findings.map { it.code },
-            "this checker does not reproduce the law, so the model A12 refuses draws no finding here")
-        val named = report.gaps.filter {
-            it.at == null && "MVK_NEG_CONDITION_IN_ITERATION" in it.reason &&
-                "MVK_PARALLEL_ITERATION_INVALID" in it.reason
-        }
-        assertEquals(1, named.size, report.gaps.toString())
+    @Test
+    fun aPositiveReadingOfTheSameRepetitionGuardsIt() {
+        val report = withCondition("FieldNotFilled(Claims/Amount) And FieldFilled(Claims/ClaimId)")
+        assertEquals(emptyList(), report.findings.map { it.code })
+        assertEquals(emptyList(), report.gaps.filter { it.at == "/Policy/AmountMissing" })
+    }
+
+    /** No report names the law as unread model-wide any more: what remains undecided is named per rule. */
+    @Test
+    fun aShapeLeftToA12IsNamedAtItsRule() {
+        val report = withCondition("[Claims/ClaimId] PatternViolated \\\"[0-9]+\\\" And FieldFilled(Claims/Amount)")
+        assertEquals(emptyList(), report.findings.map { it.code })
+        val named = report.gaps.filter { "MVK_NEG_CONDITION_IN_ITERATION" in it.reason }
+        assertEquals(listOf<String?>("/Policy/AmountMissing"), named.map { it.at }, report.gaps.toString())
     }
 
     private companion object {

@@ -8,9 +8,9 @@ import kotlin.test.assertEquals
  *
  * Each row is one A12 measured in `rulekit.validate.laws.IterationBindingLawsTest` (a fixed root reporting on a
  * repeatable claim) or `…RootRepetitionIterationAgreementLawsTest` (a repeatable root), and the WHOLE code list is
- * compared, so a row A12 admits also proves no other family speaks there. The iteration-guard rows A12 refuses
- * with `MVK_NEG_CONDITION_IN_ITERATION` are kernel-delegated and must stay silent here rather than borrow this
- * family's class.
+ * compared, so a row A12 admits also proves no other family speaks there. The rows A12 refuses with
+ * `MVK_NEG_CONDITION_IN_ITERATION` belong to the iteration guard and are judged against A12 in
+ * `CheckerIterationBindingAgreementTest`, where this family must not borrow that class.
  */
 class ErrorFieldIterationBindingTest {
 

@@ -574,6 +574,83 @@
         "a12-kernel-lean": {"state": "OPEN", "basis": "Triaged at bf2216b6 as unmodeled (§2.23): the peer's reader reads no included model, model reference or type-definition library.", "evidence": {}}
       }
     },
+    "kf595": {
+     "sha256": "b903d5190b8fb50c09bf6cb8dfb9bc853e0a5bdad7d500eb27d0e07c3ffd9226",
+     "task": "DG146",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "the iteration guard's constants and exempt level",
+       "a group operand under FieldValuesNotUnique"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's iteration-guard reading"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's iteration-guard reading"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The ITERATION_GUARD family rounds and narrows the constant as A12 does, exempts the two-row keyed level, judges no computation, and counts a group operand under FieldValuesNotUnique as its fields.",
+       "evidence": {
+        "the iteration guard's constants and exempt level": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#theCheckerAgreesWithA12OnEveryRow",
+         "witness": "The checker agrees with A12 on every constant, exempt-level and precondition row."
+        },
+        "a group operand under FieldValuesNotUnique": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt",
+         "witness": "Totals, Names, Signing, Office and Region draw the guard's class on both sides; Levy is admitted on both."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of the order model and on the computation precondition.",
+       "evidence": {
+        "A12's iteration-guard reading": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the finding's tables state."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "To be handed over in the next letter with the measured rows.",
+       "evidence": {}
+      }
+     }
+    },
     "kf593": {
       "sha256": "f8a0254456769e7742595612c5c2e9881f54db78f4542baf613cb1bbc988ec40",
       "task": "F-USE-BACKLOG",
@@ -6484,7 +6561,7 @@
           "selected operand iteration guard"
         ],
         "interpreter": [],
-        "checker": [],
+        "checker": ["selected operand iteration guard"],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -6514,8 +6591,8 @@
           "evidence": {}
         },
         "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "The negative-condition guard is kernel-delegated by design (MVK-LEDGER), so the checker raises no class here.",
+          "state": "OPEN",
+          "basis": "The ITERATION_GUARD family reports the negative-condition guard, but declines a selected operand and names the rule in a coverage gap instead (CONSISTENCY-GAPS DG146).",
           "evidence": {}
         },
         "dmtool-cli": {
@@ -8066,10 +8143,10 @@
         "a12-kernel-lean": ["fill quantifiers count independent slots once a rule iterates", "uniqueness guard slots over selections, groups and nested capacity"]
       },
       "consumers": {
-        "adapter": {"state": "APPLIED", "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker stays silent where A12 draws the negative-iteration class.", "evidence": {"fill quantifiers count independent slots once a rule iterates": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow", "witness": "No row draws a checker class A12 does not."}, "uniqueness guard slots over selections, groups and nested capacity": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/UniquenessGuardSlotLawsTest.java#aSelectionOrGroupGivesOneSlotPerFieldItReadsOnEveryOverload", "witness": "Thirty-nine overload rows on Number, String and Date, each a kernel verdict; the nested-capacity rows and their controls sit in the sibling method."}}},
-        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The negative-iteration law is kernel-delegated by design (MVK-LEDGER); the enricher's existing corrective applies.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "All 56 iteration-guard rows and their computation twins are measured; the checker draws the negative-iteration class where A12 does, or names the rule in a coverage gap.", "evidence": {"fill quantifiers count independent slots once a rule iterates": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow", "witness": "No row draws a checker class A12 does not."}, "uniqueness guard slots over selections, groups and nested capacity": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/UniquenessGuardSlotLawsTest.java#aSelectionOrGroupGivesOneSlotPerFieldItReadsOnEveryOverload", "witness": "Thirty-nine overload rows on Number, String and Date, each a kernel verdict; the nested-capacity rows and their controls sit in the sibling method."}}},
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave the negative-iteration law to A12; the enricher's existing corrective applies.", "evidence": {}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "A static admission refusal never reaches evaluation.", "evidence": {}},
-        "checker": {"state": "ALREADY_CONFORMS", "basis": "MVK_NEG_CONDITION_IN_ITERATION is kernel-delegated by design (MVK-LEDGER, decided 2026-06-04); the agreement tests assert the checker's silence where A12 draws it and no refusal where A12 admits.", "evidence": {"uniqueness guard slots over selections, groups and nested capacity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt", "witness": "Forty-seven rows: silent on the twenty-five A12 refuses with the guard, refusing no admitted one, the capacity-1 star's wildcard class shared."}}},
+        "checker": {"state": "APPLIED", "basis": "The ITERATION_GUARD family reports MVK_NEG_CONDITION_IN_ITERATION, counting a group operand as the fields beneath it (KF595); it declines a selection and names the rule in a coverage gap (CONSISTENCY-GAPS DG146).", "evidence": {"uniqueness guard slots over selections, groups and nested capacity": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt", "witness": "Forty-seven rows: the guard's class on fifteen of the twenty-five A12 refuses with it and the other ten, the selections, named in a gap; no admitted one refused, the capacity-1 star's wildcard class shared."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the checker assessed here.", "evidence": {}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema import.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "A rule's admission does not change JSON Schema export.", "evidence": {}},

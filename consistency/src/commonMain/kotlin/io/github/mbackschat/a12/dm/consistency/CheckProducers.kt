@@ -432,6 +432,11 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE, DeclarationStage.CALCULATION_ALTERNATIVES) { it.enumComputationSourceFindings() },
     condition(CheckFamily.ERROR_TARGET_ITERATION) { base, at -> base.errorTargetIterationContributions(at) },
     condition(CheckFamily.ERROR_FIELD_ITERATION_BINDING) { base, at -> base.errorFieldIterationBindingContributions(at) },
+    CheckProducer.Condition(
+        completes = setOf(CheckFamily.ITERATION_GUARD),
+        contributions = { base, at -> base.iterationGuardContributions(at) },
+        gaps = { base, at -> base.iterationGuardGaps(at) },
+    ),
     condition(CheckFamily.ERROR_TARGET_CONTAINMENT) { base, at -> base.errorContainmentContributions(at) },
     CheckProducer.Messages(setOf(CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.ERROR_TEXT_SEMANTIC_INDEX,
         CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX, CheckFamily.ERROR_TEXT_INDEX_TERMINAL,
