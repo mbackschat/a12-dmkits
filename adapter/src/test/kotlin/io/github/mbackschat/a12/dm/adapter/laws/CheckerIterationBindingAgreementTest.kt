@@ -84,6 +84,18 @@ class CheckerIterationBindingAgreementTest {
                 .stringField("Note") { } } }
         .build().toJson()
 
+    /** The same plan per week: the weeks repeat without a key, so only the shifts inside them are keyed. */
+    private val rota = DocumentModelDraft.named("weekly-rota").locale("en_US")
+        .rootGroup("Plan") { p -> p
+            .group("Weeks") { w -> w.repeatable(4)
+                .group("Demand") { d -> d.repeatable(6).indexField("Shift")
+                    .stringField("Shift") { }
+                    .numberField("Headcount") { n -> n.fractionDigits(0) } }
+                .group("Supply") { s -> s.repeatable(6).indexField("Shift")
+                    .stringField("Shift") { }
+                    .numberField("Headcount") { n -> n.fractionDigits(0) } } } }
+        .build().toJson()
+
     private val validator = RuleValidator()
 
     /** A12's rejection classes and ours, for one rule. */
@@ -186,8 +198,9 @@ class CheckerIterationBindingAgreementTest {
      */
     @Test
     fun aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference() {
-        val verdicts = PARALLEL.mapValues { (condition, _) -> rule(staffing, "/Plan", "Demand/Headcount", condition) }
-        assertEquals(PARALLEL, verdicts.mapValues { it.value.first })
+        val verdicts = PARALLEL.mapValues { (condition, _) -> rule(staffing, "/Plan", "Demand/Headcount", condition) } +
+            WEEKLY.mapValues { (condition, _) -> rule(rota, "/Plan", "Weeks/Demand/Headcount", condition) }
+        assertEquals(PARALLEL + WEEKLY, verdicts.mapValues { it.value.first })
         // The iteration guard, which A12 never reaches past this class, names the rule in a gap: redundant but true.
         assertEquals(verdicts.mapValues { it.value.first },
             verdicts.mapValues { (_, v) -> if (BINDS in v.first) v.second - DECLINED else v.second })
@@ -265,6 +278,14 @@ class CheckerIterationBindingAgreementTest {
             "FieldFilled(Demand/Headcount) And FieldsNotCollectivelyFilled(Demand*/Headcount, Supply/Headcount)" to emptyList(),
             "AtLeastOneFieldFilled(Demand/Headcount, Supply/Headcount)" to emptyList(),
             "Sum(Demand*/Headcount) > 0" to emptyList(),
+        )
+        /**
+         * A reference naming the error field that iterates only the unkeyed week is not parallel: the marking
+         * reaches a keyed level alone. Against "a naming reference that iterates anything will do".
+         */
+        val WEEKLY = linkedMapOf(
+            "NoFieldFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)" to listOf(BINDS),
+            "NoFieldFilled(Weeks/Demand/Headcount, Weeks/Supply/Headcount)" to listOf("MVK_PARALLEL_ITERATION_INVALID"),
         )
         val PINNED = listOf(
             "Sum(Claims*/Amount) > 0, plain", "Sum(Claims*/Amount) > 0, sibling",
