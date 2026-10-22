@@ -21,6 +21,10 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-10-22 — the linux block gains the 24 keys it lacked, and keeps its 66 existing ones
+
+Three `Nightly performance` runs at `c6468912b`, dispatched one at a time (runs `39704985260`, `39706147273`, `39707551621`), each on a different hosted CPU (EPYC 9V45, EPYC 9V74, Xeon 8370C). Every anchored lane passed in all three. Each run failed only on the twelve lanes with no linux anchor, the same gap that made `AnchorBlockKeyParityTest` red on push. The 24 keys of those lanes were added at their three-run median, and nothing else in the block changed. A full refresh would also have moved every existing key, by 0.49× to 1.72×, 25 of them upward. Those keys stay where they were: three runs on three CPU models do not separate a code change from runner variance, and every one of them already passed its bar.
+
 ### Checkpoint 2026-10-22 — 36 darwin anchors lowered after the day's optimizations; the lanes reading above their anchors are not the day's code
 
 Darwin-aarch64, Homebrew OpenJDK 21.0.12.1, three full `perfGateTest` runs in the canonical order at `3b5794325`, uncontended, all green: `2026-10-21T221550Z`, `2026-10-21T222237Z` and `2026-10-21T222947Z`. They carry `-DIRTY` because two untracked files outside every source set sat in the tree. Every key whose three-run median fell to 0.95 of its anchor or below was lowered to that median, 36 of the 90; the remaining keys are unchanged. Among the largest moves are relevance depth at n = 24, from 27.8 to 13.15 ms, `$` equality correlation at n = 1600, from 3.65 to 1.79 ms, and FieldValuesNotUnique at n = 20000, from 102.73 to 70.84 ms. Each lowered key's slowest reading in the three runs sits at 0.81 of its new ceiling or less.
