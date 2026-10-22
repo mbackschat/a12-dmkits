@@ -523,7 +523,7 @@
         "adapter": {"state": "APPLIED", "basis": "A12 and the interpreter are compared row by row on every reading.", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "Every base-year value, bound, label and Boolean cell agrees."}}},
         "interpreter": {"state": "APPLIED", "basis": "The loader binds baseYear like a count and gates a bound on an ASCII decimal; labels are kept as written and Boolean cells fold as equalsIgnoreCase does (IF426).", "evidence": {"model text readings": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBooleanCellIsComparedAsJavaComparesIgnoringCase", "witness": "fal\\u017Fe reads false on both engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf288": {
@@ -547,7 +547,7 @@
         "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on an include's and a library's locale sets.", "evidence": {"A12's include expansion": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "Each locale set builds or is refused on all three alike."}}},
         "interpreter": {"state": "APPLIED", "basis": "Each resolved reference is held to the entry's locales (IF429).", "evidence": {"an include's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "The workspace refuses the include missing an entry locale and prepares a superset."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches this reading through the interpreter and the checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf594": {
@@ -571,7 +571,7 @@
         "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter and the checker on three carriers, four members, three locale sets, eight locale-code sets and five library roots, with A12's consistency verdict beside its build for the locale codes.", "evidence": {"A12's reached-model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "Every carrier and member agrees, and each control builds."}}},
         "interpreter": {"state": "APPLIED", "basis": "Workspace preparation binds the four members of every source it parses refuses a locale code A12 cannot parse in any of them, and holds every resolved reference to the entry's locales, an include to no repeated or empty locale code and a library to no root group; the loader binds the members on a model it is given (IF429).", "evidence": {"a model's locale codes": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aLocaleCodeA12CannotUseLeavesTheEntryUnbuilt", "witness": "The workspace refuses exactly the rows A12 does not build, on all three carriers, and prepares the entry and the library A12 builds."}, "a reached model's members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableModelMemberLeavesTheEntryUnbuilt", "witness": "The workspace refuses on every carrier and member A12 does not build, and prepares each control."}, "a reached model's locales": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt", "witness": "The workspace refuses each entry A12 does not build and prepares each control."}, "a library's root group": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aTypeDefinitionLibraryWithARootGroupLeavesTheEntryUnbuilt", "witness": "The workspace refuses each library A12 does not expand and prepares the libraries without a root group."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf593": {
@@ -595,7 +595,7 @@
         "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter, the core reader and the checker on every row.", "evidence": {"A12's model reading": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JsonLiteralStrictnessDiffTest.kt#aDocumentWithAnUnquotedNonLiteralIsReadByNeitherEngine", "witness": "A12 and the interpreter refuse each non-literal number cell and read each control."}}},
         "interpreter": {"state": "APPLIED", "basis": "Every A12-shape parse refuses a non-literal token, int members bind through JavaIntBinding, and includes key to the last entry of any purpose (IF428).", "evidence": {"JSON literals": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JsonLiteralStrictnessDiffTest.kt#aDocumentWithAnUnquotedNonLiteralIsReadByNeitherEngine", "witness": "Each non-literal number cell is refused by both engines, and each control reads."}, "an int member's binding": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ModelTextReadingDiffTest.kt#aBaseYearIsBoundAsJavaBindsAnInteger", "witness": "The textual and JSON null, the Int boundary and an object base year load or refuse as A12 does."}, "an include alias's entry": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anAliasNamesTheLastEntryCarryingItWhateverItsPurpose", "witness": "The workspace mounts and refuses exactly where A12 does."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf592": {
@@ -619,7 +619,7 @@
         "adapter": {"state": "APPLIED", "basis": "A12 is compared with the interpreter workspace, the core reader and the checker on every row.", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#anIdOfSpacesIdentifiesTheModelEverywhere", "witness": "Six header ids admitted on all four."}}},
         "interpreter": {"state": "APPLIED", "basis": "Preparation finds an include only through its declared non-blank reference and refuses only the empty alias and type-definition id (IF427).", "evidence": {"identifying text of spaces": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceBlankTextDiffTest.kt#onlyTheEmptyAliasNamesNoInclude", "witness": "Seven aliases: the interpreter refuses exactly where A12 fails the expansion."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches these readings through the interpreter and the checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf590": {
@@ -643,7 +643,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on twelve rows over three carriers and four counts, with every attachment path.", "evidence": {"repetition count cascade": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRepeatabilityCascadeAgreementTest.kt#theCheckerReportsA12sClassesWhereA12Does", "witness": "Every row's classes and paths agree; A12's answer on the nested zero row is pinned."}}},
         "interpreter": {"state": "APPLIED", "basis": "The loader binds repeatability through Java's trim and Integer.parseInt, truncates a JSON number, and refuses every value A12 builds no model from (IF426).", "evidence": {"repetition count binding": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RepeatabilityTextReadingDiffTest.kt#theCheckerAndTheInterpreterBindTheCountAsA12Does", "witness": "23 values agree with A12 on build and refusal; every built model's count draws the same over-repetition pair on all three engines."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf310": {
@@ -667,7 +667,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on the condition language, condition, precondition, message parameter and stored count over the no-break and em spaces.", "evidence": {"unicode blank members": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnicodeBlankAgreementTest.kt#theCheckerReadsEachMemberAsA12Does", "witness": "Every row agrees class for class."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf299": {
@@ -715,7 +715,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared code by code with attachment path, over the confound's carriers, deletion, multiplicity, capacity and nine short names, with A12's answer pinned on three rows.", "evidence": {"ordering member short name": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOrderingNameSentenceAgreementTest.kt#theCheckerStatesA12sSentencesForEachOrderingMember", "witness": "Every row's classes and attachment paths agree with their multiplicity."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf85": {
@@ -763,7 +763,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter are compared on eight stored dates over five carriers, and on a pre-cutover constant's and BaseYear's day counts.", "evidence": {"hybrid stored dates": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/StoredDateHybridCalendarDiffTest.kt#aStoredDateIsRealOnTheHybridCalendarOnEveryEngine", "witness": "Skipped labels and 1700-02-29 are malformed, Julian leap days fall below the floor, on every engine."}, "hybrid date constants": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/StoredDateHybridCalendarDiffTest.kt#aPreCutoverConstantCountsOnTheHybridCalendar", "witness": "Only the hybrid difference and shift rules fire."}}},
         "interpreter": {"state": "APPLIED", "basis": "Every parse site judges reality through isParsedRealDate, and a date literal and BaseYear carry the LEGACY_HYBRID basis (IF425).", "evidence": {"hybrid stored dates": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedDateCalendarTest.kt#everyParseSiteJudgesADayOnTheHybridCalendar", "witness": "Date, date-time, fragment and range-start parses agree on JVM and Node."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool evaluates through the interpreter and checks through the kernel or the portable checker.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf585": {
@@ -787,7 +787,7 @@
         "adapter": {"state": "APPLIED", "basis": "Both kernel strategies and the interpreter render value, label, repetition and relative parameters through a group named with an umlaut.", "evidence": {"group name parameters": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageTokenNameAlphabetDiffTest.kt#allThreeEnginesAgreeOnEveryMessageSignature", "witness": "Two rows, four parameters each, identical texts and signatures on all three engines."}}},
         "interpreter": {"state": "APPLIED", "basis": "Message tokens read A12Lexis.NAME_PART_CLASS_BODY instead of the ASCII word class (IF424).", "evidence": {"group name parameters": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageTokenNameAlphabetDiffTest.kt#allThreeEnginesAgreeOnEveryMessageSignature", "witness": "The interpreter renders the umlaut-path parameters it used to leave literal."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf586": {
@@ -811,7 +811,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on nine computed-field names, three gate-order rows and a rule-slot pair.", "evidence": {"computed path lexer": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathLexerAgreementTest.kt#theCheckerStatesA12sLexerClassAtTheComputation", "witness": "Every name's classes agree with multiplicity; the controls draw no lexer class."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf587": {
@@ -835,7 +835,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on seven conditions, three of them carrying an Arabic-Indic digit in a date constant.", "evidence": {"ascii date constants": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerAsciiDigitAgreementTest.kt#theCheckerReadsOnlyAsciiDigitsWhereA12Does", "witness": "Each row's classes agree; the date constants draw MVK_INVALID_DATE_STRING or MVK_INVALID_TYPE_FOR_COMPARISON."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "The interpreter evaluates models A12 admitted; its own date-constant reading is IF415's.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel or the portable checker and evaluates through the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf584": {
@@ -859,7 +859,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 22 rows over the three types, five blanks, an absent control, a filtered field and the fragment control, beside the no-break-space and type-definition rows.", "evidence": {"blank date format": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBlankDateFormatAgreementTest.kt#theCheckerStatesA12sBuildVerdictOnEveryRow", "witness": "Every row's verdict agrees, and A12's codeless format sentence and the unbuilt type definition are pinned beside the checker's gaps."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no format logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf583": {
@@ -883,7 +883,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 26 renamed hosts with every class and its path, beside a blank-name grid over seven elements and five blanks.", "evidence": {"element name laws": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerComputedPathAgreementTest.kt#theCheckerStatesA12sDottedPathAndUnderscoreClasses", "witness": "Every row's classes and paths agree, and A12's own classes are pinned on the rows that separate the readings."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf415": {
@@ -931,7 +931,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on thirty bound declarations, each the discriminator of a rival reading, beside a type-definition row.", "evidence": {"bound magnitude": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNumberBoundMagnitudeAgreementTest.kt#theCheckerStatesA12sMagnitudeVerdictOnEveryRow", "witness": "Every row's classes agree with their multiplicity, and A12's own classes are pinned per row."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no bound logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf581": {
@@ -955,7 +955,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared over 309 range declarations crossing 18 formats with 17 separators, beside variant-deleted, supplementary and unmeasured rows.", "evidence": {"date range verdicts": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateRangeSentenceAgreementTest.kt#theCheckerStatesA12sRangeVerdictsOnEveryPair", "witness": "Every grid row's classes and paths agree, and A12's own stream is pinned on the rows that separate the three verdicts."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no range logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf367": {
@@ -979,7 +979,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker agree on the empty and blank formats with blank separators, which draw the class alone.", "evidence": {"date range format missing": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateRangeSentenceAgreementTest.kt#theCheckerStatesA12sRangeVerdictsOnEveryPair", "witness": "Every grid row's classes and paths agree, and A12's own stream is pinned on the rows that separate the three verdicts."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no range logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf580": {
@@ -1003,7 +1003,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared class by class with the path each attaches to, over root, nested and field carriers, trim, length, variant-deleted and supplementary rows.", "evidence": {"element path sentences": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerElementPathSentenceAgreementTest.kt#theCheckerStatesA12sPathSentencesAtEveryElement", "witness": "Every row agrees but those whose names carry a slash, and A12's own stream is pinned on the rows that separate the alphabets, the reach and the trim."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf579": {
@@ -1027,7 +1027,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on absent, empty, blank and tab codes, unfiltered and under ONLY and ALL_EXCEPT filters.", "evidence": {"empty error code": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationWithholdingAgreementTest.kt#everyRowAgrees", "witness": "Every row's class list agrees, and A12's own stream is pinned on the rows that separate emptiness from blankness and the filters."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no code logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf578": {
@@ -1051,7 +1051,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on 46 name and code shapes over rules and computations, with variant-deleted and withholding rows.", "evidence": {"declaration alphabets": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAlphabetAgreementTest.kt#theCheckerNamesA12sSentencesOnEveryRow", "witness": "Every row's class list agrees, and A12's sentences are pinned on the rows that separate the two alphabets."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf418": {
@@ -1075,7 +1075,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on every trimmed-text row with a plain control beside it.", "evidence": {"trimmed enum texts": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEnumDeclarationStreamAgreementTest.kt#theCodedStreamAgreesInOrderAndMultiplicity", "witness": "A12's own stream is pinned on the admitted, refused and trim-equal rows."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission of declarations; the interpreter neither judges nor compares declared enum texts.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no enum text logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "To be reported in the 2026-10-21 handback as a measured grid.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Reported in the 2026-10-21 handback as a measured grid; awaits peer review.", "evidence": {}}
       }
     },
     "kf1": {
@@ -12188,7 +12188,7 @@
         "adapter": {"state": "NOT_APPLICABLE", "basis": "The admission rows are locked by validate.laws.NonAsciiLexemeLawsTest, outside the adapter.", "evidence": {}},
         "interpreter": {"state": "APPLIED", "basis": "Conditions, include remapping and message tokens lex with the kernel grammars' ASCII sets (IF415).", "evidence": {"a condition literal's digits": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PlatformCharacterClassTest.kt#aConditionNumberIsAsciiDigitsOnly", "witness": "The ASCII control parses; four non-ASCII digit literals are refused on JVM and Node."}, "a message token's whitespace": {"reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PlatformCharacterClassTest.kt#aMessageTokenGapIsTheKernelsAsciiWhitespace", "witness": "A space gap renders; a no-break or em space leaves the token literal on JVM and Node."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool checks through the kernel and evaluates through the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here and reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf576": {
@@ -12212,7 +12212,7 @@
         "adapter": {"state": "ALREADY_CONFORMS", "basis": "Both strategies are pinned at four instants, two before the cutover and two agreeing controls.", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "Day 29, month 2 at 1500-03-10T12:00Z and day 4 at 1582-10-14T12:00Z on both strategies."}}},
         "interpreter": {"state": "APPLIED", "basis": "Today and Now enter the temporal path with the hybrid basis Date(...) carries (IF416).", "evidence": {"the clock's calendar fields": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/HybridCalendarClockDiffTest.kt#todayBeforeTheCutoverAgreesOnAllThreeEngines", "witness": "The interpreter fires the same day, month, year and Now-day rules as both strategies at every instant."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's --clock reaches the clock through the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here and reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     },
     "kf577": {
@@ -12236,7 +12236,7 @@
         "adapter": {"state": "NOT_APPLICABLE", "basis": "The adapter hands models to A12's own serializer.", "evidence": {}},
         "interpreter": {"state": "APPLIED", "basis": "Every boolean reader refuses an unbindable value (IF417).", "evidence": {"an unbindable boolean member": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BooleanMemberUnreadableDiffTest.kt#aMemberA12CannotBindRefusesTheModelOnBothSides", "witness": "Nine members, three unbindable values each: A12 and the interpreter both refuse, and both load the true control."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool loads models through A12 and the interpreter.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here; goes in the 2026-10-21 handback.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Measured here and reported in the 2026-10-21 handback; awaits peer review.", "evidence": {}}
       }
     }
   }
