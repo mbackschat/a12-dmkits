@@ -32,6 +32,11 @@ import kotlinx.serialization.json.intOrNull
  * | a string field whose pattern is not one A12 reads as digits | `MVK_NO_DIGIT_PATTERN` |
  * | a field whose declaration does not fit the slot | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
  * | a starred field | `MVK_NO_WILDCARDS_ALLOWED` ([KF532](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf532)) |
+ * | a group, starred or not | `MVK_NO_GROUPS_ALLOWED` ([KF598](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf598)) |
+ *
+ * **The group gate comes before the star gate**, so a starred GROUP draws the group class, not the star one:
+ * `checkParamIfEntity` asks "a field?" and only then "no star?" (kernel 30.8.1, read 2026-10-22;
+ * `adapter.laws.CheckerGroupAndStarOperandAgreementTest`).
  *
  * **`QuarterFromDate` is why rows two and three are not one rule.** It is a DATE extract operator and no slot
  * expects it, so a family keying on "an operator of this construction's family" would name the wrong-slot
@@ -236,7 +241,8 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         val walked = if (this == DATE && operands.size == SPLIT_YEAR_ARITY) slots.take(2) + SPLIT_YEAR_SLOTS else slots
         operands.take(walked.size).forEachIndexed { at, operand ->
             val slot = walked[at]
-            val defect = when (val arm = model.armIn(shape, operand, element, extractOps)) {
+            val arm = model.armIn(shape, operand, element, extractOps)
+            val defect = model.groupSlotDefect(slot, arm, element, inAFilterBody) ?: when (arm) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)
                 is SlotArm.Extract -> slot.extractDefect(arm.op, ownFamily)
                 is SlotArm.Entity -> slot.entityDefect(model, element, arm.path, keyed = false, inAFilterBody)
@@ -416,8 +422,8 @@ private fun slotFinding(
  * and each judged type satisfies it its own way — a number by its stored width or its declared bound, a
  * string by its stored width alone, a date only by being the complete year written exactly `yyyy`.
  *
- * **Silent on a GROUP operand**, whose own gate runs even earlier; a starred one never reaches this arm, since
- * [armOf] gives it its own. Silent too on every declared type but the
+ * **Silent on a GROUP operand**, whose own gate runs even earlier ([groupSlotDefect]); a starred one never reaches
+ * this arm, since [armOf] gives it its own. Silent too on every declared type but the
  * three: A12 refuses the rest outright, but a `TypeDefType` stands for a definition whose body this reader
  * may not have, and that is the one type whose refusal cannot be told apart from the others by name.
  */
@@ -446,6 +452,30 @@ private fun Slot.entityDefect(
         FieldType.DATE -> dateDefect(FieldType.DATE.bodyIn(declared) ?: return null, written)
         else -> null
     }
+}
+
+/**
+ * The slot's first gate, which A12 asks of every entity arm before its star: whether it names a group.
+ *
+ * Null wherever the reference reader answers first, which [addressedTargetOf] decides for this walk as it does
+ * for [entityDefect].
+ */
+private fun TrackedFactBase.groupSlotDefect(
+    slot: Slot,
+    arm: SlotArm,
+    element: TrackedDeclaration,
+    inAFilterBody: Boolean,
+): SlotDefect? {
+    val (written, keyed) = when (arm) {
+        is SlotArm.Entity -> arm.path to false
+        is SlotArm.Keyed -> (arm.value ?: return null) to true
+        is SlotArm.Starred -> arm.written to false
+        else -> return null
+    }
+    val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val target = addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) ?: return null
+    if (declarationAt(target)?.declaredKind != DeclaredKind.GROUP) return null
+    return SlotDefect("MVK_NO_GROUPS_ALLOWED", slot.name, written, "one field, never a group")
 }
 
 private fun Slot.stringDefect(body: JsonObject, written: String): SlotDefect? {

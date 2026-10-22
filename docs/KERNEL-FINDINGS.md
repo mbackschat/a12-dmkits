@@ -14439,3 +14439,30 @@ So once a rule iterates a group off its error field's path in parallel, some ref
 The marking reaches a keyed level only. In a weekly rota, `Weeks` repeats 4 times without a key and holds `Demand` and `Supply`, each repeating 6 times keyed by `Shift`. With error field `Weeks/Demand/Headcount`, `NoFieldFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)` draws `MVK_ERROR_FIELD_AND_ITERATION_INVALID`. The naming reference iterates the week, and the week is not marked parallel. The unstarred `NoFieldFilled(Weeks/Demand/Headcount, Weeks/Supply/Headcount)` draws `MVK_PARALLEL_ITERATION_INVALID` instead. That separates the account from "a naming reference that iterates anything will do".
 
 *Locked by:* `adapter.laws.CheckerIterationBindingAgreementTest.aParallelIterationIsBoundOnlyByAnUnstarredErrorFieldReference` (A12 pinned on every row of both carriers, the checker agreeing).
+
+## §9 supplement — a group or a star where an operand gate wants one field: a `Date` slot asks "a field?" before "no star?", a `$`-marked `CurrentRepetition` is judged like an unmarked one, and `SumOfProducts` refuses a group before it counts (kernel `checkConsistency`, 2026-10-23) <a id="kf598"></a>
+
+> Fold: pending — beside [KF373](#kf373) (the date construction's slots), [KF395](#kf395) (the value operators) and [KF370](#kf370) (`SumOfProducts`).
+
+A shop customer: day, month and year fields bounded as a date's slots, a date `OrderedOn`, a number `Total` with four decimals, a fixed group `BillingAddress`, and `Items`, repeating 20 times. Each row is one rule at `/Customer`. The three carriers are the three the near-miss sweep last found silent or answered with another class.
+
+| condition (error field) | A12 |
+|---|---|
+| `AllFieldsFilled(BirthDay, BirthMonth, BirthYear) And Invalid(Date(BirthDay, BillingAddress, BirthYear))` (`BirthDay`) | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(BirthDay) And Invalid(Date(BillingAddress, BirthMonth, BirthYear))` (`BirthDay`) | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(BirthDay) And Invalid(Date(BirthDay, Items*, BirthYear))` (`BirthDay`) | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(BirthDay) And Invalid(Date(BirthDay, Items*/Month, BirthYear))` (`BirthDay`) | `MVK_NO_WILDCARDS_ALLOWED` |
+| `AllFieldsFilled(BirthDay, BirthMonth, BirthYear) And Invalid(Date(BirthDay, BirthMonth, BirthYear))` (`BirthDay`) | admitted |
+| `FieldFilled(OrderedOn) And [OrderedOn] == Date(BirthDay, BillingAddress, BirthYear)` (`OrderedOn`) | `MVK_NO_GROUPS_ALLOWED` |
+| a `Having` body comparing `CurrentRepetition(Items) != CurrentRepetition($Items* )`, or the same without the space (`Items/Count`) | `MVK_NO_WILDCARDS_ALLOWED` |
+| the same body with `CurrentRepetition($Items)` | admitted |
+| the same body with `CurrentRepetition($Items/Count)` | `MVK_NO_FIELDS_ALLOWED` |
+| the same body with `CurrentRepetition(Items*)`, or `CurrentRepetition(Items*) > 1` outside a filter | `MVK_NO_WILDCARDS_ALLOWED` |
+| `FieldFilled(Total) And [Total] != SumOfProducts(Items*) /Count, Items*/UnitWeight)` (`Total`) | `MVK_NO_GROUPS_ALLOWED` |
+| `[Total] != SumOfProducts(Items*)`, or `SumOfProducts(BillingAddress, Items*)`, each behind `FieldFilled(Total)` | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(Total) And [Total] != SumOfProducts(Items*, Items*/UnitWeight)` | `MVK_DUPLICATE_PARAM2` |
+| `FieldFilled(Total) And [Total] != SumOfProducts(Items*/UnitPrice, Items*/UnitWeight)` | admitted |
+
+So a `Date` slot asks whether it names a field before it asks about a star: the starred group draws the group class (row 3), against "the star gate runs first", which the starred field beside it (row 4) cannot separate on its own. A `$`-marked operand of `CurrentRepetition` is judged with the same two gates as an unmarked one, the kind first (`$Items/Count`) and the star second. `SumOfProducts` refuses a group whatever its operand count, a lone group included, against "the count runs first". It does so at the call's own closing bracket, so the stray comma later in the text never answers (row 11, against "a syntax error outranks every operand gate"). A group that repeats a field named beside it is the list reader's duplicate class instead. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckBaseDateConstructionImpl.checkParamIfEntity` calls `checkIsField`, then `checkNoWildCards`, then the pattern and width tests. `CheckGroupOpImpl` calls `checkIsGroup`, then `checkNoWildCards`. `CheckFeldListenOpImpl` calls `checkOnlyFields` before `checkParamSizeIs2`.
+
+*Locked by:* `adapter.laws.CheckerGroupAndStarOperandAgreementTest` (every row above, with A12 pinned and the checker agreeing) and `adapter.laws.CheckerNearMissSweepTest`, whose ledger these three carriers empty.

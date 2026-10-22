@@ -55,6 +55,8 @@ internal fun TrackedFactBase.sumOfProductsContributions(
     val targetGroup = iterationScopeOf(element.declaredReference(), group)
     return callContributions(element, execution) { member, call ->
         if (call.operator != operator) return@callContributions null
+        groupOperandFinding(call.operands, group, element, call.inAFilterBody, member, call.spanIn(member))
+            ?.let { return@callContributions it }
         val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword) }
         if (pair.size != 2 || pair.any { it == null }) return@callContributions null
         classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
@@ -62,6 +64,46 @@ internal fun TrackedFactBase.sumOfProductsContributions(
 }
 
 private const val SUM_OF_PRODUCTS = "SumOfProducts"
+
+/**
+ * A group among the operands, which A12 refuses with `MVK_NO_GROUPS_ALLOWED` before it counts them: "only
+ * fields" runs ahead of "exactly two" in `CheckFeldListenOpImpl` (kernel 30.8.1, read 2026-10-22), so a lone
+ * group is this class too, and so is one before a later syntax error, since the call's own check runs at its
+ * `)` (KERNEL-FINDINGS KF598, `adapter.laws.CheckerGroupAndStarOperandAgreementTest`).
+ *
+ * Null wherever an earlier gate may answer: a root group (`checkNotRootGroupReferenced`), a filtered or keyed
+ * operand, one the reference reader refuses, and operands whose fields repeat once the groups are expanded,
+ * which A12 answers as a duplicate.
+ */
+private fun TrackedFactBase.groupOperandFinding(
+    operands: List<CallOperand>,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    inAFilterBody: Boolean,
+    member: String,
+    span: TextSpan?,
+): Finding? {
+    val targets = operands.map { operand ->
+        val written = operand.path?.takeIf { operand.clauses.isEmpty() } ?: return null
+        val target = addressedTargetOf(written, declaringGroup, element, false, inAFilterBody) ?: return null
+        declarationAt(target) ?: return null
+    }
+    val group = targets.firstOrNull { it.declaredKind == DeclaredKind.GROUP } ?: return null
+    if (targets.any { it.declaredKind == DeclaredKind.GROUP && it.path.isRootPath() }) return null
+    val fields = targets.flatMap { target ->
+        if (target.declaredKind == DeclaredKind.GROUP) fieldsUnder(target).orEmpty().map { it.path } else listOf(target.path)
+    }
+    if (fields.size != fields.toSet().size) return null
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_NO_GROUPS_ALLOWED",
+        "in `$member`: `$SUM_OF_PRODUCTS` multiplies two field lists, and `${group.path}` is a group — name one " +
+            "field of it, starred",
+        element.path,
+        span,
+    )
+}
 
 /**
  * One operand reduced to what the gates read, or null when this family may not judge the call. [repeats] says

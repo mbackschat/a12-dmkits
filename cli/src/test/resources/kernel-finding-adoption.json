@@ -651,6 +651,78 @@
       }
      }
     },
+    "kf598": {
+     "sha256": "cb286ab8fb18a83749906d54e9f5222dcf2232d8a229f7cd1d92143a08f78555",
+     "task": "M1",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "a group or a star where an operand gate wants one field"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's operand gates on the three near-miss carriers"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's operand gates on the three near-miss carriers"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The kits author these operands through typed refs that cannot name a group or a star there; a stored condition is the checker's.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The Date construction's slot walk asks the group gate before the star, the value operators read a $-marked operand with the rule's own addressing, and the SumOfProducts family refuses a group before it counts the operands.",
+       "evidence": {
+        "a group or a star where an operand gate wants one field": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupAndStarOperandAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker names A12's class on every row, and the near-miss ledger it emptied stays empty."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of the customer model.",
+       "evidence": {
+        "A12's operand gates on the three near-miss carriers": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupAndStarOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the finding's table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Not yet handed over.",
+       "evidence": {}
+      }
+     }
+    },
     "kf597": {
      "sha256": "9c700acb7f5000f6c2f36e83c763a149396d1b854afdaeefa7eb65cab802c5fc",
      "task": "DG146",
@@ -718,7 +790,7 @@
       },
       "a12-kernel-lean": {
        "state": "OPEN",
-       "basis": "Written into our next letter, which the owner carries.",
+       "basis": "Sent in our 2026-10-22c letter; the peer recorded it at a12-kernel-lean ecd38495 as returned omissions to be measured at its own pin.",
        "evidence": {}
       }
      }
@@ -790,7 +862,7 @@
       },
       "a12-kernel-lean": {
        "state": "OPEN",
-       "basis": "Written into our next letter, which the owner carries.",
+       "basis": "Sent in our 2026-10-22c letter; the peer recorded it at a12-kernel-lean ecd38495 as returned omissions to be measured at its own pin.",
        "evidence": {}
       }
      }

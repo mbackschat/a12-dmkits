@@ -2,6 +2,3 @@
 # verdict, A12's classes, the checker's classes, with (none) for an empty set (docs/CONFORMANCE-PLAN.md, M1).
 # A fix updates its row's count or deletes the row; a new key or a grown count is a new defect. Example
 # mutants per key are in build/checker-near-miss/report.tsv.
-1	SILENT	MVK_NO_GROUPS_ALLOWED	(none)
-1	SILENT	MVK_NO_WILDCARDS_ALLOWED	(none)
-1	WRONG-CLASS	MVK_NO_GROUPS_ALLOWED	MVK_UNEXPECTED_TOKEN

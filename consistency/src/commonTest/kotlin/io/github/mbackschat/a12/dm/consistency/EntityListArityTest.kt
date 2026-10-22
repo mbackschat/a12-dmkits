@@ -65,10 +65,9 @@ class EntityListArityTest {
         expected["SumOfProducts over two fields"] = emptyList()
         expected["FieldFilled over the same starred read twice"] = listOf("MVK_PARAMSIZE_INVALID1")
         expected["SumOfProducts over one field"] = listOf("MVK_PARAMSIZE_INVALID_2")
-        // The kind gate answers first, so this family stays silent even though the count is also wrong —
-        // and nothing else reports `MVK_NO_GROUPS_ALLOWED` on this carrier either, so the row records a
-        // disclosed under-report rather than a handover.
-        expected["SumOfProducts over two GROUPS"] = emptyList()
+        // The kind gate answers first, so this family stays silent even though the count is also wrong, and
+        // the SumOfProducts family names the group (`adapter.laws.CheckerGroupAndStarOperandAgreementTest`).
+        expected["SumOfProducts over two GROUPS"] = listOf("MVK_NO_GROUPS_ALLOWED")
         assertEquals(expected, actual, "the operators that want a fixed number of entities")
     }
 
