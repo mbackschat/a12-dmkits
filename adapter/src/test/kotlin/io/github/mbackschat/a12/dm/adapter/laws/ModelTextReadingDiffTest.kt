@@ -33,9 +33,12 @@ class ModelTextReadingDiffTest {
             // The text `null`, in that case only, is the null value to A12's reader (KF593).
             "\"null\"" to ("null" to NO_BASE_YEAR), "\" null \"" to (" null " to NO_BASE_YEAR), "null" to (null to NO_BASE_YEAR),
             "\"NULL\"" to ("NULL" to NOT_BUILT), "\"Null\"" to ("Null" to NOT_BUILT),
-            // A JSON number binds only when its exact value fits `Int`, before it is truncated.
-            "2147483647.0" to (2147483647.0 to BUILT), "2147483647.5" to (2147483647.5 to NOT_BUILT),
-            "-2147483648.5" to (-2147483648.5 to NOT_BUILT), "2147483648.0" to (2147483648.0 to NOT_BUILT),
+            // A JSON number binds only when its exact value fits `Int`, before it is truncated, in either spelling. Written
+            // verbatim: a Kotlin double would reach the model as `2.147483647E9` whatever its label said (2026-10-22).
+            "2147483647.0" to (Raw("2147483647.0") to BUILT), "2.147483647E9" to (Raw("2.147483647E9") to BUILT),
+            "2147483647.5" to (Raw("2147483647.5") to NOT_BUILT), "2.1474836475E9" to (Raw("2.1474836475E9") to NOT_BUILT),
+            "-2147483648.5" to (Raw("-2147483648.5") to NOT_BUILT), "-2.1474836485E9" to (Raw("-2.1474836485E9") to NOT_BUILT),
+            "2147483648.0" to (Raw("2147483648.0") to NOT_BUILT), "2.147483648E9" to (Raw("2.147483648E9") to NOT_BUILT),
             "{}" to (emptyMap<String, Any>() to NOT_BUILT), "true" to (true to NOT_BUILT), "[2024]" to (listOf(2024) to NOT_BUILT),
             "false" to (false to NOT_BUILT), "[]" to (emptyList<Int>() to NOT_BUILT),
             // Past `Int` as text and as an integer token: the boxed `Integer` member, not the primitive `int` of KF590.
@@ -45,8 +48,10 @@ class ModelTextReadingDiffTest {
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }
-            (root.at("/content/modelInfo") as ObjectNode).set<ObjectNode>("baseYear", MAPPER.valueToTree(row.first))
-            val json = RuntimeLaws.withRule(root.toString(), "/Cover", "RBY", "../Amount", "BY", "FieldFilled(Amount) And BaseYear == 2024")
+            val raw = row.first as? Raw
+            (root.at("/content/modelInfo") as ObjectNode).set<ObjectNode>("baseYear", MAPPER.valueToTree(if (raw != null) TOKEN else row.first))
+            val ruled = RuntimeLaws.withRule(root.toString(), "/Cover", "RBY", "../Amount", "BY", "FieldFilled(Amount) And BaseYear == 2024")
+            val json = if (raw != null) ruled.replace("\"$TOKEN\"", raw.token) else ruled
             // The checker's column is what it states about the base year: missing, unbuildable, or nothing.
             val codes = check(ModelSource(json)).findings.map { it.code }
             val checker = when {
@@ -183,8 +188,12 @@ class ModelTextReadingDiffTest {
         p.createInterpreter().validateFull(p.documents.readDocument(doc)).findings.map { it.code + "=" + it.text }
     }
 
+    /** A number token written into the model text as it stands. */
+    private data class Raw(val token: String)
+
     private companion object {
         val MAPPER = ObjectMapper()
+        const val TOKEN = "base-year-token-placeholder"
         const val AMOUNT = """{"Cover":{"Amount":1}}"""
         const val FIRES = "fires"
         const val BUILT = "built"

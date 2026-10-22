@@ -28,21 +28,26 @@ class RepeatabilityTextReadingDiffTest {
         "3, the control" to (3 to A12.BUILT), "\"3\"" to ("3" to A12.BUILT), "\" 3 \"" to (" 3 " to A12.BUILT),
         "\"\\t3\\n\"" to ("\t3\n" to A12.BUILT), "\"\\u0663\"" to ("\u0663" to A12.BUILT),
         "\"\\uFF13\"" to ("\uFF13" to A12.BUILT), "\"+3\"" to ("+3" to A12.BUILT), "\"03\"" to ("03" to A12.BUILT),
-        "3.7" to (3.7 to A12.BUILT), "1e1" to (1e1 to A12.BUILT),
+        "3.7" to (3.7 to A12.BUILT), "1e1" to (RawValue("1e1") to A12.BUILT), "10.0" to (RawValue("10.0") to A12.BUILT),
         "\"\"" to ("" to A12.MAX_VALUES_INVALID), "\"-1\"" to ("-1" to A12.MAX_VALUES_INVALID),
         "-3.7" to (-3.7 to A12.MAX_VALUES_INVALID),
         "\"3.7\"" to ("3.7" to A12.NOT_BUILT), "\"1e1\"" to ("1e1" to A12.NOT_BUILT), "\"0x3\"" to ("0x3" to A12.NOT_BUILT),
         "\"\\u00A03\"" to ("\u00A03" to A12.NOT_BUILT), "\"3\\u00A0\"" to ("3\u00A0" to A12.NOT_BUILT),
         "2147483648" to (2147483648L to A12.NOT_BUILT), "\"99999999999\"" to ("99999999999" to A12.NOT_BUILT),
-        "4294967298" to (4294967298L to A12.NOT_BUILT), "3e10" to (3e10 to A12.NOT_BUILT),
+        "4294967298" to (4294967298L to A12.NOT_BUILT), "3e10" to (RawValue("3e10") to A12.NOT_BUILT),
+        "3.0E10" to (RawValue("3.0E10") to A12.NOT_BUILT),
         "true" to (true to A12.NOT_BUILT),
         // The text `null`, in that case only, is the null value, which the `int` member holds as 0 (KF593).
         "\"null\"" to ("null" to A12.MAX_VALUES_INVALID), "\" null \"" to (" null " to A12.MAX_VALUES_INVALID),
         "\"NULL\"" to ("NULL" to A12.NOT_BUILT),
-        // A JSON number binds only when its exact value fits `Int`, before it is truncated.
-        "1.0E9" to (1.0E9 to A12.BUILT), "2147483647.0" to (2147483647.0 to A12.MAX_TOO_BIG),
-        "2147483647.5" to (2147483647.5 to A12.NOT_BUILT), "-2147483648.5" to (-2147483648.5 to A12.NOT_BUILT),
-        "2147483648.0" to (2147483648.0 to A12.NOT_BUILT), "-2147483649.0" to (-2147483649.0 to A12.NOT_BUILT),
+        // A JSON number binds only when its exact value fits `Int`, before it is truncated, in either spelling. Written
+        // verbatim: a Kotlin double reaches the model as Java prints it, `2.147483647E9` for `2147483647.0` (2026-10-22).
+        "1.0E9" to (RawValue("1.0E9") to A12.BUILT), "1000000000.0" to (RawValue("1000000000.0") to A12.BUILT),
+        "2147483647.0" to (RawValue("2147483647.0") to A12.MAX_TOO_BIG), "2.147483647E9" to (RawValue("2.147483647E9") to A12.MAX_TOO_BIG),
+        "2147483647.5" to (RawValue("2147483647.5") to A12.NOT_BUILT), "2.1474836475E9" to (RawValue("2.1474836475E9") to A12.NOT_BUILT),
+        "-2147483648.5" to (RawValue("-2147483648.5") to A12.NOT_BUILT), "-2.1474836485E9" to (RawValue("-2.1474836485E9") to A12.NOT_BUILT),
+        "2147483648.0" to (RawValue("2147483648.0") to A12.NOT_BUILT), "2.147483648E9" to (RawValue("2.147483648E9") to A12.NOT_BUILT),
+        "-2147483649.0" to (RawValue("-2147483649.0") to A12.NOT_BUILT), "-2.147483649E9" to (RawValue("-2.147483649E9") to A12.NOT_BUILT),
         // A12 leaves no model for a scale past `Int`, even where the value would truncate to 0.
         "1e-2147483649" to (RawValue("1e-2147483649") to A12.NOT_BUILT),
         "{}" to (emptyMap<String, Any>() to A12.NOT_BUILT), "[]" to (emptyList<Any>() to A12.NOT_BUILT),
@@ -56,7 +61,7 @@ class RepeatabilityTextReadingDiffTest {
             .build().toJson()) as ObjectNode
         val claims = root.path("content").path("modelRoot").path("rootGroups")[0].path("Group").path("elements")
             .first { it.path("name").asText() == "Claims" }.path("Group") as ObjectNode
-        // A lexeme Java's own BigDecimal cannot construct is written as raw JSON text.
+        // A number token is written as raw JSON text: Java's BigDecimal cannot construct every lexeme, and a double prints its own way.
         if (value is RawValue) claims.putRawValue("repeatability", value) else claims.set<ObjectNode>("repeatability", MAPPER.valueToTree(value))
         return root.toString()
     }
@@ -104,7 +109,7 @@ class RepeatabilityTextReadingDiffTest {
             val json = model(row.first)
             DocumentDifferential.assertAgree(json, mapOf("four claims under $label" to fourRows))
             val overRepetition = DocumentDifferential.kernel(json, fourRows, dynamic = true).messages.isNotEmpty()
-            assertEquals(label !in setOf("1e1", "1.0E9"), overRepetition, "$label: four rows exceed a count of 3 and fit 10")
+            assertEquals(label !in setOf("1e1", "10.0", "1.0E9", "1000000000.0"), overRepetition, "$label: four rows exceed a count of 3 and fit 10")
         }
     }
 
