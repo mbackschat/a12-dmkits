@@ -14356,7 +14356,7 @@ So a code A12's reader cannot parse refuses wherever it stands. A locale declare
 
 *Locked by:* `adapter.WorkspaceReachedModelDiffTest` (A12's build and check against the interpreter's workspace and the checker's, every carrier, member, locale set, locale code and root shape).
 
-## §9 supplement — the iteration guard's constants, its exempt level, a group operand under `FieldValuesNotUnique` and the computation precondition, measured on one order model (kernel `checkConsistency`, 2026-10-22) <a id="kf595"></a>
+## §9 supplement — the iteration guard's constants, brackets, operator sides, exempt level and level order, a group operand under `FieldValuesNotUnique`, and three computations, measured on one order model (kernel `checkConsistency`, 2026-10-22) <a id="kf595"></a>
 
 > Fold: pending — beside [KF537](#kf537)'s connective account.
 
@@ -14374,9 +14374,17 @@ One e-commerce order: `Lines` repeats 50 times keyed by `LineNo`, `Gifts` repeat
 | `FieldNotFilled(Lines/Sku)` | `MVK_NEG_CONDITION_IN_ITERATION` |
 | `GroupFilled(/Order) And FieldNotFilled(Lines/Sku)` | `MVK_NEG_CONDITION_IN_ITERATION` |
 | `[Lines/Code] PatternViolated "[0-9]+"` | admitted |
-| computation on `Lines/Price`, precondition `FieldNotFilled(Lines/Sku)` | admitted |
+| `Sum(Lines/Qty, Lines/Price) == -0.50`; `… == - 0.4`; `… == {0}`; `{Sum(Lines/Qty, Lines/Price)} == 0`; `{NumberOfFilledFields(Lines/Qty, Lines/Price)} < 1` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `NumberOfFilledFields(Lines/Qty, Email) > 1234567890123456` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `1 > NumberOfFilledFields(Lines/Qty, Lines/Price)`; `1 >= …`; `1 != …`; `0 == Sum(Lines/Qty, Lines/Price)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `1 < NumberOfFilledFields(Lines/Qty, Lines/Price)`; `Sum(Lines/Qty, Lines/Price) < 0` | admitted |
+| `Sum(Lines/Qty, Lines/Price) == 0.4000000000000000001` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)` (`Lines/Parts/PartNo`) | `MVK_PARALLEL_ITERATION_INVALID` |
+| computation on `Lines/Price`, precondition `FieldNotFilled(Lines/Sku)`, `NoFieldFilled(Lines/Sku, Picks/Ref)` or `FieldNotFilled(Lines/Sku) Or FieldNotFilled(Email)` | admitted |
 
-So the constant a count or a sum is compared against is rounded half up on its sign and then narrowed to 32 bits before the zero arm reads it: `0.4`, `-0.4`, `-0.5` and `2^32` all compare as zero, `0.5` and `-0.6` do not. A level repeating exactly twice with an index field is exempt, for the level's own field as well as a deeper one; the unkeyed two-row level and the keyed fifty-row level are not. A computation's precondition is not judged at all.
+So the constant a count or a sum is compared against is rounded half up on its sign and then narrowed to 32 bits before the zero arm reads it: `0.4`, `-0.4`, `-0.5`, `-0.50` and `2^32` all compare as zero, `0.5` and `-0.6` do not. A space after the sign and a bracket around either side change nothing, and the constant may stand on either side. A constant with more decimals than the operation carries is refused earlier, so a constant's leading fractional zeros never reach this check. A level repeating exactly twice with an index field is exempt, for the level's own field as well as a deeper one; the unkeyed two-row level and the keyed fifty-row level are not. Where both refuse, the parallel iteration is answered before the ordinary one; within the ordinary one, A12's message names the shallowest refused level (`FieldNotFilled(PartNo)` at `/Order/Lines/Parts` names `/Order/Lines`).
+
+None of the three computations is refused. *Reading (hypothesis, source-read):* a computation is judged on the condition A12 joins it into, `FieldFilled(<computed>) And (precondition) And [computed] != <operation>`, whose leading `FieldFilled` is admitted and iterates every level the computed field does, so the `And` is admitted whatever the precondition. The rows fit that reading and the rival "computations are not judged" equally; the checker follows the source reading by judging the joined condition.
 
 On `FieldValuesNotUnique` a group operand counts as the fields beneath it, each repeatable level inside the group multiplying as a star would. With the claim's own amount beside a fixed group, A12 refuses beside `Totals` (two fields), `Office` (`Staff` and two `Desks/Seats`) and `Region` (one `Branches/Score`, under a level repeating twice), and admits beside `Levy` (one field). `Region` is the discriminator: counted by fields alone it is one member and below the threshold of two.
 

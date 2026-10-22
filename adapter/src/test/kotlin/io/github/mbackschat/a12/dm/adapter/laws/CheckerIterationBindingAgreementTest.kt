@@ -91,8 +91,7 @@ class CheckerIterationBindingAgreementTest {
 
     private fun judge(a12: List<String>, injected: String): Pair<List<String>, List<String>> {
         val report = check(ModelSource(injected))
-        // The probe is the model's only iterating rule, so a declaration-level gap naming the code is its own.
-        val declined = report.gaps.any { it.at != null && NEGATIVE in it.reason }
+        val declined = report.gaps.any { it.at?.substringAfterLast('/') in PROBES && NEGATIVE in it.reason }
         return a12.sorted() to (report.findings.filter { it.justifiesRejection }.map { it.code } +
             listOfNotNull(DECLINED.takeIf { declined })).sorted()
     }
@@ -172,6 +171,7 @@ class CheckerIterationBindingAgreementTest {
         const val BINDS = "MVK_ERROR_FIELD_AND_ITERATION_INVALID"
         const val NEGATIVE = "MVK_NEG_CONDITION_IN_ITERATION"
         const val DECLINED = "(declined, named in a gap)"
+        val PROBES = setOf("ProbeRule", "ScoreProbe")
         const val ROOT_MARKED = " Having (GroupFilled(\$/Policy) And CurrentRepetition(Claims) > 0)"
         const val MARKED = "Claims*/Amount Having (FieldFilled(\$Claims/Detail/Units) And CurrentRepetition(Claims) > 0)"
 

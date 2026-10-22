@@ -81,8 +81,7 @@ class CheckerUniquenessGuardAgreementTest {
             if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
         }
         val report = check(ModelSource(validator.inject(policy, draft)))
-        // The probe is the model's only rule, so a declaration-level gap naming the code is its own.
-        val declined = report.gaps.any { it.at != null && NEGATIVE in it.reason }
+        val declined = report.gaps.any { it.at == "/Policy/ProbeRule" && NEGATIVE in it.reason }
         val ours = report.findings.filter { it.justifiesRejection }.map { it.code } + listOfNotNull(DECLINED.takeIf { declined })
         return a12.sorted() to ours.sorted()
     }

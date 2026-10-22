@@ -575,7 +575,7 @@
       }
     },
     "kf595": {
-     "sha256": "b903d5190b8fb50c09bf6cb8dfb9bc853e0a5bdad7d500eb27d0e07c3ffd9226",
+     "sha256": "65c4ad2603e49c26f542196aae9a7f5dec470bca9c2e606c2c176c331dbb381a",
      "task": "DG146",
      "scope": {
       "dmkits": [],
@@ -602,11 +602,11 @@
       },
       "checker": {
        "state": "APPLIED",
-       "basis": "The ITERATION_GUARD family rounds and narrows the constant as A12 does, exempts the two-row keyed level, judges no computation, and counts a group operand under FieldValuesNotUnique as its fields.",
+       "basis": "The ITERATION_GUARD family rounds and narrows the constant as A12 does, exempts the two-row keyed level, judges a computation on the condition A12 joins it into, and counts a group operand under FieldValuesNotUnique as its fields.",
        "evidence": {
         "the iteration guard's constants and exempt level": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#theCheckerAgreesWithA12OnEveryRow",
-         "witness": "The checker agrees with A12 on every constant, exempt-level and precondition row."
+         "witness": "The checker agrees with A12 on every constant, bracket, operator-side, exempt-level, level-order and computation row."
         },
         "a group operand under FieldValuesNotUnique": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessGuardAgreementTest.kt#theCheckerAgreesWithA12OrLeavesTheGuardToIt",

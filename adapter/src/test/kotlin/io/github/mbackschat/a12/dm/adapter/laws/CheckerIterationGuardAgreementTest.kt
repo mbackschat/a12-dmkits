@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -25,6 +26,9 @@ class CheckerIterationGuardAgreementTest {
             .stringField("Email") { }
             .stringField("Phone") { }
             .stringField("Tier") { }
+            .numberField("Budget") { n -> n.fractionDigits(0) }
+            .dateField("OrderedOn") { d -> d.format("yyyy-MM-dd") }
+            .dateRangeField("Season") { r -> r.format("yyyy-MM-dd").separator("/") }
             .group("Lines") { l -> l.repeatable(50).indexField("LineNo")
                 .stringField("LineNo") { }
                 .stringField("Sku") { }
@@ -34,6 +38,8 @@ class CheckerIterationGuardAgreementTest {
                 .numberField("Day") { n -> n.fractionDigits(0).min("1").max("31") }
                 .numberField("Month") { n -> n.fractionDigits(0).min("1").max("12") }
                 .numberField("Year") { n -> n.fractionDigits(0).min("1800").max("2200") }
+                .dateField("ShipOn") { d -> d.format("yyyy-MM-dd") }
+                .dateRangeField("Window") { r -> r.format("yyyy-MM-dd").separator("/") }
                 .group("Parts") { p -> p.repeatable(5)
                     .stringField("PartNo") { }
                     .numberField("Count") { n -> n.fractionDigits(0) } } }
@@ -46,21 +52,27 @@ class CheckerIterationGuardAgreementTest {
                 .group("Card") { c -> c.stringField("Text") { } } }
             .group("Wraps") { w -> w.repeatable(2)
                 .stringField("Style") { }
-                .group("Ribbon") { r -> r.stringField("Color") { } } } }
+                .group("Ribbon") { r -> r.stringField("Color") { } }
+                .group("Tag") { t -> t.stringField("Label") { } } } }
         .build().toJson()
 
     private val validator = RuleValidator()
 
     private data class Row(val group: String, val errorField: String, val condition: String, val a12: List<String>)
 
-    /** A12's rejection classes and the checker's, for one rule. */
+    /**
+     * A12's rejection classes and the checker's, for one rule. A judged row must carry no gap, so a row the
+     * checker silently declined cannot pass as agreement; the marker [DECLINED] makes a decline visible.
+     */
     private fun judge(row: Row): Pair<List<String>, List<String>> {
         val draft = DraftRule(row.group, "GuardProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
         val a12 = validator.check(order, draft).let { r ->
             if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
         }
-        val ours = check(ModelSource(validator.inject(order, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }
+        val report = check(ModelSource(validator.inject(order, draft)))
+        val declined = report.gaps.any { it.at == "${row.group}/GuardProbe" && NEG in it.reason }
+        val ours = report.findings.filter { it.justifiesRejection }.map { it.code } +
+            listOfNotNull(DECLINED_MARK.takeIf { declined })
         return a12.sorted() to ours.sorted()
     }
 
@@ -71,7 +83,11 @@ class CheckerIterationGuardAgreementTest {
 
     @Test
     fun theCheckerAgreesWithA12OnEveryRow() {
-        val disagreements = ROWS.mapValues { judge(it.value) }.filter { (_, verdicts) -> verdicts.first != verdicts.second }
+        // A12 never reaches this check where an earlier class answers, so a gap there is redundant but true.
+        val disagreements = ROWS.mapValues { judge(it.value) }.filter { (_, v) ->
+            val earlier = v.first.isNotEmpty() && v.first.none { it == NEG || it == PAR }
+            (if (earlier) v.second - DECLINED_MARK else v.second) != v.first
+        }
         assertEquals(emptyMap<String, Pair<List<String>, List<String>>>(), disagreements)
     }
 
@@ -81,14 +97,23 @@ class CheckerIterationGuardAgreementTest {
      */
     @Test
     fun aDeclinedShapeIsNamedAtItsRuleAndNeverJudged() {
-        assertEquals(DECLINED.mapValues { it.value.a12 }, DECLINED.mapValues { judge(it.value).first })
-        val unexamined = DECLINED.mapValues { (_, row) ->
-            val draft = DraftRule(row.group, "GuardProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
-            val report = check(ModelSource(validator.inject(order, draft)))
-            report.findings.map { it.code }.filter { it == NEG || it == PAR } to
-                report.gaps.any { it.at == "${row.group}/GuardProbe" && NEG in it.reason }
-        }
-        assertEquals(DECLINED.mapValues { emptyList<String>() to true }, unexamined)
+        val verdicts = DECLINED.mapValues { judge(it.value) }
+        assertEquals(DECLINED.mapValues { it.value.a12 }, verdicts.mapValues { it.value.first })
+        assertEquals(DECLINED.mapValues { true to false },
+            verdicts.mapValues { (_, v) -> (DECLINED_MARK in v.second) to v.second.any { it == NEG || it == PAR } })
+    }
+
+    /**
+     * The level named is the shallowest one refused: both the lines and the parts levels refuse here, and A12's
+     * message names the lines. Against "deepest first", which names the parts.
+     */
+    @Test
+    fun theRefusedLevelNamedIsTheShallowest() {
+        val draft = DraftRule("/Order/Lines/Parts", "GuardProbe", "../PartNo", "FieldNotFilled(PartNo)", "PROBE", "ERROR")
+        val a12 = validator.check(order, draft).diagnostics().single().summary()
+        val ours = check(ModelSource(validator.inject(order, draft))).findings.single { it.code == NEG }.explain
+        assertEquals(A12_LEVEL_MESSAGE, a12)
+        assertTrue("`/Order/Lines`" in ours, ours)
     }
 
     /**
@@ -98,21 +123,34 @@ class CheckerIterationGuardAgreementTest {
      */
     @Test
     fun aComputationPreconditionAsA12AnswersIt() {
-        val draft = DraftComputation("/Order", "PriceProbe", "../Lines/Price", "FieldNotFilled(Lines/Sku)",
-            listOf(DraftComputation.Alternative(null, "1")))
-        val a12 = validator.check(order, draft).let { r ->
-            if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
+        val verdicts = COMPUTATIONS.mapValues { (_, precondition) ->
+            val draft = DraftComputation("/Order", "PriceProbe", "../Lines/Price", precondition,
+                listOf(DraftComputation.Alternative(null, "1")))
+            val a12 = validator.check(order, draft).let { r ->
+                if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
+            }
+            val report = check(ModelSource(validator.inject(order, draft)))
+            a12.sorted() to (report.findings.filter { it.justifiesRejection }.map { it.code } +
+                listOfNotNull(DECLINED_MARK.takeIf { report.gaps.any { it.at == "/Order/PriceProbe" } })).sorted()
         }
-        val ours = check(ModelSource(validator.inject(order, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }
-        assertEquals(COMPUTATION_A12, a12.sorted())
-        assertEquals(a12.sorted(), ours.sorted())
+        assertEquals(COMPUTATIONS.mapValues { emptyList<String>() }, verdicts.mapValues { it.value.first })
+        assertEquals(verdicts.mapValues { it.value.first }, verdicts.mapValues { it.value.second })
     }
 
     private companion object {
         const val NEG = "MVK_NEG_CONDITION_IN_ITERATION"
         const val PAR = "MVK_PARALLEL_ITERATION_INVALID"
-        val COMPUTATION_A12 = listOf<String>()
+        const val DECLINED_MARK = "(declined, named in a gap)"
+        const val A12_LEVEL_MESSAGE = "Rule with path '/Order/Lines/Parts/GuardProbe': Iteration for '/Order/Lines' is " +
+            "specified, but the rule can fire for not filled repetitions of this repetition level. " +
+            "[MVK_NEG_CONDITION_IN_ITERATION]"
+
+        /** Preconditions of a computation on each line's price; A12 joins each behind `FieldFilled(Lines/Price)`. */
+        val COMPUTATIONS = linkedMapOf(
+            "a per-row negative" to "FieldNotFilled(Lines/Sku)",
+            "a parallel negative" to "NoFieldFilled(Lines/Sku, Picks/Ref)",
+            "a per-row negative under Or" to "FieldNotFilled(Lines/Sku) Or FieldNotFilled(Email)",
+        )
 
         private fun order(errorField: String, condition: String, vararg a12: String) =
             Row("/Order", errorField, condition, a12.toList())
@@ -130,6 +168,8 @@ class CheckerIterationGuardAgreementTest {
             // A12's to answer first, so the guard has no verdict here.
             "error field named only starred" to order("Lines/Sku",
                 "FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)", "MVK_ERROR_FIELD_AND_ITERATION_INVALID"),
+            // Constants beyond the exact range a double holds: A12 still compares them, the checker declines.
+            "sum equals 2^32 times 10^9" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000000", NEG),
             // A group as the error target.
             "group target" to order("Lines/Parts", "GroupNotFilled(Lines/Parts)", NEG),
         )
@@ -211,7 +251,66 @@ class CheckerIterationGuardAgreementTest {
             "sum equals -0.4" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == -0.4", NEG),
             "sum equals -0.5" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == -0.5", NEG),
             "sum equals -0.6" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == -0.6"),
-            // An earlier class answers first.
+            "sum equals -0.50, a trailing zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == -0.50", NEG),
+            "sum equals - 0.4, spaced sign" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == - 0.4", NEG),
+            "count over mixed members, 16-digit bound" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Email) > 1234567890123456", NEG),
+            // A bracket only groups: the operation or constant inside it is what is compared.
+            "bracketed zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == {0}", NEG),
+            "bracketed sum" to order("Lines/Qty", "{Sum(Lines/Qty, Lines/Price)} == 0", NEG),
+            "bracketed count" to order("Lines/Qty", "{NumberOfFilledFields(Lines/Qty, Lines/Price)} < 1", NEG),
+            // Every operator of the two arms, and the constant on the left.
+            "count at most one" to order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) <= 1", NEG),
+            "count not one" to order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) != 1", NEG),
+            "count above one" to order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) > 1"),
+            "one above the count" to order("Lines/Qty", "1 > NumberOfFilledFields(Lines/Qty, Lines/Price)", NEG),
+            "one at least the count" to order("Lines/Qty", "1 >= NumberOfFilledFields(Lines/Qty, Lines/Price)", NEG),
+            "one not the count" to order("Lines/Qty", "1 != NumberOfFilledFields(Lines/Qty, Lines/Price)", NEG),
+            "one below the count" to order("Lines/Qty", "1 < NumberOfFilledFields(Lines/Qty, Lines/Price)"),
+            "sum at least zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) >= 0", NEG),
+            "sum at most zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) <= 0", NEG),
+            "sum below zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) < 0"),
+            "zero equals the sum" to order("Lines/Qty", "0 == Sum(Lines/Qty, Lines/Price)", NEG),
+            // Each comparison kind on the arm it is, and is not, subject to.
+            "value count equals zero" to order("Lines/Qty", "NumberOfValueInFields(0 In Lines/Qty, Lines/Price) == 0", NEG),
+            "distinct values below one" to order("Lines/Sku", "NumberOfDifferentValues(Lines/Sku, Lines/Code) < 1", NEG),
+            "minimum equals zero" to order("Lines/Qty", "MinValue(Lines/Qty, Lines/Price) == 0", NEG),
+            "maximum above zero" to order("Lines/Qty", "MaxValue(Lines/Qty, Lines/Price) > 0"),
+            "first filled at most zero" to order("Lines/Qty", "FirstFilledValue(Lines/Qty, Lines/Price) <= 0", NEG),
+            "absolute difference equals zero" to order("Lines/Qty", "Abs([Lines/Qty] - [Lines/Price]) == 0", NEG),
+            "maximum of mixed reads" to order("Lines/Qty", "Max([Lines/Qty], [Budget]) > 5", NEG),
+            "length equals zero" to order("Lines/Sku", "Length(Lines/Sku) == 0", NEG),
+            "length above zero" to order("Lines/Sku", "Length(Lines/Sku) > 0"),
+            "day of shipping equals zero" to order("Lines/ShipOn", "DayFromDate(Lines/ShipOn) == 0", NEG),
+            "days since ordering, mixed" to order("Lines/ShipOn", "DifferenceInDays(Lines/ShipOn, OrderedOn) > 5"),
+            // The remaining presence and list leaves.
+            "not all filled" to order("Lines/Sku", "NotAllFieldsFilled(Lines/Sku, Lines/Qty)", NEG),
+            "not exactly one filled" to order("Lines/Sku", "NotExactlyOneFieldFilled(Lines/Sku, Lines/Qty)", NEG),
+            "no ribbon, colour filled" to
+                order("Wraps/Ribbon/Color", "NoGroupFilled(Wraps/Ribbon) And FieldFilled(Wraps/Ribbon/Color)"),
+            "not every ribbon, or no colour" to
+                order("Wraps/Ribbon/Color",
+                    "NotAllGroupsFilled(Wraps/Ribbon, Wraps/Tag) Or FieldNotFilled(Wraps/Ribbon/Color)", NEG),
+            "ribbon and tag not together, colour missing" to order("Wraps/Ribbon/Color",
+                "GroupsNotCollectivelyFilled(Wraps/Ribbon, Wraps/Tag) And FieldNotFilled(Wraps/Ribbon/Color)"),
+            "a ribbon, colour missing" to
+                order("Wraps/Ribbon/Color", "AtLeastOneGroupFilled(Wraps/Ribbon) And FieldNotFilled(Wraps/Ribbon/Color)"),
+            "ribbon filled, colour missing" to
+                order("Wraps/Ribbon/Color", "GroupFilled(Wraps/Ribbon) And FieldNotFilled(Wraps/Ribbon/Color)"),
+            "not all codes listed" to order("Lines/Code", "NotAllFieldValuesIncludedInValueList(Lines/Code In \"X\")"),
+            "not all codes listed, fixed tier" to
+                order("Lines/Code", "NotAllFieldValuesIncludedInValueList(Tier, Lines/Code In \"X\")", NEG),
+            "a code listed" to order("Lines/Code", "AtLeastOneFieldValueIncludedInValueList(Lines/Code In \"X\")"),
+            "a code listed, fixed tier" to
+                order("Lines/Code", "AtLeastOneFieldValueIncludedInValueList(Tier, Lines/Code In \"X\")", NEG),
+            "valid date per row" to order("Lines/Day", "Valid(Date(Lines/Day, Lines/Month, Lines/Year))"),
+            "window overlaps the season" to order("Lines/Window", "DateRangesOverlap(Lines/Window, Season)"),
+            // Parallel is decided before the ordinary iteration: both refuse here, and A12 names the parallel one.
+            "parallel and nested negative" to order("Lines/Parts/PartNo", "NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)", PAR),
+            // An earlier class answers first: a constant with more decimals than the operation carries, which is
+            // also why a constant's leading fractional zeros never reach this check.
+            "sum equals a 19-digit fraction" to
+                order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 0.4000000000000000001", "MVK_INVALID_COMPARE_DEC_PLACES"),
             "error field not referenced" to order("Lines/Sku", "FieldNotFilled(Lines/Qty)", "MVK_ERROR_FIELD_NOT_REFERENCED"),
         )
     }

@@ -29,12 +29,11 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * **Which levels.** Parallel iteration is judged as one whole. The rule's own iteration is judged level by
  * level, shallowest first, and the first refused level is the one named; a level repeating exactly twice that
- * declares an index field is never judged. Rules only: a computation's precondition is not asked (measured).
+ * declares an index field is never judged. A computation is judged through the condition A12 joins it into
+ * ([computationCondition]), whose leading `FieldFilled` of the computed field is what guards it.
  *
- * **Silent wherever the reading is not this checker's to give**, which can only under-report: an unresolved or
- * rule-context reference, a `$` marker, a semantic index, a root group named by a group condition, a mix of
- * connectives (A12 refuses it earlier), a comparison spelled with a keyword, and any condition kind not listed
- * above. A group error target is left alone as well.
+ * **Silent wherever the reading is not this checker's to give, and then the declaration carries a coverage gap
+ * ([iterationGuardGaps])**: CONSISTENCY-GAPS DG146 lists the shapes, and every `null` this file returns is one.
  */
 internal fun TrackedFactBase.iterationGuardContributions(
     element: TrackedDeclaration,
@@ -50,16 +49,17 @@ internal fun TrackedFactBase.iterationGuardContributions(
  */
 internal fun TrackedFactBase.iterationGuardGaps(element: TrackedDeclaration): List<CoverageGap> {
     val execution = conditionExecution(element)
-    if (execution == null || element.declaredKind != DeclaredKind.RULE || execution.recognition.failure != null ||
+    if (execution == null || element.declaredKind !in JUDGED || execution.recognition.failure != null ||
         guardVerdictOf(element, execution) != null
     ) return emptyList()
     // An unresolved reference is answered earlier by its own class, so only a rule known to iterate is named.
     if (rulesOwnIterationLevels(element)?.values?.any { it.isNotEmpty() } != true) return emptyList()
     return listOf(CoverageGap(element.path,
-        "this rule iterates a repetition, and whether its condition can be true for a repetition nobody filled " +
-            "(`MVK_NEG_CONDITION_IN_ITERATION`, `MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a " +
-            "shape this checker does not judge for that law — a `$` marker, a semantic index, a keyword " +
-            "comparison, a condition kind outside the measured set, or a group error target"))
+        "this ${if (element.declaredKind == DeclaredKind.RULE) "rule" else "computation"} iterates a repetition, and whether its condition can be " +
+            "true for a repetition nobody filled (`MVK_NEG_CONDITION_IN_ITERATION`, " +
+            "`MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a shape this checker does not judge for " +
+            "that law, such as a `$` marker, a selection, a condition kind outside the measured set or a group " +
+            "error target"))
 }
 
 /** The stage that answered and its finding, null when the condition is admitted. */
@@ -67,12 +67,18 @@ private class GuardVerdict(val site: PostParseCheck, val finding: Finding?)
 
 /** Null wherever this reading declines, which is exactly where [iterationGuardGaps] speaks. */
 private fun TrackedFactBase.guardVerdictOf(element: TrackedDeclaration, execution: ConditionExecution?): GuardVerdict? {
-    if (execution == null || element.declaredKind != DeclaredKind.RULE) return null
+    if (execution == null || element.declaredKind !in JUDGED) return null
     val guard = guardOf(element, execution) ?: return null
     val parallel = guard.parallelOutcome() ?: return null
     if (parallel.finding != null) return GuardVerdict(PostParseCheck.PARALLEL_ITERATION_GUARD, parallel.finding)
     val ordinary = guard.ordinaryOutcome() ?: return null
     return GuardVerdict(PostParseCheck.ITERATION_GUARD, ordinary.finding)
+}
+
+/** A constant operand: its compared value, or one beyond the range this reading holds exactly. */
+private sealed interface Constant {
+    data class Known(val value: Int) : Constant
+    data object Unknown : Constant
 }
 
 /** A walk's answer: its finding, null when the condition is admitted. */
@@ -249,46 +255,63 @@ private class IterationGuard(
         }
     }
 
+    /**
+     * Each side is read in turn as the operation, with the operator turned to face it, against the other side
+     * when that is a constant. A side refuses when its operation needs a filled row there: mixed references
+     * against any constant, or references that all iterate compared below a positive constant or at zero.
+     */
     private fun comparisonAdmitted(shape: ComparisonShape, judged: Judged): Boolean? {
         val left = operationOf(shape.left) ?: return null
         val right = operationOf(shape.right) ?: return null
-        val operator = shape.operator.text.takeIf { it in COMPARISON_SYMBOLS } ?: return null
-        var admitted = true
-        val leftKind = kindOf(left) ?: return null
-        val rightKind = kindOf(right) ?: return null
-        if (leftKind.needsRowBelow && constantOf(right).let { it != null && it > 0 } &&
-            operator in setOf("<=", "<", "!=") && allIterate(left, judged)
-        ) admitted = false
-        if (rightKind.needsRowBelow && constantOf(left).let { it != null && it > 0 } &&
-            operator in setOf(">=", ">", "!=") && allIterate(right, judged)
-        ) admitted = false
-        if (operator in setOf("==", ">=", "<=") && (leftKind.needsRowAtZero || rightKind.needsRowAtZero)) {
-            val (amount, other) = if (leftKind.needsRowAtZero) left to right else right to left
-            if ((constantOf(other) ?: -1) == 0 && allIterate(amount, judged)) admitted = false
-        }
-        for ((amount, other) in listOf(left to right, right to left)) {
-            if (kindOf(amount)?.needsRowAgainstConstant == true && constantOf(other) != null && mixed(amount, judged)) {
-                admitted = false
+        val written = shape.operator.text.takeIf { it in COMPARISON_SYMBOLS } ?: return null
+        val kinds = (kindOf(left) ?: return null) to (kindOf(right) ?: return null)
+        if (readsJudgedRepetition(shape, judged)) return false
+        var admitted: Boolean? = true
+        val sides = listOf(Triple(left, kinds.first, written), Triple(right, kinds.second, FACING.getValue(written)))
+        for ((side, facing) in sides.withIndex()) {
+            val (operation, kind, operator) = facing
+            val constant = constantOf(sides[1 - side].first) ?: continue
+            val needsRow: Boolean? = when {
+                kind.needsRowAgainstConstant && mixed(operation, judged) -> true
+                !allIterate(operation, judged) -> false
+                constant is Constant.Known -> (kind.needsRowBelow && operator in BELOW && constant.value > 0) ||
+                    (kind.needsRowAtZero && operator in AT_ZERO && constant.value == 0)
+                // A constant beyond the exact range: its value decides only where an arm applies at all.
+                (kind.needsRowBelow && operator in BELOW) || (kind.needsRowAtZero && operator in AT_ZERO) -> null
+                else -> false
+            }
+            when (needsRow) {
+                true -> return false
+                null -> admitted = null
+                false -> Unit
             }
         }
-        val repetitionOfJudgedLevel = operations.filterIsInstance<OperationShape.Call>().any { op ->
+        return admitted
+    }
+
+    /** `CurrentRepetition` of a level being judged, anywhere in the comparison. */
+    private fun readsJudgedRepetition(shape: ComparisonShape, judged: Judged): Boolean =
+        operations.filterIsInstance<OperationShape.Call>().any { op ->
             op.at >= shape.left.first().start && op.end <= shape.right.last().end &&
                 identities[op.call.operator] == "CurrentRepetition" &&
                 within(op.at, op.end).any { iterates(it, judged) }
         }
-        return admitted && !repetitionOfJudgedLevel
-    }
 
     private fun operationOf(tokens: List<io.github.mbackschat.a12.dm.consistency.syntax.Token>): OperationShape? {
         val meaningful = tokens.filter { it.kind != TokenKind.COMMENT }
         return operations.lastOrNull { it.at == meaningful.firstOrNull()?.start && it.end == meaningful.lastOrNull()?.end }
     }
 
+    /** A bracket only groups, so the operation inside it is the one compared (measured, `{0}` and `{Sum(…)}`). */
     private fun kindOf(op: OperationShape): OperationKind? = when (op) {
+        is OperationShape.Group -> kindOf(op.child)
         is OperationShape.Read -> OperationKind.FIELD
-        is OperationShape.Literal, is OperationShape.Arithmetic, is OperationShape.Group -> OperationKind.OTHER
+        is OperationShape.Literal, is OperationShape.Arithmetic -> OperationKind.OTHER
         is OperationShape.Call -> when (val id = identities[op.call.operator]) {
             null -> null
+            // A product sum needs a star at its lowest level and one group for its operands, so every row we
+            // could author was answered by an earlier class and its arm stays unmeasured: declined.
+            "SumOfProducts" -> null
             in ENTITY_LIST_OPERATIONS -> ENTITY_LIST_KINDS.getValue(id)
             in OPERATION_LISTS -> OperationKind.OPERATION_LIST
             in FIELD_OPERATIONS -> OperationKind.FIELD
@@ -298,28 +321,30 @@ private class IterationGuard(
     }
 
     /**
-     * A number constant as A12 compares it: rounded half up to a whole number, then narrowed to 32 bits, so
-     * `-0.4` and `0.4` both compare as zero (measured, `CheckerIterationGuardAgreementTest`). Read from the
-     * digits rather than through a platform number parser, which shared code may not depend on. An exponent,
-     * and more digits than a double holds exactly, are not read as a constant, which can only leave a refusal
-     * unreported.
+     * A number constant as A12 compares it: rounded half up on its sign to a whole number, then narrowed to 32
+     * bits, so `-0.5`, `-0.4` and `0.4` all compare as zero ([KERNEL-FINDINGS KF595]). Read from its digits, with
+     * any space after the sign dropped, rather than through a platform number parser, which shared code may not
+     * depend on. A value with an exponent or more significant digits than a double holds exactly is
+     * [Constant.Unknown]: still a constant, but one whose value this reading does not claim.
      */
-    private fun constantOf(op: OperationShape): Int? {
+    private fun constantOf(op: OperationShape): Constant? {
+        if (op is OperationShape.Group) return constantOf(op.child)
         if (op !is OperationShape.Literal) return null
-        val text = source.substring(op.at, op.end)
+        val text = source.substring(op.at, op.end).filterNot { it == ' ' || it == '\t' || it == '\n' || it == '\r' }
         val negative = text.startsWith('-')
         val digits = text.removePrefix("-")
+        if (digits.firstOrNull() !in '0'..'9') return null
         val whole = digits.substringBefore('.')
         val fraction = digits.substringAfter('.', missingDelimiterValue = "").trimEnd('0')
-        if (whole.isEmpty() || (whole + fraction).any { it !in '0'..'9' } ||
-            (whole.trimStart('0') + fraction).length > EXACT_DIGITS
-        ) return null
+        if ((whole + fraction).any { it !in '0'..'9' } || (whole + fraction).trimStart('0').length > EXACT_DIGITS) {
+            return Constant.Unknown
+        }
         val magnitude = whole.fold(0L) { value, digit -> value * 10 + (digit - '0') }
         val half = fraction.firstOrNull()?.let { it >= '5' } ?: false
         // Half up on the signed value: a positive half rounds away from zero, a negative one towards it.
         val rounded = if (!negative) magnitude + if (half) 1 else 0
         else -magnitude - if (half && fraction != "5") 1 else 0
-        return rounded.toInt()
+        return Constant.Known(rounded.toInt())
     }
 
     private fun referencesOf(op: OperationShape) = within(op.at, op.end)
@@ -340,7 +365,6 @@ private enum class OperationKind(
     COUNT(needsRowBelow = true, needsRowAgainstConstant = true),
     COUNT_OF_VALUE(needsRowBelow = true, needsRowAtZero = true, needsRowAgainstConstant = true),
     AMOUNT(needsRowAtZero = true, needsRowAgainstConstant = true),
-    PRODUCT_SUM(needsRowAtZero = true),
     OPERATION_LIST(needsRowAtZero = true, needsRowAgainstConstant = true),
     FIELD(needsRowAtZero = true),
     DATE(needsRowAtZero = true),
@@ -350,7 +374,8 @@ private enum class OperationKind(
 private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: ConditionExecution): IterationGuard? {
     val recognition = execution.recognition
     val tree = recognition.tree ?: return null
-    val declared = element.declaredReference()?.takeIf { it.role == ReferenceRole.ERROR_TARGET } ?: return null
+    val declared = element.declaredReference()
+        ?.takeIf { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET } ?: return null
     val target = (declared.target as? Reference.Resolved)?.path ?: return null
     if (declarationAt(target)?.declaredKind != DeclaredKind.FIELD) return null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -423,6 +448,8 @@ private fun TrackedFactBase.guardReferenceOf(
 /** Significant digits a double carries exactly, so a half is never produced by the parse itself. */
 private const val EXACT_DIGITS = 15
 
+private val JUDGED = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
+
 private val NEGATIVE_PRESENCE = setOf("FieldNotFilled", "NoFieldFilled", "NotAllFieldsFilled", "NotExactlyOneFieldFilled",
     "GroupNotFilled", "NoGroupFilled", "NotAllGroupsFilled")
 /** The conditions that list fields, where a named group stands for the fields beneath it. */
@@ -435,7 +462,7 @@ private val ENTITY_LIST_KINDS = mapOf(
     "NumberOfFilledFields" to OperationKind.COUNT, "NumberOfFilledGroups" to OperationKind.COUNT,
     "NumberOfDifferentValues" to OperationKind.COUNT, "NumberOfValueInFields" to OperationKind.COUNT_OF_VALUE,
     "Sum" to OperationKind.AMOUNT, "MinValue" to OperationKind.AMOUNT, "MaxValue" to OperationKind.AMOUNT,
-    "FirstFilledValue" to OperationKind.AMOUNT, "SumOfProducts" to OperationKind.PRODUCT_SUM,
+    "FirstFilledValue" to OperationKind.AMOUNT,
 )
 private val ENTITY_LIST_OPERATIONS = ENTITY_LIST_KINDS.keys
 private val OPERATION_LISTS = setOf("Max", "Min", "Abs", "RoundAccounting", "RoundUp", "RoundDown")
@@ -446,4 +473,10 @@ private val DATE_DIFFERENCES = setOf("DifferenceInSeconds", "DifferenceInMinutes
 private val DATE_EXTRACTIONS = setOf("DayFromDate", "MonthFromDate", "YearFromDate", "QuarterFromDate", "HoursFromTime",
     "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime")
 private val COMPARISON_SYMBOLS = setOf("==", "!=", "<", ">", "<=", ">=")
+/** The operator as read from the right-hand side. */
+private val FACING = mapOf("==" to "==", "!=" to "!=", "<" to ">", ">" to "<", "<=" to ">=", ">=" to "<=")
+/** Comparisons below a bound, which an operation counting filled rows cannot meet without one. */
+private val BELOW = setOf("<", "<=", "!=")
+/** Comparisons an amount meets at zero. */
+private val AT_ZERO = setOf("==", "<=", ">=")
 private val IN_WORDS = setOf("In", "IN", "in")
