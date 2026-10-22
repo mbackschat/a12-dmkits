@@ -12,7 +12,7 @@ import kotlin.test.assertNull
 
 /**
  * The connective structure a condition is written with, which A12's iteration-guard check walks
- * (ITERATION-GUARD-PORT-PROPOSAL W1). Each row renders the tree as text so a wrong nesting shows as a wrong
+ * (`IterationGuard.kt`). Each row renders the tree as text so a wrong nesting shows as a wrong
  * string; the leaves name the call's operator or `cmp` for a comparison.
  */
 class ConditionTreeTest {

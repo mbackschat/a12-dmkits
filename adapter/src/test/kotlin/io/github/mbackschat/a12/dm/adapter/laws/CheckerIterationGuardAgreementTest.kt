@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 /**
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody filled,
  * `MVK_NEG_CONDITION_IN_ITERATION` on the rule's own iteration and `MVK_PARALLEL_ITERATION_INVALID` across
- * parallel groups (ITERATION-GUARD-PORT-PROPOSAL; CONSISTENCY-GAPS DG146).
+ * parallel groups (KERNEL-FINDINGS KF537, KF595; the shapes left to A12 are CONSISTENCY-GAPS DG146).
  *
  * [ROWS] pins A12's own answer on every row, so a kernel bump that moves one fails here before it is mistaken
  * for a checker defect; the checker must then agree with A12 on every row. Each row's comment names the rival

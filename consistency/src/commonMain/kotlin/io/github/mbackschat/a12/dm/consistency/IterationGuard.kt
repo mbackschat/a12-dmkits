@@ -17,7 +17,13 @@ import kotlinx.serialization.json.JsonPrimitive
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody
  * filled. `MVK_PARALLEL_ITERATION_INVALID` answers it across parallel groups and `MVK_NEG_CONDITION_IN_ITERATION`
  * on the rule's own iteration, in that order and after every other whole-rule check
- * ([ITERATION-GUARD-PORT-PROPOSAL]; `adapter.laws.CheckerIterationGuardAgreementTest`).
+ * ([KERNEL-FINDINGS KF537], [KF595]; `adapter.laws.CheckerIterationGuardAgreementTest`).
+ *
+ * **What it is built on.** The connective tree the recognizer keeps ([ConditionNode]); the starred levels and
+ * resolution every family reads; the parallel marking [markedLevelsOf] states for the filtered-entity family, so
+ * A12's two passes ([KERNEL-FINDINGS KF376]) are stated once; and [fieldsUnder], A12's expansion of a group into
+ * its fields. What it adds is the verdict walk, which answers true, false or null. Null anywhere declines the
+ * whole declaration, because a guess that refused would be an over-rejection.
  *
  * **How a condition is judged.** Every part starts admitted, and a part refuses by its kind and by how its
  * references iterate the judged level: a negative presence over an iterating reference, a positive presence that
