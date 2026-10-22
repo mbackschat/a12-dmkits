@@ -103,12 +103,16 @@ class CheckerOuterMarkedOperandAgreementTest {
             defect("Valid(Date(\$Items, BirthMonth, BirthYear))", NO_GROUPS)
             sound("Valid(Date(\$Items/Day, BirthMonth, BirthYear))")
             defect("Sum(\$Items/Count) > 0", "MVK_PARAMSIZE_INVALIDN")
-            // In a filter body A12 names no duplicate, marked or not, so the operator's own gate answers.
+            // A field named twice through a star is no duplicate, marked or not, so the operator's own gate answers.
             sound("Sum(\$Items*/Count, Items*/Count) > 0")
             sound("Sum(Items*/Count, Items*/Count) > 0")
             defect("Sum(\$Items*/Code, Items*/Code) > 0", "MVK_NO_NUMBER")
             defect("Sum(Items*/Code, Items*/Code) > 0", "MVK_NO_NUMBER")
             outside("Items/Count", "FieldFilled(Items/Count) And Sum(Items*/Code, Items*/Code) > 0", "MVK_NO_NUMBER")
+            // Without a star the twin is a duplicate, and the marker is what makes the pair two operands.
+            defect("Sum(\$Items/Code, Items/Code) > 0", "MVK_NO_NUMBER")
+            defect("Sum(Items/Code, Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
+            outside("Items/Count", "FieldFilled(Items/Count) And Sum(Items/Code, Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
             defect("FieldFilled(\$Items)", NO_GROUPS)
             sound("FieldFilled(\$Items/Count)")
             defect("Length(\$Items/ShipOn) > 1", "MVK_NO_STRING")
