@@ -7594,15 +7594,17 @@
       }
     },
     "kf52": {
-      "sha256": "67db5f5544e7cc9805b2bb07c8815e75bf2013e257650a789e0e7b6131ebace7",
-      "task": "F-USE-BACKLOG",
+      "sha256": "60aa822f8ee13476b3806c72d4e254378f215dc9d76f0530a6fbe825d68669af",
+      "task": "SS5",
       "scope": {
         "adapter": [
-          "custom condition registration reach"
+          "custom condition registration reach",
+          "unregistered callback report"
         ],
         "dmkits": [],
         "interpreter": [
-          "custom condition registration reach"
+          "custom condition registration reach",
+          "unregistered callback report"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -7615,11 +7617,15 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both kernel strategies are measured with the callback unreached and reached.",
+          "basis": "Both kernel strategies are measured with the callback unreached and reached, and for where and how often a reached name reports, on both channels.",
           "evidence": {
             "custom condition registration reach": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionRegistrationReachLawsTest.kt#aRegistrationIsLookedUpOnlyWhenTheCallbackIsReached",
               "witness": "Unreached validates silently; reached reports the rule's own code as VALUE."
+            },
+            "unregistered callback report": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionUnregisteredReportLawsTest.kt#a12ReportsEachRuleOnceAtItsIteratorsFirstAddress",
+              "witness": "Each reaching rule reports once as VALUE at its iterator's first error address, beside any firing it already made."
             }
           }
         },
@@ -7635,6 +7641,10 @@
             "custom condition registration reach": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionRegistrationReachLawsTest.kt#theInterpreterRefusesAnUnregisteredCallbackReachedOrNot",
               "witness": "The rule is reported unsupported whether the leaf is reached or not."
+            },
+            "unregistered callback report": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionUnregisteredReportLawsTest.kt#theInterpreterRefusesEveryRuleNamingTheMissingCallback",
+              "witness": "Every rule naming the missing callback is refused when prepared, so none reports at A12's address."
             }
           }
         },
