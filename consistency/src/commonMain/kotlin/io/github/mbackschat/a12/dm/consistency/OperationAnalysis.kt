@@ -91,7 +91,7 @@ internal class OperationAnalysis(
         is OperationShape.Read -> with(facts) {
             if (fieldValueReadIsRefused(shape.read, group, element)) UNKNOWN
             else bareReferenceField(written(shape), group, element,
-                shape.read.inAFilterBody && !shape.read.outerMarker)?.let(::field) ?: UNKNOWN
+                bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarker))?.let(::field) ?: UNKNOWN
         }
         is OperationShape.Group -> value(shape.child).braced()
         is OperationShape.Arithmetic -> arithmetic(shape)

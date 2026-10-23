@@ -798,18 +798,21 @@ internal fun TrackedFactBase.addressedTargetOf(
 }
 
 /**
- * [addressedTargetOf] for an operand [read] in a call that may sit in a `Having` body, [inAFilterBody].
- *
- * A `$`-marked operand there is the enclosing rule's own reference, so its levels are addressed as outside the
- * body: in a rule iterating nothing, the same marked field draws `MVK_NO_WILDCARD` (KERNEL-FINDINGS KF598, KF599).
+ * Whether a `Having` body addresses every level a read crosses: only an unmarked read in a body. A `$`-marked one
+ * is the enclosing rule's own reference, so its levels are addressed as outside the body: in a rule iterating
+ * nothing, the same marked field draws `MVK_NO_WILDCARD` (KERNEL-FINDINGS KF598, KF599). The one statement of
+ * that rule, which every operand family's addressing passes through.
  */
+internal fun bodyAddresses(inAFilterBody: Boolean, outerMarked: Boolean): Boolean = inAFilterBody && !outerMarked
+
+/** [addressedTargetOf] for an operand [read] in a call that may sit in a `Having` body, [inAFilterBody]. */
 internal fun TrackedFactBase.addressedTargetOf(
     read: OperandReference,
     declaringGroup: String,
     element: TrackedDeclaration,
     inAFilterBody: Boolean,
 ): String? = addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected,
-    everyLevelAddressed = inAFilterBody && !read.outerMarked)
+    everyLevelAddressed = bodyAddresses(inAFilterBody, read.outerMarked))
 
 /**
  * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.

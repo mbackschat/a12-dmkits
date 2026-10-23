@@ -196,7 +196,7 @@ internal data class ListOperand(
     val outerMarked: Boolean = false,
 ) {
     /** Whether a filter body addresses this operand's levels: [inAFilterBody], unless the marker opens it. */
-    fun bodyAddressed(inAFilterBody: Boolean): Boolean = inAFilterBody && !outerMarked
+    fun bodyAddressed(inAFilterBody: Boolean): Boolean = bodyAddresses(inAFilterBody, outerMarked)
 }
 
 /**

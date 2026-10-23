@@ -87,8 +87,8 @@ private fun TrackedFactBase.groupOperandFinding(
     val targets = operands.map { operand ->
         val captured = operand.capturedPath(conditionLanguage)
         val written = operand.path?.takeIf { operand.clauses.isEmpty() } ?: captured ?: return null
-        val target = addressedTargetOf(written, declaringGroup, element, false, inAFilterBody && captured == null)
-            ?: return null
+        val target = addressedTargetOf(written, declaringGroup, element, false,
+            bodyAddresses(inAFilterBody, captured != null)) ?: return null
         declarationAt(target) ?: return null
     }
     val group = targets.firstOrNull { it.declaredKind == DeclaredKind.GROUP } ?: return null

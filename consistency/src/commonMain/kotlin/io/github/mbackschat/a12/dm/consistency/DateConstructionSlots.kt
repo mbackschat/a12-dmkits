@@ -242,7 +242,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         operands.take(walked.size).forEachIndexed { at, operand ->
             val slot = walked[at]
             val arm = model.armIn(shape, operand, element, extractOps)
-            val bodyAddressed = inAFilterBody && !arm.outerMarked
+            val bodyAddressed = bodyAddresses(inAFilterBody, arm.outerMarked)
             val defect = model.groupSlotDefect(slot, arm, element, bodyAddressed) ?: when (arm) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)
                 is SlotArm.Extract -> slot.extractDefect(arm.op, ownFamily)
