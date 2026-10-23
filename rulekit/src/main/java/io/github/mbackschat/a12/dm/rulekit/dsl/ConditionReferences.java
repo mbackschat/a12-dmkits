@@ -114,6 +114,17 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     }
 
     /**
+     * Whether a rule reporting on the group {@code groupPath} references it: the group itself or a group
+     * enclosing it is named. A field inside it is not enough — with {@code Lines/Parts} as the error entity,
+     * {@code FieldFilled(Lines/Parts/PartNo)} draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} while
+     * {@code GroupFilled(Lines)} is admitted (KERNEL-FINDINGS KF601, {@code dsl.RuleGroupErrorEntityTest}).
+     */
+    public boolean coversGroup(String groupPath) {
+        return groupPaths.contains(groupPath)
+                || groupPaths.stream().anyMatch(g -> EntityPaths.isStrictlyInside(groupPath, g));
+    }
+
+    /**
      * Whether {@code fieldPath} is referenced as a <b>field</b> (exact) — <em>not</em> merely via its
      * containing group. The calculated-field-reference prohibition
      * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}) uses this rather than {@link #covers}: guarding a

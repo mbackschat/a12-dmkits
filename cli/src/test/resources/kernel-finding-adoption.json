@@ -1111,9 +1111,14 @@
       },
       "consumers": {
         "dmkits": {
-          "state": "OPEN",
-          "basis": "The typed Rule takes only field error targets, so the lock writes its group targets as paths (DEV-API-GAPS DG151).",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The typed Rule takes a group error entity, and the lock authors its group targets through it.",
+          "evidence": {
+            "a typed rule reporting on a group": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleGroupErrorEntityTest.java#aRuleReportsOnTheGroupItNames",
+              "witness": "A rule built with errorEntity(group) renders the group's relative path and is admitted by the kernel with no deferred warning; the runtime differential authors every group target this way."
+            }
+          }
         },
         "checker": {
           "state": "NOT_APPLICABLE",

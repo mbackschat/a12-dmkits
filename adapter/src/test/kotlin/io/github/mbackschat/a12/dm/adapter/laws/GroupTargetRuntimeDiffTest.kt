@@ -5,6 +5,9 @@ import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,8 +30,7 @@ import org.junit.jupiter.api.io.TempDir
  *
  * The oracle is the Kernel twice: [KernelRuntimeProbe] proves both strategies agree, and dynamic Groovy's
  * messages are compared on the LOSSLESS pointer key, because a group pointer's terminal coordinate is a row and
- * the house form drops it (INTERPRETER-GAPS `IG145`). The group error targets are written as relative paths
- * until the typed `Rule` reports on a group (DEV-API-GAPS `DG151`).
+ * the house form drops it (INTERPRETER-GAPS `IG145`).
  *
  * Own domain, shared with the peer's fixture: an order's keyed lines with their parts, keyed picks, keyed gifts
  * with a card and unkeyed wraps.
@@ -71,8 +73,7 @@ class GroupTargetRuntimeDiffTest {
         // Beside the join, the group target fires on the matched line whose pick has a Ref only.
         assertEquals(listOf("/Order[1]/Lines[2]/Parts[1]"), keys("mixed", "t8"))
         // A partial call reports no rule on a group, whatever is relevant.
-        val groupTargets = RULES.filterValues { (target, _) -> !target.endsWith("Count") && !target.endsWith("Sku") &&
-            !target.endsWith("Text") && !target.endsWith("Color") }.keys
+        val groupTargets = RULES.filterValues { it.errorEntity() is GroupRef }.keys
         assertEquals(emptyList<String>(), partialArtifact.path("rows").flatMap { row ->
             row.path("engines").path(0).path("partialMessages").map { it.path("code").asText() }.filter { it in groupTargets }
         })
@@ -92,8 +93,7 @@ class GroupTargetRuntimeDiffTest {
      */
     @Test
     fun anUnguardedNestedLevelBesideTheJoinIsRefused() {
-        val unguarded = RuntimeLaws.withRule(base, "/Order", "C3", "../Lines/Parts/Count", "C3",
-            RuntimeLaws.render("/Order", count.filled().or(ref.filled())))
+        val unguarded = ModelWriter.addRule(base, rule("C3", count.field(), count.filled().or(ref.filled())))
         assertTrue(RuntimeLaws.consistencyMessages(unguarded).any { "MVK_NEG_CONDITION_IN_ITERATION" in it })
     }
 
@@ -174,33 +174,35 @@ class GroupTargetRuntimeDiffTest {
         private val codeOrRef = listOf(order.field("Lines/Code"), order.field("Picks/Ref"))
         private val sku = order.str("Lines/Sku")
 
-        /** Rule name → (error entity below `/Order`, condition). */
-        private val RULES: Map<String, Pair<String, Condition>> = mapOf(
-            "E1" to ("Lines/Parts" to Dsl.groupFilled(parts)),
-            "E2" to ("Wraps/Ribbon" to Dsl.groupFilled(ribbon)),
-            "E3" to ("Gifts/Card" to Dsl.groupNotFilled(card)),
-            "E4" to ("Lines/Parts" to sku.filled().and(Dsl.groupFilled(parts))),
-            "E5" to ("Lines/Parts/Count" to Dsl.groupFilled(parts).and(count.filled())),
-            "E6" to ("Wraps/Ribbon/Color" to Dsl.groupFilled(ribbon).and(order.str("Wraps/Ribbon/Color").filled())),
-            "t1" to ("Lines/Parts" to count.filled().and(Dsl.groupFilled(parts))),
-            "t2" to ("Lines/Parts" to partNo.notFilled().and(Dsl.groupFilled(parts))),
-            "t4" to ("Lines/Parts" to Dsl.groupFilled(lines)),
-            "t6" to ("Lines/Parts" to Dsl.groupFilled(lines).and(count.filled())),
-            "t7" to ("Lines/Parts" to Dsl.sum(order.flatten("Lines/Parts*/Count")).gt(0).and(Dsl.groupFilled(parts))),
-            "t8" to ("Lines/Parts" to Dsl.groupFilled(parts).and(ref.filled())),
-            "C0" to ("Lines/Sku" to sku.filled().and(Dsl.noFieldFilled(codeOrRef))),
-            "C1" to ("Lines/Parts/Count" to count.filled().and(Dsl.noFieldFilled(partNoOrRef))),
-            "C2" to ("Lines/Parts/Count" to count.filled().and(Dsl.noFieldFilled(partNoOrRef)).and(count.ne(1))),
-            "v1" to ("Gifts/Card/Text" to order.str("Gifts/Card/Text").notFilled()),
-            "v2" to ("Gifts/Card/Text" to Dsl.groupNotFilled(card)),
-            "v3" to ("Wraps" to Dsl.groupFilled(wraps).and(Dsl.groupFilled(ribbon))),
-            "v4" to ("Wraps" to Dsl.groupFilled(wraps).and(order.str("Wraps/Style").filled())),
-            "v5" to ("Gifts" to Dsl.groupNotFilled(gifts)),
-        )
+        /** A rule at `/Order` named and coded alike. */
+        private fun rule(name: String, entity: ErrorEntity, condition: Condition): Rule =
+            order.rule { it.name(name).errorEntity(entity).`when`(condition).code(name).message(Dsl.en(name)).build() }
 
-        private val rulesModel: String = RULES.entries.fold(base) { json, (name, rule) ->
-            RuntimeLaws.withRule(json, "/Order", name, "../${rule.first}", name, RuntimeLaws.render("/Order", rule.second))
-        }
+        /** Rule name → the rule. */
+        private val RULES: Map<String, Rule> = listOf(
+            rule("E1", parts.ref(), Dsl.groupFilled(parts)),
+            rule("E2", ribbon.ref(), Dsl.groupFilled(ribbon)),
+            rule("E3", card.ref(), Dsl.groupNotFilled(card)),
+            rule("E4", parts.ref(), sku.filled().and(Dsl.groupFilled(parts))),
+            rule("E5", count.field(), Dsl.groupFilled(parts).and(count.filled())),
+            rule("E6", order.field("Wraps/Ribbon/Color"), Dsl.groupFilled(ribbon).and(order.str("Wraps/Ribbon/Color").filled())),
+            rule("t1", parts.ref(), count.filled().and(Dsl.groupFilled(parts))),
+            rule("t2", parts.ref(), partNo.notFilled().and(Dsl.groupFilled(parts))),
+            rule("t4", parts.ref(), Dsl.groupFilled(lines)),
+            rule("t6", parts.ref(), Dsl.groupFilled(lines).and(count.filled())),
+            rule("t7", parts.ref(), Dsl.sum(order.flatten("Lines/Parts*/Count")).gt(0).and(Dsl.groupFilled(parts))),
+            rule("t8", parts.ref(), Dsl.groupFilled(parts).and(ref.filled())),
+            rule("C0", sku.field(), sku.filled().and(Dsl.noFieldFilled(codeOrRef))),
+            rule("C1", count.field(), count.filled().and(Dsl.noFieldFilled(partNoOrRef))),
+            rule("C2", count.field(), count.filled().and(Dsl.noFieldFilled(partNoOrRef)).and(count.ne(1))),
+            rule("v1", order.field("Gifts/Card/Text"), order.str("Gifts/Card/Text").notFilled()),
+            rule("v2", order.field("Gifts/Card/Text"), Dsl.groupNotFilled(card)),
+            rule("v3", wraps.ref(), Dsl.groupFilled(wraps).and(Dsl.groupFilled(ribbon))),
+            rule("v4", wraps.ref(), Dsl.groupFilled(wraps).and(order.str("Wraps/Style").filled())),
+            rule("v5", gifts.ref(), Dsl.groupNotFilled(gifts)),
+        ).associateBy { it.name() }
+
+        private val rulesModel: String = RULES.values.fold(base, ModelWriter::addRule)
 
         private val computeModel: String = listOf(
             order.computation(count) { c -> c.name("k08").commonPrecondition(Dsl.noFieldFilled(partNoOrRef))

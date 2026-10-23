@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.core.HasEntityPath;
  * as filled. And an enclosing {@code GroupFilled(Group)} counts as referencing the rule's error
  * field (no {@code MVK_ERROR_FIELD_NOT_REFERENCED}).
  */
-public record GroupRef(EntityPath path, boolean repeating) implements GroupReference, HasEntityPath {
+public record GroupRef(EntityPath path, boolean repeating) implements GroupReference, HasEntityPath, ErrorEntity {
 
     /** Its own path, already parsed — this ref stores the segments rather than the text. */
     @Override

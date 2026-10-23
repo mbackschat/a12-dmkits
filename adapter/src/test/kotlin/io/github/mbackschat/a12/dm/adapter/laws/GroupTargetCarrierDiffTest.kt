@@ -5,6 +5,8 @@ import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -177,23 +179,27 @@ class GroupTargetCarrierDiffTest {
         private val partNoOrRef = listOf(order.field("Lines/Parts/PartNo"), order.field("Picks/Ref"))
         private val countOrRef = listOf(order.field("Lines/Parts/Count"), order.field("Picks/Ref"))
 
-        /** Rule name → (error entity below `/Order`, condition). */
-        private val RULES: Map<String, Pair<String, Condition>> = linkedMapOf(
-            "r1" to ("Lines" to Dsl.groupFilled(lines).and(ref.filled())),
-            "r2" to ("Lines/Slots" to Dsl.groupFilled(slots).and(ref.filled())),
-            "r3" to ("Gifts" to Dsl.groupFilled(gifts).and(style.filled())),
-            "r4" to ("Lines" to Dsl.groupFilled(lines).and(count.filled())),
-            "r5" to ("Lines/Parts/Count" to count.lt(5).and(ref.filled())),
-            "r6" to ("Lines/Parts/Count" to Dsl.numberOfFilledFields(countOrRef).gt(0)),
-            "r7" to ("Lines/Parts/Count" to Dsl.atLeastOneFieldFilled(countOrRef)),
-            "r8" to ("Lines/Sku" to count.filled().and(ref.filled())),
-            "r9" to ("Picks/Ref" to count.filled().and(ref.filled())),
-            "r12" to ("Lines/Sku" to sku.filled().and(Dsl.numberOfFilledGroups(parts).gt(0)).and(ref.filled())),
-            "r13" to ("Picks/Ref" to ref.filled().and(Dsl.groupFilled(parts))),
-            "r14" to ("Gifts/Note" to note.filled().and(Dsl.groupFilled(card)).and(label.filled())),
-            "r15" to ("Gifts/Note" to note.filled().and(Dsl.groupNotFilled(card)).and(label.filled())),
-            "C1" to ("Lines/Parts/Count" to count.filled().and(Dsl.noFieldFilled(partNoOrRef))),
-        )
+        /** A rule at `/Order` named and coded alike. */
+        private fun rule(name: String, entity: ErrorEntity, condition: Condition): Rule =
+            order.rule { it.name(name).errorEntity(entity).`when`(condition).code(name).message(Dsl.en(name)).build() }
+
+        /** Rule name → the rule. */
+        private val RULES: Map<String, Rule> = listOf(
+            rule("r1", lines.ref(), Dsl.groupFilled(lines).and(ref.filled())),
+            rule("r2", slots.ref(), Dsl.groupFilled(slots).and(ref.filled())),
+            rule("r3", gifts.ref(), Dsl.groupFilled(gifts).and(style.filled())),
+            rule("r4", lines.ref(), Dsl.groupFilled(lines).and(count.filled())),
+            rule("r5", count.field(), count.lt(5).and(ref.filled())),
+            rule("r6", count.field(), Dsl.numberOfFilledFields(countOrRef).gt(0)),
+            rule("r7", count.field(), Dsl.atLeastOneFieldFilled(countOrRef)),
+            rule("r8", sku.field(), count.filled().and(ref.filled())),
+            rule("r9", ref.field(), count.filled().and(ref.filled())),
+            rule("r12", sku.field(), sku.filled().and(Dsl.numberOfFilledGroups(parts).gt(0)).and(ref.filled())),
+            rule("r13", ref.field(), ref.filled().and(Dsl.groupFilled(parts))),
+            rule("r14", note.field(), note.filled().and(Dsl.groupFilled(card)).and(label.filled())),
+            rule("r15", note.field(), note.filled().and(Dsl.groupNotFilled(card)).and(label.filled())),
+            rule("C1", count.field(), count.filled().and(Dsl.noFieldFilled(partNoOrRef))),
+        ).associateBy { it.name() }
 
         /** Rule name → A12's rejection classes, empty when admitted. */
         private val ADMISSION: Map<String, List<String>> = mapOf(
@@ -207,15 +213,13 @@ class GroupTargetCarrierDiffTest {
         /** The admitted rules the interpreter declines. */
         private val DECLINED = setOf("r2")
 
-        private fun model(rules: Map<String, Pair<String, Condition>>) = rules.entries.fold(base) { json, (name, rule) ->
-            RuntimeLaws.withRule(json, "/Order", name, "../${rule.first}", name, RuntimeLaws.render("/Order", rule.second))
-        }
+        private fun model(rules: Map<String, Rule>) = rules.values.fold(base, ModelWriter::addRule)
 
         private val admittedModel: String = model(RULES.filterKeys { ADMISSION.getValue(it).isEmpty() })
 
         /** The comparison over the nested level alone, on parts declared six times. */
-        private val sixPartsModel: String = RuntimeLaws.withRule(OrderK04Model.json(withGiftTags = true, partCapacity = 6),
-            "/Order", "r5", "../${RULES.getValue("r5").first}", "r5", RuntimeLaws.render("/Order", RULES.getValue("r5").second))
+        private val sixPartsModel: String =
+            ModelWriter.addRule(OrderK04Model.json(withGiftTags = true, partCapacity = 6), RULES.getValue("r5"))
 
         private val computeModel: String = ModelWriter.addComputation(base, order.computation(count) { c -> c.name("k08")
             .commonPrecondition(Dsl.noFieldFilled(partNoOrRef)).calc(Dsl.number(1)).message(Dsl.en("x")).build() })

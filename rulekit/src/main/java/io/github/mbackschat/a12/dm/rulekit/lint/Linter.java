@@ -187,10 +187,15 @@ public final class Linter {
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
-        invertedRequiredness(rule.condition(), rule.errorField().path().value(), rulePath, out);
-        if (model.iteratesForErrorField(rule.errorField().path().value())) {
-            negativeUnderIteration(rule.condition(), rule.errorField().path().value(), rule.group().path().value(),
-                    model, rulePath, out);
+        // The model-context lints read a FIELD target's iteration; a group target is guarded at the levels its
+        // references iterate (KERNEL-FINDINGS KF601), which they do not model, so it gets the AST lints only.
+        if (!(rule.errorEntity() instanceof FieldRef errorField)) {
+            return List.copyOf(out);
+        }
+        String errorFieldPath = errorField.path().value();
+        invertedRequiredness(rule.condition(), errorFieldPath, rulePath, out);
+        if (model.iteratesForErrorField(errorFieldPath)) {
+            negativeUnderIteration(rule.condition(), errorFieldPath, rule.group().path().value(), model, rulePath, out);
         }
         return List.copyOf(out);
     }

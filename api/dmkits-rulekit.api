@@ -884,6 +884,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
   public ConditionReferences(java.util.Set<java.lang.String>, java.util.Set<java.lang.String>)
   public boolean covers(java.lang.String)
+  public boolean coversGroup(java.lang.String)
   public final boolean equals(java.lang.Object)
   public java.util.Set<java.lang.String> fieldPaths()
   public java.util.Set<java.lang.String> groupPaths()
@@ -1740,6 +1741,9 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral implement
   public final java.lang.String toString()
   public java.lang.String value()
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity extends io.github.mbackschat.a12.dm.core.HasEntityPath
+  public abstract io.github.mbackschat.a12.dm.core.EntityPath path()
+
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public java.util.List<java.lang.String> allowedValues()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotation(java.lang.String)
@@ -1827,7 +1831,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand.Cell, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate.Source
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand.Cell, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate.Source
   public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean, java.util.Optional<java.util.Set<io.github.mbackschat.a12.dm.core.EntityPath>>)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
@@ -2036,7 +2040,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
   public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier[] values()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
   public GroupRef(io.github.mbackschat.a12.dm.core.EntityPath, boolean)
   public io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public final boolean equals(java.lang.Object)
@@ -2465,7 +2469,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
   public java.lang.String wire()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
-  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
   public java.lang.String code()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition()
@@ -2473,8 +2477,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule draft()
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule draft(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
   public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity errorEntity()
   public java.lang.String errorEntityRelPath()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef errorField()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
@@ -2491,6 +2495,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder comment(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder commentAfter(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder commentAfter(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorEntity(io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef)

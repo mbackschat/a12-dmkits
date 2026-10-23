@@ -1008,6 +1008,22 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 // ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
 
+### 4.1a A rule that reports on a group
+
+The error entity can be a group as well as a field: `errorEntity` takes either kind of ref, and `errorField` stays the field form. A12 fires such a rule at the group's own pointer ([KF603](KERNEL-FINDINGS.md#kf603)).
+
+<!-- snippet: rule-group-target -->
+```java
+Rule rule = M.rule(order).name("PartsCheck")
+        .errorEntity(parts)                           // a GroupRef: the rule reports on the group itself
+        .when(parts.filled().and(sku.notFilled()))    // the group, or one enclosing it, references it
+        .code("PARTS").message(Dsl.en("Check the parts"))
+        .build();
+rule.errorEntityRelPath();                            // "../Lines/Parts"
+```
+
+What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group and the rule's own group, which A12 cannot build a model around. The model-context lints read a field target only.
+
 ### 4.2 Render → validate → emit
 
 <!-- teaser -->

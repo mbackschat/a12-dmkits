@@ -109,7 +109,7 @@ class ErrorFieldUnderGroupTest {
 
         // errorEntityRelPath() slices the error field's path at the group's length. That is only meaningful
         // while the gate above holds; the assertion states the dependency rather than merely the value.
-        assertTrue(rule.errorField().isStrictlyInside(rule.group()),
+        assertTrue(rule.errorEntity().isStrictlyInside(rule.group()),
                 "the gate's postcondition, which the relative-path slice below silently assumes");
         assertEquals("../" + "MonthlyFee", rule.errorEntityRelPath());
     }
