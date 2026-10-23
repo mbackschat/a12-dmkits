@@ -81,6 +81,8 @@ private fun filtered(e: Expr): Boolean = when (e) {
  */
 internal fun reachIsObservable(cond: Cond): Boolean = canRaiseRuntimeFailure(cond) || callsBack(cond)
 
+// No filter body is searched, unlike [canRaiseRuntimeFailure]: A12 refuses a `CustomCondition` inside a `Having`
+// filter (`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`, KERNEL-FINDINGS KF97), so none can be there.
 private fun callsBack(cond: Cond): Boolean = when (cond) {
     is Cond.And -> callsBack(cond.left) || callsBack(cond.right)
     is Cond.Or -> callsBack(cond.left) || callsBack(cond.right)

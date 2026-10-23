@@ -142,6 +142,7 @@ class CustomConditionCallCountDiffTest {
                 "ValueAnd" to 1),
         ), grid(root, Engine.DYNAMIC))
         assertEquals(grid(root, Engine.DYNAMIC), grid(root, Engine.STATIC), "static Java")
+        assertEquals(grid(root, Engine.DYNAMIC), grid(root, Engine.DYNAMIC, partial = true), "partial, root relevant")
     }
 
     @Test
@@ -151,9 +152,21 @@ class CustomConditionCallCountDiffTest {
             "partial, root relevant")
     }
 
+    /**
+     * Each document holds one line with a note and one without, so per row the root's counts hold when each line
+     * count is the sum of the root's two documents for the same answer.
+     */
     @Test
     fun aRepeatingCarrierCountsPerRowOnEveryEngine() {
         val dynamic = grid(lines, Engine.DYNAMIC)
+        val rootCounts = grid(root, Engine.DYNAMIC)
+        dynamic.forEach { (document, counts) ->
+            val answer = document.substringAfter("answer=")
+            assertEquals(counts.keys.associateWith { rule ->
+                rootCounts.getValue("note=empty,answer=$answer").getValue(rule) +
+                    rootCounts.getValue("note=filled,answer=$answer").getValue(rule)
+            }, counts, document)
+        }
         assertEquals(dynamic, grid(lines, Engine.STATIC), "static Java")
         assertEquals(dynamic, grid(lines, Engine.INTERPRETER), "interpreter")
     }

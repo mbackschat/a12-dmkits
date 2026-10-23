@@ -22,7 +22,7 @@ internal sealed interface IterationPlan {
         val frameGroup: String?,
         val deepestFrame: String?,
         /** The unindexed repeatable level directly below a joined group that the rule or computation iterates
-         *  inside each joined row, or null when the join is the deepest iterated level (SPEC-2026-10-23-03). */
+         *  inside each joined row, or null when the join is the deepest iterated level (KERNEL-FINDINGS KF603). */
         val nested: String? = null,
     ) : IterationPlan
 }
@@ -80,6 +80,11 @@ internal class IterationScopes(private val model: ModelDef) {
         val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors + starAnchors)
             .distinct().filter { it != scope && it != ownLevel && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) {
+            // A12 joins at the nearest keyed group on the error entity's path, the entity itself first
+            // (`AnalyseService.getParallelIterationLevel`, kernel 30.8.1, read 2026-10-23), so a keyed group target
+            // is its own join level, which this plan does not model (INTERPRETER-GAP-DISPOSITIONS IG180).
+            if (ownLevel != null && hasIndexField(ownLevel)) throw UnsupportedConstructException(
+                "a parallel rule reporting on the keyed group $ownLevel joins at that group's own level, which is not modeled")
             val plan = prepareParallel(scope, parallelGroups)
             requireParallelDocumentSupport(ast, plan)
             return plan
@@ -194,7 +199,7 @@ internal class IterationScopes(private val model: ModelDef) {
      * Prepare and validate the document-independent shape of one parallel join of [scope] with [parallelGroups].
      *
      * A [scope] without an index field joins through its repeatable parent when that parent carries one: A12 then
-     * iterates [scope] inside each joined row, an unmatched partner included (SPEC-2026-10-23-03,
+     * iterates [scope] inside each joined row, an unmatched partner included (KERNEL-FINDINGS KF603,
      * `adapter.laws.GroupTargetRuntimeDiffTest`). Only a direct child of the joined group is measured, so a deeper
      * or wrapped level keeps [scope] as the join side and is refused below for its missing index.
      */
@@ -258,7 +263,7 @@ internal class IterationScopes(private val model: ModelDef) {
                 throw UnsupportedConstructException(
                     "an aggregate over ${star.path} bound below the parallel iteration's common parent $commonParent is not modeled")
             }
-        // A group below a joined side reads within that side's joined row (`t8`, SPEC-2026-10-23-02); one at or
+        // A group below a joined side reads within that side's joined row (`t8`, KERNEL-FINDINGS KF603); one at or
         // below a nested level is unmeasured.
         fun readable(group: String) = group in joined || group == commonParent ||
             (joined.any { group.startsWith("$it/") } &&
@@ -266,6 +271,23 @@ internal class IterationScopes(private val model: ModelDef) {
         parallelGroupReads(ast).firstOrNull { !readable(it) }?.let { group ->
             throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($group) inside a parallel iteration is not modeled")
+        }
+    }
+
+    /**
+     * A computation's joined row answers a group's presence only for a joined group or the common parent (the
+     * parallel row's `groupFilled`), and a read of any other group there is unmeasured. Declined here, before any
+     * document is read, because the runtime refusal is reached only where a precondition gets that far, so it
+     * declined one document and computed the next (`adapter.laws.GroupTargetCarrierDiffTest`).
+     */
+    internal fun requireParallelComputationSupport(computation: ParsedComputation, plan: IterationPlan.Parallel) {
+        val reads = listOfNotNull(computation.commonPrecondition).flatMap(::parallelGroupReads) +
+            computation.alternatives.flatMap { alternative ->
+                alternative.precondition?.let(::parallelGroupReads).orEmpty() + parallelGroupReads(alternative.operation)
+            }
+        reads.firstOrNull { it !in plan.joined && it != plan.commonParent }?.let { group ->
+            throw UnsupportedConstructException(
+                "group-filled on a non-parallel group ($group) inside a parallel computation is not modeled")
         }
     }
 

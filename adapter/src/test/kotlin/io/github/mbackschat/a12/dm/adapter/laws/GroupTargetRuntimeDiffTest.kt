@@ -1,19 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import io.github.mbackschat.a12.dm.adapter.testing.KernelMessageAddressProjector
 import io.github.mbackschat.a12.dm.edit.EditSession
-import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
-import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
-import io.github.mbackschat.a12.dm.interpreter.ValidationFinding
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
-import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -23,10 +15,10 @@ import org.junit.jupiter.api.io.TempDir
 /**
  * A rule reporting on a group, and a parallel rule or computation whose error field sits one unkeyed level below
  * a joined side, at runtime: the interpreter fires, addresses, references and computes exactly as A12 does
- * (a12-kernel-lean SPEC-2026-10-23-02, SPEC-2026-10-23-03; KERNEL-FINDINGS KF601).
+ * (a12-kernel-lean SPEC-2026-10-23-02, SPEC-2026-10-23-03; KERNEL-FINDINGS KF603).
  *
  * The rows are the peer's runtime checkpoint re-measured here on [OrderK04Model]: group targets on a repeatable
- * level (`E1`, `E4`, `t1`–`t8`), on a fixed one below a repeatable parent (`E2`, `E3`) and on the root's own
+ * level (`E1`, `E4`, `t1`, `t2`, `t4`, `t6`–`t8`), on a fixed one below a repeatable parent (`E2`, `E3`) and on the root's own
  * children (`v3`–`v5`); field twins (`E5`, `E6`, `v1`, `v2`); the nested pair below the `Lines`/`Picks` join
  * (`C1`, `C2`, with `C0` the direct control); and the computations `k08` into the nested level and `k00` the direct
  * control. The documents carry the peer's shapes, an empty `{}` part row and a fixed `Ribbon` holding nothing
@@ -45,9 +37,13 @@ class GroupTargetRuntimeDiffTest {
 
     @Test
     fun bothKernelStrategiesAgreeOnEveryDocument() {
-        listOf(rulesArtifact, partialArtifact, computeArtifact).forEach { artifact ->
+        listOf(rulesArtifact to DOCUMENTS.size, partialArtifact to PARTIAL_ROWS.size,
+            computeArtifact to COMPUTE_DOCUMENTS.size).forEach { (artifact, rows) ->
+            assertEquals(rows, artifact.path("rows").size(), "every requested row was probed")
             artifact.path("rows").forEach { row ->
-                assertTrue(row.path("enginesAgree").asBoolean(), "both strategies on ${row.path("name").asText()}")
+                val name = row.path("name").asText()
+                assertEquals(2, row.path("engines").size(), "both strategies ran on $name")
+                assertTrue(row.path("enginesAgree").asBoolean(), "both strategies on $name")
             }
         }
     }
@@ -91,14 +87,12 @@ class GroupTargetRuntimeDiffTest {
         val prepared = PreparedModel.loadExpandedJson(rulesModel)
         val interpreter = prepared.createInterpreter()
         val kernel = DOCUMENTS.mapValues { (_, json) ->
-            RuntimeLaws.jsonMessages(rulesModel, json).map { m ->
-                signature(m.code(), m.key(), m.type().name.removeSuffix("_ERROR"), m.referenced(), m.omissionResponsible())
-            }.sorted()
+            RuntimeLaws.jsonMessages(rulesModel, json).map(RuntimeProbeComparison::signature).sorted()
         }
         val ours = DOCUMENTS.mapValues { (name, json) ->
             val report = interpreter.validateFull(prepared.documents.readDocument(json))
             assertEquals(emptyList<Any>(), report.unsupported, "interpreter support on $name")
-            report.findings.map(::signature).sorted()
+            report.findings.map(RuntimeProbeComparison::signature).sorted()
         }
         assertEquals(kernel, ours)
     }
@@ -106,27 +100,23 @@ class GroupTargetRuntimeDiffTest {
     /**
      * Partial validation over the same rules, on both documents that hold the nested rows. A relevant field or group
      * starts the call where it sits; this compares the projected address, which is lossless here because every
-     * group pointer this model produces names its first row.
+     * pointer a partial call reports is a field's, rendered canonically: no rule reporting on a group runs in a
+     * partial call.
      */
     @Test
     fun theInterpreterValidatesPartAsA12() {
         val prepared = PreparedModel.loadExpandedJson(rulesModel)
         val interpreter = prepared.createInterpreter()
         val kernel = partialArtifact.path("rows").associate { row ->
-            row.path("name").asText() to row.path("engines").path(0).path("partialMessages").map {
-                projected(it.path("code").asText(), it.path("field").asText(), it.path("type").asText().removeSuffix("_ERROR"),
-                    it.path("referenced").map(JsonNode::asText))
-            }.sorted()
+            row.path("name").asText() to row.path("engines").path(0).path("partialMessages")
+                .map(RuntimeProbeComparison::projected).sorted()
         }
         assertTrue(kernel.values.any { it.isNotEmpty() }, "the probe's partial messages were read")
         val ours = PARTIAL_ROWS.associate { (name, document, path, reps) ->
             val report = interpreter.validatePart(prepared.documents.readDocument(DOCUMENTS.getValue(document)),
                 listOf(prepared.model.pointer(path, reps)))
             assertEquals(emptyList<Any>(), report.unsupported, "interpreter support on $name")
-            name to report.findings.map { finding ->
-                projected(finding.code, KernelMessageAddressProjector.address(finding.errorPath), finding.type.name,
-                    finding.referenced.map(KernelMessageAddressProjector::address))
-            }.sorted()
+            name to report.findings.map(RuntimeProbeComparison::projected).sorted()
         }
         assertEquals(kernel, ours)
     }
@@ -136,46 +126,23 @@ class GroupTargetRuntimeDiffTest {
         val prepared = PreparedModel.loadExpandedJson(computeModel)
         val interpreter = prepared.createInterpreter()
         val kernel = computeArtifact.path("rows").associate { row ->
-            row.path("name").asText() to row.path("engines").path(0).path("computations").path("outcomes").map {
-                outcome(it.path("field").asText(), it.path("cleared").asBoolean(), it.path("value").textValue())
-            }.sorted()
+            row.path("name").asText() to row.path("engines").path(0).path("computations").path("outcomes")
+                .map(RuntimeProbeComparison::outcome).sorted()
         }
         assertTrue(kernel.getValue("seeded").isNotEmpty(), "the probe's outcomes were read")
         val ours = COMPUTE_DOCUMENTS.mapValues { (name, json) ->
             val report = interpreter.compute(prepared.documents.readDocument(json))
             assertEquals(emptyList<Any>(), report.unsupported, "interpreter support on $name")
             // A12 reports what computation changes, so the comparison is against the source-relative actions.
-            report.actions.map { result ->
-                outcome(KernelMessageAddressProjector.address(
-                    A12PartiallyKnownMultiPointer.of(result.pointer.path, result.pointer.coordinates)),
-                    result.outcome == ComputationOutcome.CLEARED, result.value)
-            }.sorted()
+            report.actions.map(RuntimeProbeComparison::outcome).sorted()
         }
         assertEquals(kernel, ours)
     }
 
     private companion object {
-        private val MAPPER = ObjectMapper()
-
         @JvmStatic
         @TempDir
         lateinit var dir: Path
-
-        private fun outcome(address: String, cleared: Boolean, value: String?) =
-            "$address|" + if (cleared) "CLEARED" else "=$value"
-
-        private fun projected(code: String, address: String, type: String, referenced: List<String>) =
-            "$code@$address|$type|ref=${referenced.sorted()}"
-
-        private fun signature(code: String, key: String, type: String, referenced: List<String>, fillToFix: List<String>) =
-            "$code@$key|$type|ref=${referenced.sorted()}|fix=${fillToFix.sorted()}"
-
-        private fun signature(finding: ValidationFinding): String {
-            val render = { p: A12PartiallyKnownMultiPointer -> formatPointer(p.fullName, p.repetitionIndexes) }
-            return signature(finding.code,
-                pointerComparisonKey(finding.errorPath.fullName, finding.errorPath.repetitionIndexes),
-                finding.type.name, finding.referenced.map(render), finding.fillToFix.map(render))
-        }
 
         private val base = OrderK04Model.json()
         private val order = EditSession.read(base).group("/Order")
@@ -268,28 +235,14 @@ class GroupTargetRuntimeDiffTest {
             )
         }
 
-        private fun probe(label: String, model: String, observe: String, documents: Map<String, String>,
-                relevant: Map<String, String> = emptyMap()): JsonNode {
-            val modelFile = Files.writeString(dir.resolve("$label.model.json"), model)
-            val rows = documents.entries.joinToString(",") { (name, json) ->
-                """{"name":"$name","documentInline":$json""" +
-                    (relevant[name]?.let { ""","relevant":$it""" } ?: "") + "}"
-            }
-            val request = Files.writeString(dir.resolve("$label.request.json"),
-                """{"model":"${modelFile.fileName}","observe":$observe,"rows":[$rows]}""")
-            val out = dir.resolve("$label.artifact.json")
-            KernelRuntimeProbe.main(arrayOf(request.toString(), out.toString()))
-            return MAPPER.readTree(Files.readString(out))
-        }
-
-        private val rulesArtifact: JsonNode by lazy { probe("rules", rulesModel, """["validateFull"]""", DOCUMENTS) }
+        private val rulesArtifact: JsonNode by lazy { RuntimeProbeComparison.probe(dir, "rules", rulesModel, """["validateFull"]""", DOCUMENTS) }
         private val partialArtifact: JsonNode by lazy {
-            probe("partial", rulesModel, """["validateFull","validatePart"]""",
+            RuntimeProbeComparison.probe(dir, "partial", rulesModel, """["validateFull","validatePart"]""",
                 PARTIAL_ROWS.associate { it.name to DOCUMENTS.getValue(it.document) },
                 PARTIAL_ROWS.associate { it.name to """[{"path":"${it.path}","reps":${it.reps}}]""" })
         }
         private val computeArtifact: JsonNode by lazy {
-            probe("compute", computeModel, """["validateFull","compute"]""", COMPUTE_DOCUMENTS)
+            RuntimeProbeComparison.probe(dir, "compute", computeModel, """["validateFull","compute"]""", COMPUTE_DOCUMENTS)
         }
     }
 }

@@ -902,9 +902,9 @@ class Document(internal val config: DocumentConfig) {
      * common-parent row.
      *
      * **Nested level (an unindexed repeatable group directly below one joined group):** [nested] names the level a
-     * rule or computation iterates inside each joined row (SPEC-2026-10-23-03). A joined row whose [nested] side has
-     * a row yields one context per [nested] row under it — validation's declared domain, computation's stored rows —
-     * and one without a row on that side yields none, since no repetition exists below its `-5` row.
+     * rule or computation iterates inside each joined row (KERNEL-FINDINGS KF603). Validation visits
+     * [nestedValidationRows] below every joined row, its side's `-5` row included; a computation visits the
+     * [nested] rows stored below the side's row, and none where the side has no row.
      */
     fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
             frameGroup: String? = null, deepestFrame: String? = null,
@@ -935,11 +935,12 @@ class Document(internal val config: DocumentConfig) {
             fullValidationRowsOf(deepestFrame, capacityOf).groupBy { it.take(parentDepth) }
         else null
         val nestedSide = nested?.let { level -> groups.single { level.startsWith("$it/") } }
-        val nestedRowsBySide = nested?.let { level ->
+        val nestedRowsBySide = nested?.takeIf { capacityOf == null }?.let { level ->
             val sideDepth = parts(checkNotNull(nestedSide)).size
-            (if (validation && capacityOf != null) fullValidationRowsOf(level, capacityOf)
-            else rowsOf(level).filter { it !in overLimitRows(level) }).groupBy { it.take(sideDepth) }
+            rowsOf(level).filter { it !in overLimitRows(level) }.groupBy { it.take(sideDepth) }
         }
+        val nestedIndices = HashMap<List<Int>, List<Int>>()
+        val nestedStored = if (nested != null && capacityOf != null) rowsOf(nested).associateBy { it } else emptyMap()
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
             // flags ONCE per common-parent row, NOT per frame row (else a clean group of M rows is rescanned per
@@ -990,14 +991,49 @@ class Document(internal val config: DocumentConfig) {
                     } else null
                     fun row(nestedRow: List<Int>?) = ParallelRowContext(commonParent, cReps, groups, parentReps,
                         matches, messageMatches, invalid, indexFieldName, v, cellRelevant, nested, nestedRow)
-                    if (nestedRowsBySide == null) out += row(null)
-                    else matches.getValue(checkNotNull(nestedSide))?.let { sideRow ->
-                        nestedRowsBySide[sideRow].orEmpty().forEach { out += row(it) }
+                    if (nested == null) out += row(null)
+                    else {
+                        val side = checkNotNull(nestedSide)
+                        val sideRow = matches.getValue(side)
+                        if (capacityOf != null) {
+                            val joinedRow = sideRow ?: (parentReps.getValue(side) + UNKNOWN_REP)
+                            nestedValidationRows(nested, joinedRow, capacityOf, nestedIndices, nestedStored).forEach { out += row(it) }
+                        } else sideRow?.let { nestedRowsBySide!![it].orEmpty().forEach { r -> out += row(r) } }
                     }
                 }
             }
         }
         return out
+    }
+
+    /**
+     * The [level] rows a parallel rule visits below one joined row [joinedRow], a `-5` row included (KERNEL-FINDINGS
+     * KF603, `adapter.laws.GroupTargetCarrierDiffTest`). A12 decides between every declared row and the occupied ones
+     * as for any rule, by whether the iterated levels' capacities multiply past [DENSE_PRODUCT_LIMIT], but the joined
+     * level takes no part in that product, and it asks occupancy with the joined level's coordinate merged
+     * (`EbenenIterator.indicesRelevantFuerEbene`, kernel 30.8.1, read 2026-10-23). So below every joined row: each
+     * declared row while the product stays within the limit, else the first row and each row index any row of the
+     * joined level holds at [level]'s depth. [indices] caches that set per row above the joined level, and [stored]
+     * hands back a stored row's own list.
+     */
+    private fun nestedValidationRows(level: String, joinedRow: List<Int>, capacityOf: (String) -> Int,
+            indices: HashMap<List<Int>, List<Int>>, stored: Map<List<Int>, List<Int>>): List<List<Int>> {
+        val segs = parts(level)
+        val joinedDepth = joinedRow.size
+        val above = joinedRow.take(joinedDepth - 1)
+        val rows = indices.getOrPut(above) {
+            val capacity = capacityOf(level)
+            val dense = (1..segs.size).filter { it != joinedDepth }.fold(1L) { product, depth ->
+                if (product > DENSE_PRODUCT_LIMIT) product
+                else product * capacityOf("/" + segs.take(depth).joinToString("/"))
+            } <= DENSE_PRODUCT_LIMIT
+            if (dense) (1..capacity).toList()
+            else (sequenceOf(1) + occupiedChildren()[segs.size].orEmpty().asSequence()
+                .filter { (parent, _) -> parent.size == joinedDepth && parent.take(joinedDepth - 1) == above }
+                .flatMap { (_, held) -> held.asSequence() }.filter { it in 2..capacity })
+                .distinct().sorted().toList()
+        }
+        return rows.map { joinedRow + it }.map { stored[it] ?: it }
     }
 
     /** Common-parent context rows for a parallel iteration: the parent group's instantiated rows, or the all-1s
@@ -2005,10 +2041,10 @@ class Document(internal val config: DocumentConfig) {
         override fun datePrecisionOf(path: String): DatePrecision =
             datePrecisions[path] ?: DatePrecision.FULL
 
-        // A parallel group is "filled" for this iteration iff it has a matching row.
         // A parallel group is "filled" for this iteration iff it has a matching row. Validation decides a group below
-        // a joined side through its presence state at the row's coordinates instead (`t8`, SPEC-2026-10-23-02), so
-        // only a computation reaches this, and one reading such a group beside a join is unmeasured.
+        // a joined side through its presence state at the row's coordinates instead (KERNEL-FINDINGS KF603), and
+        // `IterationScopes.requireParallelComputationSupport` declines a computation's read of any other group before
+        // a document is read, so the refusal below is a backstop.
         override fun groupFilled(groupPath: String): Boolean =
             if (groupPath in groups) matches[groupPath] != null
             else if (groupPath == commonParent) contextFor(commonParent, cReps).groupFilled(groupPath)

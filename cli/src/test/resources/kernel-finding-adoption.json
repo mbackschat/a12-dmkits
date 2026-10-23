@@ -940,7 +940,7 @@
       }
     },
     "kf603": {
-      "sha256": "ce272492fef4453b606c8ebb171281832f064c47dad96060d320023a82b27341",
+      "sha256": "2d16c6a02ca53652cd189aaf325979256aa791780ac2c44f4fe290e7754a6ab0",
       "task": "SS7",
       "scope": {
         "dmkits": [
@@ -950,14 +950,19 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "A12 on a group target and below a joined side"
+          "A12 on a group target and below a joined side",
+          "A12 on the neighbouring carriers"
         ],
         "interpreter": [
-          "the interpreter on a group target and below a joined side"
+          "the interpreter on a group target and below a joined side",
+          "the interpreter in partial calls",
+          "the interpreter computing below a joined side",
+          "the interpreter on the neighbouring carriers"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "A12 on a group target and below a joined side"
+          "A12 on a group target and below a joined side",
+          "A12 on the neighbouring carriers"
         ]
       },
       "consumers": {
@@ -987,7 +992,11 @@
           "evidence": {
             "A12 on a group target and below a joined side": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#a12FixesTheGroupsOwnLevelAndIteratesTheLevelBelowAJoin",
-              "witness": "The group's first row, the blank root and the nested rows of the join, as the table states."
+              "witness": "The group's first row, the blank root and the nested rows of the join."
+            },
+            "A12 on the neighbouring carriers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetCarrierDiffTest.kt#theNestedLevelIsDenseOnlyWhileItsCapacityIsAtMostFive",
+              "witness": "Every declared part at capacity five, the occupied ones at six, below matched and unmatched lines."
             }
           }
         },
@@ -997,7 +1006,19 @@
           "evidence": {
             "the interpreter on a group target and below a joined side": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#theInterpreterReportsAsA12OnEveryDocument",
-              "witness": "Equal to A12 on the lossless key, full and partial, and on computed values and clears."
+              "witness": "Equal to A12 on the lossless key in full validation."
+            },
+            "the interpreter in partial calls": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#theInterpreterValidatesPartAsA12",
+              "witness": "Equal to A12 on the projected address, no group-target rule reporting."
+            },
+            "the interpreter computing below a joined side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#theInterpreterComputesAsA12OnEveryDocument",
+              "witness": "Equal to A12 on computed values and clears."
+            },
+            "the interpreter on the neighbouring carriers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetCarrierDiffTest.kt#theInterpreterReportsAsA12OrDeclinesTheRule",
+              "witness": "Equal to A12 on every admitted carrier but the keyed group target, which it declines on every document."
             }
           }
         },

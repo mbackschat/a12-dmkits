@@ -385,9 +385,10 @@ internal class ComputationEngine(
                 val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
                     .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
                 if (parallelGroups.isNotEmpty()) {
-                    // A target below a joined group joins through that group (SPEC-2026-10-23-03), so the sides whose
+                    // A target below a joined group joins through that group (KERNEL-FINDINGS KF603), so the sides whose
                     // invalid index marks the target are the plan's, not the target's own level.
                     val plan = scopes.prepareParallel(targetScope, parallelGroups)
+                    scopes.requireParallelComputationSupport(parsed, plan)
                     val joined = plan.joined
                     val invalidCoords = joined.associateWith { g -> invalidIndexParentCoords(doc, g, formalResults) }
                         .filterValues { it.isNotEmpty() }
