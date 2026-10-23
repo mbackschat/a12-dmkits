@@ -68,6 +68,21 @@ class GroupTargetRuntimeDiffTest {
         assertTrue(RuntimeLaws.jsonMessages(rulesModel, MIXED).single {
             it.code() == "C1" && it.key() == "/Order[1]/Lines[3]/Parts[1]/Count[1]"
         }.referenced().contains("/Order[1]/Picks[-5]/Ref"))
+        // Beside the join, the group target fires on the matched line whose pick has a Ref only.
+        assertEquals(listOf("/Order[1]/Lines[2]/Parts[1]"), keys("mixed", "t8"))
+        // A partial call reports no rule on a group, whatever is relevant.
+        val groupTargets = RULES.filterValues { (target, _) -> !target.endsWith("Count") && !target.endsWith("Sku") &&
+            !target.endsWith("Text") && !target.endsWith("Color") }.keys
+        assertEquals(emptyList<String>(), partialArtifact.path("rows").flatMap { row ->
+            row.path("engines").path(0).path("partialMessages").map { it.path("code").asText() }.filter { it in groupTargets }
+        })
+        // `k08` writes every instantiated part whose precondition holds, the empty one too, and clears the seeded
+        // parts of matched lines whose precondition fails: A's second (PartNo) and B's (its pick has a Ref).
+        assertEquals(listOf("Order/Lines/Parts/Count|=1", "Order/Lines/Parts[2]/Count|CLEARED",
+            "Order/Lines/Parts[3]/Count|=1", "Order/Lines[2]/Parts/Count|CLEARED", "Order/Lines[3]/Parts/Count|=1"),
+            computeArtifact.path("rows").single { it.path("name").asText() == "seeded" }.path("engines").path(0)
+                .path("computations").path("outcomes").map(RuntimeProbeComparison::outcome)
+                .filter { "Parts" in it }.sorted())
     }
 
     /**
