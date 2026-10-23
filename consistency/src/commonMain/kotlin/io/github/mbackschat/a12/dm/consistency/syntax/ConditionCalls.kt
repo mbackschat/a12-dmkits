@@ -26,7 +26,7 @@ fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List
 }
 
 /** This shape read as a call, its operands reduced, held by a `Having` body or not as [inAFilterBody] says. */
-internal fun CallShape.asCall(language: ConditionLanguage, inAFilterBody: Boolean = inAFilterBody(language)): ConditionCall =
+internal fun CallShape.asCall(language: ConditionLanguage, inAFilterBody: Boolean): ConditionCall =
     ConditionCall(operator, at, operands.map { operandOf(it, language, source) }, end, inAFilterBody)
 
 /** Operand reduction is independent of whether a strict call can enclose these tokens (R3a scanner hosts). */
@@ -112,6 +112,7 @@ internal fun CallOperand.capturedPath(language: ConditionLanguage): String? {
 
 /** The path [text] names after a leading `$` capture marker, by [CallOperand.path]'s reduction; null otherwise. */
 internal fun outerMarkedPathIn(text: String, language: ConditionLanguage): String? {
+    if ('$' !in text) return null
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
     return tokens.takeIf { it.firstOrNull()?.text == "$" }?.drop(1)?.asPath(CONDITION_KEYWORDS.getValue(language))
 }

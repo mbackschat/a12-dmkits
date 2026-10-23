@@ -61,7 +61,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val tokens = tokenize(source)
     private val keywords = CONDITION_KEYWORDS.getValue(language)
     private val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(language)
-    private val identities = spellings.entries.associate { (id, spelling) -> spelling to id }
+    private val identities = CONDITION_OPERATOR_IDENTITIES.getValue(language)
     private val calls = mutableListOf<CallShape>()
     private val comparisons = mutableListOf<ComparisonShape>()
     private val operations = mutableListOf<OperationShape>()
@@ -281,10 +281,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             kind(token) == KeywordKind.FUNCTION ||
                 kind(token) != null && token.text == "AnzahlAngegebenerVordrucke" -> {
                 val call = call()
-                complete(OperationShape.Call(call, call.operands.map { operand ->
-                    val meaningful = operand.filter { it.kind != TokenKind.COMMENT }
-                    operations.lastOrNull { it.at == meaningful.firstOrNull()?.start && it.end == meaningful.lastOrNull()?.end }
-                }))
+                complete(OperationShape.Call(call, call.operands.map { operations.spanning(it) }))
             }
             else -> fail(SyntaxFailureKind.DECISION)
         }

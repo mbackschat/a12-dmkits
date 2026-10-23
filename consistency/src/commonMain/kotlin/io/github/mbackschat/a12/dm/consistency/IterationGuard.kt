@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionNode
@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
-import kotlinx.serialization.json.JsonPrimitive
+import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 
 /**
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody
@@ -44,12 +44,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * **Silent wherever the reading is not this checker's to give, and then the declaration carries a coverage gap
  * ([iterationGuardGaps])**: CONSISTENCY-GAPS DG146 lists the shapes, and every `null` this file returns is one.
  */
-internal fun TrackedFactBase.iterationGuardContributions(
-    element: TrackedDeclaration,
-    execution: ConditionExecution? = conditionExecution(element),
-): List<ConditionFinding> {
+internal fun TrackedFactBase.iterationGuardContributions(element: TrackedDeclaration): List<ConditionFinding> {
+    val execution = conditionExecution(element) ?: return emptyList()
     val verdict = guardVerdictOf(element, execution) ?: return emptyList()
-    return execution!!.postParse(verdict.site) { listOfNotNull(verdict.finding) }
+    return execution.postParse(verdict.site) { listOfNotNull(verdict.finding) }
 }
 
 /**
@@ -290,8 +288,8 @@ private class IterationGuard(
      * against any constant, or references that all iterate compared below a positive constant or at zero.
      */
     private fun comparisonAdmitted(shape: ComparisonShape, judged: Judged): Boolean? {
-        val left = operationOf(shape.left) ?: return null
-        val right = operationOf(shape.right) ?: return null
+        val left = operations.spanning(shape.left) ?: return null
+        val right = operations.spanning(shape.right) ?: return null
         val written = shape.operator.text.takeIf { it in COMPARISON_SYMBOLS } ?: return null
         val kinds = (kindOf(left) ?: return null) to (kindOf(right) ?: return null)
         if (readsJudgedRepetition(shape, judged)) return false
@@ -326,11 +324,6 @@ private class IterationGuard(
                 within(op.at, op.end).any { iterates(it, judged) }
         }
 
-    private fun operationOf(tokens: List<io.github.mbackschat.a12.dm.consistency.syntax.Token>): OperationShape? {
-        val meaningful = tokens.filter { it.kind != TokenKind.COMMENT }
-        return operations.lastOrNull { it.at == meaningful.firstOrNull()?.start && it.end == meaningful.lastOrNull()?.end }
-    }
-
     /** A bracket only groups, so the operation inside it is the one compared (measured, `{0}` and `{Sum(…)}`). */
     private fun kindOf(op: OperationShape): OperationKind? = when (op) {
         is OperationShape.Group -> kindOf(op.child)
@@ -341,7 +334,7 @@ private class IterationGuard(
             // A product sum needs a star at its lowest level and one group for its operands, so every row we
             // could author was answered by an earlier class and its arm stays unmeasured: declined.
             "SumOfProducts" -> null
-            in ENTITY_LIST_OPERATIONS -> ENTITY_LIST_KINDS.getValue(id)
+            in ENTITY_LIST_KINDS -> ENTITY_LIST_KINDS.getValue(id)
             in OPERATION_LISTS -> OperationKind.OPERATION_LIST
             in FIELD_OPERATIONS -> OperationKind.FIELD
             in DATE_DIFFERENCES, in DATE_EXTRACTIONS -> OperationKind.DATE
@@ -376,13 +369,11 @@ private class IterationGuard(
         return Constant.Known(rounded.toInt())
     }
 
-    private fun referencesOf(op: OperationShape) = within(op.at, op.end)
-
     private fun allIterate(op: OperationShape, judged: Judged) =
-        referencesOf(op).let { refs -> refs.any { iterates(it, judged) } && refs.all { iterates(it, judged) } }
+        within(op.at, op.end).let { refs -> refs.any { iterates(it, judged) } && refs.all { iterates(it, judged) } }
 
     private fun mixed(op: OperationShape, judged: Judged) =
-        referencesOf(op).let { refs -> refs.any { iterates(it, judged) } && refs.any { !iterates(it, judged) } }
+        within(op.at, op.end).let { refs -> refs.any { iterates(it, judged) } && refs.any { !iterates(it, judged) } }
 }
 
 /** The operation kinds the comparison arms distinguish, with the arms each kind takes part in. */
@@ -452,8 +443,8 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     // A12 decides the error-field binding (KF417) before this law, so where no reference naming the error
     // field iterates while another does, that earlier class may answer and this reading has no verdict.
     if (references.any { it.iterates } && references.none { it.iterates && it.names(target) }) return null
-    val identities = CONDITION_OPERATOR_KEYWORDS.getValue(conditionLanguage).entries.associate { (id, spelling) -> spelling to id }
-    return IterationGuard(element, target, tree, references, recognition.operations, identities, execution.carrier.text)
+    return IterationGuard(element, target, tree, references, recognition.operations,
+        CONDITION_OPERATOR_IDENTITIES.getValue(conditionLanguage), execution.carrier.text)
 }
 
 private fun TrackedFactBase.guardReferenceOf(
@@ -477,7 +468,7 @@ private fun TrackedFactBase.guardReferenceOf(
     val selected = if (entity.indexed) indexGroupOf(resolved.path) ?: return null else null
     val levels = groups.map { path ->
         val group = declarationAt(path) ?: return null
-        val repeats = (group.body?.get("repeatability") as? JsonPrimitive)?.boundRepetitionCount() ?: 1
+        val repeats = repetitionCountIn(group.body)
         val mark = when {
             path == selected -> LevelMark.FIXED
             path in starred -> LevelMark.STARRED
@@ -489,11 +480,7 @@ private fun TrackedFactBase.guardReferenceOf(
     val fields = fieldsUnder(declaration).orEmpty().sumOf { field ->
         field.path.removePrefix("${resolved.path}/").split('/').dropLast(1)
             .runningReduce { above, segment -> "$above/$segment" }
-            .fold(1L) { n, inner ->
-                val repeats = (declarationAt("${resolved.path}/$inner")?.body?.get("repeatability") as? JsonPrimitive)
-                    ?.boundRepetitionCount() ?: 1
-                n * repeats
-            }
+            .fold(1L) { n, inner -> n * repetitionCountIn(declarationAt("${resolved.path}/$inner")?.body) }
     }
     return GuardReference(entity.site.start, resolved.path, declaration.declaredKind == DeclaredKind.FIELD, levels, fields,
         selected = entity.indexed, key = key)
@@ -519,7 +506,6 @@ private val ENTITY_LIST_KINDS = mapOf(
     "Sum" to OperationKind.AMOUNT, "MinValue" to OperationKind.AMOUNT, "MaxValue" to OperationKind.AMOUNT,
     "FirstFilledValue" to OperationKind.AMOUNT,
 )
-private val ENTITY_LIST_OPERATIONS = ENTITY_LIST_KINDS.keys
 private val OPERATION_LISTS = setOf("Max", "Min", "Abs", "RoundAccounting", "RoundUp", "RoundDown")
 private val FIELD_OPERATIONS = setOf("Length", "RoundAccountingValue", "RoundUpValue", "RoundDownValue", "AbsValue",
     "RangeAsNumber", "FieldValueAsNumber", "RangeAsString", "FieldValueAsString", "ValueAsDate")

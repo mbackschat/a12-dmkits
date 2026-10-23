@@ -24,3 +24,10 @@ internal sealed interface OperationShape {
         override val end get() = call.end
     }
 }
+
+/** The completed operation spanning exactly [tokens], comments aside; the last one completed where several do. */
+internal fun List<OperationShape>.spanning(tokens: List<Token>): OperationShape? {
+    val first = tokens.firstOrNull { it.kind != TokenKind.COMMENT }
+    val last = tokens.lastOrNull { it.kind != TokenKind.COMMENT }
+    return lastOrNull { it.at == first?.start && it.end == last?.end }
+}

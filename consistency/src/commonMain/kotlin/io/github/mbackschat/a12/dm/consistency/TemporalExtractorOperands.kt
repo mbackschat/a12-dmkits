@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
@@ -46,8 +46,7 @@ internal fun TrackedFactBase.temporalExtractorContributions(
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
     if (execution == null) return emptyList()
-    val identities = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.entries
-        ?.associate { (id, spelling) -> spelling to id } ?: return emptyList()
+    val identities = CONDITION_OPERATOR_IDENTITIES[conditionLanguage] ?: return emptyList()
     val reader = ExtractorOperandReader(this, identities, execution, element)
     return callContributions(element, execution) { member, call ->
         val extractor = identities[call.operator]?.let(Extractor::of) ?: return@callContributions null

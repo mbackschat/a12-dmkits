@@ -915,7 +915,7 @@ internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
  */
 internal fun TrackedFactBase.waivesValueValidation(field: TrackedDeclaration): Boolean {
     val resolved = resolvedFieldTypeOf(field)?.takeIf { it.type == FieldType.STRING } ?: return false
-    val string = resolved.declared?.let(FieldType.STRING::bodyIn) ?: return false
+    val string = FieldType.STRING.bodyIn(resolved.declared) ?: return false
     return string.flag("noValueValidation") == true
 }
 

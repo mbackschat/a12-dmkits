@@ -50,7 +50,11 @@ internal val TrackedDeclaration.isRepeatableGroup: Boolean
 internal val TrackedDeclaration.isRepeatable: Boolean
     get() = isRepeatableIn(body)
 
-// The count A12's reader binds (KF590), so `3.7`, `"\u0663"` and `"\uFF13"` are repeatable; a value it cannot bind
-// leaves no model, and reads here as the default.
-private fun isRepeatableIn(body: JsonObject?): Boolean =
-    ((body?.get("repeatability") as? JsonPrimitive)?.boundRepetitionCount() ?: 1) > 1
+private fun isRepeatableIn(body: JsonObject?): Boolean = repetitionCountIn(body) > 1
+
+/**
+ * The repetition count A12's reader binds from a declaration's body (KF590), so `3.7`, `"\u0663"` and
+ * `"\uFF13"` are repeatable; a value it cannot bind leaves no model, and reads here as the default of one.
+ */
+internal fun repetitionCountIn(body: JsonObject?): Int =
+    (body?.get("repeatability") as? JsonPrimitive)?.boundRepetitionCount() ?: 1

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
+import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -11,14 +12,8 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** Comparison arms consume child results once; KF382–KF387 settle their order and direct-read boundaries. */
 internal fun OperationAnalysis.comparisonFinding(shape: ComparisonShape): Finding? {
-    fun operand(left: Boolean): OperationShape? {
-        val tokens = if (left) shape.left else shape.right
-        val first = tokens.firstOrNull { it.kind != io.github.mbackschat.a12.dm.consistency.syntax.TokenKind.COMMENT }
-        val last = tokens.lastOrNull { it.kind != io.github.mbackschat.a12.dm.consistency.syntax.TokenKind.COMMENT }
-        return recognition.operations.lastOrNull { it.at == first?.start && it.end == last?.end }
-    }
-    val leftShape = operand(true) ?: return null
-    val rightShape = operand(false) ?: return null
+    val leftShape = recognition.operations.spanning(shape.left) ?: return null
+    val rightShape = recognition.operations.spanning(shape.right) ?: return null
     val (left, right) = baseYearResolved(shape.operator.text, value(leftShape), value(rightShape)) ?: return null
     val comparison = ConditionComparison(written(leftShape), shape.operator.text, shape.operator.start,
         written(rightShape), leftShape.at, rightShape.end)

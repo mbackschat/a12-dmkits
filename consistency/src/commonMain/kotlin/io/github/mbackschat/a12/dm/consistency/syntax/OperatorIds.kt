@@ -9,6 +9,15 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * never hand-edited.
  */
 
+/**
+ * Each language's operator spellings back to their catalog ids, built once from [CONDITION_OPERATOR_KEYWORDS].
+ *
+ * That table runs from id to spelling because only that direction is a function: where two ids share a
+ * spelling (`Valid` for `Valid` and `ValidType`), the id listed later wins here.
+ */
+internal val CONDITION_OPERATOR_IDENTITIES: Map<ConditionLanguage, Map<String, String>> =
+    CONDITION_OPERATOR_KEYWORDS.mapValues { (_, spellings) -> spellings.entries.associate { (id, spelling) -> spelling to id } }
+
 internal const val SEMANTIC_INDEX = "SemanticIndex"
 
 internal const val HAVING = "Having"

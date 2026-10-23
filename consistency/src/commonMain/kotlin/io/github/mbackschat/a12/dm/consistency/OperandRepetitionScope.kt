@@ -273,7 +273,7 @@ internal fun TrackedFactBase.levelClassOf(
  */
 internal fun TrackedFactBase.readsOneRow(path: String, targetGroup: String): Boolean =
     repetitionsReachedBy(path).all { level ->
-        targetGroup == level.path || targetGroup.startsWith("${level.path}/") ||
+        targetGroup.isAtOrBelow(level.path) ||
             !level.path.startsWith("$targetGroup/") && parallelVerdictOf(level, targetGroup) == ParallelVerdict.Joint
     }
 

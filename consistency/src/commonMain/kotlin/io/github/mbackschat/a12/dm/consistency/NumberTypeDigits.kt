@@ -35,7 +35,8 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
-        unbindableBoundFindings(field, body).takeIf { it.isNotEmpty() }?.let { return@flatMap it }
+        val unbindable = unbindableBoundFindings(field, body)
+        if (unbindable.isNotEmpty()) return@flatMap unbindable
         val digits = DigitCounts.of(body)
         memberRangeFindings(field, body.lengthMembers(admitsUndefined = false) + digits.ranged) +
             digitPairFindings(field, digits) + valueRangeFindings(field, body) + budgetFindings(field, body, digits)
@@ -127,16 +128,16 @@ private class DigitCounts(val integer: RangedMember?, val minFractional: RangedM
 
     companion object {
         fun of(body: JsonObject): DigitCounts {
-            val maxFractional = body.int("maxFractionalDigits") ?: 0
+            val maxFractional = fractional(body, "maxFractionalDigits")
             val declared = body.int("maxIntegerDigits")
             val integer = when {
                 declared != null -> RangedMember("`maxIntegerDigits` $declared", declared, MemberRange.INTEGER_PLACES)
-                body.string("trait") == "amount" -> (DIGIT_BUDGET - maxFractional).let {
+                body.string("trait") == "amount" -> (DIGIT_BUDGET - maxFractional.value).let {
                     RangedMember("$it integer places (derived by A12 as `15 - maxFractionalDigits`)", it, MemberRange.INTEGER_PLACES)
                 }
                 else -> null
             }
-            return DigitCounts(integer, fractional(body, "minFractionalDigits"), fractional(body, "maxFractionalDigits"))
+            return DigitCounts(integer, fractional(body, "minFractionalDigits"), maxFractional)
         }
 
         private fun fractional(body: JsonObject, member: String): RangedMember =
@@ -286,8 +287,8 @@ private fun arityFindings(field: TrackedDeclaration, digits: DigitCounts): List<
  * whether a fractional part is declared and stay silent when that is unknown ([DigitCounts.fractionalPart]).
  */
 private fun lengthFindings(field: TrackedDeclaration, body: JsonObject, digits: DigitCounts): List<Finding> {
-    val min = body.declaredLength("minLength")
-    val max = body.declaredLength("maxLength")
+    val min = body.lengthInRange("minLength")
+    val max = body.lengthInRange("maxLength")
     val minFractional = digits.minFractional.value
     val positivesOnly = body.flag("positivesOnly")
     val signed = positivesOnly != true
@@ -334,8 +335,6 @@ private fun lengthFindings(field: TrackedDeclaration, body: JsonObject, digits: 
 
 /** A fractional count as the threshold reads it: the suppression sentinel spends nothing. */
 private fun declaredPlaces(count: Int): Int = if (count == SUPPRESSED) 0 else count
-
-private fun JsonObject.declaredLength(member: String): Int? = lengthInRange(member)
 
 /** The `NumberType` body this field declares, or null when it declares another type or none. */
 private fun TrackedDeclaration.numberTypeBody(): JsonObject? {

@@ -475,15 +475,14 @@ fun prepare(
     val baseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
     return PreparedModel(
         elements = collector.elements,
-        fieldRefByShortNameAllowed = collector.flag(content),
+        fieldRefByShortNameAllowed = content.fieldRefByShortNameAllowed(),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = content.declaredSupportedCharacters(),
         hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
-        unbindableBaseYear = baseYear?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
-            ?.toString(),
+        unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
         reachedModelRefusals = definitions.reachedModelRefusals,
         unexpandedMounts = collector.unexpandedMounts,
@@ -520,11 +519,24 @@ private data class ClosureReading(
 )
 
 /** A model's own members A12's reader cannot bind: its base year, then its three `boolean`s. */
-private fun JsonObject?.unbindableModelMembers(): List<String> {
-    val baseYear = (this?.get("modelInfo") as? JsonObject)?.get("baseYear")
-        ?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
-    return listOfNotNull(baseYear?.let { "`content.modelInfo.baseYear` holds `$it`" }) + unbindableModelBooleans()
-}
+private fun JsonObject?.unbindableModelMembers(): List<String> =
+    listOfNotNull(unbindableBaseYear()?.let { "`content.modelInfo.baseYear` holds `$it`" }) + unbindableModelBooleans()
+
+/** The model's base year where it is present and A12's reader cannot bind it, for the entry and a reached model alike. */
+private fun JsonObject?.unbindableBaseYear(): JsonElement? = (this?.get("modelInfo") as? JsonObject)?.get("baseYear")
+    ?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
+
+/**
+ * `fieldRefByShortNameAllowed`, read through A12's own POJO binding — never a raised conversion.
+ *
+ * Every spelling A12 accepts must be accepted here, in both directions: reading a capitalized `"True"` as off
+ * would report `MVK_INVALID_ENTITY` for every bare reference A12 resolves through the model-wide tier, and
+ * reading `1.5` as anything at all would analyse a model that does not deserialize. [configFlag] carries the
+ * measured table. An unreadable value reads as off here, because it is reported as the source refusal it is,
+ * through [PreparedModel.unbindableBooleans].
+ */
+private fun JsonObject?.fieldRefByShortNameAllowed(): Boolean =
+    configFlag((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
 
 /** The model's own two `boolean` holders' members, as [PreparedModel.unbindableBooleans] spells them. */
 private fun JsonObject?.unbindableModelBooleans(): List<String> = MODEL_BOOLEAN_MEMBERS.mapNotNull { (owner, member) ->
@@ -960,25 +972,6 @@ private class Collector(
             null -> Unit
             is JsonArray -> value.forEach(body)
             else -> malformed(at, "$what must be a JSON array", scope)
-        }
-    }
-
-    /**
-     * `fieldRefByShortNameAllowed`, read through A12's own POJO binding — never a raised conversion.
-     *
-     * Every spelling A12 accepts must be accepted here, in both directions: reading a capitalized `"True"`
-     * as off would report `MVK_INVALID_ENTITY` for every bare reference A12 resolves through the model-wide
-     * tier, and reading `1.5` as anything at all would analyse a model that does not deserialize. [configFlag]
-     * carries the measured table; the unreadable case is diagnosed here because it is a member of the SOURCE
-     * rather than of a declaration.
-     */
-    fun flag(content: JsonObject?): Boolean {
-        val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
-        return when (configFlag(declared)) {
-            ConfigFlag.ON -> true
-            ConfigFlag.OFF -> false
-            // Reported as the source refusal it is, through [PreparedModel.unbindableBooleans].
-            ConfigFlag.UNREADABLE -> false
         }
     }
 

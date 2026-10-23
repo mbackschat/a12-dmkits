@@ -1,8 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
@@ -10,6 +11,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
+import io.github.mbackschat.a12.dm.consistency.syntax.encloses
+import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -49,7 +52,7 @@ internal data class OperationValue(
     fun derived() = copy(field = null, constant = null, baseYear = null, typedBy = null, domainConstant = null)
 
     /** The same value behind a brace: no longer an immediate read or literal, still typed and still constant. */
-    fun braced() = derived().copy(typedBy = typedBy, domainConstant = domainConstant)
+    fun braced() = copy(field = null, constant = null, baseYear = null)
 }
 
 /**
@@ -69,8 +72,9 @@ internal class OperationAnalysis(
 ) {
     val text = carrier.text
     private val group = element.path.substringBeforeLast('/')
-    private val identities = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
-        .entries.associate { (id, spelling) -> spelling to id }
+    private val identities = CONDITION_OPERATOR_IDENTITIES.getValue(facts.conditionLanguage)
+    /** Each text's `Having` bodies, read once however many shifts it holds. */
+    private val filterBodies = mutableMapOf<String, List<OperandClause>>()
     private val values = mutableMapOf<OperationShape, OperationValue>()
     val contributions = mutableListOf<ConditionFinding>()
     val findings: List<Finding> get() = contributions.map { it.finding }
@@ -297,7 +301,9 @@ internal class OperationAnalysis(
 
     /** The date [call] shifts, typed as its declared field, where A12 admits the shift and this reader judges it. */
     private fun shifted(call: CallShape): OperationValue = with(facts) {
-        admittedShiftField(call.asCall(conditionLanguage), group, element)?.let { field(it).derived() } ?: UNKNOWN
+        val bodies = filterBodies.getOrPut(call.source) { filterBodiesIn(call.source, conditionLanguage) }
+        admittedShiftField(call.asCall(conditionLanguage, bodies.any { it.encloses(call.at, call.end) }), group, element)
+            ?.let { field(it).derived() } ?: UNKNOWN
     }
 
     private fun numericAggregate(values: List<OperationValue>, product: Boolean = false): OperationValue {

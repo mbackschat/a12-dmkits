@@ -98,8 +98,8 @@ private fun lengthFindings(
     body: JsonObject,
     orderingCode: String = "MVK_MIN_LENGTH_BIGGER_MAX_LENGTH",
 ): List<Finding> {
-    val min = body.declaredLength("minLength")
-    val max = body.declaredLength("maxLength")
+    val min = body.lengthInRange("minLength")
+    val max = body.lengthInRange("maxLength")
     val findings = mutableListOf<Finding>()
     if (min != null && max != null && min > max) {
         findings += finding(
@@ -142,7 +142,7 @@ private fun TrackedDeclaration.customTypeBody(): JsonObject? {
 
 /** Whether the member is declared as something A12 reads as set — the sentinel counts as unset. */
 private fun JsonObject.declares(member: String): Boolean = when (member) {
-    "minLength", "maxLength" -> declaredLength(member) != null
+    "minLength", "maxLength" -> lengthInRange(member) != null
     else -> this[member] != null
 }
 
@@ -153,7 +153,6 @@ private fun JsonObject.declares(member: String): Boolean = when (member) {
  * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused. A member
  * outside A12's metamodel range is no bound either: A12 refuses it on its own and judges nothing else with it.
  */
-private fun JsonObject.declaredLength(member: String): Int? = lengthInRange(member)
 
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()
 

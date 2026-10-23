@@ -123,9 +123,6 @@ internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
         }
     }
 
-/** Whether a declared pair lies inside what was put to the kernel, so its range-format verdict is known. */
-private fun JsonObject.rangePairMeasured(): Boolean = unmeasuredRangePair() == null
-
 /** Why a declared pair falls outside what was measured, or null when the pair was judged. */
 private fun JsonObject.unmeasuredRangePair(): String? {
     val format = rangeMember("format", ABSENT_RANGE_FORMAT) ?: return "its `format` is present and is not a string"
@@ -205,15 +202,10 @@ private fun unbindableFieldType(
     // once for the model (`FieldTypeBindingLawsTest`). So the verdict is the type's, not the body's, and
     // nothing about the body can lift it.
     if (type == FieldType.UNSPECIFIED) {
-        return Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            "MVK_UNSPECIFIED_TYPE_NO_CODEGEN",
+        return sentence(field, "MVK_UNSPECIFIED_TYPE_NO_CODEGEN",
             "this field declares `UnspecifiedType`, which A12 reads and then refuses because it can " +
                 "generate no validation code for it — the declaration needs a real type, and no member of " +
-                "the body changes this",
-            field.path,
-        )
+                "the body changes this")
     }
     // Check the required member rather than body emptiness: optional members do not satisfy it (KF308).
     // KF498 measures the filter-sensitive absent-member carriers; explicit null remains unjudged.
@@ -224,7 +216,7 @@ private fun unbindableFieldType(
         // The custom type is the one of the four that reaches a VERDICT rather than dying silently at the
         // build tier, so it carries A12's own class and the others carry this checker's.
         return VERDICT_FOR_ABSENT_MEMBER[type]
-            ?.let { Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, it, explain, field.path) }
+            ?.let { sentence(field, it, explain) }
             ?: unbuildable(field, explain)
     }
     val defaulted = DEFAULTED_BUILD_MEMBER[type]
@@ -267,16 +259,16 @@ private fun dateRangeFindings(field: TrackedDeclaration): List<Finding> {
     val composite = format + separator + format
     if (!composite.namedByA12()) return emptyList()
     if (composite.javaTrimmed().isEmpty()) {
-        return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, "MVK_FORMAT_DATE_RANGE_MISSING",
-            "this range composes the format `$composite` from its format and separator, which is blank", field.path))
+        return listOf(sentence(field, "MVK_FORMAT_DATE_RANGE_MISSING",
+            "this range composes the format `$composite` from its format and separator, which is blank"))
     }
     val separatorFinding = separator.takeIf { it.javaTrimmed() !in RANGE_SEPARATOR_ALPHABET }?.let {
         sentence(field, RK_DATE_RANGE_SEPARATOR_INVALID, "the range separator `$it` is not `-` or `/`")
     }
-    val formatFinding = if (separator in ADMITTED_RANGE_SEPARATORS[format].orEmpty() || !body.rangePairMeasured()) {
+    val admitted = ADMITTED_RANGE_SEPARATORS[format]
+    val formatFinding = if (admitted != null && separator in admitted || body.unmeasuredRangePair() != null) {
         null
     } else {
-        val admitted = ADMITTED_RANGE_SEPARATORS[format]
         val admits = when {
             admitted == null -> "`$format` is in no pair A12 admits"
             admitted.isEmpty() -> "A12 admits `$format` on a range with none of the separators it has been measured with"
