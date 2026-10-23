@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 internal fun TrackedFactBase.outerMarkerContributions(element: TrackedDeclaration): List<ConditionFinding> {
-    if (element.declaredKind != DeclaredKind.RULE) return emptyList()
+    if (element.declaredKind != DeclaredKind.RULE && element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
     return entityContributions(element, EntityCheck.OUTER_MARKER) { entity, span ->
         if (entity.path.first().text != "$" || entity.inFilter) return@entityContributions null
         val written = normalizedPath(entity.path.drop(1))
@@ -34,9 +34,10 @@ internal fun TrackedFactBase.outerMarkerContributions(element: TrackedDeclaratio
  * ([filterBodyGateFindings]). That is a different family's class and this one stays out of it — which is why
  * the measured grid carries the marker inside a filter twice, alone and beside an in-scope reference.
  *
- * **Rules only.** Every measured row is a rule condition. `isInFilterCondition` is parser state that a
- * computation's own slots have not been measured against here, and the calculation module refuses several
- * constructs outright, so a computation carrying a marker is left alone rather than judged on transfer.
+ * **Rules and computations alike.** A computation's operation and its precondition meet the same positional
+ * gate: a marker outside a filter draws this class there, a marked path naming nothing still draws
+ * `MVK_INVALID_ENTITY` first, and a marker inside a filter is left to the body's own gates
+ * (`adapter.laws.CheckerOuterMarkedResidueAgreementTest`, [KERNEL-FINDINGS KF599]).
  */
 internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> =
     declarations().flatMap { outerMarkerContributions(it) }.map { it.finding }

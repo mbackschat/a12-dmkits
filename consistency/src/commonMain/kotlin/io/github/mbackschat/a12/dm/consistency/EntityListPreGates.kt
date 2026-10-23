@@ -212,6 +212,8 @@ internal data class ListOperand(
  * A12's identity is four components rather than one — resolved path, category projection, semantic index and
  * the `$` outer flag (KERNEL-FINDINGS kf439) — so such an operand is differently KEYED, not unjudgeable.
  *
+ * **A `$`-captured operand is read too**, keyed by its marker (KERNEL-FINDINGS KF599).
+ *
  * **Every OTHER unreducible operand still silences the list, and that is the measured basis rather than
  * caution.** A categorized operand is the case that proves it: A12 answers `MVK_CATEGORY_NOT_ALLOWED` for
  * `NumberOfDifferentValues(Severity -> Band, Notes, Notes)` — its category bar runs ahead of the duplicate

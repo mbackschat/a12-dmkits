@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Which repetitions an operand may cross unstarred, given where the rule's error field — or the
@@ -209,8 +210,8 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
  * ([filtered]). On a group the index classes are measured on those carriers, for the group's own level and for
  * one above a starred group: the missing index (`rulekit.validate.laws.GroupOperandRepetitionScopeLawsTest`,
  * `…ComputationStarBindingLawsTest`), and the index of another name or type beside a keyed error field
- * (`…KeyedParallelGroupOperandLawsTest`). `MVK_MULTIPLE_INDEX_FIELDS` is not measured on a group, so it is
- * left unjudged there rather than given a field's.
+ * (`…KeyedParallelGroupOperandLawsTest`), and two keyed groups on the operand's own chain on four group carriers,
+ * marked or not (`adapter.laws.CheckerOuterMarkedResidueAgreementTest`).
  *
  * @param filtered whether [written] is the base of a `Having` filter.
  * @param keyed whether [written] is the value of a key the index chain admits.
@@ -266,6 +267,7 @@ private val GROUP_PARALLEL_CLASSES = setOf(
     "MVK_ERROR_FIELD_NO_INDEX",
     "MVK_ERROR_FIELD_INVALID_INDEX",
     "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
+    MULTIPLE_INDEX_FIELDS,
 )
 
 /**
@@ -321,13 +323,26 @@ internal fun TrackedFactBase.parallelVerdictOf(
     }
     val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
         ?: return ParallelVerdict.Unjudged
-    val operandClass = operandIndex.declaredFieldType()?.baseTypeClass ?: return ParallelVerdict.Unjudged
-    val targetClass = targetIndex.declaredFieldType()?.baseTypeClass ?: return ParallelVerdict.Unjudged
+    val operandClass = indexBaseTypeClassOf(operandIndex) ?: return ParallelVerdict.Unjudged
+    val targetClass = indexBaseTypeClassOf(targetIndex) ?: return ParallelVerdict.Unjudged
     return if (operandClass == targetClass) {
         ParallelVerdict.Joint
     } else {
         ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX_TYPE")
     }
+}
+
+/**
+ * The base type an index field is matched by. A field typed through a type definition is matched by that
+ * definition's own type: a definition of a string joins a plain string index, and one of a number refuses a
+ * string one (`adapter.laws.CheckerOuterMarkedResidueAgreementTest`).
+ */
+private fun TrackedFactBase.indexBaseTypeClassOf(index: TrackedDeclaration): BaseTypeClass? {
+    val type = index.declaredFieldType() ?: return null
+    if (type != FieldType.TYPE_DEF) return type.baseTypeClass
+    val id = index.boundTypeDefinitionId() ?: return null
+    val defined = (typeDefinitionBody(id)?.get("fieldType") as? JsonObject)?.namedFieldType() ?: return null
+    return defined.takeIf { it != FieldType.TYPE_DEF }?.baseTypeClass
 }
 
 /** Every group at or above [path] that declares an index field — A12's `getIndexGroup` walk. */

@@ -45,9 +45,10 @@ internal fun CallShape.inAFilterBody(language: ConditionLanguage): Boolean =
  * @param end the offset just past the closing parenthesis: where the call has been read, which is where A12
  *     runs the operator's own check.
  * @param inAFilterBody whether a `Having` body holds the call, at any depth. A12 judges an operand gate there as
- *     outside one, with every repetition its operands cross addressed: which levels the body reads is the
- *     filter chain's question, asked after the body, the same rule a comparison follows ([ConditionComparison])
- *     and measured for every operand family (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`).
+ *     outside one, with every repetition an unmarked operand crosses addressed: which levels the body reads is
+ *     the filter chain's question, asked after the body, the same rule a comparison follows ([ConditionComparison])
+ *     and measured for every operand family (`rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). A
+ *     `$`-marked operand is addressed by the rule's own iteration instead (KERNEL-FINDINGS KF599).
  */
 data class ConditionCall(
     val operator: String,

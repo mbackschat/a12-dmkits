@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * A `$`-marked operand inside a `Having` body, on every operand family that reads a call operand: A12 judges the
- * marked reference with the gates an unmarked one meets, addressed by the enclosing rule's own iteration
- * (KERNEL-FINDINGS KF599).
+ * A `$`-marked operand inside a `Having` body, on the operand families this grid covers: A12 judges the marked
+ * reference with the gates an unmarked one meets, addressed by the enclosing rule's own iteration
+ * (KERNEL-FINDINGS KF599). The families it does not reach are `CheckerOuterMarkedResidueAgreementTest`'s.
  *
  * Each body is measured twice. [ALONE] makes it the whole filter, so a sound marked operand meets the filter-end
  * gate (`MVK_NO_ITERATION_FOR_WILDCARD`, since nothing unmarked reopens the starred level) and a defective one
@@ -83,6 +83,11 @@ class CheckerOuterMarkedOperandAgreementTest {
                 put("$body, alone", Row("Items/Count", ALONE.format(body), listOf(FILTER_END)))
                 put("$body, beside", Row("Items/Count", BESIDE.format(body), emptyList()))
             }
+            /** An operand admitted in both carriers, the unmarked one reopening the starred level. */
+            fun admitted(body: String) {
+                put("$body, alone", Row("Items/Count", ALONE.format(body), emptyList()))
+                put("$body, beside", Row("Items/Count", BESIDE.format(body), emptyList()))
+            }
             fun outside(errorField: String, condition: String, vararg a12: String) =
                 put("$condition, on $errorField", Row(errorField, condition, a12.toList()))
 
@@ -124,11 +129,13 @@ class CheckerOuterMarkedOperandAgreementTest {
             sound("AtLeastOneFieldFilled(\$Items*/Code, \$Items*/Code)")
             defect("AtLeastOneFieldFilled(\$Items, Items/Code)", "MVK_DUPLICATE_PARAM2")
             defect("AtLeastOneFieldFilled(\$Items, \$Items/Code)", "MVK_DUPLICATE_PARAM2")
+            // Relative to `/Customer`, a marked `Customer` names nothing, so resolution answers; the marked root
+            // group itself (`$/Customer`) is the residue grid's.
             defect("AtLeastOneFieldFilled(\$Customer)", "MVK_INVALID_ENTITY")
             defect("NumberOfValueInFields(\"a\" In \$Items/Code, \$Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
             defect("NumberOfValueInFields(\"a\" In Items/Code, Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
             // The unmarked operand reopens the starred level, so the filter-end gate is satisfied alone too.
-            defect("NumberOfValueInFields(\"a\" In \$Items/Code, Items/Code) > 0")
+            admitted("NumberOfValueInFields(\"a\" In \$Items/Code, Items/Code) > 0")
             defect("FieldValuesNotUnique(\$Items/Code, Items/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
             defect("FieldValuesNotUnique(\$Items*/Code, Items*/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
             defect("FieldValuesNotUnique(\$Items/Code, \$Items/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")

@@ -119,6 +119,8 @@ private class ParallelOperand(
     val at: String,
     val repeats: Boolean,
     val lowestUnstarred: Boolean,
+    /** Whether the operand carries the `$` marker, which makes it a different operand from its unmarked twin. */
+    val outerMarked: Boolean,
 )
 
 /**
@@ -139,7 +141,8 @@ private fun TrackedFactBase.readOperand(
     element: TrackedDeclaration,
     filterKeyword: String,
 ): ParallelOperand? {
-    val written = operand.base ?: operand.capturedPath(conditionLanguage) ?: return null
+    val captured = operand.capturedPath(conditionLanguage)
+    val written = operand.base ?: captured ?: return null
     val filters = operand.clauses.filter { it.keyword == filterKeyword }
     if (filters.size != operand.clauses.size || filters.any { it.text.contains('*') }) {
         return null
@@ -162,6 +165,7 @@ private fun TrackedFactBase.readOperand(
         field.path,
         repeats = levels.isNotEmpty(),
         lowestUnstarred = levels.lastOrNull()?.let { it !in starred } == true,
+        outerMarked = operand.base == null && captured != null,
     )
 }
 
@@ -172,8 +176,9 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     // (`rulekit.validate.laws.SumOfProductsLawsTest`, the filter on the right after a two-level left operand).
     left.filtered || left.stars > 1 -> wildcardClassOf(left, right)
     right.filtered || right.stars > 1 -> wildcardClassOf(right, left)
-    // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of these gates.
-    left.stars == 0 && right.stars == 0 && left.at == right.at -> null
+    // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of these gates; the marker
+    // is part of an operand's identity, so a marked and an unmarked twin are two operands ([KERNEL-FINDINGS KF599]).
+    left.stars == 0 && right.stars == 0 && left.at == right.at && left.outerMarked == right.outerMarked -> null
     !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
     left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
     else -> null

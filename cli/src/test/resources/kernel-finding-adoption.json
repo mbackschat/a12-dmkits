@@ -724,7 +724,7 @@
      }
     },
     "kf599": {
-     "sha256": "c81480a661987848796c7fbb023f89410b5dbab7ce49e10765a73ca218a025cc",
+     "sha256": "9e9a34f3ed187c25e31a93006d62161f20b0f47b3a7953c6c3aa0d49b6b1bbc5",
      "task": "M1",
      "scope": {
       "dmkits": [],
@@ -774,6 +774,78 @@
        "evidence": {
         "A12's operand gates on a marked operand": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the finding's table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Not yet handed over.",
+       "evidence": {}
+      }
+     }
+    },
+    "kf602": {
+     "sha256": "c3b29d87e638b138f8f29aecc769d69c6887c4cde17b491198fe50c40dbc1b22",
+     "task": "SS1",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "the parallel walk on a type-defined index and a doubly keyed group operand"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's parallel-level classes on type-defined and nested keys"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's parallel-level classes on type-defined and nested keys"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "Whether a rule is admitted is the kernel's or the checker's answer; the kits author the condition without judging it.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The parallel walk compares a type-defined index by the type its definition declares, and names the multiple-index class on a group operand as on a field.",
+       "evidence": {
+        "the parallel walk on a type-defined index and a doubly keyed group operand": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedResidueAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker names A12's class on every row."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of both carriers.",
+       "evidence": {
+        "A12's parallel-level classes on type-defined and nested keys": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedResidueAgreementTest.kt#a12AnswersEveryRowAsPinned",
          "witness": "A12 answers every row as the finding's table states."
         }
        }

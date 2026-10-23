@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.maxLengthDeclaration
 
 /**
@@ -63,7 +64,8 @@ private fun TrackedFactBase.rawTypeRead(
 ): String? = callsIn(text, conditionLanguage, syntaxEntryOf(member))
     .filter { it.operator == length }
     .firstNotNullOfOrNull { call ->
-        val written = call.operands.singleOrNull()?.path ?: return@firstNotNullOfOrNull null
+        val operand = call.operands.singleOrNull() ?: return@firstNotNullOfOrNull null
+        val written = operand.path ?: operand.capturedPath(conditionLanguage) ?: return@firstNotNullOfOrNull null
         val resolved = resolveEntity(declaringGroup, written, origin) as? Reference.Resolved
             ?: return@firstNotNullOfOrNull null
         resolved.path.takeIf { isRawType(it) }

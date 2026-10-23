@@ -607,8 +607,10 @@ internal data class OperandReference(
 /**
  * [text] reduced to the reference an operand gate reads, or null wherever this reader may not reduce it.
  *
- * A text that writes no semantic index is [plain]'s to reduce, so each family keeps the reduction it was
- * measured with. One that writes an index is read HERE and nowhere else, because A12 judges the key before any
+ * A text opened by the `$` outer marker is read HERE first, into a reference flagged [OperandReference.outerMarked],
+ * so every family meets the marked operand alike (KERNEL-FINDINGS KF599). Any other text that writes no semantic
+ * index is [plain]'s to reduce, so each family keeps the reduction it was measured with. One that writes an index
+ * is read HERE and nowhere else, because A12 judges the key before any
  * operand gate: a defective key answers with its own class, and a sound one addresses the level it keys
  * exactly as the declaration's iteration would, in every operand family measured
  * ([KERNEL-FINDINGS KF476], `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`). So the key is honoured
@@ -636,8 +638,9 @@ private fun TrackedFactBase.keyedReferenceIn(
     keepsCategory: Boolean,
     plain: () -> OperandReference?,
 ): OperandReference? {
-    // Read here rather than by each family's own reduction, every one of which refused the marker and left a
-    // marked operand unjudged on every gate A12 asks of it (KERNEL-FINDINGS KF599).
+    // Read here rather than by each family's own reduction: a path reduction refused the marker and left the
+    // operand unjudged, while a family reading through `referencesIn` got the path without its marker, so as an
+    // unmarked operand addressed by the body (KERNEL-FINDINGS KF599).
     outerMarkedPathIn(text, conditionLanguage)?.let { return OperandReference(it, outerMarked = true) }
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
     val inner = text.withoutEnclosingBrackets()
@@ -759,8 +762,10 @@ internal fun isBareEntitySpec(text: String): Boolean {
  *     above it is addressed only by the rule's iteration, a star there being `MVK_SEMANTIC_INDEX_BELOW_WILDCARD`
  *     ([KERNEL-FINDINGS KF351]), and an index group that is the root or a fixed group addresses no repetition
  *     at all. A path with a second indexed group is never admitted.
- * @param everyLevelAddressed whether the read sits in a `Having` body, where the repetitions it crosses are the
- *     filter chain's question, asked after everything in the body ([ConditionComparison.inAFilterBody]).
+ * @param everyLevelAddressed whether the body addresses the read's levels: true for an unmarked read in a
+ *     `Having` body, where the repetitions it crosses are the filter chain's question, asked after everything in
+ *     the body ([ConditionComparison.inAFilterBody]); false for a `$`-marked one, which the rule's iteration
+ *     addresses (KERNEL-FINDINGS KF599).
  *
  * Neither flag has a default: a caller that forgot one read a keyed or a body read as unaddressed and stood
  * down silently, which is how two whole classes of operand gate went unjudged (DEV-API-GAPS DG92, DG95).

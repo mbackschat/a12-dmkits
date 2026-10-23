@@ -14469,7 +14469,7 @@ So a `Date` slot asks whether it names a field before it asks about a star: the 
 
 *Locked by:* `adapter.laws.CheckerGroupAndStarOperandAgreementTest` (every row above, with A12 pinned and the checker agreeing) and `adapter.laws.CheckerNearMissSweepTest`, whose ledger these three carriers empty.
 
-## §9 supplement — a `$`-marked operand in a `Having` body meets every gate an unmarked one does, addressed by the rule's own iteration, and an addressed repeatable group is the group class whether starred or not (kernel `checkConsistency`, 2026-10-23) <a id="kf599"></a>
+## §9 supplement — a `$`-marked operand in a `Having` body meets the gates an unmarked one does in every family measured, addressed by the rule's own iteration, and an addressed repeatable group is the group class whether starred or not (kernel `checkConsistency`, 2026-10-23) <a id="kf599"></a>
 
 > Fold: pending — beside [KF598](#kf598) (the marked `CurrentRepetition`) and [KF395](#kf395) (the value operators).
 
@@ -14509,9 +14509,32 @@ A shop customer: `BirthMonth` and `BirthYear`, and `Items`, repeating 20 times, 
 | `FieldFilled(BirthYear) And AtLeastOneFieldFilled(Items*/Count Having RangeAsString($Items, 1, 3) == "a")`, or with the body `[Items/Count] > 0 And RoundUpValue($Items, 2) > 0`, or `[Items/Count] > 0 And Valid(Date($Items, BirthMonth, BirthYear))` (`BirthYear`) | `MVK_NO_WILDCARD` |
 | `FieldFilled(BirthYear) And AtLeastOneFieldFilled(Items*/Count Having RangeAsString(Items, 1, 3) == "a")` (`BirthYear`) | `MVK_NO_GROUPS_ALLOWED` |
 
-So every operand family measured judges a marked operand with the gates it asks of an unmarked one, in the same order: the defective rows name the family's own class in both carriers, ahead of the filter-end gate. The sound rows separate the two readings of the marker. A marked operand does not reopen the starred level (alone, the filter-end gate answers), but it is a sound operand (beside an unmarked read, it is admitted). It is addressed by the rule's iteration, not the body's: in a rule iterating nothing, the marked group draws the reference reader's `MVK_NO_WILDCARD`, while the same group unmarked in the same body is addressed and draws the group class (the last two rows). The two duplicate tests of an entity list read the marker differently. The repeat test counts it ([kf439](#kf439)): `Sum(Items/Code, Items/Code)` is a duplicate, while the same pair with one operand marked is two operands and reaches the type gate, and two marked twins repeat. The containment test ignores it: `$Items` holds `Items/Code`. A field named twice through a star is no repeat at all, marked or not. A repetition key may not be read inside a filter, so the repetition-key gates never meet a marked operand. The operation arm of `RoundUp` takes no entity spec, so the marker is a syntax error there. Two of the families once stood down on an unmarked, unstarred repeatable group, on the guess that the reference reader answers it. These rows refute that guess: wherever something addresses the group, the answer is the group class, starred or not, inside a body or outside it. Where nothing addresses it, the answer is `MVK_NO_WILDCARD`, which the reader already gives.
+So every operand family measured judges a marked operand with the gates it asks of an unmarked one, in the same order: the defective rows name the family's own class in both carriers, ahead of the filter-end gate. The sound rows separate the two readings of the marker. A marked operand does not reopen the starred level (alone, the filter-end gate answers), but it is a sound operand (beside an unmarked read, it is admitted). It is addressed by the rule's iteration, not the body's: in a rule iterating nothing, the marked group draws the reference reader's `MVK_NO_WILDCARD`, while the same group unmarked in the same body is addressed and draws the group class (the last two rows). The two duplicate tests of an entity list read the marker differently. The repeat test counts it ([kf439](#kf439)): `Sum(Items/Code, Items/Code)` is a duplicate, while the same pair with one operand marked is two operands and reaches the type gate, and two marked twins repeat. The containment test ignores it: `$Items` holds `Items/Code`. A field named twice through a star is no repeat at all, marked or not. A repetition key may not be read inside a filter, so a single marked key never reaches the key's own gates. *Corrected 2026-10-23:* this sentence first said those gates never meet a marked operand at all, but the list's duplicate tests run before the construct gate, so `RepetitionNotUnique($Items/Code, $Items/Code)` is `MVK_DUPLICATE_PARAM1` and `RepetitionNotUnique($Items, Items/Code)` is `MVK_DUPLICATE_PARAM2`, alone and beside alike. The operation arm of `RoundUp` takes no entity spec, so the marker is a syntax error there. Two of the families once stood down on an unmarked, unstarred repeatable group, on the guess that the reference reader answers it. These rows refute that guess: wherever something addresses the group, the answer is the group class, starred or not, inside a body or outside it. Where nothing addresses it, the answer is `MVK_NO_WILDCARD`, which the reader already gives.
 
-*Locked by:* `adapter.laws.CheckerOuterMarkedOperandAgreementTest` (every row above, with A12 pinned and the checker agreeing).
+The families the first grid did not reach answer the same way. The same customer, with `Items` also holding a raw-type `RawCode` (a string with `noValueValidation`), an enumeration `Tier` with the category `Band`, a date range `Window` and a date `ShipOn`, and the keyed groups `Parcels` and `Returns`, both keyed by `Label`, beside it. Every body is beside an unmarked read:
+
+| body | A12 |
+|---|---|
+| `NoFieldValueIncludedInValueList($Items/Code, $Items/Code In "a")`, and unmarked; `DateRangesOverlap($Items/Window, $Items/Window)`, and unmarked; `AtLeastOneDateRangeOverlaps($Items/Window IN $Items/Window)` | `MVK_DUPLICATE_PARAM1` |
+| `AtLeastOneFieldValueIncludedInValueList($Items/Code, Items/Code In "a")`, `MaxValue($Items*/Count) > 0`, `NumberOfDifferentValues($Items*/Code) > 1` | admitted |
+| `MaxValue($Items*/Code) > 0`, `MinValue($Items/Code, Items/Count) > 0` | `MVK_NOT_SORTABLE` |
+| `Length($Items/RawCode) > 1`, and unmarked | `MVK_INVALID_LENGTH_OF_RAW_TYPE` |
+| `SumOfProducts($Items/UnitPrice, Items/UnitPrice) > 0` | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
+| `NumberOfDifferentValues($Items/Tier -> Band, Items/Tier -> Band) > 1`, and unmarked | `MVK_CATEGORY_NOT_ALLOWED` |
+| `RoundUpValue([$Items], 2) > 0`, `RoundUpValue([$Items/UnitPrice], 2) > 0` | `MVK_UNEXPECTED_TOKEN` |
+| `AtLeastOneFieldFilled($/Customer)` | `MVK_ROOT_GROUP_REFERENCED` |
+| `Sum(Items/Code, $Items/Code) > 0` | `MVK_NO_NUMBER` |
+| `AtLeastOneFieldFilled(Items, $Items/Code)` | `MVK_DUPLICATE_PARAM2` |
+| `DayFromDate($Items) > 1`, `AddDays($Items, 1) > "2020-01-01"`, `ValueNotConsistent($Items To "a")` | `MVK_NO_GROUPS_ALLOWED` |
+| `DayFromDate($Items*/ShipOn) > 1` and unmarked, `AddDays($Items*/ShipOn, 1) > "2020-01-01"`, `Valid(Date($Items*/Day, BirthMonth, BirthYear))` and unmarked | `MVK_NO_WILDCARDS_ALLOWED` |
+| `AddDays($Items/ShipOn, 1) > [Items/ShipOn]`, and unmarked | admitted |
+| `ValueNotConsistent($Items/Tier To "a")` | `MVK_TABLE_ENUM_EXPECTED` |
+
+The `SumOfProducts` row is the identity rule applied to the product sum: a marked and an unmarked twin are two operands, so the pair reaches the wildcard gate instead of being one repeated operand. `Sum(Items/Code, $Items/Code)` is the same pair in the other order, and `AtLeastOneFieldFilled(Items, $Items/Code)` is containment with the descendant marked. A group addressed by a constant key (`FieldFilled(BirthYear) And RangeAsString(Parcels For "x", 1, 3) == "a"`, and the same with `ValueAsDate(Parcels For "x", FirstDay)`) or by a joint parallel iteration (`FieldFilled(Parcels/Weight) And RangeAsString(Returns, 1, 3) == "a"`, error field `Parcels/Weight`, and the same with `ValueAsDate`) is `MVK_NO_GROUPS_ALLOWED` as well.
+
+A computation meets the marker's positional gate as a rule does. Computing `Items/UnitPrice`, the operation `RoundUpValue($Items, 2)` or `RoundUpValue($Items/Count, 2)`, or the precondition `FieldFilled($Items/Count)`, draws `MVK_INVALID_OUTER_ITERATION`, and `RoundUpValue($Itemz/Count, 2)` draws `MVK_INVALID_ENTITY` first. Inside a filter the marker passes that gate: `Sum(Items*/Count Having [Items/Count] > 0 And [$Items/Count] > 0)` reaches `MVK_INVALID_COMPARE_DEC_PLACES`, and computing `Total` as `Sum(Items*/Count Having [$Items/Count] > 0)` reaches `MVK_NO_WILDCARD`. A marked read of the computed field itself inside a filter is no self-read: computing `Items/UnitPrice` as `Sum(Items*/UnitPrice Having [$Items/UnitPrice] > 0)`, or `Total` as `Sum(Items*/Count Having [$Total] > 0)`, reaches the filter-end gate `MVK_NO_ITERATION_FOR_WILDCARD`. A marked read in a nested filter (`… Having [Items/Count] > 0 And AtLeastOneFieldFilled(Parcels*/Weight Having [$Items/Count] > 0)`) does too, where the same nested body read unmarked is `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`.
+
+*Locked by:* `adapter.laws.CheckerOuterMarkedOperandAgreementTest` (the first grid) and `…CheckerOuterMarkedResidueAgreementTest` (the rest), every row with A12 pinned and the checker agreeing.
 
 ## §10 supplement — a bracketed field read in `Length`'s or a date difference's entity slot is a token defect, never the field's value (kernel `checkConsistency`, 2026-10-23) <a id="kf600"></a>
 
@@ -14566,3 +14589,21 @@ The second row is refused at `Parts`, which A12's message names: `GroupFilled(Li
 A group reference also marks its own repeatable level in the parallel pass of [KF597](#kf597). In the weekly rota of that finding, with error field `Weeks/Demand/Headcount`, `GroupFilled(Weeks) And FieldFilled(Weeks/Demand/Note) And FieldsNotCollectivelyFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)` draws `MVK_ERROR_FIELD_AND_ITERATION_INVALID`, while the same condition with `GroupFilled(Weeks/Demand)` in place of `GroupFilled(Weeks)` is admitted. Only `Weeks/Demand` contains the error field and iterates the keyed `Demand` level, so it is the one that binds.
 
 *Locked by:* `adapter.laws.CheckerIterationK04AgreementTest` (every row above, a12-kernel-lean's K04 guard and binding rows beside them, A12 pinned and the checker agreeing; `aGroupTargetIsRefusedAtItsOwnLevel` locks the level named).
+
+## §9 supplement — a type-defined index field joins by the type it defines, and two keyed groups on a group operand's chain are the multiple-index class (kernel `checkConsistency`, 2026-10-23) <a id="kf602"></a>
+
+> Fold: pending — beside [KF371](#kf371)'s parallel-level chain and [KF332](#kf332).
+
+A shop customer: `Items`, `Notes`, `Memos` and `Tickets`, each repeating 20 times and keyed by `Code`. The `Code` of `Items` and `Notes` is typed through a type definition of a string, that of `Memos` is a plain string, and that of `Tickets` is typed through a definition of a number. Each row is one rule at `/Customer` with error field `Items/Count`.
+
+| condition | A12 |
+|---|---|
+| `FieldFilled(Items/Count) And FieldFilled(Notes/Text)` | admitted |
+| `FieldFilled(Items/Count) And RangeAsString(Notes, 1, 3) == "a"`, or with `Memos` | `MVK_NO_GROUPS_ALLOWED` |
+| `FieldFilled(Items/Count) And FieldFilled(Tickets/Text)`, or `RangeAsString(Tickets, 1, 3) == "a"` | `MVK_ERROR_FIELD_INVALID_INDEX_TYPE` |
+
+So a type-defined index field is matched by the type its definition declares: a definition of a string joins another one and a plain string, and a definition of a number refuses a string. The `NO_GROUPS` rows show that the walk passed the parallel level, since the group class is the operator's own.
+
+The second carrier keys `Items` and `Notes` by a string `Code`, and `Notes` holds `Pages`, keyed by `PageNo`. With error field `Items/Count`, `FieldFilled(Items/Count) And` each of `FieldFilled(Notes/Pages/Text)`, `GroupFilled(Notes/Pages)`, `AtLeastOneFieldFilled(Notes/Pages)`, `RoundUpValue(Notes/Pages, 2) > 0` and `RangeAsString(Notes/Pages, 1, 3) == "a"` draws `MVK_MULTIPLE_INDEX_FIELDS`, and so does `RangeAsString($Notes/Pages, 1, 3) == "a"` in a body. A group operand meets the class as a field does, ahead of the group carriers' own class.
+
+*Locked by:* `adapter.laws.CheckerOuterMarkedResidueAgreementTest` (every row above, A12 pinned and the checker agreeing).
