@@ -14654,7 +14654,9 @@ An order root holds `Note` and `Qty` (`2` throughout). Each rule names its own c
 | `FieldFilled(Note) Or X` | 1 | 1 | 0 | 0 |
 | `FieldNotFilled(Note) Or X` | 1 | 1 | 2 | 1 |
 | `[Qty] > 1 And X` | 2 | 1 | 2 | 1 |
+| `X And FieldNotFilled(Note)` | 2 | 1 | 1 | 1 |
+| `X Or FieldNotFilled(Note)` | 2 | 2 | 2 | 1 |
 
-So the truth pass short-circuits both connectives: a callback behind a false `And` or a true `Or` is not called. A rule that then holds, and whose constructs enable classification (here `FieldNotFilled` and the value comparison; `FieldFilled` is exempt), re-evaluates every leaf and calls its callback again: two calls when the truth pass reached it, one when it did not (`FieldNotFilled(Note) Or X` with the note empty). The same counts hold per row on a repeating `Lines` carrier whose rules are guarded by `FieldFilled(Lines/Qty)`. A computation cannot carry a callback: A12 refuses `CustomCondition` there (`MVK_ERROR_INVALID_LANGUAGE_FEATURE`, KERNEL-SEMANTICS §14).
+So the truth pass short-circuits both connectives: a callback behind a false `And` or a true `Or` is not called. A rule that then holds, and whose constructs enable classification (here `FieldNotFilled` and the value comparison; `FieldFilled` is exempt), re-evaluates every leaf and calls its callback again: two calls when the truth pass reached it, one when it did not (`FieldNotFilled(Note) Or X` with the note empty). A callback written first is always reached, so it is called twice exactly when the rule holds. The same counts hold per row on a repeating `Lines` carrier whose rules are guarded by `FieldFilled(Lines/Qty)`. A computation cannot carry a callback: A12 refuses `CustomCondition` there (`MVK_ERROR_INVALID_LANGUAGE_FEATURE`, KERNEL-SEMANTICS §14).
 
-*Locked by:* `adapter.laws.CustomConditionCallCountDiffTest` (A12 pinned on the root grid, both strategies agreeing on both carriers' full calls, the interpreter equal full and partial).
+*Locked by:* `adapter.laws.CustomConditionCallCountDiffTest` (A12 pinned on the root grid, its partial call equal to its full one, both strategies agreeing on both carriers' full calls, each line count the sum of the root's two documents, the interpreter equal full and partial).

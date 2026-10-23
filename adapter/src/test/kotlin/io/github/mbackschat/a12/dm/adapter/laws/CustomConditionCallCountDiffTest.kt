@@ -21,8 +21,9 @@ import org.junit.jupiter.api.Test
  * short-circuited on both connectives, reaches it, and once more when the rule holds and its constructs enable the
  * classification pass ([io.github.mbackschat.a12.dm.interpreter.eval.classificationEnabled]).
  *
- * Five rules, each naming its own callback so their counts cannot mix: the callback behind an exempt and an
- * enabling `And`, behind an exempt and an enabling `Or`, and behind a value comparison. The note is empty or filled
+ * Seven rules, each naming its own callback so their counts cannot mix: the callback behind an exempt and an
+ * enabling `And`, behind an exempt and an enabling `Or`, behind a value comparison, and ahead of a negative in an
+ * `And` and an `Or`. The note is empty or filled
  * and the callback answers true or false. The root carrier pins A12's counts; the full pass compares all three
  * engines, the partial pass (root relevant) dynamic Groovy with the interpreter, and a repeating carrier, one rule
  * run per line, all three again. A computation cannot carry a callback: A12 refuses one there
@@ -53,6 +54,8 @@ class CustomConditionCallCountDiffTest {
             "ExemptOr" to guarded(note.filled().or(Dsl.customCondition("ExemptOr"))),
             "EnablingOr" to guarded(note.notFilled().or(Dsl.customCondition("EnablingOr"))),
             "ValueAnd" to guarded(qty.gt(1).and(Dsl.customCondition("ValueAnd"))),
+            "LeftAnd" to guarded(Dsl.customCondition("LeftAnd").and(note.notFilled())),
+            "LeftOr" to guarded(Dsl.customCondition("LeftOr").or(note.notFilled())),
         )
         val model: String = conditions.entries.fold(base) { json, (name, condition) ->
             RuntimeLaws.withRule(json, group, name, if (name == "ValueAnd") "../Qty" else "../Note", name,
@@ -133,13 +136,13 @@ class CustomConditionCallCountDiffTest {
     fun a12CallsACallbackWhereItsTruthPassReachesItAndAgainWhenAHoldingRuleClassifies() {
         assertEquals(mapOf(
             "note=empty,answer=true" to mapOf("ExemptAnd" to 0, "EnablingAnd" to 2, "ExemptOr" to 1, "EnablingOr" to 1,
-                "ValueAnd" to 2),
+                "ValueAnd" to 2, "LeftAnd" to 2, "LeftOr" to 2),
             "note=empty,answer=false" to mapOf("ExemptAnd" to 0, "EnablingAnd" to 1, "ExemptOr" to 1, "EnablingOr" to 1,
-                "ValueAnd" to 1),
+                "ValueAnd" to 1, "LeftAnd" to 1, "LeftOr" to 2),
             "note=filled,answer=true" to mapOf("ExemptAnd" to 1, "EnablingAnd" to 0, "ExemptOr" to 0, "EnablingOr" to 2,
-                "ValueAnd" to 2),
+                "ValueAnd" to 2, "LeftAnd" to 1, "LeftOr" to 2),
             "note=filled,answer=false" to mapOf("ExemptAnd" to 1, "EnablingAnd" to 0, "ExemptOr" to 0, "EnablingOr" to 1,
-                "ValueAnd" to 1),
+                "ValueAnd" to 1, "LeftAnd" to 1, "LeftOr" to 1),
         ), grid(root, Engine.DYNAMIC))
         assertEquals(grid(root, Engine.DYNAMIC), grid(root, Engine.STATIC), "static Java")
         assertEquals(grid(root, Engine.DYNAMIC), grid(root, Engine.DYNAMIC, partial = true), "partial, root relevant")

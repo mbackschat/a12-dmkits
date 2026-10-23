@@ -217,8 +217,11 @@ internal class IterationScopes(private val model: ModelDef) {
         }
         val frameGroup = framed.firstOrNull()
         val deepestFrame = frameGroup?.let { g -> frameAncestors(g).maxByOrNull { pathParts(it).size } }
-        return IterationPlan.Parallel(joined, indexNames.single(), commonParent, frameGroup, deepestFrame,
-            nested = scope.takeIf { it != side })
+        val nested = scope.takeIf { it != side }
+        // The nested level is measured only below a two-group join without a frame (KERNEL-FINDINGS KF603).
+        if (nested != null && (frameGroup != null || joined.size > 2)) throw UnsupportedConstructException(
+            "a level iterated below a joined group of a framed or three-group join ($joined) is not modeled")
+        return IterationPlan.Parallel(joined, indexNames.single(), commonParent, frameGroup, deepestFrame, nested)
     }
 
     private fun indexFieldOf(group: String): String? = model.indexFields.firstOrNull { parentGroup(it) == group }

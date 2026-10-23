@@ -8,7 +8,8 @@
 
 ## 1. Open
 
-_None open._
+- **IG181 — three join-planning branches the batch R cold review read as unreachable or order-dependent (opened 2026-10-23).** <a id="ig181"></a> `IterationScopes.bindsRepeatableGroup`'s `group == plan.nested` arm (a selection resolves to a keyed ancestor, never the unkeyed nested level) and `ParallelRowContext.boundLevelsOf`'s nested arm (parallel partial dispatch goes through `ParallelRuleSelection`) may be dead; `prepare` drops a star anchor equal to the target's own level after choosing the deepest, so a depth tie between stars depends on list order; and `prepareParallel` does not refuse a joined group inside another joined group, which KF602's `MVK_MULTIPLE_INDEX_FIELDS` probably makes unauthorable. Settle each with a mutant against the interpreter lane, and delete or lock it.
+- **IG182 — per-call recomputation on the nested join (opened 2026-10-23).** <a id="ig182"></a> `Document.parallelContexts` rebuilds the nested level's stored-row map and occupancy per call, `ParallelRowContext` allocates its depth table per nested row although it is call-invariant, and `ComputationEngine` re-plans the document-independent `prepareParallel` per run. No timed row covers a nested join; measure one before changing them.
 
 ## 2. Deferred / ongoing-incremental
 

@@ -132,6 +132,44 @@ class PreparedPlanSupportTest {
     }
 
     /**
+     * A level iterated inside each joined row is measured only below a two-group join without a frame, and only
+     * through field reads (KERNEL-FINDINGS KF603): the same nested rule beside a framed side or a third group, and a
+     * group read at the nested level, are declined before any document is read.
+     */
+    @Test
+    fun declinesANestedLevelBeyondTheMeasuredJoin() {
+        val lines = FieldDef("/Plan/A/Lines/Units", Kind.NUMBER)
+        fun nested(condition: String) = parallelModel(condition, setOf("/Plan/A/Key", "/Plan/B/Key"),
+            extraFields = listOf(lines), extraRepeatable = setOf("/Plan/A/Lines"), errorPath = "../A/Lines/Units")
+        assertEquals(emptyList(), DmInterpreter(nested("FieldFilled(A/Lines/Units) And [B/Value] > 0"))
+            .supportAudit().map { it.reason })
+        val groupRead = DmInterpreter(nested("FieldFilled(A/Lines/Units) And [B/Value] > 0 And GroupFilled(A/Lines)"))
+            .supportAudit().map { it.reason }
+        assertTrue(groupRead.any { "non-parallel group" in it }, "$groupRead")
+        val threeGroups = parallelModel("FieldFilled(A/Lines/Units) And [B/Value] > 0 And [C/Value] > 0",
+            setOf("/Plan/A/Key", "/Plan/B/Key", "/Plan/C/Key"),
+            extraFields = listOf(lines, FieldDef("/Plan/C/Key", Kind.STRING), FieldDef("/Plan/C/Value", Kind.NUMBER)),
+            extraRepeatable = setOf("/Plan/A/Lines", "/Plan/C"), errorPath = "../A/Lines/Units")
+        val framed = ModelDef(
+            fields = listOf(
+                FieldDef("/Plan/X/A/Key", Kind.STRING),
+                FieldDef("/Plan/X/A/Lines/Units", Kind.NUMBER),
+                FieldDef("/Plan/B/Key", Kind.STRING),
+                FieldDef("/Plan/B/Value", Kind.NUMBER),
+            ),
+            rules = listOf(RuleDef("/Plan/PAR", "/Plan", "FieldFilled(X/A/Lines/Units) And [B/Value] > 0", "PAR",
+                "../X/A/Lines/Units")),
+            repeatableGroups = setOf("/Plan/X", "/Plan/X/A", "/Plan/X/A/Lines", "/Plan/B"),
+            declaredReps = mapOf("/Plan/X" to 3, "/Plan/X/A" to 10, "/Plan/X/A/Lines" to 10, "/Plan/B" to 10),
+            indexFields = setOf("/Plan/X/A/Key", "/Plan/B/Key"),
+        )
+        for (model in listOf(threeGroups, framed)) {
+            val reasons = DmInterpreter(model).supportAudit().map { it.reason }
+            assertTrue(reasons.any { "framed or three-group join" in it }, "$reasons")
+        }
+    }
+
+    /**
      * **A starred group operand of a group outside the join evaluates from the common parent, so the group-read
      * scan's blindness to it is correct rather than a gap.**
      *
@@ -158,6 +196,7 @@ class PreparedPlanSupportTest {
         indexFields: Set<String>,
         extraFields: List<FieldDef> = emptyList(),
         extraRepeatable: Set<String> = emptySet(),
+        errorPath: String = "../A/Value",
     ) = ModelDef(
         fields = listOf(
             FieldDef("/Plan/A/Key", Kind.STRING),
@@ -165,7 +204,7 @@ class PreparedPlanSupportTest {
             FieldDef("/Plan/B/Key", Kind.STRING),
             FieldDef("/Plan/B/Value", Kind.NUMBER),
         ) + extraFields,
-        rules = listOf(RuleDef("/Plan/PAR", "/Plan", condition, "PAR", "../A/Value")),
+        rules = listOf(RuleDef("/Plan/PAR", "/Plan", condition, "PAR", errorPath)),
         repeatableGroups = setOf("/Plan/A", "/Plan/B") + extraRepeatable,
         declaredReps = mapOf("/Plan/A" to 10, "/Plan/B" to 10) + extraRepeatable.associateWith { 10 },
         indexFields = indexFields,
