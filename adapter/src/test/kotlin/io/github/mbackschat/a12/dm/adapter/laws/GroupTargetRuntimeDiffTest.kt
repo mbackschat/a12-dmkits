@@ -74,6 +74,18 @@ class GroupTargetRuntimeDiffTest {
         }.referenced().contains("/Order[1]/Picks[-5]/Ref"))
     }
 
+    /**
+     * Why no row here can show whether A12 visits a nested row under a pick that has no line: the nested level must
+     * be guarded by its own content, which such a line never has. The one shape that could fire there, an `Or`
+     * reaching the nested level unguarded, is refused.
+     */
+    @Test
+    fun anUnguardedNestedLevelBesideTheJoinIsRefused() {
+        val unguarded = RuntimeLaws.withRule(base, "/Order", "C3", "../Lines/Parts/Count", "C3",
+            RuntimeLaws.render("/Order", count.filled().or(ref.filled())))
+        assertTrue(RuntimeLaws.consistencyMessages(unguarded).any { "MVK_NEG_CONDITION_IN_ITERATION" in it })
+    }
+
     @Test
     fun theInterpreterReportsAsA12OnEveryDocument() {
         val prepared = PreparedModel.loadExpandedJson(rulesModel)

@@ -940,7 +940,7 @@
       }
     },
     "kf603": {
-      "sha256": "debb5ab4e1287b1ac55528bd5ebb8376a701a687089dd89aa542596d8f5b1364",
+      "sha256": "ce272492fef4453b606c8ebb171281832f064c47dad96060d320023a82b27341",
       "task": "SS7",
       "scope": {
         "dmkits": [

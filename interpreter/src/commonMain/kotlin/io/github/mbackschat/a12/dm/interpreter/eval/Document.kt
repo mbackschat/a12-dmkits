@@ -2006,16 +2006,14 @@ class Document(internal val config: DocumentConfig) {
             datePrecisions[path] ?: DatePrecision.FULL
 
         // A parallel group is "filled" for this iteration iff it has a matching row.
-        // A group below a joined side reads within that side's joined row, and a side without one holds none
-        // (`t8`, SPEC-2026-10-23-02). [IterationScopes] refuses one at or below a nested level before any document.
-        override fun groupFilled(groupPath: String): Boolean {
-            if (groupPath in groups) return matches[groupPath] != null
-            if (groupPath == commonParent) return contextFor(commonParent, cReps).groupFilled(groupPath)
-            val side = groupOf(groupPath)
-            if (side == null || underNested(groupPath)) throw UnsupportedConstructException(
+        // A parallel group is "filled" for this iteration iff it has a matching row. Validation decides a group below
+        // a joined side through its presence state at the row's coordinates instead (`t8`, SPEC-2026-10-23-02), so
+        // only a computation reaches this, and one reading such a group beside a join is unmeasured.
+        override fun groupFilled(groupPath: String): Boolean =
+            if (groupPath in groups) matches[groupPath] != null
+            else if (groupPath == commonParent) contextFor(commonParent, cReps).groupFilled(groupPath)
+            else throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($groupPath) inside a parallel iteration is not modeled")
-            return matches[side]?.let { row -> contextFor(side, row).groupFilled(groupPath) } ?: false
-        }
 
         override fun enumCategory(path: String, category: String): Val =
             enumCategoryOf(path, category, resolved(path))
