@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.encloses
  * What a semantic index may CARRY, and where the indexed group has to be.
  *
  * `[Coverages/Limit For key]` addresses one repetition, and its own structure carries nine rejection classes
- * decided by one chain ([KERNEL-FINDINGS KF371], `rulekit.validate.laws.SemanticIndexStructureLawsTest`).
+ * decided by one chain ([KERNEL-FINDINGS KF351], `rulekit.validate.laws.SemanticIndexStructureLawsTest`).
  * [semanticIndexKeyContributions] owns the first of them — the key must be a field — and this family owns the
  * rest, including the two that read the KEY against the indexed group ([KERNEL-FINDINGS KF404],
  * `rulekit.validate.laws.SemanticIndexKeyGateLawsTest`).
