@@ -5,7 +5,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
@@ -139,7 +141,7 @@ private fun TrackedFactBase.preGateFinding(
     // elsewhere in that list is not this family's to name. Judging each operand alone reported it, which is
     // the shape of an over-rejection: a code A12 does not give, on a model it refuses for something else.
     val targets = written.map {
-        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, call.inAFilterBody) ?: return null
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(call.inAFilterBody)) ?: return null
     }
     val direct = targets.firstDirectDuplicate(written)
     if (direct != null) {
@@ -183,8 +185,19 @@ private fun TrackedFactBase.preGateFinding(
  *     operand, so two plain operands compare on path alone exactly as before.
  * @param indexSelected whether a semantic-index key is among those clauses, which decides whether the
  *     operand's repetition is ADDRESSED — a separate question from identity, and the one DG57 closed.
+ * @param outerMarked whether a `$` capture marker opens the spec. The repeat test counts it and the containment
+ *     test does not: `Sum(Items/Code, $Items/Code)` repeats nothing, while `$Items` holds `Items/Code`
+ *     (KERNEL-FINDINGS KF599). It also addresses the operand by the rule's iteration inside a filter body.
  */
-internal data class ListOperand(val spec: String, val key: String, val indexSelected: Boolean = false)
+internal data class ListOperand(
+    val spec: String,
+    val key: String,
+    val indexSelected: Boolean = false,
+    val outerMarked: Boolean = false,
+) {
+    /** Whether a filter body addresses this operand's levels: [inAFilterBody], unless the marker opens it. */
+    fun bodyAddressed(inAFilterBody: Boolean): Boolean = inAFilterBody && !outerMarked
+}
 
 /**
  * The entity list's operands as written, or null wherever this reader may not read the list at all.
@@ -223,6 +236,7 @@ private fun TrackedFactBase.entityListOperandsOf(
     return call.operands.map { operand ->
         if (operand.clauses.isEmpty()) {
             operand.path?.let { return@map ListOperand(it, "") }
+            operand.capturedPath(conditionLanguage)?.let { return@map ListOperand(it, "", outerMarked = true) }
             // A carrier that asks its category gate only once the list is built compares a categorized operand
             // like any other, its category being part of its identity; one that asks it first leaves the list
             // to that gate ([entityListCategoryFindings]).
@@ -257,7 +271,7 @@ private fun List<String>.firstDirectDuplicate(written: List<ListOperand>): Int? 
     val seen = mutableSetOf<String>()
     indices.forEach { at ->
         val operand = written[at]
-        if ('*' !in operand.spec && !seen.add("${this[at]}\u0000${operand.key}")) {
+        if ('*' !in operand.spec && !seen.add("${this[at]}\u0000${operand.key}\u0000${operand.outerMarked}")) {
             return at
         }
     }
@@ -303,9 +317,8 @@ internal fun entityListDuplicateAnswers(reads: List<OperandReference>, targets: 
     // them (`adapter.laws.CheckerKeyedOperandAgreementTest`). Comparing on path alone read that list as nested.
     // The category is the identity's other clause (kf439), so `Tier -> Level` beside `Tier` repeats nothing.
     val operands = reads.map { read ->
-        ListOperand(read.reference,
-            (if (read.outerMarked) "$" else "") + read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
-            read.indexSelected)
+        ListOperand(read.reference, read.key.orEmpty() + read.category?.let { "$CATEGORY_KEY$it" }.orEmpty(),
+            read.indexSelected, read.outerMarked)
     }
     return targets.firstDirectDuplicate(operands) != null || targets.firstNestedEntity(operands) != null
 }
@@ -316,6 +329,7 @@ internal fun entityListDuplicateAnswers(reads: List<OperandReference>, targets: 
  * ([KERNEL-FINDINGS kf439]).
  */
 private fun TrackedFactBase.bareListOperands(texts: List<String>, keyCategories: Boolean): List<ListOperand>? = texts.map { text ->
+    outerMarkedPathIn(text, conditionLanguage)?.let { return@map ListOperand(it, "", outerMarked = true) }
     if (isBareEntitySpec(text)) {
         return@map referencesIn(text, conditionLanguage).singleOrNull()?.let { ListOperand(it, "") } ?: return null
     }
@@ -360,7 +374,7 @@ internal fun TrackedFactBase.builtEntityList(
     // These lists ask no category gate of their own, so a category arrow only keys its operand.
     val written = bareListOperands(texts, keyCategories = true) ?: return null
     val targets = written.map {
-        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, inAFilterBody) ?: return null
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(inAFilterBody)) ?: return null
     }
     return BuiltEntityList(written, targets)
 }
@@ -384,7 +398,7 @@ internal fun TrackedFactBase.listGateAheadOfTheArmAnswers(
     val gate = ROOT_GROUP_GATE_OF.entries.firstOrNull { keywords[it.key] == call.operator }?.value ?: return false
     val written = entityListOperandsOf(call, keywords[NUMBER_OF_VALUE_IN_FIELDS], declaringGroup, element) ?: return false
     val targets = written.map {
-        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, call.inAFilterBody) ?: return false
+        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(call.inAFilterBody)) ?: return false
     }
     return targets.firstDirectDuplicate(written) != null || targets.firstNestedEntity(written) != null ||
         gate == RootGroupGate.PLAIN && targets.any { it.isRootGroup() }

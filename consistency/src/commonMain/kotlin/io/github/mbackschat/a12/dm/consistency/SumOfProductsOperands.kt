@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
  * `SumOfProducts`' operand PAIR, whose four laws are one kernel method each and run in a fixed order.
@@ -84,8 +85,10 @@ private fun TrackedFactBase.groupOperandFinding(
     span: TextSpan?,
 ): Finding? {
     val targets = operands.map { operand ->
-        val written = operand.path?.takeIf { operand.clauses.isEmpty() } ?: return null
-        val target = addressedTargetOf(written, declaringGroup, element, false, inAFilterBody) ?: return null
+        val captured = operand.capturedPath(conditionLanguage)
+        val written = operand.path?.takeIf { operand.clauses.isEmpty() } ?: captured ?: return null
+        val target = addressedTargetOf(written, declaringGroup, element, false, inAFilterBody && captured == null)
+            ?: return null
         declarationAt(target) ?: return null
     }
     val group = targets.firstOrNull { it.declaredKind == DeclaredKind.GROUP } ?: return null
@@ -136,7 +139,7 @@ private fun TrackedFactBase.readOperand(
     element: TrackedDeclaration,
     filterKeyword: String,
 ): ParallelOperand? {
-    val written = operand.base ?: return null
+    val written = operand.base ?: operand.capturedPath(conditionLanguage) ?: return null
     val filters = operand.clauses.filter { it.keyword == filterKeyword }
     if (filters.size != operand.clauses.size || filters.any { it.text.contains('*') }) {
         return null

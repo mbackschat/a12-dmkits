@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 /**
  * A `$`-marked operand inside a `Having` body, on every operand family that reads a call operand: A12 judges the
  * marked reference with the gates an unmarked one meets, addressed by the enclosing rule's own iteration
- * (CONSISTENCY-GAPS DG147, KERNEL-FINDINGS KF599).
+ * (KERNEL-FINDINGS KF599).
  *
  * Each body is measured twice. [ALONE] makes it the whole filter, so a sound marked operand meets the filter-end
  * gate (`MVK_NO_ITERATION_FOR_WILDCARD`, since nothing unmarked reopens the starred level) and a defective one
@@ -117,6 +117,33 @@ class CheckerOuterMarkedOperandAgreementTest {
             sound("FieldFilled(\$Items/Count)")
             defect("Length(\$Items/ShipOn) > 1", "MVK_NO_STRING")
             sound("Length(\$Items/Code) > 1")
+
+            // An entity list: the repeat test counts the marker, the containment test does not.
+            defect("Sum(\$Items/Count, \$Items/Count) > 0", "MVK_DUPLICATE_PARAM1")
+            defect("AtLeastOneFieldFilled(\$Items/Code, \$Items/Code)", "MVK_DUPLICATE_PARAM1")
+            sound("AtLeastOneFieldFilled(\$Items*/Code, \$Items*/Code)")
+            defect("AtLeastOneFieldFilled(\$Items, Items/Code)", "MVK_DUPLICATE_PARAM2")
+            defect("AtLeastOneFieldFilled(\$Items, \$Items/Code)", "MVK_DUPLICATE_PARAM2")
+            defect("AtLeastOneFieldFilled(\$Customer)", "MVK_INVALID_ENTITY")
+            defect("NumberOfValueInFields(\"a\" In \$Items/Code, \$Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
+            defect("NumberOfValueInFields(\"a\" In Items/Code, Items/Code) > 0", "MVK_DUPLICATE_PARAM1")
+            // The unmarked operand reopens the starred level, so the filter-end gate is satisfied alone too.
+            defect("NumberOfValueInFields(\"a\" In \$Items/Code, Items/Code) > 0")
+            defect("FieldValuesNotUnique(\$Items/Code, Items/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
+            defect("FieldValuesNotUnique(\$Items*/Code, Items*/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
+            defect("FieldValuesNotUnique(\$Items/Code, \$Items/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
+            // SumOfProducts reads a marked operand's levels as bound by the rule, as it reads an unmarked one.
+            defect("SumOfProducts(\$Items/UnitPrice, Items/Count) > 0", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+            sound("SumOfProducts(\$Items*/UnitPrice, Items*/Count) > 0")
+            sound("SumOfProducts(\$Items*/UnitPrice, \$Items*/Count) > 0")
+            defect("SumOfProducts(\$Items*, Items*/Count) > 0", "MVK_DUPLICATE_PARAM2")
+            defect("SumOfProducts(\$Items*) > 0", NO_GROUPS)
+            // A repetition key may not be read in a filter at all, so a marked key never reaches its gates.
+            defect("RepetitionNotUnique(Items/Code)", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+            put("RepetitionNotUnique(\$Items/Code), alone",
+                Row("Items/Count", ALONE.format("RepetitionNotUnique(\$Items/Code)"), listOf(FILTER_END)))
+            put("RepetitionNotUnique(\$Items/Code), beside", Row("Items/Count",
+                BESIDE.format("RepetitionNotUnique(\$Items/Code)"), listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")))
 
             // An unmarked repeatable group that something addresses is the family's own group class.
             defect("RangeAsString(Items, 1, 3) == \"a\"", NO_GROUPS)

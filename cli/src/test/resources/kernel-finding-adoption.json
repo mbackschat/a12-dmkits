@@ -724,7 +724,7 @@
      }
     },
     "kf599": {
-     "sha256": "102616706ab755adea4b00819957d8ae891b6c4703f4f2b68280e01244755ef2",
+     "sha256": "c81480a661987848796c7fbb023f89410b5dbab7ce49e10765a73ca218a025cc",
      "task": "M1",
      "scope": {
       "dmkits": [],
@@ -750,7 +750,7 @@
       },
       "checker": {
        "state": "APPLIED",
-       "basis": "The shared operand reader reads the marker and addresses the operand by the rule's own iteration, and the substring and ValueAsDate gates refuse an addressed repeatable group.",
+       "basis": "The shared operand reader and the entity-list reader read the marker and address the operand by the rule's own iteration, the list's repeat test counting it and its containment test not; the substring and ValueAsDate gates refuse an addressed repeatable group.",
        "evidence": {
         "a $-marked operand in a Having body": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedOperandAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",

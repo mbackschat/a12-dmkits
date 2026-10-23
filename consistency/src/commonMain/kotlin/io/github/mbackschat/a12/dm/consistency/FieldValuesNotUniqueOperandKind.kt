@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
  * What KIND of field `FieldValuesNotUnique` admits in its list, how their date SPELLINGS must agree, and the two
@@ -73,7 +74,7 @@ private fun TrackedFactBase.operandKindFinding(
     // The list is taken whole or not at all: an operand this reader cannot reduce is one whose kind it
     // cannot know, and judging the rest would judge a shorter list than A12 judged.
     val fields = call.operands.flatMap { operand ->
-        val written = operand.path ?: return null
+        val written = operand.path ?: operand.capturedPath(conditionLanguage) ?: return null
         val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         expandToFields((resolved as? Reference.Resolved)?.path ?: return null) ?: return null
     }
