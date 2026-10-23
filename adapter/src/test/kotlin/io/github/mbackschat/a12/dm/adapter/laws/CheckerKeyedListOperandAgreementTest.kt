@@ -23,7 +23,10 @@ class CheckerKeyedListOperandAgreementTest {
                 .stringField("LineNo") { }
                 .stringField("Sku") { }
                 .numberField("Qty") { n -> n.fractionDigits(0) }
-                .dateField("ShipOn") { d -> d.format("yyyy-MM-dd") } }
+                .dateField("ShipOn") { d -> d.format("yyyy-MM-dd") }
+                .stringField("RawRef") { s -> s.noValueValidation().lineBreaks() } }
+            .group("Notes") { n -> n.repeatable(10)
+                .stringField("Text") { } }
             .group("Picks") { p -> p.repeatable(10).indexField("Ref")
                 .stringField("Ref") { }
                 .numberField("Qty") { n -> n.fractionDigits(0) }
@@ -83,6 +86,13 @@ class CheckerKeyedListOperandAgreementTest {
             row("i1", "Total", "FieldFilled(Total) And FieldFilled(Picks/Qty For Lines/LineNo)", "MVK_SEMANTIC_INDEX_INVALID_ITER")
             row("i2", "Total", "FieldFilled(Total) And FieldFilled(Picks/Qty For Lines/Qty)", "MVK_SEMANTIC_INDEX_INVALID_ITER")
             row("i3", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/Qty)", "MVK_INDEX_TYPE_INCONSISTENT")
+            // The index chain's other gates behind a key the error field's iteration reads.
+            row("c1", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Lines/Qty For Lines/LineNo)",
+                "MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX")
+            row("c2", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/RawRef)", "MVK_INVALID_RAW_TYPE")
+            row("c3", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Notes/Text For Lines/LineNo)", "MVK_NO_INDEX_FIELD")
+            row("c4", "Lines/Sku", "FieldFilled(Lines/Sku) And AtLeastOneFieldFilled(Picks*/Qty For Lines/LineNo)",
+                "MVK_SEMANTIC_INDEX_AND_WILDCARD")
             row("L1", "Total", "FieldFilled(Total) And Length(Picks/RawNote For \"a\") > 1", "MVK_INVALID_LENGTH_OF_RAW_TYPE")
             row("L2", "Lines/Sku", "FieldFilled(Lines/Sku) And Length(Picks/RawNote For Lines/LineNo) > 1",
                 "MVK_INVALID_LENGTH_OF_RAW_TYPE")

@@ -14667,7 +14667,7 @@ So the truth pass short-circuits both connectives: a callback behind a false `An
 
 > Fold: pending — beside [KF390](#kf390)'s `FieldValuesNotUnique` gates, [KF370](#kf370)'s `SumOfProducts` gates and [KF351](#kf351)'s semantic-index chain.
 
-An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `Sku`, a number `Qty` and a date `ShipOn` spelled `yyyy-MM-dd`), and `Picks` keyed by a string `Ref` (with a number `Qty`, a two-decimal `Price`, dates `ShipOn` spelled `dd.MM.yyyy` and `ShipIso` spelled `yyyy-MM-dd`, a date range `Window`, and a raw-type `RawNote`). Each row is one rule at `/Order`; `FieldValuesNotUnique` is abbreviated FVNU.
+An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `Sku`, a number `Qty`, a date `ShipOn` spelled `yyyy-MM-dd` and a raw-type `RawRef`), an unkeyed repeating `Notes` with a `Text`, and `Picks` keyed by a string `Ref` (with a number `Qty`, a two-decimal `Price`, dates `ShipOn` spelled `dd.MM.yyyy` and `ShipIso` spelled `yyyy-MM-dd`, a date range `Window`, and a raw-type `RawNote`). Each row is one rule at `/Order`; `FieldValuesNotUnique` is abbreviated FVNU.
 
 | condition (error field) | A12 |
 |---|---|
@@ -14677,12 +14677,16 @@ An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `
 | FVNU`(Lines/Sku, Picks/RawNote For "a")` (`Lines/Sku`) | `MVK_INVALID_RAW_TYPE` |
 | FVNU`(Lines/Sku, Picks/Qty For Lines/Qty)`, `FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/Qty)` (`Lines/Sku`) | `MVK_INDEX_TYPE_INCONSISTENT` |
 | `FieldFilled(Total) And FieldFilled(Picks/Qty For Lines/LineNo)`, the same keyed by `Lines/Qty` (`Total`) | `MVK_SEMANTIC_INDEX_INVALID_ITER` |
+| `FieldFilled(Lines/Sku) And FieldFilled(Lines/Qty For Lines/LineNo)` (`Lines/Sku`) | `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` |
+| `FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/RawRef)` (`Lines/Sku`) | `MVK_INVALID_RAW_TYPE` |
+| `FieldFilled(Lines/Sku) And FieldFilled(Notes/Text For Lines/LineNo)` (`Lines/Sku`) | `MVK_NO_INDEX_FIELD` |
+| `FieldFilled(Lines/Sku) And AtLeastOneFieldFilled(Picks*/Qty For Lines/LineNo)` (`Lines/Sku`) | `MVK_SEMANTIC_INDEX_AND_WILDCARD` |
 | `FieldFilled(Total) And Length(Picks/RawNote For "a") > 1` (`Total`); `FieldFilled(Lines/Sku) And Length(Picks/RawNote For Lines/LineNo) > 1` (`Lines/Sku`) | `MVK_INVALID_LENGTH_OF_RAW_TYPE` |
 | `FieldFilled(Total) And SumOfProducts(Picks/Qty For "a", Picks/Price For "a") > 0`, the pair with either side `Picks*/…` instead (`Total`); the pair keyed by `Lines/LineNo` (`Lines/Sku`) | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
 | `FieldFilled(Total) And SumOfProducts(Picks*/Qty, Picks*/Price) > 0` (`Total`) | admitted |
 | `FieldFilled(Total) And SumOfProducts(Picks/Qty For "a", Lines*/Qty) > 0` (`Total`) | `MVK_DIFFERENT_GROUPS` |
 
-So each gate reads the field the selection names, never its key: `Picks/Qty For Lines/LineNo` is a number beside `Lines/Qty` and a string key does not make it a string. A selected group expands to its fields, so `Picks For "a"` meets the date range among them. The key `Lines/LineNo` is read as one row when the error field iterates `Lines`, so the index behind it is judged, and its type gate answers; the same keys under an error field at the root iterate and draw the iteration class. In `SumOfProducts` a selection leaves its level unstarred, so the wildcard gate refuses it, and the group gate still answers first.
+So each gate reads the field the selection names, never its key: `Picks/Qty For Lines/LineNo` is a number beside `Lines/Qty` and a string key does not make it a string. A selected group expands to its fields, so `Picks For "a"` meets the date range among them. The key `Lines/LineNo` is read as one row when the error field iterates `Lines`, so the index behind it is judged, its type, containment, raw-type, index-field and star gates each answering; the same keys under an error field at the root iterate and draw the iteration class. In `SumOfProducts` a selection leaves its level unstarred, so the wildcard gate refuses it, and the group gate still answers first.
 
 *Locked by:* `adapter.laws.CheckerKeyedListOperandAgreementTest` (every row above, A12 pinned and the checker agreeing).
 
