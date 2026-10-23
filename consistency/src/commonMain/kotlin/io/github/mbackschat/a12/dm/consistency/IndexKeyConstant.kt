@@ -23,16 +23,10 @@ import kotlinx.serialization.json.intOrNull
  * checks (DG102-E2 kernel population); this validator must not normalize that value a second time.
  */
 internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
-    val fieldType = field.declaredFieldType() ?: return null
-    val declared = if (fieldType == FieldType.TYPE_DEF) {
-        val id = field.boundTypeDefinitionId() ?: return null
-        typeDefinitionBody(id)?.get("fieldType") as? JsonObject ?: return null
-    } else {
-        field.body?.get("fieldType") as? JsonObject
-    }
-    val type = (if (fieldType == FieldType.TYPE_DEF) declared?.namedFieldType() else fieldType) ?: return null
-    if (fieldType == FieldType.TYPE_DEF && type != FieldType.STRING) return null
-    val typeBody = type.bodyIn(declared)
+    val resolved = resolvedFieldTypeOf(field) ?: return null
+    val type = resolved.type
+    if (resolved.viaTypeDefinition && type != FieldType.STRING) return null
+    val typeBody = type.bodyIn(resolved.declared)
     if (type == FieldType.STRING && typeBody.constrainsNoString()) {
         return true
     }

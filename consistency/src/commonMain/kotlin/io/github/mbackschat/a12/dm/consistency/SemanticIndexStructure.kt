@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
+import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
@@ -38,9 +40,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * is the same family's, and on a value spec or key that does not resolve.
  *
  * **Silent where the key's DECLARED type is one A12's base-type comparison leaves unsettled here.** The
- * comparison is [BaseTypeClass], not name equality, and a declaration outside that table — a type definition
- * or an unspecified field — leaves the whole index unjudged rather than guessing whether A12 calls it
- * consistent.
+ * comparison is [BaseTypeClass], not name equality, and a type definition takes the type it defines
+ * ([resolvedFieldTypeOf]); a declaration outside that table — an unspecified field, or a definition that does
+ * not resolve — leaves the whole index unjudged rather than guessing whether A12 calls it consistent.
  *
  * **Silent on a literal key whose index field this reader cannot judge.** `isValueApplicable` runs the index
  * field's own value validation over the constant, and [admitsIndexConstant] reproduces it per kind except where
@@ -50,11 +52,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 internal fun TrackedFactBase.semanticIndexStructureContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
-    val uses = semanticIndexUsesIn(execution.carrier.text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    val text = execution.carrier.text
+    val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    val bodies = filterBodiesIn(text, conditionLanguage)
     return execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
         val use = uses[site.start] ?: return@mapNotNull null
-        val verdict = firstClassIn(listOf(use), element.path.substringBeforeLast('/'), element) ?: return@mapNotNull null
+        val inABody = bodies.any { body -> body.at <= use.keywordAt && use.keywordAt < body.at + body.text.length }
+        val anchoring = if (inABody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
+        val verdict = firstClassIn(listOf(use), element.path.substringBeforeLast('/'), element, anchoring)
+            ?: return@mapNotNull null
         val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
         ConditionFinding(element.key, site, structureFinding(verdict.first, element, span.member, span))
     }
@@ -73,20 +80,21 @@ private fun TrackedFactBase.firstClassIn(
     uses: List<SemanticIndexUse>,
     declaringGroup: String,
     element: TrackedDeclaration,
+    anchoring: KeyAnchoring,
 ): Pair<String, SemanticIndexUse>? {
     // A NESTED index is answered before the walk, because the index of `[A For B For C]` A12 judges is the
     // one written LAST, on `B` — the walk would reach the index on `A` first and stop at its
     // key, which is read from inside a repetition and so looks opaque. Its own key gate still runs ahead of
     // the nesting check, which is the source's order and the one row where the two compete.
     uses.firstOrNull { it.nested }?.let { outer ->
-        return when (keyVerdict(outer, declaringGroup, element)) {
+        return when (keyVerdict(outer, declaringGroup, element, anchoring)) {
             KeyVerdict.STARRED -> "MVK_SEMANTIC_INDEX_WITH_WILDCARD" to outer
             KeyVerdict.UNJUDGEABLE -> null
             KeyVerdict.PLAIN -> "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX" to outer
         }
     }
     uses.forEach { use ->
-        when (val verdict = classOf(use, declaringGroup, element)) {
+        when (val verdict = classOf(use, declaringGroup, element, anchoring)) {
             is IndexVerdict.Reported -> return verdict.code to use
             IndexVerdict.Opaque -> return null
             IndexVerdict.Clean -> Unit
@@ -106,7 +114,25 @@ internal fun TrackedFactBase.admitsSemanticIndex(
     use: SemanticIndexUse,
     declaringGroup: String,
     element: TrackedDeclaration,
-): Boolean = classOf(use, declaringGroup, element) == IndexVerdict.Clean
+    anchoring: KeyAnchoring,
+): Boolean = classOf(use, declaringGroup, element, anchoring) == IndexVerdict.Clean
+
+/**
+ * What binds the repetition a field key is read in, which decides whether the key's read iterates.
+ *
+ * [DECLARING_GROUP] binds only the repetitions the declaration sits in. [ERROR_TARGET] also binds the ones the
+ * error target's own iteration addresses, by the per-level walk the key-iteration family runs
+ * ([semanticIndexKeyContributions]): a rule declared at the root with its error field in `Lines` reads the key
+ * `Lines/LineNo` as one row, and A12 judges the index behind it ([KERNEL-FINDINGS KF605],
+ * `adapter.laws.CheckerKeyedListOperandAgreementTest`). That holds only for a key the rule reads directly; inside
+ * a `Having` body the filtered entity anchors it ([KERNEL-FINDINGS KF377]), so a reader that cannot tell which
+ * it has takes [DECLARING_GROUP] and judges less.
+ */
+internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET }
+
+/** The anchoring of a key [this] call's operands carry: the error target's, unless a `Having` body holds the call. */
+internal val ConditionCall.keyAnchoring: KeyAnchoring
+    get() = if (inAFilterBody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
 
 /** What one index settles: a class, nothing to say, or that nothing past it may be judged either. */
 private sealed interface IndexVerdict {
@@ -120,10 +146,11 @@ private fun TrackedFactBase.classOf(
     use: SemanticIndexUse,
     declaringGroup: String,
     element: TrackedDeclaration,
+    anchoring: KeyAnchoring,
 ): IndexVerdict {
     val value = use.valuePath ?: return IndexVerdict.Opaque
     val indexed = resolveElement(value, declaringGroup, element) ?: return IndexVerdict.Opaque
-    when (keyVerdict(use, declaringGroup, element)) {
+    when (keyVerdict(use, declaringGroup, element, anchoring)) {
         KeyVerdict.UNJUDGEABLE -> return IndexVerdict.Opaque
         KeyVerdict.STARRED -> return IndexVerdict.Reported("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         KeyVerdict.PLAIN -> Unit
@@ -195,9 +222,9 @@ private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
 /** What the base-type comparison says about one key, or that this reader may not say. */
 private enum class KeyTypeVerdict { CONSISTENT, INCONSISTENT, UNSETTLED }
 
-private fun keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclaration): KeyTypeVerdict {
-    val expected = indexField.declaredFieldType()?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
-    val actual = key.declaredFieldType()?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
+private fun TrackedFactBase.keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclaration): KeyTypeVerdict {
+    val expected = resolvedFieldTypeOf(indexField)?.type?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
+    val actual = resolvedFieldTypeOf(key)?.type?.baseTypeClass ?: return KeyTypeVerdict.UNSETTLED
     return if (expected == actual) KeyTypeVerdict.CONSISTENT else KeyTypeVerdict.INCONSISTENT
 }
 
@@ -208,6 +235,7 @@ private fun TrackedFactBase.keyVerdict(
     use: SemanticIndexUse,
     declaringGroup: String,
     element: TrackedDeclaration,
+    anchoring: KeyAnchoring,
 ): KeyVerdict {
     val key = use.keyPath ?: return if (use.keyLiteral == null) KeyVerdict.UNJUDGEABLE else KeyVerdict.PLAIN
     // A GROUP key is the key-kind family's class and outranks every gate here; a key that does not resolve
@@ -216,17 +244,15 @@ private fun TrackedFactBase.keyVerdict(
     if (key.contains('*')) {
         return KeyVerdict.STARRED
     }
-    // An unstarred key reaching into a repetition the RULE does not sit in makes the read iterate, and A12
-    // renames every class of this chain to `MVK_SEMANTIC_INDEX_INVALID_ITER` when it does. A key inside the
-    // rule's own repetition reads that row and iterates nothing, which is the only way the containment class
-    // is reachable at all.
+    // An unstarred key reaching into a repetition nothing binds makes the read iterate, and A12 renames every
+    // class of this chain to `MVK_SEMANTIC_INDEX_INVALID_ITER` when it does. A key inside a bound repetition
+    // reads that row and iterates nothing, which is the only way the containment class is reachable at all.
     val resolved = resolveEntity(declaringGroup, key, element.origin) as? Reference.Resolved
         ?: return KeyVerdict.UNJUDGEABLE
-    return if (crossesARepetitionOutside(declaringGroup, resolved.path)) {
-        KeyVerdict.UNJUDGEABLE
-    } else {
-        KeyVerdict.PLAIN
-    }
+    if (!crossesARepetitionOutside(declaringGroup, resolved.path)) return KeyVerdict.PLAIN
+    if (anchoring == KeyAnchoring.DECLARING_GROUP) return KeyVerdict.UNJUDGEABLE
+    val targetGroup = iterationScopeOf(element.declaredReference(), declaringGroup) ?: return KeyVerdict.UNJUDGEABLE
+    return if (levelClassOf(key, declaringGroup, targetGroup, element) == null) KeyVerdict.PLAIN else KeyVerdict.UNJUDGEABLE
 }
 
 /**

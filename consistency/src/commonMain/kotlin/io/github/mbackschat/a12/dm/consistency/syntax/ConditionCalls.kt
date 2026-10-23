@@ -526,11 +526,11 @@ internal fun fieldValueRead(
     val valueEnd = spec.indexOfFirst { it.text == "->" || it.kind == TokenKind.NAME && it.text in keywords }
     val arrow = valueEnd.takeIf { it > 0 && spec[it].text == "->" && spec.getOrNull(it + 1)?.isName() == true }
     val category = arrow?.let { spec[it + 1].text }
-    val outerMarker = spec.firstOrNull()?.text == "$"
-    fun reduced(run: List<Token>) = run.let { if (outerMarker && filterActive) it.drop(1) else it }.asPath(keywords)
+    val outerMarked = spec.firstOrNull()?.text == "$"
+    fun reduced(run: List<Token>) = run.let { if (outerMarked && filterActive) it.drop(1) else it }.asPath(keywords)
     val path = reduced(if (arrow == null) spec else spec.take(arrow) + spec.drop(arrow + 2))
     val keyedPath = if (keyedByLiteral && valueEnd > 0) reduced(spec.take(valueEnd)) else null
-    return FieldValueRead(path, at, end, filterActive, category, outerMarker, keyedPath)
+    return FieldValueRead(path, at, end, filterActive, category, outerMarked, keyedPath)
 }
 
 /**
@@ -560,7 +560,7 @@ internal data class FieldValueRead(
     val end: Int,
     val inAFilterBody: Boolean,
     val category: String? = null,
-    val outerMarker: Boolean = false,
+    val outerMarked: Boolean = false,
     val keyedPath: String? = null,
 )
 

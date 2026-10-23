@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.maxLengthDeclaration
 
 /**
@@ -49,7 +48,7 @@ private fun TrackedFactBase.rawTypeLengthFindings(element: TrackedDeclaration): 
     val body = element.body ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-        val raw = rawTypeRead(text, member, group, element.origin, length) ?: return@mapNotNull null
+        val raw = rawTypeRead(text, member, group, element, length) ?: return@mapNotNull null
         rawLengthOffence(text, member, raw, length, element)
     }
 }
@@ -59,14 +58,16 @@ private fun TrackedFactBase.rawTypeRead(
     text: String,
     member: String,
     declaringGroup: String,
-    origin: DeclarationOrigin,
+    element: TrackedDeclaration,
     length: String,
 ): String? = callsIn(text, conditionLanguage, syntaxEntryOf(member))
     .filter { it.operator == length }
     .firstNotNullOfOrNull { call ->
         val operand = call.operands.singleOrNull() ?: return@firstNotNullOfOrNull null
-        val written = operand.path ?: operand.capturedPath(conditionLanguage) ?: return@firstNotNullOfOrNull null
-        val resolved = resolveEntity(declaringGroup, written, origin) as? Reference.Resolved
+        val written = operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+            operand.path?.let(::OperandReference)
+        }?.reference ?: return@firstNotNullOfOrNull null
+        val resolved = resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved
             ?: return@firstNotNullOfOrNull null
         resolved.path.takeIf { isRawType(it) }
     }

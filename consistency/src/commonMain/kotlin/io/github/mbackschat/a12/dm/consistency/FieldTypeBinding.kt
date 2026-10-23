@@ -347,6 +347,28 @@ internal fun TrackedDeclaration.boundTypeDefinitionId(): String? = boundTypeDefi
 /** The same reading off an untracked declaration, sharing one implementation so the two cannot drift. */
 internal fun DeclaredElement.boundTypeDefinitionId(): String? = boundTypeDefinitionIdIn(body)
 
+/**
+ * A field's type with a type definition resolved to the type it defines, and the `fieldType` object that
+ * type's settings sit in; [viaTypeDefinition] says the resolution happened.
+ *
+ * A12 judges a type-defined field by the definition's own type wherever it compares types: an index joins or
+ * refuses by it, and a key is consistent with an index by it ([KERNEL-FINDINGS KF602],
+ * `adapter.laws.CheckerOuterMarkedResidueAgreementTest`). Null where the definition does not resolve, or
+ * defines another definition.
+ */
+internal class ResolvedFieldType(val type: FieldType, val declared: JsonObject?, val viaTypeDefinition: Boolean)
+
+internal fun TrackedFactBase.resolvedFieldTypeOf(field: TrackedDeclaration): ResolvedFieldType? {
+    val fieldType = field.declaredFieldType() ?: return null
+    if (fieldType != FieldType.TYPE_DEF) {
+        return ResolvedFieldType(fieldType, field.body?.get("fieldType") as? JsonObject, viaTypeDefinition = false)
+    }
+    val id = field.boundTypeDefinitionId() ?: return null
+    val declared = typeDefinitionBody(id)?.get("fieldType") as? JsonObject ?: return null
+    val defined = declared.namedFieldType()?.takeIf { it != FieldType.TYPE_DEF } ?: return null
+    return ResolvedFieldType(defined, declared, viaTypeDefinition = true)
+}
+
 private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if (declared.namedFieldType() != FieldType.TYPE_DEF) {

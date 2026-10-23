@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonObject
@@ -91,7 +94,7 @@ internal class OperationAnalysis(
         is OperationShape.Read -> with(facts) {
             if (fieldValueReadIsRefused(shape.read, group, element)) UNKNOWN
             else bareReferenceField(written(shape), group, element,
-                bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarker))?.let(::field) ?: UNKNOWN
+                bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarked))?.let(::field) ?: UNKNOWN
         }
         is OperationShape.Group -> value(shape.child).braced()
         is OperationShape.Arithmetic -> arithmetic(shape)
@@ -267,11 +270,21 @@ internal class OperationAnalysis(
                 OperationValue(OperationType.Number(scale))
             }
             "FieldValueAsString" -> OperationValue(OperationType.Text)
+            // A12 hands a shift the type of the date it moves (`CheckDatumAddOpImpl`), so a comparison meets the
+            // shifted date as that field ([KERNEL-FINDINGS KF606]).
+            "AddDays", "AddMonths", "AddYears", "AddHours", "AddMinutes", "AddSeconds" -> shifted(shape.call)
             "StartOfDateRange", "EndOfDateRange" ->
                 if (shape.call.operands.singleOrNull()?.let { facts.isBaseYearConstant(shape.call.textOf(it)) } == true)
                     UNKNOWN.copy(baseYear = BaseYearRole.ENDPOINT) else UNKNOWN
             else -> UNKNOWN
         }
+    }
+
+    /** The date [call] shifts, typed as its declared field, where A12 admits the shift and this reader judges it. */
+    private fun shifted(call: CallShape): OperationValue = with(facts) {
+        val operands = call.operands.map { operandOf(it, conditionLanguage, call.source) }
+        val shift = ConditionCall(call.operator, call.at, operands, call.end, call.inAFilterBody(conditionLanguage))
+        admittedShiftField(shift, group, element)?.let { field(it).derived() } ?: UNKNOWN
     }
 
     private fun numericAggregate(values: List<OperationValue>, product: Boolean = false): OperationValue {

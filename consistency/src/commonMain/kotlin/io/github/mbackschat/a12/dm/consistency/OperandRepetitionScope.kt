@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Which repetitions an operand may cross unstarred, given where the rule's error field — or the
@@ -157,6 +156,11 @@ internal fun TrackedFactBase.ordinaryRepeatableLevels(
  * before asking the operator's gates, so answering it here would silence a class A12 draws. A keyed operand
  * is walked as this family walks it, with its key's level addressed, and one whose key the chain refuses
  * reads as not refused, the chain's class being another family's.
+ *
+ * **In a `Having` body an unmarked operand is never refused here**: A12 addresses every repetition it crosses
+ * and leaves which levels the body reads to the filter chain, asked after the body, so the operator's own gate
+ * answers first; a `$`-marked one is read as the rule's own reference, as outside a body ([bodyAddresses];
+ * `adapter.laws.CheckerOuterMarkedResidueAgreementTest`, the `NumberOfFilledGroups` rows).
  */
 internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, element: TrackedDeclaration): Boolean {
     val target = declaredReferences().firstOrNull {
@@ -170,11 +174,14 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
     val keyed = setOfNotNull(keywords?.get(SEMANTIC_INDEX))
     val filter = setOfNotNull(keywords?.get(HAVING))
     return call.operands.any { operand ->
-        val base = operand.base ?: return@any false
         val isKeyed = operand.clauses.any { it.keyword in keyed }
-        if (isKeyed && operandReferenceIn(operand.text, declaringGroup, element) { null }?.indexSelected != true) {
+        val read = operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+            operand.base?.let(::OperandReference)
+        } ?: return@any false
+        if (isKeyed && !read.indexSelected || bodyAddresses(call.inAFilterBody, read.outerMarked)) {
             return@any false
         }
+        val base = read.reference
         if (contained) {
             val filtered = operand.clauses.any { it.keyword in filter }
             return@any levelClassOf(base, declaringGroup, targetGroup, element, filtered, isKeyed) != null
@@ -337,13 +344,8 @@ internal fun TrackedFactBase.parallelVerdictOf(
  * definition's own type: a definition of a string joins a plain string index, and one of a number refuses a
  * string one (`adapter.laws.CheckerOuterMarkedResidueAgreementTest`).
  */
-private fun TrackedFactBase.indexBaseTypeClassOf(index: TrackedDeclaration): BaseTypeClass? {
-    val type = index.declaredFieldType() ?: return null
-    if (type != FieldType.TYPE_DEF) return type.baseTypeClass
-    val id = index.boundTypeDefinitionId() ?: return null
-    val defined = (typeDefinitionBody(id)?.get("fieldType") as? JsonObject)?.namedFieldType() ?: return null
-    return defined.takeIf { it != FieldType.TYPE_DEF }?.baseTypeClass
-}
+private fun TrackedFactBase.indexBaseTypeClassOf(index: TrackedDeclaration): BaseTypeClass? =
+    resolvedFieldTypeOf(index)?.type?.baseTypeClass
 
 /** Every group at or above [path] that declares an index field — A12's `getIndexGroup` walk. */
 private fun TrackedFactBase.keyedGroupsAtOrAbove(path: String): List<TrackedDeclaration> = allDeclarations()

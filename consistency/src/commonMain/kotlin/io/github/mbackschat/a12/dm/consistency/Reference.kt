@@ -619,8 +619,9 @@ internal fun TrackedFactBase.operandReferenceIn(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    anchoring: KeyAnchoring = KeyAnchoring.DECLARING_GROUP,
     plain: () -> OperandReference?,
-): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, plain)
+): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, anchoring, plain)
 
 /**
  * [operandReferenceIn], where [keepsCategory] says whether the caller reads [OperandReference.category]. A keyed
@@ -632,6 +633,7 @@ private fun TrackedFactBase.keyedReferenceIn(
     declaringGroup: String,
     element: TrackedDeclaration,
     keepsCategory: Boolean,
+    anchoring: KeyAnchoring,
     plain: () -> OperandReference?,
 ): OperandReference? {
     // Read here rather than by each family's own reduction: a path reduction refused the marker and left the
@@ -660,7 +662,7 @@ private fun TrackedFactBase.keyedReferenceIn(
         bareReferenceIn(key, conditionLanguage) != null
     }
     val sound = bareKey && tokenize(inner.substring(use.end)).isEmpty() &&
-        admitsSemanticIndex(use, declaringGroup, element)
+        admitsSemanticIndex(use, declaringGroup, element, anchoring)
     return if (sound) OperandReference(value, indexSelected = true, category = category, key = key.javaTrimmed()) else null
 }
 
@@ -857,7 +859,7 @@ internal fun TrackedFactBase.categorySpecIn(
     declaringGroup: String,
     element: TrackedDeclaration,
     bare: () -> String? = { bareReferenceIn(text, conditionLanguage) },
-): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = true) {
+): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = true, KeyAnchoring.DECLARING_GROUP) {
     categoryAccessesIn(text, conditionLanguage).singleOrNull()
         ?.let { (path, category) -> OperandReference(path, category = category) }
         ?: bare()?.let { OperandReference(it) }

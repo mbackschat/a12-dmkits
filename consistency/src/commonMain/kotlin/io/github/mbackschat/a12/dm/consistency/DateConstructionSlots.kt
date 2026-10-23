@@ -446,7 +446,7 @@ private fun Slot.entityDefect(
     element: TrackedDeclaration,
     written: String,
     keyed: Boolean,
-    inAFilterBody: Boolean,
+    everyLevelAddressed: Boolean,
 ): SlotDefect? {
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     // A12's reference reader answers BEFORE this gate: a component read across a repetition nothing addresses
@@ -455,7 +455,7 @@ private fun Slot.entityDefect(
     // `OPERAND_REPETITION_SCOPE`'s. What addresses a level is [addressedTargetOf]'s one reading — the rule's
     // iteration, a key, a filter body — which a containment test got wrong on both of the last two, standing
     // the gate down where A12 names its class (`adapter.laws.CheckerKeyedOperandAgreementTest`).
-    val target = model.addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) ?: return null
+    val target = model.addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed) ?: return null
     val field = model.declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     val declared = (field.body?.get("fieldType") as? JsonObject) ?: return null
     val discriminator = declared.namedFieldType() ?: return null
@@ -478,7 +478,7 @@ private fun TrackedFactBase.groupSlotDefect(
     slot: Slot,
     arm: SlotArm,
     element: TrackedDeclaration,
-    inAFilterBody: Boolean,
+    everyLevelAddressed: Boolean,
 ): SlotDefect? {
     val (written, keyed) = when (arm) {
         is SlotArm.Entity -> arm.path to false
@@ -487,7 +487,7 @@ private fun TrackedFactBase.groupSlotDefect(
         else -> return null
     }
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val target = addressedTargetOf(written, declaringGroup, element, keyed, inAFilterBody) ?: return null
+    val target = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed) ?: return null
     if (declarationAt(target)?.declaredKind != DeclaredKind.GROUP) return null
     return SlotDefect("MVK_NO_GROUPS_ALLOWED", slot.name, written, "one field, never a group")
 }

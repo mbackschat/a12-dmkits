@@ -58,7 +58,7 @@ private fun TrackedFactBase.readDefect(
     // has been read, so a group there meets its bracket first — whether or not the filter iterates it
     // (`rulekit.validate.laws.FieldValueReadOperandLawsTest.theGatesReachEveryCarrierOfTheRead`).
     val addressed = addressedTargetOf(written, declaringGroup, element, indexSelected = read.path == null,
-        everyLevelAddressed = bodyAddresses(read.inAFilterBody, read.outerMarker)) ?: return null
+        everyLevelAddressed = bodyAddresses(read.inAFilterBody, read.outerMarked)) ?: return null
     val target = declarationAt(addressed) ?: return null
     when (target.declaredKind) {
         // The spec's own category gate asks the group question first ([categoryContributions]).

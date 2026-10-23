@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
@@ -58,7 +59,7 @@ internal fun TrackedFactBase.sumOfProductsContributions(
         if (call.operator != operator) return@callContributions null
         groupOperandFinding(call.operands, group, element, call.inAFilterBody, member, call.spanIn(member))
             ?.let { return@callContributions it }
-        val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword) }
+        val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword, call.keyAnchoring) }
         if (pair.size != 2 || pair.any { it == null }) return@callContributions null
         classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
     }
@@ -132,7 +133,8 @@ private class ParallelOperand(
  * the path of the group the error field iterates ([targetGroup], null where that reading is not this
  * declaration's to make), so either may go unstarred — the fixture that made the first concrete has a
  * REPEATABLE root group, where demanding its star refuses a legal pair — and a star on it is counted like any
- * other.
+ * other. A selection whose key A12 admits binds the level it selects the same way, and leaves that level
+ * unstarred ([KERNEL-FINDINGS KF605]).
  */
 private fun TrackedFactBase.readOperand(
     operand: CallOperand,
@@ -140,11 +142,20 @@ private fun TrackedFactBase.readOperand(
     targetGroup: String?,
     element: TrackedDeclaration,
     filterKeyword: String,
+    anchoring: KeyAnchoring,
 ): ParallelOperand? {
+    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val keyed = operand.clauses.isNotEmpty() && operand.clauses.all { it.keyword == indexKeyword }
+    val selection = if (keyed) {
+        operandReferenceIn(operand.text, declaringGroup, element, anchoring) { null }?.takeIf { it.indexSelected }
+            ?: return null
+    } else {
+        null
+    }
     val captured = operand.capturedPath(conditionLanguage)
-    val written = operand.base ?: captured ?: return null
+    val written = selection?.reference ?: operand.base ?: captured ?: return null
     val filters = operand.clauses.filter { it.keyword == filterKeyword }
-    if (filters.size != operand.clauses.size || filters.any { it.text.contains('*') }) {
+    if (!keyed && (filters.size != operand.clauses.size || filters.any { it.text.contains('*') })) {
         return null
     }
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
@@ -155,7 +166,10 @@ private fun TrackedFactBase.readOperand(
     // the pair (`rulekit.validate.laws.SumOfProductsLawsTest`).
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
     val levels = iteratedLevels(field.path)
-    if (levels.any { it !in starred && !declaringGroup.isAtOrBelow(it) && targetGroup?.isAtOrBelow(it) != true }) {
+    val selected = if (keyed) indexGroupOf(field.path) else null
+    if (levels.any {
+            it != selected && it !in starred && !declaringGroup.isAtOrBelow(it) && targetGroup?.isAtOrBelow(it) != true
+        }) {
         return null
     }
     return ParallelOperand(
@@ -165,7 +179,7 @@ private fun TrackedFactBase.readOperand(
         field.path,
         repeats = levels.isNotEmpty(),
         lowestUnstarred = levels.lastOrNull()?.let { it !in starred } == true,
-        outerMarked = operand.base == null && captured != null,
+        outerMarked = captured != null,
     )
 }
 

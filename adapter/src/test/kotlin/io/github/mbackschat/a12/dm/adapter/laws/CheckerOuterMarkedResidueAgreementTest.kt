@@ -191,6 +191,14 @@ class CheckerOuterMarkedResidueAgreementTest {
             rule("Items/Count", "FieldFilled(Items/Count) And AtLeastOneFieldFilled(Notes/Pages)", "MVK_MULTIPLE_INDEX_FIELDS", model = "nested")
             rule("Items/Count", "FieldFilled(Items/Count) And RoundUpValue(Notes/Pages, 2) > 0", "MVK_MULTIPLE_INDEX_FIELDS", model = "nested")
             rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Notes/Pages/Text)", "MVK_MULTIPLE_INDEX_FIELDS", model = "nested")
+            beside("NumberOfFilledGroups(\$Returns, \$Returns) > 0", "MVK_ERROR_FIELD_NO_INDEX")
+            beside("NumberOfFilledGroups(Returns, Returns) > 0", "MVK_DUPLICATE_PARAM1")
+            beside("AtLeastOneFieldFilled(Returns/Reason, Returns/Reason)", "MVK_DUPLICATE_PARAM1")
+            rule("Items/Count", "FieldFilled(Items/Count) And NumberOfFilledGroups(Returns, Returns) > 0", "MVK_ERROR_FIELD_NO_INDEX")
+            rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Tickets/Text For Items/Code)", "MVK_INDEX_TYPE_INCONSISTENT", model = "typed")
+            rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Notes/Text For Items/Code)", model = "typed")
+            rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Memos/Text For Items/Code)", model = "typed")
+            rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Tickets/Text For Items/Count)", model = "typed")
         }
     }
 }
