@@ -14,8 +14,9 @@ package io.github.mbackschat.a12.dm.consistency
  * Measured on the index carriers ([KERNEL-FINDINGS KF353], `rulekit.validate.laws.IndexFieldBaseTypeLawsTest`
  * and `…SemanticIndexKeyGateLawsTest`) and on the comparison and value-list carriers ([KF468],
  * `…TemporalAndCustomBaseTypeLawsTest`), where the checker had kept its own copy of this table that split the
- * date fragment out and left time, date-time and custom unclassified. A type definition or an unspecified
- * type has no class this reader can know, so every gate reading this stays silent on it.
+ * date fragment out and left time, date-time and custom unclassified. An unspecified type has no class this
+ * reader can know. A type definition takes the class of the type it defines only where the parallel iteration
+ * compares its two index fields ([KERNEL-FINDINGS KF602]); every other gate reading this stays silent on it.
  */
 internal enum class BaseTypeClass { TEXT, ENUMERATION, NUMBER, DATE, DATE_RANGE, YES_NO, YES }
 

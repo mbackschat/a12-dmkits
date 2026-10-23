@@ -41,7 +41,7 @@ class CheckerOuterMarkedResidueAgreementTest {
                 .stringField("Reason") { } } }
         .build().toJson()
 
-    /** Lines and notes keyed by a type-defined code, which the parallel walk does not judge. */
+    /** Items and notes keyed by a type-defined code, which the parallel walk resolves to the type it defines (KF602). */
     private val typedKeys = DocumentModelDraft.named("shop-typed-keys").locale("en_US")
         .typeDef("LineCode") { it.string { } }
         .typeDef("TicketNo") { it.number { n -> n.fractionDigits(0) } }
@@ -60,7 +60,7 @@ class CheckerOuterMarkedResidueAgreementTest {
                 .stringField("Text") { } } }
         .build().toJson()
 
-    /** Lines and notes keyed alike, the notes holding keyed pages: two keyed groups on one path. */
+    /** Items and notes keyed alike, the notes holding keyed pages: two keyed groups on one path. */
     private val nestedKeys = DocumentModelDraft.named("shop-nested-keys").locale("en_US")
         .rootGroup("Customer") { c -> c
             .group("Items") { i -> i.repeatable(20).indexField("Code")
@@ -126,6 +126,7 @@ class CheckerOuterMarkedResidueAgreementTest {
             beside("RepetitionNotUnique(\$Items/Code, \$Items/Code)", "MVK_DUPLICATE_PARAM1")
             alone("RepetitionNotUnique(\$Items/Code, \$Items/Code)", "MVK_DUPLICATE_PARAM1")
             beside("RepetitionNotUnique(\$Items, Items/Code)", "MVK_DUPLICATE_PARAM2")
+            alone("RepetitionNotUnique(\$Items, Items/Code)", "MVK_DUPLICATE_PARAM2")
             beside("NoFieldValueIncludedInValueList(\$Items/Code, \$Items/Code In \"a\")", "MVK_DUPLICATE_PARAM1")
             beside("NoFieldValueIncludedInValueList(Items/Code, Items/Code In \"a\")", "MVK_DUPLICATE_PARAM1")
             beside("AtLeastOneFieldValueIncludedInValueList(\$Items/Code, Items/Code In \"a\")")

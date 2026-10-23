@@ -724,7 +724,7 @@
      }
     },
     "kf599": {
-     "sha256": "9e9a34f3ed187c25e31a93006d62161f20b0f47b3a7953c6c3aa0d49b6b1bbc5",
+     "sha256": "a669bbd665ab924b06705b19222bffd15f033f026abeb1dff225d469603dbc9b",
      "task": "M1",
      "scope": {
       "dmkits": [],
@@ -796,7 +796,7 @@
      }
     },
     "kf602": {
-     "sha256": "c3b29d87e638b138f8f29aecc769d69c6887c4cde17b491198fe50c40dbc1b22",
+     "sha256": "b8f4496ed64f2888f6ddf16f831a8b5d1acb57a2e47cab9cec71fc97018fd9bf",
      "task": "SS1",
      "scope": {
       "dmkits": [],
@@ -1014,7 +1014,7 @@
       }
     },
     "kf601": {
-     "sha256": "4c2ef62356be2a671a498818f770693facea5296d83afe0dec63c802b50ab46a",
+     "sha256": "082f9dd8d76c83319858ae8fc2428d1a77ad1150108e8bc7bdd63e87246ea11a",
      "task": "SS3",
      "scope": {
       "dmkits": [],

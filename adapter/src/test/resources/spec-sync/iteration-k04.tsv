@@ -1,4 +1,4 @@
-# Rows of a12-kernel-lean SPEC-2026-10-22-05 and SPEC-2026-10-23-01, with the kernel classes their capture observed (kernel 30.8.1).
+# Rows of a12-kernel-lean SPEC-2026-10-22-05, SPEC-2026-10-23-01, SPEC-2026-10-23-02 and SPEC-2026-10-23-03, with the kernel classes their capture observed (kernel 30.8.1).
 # id	model	group	error field	condition (\n is a line break)	A12 classes (empty = admitted)
 c01	order	/Order	/Order/Lines/Sku	FieldNotFilled(Lines/Sku)	MVK_NEG_CONDITION_IN_ITERATION
 c02	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Qty) And FieldNotFilled(Lines/Sku)	
@@ -108,3 +108,52 @@ z1	order-bows	/Order	/Order/Lines/LineNo	FieldNotFilled(Picks/Ref For Lines/Line
 z2	order-bows	/Order	/Order/Lines/LineNo	FieldFilled(Picks/Ref For Lines/LineNo)	
 z3	order-bows	/Order	/Order/Lines/Sku	FieldNotFilled(Lines/Sku) Or FieldNotFilled(Picks/Ref For Lines/LineNo)	MVK_NEG_CONDITION_IN_ITERATION
 y12	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Parts/PartNo)	MVK_ERROR_FIELD_NOT_REFERENCED
+# a12-kernel-lean SPEC-2026-10-23-02 and SPEC-2026-10-23-03, the static rows of their group-target, K04 and binding checkpoints.
+E1	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts)	
+E2	order	/Order	/Order/Wraps/Ribbon	GroupFilled(Wraps/Ribbon)	
+E3	order	/Order	/Order/Gifts/Card	GroupNotFilled(Gifts/Card)	
+E4	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Sku) And GroupFilled(Lines/Parts)	
+E5	order	/Order	/Order/Lines/Parts/Count	GroupFilled(Lines/Parts) And FieldFilled(Lines/Parts/Count)	
+E6	order	/Order	/Order/Wraps/Ribbon/Color	GroupFilled(Wraps/Ribbon) And FieldFilled(Wraps/Ribbon/Color)	
+t0	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts)	
+t1	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Parts/Count) And GroupFilled(Lines/Parts)	
+t2	order	/Order	/Order/Lines/Parts	FieldNotFilled(Lines/Parts/PartNo) And GroupFilled(Lines/Parts)	
+t3	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Parts/Count)	MVK_ERROR_FIELD_NOT_REFERENCED
+t4	order	/Order	/Order/Lines/Parts	GroupFilled(Lines)	
+t5	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Sku)	MVK_ERROR_FIELD_NOT_REFERENCED
+t6	order	/Order	/Order/Lines/Parts	GroupFilled(Lines) And FieldFilled(Lines/Parts/Count)	
+t7	order	/Order	/Order/Lines/Parts	Sum(Lines/Parts*/Count) > 0 And GroupFilled(Lines/Parts)	
+t8	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And FieldFilled(Picks/Ref)	
+gt-v1	order	/Order	/Order/Gifts/Card/Text	FieldNotFilled(Gifts/Card/Text)	
+gt-v2	order	/Order	/Order/Gifts/Card/Text	GroupNotFilled(Gifts/Card)	
+gt-v3	order	/Order	/Order/Wraps	GroupFilled(Wraps) And GroupFilled(Wraps/Ribbon)	
+gt-v4	order	/Order	/Order/Wraps	GroupFilled(Wraps) And FieldFilled(Wraps/Style)	
+gt-v5	order	/Order	/Order/Gifts	GroupNotFilled(Gifts)	
+C0	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Sku) And NoFieldFilled(Lines/Code, Picks/Ref)	
+C1	order	/Order	/Order/Lines/Parts/Count	FieldFilled(Lines/Parts/Count) And NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)	
+C2	order	/Order	/Order/Lines/Parts/Count	FieldFilled(Lines/Parts/Count) And NoFieldFilled(Lines/Parts/PartNo, Picks/Ref) And [Lines/Parts/Count] != 1	
+s9	order	/Order	/Order/Lines/Parts/Count	FieldFilled(Lines/Parts/Count) And (NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)) And [Lines/Parts/Count] != 1	
+# Our discriminators for the guard's group-target and field-keyed widening, measured here 2026-10-23: f1 against y1, each f2/f3 group
+# reference against its -f field twin, f5 the leaf kinds beyond presence on a group target, w the key's count, z4/z5 a key not named as the index.
+f1	order	/Order	/Order/Lines/Parts	GroupFilled(Lines) And FieldNotFilled(Lines/Parts/PartNo)	MVK_NEG_CONDITION_IN_ITERATION
+f2a	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or GroupNotFilled(Picks)	MVK_PARALLEL_ITERATION_INVALID
+f2a-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or FieldNotFilled(Picks/Ref)	MVK_PARALLEL_ITERATION_INVALID
+f2b	order	/Order	/Order/Lines/Qty	Sum(Lines*/Qty) > 0 And GroupFilled(Picks)	MVK_ERROR_FIELD_AND_ITERATION_INVALID
+f2c	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED
+f2c-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED
+f2d	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks) And Sum(Lines/Parts*/Count Having [$Lines/Qty] > 1) > 0	MVK_NO_ITERATION_FOR_WILDCARD
+f2d-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref) And Sum(Lines/Parts*/Count Having [$Lines/Qty] > 1) > 0	MVK_NO_ITERATION_FOR_WILDCARD
+f2e	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks)	
+f2e-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref)	
+f3	order	/Order	/Order/Lines/Slots/Mark	FieldFilled(Lines/Slots/Mark) And GroupFilled(Picks)	MVK_MULTIPLE_INDEX_FIELDS
+f3-f	order	/Order	/Order/Lines/Slots/Mark	FieldFilled(Lines/Slots/Mark) And FieldFilled(Picks/Ref)	MVK_MULTIPLE_INDEX_FIELDS
+f5a	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And [Lines/Parts/Count] != 1	
+f5b	order	/Order	/Order/Lines/Parts	GroupFilled(Lines) And NumberOfFilledGroups(Lines/Parts*) < 2	
+f5c	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And FieldValueIncludedInValueList(Lines/Parts/PartNo, "a", "b")	
+f5d	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And CurrentRepetition(Lines/Parts) > 1	
+f5e	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And CurrentRepetition(Lines) > 1	
+f5f	order	/Order	/Order/Lines/Parts	[Lines/Parts/Count] > 1	MVK_ERROR_FIELD_NOT_REFERENCED
+w1	order	/Order	/Order/Lines/Sku	FieldValuesNotUnique(Lines/Sku, Picks/Ref For Tier)	
+w2	order	/Order	/Order/Lines/Qty	MoreThanOneFieldFilled(Lines/Qty, Picks/Ref For Tier) And FieldNotFilled(Lines/Qty)	
+z4	order	/Order	/Order/Lines/Code	FieldFilled(Picks/Ref For Lines/Code)	
+z5	order	/Order	/Order/Lines/Code	FieldNotFilled(Picks/Ref For Lines/Code)	MVK_NEG_CONDITION_IN_ITERATION

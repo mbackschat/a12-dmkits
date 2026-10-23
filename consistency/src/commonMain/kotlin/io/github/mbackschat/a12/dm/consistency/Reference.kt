@@ -356,27 +356,23 @@ internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDecla
     .sortedBy { it.path.length }
 
 /**
- * [crossedRepetitions] plus the group [path] names when it is repeatable: the levels a reference ENDING at [path]
- * iterates, since a group carrier rides its own level's marker as a field beneath it does ([iteratedLevels]).
- */
-internal fun TrackedFactBase.repetitionsReachedBy(path: String): List<TrackedDeclaration> =
-    crossedRepetitions(path) +
-        listOfNotNull(declarationAt(path)?.takeIf { it.declaredKind == DeclaredKind.GROUP && it.isRepeatableGroup })
-
-/**
- * The repeatable levels above [path], plus [path] itself when it names a repeatable group.
+ * The repeatable levels above [path], plus [path] itself when it names a repeatable group, outermost first.
  *
  * A reference that ENDS at a repeatable group iterates it too — `CurrentRepetition(Legs)` rides the same
- * marker a field beneath `Legs` does — so a walk that only looks at ancestors misses the group carrier.
+ * marker a field beneath `Legs` does — so a walk that only looks at ancestors ([crossedRepetitions]) misses the
+ * group carrier.
  *
  * **The charge falls out of using the cursor rather than being written down**, which is what makes it right:
  * the repeatable-group list is built through [TrackedDeclaration.isRepeatable], so every group's body this
  * walk actually reads is charged, and a future change to what it reads charges itself. A hand-written charge
  * beside a delegating call is the shape that goes stale and under-charges — the unsound direction.
  */
-internal fun TrackedFactBase.iteratedLevels(path: String): List<String> = repeatableGroupPaths()
-    .filter { it == path || path.startsWith("$it/") }
-    .sortedBy { it.length }
+internal fun TrackedFactBase.repetitionsReachedBy(path: String): List<TrackedDeclaration> = repeatableGroups()
+    .filter { it.path == path || path.startsWith("${it.path}/") }
+    .sortedBy { it.path.length }
+
+/** The paths of [repetitionsReachedBy]. */
+internal fun TrackedFactBase.iteratedLevels(path: String): List<String> = repetitionsReachedBy(path).map { it.path }
 
 // The whole model's repeatable groups: a SET question, so it reads through
 // [TrackedFactBase.repeatableGroups] and never narrows with a scoped pass. Under `declarations()` a scoped
