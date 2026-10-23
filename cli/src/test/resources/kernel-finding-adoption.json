@@ -795,6 +795,83 @@
       }
      }
     },
+    "kf601": {
+     "sha256": "4c2ef62356be2a671a498818f770693facea5296d83afe0dec63c802b50ab46a",
+     "task": "SS3",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "the iteration guard on a field-keyed selection and a group error target",
+       "the parallel marking of a group reference's own level"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's guard and binding classes on the K04 rows"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's guard and binding classes on the K04 rows"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "Whether a rule is admitted is the kernel's or the checker's answer; the kits author the condition without judging it.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The guard joins a field key to its selection and judges a group error target at its own level; the parallel marking counts a group reference's own repeatable level.",
+       "evidence": {
+        "the iteration guard on a field-keyed selection and a group error target": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationK04AgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker names A12's class on every row."
+        },
+        "the parallel marking of a group reference's own level": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationK04AgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker admits row v13 and refuses row v12 as A12 does."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row, the peer's and our discriminators.",
+       "evidence": {
+        "A12's guard and binding classes on the K04 rows": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationK04AgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Not yet handed over.",
+       "evidence": {}
+      }
+     }
+    },
     "kf600": {
      "sha256": "0818552ae580f01303728f0e7d7d60cd205db3438da98f27129269d6a484a3ce",
      "task": "M1",

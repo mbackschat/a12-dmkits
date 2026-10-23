@@ -17,7 +17,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody
  * filled. `MVK_PARALLEL_ITERATION_INVALID` answers it across parallel groups and `MVK_NEG_CONDITION_IN_ITERATION`
  * on the rule's own iteration, in that order and after every other whole-rule check
- * ([KERNEL-FINDINGS KF537], [KF595], [KF596]; `adapter.laws.CheckerIterationGuardAgreementTest`).
+ * ([KERNEL-FINDINGS KF537], [KF595], [KF596], [KF601]; `adapter.laws.CheckerIterationGuardAgreementTest`,
+ * `…CheckerIterationK04AgreementTest`).
  *
  * **What it is built on.** The connective tree the recognizer keeps ([ConditionNode]); the starred levels and
  * resolution every family reads; the parallel marking [markedLevelsOf] states for the filtered-entity family, so
@@ -31,11 +32,13 @@ import kotlinx.serialization.json.JsonPrimitive
  * below a positive constant or an amount compared equal to zero over references that all iterate, an amount
  * against a constant over mixed references, `CurrentRepetition` of the judged level, `Invalid` and the value-list
  * forms. An `And` is admitted when one of its parts is admitted and iterates the level, an `Or` only when every
- * part is ([KERNEL-FINDINGS KF537]).
+ * part is ([KERNEL-FINDINGS KF537]). A selection keyed by a field is one reference that iterates wherever its
+ * key does ([KF601]).
  *
  * **Which levels.** Parallel iteration is judged as one whole. The rule's own iteration is judged level by
  * level, shallowest first, and the first refused level is the one named; a level repeating exactly twice that
- * declares an index field is never judged. A computation is judged through the condition A12 joins it into
+ * declares an index field is never judged. A group error target is judged as a field one is, its own level
+ * among those asked ([KF601]). A computation is judged through the condition A12 joins it into
  * ([computationCondition]), whose leading `FieldFilled` of the computed field is what guards it.
  *
  * **Silent wherever the reading is not this checker's to give, and then the declaration carries a coverage gap
@@ -64,8 +67,8 @@ internal fun TrackedFactBase.iterationGuardGaps(element: TrackedDeclaration): Li
         "this ${if (element.declaredKind == DeclaredKind.RULE) "rule" else "computation"} iterates a repetition, and whether its condition can be " +
             "true for a repetition nobody filled (`MVK_NEG_CONDITION_IN_ITERATION`, " +
             "`MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a shape this checker does not judge for " +
-            "that law, such as a `$` marker, a selection keyed by a field, a condition kind outside the measured set or a " +
-            "group error target"))
+            "that law, such as a `$` marker, a condition kind outside the measured set, or a parallel iteration " +
+            "beside a group error target or a field-keyed selection"))
 }
 
 /** The stage that answered and its finding, null when the condition is admitted. */
@@ -106,11 +109,28 @@ private class GuardReference(
     val isField: Boolean,
     val levels: List<GuardLevel>,
     val fields: Long,
+    /** Whether this reference carries a selection, which a field key may then join. */
+    val selected: Boolean,
+    /**
+     * The field a selection is keyed by. A12 counts the selection as iterating wherever its key does, as one
+     * reference rather than two (`IterationNotValidVisitor.isIteration`, kernel 30.8.1, read 2026-10-23; rows
+     * `x1`–`x4` of `adapter.laws.CheckerIterationK04AgreementTest`), and asks the key's levels as the rule's own.
+     */
+    var key: GuardReference? = null,
 ) {
     /** How many references A12 counts this one as when it does not iterate: each starred level multiplies. */
     val weight: Long get() = levels.filter { it.mark == LevelMark.STARRED }.fold(1L) { n, l -> n * l.repeats }
     val starred: Boolean get() = levels.any { it.mark == LevelMark.STARRED }
-    val iterates: Boolean get() = levels.any { it.mark == LevelMark.ITERATED || it.mark == LevelMark.PARALLEL }
+    val iterates: Boolean
+        get() = levels.any { it.mark == LevelMark.ITERATED || it.mark == LevelMark.PARALLEL } || key?.iterates == true
+    /** The depths the rule's own iteration asks of this reference: its iterated levels and its key's. */
+    val judgedDepths: List<Int>
+        get() = levels.withIndex().filter { (_, l) -> l.mark == LevelMark.ITERATED && !(l.repeats == 2 && l.keyed) }
+            .map { it.index } + key?.judgedDepths.orEmpty()
+    /** Every level of this reference and its key. */
+    val allLevels: List<GuardLevel> get() = levels + key?.allLevels.orEmpty()
+    /** Whether this reference or its key names [target]. */
+    fun names(target: String): Boolean = target.isAtOrBelow(path) || key?.names(target) == true
 }
 
 /** The level being judged: the parallel iteration as a whole, or the rule's own iteration at one depth. */
@@ -132,7 +152,7 @@ private class IterationGuard(
     fun iterates(reference: GuardReference, judged: Judged): Boolean = when (judged) {
         Judged.Parallel -> reference.levels.any { it.mark == LevelMark.PARALLEL }
         is Judged.Ordinary -> reference.levels.getOrNull(judged.depth)?.mark == LevelMark.ITERATED
-    }
+    } || reference.key?.let { iterates(it, judged) } == true
 
     fun within(at: Int, end: Int) = references.filter { it.start in at until end }
 
@@ -150,10 +170,7 @@ private class IterationGuard(
 
     /** Null where the walk has no verdict to give at a level it reaches before any refusal. */
     fun ordinaryOutcome(): Outcome? {
-        val depths = references.flatMap { r ->
-            r.levels.withIndex().filter { (_, l) -> l.mark == LevelMark.ITERATED && !(l.repeats == 2 && l.keyed) }
-                .map { it.index }
-        }.distinct().sorted()
+        val depths = references.flatMap { it.judgedDepths }.distinct().sorted()
         for (depth in depths) {
             when (admitted(tree, Judged.Ordinary(depth))) {
                 null -> return null
@@ -383,40 +400,55 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     val declared = element.declaredReference()
         ?.takeIf { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET } ?: return null
     val target = (declared.target as? Reference.Resolved)?.path ?: return null
-    if (declarationAt(target)?.declaredKind != DeclaredKind.FIELD) return null
+    // A group error target is judged as a field one is, its own level among those asked (rows `g01`–`g06`,
+    // `y1`–`y9`), except in parallel, which no row has measured on a group target.
+    val targetKind = declarationAt(target)?.declaredKind
+    if (targetKind != DeclaredKind.FIELD && targetKind != DeclaredKind.GROUP) return null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val bodies = recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().map { it.entry.end until it.end }
-    val targetGroup = target.substringBeforeLast('/')
+    val targetGroup = if (targetKind == DeclaredKind.GROUP) target else target.substringBeforeLast('/')
     val references = mutableListOf<GuardReference>()
     val marked = mutableListOf<MarkedLevels>()
-    var selectionIterates = false
+    var pendingKey: GuardReference? = null
     for (entity in recognition.entities) {
-        // A selection's FIELD key iterates wherever the key does, which this reading does not follow: declined.
-        if (entity.path.first().text == "$" || entity.indexKey) return null
+        if (entity.path.first().text == "$") return null
         val inBody = bodies.any { entity.site.start in it }
         if (inBody != entity.inFilter) return null
         if (inBody) continue
         val reference = guardReferenceOf(entity, group, element) ?: return null
+        // A field key is recognized ahead of the selection it keys, and joins that selection rather than
+        // standing as a reference of its own.
+        if (entity.indexKey) {
+            if (pendingKey != null) return null
+            pendingKey = reference
+            continue
+        }
+        if (pendingKey != null) {
+            if (!entity.indexed) return null
+            reference.key = pendingKey
+            pendingKey = null
+        }
         references += reference
-        if (entity.indexed && reference.iterates) selectionIterates = true
         // A selected level is never marked parallel: A12's pass marks only an iterated one.
         marked += if (entity.indexed) MarkedLevels(emptyList(), emptyList())
         else markedLevelsOf(normalizedPath(entity.path), group, targetGroup, element) ?: return null
     }
+    if (pendingKey != null) return null
     // A12's two passes (KF376), read where the filtered-entity family reads them: only once some reference
     // iterates jointly does every reference's keyed level on the error field's path become parallel too.
     if (marked.any { it.joint.isNotEmpty() }) {
+        if (targetKind == DeclaredKind.GROUP) return null
         // How that pass marks the level a selection still iterates is unmeasured.
-        if (selectionIterates) return null
+        if (references.any { it.selected && it.iterates }) return null
         references.zip(marked).forEach { (reference, levels) ->
             reference.levels.filter { it.mark == LevelMark.ITERATED && it.group in levels.marked }
                 .forEach { it.mark = LevelMark.PARALLEL }
         }
     }
-    if (references.any { r -> r.levels.any { it.mark == LevelMark.ITERATED && !target.isAtOrBelow(it.group) } }) return null
+    if (references.any { r -> r.allLevels.any { it.mark == LevelMark.ITERATED && !target.isAtOrBelow(it.group) } }) return null
     // A12 decides the error-field binding (KF417) before this law, so where no reference naming the error
     // field iterates while another does, that earlier class may answer and this reading has no verdict.
-    if (references.any { it.iterates } && references.none { it.iterates && target.isAtOrBelow(it.path) }) return null
+    if (references.any { it.iterates } && references.none { it.iterates && it.names(target) }) return null
     val identities = CONDITION_OPERATOR_KEYWORDS.getValue(conditionLanguage).entries.associate { (id, spelling) -> spelling to id }
     return IterationGuard(element, target, tree, references, recognition.operations, identities, execution.carrier.text)
 }
@@ -459,7 +491,8 @@ private fun TrackedFactBase.guardReferenceOf(
                 n * repeats
             }
     }
-    return GuardReference(entity.site.start, resolved.path, declaration.declaredKind == DeclaredKind.FIELD, levels, fields)
+    return GuardReference(entity.site.start, resolved.path, declaration.declaredKind == DeclaredKind.FIELD, levels, fields,
+        selected = entity.indexed)
 }
 
 

@@ -234,8 +234,7 @@ internal fun TrackedFactBase.levelClassOf(
         return null
     }
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
-    val levels = crossedRepetitions(resolved.path) +
-        listOfNotNull(declared.takeIf { isGroup && it.isRepeatableGroup })
+    val levels = repetitionsReachedBy(resolved.path)
     var wildcardSeen = false
     levels.forEach { level ->
         if (level.path in starred) {

@@ -242,7 +242,7 @@ internal fun TrackedFactBase.markedLevelsOf(
     val joint = mutableListOf<String>()
     val onTargetPath = mutableListOf<String>()
     var wildcardSeen = false
-    crossedRepetitions(resolved.path).forEach { level ->
+    repetitionsReachedBy(resolved.path).forEach { level ->
         if (level.path in starred) {
             wildcardSeen = true
             return@forEach

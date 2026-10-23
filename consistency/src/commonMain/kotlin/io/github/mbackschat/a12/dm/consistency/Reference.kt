@@ -356,6 +356,14 @@ internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDecla
     .sortedBy { it.path.length }
 
 /**
+ * [crossedRepetitions] plus the group [path] names when it is repeatable: the levels a reference ENDING at [path]
+ * iterates, since a group carrier rides its own level's marker as a field beneath it does ([iteratedLevels]).
+ */
+internal fun TrackedFactBase.repetitionsReachedBy(path: String): List<TrackedDeclaration> =
+    crossedRepetitions(path) +
+        listOfNotNull(declarationAt(path)?.takeIf { it.declaredKind == DeclaredKind.GROUP && it.isRepeatableGroup })
+
+/**
  * The repeatable levels above [path], plus [path] itself when it names a repeatable group.
  *
  * A reference that ENDS at a repeatable group iterates it too — `CurrentRepetition(Legs)` rides the same

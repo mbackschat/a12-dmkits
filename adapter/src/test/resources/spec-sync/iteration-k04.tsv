@@ -1,0 +1,110 @@
+# Rows of a12-kernel-lean SPEC-2026-10-22-05 and SPEC-2026-10-23-01, with the kernel classes their capture observed (kernel 30.8.1).
+# id	model	group	error field	condition (\n is a line break)	A12 classes (empty = admitted)
+c01	order	/Order	/Order/Lines/Sku	FieldNotFilled(Lines/Sku)	MVK_NEG_CONDITION_IN_ITERATION
+c02	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Qty) And FieldNotFilled(Lines/Sku)	
+e01	order	/Order	/Order/Gifts/Card/Text	FieldNotFilled(Gifts/Card/Text)	
+e02	order	/Order	/Order/Gifts/Note	FieldNotFilled(Gifts/Note)	
+e03	order	/Order	/Order/Wraps/Ribbon/Color	FieldNotFilled(Wraps/Ribbon/Color)	MVK_NEG_CONDITION_IN_ITERATION
+e04	order	/Order/Gifts	/Order/Gifts/Note	FieldNotFilled(Note)	
+e05	order	/Order	/Order/Gifts/GiftNo	FieldNotFilled(Gifts/GiftNo)	
+e06	order	/Order	/Order/Lines/Slots/Mark	FieldNotFilled(Lines/Slots/Mark)	MVK_NEG_CONDITION_IN_ITERATION
+e07	order	/Order	/Order/Lines/Slots/Mark	FieldFilled(Lines/Sku) And FieldNotFilled(Lines/Slots/Mark)	
+e08	order	/Order	/Order/Gifts/Note	NoFieldFilled(Gifts/Note, Gifts/GiftNo)	
+e09	order	/Order	/Order/Gifts/Note	NumberOfFilledFields(Gifts/Note, Gifts/GiftNo) < 1	
+e10	order	/Order	/Order/Picks/Ref	FieldNotFilled(Picks/Ref)	MVK_NEG_CONDITION_IN_ITERATION
+e11	order	/Order	/Order/Gifts/Note	GroupNotFilled(Gifts/Card) And FieldFilled(Gifts/Note)	
+u01	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) < 1	MVK_NEG_CONDITION_IN_ITERATION
+u02	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) <= 1	MVK_NEG_CONDITION_IN_ITERATION
+u03	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) != 1	MVK_NEG_CONDITION_IN_ITERATION
+u04	order	/Order	/Order/Lines/Qty	1 > NumberOfFilledFields(Lines/Qty, Lines/Price)	MVK_NEG_CONDITION_IN_ITERATION
+u05	order	/Order	/Order/Lines/Qty	1 >= NumberOfFilledFields(Lines/Qty, Lines/Price)	MVK_NEG_CONDITION_IN_ITERATION
+u06	order	/Order	/Order/Lines/Qty	1 != NumberOfFilledFields(Lines/Qty, Lines/Price)	MVK_NEG_CONDITION_IN_ITERATION
+u07	order	/Order	/Order/Lines/Qty	{NumberOfFilledFields(Lines/Qty, Lines/Price)} < 1	MVK_NEG_CONDITION_IN_ITERATION
+u08	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) > 1	
+u09	order	/Order	/Order/Lines/Qty	1 < NumberOfFilledFields(Lines/Qty, Lines/Price)	
+u10	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) <= 0	
+u11	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) == 0	
+u12	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Email) > 1	MVK_NEG_CONDITION_IN_ITERATION
+u13	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Email) > 1234567890123456	MVK_NEG_CONDITION_IN_ITERATION
+u14	order	/Order	/Order/Lines/Qty	NumberOfFilledFields(Lines/Qty, Lines/Price) >= 1	
+u15	order	/Order	/Order/Lines/Sku	NumberOfDifferentValues(Lines/Sku, Lines/Code) < 1	MVK_NEG_CONDITION_IN_ITERATION
+u16	order	/Order	/Order/Lines/Sku	NumberOfDifferentValues(Lines/Sku, Lines/Code) > 0	
+u17	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Sku) Or CurrentRepetition(Lines) > 2	MVK_NEG_CONDITION_IN_ITERATION
+u18	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Sku) And CurrentRepetition(Lines) > 2	
+u19	order	/Order	/Order/Lines/Sku	NoFieldValueIncludedInValueList(Lines/Sku In "X", "Y")	MVK_NEG_CONDITION_IN_ITERATION
+u20	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Qty) And NoFieldValueIncludedInValueList(Lines/Sku In "X")	
+u21	order	/Order	/Order/Lines/Code	NotAllFieldValuesIncludedInValueList(Tier, Lines/Code In "X")	MVK_NEG_CONDITION_IN_ITERATION
+u22	order	/Order	/Order/Lines/Code	NotAllFieldValuesIncludedInValueList(Lines/Code In "X")	
+u23	order	/Order	/Order/Lines/Code	AtLeastOneFieldValueIncludedInValueList(Tier, Lines/Code In "X")	MVK_NEG_CONDITION_IN_ITERATION
+u24	order	/Order	/Order/Lines/Code	AtLeastOneFieldValueIncludedInValueList(Lines/Code In "X")	
+u25	order	/Order	/Order/Lines/Qty	Max([Lines/Qty], [Budget]) > 5	MVK_NEG_CONDITION_IN_ITERATION
+u26	order	/Order	/Order/Lines/Qty	Max([Lines/Qty], [Lines/Price]) > 5	
+u27	order	/Order	/Order/Lines/Price	[Lines/Price] == {0}	MVK_NEG_CONDITION_IN_ITERATION
+u28	order	/Order	/Order/Lines/Price	[Lines/Price] == 0	MVK_NEG_CONDITION_IN_ITERATION
+u29	order	/Order	/Order/Lines/Price	[Lines/Price] == {1}	
+u30	order	/Order	/Order/Lines/Price	{[Lines/Price]} == 0	MVK_NEG_CONDITION_IN_ITERATION
+o01	order	/Order	/Order/Lines/Sku	FieldNotFilled(Lines/Qty)	MVK_ERROR_FIELD_NOT_REFERENCED
+o02	order	/Order	/Order/Lines/Sku	FieldFilled(Lines/Qty)	MVK_ERROR_FIELD_NOT_REFERENCED
+o03	order	/Order	/Order/Lines/Sku	NumberOfFilledFields(Lines/Qty, Lines/Price) < 1	MVK_ERROR_FIELD_NOT_REFERENCED
+o04	order	/Order	/Order/Email	FieldNotFilled(Email) And FieldNotFilled(Lines/Qty)	MVK_NO_WILDCARD
+a01	order	/Order	/Order/Lines/Qty	Sum(Lines/Qty, Lines/Price) == 0	MVK_NEG_CONDITION_IN_ITERATION
+a02	order	/Order	/Order/Lines/Qty	Sum(Lines/Qty, Lines/Price) == 0.5	
+a03	order	/Order	/Order/Lines/Qty	MinValue(Lines/Qty, Lines/Price) == 0	MVK_NEG_CONDITION_IN_ITERATION
+a04	order	/Order	/Order/Lines/Qty	MaxValue(Lines/Qty, Lines/Price) > 0	
+a05	order	/Order	/Order/Lines/Day	Sum(Lines/Day, Lines/Month) > 31	
+a06	order	/Order	/Order/Lines/Qty	Sum(Lines/Qty, Budget) > 5	MVK_NEG_CONDITION_IN_ITERATION
+a09	order	/Order	/Order/Lines/Sku	FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)	MVK_ERROR_FIELD_AND_ITERATION_INVALID
+a10	order	/Order	/Order/Lines/Parts/PartNo	NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)	MVK_PARALLEL_ITERATION_INVALID
+a11	order	/Order	/Order/Lines/Parts/PartNo	AtLeastOneFieldFilled(Lines/Parts/PartNo, Picks/Ref)	MVK_NEG_CONDITION_IN_ITERATION
+a12	order	/Order	/Order/Lines/Sku	NoFieldFilled(Lines/Sku, Picks/Ref)	MVK_PARALLEL_ITERATION_INVALID
+d1	order-bows	/Order	/Order/Lines/Sku	FieldsNotCollectivelyFilled(Lines*/Sku, Wraps/Style)	MVK_NO_WILDCARD
+d2	order-bows	/Order	/Order/Lines/Qty	Sum(Lines*/Qty) > 0 And FieldFilled(Wraps/Style)	MVK_NO_WILDCARD
+d3	order-bows	/Order	/Order/Lines/Qty	Sum(Lines*/Qty) > 0 And FieldFilled(Picks/Ref)	MVK_ERROR_FIELD_AND_ITERATION_INVALID
+d4	order-bows	/Order	/Order/Lines/Sku	FieldFilled(Lines/Sku) And FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)	
+d5	order-bows	/Order	/Order/Lines/Sku	NoFieldFilled(Lines/Sku, Picks/Ref For Lines/LineNo)	MVK_NEG_CONDITION_IN_ITERATION
+d6	order-bows	/Order	/Order/Lines/Qty	FieldNotFilled(Lines/Qty) And FieldFilled(Picks/Ref For Lines/LineNo)	
+v1	order-bows	/Order	/Order/Wraps/Style	FieldFilled(Wraps/Style) Or FieldNotFilled(Wraps/Bows/Shade For "a")	MVK_NEG_CONDITION_IN_ITERATION
+v2	order-bows	/Order	/Order/Wraps/Bows/Shade	FieldNotFilled(Wraps/Bows/Shade For "a")	MVK_NEG_CONDITION_IN_ITERATION
+v3	order-bows	/Order	/Order/Wraps/Bows/Shade	FieldFilled(Wraps/Bows/Shade For "a")	
+v4	order-bows	/Order	/Order/Lines/Qty	AtLeastOneFieldFilled(Lines/Qty, Lines/Sku For "1")	MVK_NEG_CONDITION_IN_ITERATION
+v5	order-bows	/Order	/Order/Lines/Qty	MoreThanOneFieldFilled(Lines/Qty, Lines/Sku For "1") And FieldNotFilled(Lines/Qty)	
+v6	order-bows	/Order	/Order/Lines/Qty	MoreThanOneFieldFilled(Lines/Qty, Lines/Sku For "1", Lines/Sku For "2") And FieldNotFilled(Lines/Qty)	MVK_NEG_CONDITION_IN_ITERATION
+v7	order-bows	/Order	/Order/Wraps/Style	GroupFilled(Wraps/Bows For "a") And FieldNotFilled(Wraps/Style)	
+v8	order-bows	/Order	/Order/Wraps/Style	FieldFilled(Wraps/Style) And GroupNotFilled(Wraps/Bows For "a")	
+v9	order-bows	/Order	/Order/Lines/Qty	GroupFilled(Picks For Lines/LineNo) And FieldNotFilled(Lines/Qty)	
+v10	order-bows	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupNotFilled(Picks For Lines/LineNo)	
+v11	order-bows	/Order	/Order/Wraps/Style	FieldNotFilled(Wraps/Style) And GroupFilled(Wraps/Bows For "a")	
+v15	order-bows	/Order	/Order/Lines/Sku	FieldValuesNotUnique(Lines/Sku, Lines/Code For "1", Lines/Code For "2")	MVK_NEG_CONDITION_IN_ITERATION
+v16	order-bows	/Order	/Order/Lines/Sku	FieldValuesNotUnique(Lines/Sku, Lines/Code For "1")	
+v17	order-bows	/Order	/Order/Wraps/Bows/Shade	GroupNotFilled(Wraps/Bows For "a")	MVK_NEG_CONDITION_IN_ITERATION
+v18	order-bows	/Order	/Order/Wraps/Bows/Shade	GroupFilled(Wraps/Bows For "a")	
+v12	rota	/Plan	/Plan/Weeks/Demand/Headcount	GroupFilled(Weeks) And FieldFilled(Weeks/Demand/Note) And FieldsNotCollectivelyFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)	MVK_ERROR_FIELD_AND_ITERATION_INVALID
+v13	rota	/Plan	/Plan/Weeks/Demand/Headcount	GroupFilled(Weeks/Demand) And FieldFilled(Weeks/Demand/Note) And FieldsNotCollectivelyFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)	
+v14	rota	/Plan	/Plan/Weeks/Demand/Headcount	FieldFilled(Weeks/Demand/Headcount) And FieldsNotCollectivelyFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)	
+g01	order	/Order	/Order/Lines/Parts	GroupNotFilled(Lines/Parts)	MVK_NEG_CONDITION_IN_ITERATION
+g02	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts)	
+g03	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Sku) And GroupNotFilled(Lines/Parts)	MVK_NEG_CONDITION_IN_ITERATION
+g04	order	/Order	/Order/Gifts/Card	GroupNotFilled(Gifts/Card)	
+g05	order	/Order	/Order/Wraps/Ribbon	GroupNotFilled(Wraps/Ribbon)	MVK_NEG_CONDITION_IN_ITERATION
+g06	order	/Order	/Order/Wraps/Ribbon	GroupFilled(Wraps/Ribbon)	
+x1	order-bows	/Order	/Order/Lines/Qty	AtLeastOneFieldFilled(Lines/Qty, Picks/Ref For Lines/LineNo)	
+x2	order-bows	/Order	/Order/Lines/Qty	FieldsNotCollectivelyFilled(Lines/Qty, Picks/Ref For Lines/LineNo)	
+x3	order-bows	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or AtLeastOneGroupFilled(Picks For Lines/LineNo)	
+x5	order-bows	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or FieldFilled(Picks/Ref For Lines/LineNo)	
+x6	order-bows	/Order	/Order/Lines/Qty	FieldNotFilled(Lines/Qty) And MoreThanOneFieldFilled(Lines/Sku, Picks/Ref For Lines/LineNo)	
+y1	order	/Order	/Order/Lines/Parts	GroupFilled(Lines) And GroupNotFilled(Lines/Parts)	MVK_NEG_CONDITION_IN_ITERATION
+y2	order	/Order	/Order/Lines/Parts	GroupFilled(Lines/Parts) And FieldNotFilled(Lines/Sku)	
+y3	order	/Order	/Order/Lines/Parts	GroupNotFilled(Lines/Parts) Or FieldFilled(Lines/Sku)	MVK_NEG_CONDITION_IN_ITERATION
+y4	order	/Order	/Order/Gifts/Card	GroupNotFilled(Gifts/Card) And FieldFilled(Gifts/Note)	
+y5	order	/Order	/Order/Wraps/Ribbon	FieldFilled(Wraps/Style) And GroupNotFilled(Wraps/Ribbon)	
+y6	order	/Order	/Order/Lines	GroupNotFilled(Lines)	MVK_NEG_CONDITION_IN_ITERATION
+y7	order	/Order	/Order/Lines	GroupFilled(Lines)	
+y8	order	/Order	/Order/Lines/Slots	GroupNotFilled(Lines/Slots)	MVK_NEG_CONDITION_IN_ITERATION
+y9	order	/Order	/Order/Lines/Slots	GroupFilled(Lines) And GroupNotFilled(Lines/Slots)	
+y11	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Sku) And GroupFilled(Lines/Parts)	
+x4	order-bows	/Order	/Order/Lines/Sku	FieldValuesNotUnique(Lines/Sku, Picks/Ref For Lines/LineNo, Picks/Ref For Lines/Code)	
+x7	order-bows	/Order	/Order/Lines/Sku	FieldValuesNotUnique(Lines/Sku, Picks/Ref For Lines/LineNo)	
+z1	order-bows	/Order	/Order/Lines/LineNo	FieldNotFilled(Picks/Ref For Lines/LineNo)	MVK_NEG_CONDITION_IN_ITERATION
+z2	order-bows	/Order	/Order/Lines/LineNo	FieldFilled(Picks/Ref For Lines/LineNo)	
+z3	order-bows	/Order	/Order/Lines/Sku	FieldNotFilled(Lines/Sku) Or FieldNotFilled(Picks/Ref For Lines/LineNo)	MVK_NEG_CONDITION_IN_ITERATION
+y12	order	/Order	/Order/Lines/Parts	FieldFilled(Lines/Parts/PartNo)	MVK_ERROR_FIELD_NOT_REFERENCED

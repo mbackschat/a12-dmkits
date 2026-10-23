@@ -201,17 +201,17 @@ class CheckerIterationGuardAgreementTest {
                 "FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)", "MVK_ERROR_FIELD_AND_ITERATION_INVALID"),
             // Constants beyond the exact range a double holds: A12 still compares them, the checker declines.
             "sum equals 2^32 times 10^9" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000000", NEG),
-            // A selection keyed by a field iterates wherever its key does, which this reading does not follow.
-            "a field-keyed selection" to
-                order("Lines/Qty", "FieldFilled(Lines/Qty) And FieldNotFilled(Picks/Ref For Lines/LineNo)"),
-            // A group as the error target.
-            "group target" to order("Lines/Parts", "GroupNotFilled(Lines/Parts)", NEG),
         )
 
         val ROWS: Map<String, Row> = linkedMapOf(
             // The baseline: a negative over the rule's own iteration, and its positive guard.
             "unguarded negative" to order("Lines/Sku", "FieldNotFilled(Lines/Sku)", NEG),
             "guarded by a per-row positive" to order("Lines/Sku", "FieldFilled(Lines/Qty) And FieldNotFilled(Lines/Sku)"),
+            // A selection keyed by a field iterates wherever its key does (KF601), and a group target is guarded at
+            // its own level as a field target is.
+            "a field-keyed selection beside a per-row positive" to
+                order("Lines/Qty", "FieldFilled(Lines/Qty) And FieldNotFilled(Picks/Ref For Lines/LineNo)"),
+            "group target" to order("Lines/Parts", "GroupNotFilled(Lines/Parts)", NEG),
             // A positive at no repeatable level guards nothing (KF537), against "any positive guards".
             "guarded by a fixed positive" to order("Lines/Sku", "FieldFilled(Email) And FieldNotFilled(Lines/Sku)", NEG),
             // Or needs every part, against "one part suffices as under And".

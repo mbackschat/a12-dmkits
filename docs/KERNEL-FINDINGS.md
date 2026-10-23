@@ -14530,3 +14530,39 @@ An order with a string `Note`, a number `Qty` and two dates `OrderedOn` and `Shi
 So the bracket is refused as a token whatever the field's type, before any type gate: a bracketed number field draws the token class, not the `MVK_NO_STRING` its bare spelling would. Both slots of the date difference refuse it alike. The `Length([F]) > 5` spelling once written in [KF34](#kf34) and in KERNEL-SEMANTICS §3 was shorthand: the differential behind them renders the bare `Length(F)`, so their claim stands and only the spelling was corrected. The other entity-typed slots and the other date differences are not measured here.
 
 *Locked by:* `adapter.laws.CheckerBracketedEntitySlotAgreementTest` (every row above, with A12 pinned and the checker agreeing).
+
+## §9 supplement — a selection keyed by a field is one reference that iterates where its key does, a group error target is guarded at its own level, and a group reference marks its own level parallel (kernel `checkConsistency`, 2026-10-23) <a id="kf601"></a>
+
+> Fold: pending — beside [KF537](#kf537)'s guard account and [KF597](#kf597)'s parallel binding.
+
+An order: `Lines` repeats 50 times keyed by `LineNo`, and `Picks` repeats 10 times keyed by `LineNo` too. Each row is one rule at `/Order`, and `Picks/Ref For Lines/LineNo` selects the pick whose key is the line's own `LineNo`.
+
+| error field | condition | A12 |
+|---|---|---|
+| `Lines/Qty` | `AtLeastOneFieldFilled(Lines/Qty, Picks/Ref For Lines/LineNo)` | admitted |
+| `Lines/Qty` | `FieldsNotCollectivelyFilled(Lines/Qty, Picks/Ref For Lines/LineNo)` | admitted |
+| `Lines/Qty` | `FieldFilled(Lines/Qty) Or AtLeastOneGroupFilled(Picks For Lines/LineNo)` | admitted |
+| `Lines/Sku` | `FieldValuesNotUnique(Lines/Sku, Picks/Ref For Lines/LineNo, Picks/Ref For Lines/Code)` | admitted |
+| `Lines/Sku` | `NoFieldFilled(Lines/Sku, Picks/Ref For Lines/LineNo)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Lines/LineNo` | `FieldNotFilled(Picks/Ref For Lines/LineNo)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Lines/LineNo` | `FieldFilled(Picks/Ref For Lines/LineNo)` | admitted |
+
+So a field-keyed selection iterates the levels its key iterates, and counts as ONE reference. The first four rows separate that from the rival reading, in which the key is a reference of its own and the selected pick a fixed one beside it: the rival counts the pick as a reference outside the line's iteration, so it predicts `MVK_NEG_CONDITION_IN_ITERATION` for each of them, as a constant selection draws (`AtLeastOneFieldFilled(Lines/Qty, Lines/Sku For "1")`). The last two rows show that the key's own level is asked even when no other reference iterates it, and that the key names the error field. *Basis beyond the rows (source-read, kernel 30.8.1):* `IterationNotValidVisitor.isIteration(IEntityId)` answers true for an id whose semantic index is an entity id that iterates, before it looks at the id's own indices.
+
+A group as the error target is guarded at every repeatable level on its path, its own included. `Lines/Parts` repeats 5 times without a key, `Wraps` repeats twice without a key and holds the plain group `Ribbon`, and `Gifts` repeats twice keyed by `GiftNo` and holds the plain group `Card`.
+
+| error target | condition | A12 |
+|---|---|---|
+| `Lines/Parts` | `GroupNotFilled(Lines/Parts)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Lines/Parts` | `GroupFilled(Lines) And GroupNotFilled(Lines/Parts)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Lines/Parts` | `GroupFilled(Lines/Parts) And FieldNotFilled(Lines/Sku)` | admitted |
+| `Lines/Parts` | `FieldFilled(Lines/Parts/PartNo)` | `MVK_ERROR_FIELD_NOT_REFERENCED` |
+| `Wraps/Ribbon` | `GroupNotFilled(Wraps/Ribbon)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Gifts/Card` | `GroupNotFilled(Gifts/Card)` | admitted |
+| `Lines` | `GroupNotFilled(Lines)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+
+The second row is refused at `Parts`, which A12's message names: `GroupFilled(Lines)` guards the line and nothing below it. The `Gifts/Card` row is the keyed twice-repeating licence ([KF537](#kf537)) applied to a group target, and the `PartNo` row shows that a field beneath the target group does not reference it.
+
+A group reference also marks its own repeatable level in the parallel pass of [KF597](#kf597). In the weekly rota of that finding, with error field `Weeks/Demand/Headcount`, `GroupFilled(Weeks) And FieldFilled(Weeks/Demand/Note) And FieldsNotCollectivelyFilled(Weeks/Demand*/Headcount, Weeks/Supply/Headcount)` draws `MVK_ERROR_FIELD_AND_ITERATION_INVALID`, while the same condition with `GroupFilled(Weeks/Demand)` in place of `GroupFilled(Weeks)` is admitted. Only `Weeks/Demand` contains the error field and iterates the keyed `Demand` level, so it is the one that binds.
+
+*Locked by:* `adapter.laws.CheckerIterationK04AgreementTest` (every row above, a12-kernel-lean's K04 guard and binding rows beside them, A12 pinned and the checker agreeing; `aGroupTargetIsRefusedAtItsOwnLevel` locks the level named).
