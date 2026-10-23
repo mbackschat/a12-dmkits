@@ -745,7 +745,7 @@ Build with an isolated, public-repos-only Gradle home on JDK 21 (the kernel must
 ```sh
 ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 ./gradlew :interpreter:check test :schemakit:test :cli:test  # the four non-perf lanes (root `test` pulls its 7 guard tasks)
-./gradlew :adapter:test                                      # the fifth, ALONE — it carries the perf/profile lanes
+./gradlew :adapter:test                                      # the fifth; its perf tiers are excluded by default
 ./gradlew :adapter:test --tests "*.PolarityLawsTest"        # one class
 ./gradlew :adapter:test --tests "*.KernelMmReadCoverageTest" -Da12.kernel.mm.dir=../a12-kernel-mm   # opt-in
 ./gradlew :adapter:test --tests "*.Corpus1ReadCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
