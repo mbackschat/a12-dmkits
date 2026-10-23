@@ -79,6 +79,15 @@ internal fun TrackedFactBase.entityListArityContributions(
     }
 }
 
+/**
+ * Whether the list [reads] names, resolved to [targets], is one unstarred FIELD — what the more-than-one-field
+ * law refuses with `MVK_PARAMSIZE_INVALIDN` ahead of every kind gate behind it, so a family judging those gates
+ * yields to this one there.
+ */
+internal fun TrackedFactBase.isALoneUnstarredField(reads: List<OperandReference>, targets: List<String>): Boolean =
+    targets.size == 1 && '*' !in reads.first().reference &&
+        declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
+
 /** One entity-list arity law: what the operator's list must contain, and what it draws when it does not. */
 private enum class ArityLaw(val code: String, val wants: String, val kindFirst: DeclaredKind? = null) {
     EXACTLY_ONE("MVK_PARAMSIZE_INVALID1", "exactly one entity"),
@@ -143,7 +152,7 @@ private fun TrackedFactBase.arityFinding(
     // base this gate was measured with.
     val spelled = call.splitAtIn()?.second?.map { it to it } ?: call.operands.map { it.text to (it.base ?: it.text) }
     val reads = spelled.map { (text, base) ->
-        operandReferenceIn(text, declaringGroup, element) {
+        operandReferenceIn(text, declaringGroup, element, call.keyAnchoring) {
             referencesIn(base, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
         } ?: return null
     }

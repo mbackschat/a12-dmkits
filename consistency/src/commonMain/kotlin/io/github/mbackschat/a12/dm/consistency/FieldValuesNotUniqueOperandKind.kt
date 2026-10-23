@@ -73,13 +73,19 @@ private fun TrackedFactBase.operandKindFinding(
     // The list is taken whole or not at all: an operand this reader cannot reduce is one whose kind it
     // cannot know, and judging the rest would judge a shorter list than A12 judged. A selection whose key A12
     // admits is judged by the field it selects, never by its key ([KERNEL-FINDINGS KF605]).
-    val fields = call.operands.flatMap { operand ->
-        val written = operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+    val reads = call.operands.map { operand ->
+        operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
             operand.path?.let(::OperandReference)
-        }?.reference ?: return null
-        val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
-        expandToFields((resolved as? Reference.Resolved)?.path ?: return null) ?: return null
+        } ?: return null
     }
+    val targets = reads.map { read ->
+        (resolveEntity(declaringGroup, read.reference.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+            ?: return null
+    }
+    if (isALoneUnstarredField(reads, targets)) {
+        return null
+    }
+    val fields = targets.flatMap { expandToFields(it) ?: return null }
     var spelling: Pair<String, String>? = null
     fields.forEach { field ->
         // The one declared type measured as refused by this gate; every other refusal belongs to a later one.
@@ -123,7 +129,7 @@ private fun TrackedFactBase.operandKindFinding(
             )
         }
     }
-    fields.firstOrNull { it.waivesValueValidation() }?.let { raw ->
+    fields.firstOrNull(::waivesValueValidation)?.let { raw ->
         return finding(
             "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${raw.path}` waives value " +
                 "validation — compare a validated field, or drop `noValueValidation` from it",

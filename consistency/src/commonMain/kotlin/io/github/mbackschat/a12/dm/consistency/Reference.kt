@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
@@ -572,12 +573,28 @@ internal fun TrackedFactBase.bareReferenceField(
     element: TrackedDeclaration,
     inAFilterBody: Boolean = false,
 ): TrackedDeclaration? {
-    val read = operandReferenceIn(text, declaringGroup, element) {
+    val read = operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
         bareReferenceIn(text, conditionLanguage)?.let { OperandReference(it) }
     } ?: return null
     val target = addressedTargetOf(read, declaringGroup, element, inAFilterBody) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
+
+/**
+ * What binds the repetition a field key is read in, which decides whether the key's read iterates.
+ *
+ * [DECLARING_GROUP] binds only the repetitions the declaration sits in. [ERROR_TARGET] also binds every level
+ * the error target's chain holds or iterates jointly with it ([readsOneRow]): a rule declared at the root with
+ * its error field in `Lines` reads the key `Lines/LineNo` as one row, and A12 judges the index behind it
+ * ([KERNEL-FINDINGS KF605], `adapter.laws.CheckerKeyedListOperandAgreementTest`). That holds only for a key the
+ * rule reads directly; inside a `Having` body the filtered entity anchors it ([KERNEL-FINDINGS KF377]), so a
+ * caller that cannot tell which it has passes [DECLARING_GROUP] and judges less (CONSISTENCY-GAPS DG152).
+ */
+internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET }
+
+/** The anchoring of a key [this] call's operands carry: the error target's, unless a `Having` body holds the call. */
+internal val ConditionCall.keyAnchoring: KeyAnchoring
+    get() = if (inAFilterBody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
 
 /**
  * A written operand reduced to the reference an operand gate reads.
@@ -613,13 +630,14 @@ internal data class OperandReference(
  * only where the whole text, brackets aside, is ONE index whose value is a bare spec, whose key is a bare spec
  * or a string, and which the semantic-index chain admits ([admitsSemanticIndex]); every other index-carrying
  * text yields. A family that dropped the key instead read the bare value, and on a level the rule iterates
- * named its own class where A12 names the key's.
+ * named its own class where A12 names the key's. [anchoring] says which repetitions bind the level the key is
+ * read in; it has no default, because the declaring group's alone under-judges a key the error target binds.
  */
 internal fun TrackedFactBase.operandReferenceIn(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    anchoring: KeyAnchoring = KeyAnchoring.DECLARING_GROUP,
+    anchoring: KeyAnchoring,
     plain: () -> OperandReference?,
 ): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, anchoring, plain)
 
@@ -714,7 +732,7 @@ internal fun TrackedFactBase.singleReferenceOf(
     operand: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-): String? = operandReferenceIn(operand, declaringGroup, element) {
+): String? = operandReferenceIn(operand, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
     referencesIn(operand, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
 }?.reference
 
@@ -886,23 +904,18 @@ internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
     repeatableGroupPaths().count { it == path || path.startsWith("$it/") }
 
 /**
- * Whether this STRING declaration waives A12's per-cell value validation.
+ * Whether [field] is a STRING that waives A12's per-cell value validation, a type definition read as the type
+ * it defines.
  *
  * `FieldUtils.isNoValueValidation` is a STRING-only member — every other declared type answers false — and
- * the gate that reads it, `checkIsValueValidation`, refuses the whole call with `MVK_INVALID_RAW_TYPE`. Two
- * families ask it, each at a different point of its own construct's order.
+ * the gates that read it refuse the whole call with `MVK_INVALID_RAW_TYPE`. A field takes the waiver from its
+ * type definition as it takes the type, on every such gate (KERNEL-FINDINGS KF602,
+ * `adapter.laws.CheckerTypeDefinedRawFieldAgreementTest`), so reading the field's own declaration alone let a
+ * type-defined one through each of them.
  */
-internal fun DeclaredElement.waivesValueValidation(): Boolean = waivesValueValidationIn(body)
-
-/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
-internal fun TrackedDeclaration.waivesValueValidation(): Boolean = waivesValueValidationIn(body)
-
-private fun waivesValueValidationIn(body: JsonObject?): Boolean {
-    val declared = body?.get("fieldType") as? JsonObject ?: return false
-    if (declared.namedFieldType() != FieldType.STRING) {
-        return false
-    }
-    val string = FieldType.STRING.bodyIn(declared) ?: return false
+internal fun TrackedFactBase.waivesValueValidation(field: TrackedDeclaration): Boolean {
+    val resolved = resolvedFieldTypeOf(field)?.takeIf { it.type == FieldType.STRING } ?: return false
+    val string = resolved.declared?.let(FieldType.STRING::bodyIn) ?: return false
     return string.flag("noValueValidation") == true
 }
 

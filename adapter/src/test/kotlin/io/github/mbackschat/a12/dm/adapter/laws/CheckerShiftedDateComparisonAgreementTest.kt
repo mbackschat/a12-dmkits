@@ -71,6 +71,19 @@ class CheckerShiftedDateComparisonAgreementTest {
                 put("FieldFilled(Items/Count) And $shifted > 5", listOf(DATE))
             }
             put("FieldFilled(Items/Count) And AddDays(Items/ShipOn, 1) > [Items/ShipDe]", listOf())
+            // The shift's type in the operations around it.
+            put("FieldFilled(Items/Count) And Abs(AddDays(Items/ShipOn, 1)) > \"2020-01-01\"", listOf("MVK_NO_NUMBER"))
+            put("FieldFilled(Items/Count) And RoundUp(AddDays(Items/ShipOn, 1), 0) > \"2020-01-01\"", listOf("MVK_NO_NUMBER"))
+            put("FieldFilled(Items/Count) And Abs([Items/ShipOn]) > \"2020-01-01\"", listOf("MVK_NO_NUMBER"))
+            put("FieldFilled(Items/Count) And RoundUp([Items/ShipOn], 0) > \"2020-01-01\"", listOf("MVK_NO_NUMBER"))
+            put("FieldFilled(Items/Count) And AddDays(Items/ShipOn, 1) + 1 > 5", listOf("MVK_NO_STRING_OR_NUMBER_FOR_ADD"))
+            put("FieldFilled(Items/Count) And AddDays(Items/ShipOn, 1) * 2 > 5", listOf("MVK_NO_NUMBER_FOR_CALC"))
+            // `Max` takes no shift: its date operand is a narrower grammar slot.
+            put("FieldFilled(Items/Count) And Max(AddDays(Items/ShipOn, 1), Items/ShipDe) > \"01.01.2020\"",
+                listOf("MVK_UNEXPECTED_TOKEN"))
+            put("FieldFilled(Items/Count) And AddDays(Items/ShipOn, 1) == [Items/Count]", listOf(DATE))
+            put("FieldFilled(Items/Count) And AddDays(Items/ShipOn, 1) DiffersWithToleranceRange1 [Items/Count]",
+                listOf("MVK_INVALID_TYPE_FOR_TOLERANCE_OP"))
             put("FieldFilled(Items/Count) And AtLeastOneFieldFilled(Items*/Count Having [Items/Count] > 0 And " +
                 "AddDays(\$Items/ShipOn, 1) > \"2020-01-01\")", listOf(ORDERING))
         }

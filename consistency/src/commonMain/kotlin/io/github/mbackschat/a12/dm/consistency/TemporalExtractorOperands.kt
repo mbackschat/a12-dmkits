@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
+import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 
 /**
  * What a temporal EXTRACTOR demands of the date it reads, asked once its operand has passed the date slot.
@@ -156,7 +157,7 @@ private class ExtractorOperandReader(
                 STAMP_FORMAT.takeIf { operands.size == 2 && !(date is ExtractedFrom.Field && date.precision != null) }
             }
             "StartOfDateRange", "EndOfDateRange" -> endpointFormat(operands.singleOrNull() ?: return null, inBody)
-            else -> admittedShiftField(ConditionCall(shape.operator, shape.at, operands, shape.end, inBody), group, element)
+            else -> admittedShiftField(shape.asCall(conditionLanguage, inBody), group, element)
                 ?.let(::declaredTemporalFormatOf)
         } ?: return null
         ExtractedFrom.Computed(componentsOf(format))

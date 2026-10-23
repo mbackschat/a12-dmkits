@@ -14614,9 +14614,11 @@ A shop customer: `Items`, `Notes`, `Memos` and `Tickets`, each repeating 20 time
 
 So a type-defined index field is matched by the type its definition declares: a field of a string definition joins another field of the same definition and a plain string, and a definition of a number refuses a string. Two different definitions of a string are not measured. *Extended 2026-10-23:* the key-type gate resolves a definition the same way. `FieldFilled(Items/Count) And FieldFilled(X For Items/Code)`, keyed by the string definition, is admitted for `Notes/Text` and `Memos/Text` and draws `MVK_INDEX_TYPE_INCONSISTENT` for `Tickets/Text`, whose index is the number definition; `FieldFilled(Tickets/Text For Items/Count)`, keyed by a plain number, is admitted. The `NO_GROUPS` rows show that the walk passed the parallel level, since the group class is the operator's own.
 
+*Extended 2026-10-23:* a field takes `noValueValidation` from its type definition as it takes the type. `Items/RawRef`, typed through a definition of a raw-type string, draws `MVK_INVALID_RAW_TYPE` as a key, in `FieldFilled(Memos/Text For Items/RawRef)` and in `AtLeastOneFieldFilled(Memos*/Text For Items/RawRef)`. A third carrier, an insurance claim, holds a raw-type `Note` and its twin `NoteDef` typed through such a definition, at the root and inside a repeating `Attachments`. Each of thirteen probes, a comparison, `Length`, `FieldValuesNotUnique`, `NumberOfValueInFields`, `NumberOfDifferentValues`, `Valid`, both sides of a value list, a `RepetitionNotUnique` key, `RangeAsString`, `FieldValueIncludedInValueList`, a message value and a presence control, draws the same class on the twin as on the declared field.
+
 The second carrier keys `Items` and `Notes` by a string `Code`, and `Notes` holds `Pages`, keyed by `PageNo`. With error field `Items/Count`, `FieldFilled(Items/Count) And` each of `FieldFilled(Notes/Pages/Text)`, `GroupFilled(Notes/Pages)`, `AtLeastOneFieldFilled(Notes/Pages)`, `RoundUpValue(Notes/Pages, 2) > 0` and `RangeAsString(Notes/Pages, 1, 3) == "a"` draws `MVK_MULTIPLE_INDEX_FIELDS`, and so does `RangeAsString($Notes/Pages, 1, 3) == "a"` in a body. A group operand meets the class as a field does, ahead of the group carriers' own class.
 
-*Locked by:* `adapter.laws.CheckerOuterMarkedResidueAgreementTest` (every row above, A12 pinned and the checker agreeing).
+*Locked by:* `adapter.laws.CheckerOuterMarkedResidueAgreementTest` (every row above, A12 pinned and the checker agreeing); `adapter.laws.CheckerTypeDefinedRawFieldAgreementTest` (the claim carrier, A12 pinned on both fields; the checker agrees on the declared field and, on the twin, everywhere except the seven probes whose family leaves a type definition unjudged, CONSISTENCY-GAPS DG152).
 
 ## §9 supplement — a rule reporting on a group iterates the levels above it and reads its own level's first row, an error field below a joined side iterates its level inside every joined row, and a partial call reports no rule on a group (kernel runtime, 2026-10-23) <a id="kf603"></a>
 
@@ -14667,7 +14669,7 @@ So the truth pass short-circuits both connectives: a callback behind a false `An
 
 > Fold: pending — beside [KF390](#kf390)'s `FieldValuesNotUnique` gates, [KF370](#kf370)'s `SumOfProducts` gates and [KF351](#kf351)'s semantic-index chain.
 
-An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `Sku`, a number `Qty`, a date `ShipOn` spelled `yyyy-MM-dd` and a raw-type `RawRef`), an unkeyed repeating `Notes` with a `Text`, and `Picks` keyed by a string `Ref` (with a number `Qty`, a two-decimal `Price`, dates `ShipOn` spelled `dd.MM.yyyy` and `ShipIso` spelled `yyyy-MM-dd`, a date range `Window`, and a raw-type `RawNote`). Each row is one rule at `/Order`; `FieldValuesNotUnique` is abbreviated FVNU.
+An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `Sku`, numbers `Qty` and `Total`, a date `ShipOn` spelled `yyyy-MM-dd`, a raw-type `RawRef`, and a non-repeating `Boxes` holding a `Tag`), an unkeyed repeating `Notes` with a `Text`, and `Picks` keyed by a string `Ref` (with a number `Qty`, a two-decimal `Price`, dates `ShipOn` spelled `dd.MM.yyyy` and `ShipIso` spelled `yyyy-MM-dd`, a date range `Window`, and a raw-type `RawNote`). Each row is one rule at `/Order`, or a computation there where it says so; `FieldValuesNotUnique` is abbreviated FVNU.
 
 | condition (error field) | A12 |
 |---|---|
@@ -14685,8 +14687,14 @@ An order root holds a number `Total`, `Lines` keyed by a string `LineNo` (with `
 | `FieldFilled(Total) And SumOfProducts(Picks/Qty For "a", Picks/Price For "a") > 0`, the pair with either side `Picks*/…` instead (`Total`); the pair keyed by `Lines/LineNo` (`Lines/Sku`) | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
 | `FieldFilled(Total) And SumOfProducts(Picks*/Qty, Picks*/Price) > 0` (`Total`) | admitted |
 | `FieldFilled(Total) And SumOfProducts(Picks/Qty For "a", Lines*/Qty) > 0` (`Total`) | `MVK_DIFFERENT_GROUPS` |
+| FVNU`(Picks/Window For Lines/LineNo)` (`Lines/Sku`); FVNU`(Picks/Window)` (`Picks/Ref`) | `MVK_PARAMSIZE_INVALIDN` |
+| FVNU`(Picks/Qty For Lines/LineNo, Picks/Qty For Lines/LineNo, Picks/Ref For "a")`, the same with every key `"a"`, and `AtLeastOneFieldFilled(Picks/Qty For Lines/LineNo, Picks/Qty For Lines/LineNo)` (`Lines/Sku`) | `MVK_DUPLICATE_PARAM1` |
+| `FieldFilled(Lines/Boxes/Tag) And FieldFilled(Picks/Qty For Lines/Qty)` (`Lines/Boxes/Tag`); a computation of `Lines/Total` as `[Picks/Qty For Lines/Qty]` | `MVK_INDEX_TYPE_INCONSISTENT` |
+| a computation of `Lines/Total` as `[Picks/Qty For Lines/LineNo]` | admitted |
+| `FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/Qty Having [Lines/Qty] > 0)` (`Lines/Sku`) | `MVK_WILDCARDS_REQUIRED` |
+| `FieldFilled(Lines/Sku) And` each of `FieldFilled(Notes/Text For Picks/Ref)` and `FieldFilled(Lines/Qty For Picks/Qty)` (`Lines/Sku`) | `MVK_ERROR_FIELD_INVALID_INDEX` |
 
-So each gate reads the field the selection names, never its key: `Picks/Qty For Lines/LineNo` is a number beside `Lines/Qty` and a string key does not make it a string. A selected group expands to its fields, so `Picks For "a"` meets the date range among them. The key `Lines/LineNo` is read as one row when the error field iterates `Lines`, so the index behind it is judged, its type, containment, raw-type, index-field and star gates each answering; the same keys under an error field at the root iterate and draw the iteration class. In `SumOfProducts` a selection leaves its level unstarred, so the wildcard gate refuses it, and the group gate still answers first.
+So each gate reads the field the selection names, never its key: `Picks/Qty For Lines/LineNo` is a number beside `Lines/Qty` and a string key does not make it a string. A selected group expands to its fields, so `Picks For "a"` lists the date range `Window` and two differently spelled dates, either of which this class refuses on its own; the row does not say which one A12 meets first. The key `Lines/LineNo` is read as one row when the error field iterates `Lines`, so the index behind it is judged, its type, containment, raw-type, index-field and star gates each answering; the same keys under an error field at the root iterate and draw the iteration class. An error field in `Lines/Boxes`, and a computation of a field of `Lines`, read the key as one row too. In `SumOfProducts` a selection leaves its level unstarred, so the wildcard gate refuses it, and the group gate still answers first. The list's earlier gates answer a selection as they answer a plain field: a lone one is the arity class before its kind is asked, and a repeated one is the duplicate class whatever the rest of the list holds.
 
 *Locked by:* `adapter.laws.CheckerKeyedListOperandAgreementTest` (every row above, A12 pinned and the checker agreeing).
 
@@ -14704,6 +14712,17 @@ A shop customer's `Items` hold a number `Count`, dates `ShipOn` spelled `yyyy-MM
 
 For each of `AddDays`, `AddHours`, `AddMinutes` and `AddSeconds` over `Stamp`: `> "2020-01-01"` draws `MVK_INVALID_TYPE_FOR_COMPARISON`; `> "01.01.2020T10:00:00"` and `> "01.01.2020"` are admitted; `== "01.01.2020"` and `> 5` draw `MVK_INVALID_COMPARE_TO_DATE`. `AddDays(Items/ShipOn, 1) > [Items/ShipDe]` is admitted, and `AddDays($Items/ShipOn, 1) > "2020-01-01"` in a body beside an unmarked read draws `MVK_INVALID_TYPE_FOR_COMPARISON`.
 
-So a shift's result is typed as its date operand, a stamp keeping its clock, and the constant is typed on its own: `"2020-01-01"` is text in either declared spelling, and only the constant date spelling `dd.MM.yyyy` is a date.
+Around the shift, with `S` for `AddDays(Items/ShipOn, 1)`:
+
+| condition after `FieldFilled(Items/Count) And` | A12 |
+|---|---|
+| `Abs(S) > "2020-01-01"`, `RoundUp(S, 0) > "2020-01-01"`, and the same over `[Items/ShipOn]` | `MVK_NO_NUMBER` |
+| `S + 1 > 5` | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| `S * 2 > 5` | `MVK_NO_NUMBER_FOR_CALC` |
+| `S == [Items/Count]` | `MVK_INVALID_COMPARE_TO_DATE` |
+| `S DiffersWithToleranceRange1 [Items/Count]` | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
+| `Max(S, Items/ShipDe) > "01.01.2020"` | `MVK_UNEXPECTED_TOKEN` |
+
+So a shift's result is typed as its date operand, a stamp keeping its clock, and the constant is typed on its own: `"2020-01-01"` is text in either declared spelling, and only the constant date spelling `dd.MM.yyyy` is a date. The operations around a shift meet that date too, and rounding or making it absolute is refused before the comparison is asked anything, as it is for the date field itself.
 
 *Locked by:* `adapter.laws.CheckerShiftedDateComparisonAgreementTest` (every row above, A12 pinned and the checker agreeing).

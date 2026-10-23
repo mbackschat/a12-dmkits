@@ -265,7 +265,7 @@ private fun TrackedFactBase.keyedIdentityOf(
     val written = operand.text.javaTrimmedStart()
     val captured = written.startsWith(OUTER_MARKER)
     val text = if (captured) written.removePrefix(OUTER_MARKER).javaTrimmedStart() else operand.text
-    val read = operandReferenceIn(text, declaringGroup, element) { null }?.takeIf { it.indexSelected }
+    val read = operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { null }?.takeIf { it.indexSelected }
         ?: return null
     val path = (resolveEntity(declaringGroup, read.reference, element.origin) as? Reference.Resolved)?.path
         ?: return null

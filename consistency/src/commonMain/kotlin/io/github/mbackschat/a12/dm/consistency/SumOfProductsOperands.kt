@@ -26,7 +26,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
  * 5. an operand leaves its lowest repeatable level unstarred because the rule binds that level, by iterating
  *    it through its error field or by being declared inside it — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`
  *    again, for one unstarred operand or both ([KERNEL-FINDINGS KF370], measured 2026-10-20 by
- *    `adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest`).
+ *    `adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest`) — and so does a selection whose key A12
+ *    admits, which addresses one row of its level and stars none ([KERNEL-FINDINGS KF605]).
  *
  * The fifth gate is placed after the third and fourth only for the cells measured; a pair that also stars two
  * levels is left silent, because which of those classes A12 reaches first is not measured. A missing star on a

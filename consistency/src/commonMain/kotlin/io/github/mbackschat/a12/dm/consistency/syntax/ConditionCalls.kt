@@ -21,11 +21,13 @@ import io.github.mbackschat.a12.dm.consistency.javaTrimmed
 fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
     val bodies = filterBodiesIn(text, language)
     return callShapes(text, language, entry).map { shape ->
-        ConditionCall(shape.operator, shape.at, shape.operands.map { operandOf(it, language, text) },
-            shape.end,
-            inAFilterBody = bodies.any { body -> body.at <= shape.at && shape.end <= body.at + body.text.length })
+        shape.asCall(language, bodies.any { it.encloses(shape.at, shape.end) })
     }
 }
+
+/** This shape read as a call, its operands reduced, held by a `Having` body or not as [inAFilterBody] says. */
+internal fun CallShape.asCall(language: ConditionLanguage, inAFilterBody: Boolean = inAFilterBody(language)): ConditionCall =
+    ConditionCall(operator, at, operands.map { operandOf(it, language, source) }, end, inAFilterBody)
 
 /** Operand reduction is independent of whether a strict call can enclose these tokens (R3a scanner hosts). */
 internal fun operandOf(tokens: List<Token>, language: ConditionLanguage, source: String): CallOperand =
@@ -33,7 +35,7 @@ internal fun operandOf(tokens: List<Token>, language: ConditionLanguage, source:
 
 /** Whether a `Having` body of its own text holds this call, read as [ConditionCall.inAFilterBody] is. */
 internal fun CallShape.inAFilterBody(language: ConditionLanguage): Boolean =
-    filterBodiesIn(source, language).any { body -> body.at <= at && end <= body.at + body.text.length }
+    filterBodiesIn(source, language).any { it.encloses(at, end) }
 
 /**
  * One call: the operator as it was SPELLED, and its top-level arguments in authored order.
@@ -478,7 +480,7 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
             runText(shape.right, text),
             start = start,
             end = end,
-            inAFilterBody = bodies.any { body -> body.at <= start && end <= body.at + body.text.length },
+            inAFilterBody = bodies.any { it.encloses(start, end) },
         )
     }
 }
@@ -569,6 +571,9 @@ internal fun filterBodiesIn(text: String, language: ConditionLanguage): List<Ope
     val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
     return clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
 }
+
+/** Whether this clause's text spans the source from [start] to [end]. */
+internal fun OperandClause.encloses(start: Int, end: Int): Boolean = at <= start && end <= at + text.length
 
 private fun runText(run: List<Token>, source: String): String =
     if (run.isEmpty()) "" else source.substring(run.first().start, run.last().end)

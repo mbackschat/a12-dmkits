@@ -189,7 +189,7 @@ private fun TrackedFactBase.gateFinding(
         }
     }
 
-    fields.firstOrNull { it.waivesValueValidation() }
+    fields.firstOrNull(::waivesValueValidation)
         ?.let { return gate(RAW, call.operator, it, member, element, call.spanIn(member)) }
 
     // …then the value list, which is a different question on each of its two spellings.
@@ -213,7 +213,7 @@ private fun TrackedFactBase.gateFinding(
         } else if (repeated(fields + values)) {
             return null
         }
-        values.firstOrNull { it.waivesValueValidation() }
+        values.firstOrNull(::waivesValueValidation)
             ?.let { return gate(RAW, call.operator, it, member, element, call.spanIn(member)) }
         return null
     }

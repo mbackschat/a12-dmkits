@@ -2,15 +2,14 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
-import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
+import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -234,7 +233,7 @@ internal class OperationAnalysis(
         fun fields(): List<OperationValue>? = with(facts) {
             shape.call.operands.flatMap { tokens ->
                 val written = shape.call.textOf(tokens)
-                val reference = operandReferenceIn(written, group, element) {
+                val reference = operandReferenceIn(written, group, element, KeyAnchoring.DECLARING_GROUP) {
                     operandOf(tokens, conditionLanguage, text).base
                         ?.let { OperandReference(it) }
                 } ?: return null
@@ -262,9 +261,10 @@ internal class OperationAnalysis(
             }
             "NumberOfFilledFields", "NumberOfFilledGroups", "NumberOfValueInFields", "CurrentRepetition", "Length" ->
                 OperationValue(OperationType.Number(0))
-            "Abs" -> operands.firstOrNull()?.derived() ?: UNKNOWN
+            "Abs" -> computedDate(shape, operands.firstOrNull()) ?: operands.firstOrNull()?.derived() ?: UNKNOWN
             "AbsValue" -> fields()?.singleOrNull()?.derived() ?: UNKNOWN
             "RoundUp", "RoundDown", "RoundAccounting", "RoundUpValue", "RoundDownValue", "RoundAccountingValue" -> {
+                computedDate(shape, operands.firstOrNull())?.let { return it }
                 if (shape.operands.firstOrNull() != null && operands.first().type == OperationType.Unknown) return UNKNOWN
                 val scale = shape.call.operands.getOrNull(1)?.let { shape.call.textOf(it).asciiIntOrNull() } ?: 0
                 OperationValue(OperationType.Number(scale))
@@ -280,11 +280,24 @@ internal class OperationAnalysis(
         }
     }
 
+    /**
+     * The refusal of a computed DATE that [shape] would take as its number, or null for any other operand.
+     *
+     * A12 types the whole operation it rounds or makes absolute and refuses a date with `MVK_NO_NUMBER` before
+     * the comparison around it is asked anything ([KERNEL-FINDINGS KF606],
+     * `adapter.laws.CheckerShiftedDateComparisonAgreementTest`). An immediate field read is `RoundingOperands`'
+     * to answer, so it is left to that family.
+     */
+    private fun computedDate(shape: OperationShape.Call, operand: OperationValue?): OperationValue? =
+        if (operand?.temporal != null && operand.field == null) {
+            refuse("MVK_NO_NUMBER", shape, "`${written(shape)}` takes a date, and only a number can be rounded or made absolute")
+        } else {
+            null
+        }
+
     /** The date [call] shifts, typed as its declared field, where A12 admits the shift and this reader judges it. */
     private fun shifted(call: CallShape): OperationValue = with(facts) {
-        val operands = call.operands.map { operandOf(it, conditionLanguage, call.source) }
-        val shift = ConditionCall(call.operator, call.at, operands, call.end, call.inAFilterBody(conditionLanguage))
-        admittedShiftField(shift, group, element)?.let { field(it).derived() } ?: UNKNOWN
+        admittedShiftField(call.asCall(conditionLanguage), group, element)?.let { field(it).derived() } ?: UNKNOWN
     }
 
     private fun numericAggregate(values: List<OperationValue>, product: Boolean = false): OperationValue {

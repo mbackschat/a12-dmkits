@@ -97,7 +97,7 @@ private fun TrackedFactBase.entitySpecDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RoundingDefect? {
-    val read = operandReferenceIn(rounded.text, declaringGroup, element) {
+    val read = operandReferenceIn(rounded.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
         rounded.path?.let { OperandReference(it) }
     } ?: return null
     val written = read.reference

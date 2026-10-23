@@ -337,7 +337,7 @@ private fun TrackedFactBase.armIn(
         return arm
     }
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    return SlotArm.Keyed(operandReferenceIn(text, declaringGroup, element) { null }?.reference)
+    return SlotArm.Keyed(operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { null }?.reference)
 }
 
 private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {

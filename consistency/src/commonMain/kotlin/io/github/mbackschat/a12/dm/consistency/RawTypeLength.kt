@@ -69,15 +69,8 @@ private fun TrackedFactBase.rawTypeRead(
         }?.reference ?: return@firstNotNullOfOrNull null
         val resolved = resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved
             ?: return@firstNotNullOfOrNull null
-        resolved.path.takeIf { isRawType(it) }
+        resolved.path.takeIf { declarationAt(it, DeclaredKind.FIELD)?.let(::waivesValueValidation) == true }
     }
-
-/** Whether [path] declares a STRING with `noValueValidation` — the only kind A12 treats as a raw type. */
-private fun TrackedFactBase.isRawType(path: String): Boolean {
-    val body = declarationAt(path, DeclaredKind.FIELD)
-        ?.stringTypeBody() ?: return false
-    return body.flag("noValueValidation") == true
-}
 
 private fun rawLengthOffence(
     text: String,

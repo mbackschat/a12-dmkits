@@ -139,7 +139,7 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
         )
     }
     val field = target
-    if (field.waivesValueValidation()) {
+    if (waivesValueValidation(field)) {
         return ValidityDefect(
             "MVK_INVALID_RAW_TYPE", field.path,
             "waives value validation, so A12 holds its content unparsed and has nothing to judge against " +

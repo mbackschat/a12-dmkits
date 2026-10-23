@@ -134,7 +134,7 @@ private fun TrackedFactBase.operandDefect(
     element: TrackedDeclaration,
 ): FieldListDefect? {
     val reads = call.operands.map { operand ->
-        operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let { OperandReference(it) } }
+        operandReferenceIn(operand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { operand.path?.let { OperandReference(it) } }
             ?: return null
     }
     val targets = reads.map { read ->
@@ -222,7 +222,7 @@ private fun matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (field
  * kind defect later than a waiving field still answers first — measured, and the reason the two walks here
  * are sequential rather than one pass.
  */
-private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
+private fun TrackedFactBase.distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
     val leader = fields.first().declaredFieldType() ?: return null
     return when {
         leader in STRING_LIKE_LEADERS ->
@@ -233,7 +233,7 @@ private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
                         "every field in it must be one of those three",
                     it,
                 )
-            } ?: fields.firstOrNull { it.waivesValueValidation() }?.let {
+            } ?: fields.firstOrNull(::waivesValueValidation)?.let {
                 FieldListDefect(
                     "MVK_INVALID_RAW_TYPE",
                     "counts distinct values, which it cannot do over a field that waives value validation",
@@ -265,9 +265,7 @@ private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
  * demands more than one field or one group.
  */
 private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
-    val loneField = targets.size == 1 && '*' !in reads.first().reference &&
-        declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
-    return entityListPreGateAnswers(reads, targets) || loneField
+    return entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
 }
 
 private fun finding(

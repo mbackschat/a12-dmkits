@@ -7,8 +7,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
+import io.github.mbackschat.a12.dm.consistency.syntax.asCall
+import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 
 /** R5 keeps the producing occurrence and reached site separate from the public editor projection. */
 internal data class ConditionFinding(override val owner: DeclarationKey, val site: ConditionSite, override val finding: Finding) : OwnedFinding {
@@ -61,9 +62,7 @@ internal fun TrackedFactBase.callListContributions(
         if (site.kind != SyntaxSite.Kind.CALL) return@flatMap emptyList()
         val shape = execution.callsByStart.getValue(site.start)
         val member = execution.carrier.semanticSpan(shape.at, shape.end)?.member ?: return@flatMap emptyList()
-        val call = ConditionCall(shape.operator, shape.at,
-            shape.operands.map { operandOf(it, conditionLanguage, shape.source) }, shape.end,
-            bodies.any { it.at <= shape.at && shape.end <= it.at + it.text.length })
+        val call = shape.asCall(conditionLanguage, bodies.any { it.encloses(shape.at, shape.end) })
         check(member, call).map { finding ->
             val editorSpan = finding.span?.let { execution.carrier.semanticSpan(it.start, it.end) }
             ConditionFinding(element.key, site, finding.copy(span = editorSpan))

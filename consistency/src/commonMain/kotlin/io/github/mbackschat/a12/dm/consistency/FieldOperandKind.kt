@@ -65,7 +65,7 @@ private fun TrackedFactBase.operandFinding(
 ): Finding? {
     val operator = call.operator
     val span = call.spanIn(member)
-    val read = operandReferenceIn(operand.text, declaringGroup, element) { operand.path?.let(::OperandReference) }
+    val read = operandReferenceIn(operand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { operand.path?.let(::OperandReference) }
         ?: return null
     val path = read.reference
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null

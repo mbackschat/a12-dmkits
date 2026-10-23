@@ -140,7 +140,7 @@ private fun TrackedFactBase.constantKindFinding(
     val arm = armOf(constantText, spellings)
         ?: return unexpectedConstantToken(constantText, element, member, call.constantSlotIn(member))
     val reads = entities.map { text ->
-        operandReferenceIn(text, declaringGroup, element) {
+        operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
             referencesIn(text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
         } ?: return null
     }
@@ -210,7 +210,7 @@ private sealed interface ListVerdict {
  * is not [ConstantArm.TEXT] has nothing here to fail. The raw-type gate is asked of the expanded field list
  * exactly as `checkIsValueValidation` asks it, and the date gate of the constant alone.
  */
-private fun stringArmTailDefect(
+private fun TrackedFactBase.stringArmTailDefect(
     fields: List<TrackedDeclaration>,
     arm: ConstantArm,
     constantText: String,
@@ -218,7 +218,7 @@ private fun stringArmTailDefect(
     if (arm != ConstantArm.TEXT) {
         return null
     }
-    fields.firstOrNull { it.waivesValueValidation() }?.let { raw ->
+    fields.firstOrNull(::waivesValueValidation)?.let { raw ->
         return ListDefect(
             "MVK_INVALID_RAW_TYPE",
             "counts `${constantText.javaTrimmed()}` over `${raw.path}`, which waives value validation — A12 holds " +
@@ -283,9 +283,7 @@ private fun typeWalkVerdict(
  * this operator's own arity gate, which takes more than one field or one group.
  */
 private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
-    val loneField = targets.size == 1 && '*' !in reads.first().reference &&
-        declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
-    return entityListPreGateAnswers(reads, targets) || loneField
+    return entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
 }
 
 /** Which arm of the switch this constant takes, or null for a shape none of the four covers. */

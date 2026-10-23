@@ -115,7 +115,7 @@ private fun TrackedFactBase.keyListOf(
             "selects one repetition by its semantic index — the operator compares every repetition, so drop the key",
         )
     }
-    keys.firstOrNull { it.waivesValueValidation() }?.let {
+    keys.firstOrNull(::waivesValueValidation)?.let {
         return KeyList.Defective(
             "MVK_INVALID_RAW_TYPE", it.path,
             "waives value validation, so A12 holds its content unparsed and has no value to compare",

@@ -45,9 +45,11 @@ class CheckerOuterMarkedResidueAgreementTest {
     private val typedKeys = DocumentModelDraft.named("shop-typed-keys").locale("en_US")
         .typeDef("LineCode") { it.string { } }
         .typeDef("TicketNo") { it.number { n -> n.fractionDigits(0) } }
+        .typeDef("RawLabel") { it.string { s -> s.noValueValidation().lineBreaks() } }
         .rootGroup("Customer") { c -> c
             .group("Items") { i -> i.repeatable(20).indexField("Code")
                 .typedefField("Code", "LineCode")
+                .typedefField("RawRef", "RawLabel")
                 .numberField("Count") { n -> n.fractionDigits(0) } }
             .group("Notes") { n -> n.repeatable(20).indexField("Code")
                 .typedefField("Code", "LineCode")
@@ -199,6 +201,10 @@ class CheckerOuterMarkedResidueAgreementTest {
             rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Notes/Text For Items/Code)", model = "typed")
             rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Memos/Text For Items/Code)", model = "typed")
             rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Tickets/Text For Items/Count)", model = "typed")
+            rule("Items/Count", "FieldFilled(Items/Count) And FieldFilled(Memos/Text For Items/RawRef)", "MVK_INVALID_RAW_TYPE", model = "typed")
+            rule("Items/Count", "FieldFilled(Items/Count) And AtLeastOneFieldFilled(Memos*/Text For Items/RawRef)",
+                "MVK_INVALID_RAW_TYPE", model = "typed")
+            beside("AllGroupsFilled(Returns*, Parcels)", "MVK_NO_WILDCARDS_G_ALLOWED")
         }
     }
 }

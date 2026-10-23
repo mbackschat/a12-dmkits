@@ -5,7 +5,7 @@ internal fun TrackedFactBase.messageValueDefect(path: String, element: TrackedDe
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return when {
         path in pathsReadThroughAStarAlone(element, group) -> "PARAM_VALUE_WITH_STARREFERENCE"
-        declarationAt(path)?.waivesValueValidation() == true -> "INVALID_NO_VALUE_VALIDATION"
+        declarationAt(path)?.let(::waivesValueValidation) == true -> "INVALID_NO_VALUE_VALIDATION"
         else -> null
     }
 }

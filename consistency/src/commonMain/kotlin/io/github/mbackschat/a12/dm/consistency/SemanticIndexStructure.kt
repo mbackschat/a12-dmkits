@@ -3,11 +3,11 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 
 /**
  * What a semantic index may CARRY, and where the indexed group has to be.
@@ -34,8 +34,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **Silent where A12's ITERATION gate answers first.** An entity key whose read ITERATES — one reaching into
  * a repetition the rule does not itself sit in, without a star — draws `MVK_SEMANTIC_INDEX_INVALID_ITER`
  * whatever else is wrong with the index, and [semanticIndexKeyContributions] owns that class. What binds a level
- * is the rule's own anchoring, so a key inside a repetition is judged here whenever the rule is declared in
- * that repetition; treating every such key as opaque would lose `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX`
+ * is the key's [KeyAnchoring] — the declaring group's repetitions always, and outside a `Having` body the error
+ * target's too ([KERNEL-FINDINGS KF605]) — so a key inside a repetition is judged here whenever one of those
+ * binds it; treating every such key as opaque would lose `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX`
  * entirely, since a key inside the indexed group is anchored by definition. Silent too on a GROUP key, which
  * is the same family's, and on a value spec or key that does not resolve.
  *
@@ -58,7 +59,7 @@ internal fun TrackedFactBase.semanticIndexStructureContributions(element: Tracke
     return execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
         val use = uses[site.start] ?: return@mapNotNull null
-        val inABody = bodies.any { body -> body.at <= use.keywordAt && use.keywordAt < body.at + body.text.length }
+        val inABody = bodies.any { it.encloses(use.keywordAt, use.keywordAt + 1) }
         val anchoring = if (inABody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
         val verdict = firstClassIn(listOf(use), element.path.substringBeforeLast('/'), element, anchoring)
             ?: return@mapNotNull null
@@ -116,23 +117,6 @@ internal fun TrackedFactBase.admitsSemanticIndex(
     element: TrackedDeclaration,
     anchoring: KeyAnchoring,
 ): Boolean = classOf(use, declaringGroup, element, anchoring) == IndexVerdict.Clean
-
-/**
- * What binds the repetition a field key is read in, which decides whether the key's read iterates.
- *
- * [DECLARING_GROUP] binds only the repetitions the declaration sits in. [ERROR_TARGET] also binds the ones the
- * error target's own iteration addresses, by the per-level walk the key-iteration family runs
- * ([semanticIndexKeyContributions]): a rule declared at the root with its error field in `Lines` reads the key
- * `Lines/LineNo` as one row, and A12 judges the index behind it ([KERNEL-FINDINGS KF605],
- * `adapter.laws.CheckerKeyedListOperandAgreementTest`). That holds only for a key the rule reads directly; inside
- * a `Having` body the filtered entity anchors it ([KERNEL-FINDINGS KF377]), so a reader that cannot tell which
- * it has takes [DECLARING_GROUP] and judges less.
- */
-internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET }
-
-/** The anchoring of a key [this] call's operands carry: the error target's, unless a `Having` body holds the call. */
-internal val ConditionCall.keyAnchoring: KeyAnchoring
-    get() = if (inAFilterBody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
 
 /** What one index settles: a class, nothing to say, or that nothing past it may be judged either. */
 private sealed interface IndexVerdict {
@@ -206,7 +190,7 @@ private fun TrackedFactBase.keyClassOf(
     if (key.path.startsWith("$indexGroup/")) {
         return IndexVerdict.Reported("MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX")
     }
-    return if (key.waivesValueValidation()) IndexVerdict.Reported("MVK_INVALID_RAW_TYPE") else null
+    return if (waivesValueValidation(key)) IndexVerdict.Reported("MVK_INVALID_RAW_TYPE") else null
 }
 
 /** The field a group declares as its index, or null where the declaration names none this reader can find. */
@@ -252,7 +236,7 @@ private fun TrackedFactBase.keyVerdict(
     if (!crossesARepetitionOutside(declaringGroup, resolved.path)) return KeyVerdict.PLAIN
     if (anchoring == KeyAnchoring.DECLARING_GROUP) return KeyVerdict.UNJUDGEABLE
     val targetGroup = iterationScopeOf(element.declaredReference(), declaringGroup) ?: return KeyVerdict.UNJUDGEABLE
-    return if (levelClassOf(key, declaringGroup, targetGroup, element) == null) KeyVerdict.PLAIN else KeyVerdict.UNJUDGEABLE
+    return if (readsOneRow(resolved.path, targetGroup)) KeyVerdict.PLAIN else KeyVerdict.UNJUDGEABLE
 }
 
 /**

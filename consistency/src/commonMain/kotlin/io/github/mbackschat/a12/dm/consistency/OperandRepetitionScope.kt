@@ -264,6 +264,19 @@ internal fun TrackedFactBase.levelClassOf(
     return null
 }
 
+/**
+ * Whether an unstarred read of [path] addresses one row of every repetition it reaches, each one bound by
+ * [targetGroup]'s own chain or iterated JOINTLY with it.
+ *
+ * Asked separately from [levelClassOf] because that answer's null covers a declined parallel level as well as
+ * an admitted one, and only an admission says the read is one row ([ParallelVerdict.Unjudged]).
+ */
+internal fun TrackedFactBase.readsOneRow(path: String, targetGroup: String): Boolean =
+    repetitionsReachedBy(path).all { level ->
+        targetGroup == level.path || targetGroup.startsWith("${level.path}/") ||
+            !level.path.startsWith("$targetGroup/") && parallelVerdictOf(level, targetGroup) == ParallelVerdict.Joint
+    }
+
 private const val NO_WILDCARD = "MVK_NO_WILDCARD"
 
 private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"

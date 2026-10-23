@@ -111,7 +111,7 @@ private fun TrackedFactBase.rangeDefect(
                 "spelling its kernel doc mentions is a flag on a text declaration rather than a kind",
         )
     }
-    return if (declared.waivesValueValidation()) {
+    return if (waivesValueValidation(declared)) {
         SubstringDefect(
             "MVK_INVALID_RAW_TYPE",
             "cuts `$target`, which waives value validation — A12 holds its content unparsed and has no " +

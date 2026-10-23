@@ -131,7 +131,7 @@ private fun TrackedFactBase.gateFindings(
     val entries = call.operands.drop(1).takeIf { it.isNotEmpty() } ?: return null
     // The subject's key is read by the shared reader: reduced to its base, `Settled For 5` would reach this
     // gate where A12 names the key's `MVK_INVALID_ENTITY` ([KERNEL-FINDINGS KF477]).
-    val read = operandReferenceIn(subjectOperand.text, declaringGroup, element) {
+    val read = operandReferenceIn(subjectOperand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
         referencesIn(subjectOperand.text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
     } ?: return null
     val subject = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
@@ -155,7 +155,7 @@ private fun TrackedFactBase.gateFindings(
     if (declared !in SUBJECT_TYPES) {
         return listOf(gate(ONLY_STRING_ENUM_NUMBER, call.operator, subject, member, element, call.spanIn(member)))
     }
-    if (subject.waivesValueValidation()) {
+    if (waivesValueValidation(subject)) {
         return listOf(gate(RAW_TYPE, call.operator, subject, member, element, call.spanIn(member)))
     }
 

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,7 +25,9 @@ class CheckerKeyedListOperandAgreementTest {
                 .stringField("Sku") { }
                 .numberField("Qty") { n -> n.fractionDigits(0) }
                 .dateField("ShipOn") { d -> d.format("yyyy-MM-dd") }
-                .stringField("RawRef") { s -> s.noValueValidation().lineBreaks() } }
+                .stringField("RawRef") { s -> s.noValueValidation().lineBreaks() }
+                .numberField("Total") { n -> n.fractionDigits(0) }
+                .group("Boxes") { b -> b.stringField("Tag") { } } }
             .group("Notes") { n -> n.repeatable(10)
                 .stringField("Text") { } }
             .group("Picks") { p -> p.repeatable(10).indexField("Ref")
@@ -40,10 +43,16 @@ class CheckerKeyedListOperandAgreementTest {
     private val validator = RuleValidator()
 
     private fun judge(row: Row): Pair<List<String>, List<String>> {
-        val draft = DraftRule("/Order", "KeyedProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
-        val result = validator.check(order, draft)
+        val (result, injected) = if (row.computed) {
+            val draft = DraftComputation("/Order", "KeyedProbe", "../${row.errorField}", null,
+                listOf(DraftComputation.Alternative(null, row.condition, null)), listOf())
+            validator.check(order, draft) to validator.inject(order, draft)
+        } else {
+            val draft = DraftRule("/Order", "KeyedProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
+            validator.check(order, draft) to validator.inject(order, draft)
+        }
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(order, draft))).findings
+        val ours = check(ModelSource(injected)).findings
             .filter { it.justifiesRejection }.map { it.code }
         return a12.sorted() to ours.sorted()
     }
@@ -59,7 +68,7 @@ class CheckerKeyedListOperandAgreementTest {
         assertEquals(verdicts.mapValues { it.value.first }, verdicts.mapValues { it.value.second })
     }
 
-    private class Row(val errorField: String, val condition: String, val a12: List<String>)
+    private class Row(val errorField: String, val condition: String, val a12: List<String>, val computed: Boolean = false)
 
     private companion object {
         const val VARYING = "MVK_VARYING_TYPES_NOT_ALLOWED"
@@ -69,6 +78,8 @@ class CheckerKeyedListOperandAgreementTest {
         val ROWS: Map<String, Row> = LinkedHashMap<String, Row>().apply {
             fun row(id: String, errorField: String, condition: String, vararg a12: String) =
                 put(id, Row(errorField, condition, a12.toList()))
+            fun computation(id: String, computed: String, operation: String, vararg a12: String) =
+                put(id, Row(computed, operation, a12.toList(), computed = true))
 
             row("k01", "Lines/Sku", "FieldValuesNotUnique(Lines/Sku, Picks/Ref For Lines/LineNo)")
             row("k02", "Lines/Sku", "FieldValuesNotUnique(Lines/Sku, Picks/Qty For Lines/LineNo)", VARYING)
@@ -93,6 +104,26 @@ class CheckerKeyedListOperandAgreementTest {
             row("c3", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Notes/Text For Lines/LineNo)", "MVK_NO_INDEX_FIELD")
             row("c4", "Lines/Sku", "FieldFilled(Lines/Sku) And AtLeastOneFieldFilled(Picks*/Qty For Lines/LineNo)",
                 "MVK_SEMANTIC_INDEX_AND_WILDCARD")
+            // A keyed operand read where an earlier gate of the list answers: arity, then the duplicate.
+            row("p1", "Lines/Sku", "FieldValuesNotUnique(Picks/Window For Lines/LineNo)", "MVK_PARAMSIZE_INVALIDN")
+            row("p1c", "Picks/Ref", "FieldValuesNotUnique(Picks/Window)", "MVK_PARAMSIZE_INVALIDN")
+            row("p2", "Lines/Sku", "FieldValuesNotUnique(Picks/Qty For Lines/LineNo, Picks/Qty For Lines/LineNo, " +
+                "Picks/Ref For \"a\")", "MVK_DUPLICATE_PARAM1")
+            row("p3", "Lines/Sku", "FieldValuesNotUnique(Picks/Qty For \"a\", Picks/Qty For \"a\", Picks/Ref For \"a\")",
+                "MVK_DUPLICATE_PARAM1")
+            row("p4", "Lines/Sku", "AtLeastOneFieldFilled(Picks/Qty For Lines/LineNo, Picks/Qty For Lines/LineNo)",
+                "MVK_DUPLICATE_PARAM1")
+            // The key's reach beyond its own group's error field: a nested error field, a filtered key, a parallel key.
+            row("n1", "Lines/Boxes/Tag", "FieldFilled(Lines/Boxes/Tag) And FieldFilled(Picks/Qty For Lines/Qty)",
+                "MVK_INDEX_TYPE_INCONSISTENT")
+            row("n2", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Picks/Qty For Lines/Qty Having [Lines/Qty] > 0)",
+                "MVK_WILDCARDS_REQUIRED")
+            row("n3", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Notes/Text For Picks/Ref)",
+                "MVK_ERROR_FIELD_INVALID_INDEX")
+            row("n4", "Lines/Sku", "FieldFilled(Lines/Sku) And FieldFilled(Lines/Qty For Picks/Qty)",
+                "MVK_ERROR_FIELD_INVALID_INDEX")
+            computation("n5", "Lines/Total", "[Picks/Qty For Lines/Qty]", "MVK_INDEX_TYPE_INCONSISTENT")
+            computation("n6", "Lines/Total", "[Picks/Qty For Lines/LineNo]")
             row("L1", "Total", "FieldFilled(Total) And Length(Picks/RawNote For \"a\") > 1", "MVK_INVALID_LENGTH_OF_RAW_TYPE")
             row("L2", "Lines/Sku", "FieldFilled(Lines/Sku) And Length(Picks/RawNote For Lines/LineNo) > 1",
                 "MVK_INVALID_LENGTH_OF_RAW_TYPE")
