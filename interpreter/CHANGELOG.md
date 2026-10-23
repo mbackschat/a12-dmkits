@@ -11,6 +11,8 @@ This changelog covers the independently consumable interpreter packages, API doc
 - **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. In TypeScript a `Date` from another realm is accepted. Rules using either constant used to be reported unsupported.
 - **Rules and computations that join repeatable groups by their index field now evaluate starred aggregates, filters and keyed reads** instead of reporting them unsupported. As in the Kernel, each ranges over the rows under the joined groups' common parent, whichever rows the join paired. A starred read below one of the joined groups reads that group's joined row, empty where the group has no row for the key, and joins the group even when nothing else reads it, a rule reading every group only through starred reads included.
 
+- **`A12PartiallyKnownMultiPointer` holds A12's parallel-iteration index `-6`**, named `PARALLEL_ITERATION` on JVM, JavaScript and TypeScript. A12 leaves it on the references of a rule reporting on a keyed group beside a join, so a message pointer read from A12 carrying it was refused.
+
 ### Changed
 
 - **A Number written with an exponent is charged against the raw-value ceilings at the length A12 stores it**, its plain form, so `"1e1000000"` exceeds the default million-unit per-field ceiling and the Document is refused with `RESOURCE_LIMIT_EXCEEDED`. Such a value used to be kept as unconvertible text past 16 million places and expanded below that, uncounted.

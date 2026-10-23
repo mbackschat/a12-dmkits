@@ -117,13 +117,28 @@ class A12PointerDomainTest {
         val pointer = A12PartiallyKnownMultiPointer.of("/Plan/Demand", repetitions)
         repetitions[1] = 99
         assertEquals(listOf(1, -5), pointer.repetitionIndexes)
-        // -1 is IIdentifier.ITERATION, a template placeholder; only -5 is a message-pointer sentinel.
-        assertFailsWith<IllegalArgumentException> {
-            A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1, -1))
+        // -1 is IIdentifier.ITERATION and -4 SEMANTIC_INDEX, template placeholders a message has not been
+        // measured to carry; -7 names nothing.
+        listOf(-1, -4, -7).forEach { placeholder ->
+            assertFailsWith<IllegalArgumentException> {
+                A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1, placeholder))
+            }
         }
         assertFailsWith<IllegalArgumentException> {
             A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1))
         }
+    }
+
+    /**
+     * `IIdentifier.PARALLEL_ITERATION` is a message-pointer value, because A12's runtime emits it on one
+     * (KERNEL-FINDINGS kf607). Like `-5` it resolves to no row, so the value names no exact pointer.
+     */
+    @Test
+    fun thePartiallyKnownPointerHoldsTheParallelIterationIndexA12Emits() {
+        assertEquals(-6, A12PartiallyKnownMultiPointer.PARALLEL_ITERATION)
+        val reported = A12PartiallyKnownMultiPointer.of("/Order/Lines/Slots/SlotNo", listOf(1, 1, -6, 1))
+        assertEquals(listOf(1, 1, -6, 1), reported.repetitionIndexes)
+        assertNull(reported.toExactPointer())
     }
 
     /**

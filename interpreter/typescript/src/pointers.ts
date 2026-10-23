@@ -40,8 +40,9 @@ export interface A12Pointer {
  * A12's `PartiallyKnownDocumentMultiPointer` — the addressing type A12 puts on runtime **messages**, returned by
  * all three of `IMessage`'s address accessors and handed to `ICustomCondition`.
  *
- * Its indexes admit {@link A12PartiallyKnownMultiPointer.WILDCARD} at any part and
- * {@link A12PartiallyKnownMultiPointer.UNKNOWN} for a level that matched no row.
+ * Its indexes admit {@link A12PartiallyKnownMultiPointer.WILDCARD} at any part,
+ * {@link A12PartiallyKnownMultiPointer.UNKNOWN} for a level that matched no row, and
+ * {@link A12PartiallyKnownMultiPointer.PARALLEL_ITERATION}, which A12's runtime leaves on a joined level.
  *
  * **There is no pointer string for this type.** A12 defines neither a parser nor a renderer for one, so this
  * package publishes the owner's value and the owner's operations and nothing else.
@@ -150,6 +151,12 @@ export const A12PartiallyKnownMultiPointer = Object.freeze({
    * a level the engine could not resolve to a row, which a parallel iteration can leave at any joined level.
    */
   UNKNOWN: bridge.interpreterBridgeA12PartiallyKnownUnknown() as number,
+
+  /**
+   * `IIdentifier.PARALLEL_ITERATION` — a level repeated in parallel across joined groups. A12 documents it as an
+   * internal value, yet its runtime leaves it on the references of a rule reporting on a keyed group beside a join.
+   */
+  PARALLEL_ITERATION: bridge.interpreterBridgeA12PartiallyKnownParallelIteration() as number,
 
   /** `PartiallyKnownDocumentMultiPointer.of(fullName, repetitions)` — the one construction path. */
   of(fullName: string, repetitionIndexes: readonly number[]): A12PartiallyKnownMultiPointer {

@@ -20,6 +20,7 @@ export interface A12PartiallyKnownMultiPointer {
 A12PartiallyKnownMultiPointer: Readonly<{
     WILDCARD: number;
     UNKNOWN: number;
+    PARALLEL_ITERATION: number;
     of(fullName: string, repetitionIndexes: readonly number[]): A12PartiallyKnownMultiPointer;
     toExactPointer(pointer: A12PartiallyKnownMultiPointer): A12Pointer | null;
 }>

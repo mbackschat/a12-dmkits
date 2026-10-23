@@ -14726,3 +14726,19 @@ Around the shift, with `S` for `AddDays(Items/ShipOn, 1)`:
 So a shift's result is typed as its date operand, a stamp keeping its clock, and the constant is typed on its own: `"2020-01-01"` is text in either declared spelling, and only the constant date spelling `dd.MM.yyyy` is a date. The operations around a shift meet that date too, and rounding or making it absolute is refused before the comparison is asked anything, as it is for the date field itself.
 
 *Locked by:* `adapter.laws.CheckerShiftedDateComparisonAgreementTest` (every row above, A12 pinned and the checker agreeing).
+
+## §9 supplement — A12 leaves `PARALLEL_ITERATION` (`-6`) on the references of a rule reporting on a keyed group beside a join, and its own assertion refuses that value (kernel runtime, 2026-10-24) <a id="kf607"></a>
+
+> Fold: pending — beside [KF603](#kf603)'s keyed group target and §9's frame account.
+
+On [KF603](#kf603)'s order, a rule at `/Order` reporting on the `SlotNo`-keyed `Lines/Slots` under `GroupNotFilled(Lines/Slots) And FieldFilled(Picks/Ref)`, `Picks` joined to `Lines` on `LineNo`. Both strategies agree on every row; assertions off, as in production.
+
+| document | A12 |
+|---|---|
+| line A without slots, its pick with `Ref` | one `OMISSION_ERROR` at `[1, 1, -5]` on `/Order/Lines/Slots`, referencing `Lines[1]/Slots[-6]/Mark`, `Lines[1]/Slots[-6]/SlotNo`, `Picks[1]/LineNo` and `Picks[1]/Ref`, the two `Slots[-6]` fields to fill |
+| line A with slots `1` and `2`, its pick with `Ref` | the same message |
+| line A without slots, its pick without `Ref` | none |
+
+`IIdentifier` documents `-6` as a value return values "should usually not contain", and `PartiallyKnownDocumentMultiPointerImpl.checkValidity` asserts every negative index is `-5` (source-read). So under `-ea` the referenced pointers cannot be read at all: `getReferencedFieldsPointers()` raises `AssertionError: The repetition indexes are only expected to be >= 0 or -5`. Every adapter test JVM runs `-ea`, so no differential there can observe this message; the kernel probe runs without it.
+
+*Locked by:* `adapter.laws.KernelProbeParallelIterationPointerTest`, run by its own assertion-free task `:adapter:kernelProbeProductionAssertionsTest` (the rows above, as the probe publishes them), and `…A12PointerKernelDomainDiffTest.weAdmitTheParallelIterationIndexA12EmitsDespiteItsOwnAssertion` (the factory under both assertion modes).

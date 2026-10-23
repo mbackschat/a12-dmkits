@@ -70,6 +70,10 @@ class TypeScriptBridgePointerFormatTest {
             A12PartiallyKnownMultiPointer.UNKNOWN,
             interpreterBridgeA12PartiallyKnownUnknown(),
         )
+        assertEquals(
+            A12PartiallyKnownMultiPointer.PARALLEL_ITERATION,
+            interpreterBridgeA12PartiallyKnownParallelIteration(),
+        )
     }
 
     // ---- the message channel's own type ---------------------------------------------------------

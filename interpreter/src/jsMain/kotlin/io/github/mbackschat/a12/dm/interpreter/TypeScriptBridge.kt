@@ -739,6 +739,10 @@ fun interpreterBridgeA12PartiallyKnownWildcard(): Int = CorePartiallyKnown.WILDC
 @JsExport
 fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnown.UNKNOWN
 
+/** `IIdentifier.PARALLEL_ITERATION` — a joined level A12's runtime leaves on a message pointer's references. */
+@JsExport
+fun interpreterBridgeA12PartiallyKnownParallelIteration(): Int = CorePartiallyKnown.PARALLEL_ITERATION
+
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,
     customConditions: Array<InterpreterBridgeCustomConditionRegistration>,

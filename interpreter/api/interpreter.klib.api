@@ -472,6 +472,8 @@ final class io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointe
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.toString|toString(){}[0]
 
     final object Companion { // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion|null[0]
+        final const val PARALLEL_ITERATION // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.PARALLEL_ITERATION|{}PARALLEL_ITERATION[0]
+            final fun <get-PARALLEL_ITERATION>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.PARALLEL_ITERATION.<get-PARALLEL_ITERATION>|<get-PARALLEL_ITERATION>(){}[0]
         final const val UNKNOWN // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.UNKNOWN|{}UNKNOWN[0]
             final fun <get-UNKNOWN>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.UNKNOWN.<get-UNKNOWN>|<get-UNKNOWN>(){}[0]
         final const val WILDCARD // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.WILDCARD|{}WILDCARD[0]

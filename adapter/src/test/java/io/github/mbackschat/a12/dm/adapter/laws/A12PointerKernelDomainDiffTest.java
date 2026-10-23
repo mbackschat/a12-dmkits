@@ -45,8 +45,9 @@ import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
  * partitioned by entry point so that class of error cannot recur silently: each test names exactly one owner
  * factory, and none of them shares a corpus with another.
  *
- * <p><b>Two deliberate divergences are asserted AS divergences</b>, so being stricter than A12 stays a recorded
- * decision rather than an accident, and a kernel upgrade that closes either one fails this build.
+ * <p><b>Three deliberate divergences are asserted AS divergences</b>, so departing from A12 stays a recorded
+ * decision rather than an accident, and a kernel upgrade that closes one fails this build. Two are stricter than
+ * the kernel; the third, {@code -6}, admits what A12's runtime emits although its own assertion refuses it.
  */
 class A12PointerKernelDomainDiffTest {
 
@@ -167,7 +168,7 @@ class A12PointerKernelDomainDiffTest {
                 List.of(1, 1), List.of(1, 2), List.of(2, 1),
                 List.of(0, 2), List.of(1, 0), List.of(0, 0),
                 List.of(1, -5), List.of(-5, 1), List.of(-5, -5),
-                List.of(1, -1), List.of(-1, 1), List.of(1, -4), List.of(1, -6), List.of(1, -7),
+                List.of(1, -1), List.of(-1, 1), List.of(1, -4), List.of(1, -7),
                 List.of(1, -2), List.of(1, Integer.MAX_VALUE))) {
             boolean kernel = accepts(() -> PartiallyKnownDocumentMultiPointer.of("/Plan/Demand", repetitions));
             boolean ours = accepts(() -> A12PartiallyKnownMultiPointer.Companion.of("/Plan/Demand", repetitions));
@@ -347,7 +348,27 @@ class A12PointerKernelDomainDiffTest {
         return exact == null ? null : exact.getRepetitionIndexes().toString();
     }
 
-    // ---- the two deliberate divergences, asserted AS divergences ---------------------------------
+    // ---- the three deliberate divergences, asserted AS divergences -------------------------------
+
+    /**
+     * {@code IIdentifier.PARALLEL_ITERATION} ({@code -6}) is admitted although A12's assertion refuses it, because
+     * A12's own runtime puts it on a message pointer: a rule reporting on a keyed group beside a join carries it
+     * on its references (KERNEL-FINDINGS kf607, {@code KernelProbeParallelIterationPointerTest}). Under
+     * {@code -ea} the assertion then raises from A12's own accessor; in production the value passes, so refusing
+     * it made those messages unreadable. Asserted against both assertion modes, so either side moving fails here.
+     */
+    @Test
+    void weAdmitTheParallelIterationIndexA12EmitsDespiteItsOwnAssertion() throws Exception {
+        List<Integer> parallel = List.of(1, A12PartiallyKnownMultiPointer.PARALLEL_ITERATION);
+        assertTrue(!accepts(() -> PartiallyKnownDocumentMultiPointer.of("/Plan/Demand", parallel)),
+                "under -ea A12 refuses -6, the assertion this divergence departs from");
+        try (AssertionFreeKernel production = new AssertionFreeKernel()) {
+            assertTrue(production.constructs("/Plan/Demand", parallel),
+                    "with assertions off, as in production, A12 holds -6 on a message pointer");
+        }
+        assertTrue(accepts(() -> A12PartiallyKnownMultiPointer.Companion.of("/Plan/Demand", parallel)),
+                "and so must we, or a kernel message carrying it cannot be read");
+    }
 
     /**
      * Records which enforcement the kernel is actually giving us for the negative-index rule. The rule is a bare
@@ -493,6 +514,16 @@ class A12PointerKernelDomainDiffTest {
             toDocumentPointer = pointer.getMethod("toDocumentPointer");
             repetitionIndexes = loader.loadClass(POINTER_PACKAGE + "DocumentPointer")
                     .getMethod("repetitionIndexes");
+        }
+
+        /** Whether the production factory builds the pointer at all, before any conversion. */
+        boolean constructs(String fullName, List<Integer> repetitions) throws Exception {
+            try {
+                of.invoke(null, fullName, repetitions);
+                return true;
+            } catch (InvocationTargetException refused) {
+                return false;
+            }
         }
 
         /** The converted indices, or {@code null} when A12 answers {@code Optional.empty()}. */

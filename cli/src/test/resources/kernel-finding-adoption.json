@@ -1083,6 +1083,85 @@
         }
       }
     },
+    "kf607": {
+      "sha256": "fd1ef33e895811863e2e35059c0545aeab8365c9fc9cb9df36889b9b38bcc0dc",
+      "task": "SS11",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the probe publishing a message that carries -6"
+        ],
+        "interpreter": [
+          "a message pointer holding -6"
+        ],
+        "dmtool-cli": [
+          "the published address of a -6 pointer"
+        ],
+        "a12-kernel-lean": [
+          "-6 on a keyed group target's references"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message pointer does not reach authoring.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message pointer is not a static admission question.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message pointer does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message pointer does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The probe publishes the message with -6 on its references, under the probe's own assertion setting.",
+          "evidence": {
+            "the probe publishing a message that carries -6": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KernelProbeParallelIterationPointerTest.kt#theProbePublishesTheParallelIterationIndexInsteadOfFaulting",
+              "witness": "Every row publishes A12's full message on both strategies, the control none."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The message pointer type holds -6 and names no exact pointer for it; evaluating this carrier stays declined under IG180.",
+          "evidence": {
+            "a message pointer holding -6": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/A12PointerDomainTest.kt#thePartiallyKnownPointerHoldsTheParallelIterationIndexA12Emits",
+              "witness": "The pointer keeps -6 and has no exact counterpart."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "dmtool's address policy renders -6 as the probe does.",
+          "evidence": {
+            "the published address of a -6 pointer": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/interp/MessageAddressPolicyEquivalenceTest.java#cliAndKernelProbeAgreeForEveryPointerShape",
+              "witness": "Both publishers agree on the parallel-iteration row."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
     "kf603": {
       "sha256": "2d16c6a02ca53652cd189aaf325979256aa791780ac2c44f4fe290e7754a6ab0",
       "task": "SS7",

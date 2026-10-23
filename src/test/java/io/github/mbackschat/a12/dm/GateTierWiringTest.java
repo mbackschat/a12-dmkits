@@ -370,7 +370,8 @@ class GateTierWiringTest {
         assertFastLeverSplit("adapter/build.gradle",
                 List.of("footprintFixtureGuardTest", "performanceFixtureGuardTest",
                         "retainedComputationFixtureGuardTest", "workspacePreparationFixtureGuardTest",
-                        "perfScriptGuardTest", "verifySemanticsMapRegistration"),
+                        "perfScriptGuardTest", "verifySemanticsMapRegistration",
+                        "kernelProbeProductionAssertionsTest"),
                 List.of("corpusReplayTest", "profileFixtureGuardTest", "checkerSilenceGuardTest"));
         // :cli — the provenance resource, the gap ledgers' live ids, and the semantics-map registration of
         // every lock class (2.4s) against the three broad ones (12.7s).

@@ -383,6 +383,8 @@ tasks.named('test') {
         }
     }
     dependsOn 'perfScriptGuardTest'
+    // One class with its own JVM assertion setting, 3.2s of suite time (2026-10-24): too cheap to drop.
+    dependsOn 'kernelProbeProductionAssertionsTest'
     // Millisecond filename lint — runs in the -Pfast inner loop too (unlike the heavyweight guards above).
     dependsOn 'verifySemanticsMapRegistration'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
@@ -441,6 +443,25 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.WorkspacePreparationFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.KernelProbeParallelIterationPointerTest'
+    }
+}
+
+// The kernel probe runs as a JavaExec WITHOUT -ea, and that is not incidental: A12 30.8.1 guards its message
+// pointer's index domain with a bare `assert` (PartiallyKnownDocumentMultiPointerImpl.checkValidity) that its
+// own runtime violates — a keyed group beside a join puts IIdentifier.PARALLEL_ITERATION (-6) on the message.
+// Every other Test task here runs -ea, and there A12's own accessor raises AssertionError on that message, so
+// what the probe publishes in production cannot be observed. This task runs the one class that locks it under
+// the probe's own assertion setting (KERNEL-FINDINGS kf607).
+tasks.register('kernelProbeProductionAssertionsTest', Test) {
+    description = 'Lock what the kernel probe publishes under its production (assertion-free) JVM setting.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    enableAssertions = false
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.KernelProbeParallelIterationPointerTest'
     }
 }
 

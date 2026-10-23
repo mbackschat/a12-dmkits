@@ -13,10 +13,11 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
  * `repetitionIndexes()`. Unlike the exact pointer this genuinely *is* a name-string-plus-indexes value in A12 —
  * `PartiallyKnownDocumentMultiPointerImpl` stores names and repetitions and exposes exactly those two accessors.
  *
- * <b>Domain</b>, from that class's `checkValidity` and the interface's javadoc: an index is a concrete
- * repetition `>= 1`, or [WILDCARD] meaning all repetitions, or [UNKNOWN] meaning no repetition carried the
- * searched semantic index. The wildcard is legal at **every** part here, which is the sharpest difference from
- * the exact pointer.
+ * <b>Domain</b>: an index is a concrete repetition `>= 1`, or [WILDCARD] meaning all repetitions, or [UNKNOWN]
+ * meaning no repetition carried the searched semantic index — that class's `checkValidity` and the interface's
+ * javadoc — or [PARALLEL_ITERATION], which A12's own runtime puts on a message although both of those leave it
+ * out (KERNEL-FINDINGS kf607). The wildcard is legal at **every** part here, which is the sharpest difference
+ * from the exact pointer.
  *
  * <b>There is no pointer STRING for this type, and none is invented here.</b> A12 defines no parser and no
  * renderer for a single partially-known pointer — enumerated over the whole kernel checkout: the type is
@@ -33,10 +34,13 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
  *     count against the repetition count, yet `toDocumentPointer()` documents the omission away — "we do not
  *     need to check the length of both lists, as we only construct valid instances" — and would then throw
  *     inside a `try` whose `catch` asserts the throw is impossible. We enforce the invariant that comment claims.
- *  2. **A negative other than `-5` is rejected outright.** The kernel expresses that rule as a bare Java
- *     `assert`, so it binds under `-ea` (our test JVMs) and is silently absent in production. Its own comment
- *     says the assertion exists so the javadoc can be adapted if the set ever widens; we hold to the documented
- *     set. `A12PointerKernelDomainDiffTest` measures both against the real factory.
+ *  2. **A negative other than `-5` and `-6` is rejected outright.** The kernel expresses that rule as a bare
+ *     Java `assert` admitting `-5` alone, so it binds under `-ea` (our test JVMs) and is silently absent in
+ *     production. Its own comment says the assertion exists so the javadoc can be adapted if the set ever
+ *     widens, and the set has widened without that: a keyed group target beside a join puts `-6` on the message
+ *     (kf607), which under `-ea` makes A12's own accessor raise. We admit the documented set plus that measured
+ *     production value, and nothing else. `A12PointerKernelDomainDiffTest` measures both against the real
+ *     factory.
  *
  * Every other admission decision is measured against the owner factory rather than derived — in particular the
  * `fullName` domain, which validates **splitting and normalization only**. `"/Order$"`, `"/Order Item"`,
@@ -120,6 +124,14 @@ class A12PartiallyKnownMultiPointer private constructor(
         const val UNKNOWN: Int = -5
 
         /**
+         * `IIdentifier.PARALLEL_ITERATION`, source-verified as `-6` in kernel 30.8.1: a level repeated in
+         * parallel across joined groups. A12 documents it as a template value that return values "should usually
+         * not contain", and yet a rule reporting on a keyed group beside a join carries it on its message
+         * pointer (kf607), so a message reader must be able to hold it.
+         */
+        const val PARALLEL_ITERATION: Int = -6
+
+        /**
          * <b>The one construction path</b>, and the counterpart of
          * `PartiallyKnownDocumentMultiPointer.of(String, List<Integer>)`. Validates, normalizes [fullName] the
          * way the owner's accessor does, and snapshots the index list.
@@ -132,9 +144,10 @@ class A12PartiallyKnownMultiPointer private constructor(
             val names = A12PointerSyntax.splitNames(fullName)
             A12PointerSyntax.requireArity(names, repetitionIndexes) { "pointer '$fullName'" }
             repetitionIndexes.forEach { repetition ->
-                require(repetition >= WILDCARD || repetition == UNKNOWN) {
-                    "a repetition index is a concrete repetition >= 1, $WILDCARD (all repetitions) or " +
-                        "$UNKNOWN (unknown), but was $repetition in pointer '$fullName'"
+                require(repetition >= WILDCARD || repetition == UNKNOWN || repetition == PARALLEL_ITERATION) {
+                    "a repetition index is a concrete repetition >= 1, $WILDCARD (all repetitions), " +
+                        "$UNKNOWN (unknown) or $PARALLEL_ITERATION (parallel iteration), but was $repetition " +
+                        "in pointer '$fullName'"
                 }
             }
             return A12PartiallyKnownMultiPointer(names.joinToString("/", prefix = "/"), repetitionIndexes)

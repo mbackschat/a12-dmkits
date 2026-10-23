@@ -1,5 +1,6 @@
 public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer$Companion;
+	public static final field PARALLEL_ITERATION I
 	public static final field UNKNOWN I
 	public static final field WILDCARD I
 	public fun equals (Ljava/lang/Object;)Z
