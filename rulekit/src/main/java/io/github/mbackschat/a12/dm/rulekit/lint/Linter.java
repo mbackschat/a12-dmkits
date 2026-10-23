@@ -181,8 +181,8 @@ public final class Linter {
     }
 
     /**
-     * Lint {@code rule} against {@code model} — the pure-AST lints plus the model-context ones that
-     * need the rule's iteration (whether its error field lies under a repeatable group).
+     * Lint {@code rule} against {@code model} — the pure-AST lints, plus, for a FIELD error entity, the
+     * model-context ones that need the rule's iteration (whether its error field lies under a repeatable group).
      */
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();

@@ -1116,7 +1116,7 @@
           "evidence": {
             "a typed rule reporting on a group": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleGroupErrorEntityTest.java#aRuleReportsOnTheGroupItNames",
-              "witness": "A rule built with errorEntity(group) renders the group's relative path and is admitted by the kernel with no deferred warning; the runtime differential authors every group target this way."
+              "witness": "A rule built with errorEntity(group) renders the group's relative path and is admitted by the kernel with no deferred warning."
             }
           }
         },
@@ -1187,7 +1187,9 @@
      "sha256": "082f9dd8d76c83319858ae8fc2428d1a77ad1150108e8bc7bdd63e87246ea11a",
      "task": "SS3",
      "scope": {
-      "dmkits": [],
+      "dmkits": [
+       "the group-target reference check"
+      ],
       "checker": [
        "the iteration guard on a field-keyed selection and a group error target",
        "the parallel marking of a group reference's own level"
@@ -1205,9 +1207,14 @@
      },
      "consumers": {
       "dmkits": {
-       "state": "NOT_APPLICABLE",
-       "basis": "Whether a rule is admitted is the kernel's or the checker's answer; the kits author the condition without judging it.",
-       "evidence": {}
+          "state": "APPLIED",
+          "basis": "The typed Rule's deferred reference check judges a group target by KF601's rows: the group or an enclosing group references it, a field inside it does not.",
+          "evidence": {
+            "the group-target reference check": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleGroupErrorEntityTest.java#aFieldInsideTheTargetDoesNotReferenceIt",
+              "witness": "deferredChecks() and the kernel both answer MVK_ERROR_FIELD_NOT_REFERENCED for a field inside the target, and both admit the target and an enclosing group."
+            }
+          }
       },
       "checker": {
        "state": "APPLIED",

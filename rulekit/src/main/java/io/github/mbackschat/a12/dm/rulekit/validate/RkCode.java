@@ -60,13 +60,14 @@ public enum RkCode {
     // Named for rules because Rule.Builder was its only emitter; the computation-spec parser now emits it too,
     // so the meaning names both slot sets rather than sending a computation author looking for an error field.
     INCOMPLETE_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,
-            "a rule or computation is missing a required slot — a rule needs a name, error field, condition, code"
+            "a rule or computation is missing a required slot — a rule needs a name, error entity, condition, code"
                     + " and severity; a computation needs a computed field, at least one alternative with an"
                     + " operation, and at least one message. It cannot be built.",
             "supply the missing slot before building it (see `schema rule add` / `schema computation add`)."),
     ERROR_FIELD_OUTSIDE_GROUP(Severity.ERROR, DiagnosticSource.PRECHECK,
-            "the rule's error field is not inside the rule's scope group, so the error cannot attach.",
-            "point the error field at a field within the rule's group subtree."),
+            "the rule's error entity is not strictly inside the rule's scope group, so the error cannot attach.",
+            "point the error entity at a field or group within the rule's group subtree, or author the rule in a"
+                    + " group that contains it."),
     NO_SUCH_FIELD(Severity.ERROR, DiagnosticSource.PRECHECK,
             "no field exists at the given path.",
             "pass an existing field's full name-path (see `model describe` or `field read`)."),

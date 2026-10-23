@@ -1742,7 +1742,6 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral implement
   public java.lang.String value()
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity extends io.github.mbackschat.a12.dm.core.HasEntityPath
-  public abstract io.github.mbackschat.a12.dm.core.EntityPath path()
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public java.util.List<java.lang.String> allowedValues()

@@ -15,11 +15,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 /**
  * A typed validation rule — the F2a authoring object (study §4.1): the rule lives in a group by
  * construction ({@link #in(GroupRef)}), and {@code errorEntityRelPath} is computed from the
- * error-entity handle, a field or a group ({@link ErrorEntity}). {@link Builder#build()} hard-fails only on completeness and rulekit's own
- * structural invariants; the kernel-semantic error-field-referenced check ({@code
- * MVK_ERROR_FIELD_NOT_REFERENCED}, the {@code covers()} heuristic) is <i>deferred</i> to the live
- * kernel (F11) via {@link #deferredChecks()}, so a heuristic that drifts from a newer kernel can
- * never be the sole reason an accepted rule is reported corrupt.
+ * error-entity handle, a field or a group ({@link ErrorEntity}). {@link Builder#build()} hard-fails
+ * only on completeness and rulekit's own structural invariants; the kernel-semantic
+ * error-entity-referenced check ({@code MVK_ERROR_FIELD_NOT_REFERENCED}, the {@code covers()} and
+ * {@code coversGroup()} heuristics) is <i>deferred</i> to the live kernel (F11) via
+ * {@link #deferredChecks()}, so a heuristic that drifts from a newer kernel can never be the sole
+ * reason an accepted rule is reported corrupt.
  *
  * <p>The condition stays an AST (D14 — the working representation); render is on demand. The error entity
  * lies strictly under the rule's group. Messages are plain localized texts.
@@ -46,7 +47,7 @@ public record Rule(
      * single-sourced convention {@link Computation#computedFieldRelPath()} uses, so the two cannot drift.
      */
     public String errorEntityRelPath() {
-        return group.path().elementReference(errorEntity.path());
+        return group.path().elementReference(errorEntity.entityPath());
     }
 
     /**
@@ -85,14 +86,14 @@ public record Rule(
      * <p>Currently one: the error entity referenced by the condition (the {@code covers()} heuristic for a
      * field, {@code coversGroup()} for a group, which only approximate the kernel's
      * {@code MVK_ERROR_FIELD_NOT_REFERENCED}). Completeness
-     * pre-checks (name/condition/error-field/code/severity/message) stay hard in {@code build()} —
+     * pre-checks (name/condition/error-entity/code/severity/message) stay hard in {@code build()} —
      * they are rulekit's own API contract, and the validator masks {@code MVK_ERROR_MESSAGE_MISSING}
      * so the kernel can't arbitrate message presence — and the under-group placement check guards
      * rulekit's own relative-path math. Neither is deferred.
      */
     public List<Diagnostic> deferredChecks() {
         ConditionReferences references = ConditionReferences.of(condition);
-        String target = errorEntity.path().value();
+        String target = errorEntity.entityPath().value();
         boolean referenced = switch (errorEntity) {
             case FieldRef ignored -> references.covers(target);
             case GroupRef ignored -> references.coversGroup(target);
@@ -100,15 +101,19 @@ public record Rule(
         if (referenced || ConditionReferences.referencesRuleGroup(condition)) {
             return List.of();
         }
+        String kind = switch (errorEntity) {
+            case FieldRef ignored -> "field";
+            case GroupRef ignored -> "group";
+        };
         return List.of(Diagnostic.precheckWarning(
                 Optional.of(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()),
-                "the error entity " + errorEntity.path() + " appears unreferenced by the condition"
+                "the error " + kind + " " + errorEntity.entityPath() + " appears unreferenced by the condition"
                         + " (directly or via an enclosing group reference); the kernel typically rejects"
                         + " this — if your kernel accepts it, this is"
                         + " advisory only",
                 new Diagnostic.Where(group.path() + "/" + name, Optional.empty()),
-                Optional.of("reference " + errorEntity.path()
-                        + " in the condition, or pick a referenced entity as the error entity"),
+                Optional.of("reference " + errorEntity.entityPath()
+                        + " in the condition, or pick a referenced " + kind + " as the error " + kind),
                 Optional.empty()));
     }
 
@@ -287,7 +292,8 @@ public record Rule(
                             + " — pick a different name",
                     "name(...) without the vk_vk prefix");
             check(errorEntity != null, RkCode.INCOMPLETE_RULE,
-                    "a rule needs an error entity — errorField(...) or errorEntity(...)", "errorField(...)");
+                    "a rule needs an error entity — errorField(...) or errorEntity(...)",
+                    "errorField(...) or errorEntity(...)");
             check(condition != null, RkCode.INCOMPLETE_RULE,
                     "a rule needs an error condition — when(...)", "when(...)");
             check(code != null && !code.isBlank(), RkCode.INCOMPLETE_RULE,
@@ -304,12 +310,15 @@ public record Rule(
                     "a rule needs at least one error message (the kernel rejects message-less rules)"
                             + " — message(en(...))", "message(en(...))");
             LocalizedText.checkDeclared(declaredLocales, messages, "rule");
-            // Strictly: the rule's own group is refused too, since A12 cannot build a model whose rule reports on
-            // it (dsl.RuleGroupErrorEntityTest.theRulesOwnGroupIsRefusedAndA12CannotBuildIt).
+            // Stricter than A12 on purpose, for a group target as for a field: A12 admits an entity outside the
+            // rule's group whenever the rule does not iterate (KERNEL-FINDINGS KF212), and keeping the refusal is the
+            // won't-fix recorded in FEATURE-GAPS §4 (was G63). The rule's own group is refused too, which refuses
+            // nothing A12 accepts, since A12 cannot build a model whose rule reports on it
+            // (dsl.RuleGroupErrorEntityTest).
             check(errorEntity.isStrictlyInside(group), RkCode.ERROR_FIELD_OUTSIDE_GROUP,
-                    "the error entity " + errorEntity.path() + " must lie under the rule's group "
+                    "the error entity " + errorEntity.entityPath() + " must lie under the rule's group "
                             + group.path() + " — author the rule in a containing group",
-                    "author the rule in a group that contains " + errorEntity.path());
+                    "author the rule in a group that contains " + errorEntity.entityPath());
             // MVK_ERROR_FIELD_NOT_REFERENCED is NOT hard-checked here (F11) — it mirrors a kernel
             // judgment the live kernel arbitrates, so it is deferred to Rule#deferredChecks().
             Comments finalComments = comments;

@@ -117,7 +117,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
      * Whether a rule reporting on the group {@code groupPath} references it: the group itself or a group
      * enclosing it is named. A field inside it is not enough — with {@code Lines/Parts} as the error entity,
      * {@code FieldFilled(Lines/Parts/PartNo)} draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} while
-     * {@code GroupFilled(Lines)} is admitted (KERNEL-FINDINGS KF601, {@code dsl.RuleGroupErrorEntityTest}).
+     * {@code GroupFilled(Lines)} is admitted (KERNEL-FINDINGS KF324 and KF601, {@code dsl.RuleGroupErrorEntityTest}).
      */
     public boolean coversGroup(String groupPath) {
         return groupPaths.contains(groupPath)
@@ -138,9 +138,11 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
 
     /**
      * Whether the condition references the rule's OWN group via the {@code RuleGroup} self-reference
-     * anywhere. Since the error field must lie under the rule's group, a self-reference always covers
-     * it — so {@link Rule#deferredChecks()} treats this as satisfying the error-field-referenced check
-     * (the kernel does, per {@code DirectiveLawsTest}), avoiding a spurious {@code MVK_ERROR_FIELD_NOT_REFERENCED}.
+     * anywhere. Since the error entity, a field or a group, must lie under the rule's group, a
+     * self-reference names a group enclosing it — so {@link Rule#deferredChecks()} treats this as
+     * satisfying the error-entity-referenced check (the kernel does, per {@code DirectiveLawsTest} for a
+     * field and {@code dsl.RuleGroupErrorEntityTest} for a group), avoiding a spurious
+     * {@code MVK_ERROR_FIELD_NOT_REFERENCED}.
      */
     public static boolean referencesRuleGroup(Condition condition) {
         return switch (condition) {

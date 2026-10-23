@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.lint.Linter;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -18,9 +19,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
  * A typed rule that reports on a GROUP, A12's other kind of error entity (KERNEL-FINDINGS KF601 for its admission,
  * KF603 for the pointer it fires at).
  *
- * <p>The deferred reference check is pinned against the kernel on the three shapes KF601 measured: the target
- * group named, an enclosing group named, and only a field inside the target named. The last is the trap — a
- * field below the target does not reference it, which the field form's {@code covers} would have said it does.
+ * <p>The deferred reference check is pinned against the kernel on the shapes KF324 and KF601 measured: the target
+ * group named, an enclosing group named, the {@code RuleGroup} shorthand, and only a field inside the target or
+ * only a field of an enclosing group named. A field inside is the trap — it does not reference the target, which
+ * the field form's {@code covers} would have said it does.
  *
  * <p>Own domain: an order's lines and the parts each line is packed from.
  */
@@ -93,12 +95,46 @@ class RuleGroupErrorEntityTest {
     }
 
     @Test
+    void aFieldOfAnEnclosingGroupDoesNotReferenceTheTarget() {
+        Rule rule = onParts(sku.filled());
+
+        assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), kernelCodes(rule));
+        assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), codes(rule.deferredChecks()));
+    }
+
+    @Test
+    void theRuleGroupShorthandReferencesAGroupTarget() {
+        Rule rule = M.rule(lines).name("PartsCheck").errorEntity(parts).when(Dsl.ruleGroup().filled())
+                .code("PARTS").message(Dsl.en("Check the parts")).build();
+
+        assertEquals(List.of(), kernelCodes(rule));
+        assertEquals(List.of(), rule.deferredChecks());
+    }
+
+    /** The model-context lints read a field target's iteration, so a group target gets the condition's lints only. */
+    @Test
+    void aGroupTargetGetsTheConditionLintsOnly() {
+        Rule rule = onParts(parts.notFilled());
+        Linter linter = new Linter();
+
+        assertEquals(linter.lint(rule.group().path() + "/" + rule.name(), rule.condition()), linter.lint(M, rule));
+    }
+
+    /**
+     * A group outside the rule's group is refused, as a field there is, although A12 admits such a rule while it
+     * iterates nothing (KERNEL-FINDINGS KF212): the deliberate over-strictness FEATURE-GAPS §4 records (was G63).
+     */
+    @Test
     void aGroupOutsideTheRulesGroupIsRefusedWithItsCode() {
         PrecheckException ex = assertThrows(PrecheckException.class, () -> M.rule(lines).name("Stray")
                 .errorEntity(M.group("/Order/Notes")).when(sku.filled())
                 .code("STRAY").message(Dsl.en("Stray")).build());
 
         assertEquals("RK_ERROR_FIELD_OUTSIDE_GROUP", ex.diagnostic().code().orElseThrow());
+        DraftRule stray = DraftRule.builder().groupPath("/Order/Lines").name("Stray").errorEntityRelPath("../../Notes")
+                .errorCondition("GroupFilled(/Order)").errorCode("STRAY").severity("ERROR")
+                .messages(List.of(Dsl.en("Stray"))).build();
+        assertEquals(List.of(), validator.check(MODEL, stray).diagnostics(), "A12 admits the non-iterating twin");
     }
 
     /**

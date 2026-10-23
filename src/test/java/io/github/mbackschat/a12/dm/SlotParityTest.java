@@ -20,7 +20,7 @@ import com.mgmtp.a12.kernel.md.model.api.IRule;
 class SlotParityTest {
 
     private static final Map<String, String> RULE_SLOTS = Map.of(
-            "getErrorEntity", "SUPPORTED: Rule.errorField → computed errorEntityRelPath",
+            "getErrorEntity", "SUPPORTED: Rule.errorEntity (a field or a group) → computed errorEntityRelPath",
             "getErrorCode", "SUPPORTED: Rule.code",
             "getErrorCondition", "SUPPORTED: Rule.when(Condition) → render",
             "getSeverity", "SUPPORTED: Rule.severity",

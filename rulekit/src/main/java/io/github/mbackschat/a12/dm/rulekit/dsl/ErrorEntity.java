@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
-import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.HasEntityPath;
 
 /**
@@ -11,7 +10,4 @@ import io.github.mbackschat.a12.dm.core.HasEntityPath;
  * reference check does, because a field inside a group target does not reference the target.
  */
 public sealed interface ErrorEntity extends HasEntityPath permits FieldRef, GroupRef {
-
-    /** The entity's absolute model path. */
-    EntityPath path();
 }

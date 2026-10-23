@@ -999,11 +999,11 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
         .severity(Severity.ERROR)
         .message(en("A PRO subscription requires a monthly fee per add-on."),
                  de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // F2a landed: interpolate via Dsl.fieldValue(name) → $Name.value$
-        .build();   // pre-checks at build(): error field under the group; error-field-referenced
-                    // (directly or via enclosing group ref — kernel-verified); the LOCALE LAW:
+        .build();   // pre-checks at build(): error field under the group; the LOCALE LAW:
                     // a message for EVERY declared locale (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING),
                     // none for undeclared ones (stricter than the kernel, which ignores them silently);
-                    // header locales are arbitrary — Dsl.text("fr_FR", …) for anything beyond en/de sugar
+                    // header locales are arbitrary — Dsl.text("fr_FR", …) for anything beyond en/de sugar.
+                    // Error-field-referenced is DEFERRED to the kernel: rule.deferredChecks()
 // rule.draft() bridges to the F4 validator; rule.render(DE) renders the same AST in German.
 // ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
@@ -1022,7 +1022,7 @@ Rule rule = M.rule(order).name("PartsCheck")
 rule.errorEntityRelPath();                            // "../Lines/Parts"
 ```
 
-What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group and the rule's own group, which A12 cannot build a model around. The model-context lints read a field target only.
+What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group, deliberately stricter than A12 there ([FEATURE-GAPS §4](FEATURE-GAPS.md)), and the rule's own group, which A12 cannot build a model around. The model-context lints read a field target only.
 
 ### 4.2 Render → validate → emit
 
