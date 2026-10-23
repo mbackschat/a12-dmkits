@@ -1184,7 +1184,7 @@
       }
     },
     "kf601": {
-     "sha256": "082f9dd8d76c83319858ae8fc2428d1a77ad1150108e8bc7bdd63e87246ea11a",
+     "sha256": "029a82ce4399d748a028d50e313d0271c5e53cf86325acca4504c9c6c76ae49d",
      "task": "SS3",
      "scope": {
       "dmkits": [
@@ -1208,11 +1208,11 @@
      "consumers": {
       "dmkits": {
           "state": "APPLIED",
-          "basis": "The typed Rule's deferred reference check judges a group target by KF601's rows: the group or an enclosing group references it, a field inside it does not.",
+          "basis": "The typed Rule's deferred reference check judges a group target by KF601's rows: the group or an enclosing group references it, a field or a group inside it does not.",
           "evidence": {
             "the group-target reference check": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleGroupErrorEntityTest.java#aFieldInsideTheTargetDoesNotReferenceIt",
-              "witness": "deferredChecks() and the kernel both answer MVK_ERROR_FIELD_NOT_REFERENCED for a field inside the target, and both admit the target and an enclosing group."
+              "witness": "deferredChecks() and the kernel both answer MVK_ERROR_FIELD_NOT_REFERENCED for a field inside the target (and, in the class beside it, for a group inside it), and both admit the target and an enclosing group."
             }
           }
       },

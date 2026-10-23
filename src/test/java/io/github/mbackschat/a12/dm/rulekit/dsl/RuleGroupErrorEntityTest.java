@@ -21,7 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
  *
  * <p>The deferred reference check is pinned against the kernel on the shapes KF324 and KF601 measured: the target
  * group named, an enclosing group named, the {@code RuleGroup} shorthand, and only a field inside the target or
- * only a field of an enclosing group named. A field inside is the trap — it does not reference the target, which
+ * only a field of an enclosing group or a group inside the target named. A field inside is the trap — it does not reference the target, which
  * the field form's {@code covers} would have said it does.
  *
  * <p>Own domain: an order's lines and the parts each line is packed from.
@@ -34,7 +34,8 @@ class RuleGroupErrorEntityTest {
                             .stringField("Sku", s -> { })
                             .group("Parts", p -> p.repeatable(5)
                                     .stringField("PartNo", s -> { })))
-                    .group("Notes", n -> n.stringField("Text", s -> { })))
+                    .group("Notes", n -> n.stringField("Text", s -> { })
+                            .group("Remarks", r -> r.stringField("Line", s -> { }))))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
@@ -97,6 +98,17 @@ class RuleGroupErrorEntityTest {
     @Test
     void aFieldOfAnEnclosingGroupDoesNotReferenceTheTarget() {
         Rule rule = onParts(sku.filled());
+
+        assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), kernelCodes(rule));
+        assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), codes(rule.deferredChecks()));
+    }
+
+    /** A group below the target is no reference either. The groups are plain because on the repeatable
+     *  {@code Lines} target, {@code GroupFilled(Lines/Parts)} draws {@code MVK_NO_WILDCARD} instead. */
+    @Test
+    void aSubgroupInsideTheTargetDoesNotReferenceIt() {
+        Rule rule = M.rule(order).name("NotesCheck").errorEntity(M.group("/Order/Notes"))
+                .when(M.group("/Order/Notes/Remarks").filled()).code("NOTES").message(Dsl.en("Check the notes")).build();
 
         assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), kernelCodes(rule));
         assertEquals(List.of("MVK_ERROR_FIELD_NOT_REFERENCED"), codes(rule.deferredChecks()));
