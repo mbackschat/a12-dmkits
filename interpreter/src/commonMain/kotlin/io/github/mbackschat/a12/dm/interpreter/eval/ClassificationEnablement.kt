@@ -73,6 +73,23 @@ private fun filtered(e: Expr): Boolean = when (e) {
 }
 
 /**
+ * Whether WHICH leaves the kernel reaches is observable, so the rule must be evaluated in its two passes: a leaf
+ * that can fail at runtime ([canRaiseRuntimeFailure]), or a `CustomCondition`, whose consumer callback sees every
+ * call. A12 calls a callback only where its short-circuited truth pass reaches it, and once more in the
+ * classification pass of a rule that holds (KERNEL-FINDINGS KF604, `adapter.laws.CustomConditionCallCountDiffTest`);
+ * the single walk calls it once on every evaluated row.
+ */
+internal fun reachIsObservable(cond: Cond): Boolean = canRaiseRuntimeFailure(cond) || callsBack(cond)
+
+private fun callsBack(cond: Cond): Boolean = when (cond) {
+    is Cond.And -> callsBack(cond.left) || callsBack(cond.right)
+    is Cond.Or -> callsBack(cond.left) || callsBack(cond.right)
+    is Cond.Not -> callsBack(cond.c)
+    is Cond.Custom -> true
+    is Cond.Cmp, is Cond.Tolerance, is Cond.Pattern, is Cond.ValueListQuant, is Cond.Pred -> false
+}
+
+/**
  * Whether a condition contains a temporal literal or empty pattern that can raise [RuntimeEvaluationFailure]. The
  * eager classification pass agrees with the lazy single walk on every message type, so it is run only where it
  * could reach a failure the truth pass skipped; everywhere else it would be a second walk with nothing to observe.

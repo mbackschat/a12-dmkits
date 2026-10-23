@@ -867,6 +867,78 @@
       }
      }
     },
+    "kf604": {
+      "sha256": "62ef3e04c39deae74075551bb0312c439bfcae5e57232233297a4260211c8984",
+      "task": "SS8",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "how often A12 calls a registered custom condition"
+        ],
+        "interpreter": [
+          "how often the interpreter calls a registered custom condition"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "how often A12 calls a registered custom condition"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the lock authors the callback leaf through the existing typed surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the checker judges models statically.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's counts are pinned on the root grid, and both strategies agree on both carriers.",
+          "evidence": {
+            "how often A12 calls a registered custom condition": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionCallCountDiffTest.kt#a12CallsACallbackWhereItsTruthPassReachesItAndAgainWhenAHoldingRuleClassifies",
+              "witness": "The twenty counts of the table, on both strategies."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A rule with a custom condition is evaluated in the kernel's two passes.",
+          "evidence": {
+            "how often the interpreter calls a registered custom condition": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionCallCountDiffTest.kt#theInterpreterCallsEachCallbackAsOftenAsA12",
+              "witness": "Equal to A12 on every cell, full and partial."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
     "kf603": {
       "sha256": "debb5ab4e1287b1ac55528bd5ebb8376a701a687089dd89aa542596d8f5b1364",
       "task": "SS7",

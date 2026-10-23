@@ -1224,9 +1224,10 @@ class DmInterpreter private constructor(
             // second walk re-traverses + re-evals leaves; the lazy single walk gets the skip without it.
             // INTERPRETER-PERFORMANCE.md task #62; measurements in INTERPRETER-PERFORMANCE-RESULTS.md.)
             //
-            // A condition that can fail at runtime makes the reached leaves observable, so it takes the kernel's two
-            // passes instead; elsewhere the single walk gives the same verdict and type at lower cost.
-            val firedType = if (prepared.canFailAtRuntime) interp.firedTypeInTwoPasses(ast, prepared.classifies)
+            // A leaf that can fail at runtime, or a consumer callback, makes the reached leaves observable, so such a
+            // condition takes the kernel's two passes instead; elsewhere the single walk gives the same verdict and
+            // type at lower cost.
+            val firedType = if (prepared.reachObservable) interp.firedTypeInTwoPasses(ast, prepared.classifies)
                 else interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType

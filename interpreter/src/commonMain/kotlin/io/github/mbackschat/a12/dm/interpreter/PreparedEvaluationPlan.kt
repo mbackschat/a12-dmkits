@@ -35,9 +35,9 @@ internal data class PreparedRulePlan(
      *  and A12 reports no rule whose error entity is a group, even with the root relevant (KERNEL-FINDINGS KF603,
      *  `adapter.laws.GroupTargetRuntimeDiffTest`). */
     val skippedInPartial: Boolean,
-    /** The condition holds a leaf that can fail at runtime, so WHICH leaves are reached is observable and the rule
-     *  is evaluated in the kernel's two passes ([io.github.mbackschat.a12.dm.interpreter.eval.Interpreter.firedTypeInTwoPasses]). */
-    val canFailAtRuntime: Boolean,
+    /** WHICH leaves are reached is observable ([io.github.mbackschat.a12.dm.interpreter.eval.reachIsObservable]), so
+     *  the rule is evaluated in the kernel's two passes ([io.github.mbackschat.a12.dm.interpreter.eval.Interpreter.firedTypeInTwoPasses]). */
+    val reachObservable: Boolean,
     /** The authored constructs enable the kernel's eager classification pass
      *  ([io.github.mbackschat.a12.dm.interpreter.eval.classificationEnabled]). */
     val classifies: Boolean,

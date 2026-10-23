@@ -14630,3 +14630,21 @@ So a rule reporting on a group iterates the levels above the group and not the g
 In a partial call A12 reports no rule whose error entity is a group, on any of the three carriers above (a repeatable own level, a fixed group below a repeatable parent, a root's child), whether the relevant entity is a field inside the group, the group's row, its line, or the root; the field-target twins report there. A deeper or wrapped level below a joined group, a rule reporting on the root, and a level below the group target are not measured.
 
 *Locked by:* `adapter.laws.GroupTargetRuntimeDiffTest` (A12 pinned on the rows above, both strategies agreeing on every document of both channels and on computation, the interpreter equal on the lossless pointer key).
+
+## §14 supplement — A12 calls a registered custom condition only where its short-circuited truth pass reaches it, and once more when the rule holds and classifies (kernel runtime, 2026-10-23) <a id="kf604"></a>
+
+> Fold: pending — beside [KF52](#kf52)'s reach account and the two-pass account of a12-kernel-lean `SPEC-2026-10-03-06`.
+
+An order root holds `Note` and `Qty` (`2` throughout). Each rule names its own callback, registered to answer true or false, and the counts are calls per full validation. Both strategies agree on every cell, and a partial call with the root relevant, measured on dynamic Groovy, gives the same counts.
+
+| condition | note empty, true | note empty, false | note filled, true | note filled, false |
+|---|---|---|---|---|
+| `FieldFilled(Note) And X` | 0 | 0 | 1 | 1 |
+| `FieldNotFilled(Note) And X` | 2 | 1 | 0 | 0 |
+| `FieldFilled(Note) Or X` | 1 | 1 | 0 | 0 |
+| `FieldNotFilled(Note) Or X` | 1 | 1 | 2 | 1 |
+| `[Qty] > 1 And X` | 2 | 1 | 2 | 1 |
+
+So the truth pass short-circuits both connectives: a callback behind a false `And` or a true `Or` is not called. A rule that then holds, and whose constructs enable classification (here `FieldNotFilled` and the value comparison; `FieldFilled` is exempt), re-evaluates every leaf and calls its callback again: two calls when the truth pass reached it, one when it did not (`FieldNotFilled(Note) Or X` with the note empty). The same counts hold per row on a repeating `Lines` carrier whose rules are guarded by `FieldFilled(Lines/Qty)`. A computation cannot carry a callback: A12 refuses `CustomCondition` there (`MVK_ERROR_INVALID_LANGUAGE_FEATURE`, KERNEL-SEMANTICS §14).
+
+*Locked by:* `adapter.laws.CustomConditionCallCountDiffTest` (A12 pinned on the root grid, both strategies agreeing on both carriers' full calls, the interpreter equal full and partial).
