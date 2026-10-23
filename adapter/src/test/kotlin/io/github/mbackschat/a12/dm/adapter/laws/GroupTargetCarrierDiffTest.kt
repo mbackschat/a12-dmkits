@@ -92,6 +92,9 @@ class GroupTargetCarrierDiffTest {
         assertEquals(listOf("/Order[1]/Lines[1]/Parts[1]/Count[1]"), parts(sixPartsModel, "phantom"))
         assertEquals(listOf("/Order[1]/Lines[1]/Parts[1]/Count[1]", "/Order[1]/Lines[1]/Parts[2]/Count[1]"),
             parts(sixPartsModel, "slots2"))
+        // Occupancy is the document's: line A holds one part, yet visits the second that line B holds.
+        assertEquals(listOf("/Order[1]/Lines[1]/Parts[1]/Count[1]", "/Order[1]/Lines[1]/Parts[2]/Count[1]"),
+            parts(sixPartsModel, "widerlater"))
         val prepared = PreparedModel.loadExpandedJson(sixPartsModel)
         val interpreter = prepared.createInterpreter()
         DOCUMENTS.forEach { (name, json) ->
@@ -240,6 +243,9 @@ class GroupTargetCarrierDiffTest {
             // A slot keyed like a pick: under line A, slot B against picks A and B.
             "slotkeys" to """{"Order":{"Lines":[{"LineNo":"A","Slots":[{"SlotNo":"B"}]}],""" +
                 """"Picks":[{"LineNo":"A"},{"LineNo":"B","Ref":"r"}]}}""",
+            // The first line holds one part and the second two, while only the first line's pick has a Ref.
+            "widerlater" to """{"Order":{"Lines":[{"LineNo":"A","Parts":[{"Count":"2"}]},""" +
+                """{"LineNo":"B","Parts":[{"Count":"3"},{"Count":"4"}]}],"Picks":[{"LineNo":"A","Ref":"r"},{"LineNo":"B"}]}}""",
             "dupkey" to """{"Order":{"Lines":[{"LineNo":"A","Parts":[{"Count":"2"}]},""" +
                 """{"LineNo":"A","Parts":[{"Count":"4"}]}],"Picks":[{"LineNo":"A"}]}}""",
             "nested" to """{"Order":{"Lines":[{"LineNo":"A","Parts":[{"Count":"2"},{"Count":"3"}]},""" +
