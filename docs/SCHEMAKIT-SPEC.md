@@ -272,8 +272,8 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `not {pattern: P}` (nonempty `P`) | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
 | `not {minimum: N}` | `Filled(f) And [f] ≥ N` | `f` | `num.ge(N)` (value must be `< N`) |
 | `not {maximum: N}` | `Filled(f) And [f] ≤ N` | `f` | `num.le(N)` (value must be `> N`) |
-| `not {minLength: N}` | `Filled(f) And length([f]) ≥ N` | `f` | `str.length().ge(N)` (length `< N`) |
-| `not {maxLength: N}` | `Filled(f) And length([f]) ≤ N` | `f` | `str.length().le(N)` (length `> N`) |
+| `not {minLength: N}` | `Filled(f) And length(f) ≥ N` | `f` | `str.length().ge(N)` (length `< N`) |
+| `not {maxLength: N}` | `Filled(f) And length(f) ≤ N` | `f` | `str.length().le(N)` (length `> N`) |
 | object `not {required:[a, b]}` | `AllFieldsFilled(a, b)` | first field | `Dsl.allFieldsFilled` / `fieldFilled` — a/b must not all be present together |
 
 **Native rule projection.** `TierAProjection.project` projects only the whole unguarded fixed-root array minimum described above. It preserves arbitrary-size integer bounds and intersects independent minimum rules by maximum. Extracting one conjunct would incorrectly enforce it when another conjunct is false, so those rules remain carried with a diagnostic. Rule patterns likewise remain carried: a native scalar pattern changes present-empty-string applicability and can overwrite an independent declared pattern. Declared field patterns still export as native lexical configuration. `SchemaContainsCountDiffTest` compares both kernels and the interpreter with a stock schema validator for guarded/unguarded predicates, independent rules, empty values and absent arrays; `TierAProjectionShapeTest` locks declaration overlap and bounds above the Java integer range. `ConditionReadBackParityTest` locks both read-back providers and actual kernel admission after import, including authored CRLF.

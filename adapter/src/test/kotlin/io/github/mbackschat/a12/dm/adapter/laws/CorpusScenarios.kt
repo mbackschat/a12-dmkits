@@ -141,7 +141,7 @@ object CorpusScenarios {
             .message(Dsl.en("The product code must be ABC.")).build()
     }))
 
-    /** `Length([ProductCode]) < 5` on the root Order — the string family's empty-as-0 backdoor: Length of an
+    /** `Length(ProductCode) < 5` on the root Order — the string family's empty-as-0 backdoor: Length of an
      *  empty string is a fillable 0 (grow-only), so it FIRES where the direct comparison is suppressed (IF73). */
     private val orderCodeLengthLtModel = model("order-code-length-lt", TypedRules.inject(order, ord.rule {
         it.name("CodeLenLt").code("CODE_LEN_LT").errorField(ord.str("ProductCode").field())
@@ -149,7 +149,7 @@ object CorpusScenarios {
             .message(Dsl.en("The product code is too short.")).build()
     }))
 
-    /** `Length([ProductCode]) >= 0` on the root Order — always true; the grow-only VALUE witness (filling can
+    /** `Length(ProductCode) >= 0` on the root Order — always true; the grow-only VALUE witness (filling can
      *  only lengthen, so a `>=` can never be cleared → VALUE, not the OMISSION a symmetric leaf would give). */
     private val orderCodeLengthGeModel = model("order-code-length-ge", TypedRules.inject(order, ord.rule {
         it.name("CodeLenGe").code("CODE_LEN_GE").errorField(ord.str("ProductCode").field())
@@ -368,7 +368,7 @@ object CorpusScenarios {
         Op.ValidateFull,
     )
 
-    /** 2 — `Length([ProductCode]) < 5` over the same empty ProductCode FIRES as OMISSION (empty-as-0 backdoor). */
+    /** 2 — `Length(ProductCode) < 5` over the same empty ProductCode FIRES as OMISSION (empty-as-0 backdoor). */
     private fun strEmptyLengthLtOmission(): Family = family(
         F6, orderCodeLengthLtModel,
         CaseMeta("str-empty-length-lt-omission", PENDING, CaseSource.CURATED, listOf("§2", "§7", "§12"),
@@ -378,7 +378,7 @@ object CorpusScenarios {
         Op.ValidateFull,
     )
 
-    /** 3 — `Length([ProductCode]) >= 0` FIRES as VALUE — Length is grow-only, so a `>=` can't be filled to clear. */
+    /** 3 — `Length(ProductCode) >= 0` FIRES as VALUE — Length is grow-only, so a `>=` can't be filled to clear. */
     private fun strEmptyLengthGeValue(): Family = family(
         F6, orderCodeLengthGeModel,
         CaseMeta("str-empty-length-ge-value", PENDING, CaseSource.CURATED, listOf("§2", "§7", "§12"),

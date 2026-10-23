@@ -795,6 +795,78 @@
       }
      }
     },
+    "kf600": {
+     "sha256": "0818552ae580f01303728f0e7d7d60cd205db3438da98f27129269d6a484a3ce",
+     "task": "M1",
+     "scope": {
+      "dmkits": [],
+      "checker": [
+       "a bracketed field read in an entity slot"
+      ],
+      "json-schema-import": [],
+      "json-schema-export": [],
+      "adapter": [
+       "A12's token class on a bracketed entity slot"
+      ],
+      "interpreter": [],
+      "dmtool-cli": [],
+      "a12-kernel-lean": [
+       "A12's token class on a bracketed entity slot"
+      ]
+     },
+     "consumers": {
+      "dmkits": {
+       "state": "NOT_APPLICABLE",
+       "basis": "The typed renderer writes an entity argument bare (`DslRenderer.entityOperand`), so the kits cannot author the bracket; a stored condition is the checker's.",
+       "evidence": {}
+      },
+      "checker": {
+       "state": "APPLIED",
+       "basis": "The recognizer's entity and date slots refuse an opening bracket as a token, ahead of every type gate.",
+       "evidence": {
+        "a bracketed field read in an entity slot": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBracketedEntitySlotAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+         "witness": "The checker names A12's class on every row."
+        }
+       }
+      },
+      "json-schema-import": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema import.",
+       "evidence": {}
+      },
+      "json-schema-export": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A rule's admission does not change JSON Schema export.",
+       "evidence": {}
+      },
+      "adapter": {
+       "state": "APPLIED",
+       "basis": "A12 is pinned on every row of the customer model.",
+       "evidence": {
+        "A12's token class on a bracketed entity slot": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBracketedEntitySlotAgreementTest.kt#a12AnswersEveryRowAsPinned",
+         "witness": "A12 answers every row as the finding's table states."
+        }
+       }
+      },
+      "interpreter": {
+       "state": "NOT_APPLICABLE",
+       "basis": "A static admission refusal never reaches evaluation.",
+       "evidence": {}
+      },
+      "dmtool-cli": {
+       "state": "NOT_APPLICABLE",
+       "basis": "dmtool checks through the kernel or the checker assessed here.",
+       "evidence": {}
+      },
+      "a12-kernel-lean": {
+       "state": "OPEN",
+       "basis": "Not yet handed over.",
+       "evidence": {}
+      }
+     }
+    },
     "kf597": {
      "sha256": "9c700acb7f5000f6c2f36e83c763a149396d1b854afdaeefa7eb65cab802c5fc",
      "task": "DG146",
@@ -11943,7 +12015,7 @@
       }
     },
     "kf34": {
-      "sha256": "5c7d27b7089242781e7fbde961b39399210fa9c213bdfc044c914b71028aa11b",
+      "sha256": "9dabf4af93bc7e2548ff22f395219c0b993148084ddc37e34b327b47f815cd7b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],

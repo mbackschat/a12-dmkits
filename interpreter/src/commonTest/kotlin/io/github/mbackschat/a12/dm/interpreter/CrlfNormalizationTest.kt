@@ -71,9 +71,9 @@ class CrlfNormalizationTest {
     // A RULE read sees the normalized text: Length reads 5 — `> 5` never fires, `> 4` does (proving the read
     // is the normalized 5, not raw 6 and not a suppression).
     @Test fun ruleReadIsNormalized() {
-        val gt5 = model(max = 10, rules = listOf(RuleDef("/Claim/R", "/Claim", "Length([IncidentNote]) > 5", "LEN", "../IncidentNote")))
+        val gt5 = model(max = 10, rules = listOf(RuleDef("/Claim/R", "/Claim", "Length(IncidentNote) > 5", "LEN", "../IncidentNote")))
         assertEquals(emptyList(), codes(gt5))
-        val gt4 = model(max = 10, rules = listOf(RuleDef("/Claim/R", "/Claim", "Length([IncidentNote]) > 4", "LEN", "../IncidentNote")))
+        val gt4 = model(max = 10, rules = listOf(RuleDef("/Claim/R", "/Claim", "Length(IncidentNote) > 4", "LEN", "../IncidentNote")))
         assertEquals(listOf("LEN"), codes(gt4))
     }
 

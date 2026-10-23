@@ -35,9 +35,9 @@ class LengthReadTest {
     @Test
     void roundTripsLengthOnTheLeftAndRight() {
         BoundModel m = order();
-        // Length([CustomerName]) > 5
+        // Length(CustomerName) > 5
         Condition left = m.str("/Order/CustomerName").length().gt(5);
-        // [Quantity] <= Length([ProductCode])  — Length as the right operand of a number comparison
+        // [Quantity] <= Length(ProductCode)  — Length as the right operand of a number comparison
         Condition right = m.field("/Order/CustomerName").filled()
                 .and(m.num("/Order/Quantity").le(m.str("/Order/ProductCode").length()));
 

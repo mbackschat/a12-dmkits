@@ -121,7 +121,7 @@ class CrlfLengthNormalizationDiffTest {
         val m = BoundModel.ofJson(json)
         val cond = RuntimeLaws.render(Dsl.length(m.str(NOTE)).gt(5))
         val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
-        agree(model, NOTE, CRLF, emptyList(), "Length([IncidentNote]) > 5 over normalized CRLF")
+        agree(model, NOTE, CRLF, emptyList(), "Length(IncidentNote) > 5 over normalized CRLF")
     }
 
     // The POSITIVE-fire discriminator: `> 4` FIRES at the normalized 5 — so the no-fire above is a real
@@ -131,7 +131,7 @@ class CrlfLengthNormalizationDiffTest {
         val m = BoundModel.ofJson(json)
         val cond = RuntimeLaws.render(Dsl.length(m.str(NOTE)).gt(4))
         val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
-        agree(model, NOTE, CRLF, listOf("LEN"), "Length([IncidentNote]) > 4 fires at the normalized 5")
+        agree(model, NOTE, CRLF, listOf("LEN"), "Length(IncidentNote) > 4 fires at the normalized 5")
     }
 
     // …and the same read boundary serves COMPUTATIONS: a bare copy of the CRLF source stores the NORMALIZED

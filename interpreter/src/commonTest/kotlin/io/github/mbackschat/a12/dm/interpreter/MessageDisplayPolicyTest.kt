@@ -61,7 +61,7 @@ class MessageDisplayPolicyTest {
 
     @Test
     fun evaluationReadsNormalizedCrlfWhileMessageReadsOriginalDisplayValue() {
-        val model = model(Kind.STRING, "Length([Value]) == 5", "\$Value.value\$")
+        val model = model(Kind.STRING, "Length(Value) == 5", "\$Value.value\$")
         val doc = model.newDocument().field(VALUE, "AB\r\nCD", 1, 1)
 
         assertEquals("AB\r\nCD", message(model, doc))
