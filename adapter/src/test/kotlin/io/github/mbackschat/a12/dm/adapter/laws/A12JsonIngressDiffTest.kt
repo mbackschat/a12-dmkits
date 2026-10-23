@@ -90,6 +90,37 @@ class A12JsonIngressDiffTest {
         }
     }
 
+    /**
+     * A member the model does not declare is dropped wherever it stands, so the Document reads as the one without
+     * it, as A12's conversion drops it (a12-kernel-lean SPEC-2026-10-22-02). The kernel rewrite is the oracle for
+     * every row, including the kinds and positions that entry leaves unmeasured.
+     */
+    @Test
+    fun anUndeclaredMemberIsDroppedWhereverItStands() {
+        val json = DocumentModelDraft.named("parcel-undeclared-members").locale("en_US")
+            .rootGroup("Parcel") { p -> p.stringField("Sibling") { }
+                .group("Box") { b -> b.stringField("Label") { } }
+                .group("Lines") { g -> g.repeatable(3).stringField("Note") { } } }
+            .build().toJson()
+        val documents = PreparedModel.loadExpandedJson(json).documents
+        val rows = listOf(
+            "fixed-group-string" to ("""{"Parcel":{"Sibling":"kept","Unexpected":"x"}}""" to """{"Parcel":{"Sibling":"kept"}}"""),
+            "fixed-group-boolean" to ("""{"Parcel":{"Sibling":"kept","Unexpected":true}}""" to """{"Parcel":{"Sibling":"kept"}}"""),
+            "fixed-group-null" to ("""{"Parcel":{"Sibling":"kept","Unexpected":null}}""" to """{"Parcel":{"Sibling":"kept"}}"""),
+            "nested-fixed-group-string" to ("""{"Parcel":{"Box":{"Label":"b","Unexpected":"x"}}}""" to """{"Parcel":{"Box":{"Label":"b"}}}"""),
+            "nested-fixed-group-object" to ("""{"Parcel":{"Box":{"Label":"b","Unexpected":{}}}}""" to """{"Parcel":{"Box":{"Label":"b"}}}"""),
+            "row-string" to ("""{"Parcel":{"Lines":[{"Note":"a","Unexpected":"x"}]}}""" to """{"Parcel":{"Lines":[{"Note":"a"}]}}"""),
+            "row-object" to ("""{"Parcel":{"Lines":[{"Note":"a","Unexpected":{"Deep":"y"}}]}}""" to """{"Parcel":{"Lines":[{"Note":"a"}]}}"""),
+            "document-root-string" to ("""{"Unexpected":"x","Parcel":{"Sibling":"kept"}}""" to """{"Parcel":{"Sibling":"kept"}}"""),
+        )
+        assertEquals(rows.size, rows.map { it.first }.distinct().size)
+        for ((label, row) in rows) {
+            val (input, expected) = row
+            assertEquals(expected, RuntimeLaws.jsonIngress(json, input).rewritten(), "$label kernel")
+            assertEquals(expected, documents.encodeDocument(documents.readDocument(input)), "$label interpreter")
+        }
+    }
+
     private companion object {
         // EMPTY, and that is the measured state — not an unwritten row. A12 renders one stored decimal twice
         // (the serializer's `toPlainString()` versus the runtime's
