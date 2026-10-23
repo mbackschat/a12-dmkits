@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.JoinShape
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -39,7 +40,7 @@ class SemanticIndexNumberKeyTest {
                         .field("$group/Deductible", key + if (fractional) ".25" else if (scale == 2) ".00" else "", 1, i + 1, 1)
                         .field("$group/Premium", "p", 1, i + 1, 1)
                 }
-                val visits = document.validationParallelContexts(groups, "Deductible", "/Tariff", null, null, null, null, null) {
+                val visits = document.validationParallelContexts(JoinShape(groups, "Deductible", "/Tariff"), null, null) {
                     model.declaredReps[it] ?: 1
                 }
                 val expected = listOf(3, 2, 1).flatMap { row ->
@@ -50,7 +51,7 @@ class SemanticIndexNumberKeyTest {
                     assertEquals(List(expected.size) { io.github.mbackschat.a12.dm.interpreter.ast.Val.Txt("p") },
                         visits.map { it.field("$group/Premium") })
                 }
-                assertEquals(3, document.parallelContexts(groups, "Deductible", "/Tariff").size)
+                assertEquals(3, document.parallelContexts(JoinShape(groups, "Deductible", "/Tariff")).size)
             }
         }
     }

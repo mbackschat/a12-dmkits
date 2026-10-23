@@ -32,6 +32,22 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
  */
 internal const val UNKNOWN_REP = -5
 
+/**
+ * Where a parallel iteration joins ([Document.parallelContexts]): the [joined] sibling groups, keyed by their shared
+ * [indexName] within each row of [commonParent]; the [frameGroup] among them that sits below a repeatable unkeyed
+ * [deepestFrame]; and the unkeyed [nested] level directly below a joined group that is iterated inside each joined
+ * row. Named, because three of them are optional groups of one type, which the two entry points once took in
+ * different positional orders.
+ */
+data class JoinShape(
+    val joined: List<String>,
+    val indexName: String,
+    val commonParent: String,
+    val frameGroup: String? = null,
+    val deepestFrame: String? = null,
+    val nested: String? = null,
+)
+
 /** Repetition coordinates in walk order: lexicographic, level by level. */
 private val COORDINATE_ORDER = Comparator<List<Int>> { a, b ->
     a.indices.firstOrNull { it < b.size && a[it] != b[it] }?.let { a[it].compareTo(b[it]) } ?: a.size.compareTo(b.size)
@@ -877,11 +893,11 @@ class Document(internal val config: DocumentConfig) {
     }
 
     /**
-     * **Parallel iteration** — joint iteration of sibling repeatable [groups] (neither nested in the other),
-     * keyed by their shared **index field** [indexFieldName], within each row of their deepest common ancestor
-     * [commonParent]. Row lookup uses canonical [indexKeyOf] identity ([IF272]); a group without a matching
-     * row reads empty and carries [UNKNOWN_REP]. Computation enumerates each canonical identity once.
-     * [validationParallelContexts] instead enumerates the lexical union of each group's rendered tokens,
+     * **Parallel iteration** — joint iteration of the sibling repeatable [JoinShape.joined] groups (neither nested in
+     * the other), keyed by their shared **index field** [JoinShape.indexName], within each row of their deepest
+     * common ancestor [JoinShape.commonParent]. Row lookup uses canonical [indexKeyOf] identity ([IF272]); a group
+     * without a matching row reads empty and carries [UNKNOWN_REP]. Computation enumerates each canonical identity
+     * once. [validationParallelContexts] instead enumerates the lexical union of each group's rendered tokens,
      * because different Number minimum scales can revisit the same matched pair (KF114 / SPEC-2026-10-10-04).
      * Duplicate and empty index cells contribute no selectable key ([IF270]).
      *
@@ -894,41 +910,36 @@ class Document(internal val config: DocumentConfig) {
      * independently). Validation visits lexical rendered-token order, observable through custom callbacks
      * (`NumericIndexKeyDiffTest.validationVisitsRenderedTokensInLexicalOrder`).
      *
-     * **Frame (a nested repeatable above one joined group):** when one joined group [frameGroup] sits under a
-     * repeatable non-indexed ancestor [deepestFrame] (between [commonParent] and it), the kernel iterates that
-     * frame normally and does the join INSIDE each frame row (KERNEL-FINDINGS §9 — the `/Plan/X/A ⋈ B` case):
-     * the framed group's rows + index values are scoped to the current frame row, while the other (clean) joined
-     * groups stay shared under [commonParent]. With no frame ([deepestFrame] null) this reduces to one join per
+     * **Frame (a nested repeatable above one joined group):** when one joined group [JoinShape.frameGroup] sits
+     * under a repeatable non-indexed ancestor [JoinShape.deepestFrame] (between the common parent and it), the
+     * kernel iterates that frame normally and does the join INSIDE each frame row (KERNEL-FINDINGS §9 — the
+     * `/Plan/X/A ⋈ B` case): the framed group's rows + index values are scoped to the current frame row, while the
+     * other (clean) joined groups stay shared under the common parent. With no frame this reduces to one join per
      * common-parent row.
      *
-     * **Nested level (an unindexed repeatable group directly below one joined group):** [nested] names the level a
-     * rule or computation iterates inside each joined row (KERNEL-FINDINGS KF603). Validation visits
-     * [nestedValidationRows] below every joined row, its side's `-5` row included; a computation visits the
-     * [nested] rows stored below the side's row, and none where the side has no row.
+     * **Nested level (an unindexed repeatable group directly below one joined group):** [JoinShape.nested] names the
+     * level a rule or computation iterates inside each joined row (KERNEL-FINDINGS KF603). Validation visits
+     * [nestedValidationRows] below every joined row, its side's `-5` row included; a computation visits the nested
+     * rows stored below the side's row, and none where the side has no row.
      */
-    fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String? = null, deepestFrame: String? = null,
+    fun parallelContexts(join: JoinShape,
             /** Partial validation only: gates which INDEX cells key the join ([IF269]). Null = every cell. */
             cellRelevant: ((String, List<Int>) -> Boolean)? = null,
             /** Complete formal-admission gate supplied by the validation/compute pass. */
-            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
-            nested: String? = null): List<EvalContext> =
-        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested,
-            cellRelevant, indexIdentityAdmitted, validation = false)
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> =
+        parallelContexts(join, cellRelevant, indexIdentityAdmitted, validation = false)
 
-    internal fun validationParallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String?, deepestFrame: String?, nested: String?,
+    internal fun validationParallelContexts(join: JoinShape,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
             capacityOf: (String) -> Int): List<EvalContext> =
-        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested,
-            cellRelevant, indexIdentityAdmitted, validation = true, capacityOf)
+        parallelContexts(join, cellRelevant, indexIdentityAdmitted, validation = true, capacityOf)
 
-    private fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String?, deepestFrame: String?, nested: String?,
+    private fun parallelContexts(join: JoinShape,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
             validation: Boolean, capacityOf: ((String) -> Int)? = null): List<EvalContext> {
+        val (groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested) = join
         val out = ArrayList<EvalContext>()
         val parentDepth = parts(commonParent).size
         val frameDomain = if (deepestFrame != null && capacityOf != null)

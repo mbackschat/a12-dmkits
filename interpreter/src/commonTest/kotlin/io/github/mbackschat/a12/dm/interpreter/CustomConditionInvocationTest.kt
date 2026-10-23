@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.JoinShape
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -31,7 +32,7 @@ class CustomConditionInvocationTest {
         )
         val document = model.newDocument().field(reference, "SHIP", 1, 1)
         for ((i, group) in groups.withIndex()) document.group(group, 1, 1).field("$group/Code", "code$i", 1, 1, 1)
-        val contexts = document.parallelContexts(groups, "Code", "/Shipment")
+        val contexts = document.parallelContexts(JoinShape(groups, "Code", "/Shipment"))
         assertEquals(2, contexts.size)
         val ordinary = document.onceContextFor("/Shipment").single().customConditionData()
         val expected = ordinary.fields().associateWith(ordinary::getValue)

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.JoinShape
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -24,7 +25,9 @@ internal sealed interface IterationPlan {
         /** The unindexed repeatable level directly below a joined group that the rule or computation iterates
          *  inside each joined row, or null when the join is the deepest iterated level (KERNEL-FINDINGS KF603). */
         val nested: String? = null,
-    ) : IterationPlan
+    ) : IterationPlan {
+        val join = JoinShape(joined, indexName, commonParent, frameGroup, deepestFrame, nested)
+    }
 }
 
 /**
@@ -109,26 +112,9 @@ internal class IterationScopes(private val model: ModelDef) {
         is IterationPlan.Rows ->
             if (validation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
         is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
-        is IterationPlan.Parallel -> if (validation) doc.validationParallelContexts(
-            plan.joined,
-            plan.indexName,
-            plan.commonParent,
-            plan.frameGroup,
-            plan.deepestFrame,
-            plan.nested,
-            cellRelevant,
-            indexIdentityAdmitted,
-            ::capacityOf,
-        ) else doc.parallelContexts(
-            plan.joined,
-            plan.indexName,
-            plan.commonParent,
-            plan.frameGroup,
-            plan.deepestFrame,
-            cellRelevant,
-            indexIdentityAdmitted,
-            plan.nested,
-        )
+        is IterationPlan.Parallel ->
+            if (validation) doc.validationParallelContexts(plan.join, cellRelevant, indexIdentityAdmitted, ::capacityOf)
+            else doc.parallelContexts(plan.join, cellRelevant, indexIdentityAdmitted)
     }
 
     /** A group's declared capacity: its repeatability, unbounded when undeclared, and 1 when not repeatable. */
