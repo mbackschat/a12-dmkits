@@ -156,10 +156,11 @@ class JoinedSideChildReadDiffTest {
      * A star that also binds an unstarred repeatable level, below a joined group or below the common parent: what A12
      * says of each placement, and what the interpreter does with the ones A12 admits (cold review 2026-10-21).
      *
-     * A12 refuses every placement whose declaration does not sit on that level. Where it does (R2, C2), the level
-     * becomes a second parallel iteration group without an index, which the interpreter declines first, so neither
-     * runtime decline for an unmodeled binding is reached by any of these. C4, the starred control, is evaluated:
-     * [aFullyStarredThirdGroupIsReadFromTheCommonParent].
+     * A12 refuses every placement whose declaration does not sit on that level. Where it does (R2, C2), the unindexed
+     * level directly below the joined `Orders` is iterated inside each joined row (SPEC-2026-10-23-03, measured in
+     * [GroupTargetRuntimeDiffTest]), and the star bound at that nested level is what the interpreter declines: the
+     * audit at preparation, the computation at its first joined row. No runtime of that binding is measured. C4, the
+     * starred control, is evaluated: [aFullyStarredThirdGroupIsReadFromTheCommonParent].
      */
     @Test
     fun whereAStarBindsAnUnstarredLevelBesideTheJoin() {
@@ -197,12 +198,15 @@ class JoinedSideChildReadDiffTest {
             val runtime = interpreter.compute(prepared.documents.readDocument(documents.values.first())).unsupported.map { it.reason }
             "admitted; checker $checker; audit=$audit; compute=$runtime"
         }
-        val unindexed = "[parallel iteration group /Fulfilment/Orders/Lines has no index field]"
+        val prepared = "[an aggregate over /Fulfilment/Orders/Lines/Picks/Count bound below the parallel iteration's " +
+            "common parent /Fulfilment is not modeled]"
+        val computed = "[an aggregate of /Fulfilment/Orders/Lines/Picks bound below the joined group /Fulfilment/Orders " +
+            "is not modeled]"
         assertEquals(linkedMapOf(
             "R1 rule, error field on the other side" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
-            "R2 rule, error field on the unstarred level" to "admitted; checker []; audit=$unindexed; compute=[]",
+            "R2 rule, error field on the unstarred level" to "admitted; checker []; audit=$prepared; compute=[]",
             "C1 computation into the other side" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
-            "C2 computation into the unstarred level" to "admitted; checker []; audit=$unindexed; compute=$unindexed",
+            "C2 computation into the unstarred level" to "admitted; checker []; audit=$prepared; compute=$computed",
             "C3 computation, third group unstarred" to "refused [MVK_NO_WILDCARD]; checker [MVK_NO_WILDCARD]",
             "C4 computation, third group starred" to "admitted; checker []; audit=[]; compute=[]",
         ), observed)

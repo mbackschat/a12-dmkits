@@ -21,6 +21,9 @@ internal sealed interface IterationPlan {
         val commonParent: String,
         val frameGroup: String?,
         val deepestFrame: String?,
+        /** The unindexed repeatable level directly below a joined group that the rule or computation iterates
+         *  inside each joined row, or null when the join is the deepest iterated level (SPEC-2026-10-23-03). */
+        val nested: String? = null,
     ) : IterationPlan
 }
 
@@ -57,21 +60,28 @@ internal class IterationScopes(private val model: ModelDef) {
      * never silently wrong.
      */
     fun prepare(rule: RuleDef, ast: Cond): IterationPlan {
+        val errorPath = resolveErrorPath(rule)
+        // A rule reporting on a group iterates the levels above it and never the group's own: its pointer names the
+        // group's first row, and its reads at that level read that row (KERNEL-FINDINGS KF603,
+        // `adapter.laws.GroupTargetRuntimeDiffTest`). Only the target's own level is withheld; a level below it
+        // keeps the ordinary account, unmeasured.
+        val ownLevel = errorPath.takeIf { it in model.groupPaths }
         val refs = nonStarredRefs(ast)
         val semanticAnchors = semanticIndexSpecs(ast, includeFilterBodies = false).flatMap(::ordinaryLevelsOfSelection)
-        val scope = (listOfNotNull(deepestRepeatableAnchor(refs)) + semanticAnchors)
-            .maxByOrNull { it.count { c -> c == '/' } } ?: starBindingAnchor(ast)
-            ?: return rootGroupOf(resolveErrorPath(rule)).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
+            .filter { it != ownLevel }
+        val scope = (listOfNotNull(deepestRepeatableAnchor(refs, ownLevel)) + semanticAnchors)
+            .maxByOrNull { it.count { c -> c == '/' } } ?: starBindingAnchor(ast)?.takeIf { it != ownLevel }
+            ?: return rootGroupOf(errorPath).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
         // A star bound to another indexed group joins it as a field read does: alone it anchors the join, and a
         // rule reading both sides only through stars joins them too (KERNEL-FINDINGS KF573). A level below the
         // scope is the scope's own child, not a join partner.
         val starAnchors = starRefs(ast).flatMap(::bindingLevels)
             .filter { it in model.repeatable && !it.startsWith("$scope/") }
         val parallelGroups = (refs.flatMap(::repeatableLevels) + semanticAnchors + starAnchors)
-            .distinct().filter { it != scope && !scope.startsWith("$it/") }
+            .distinct().filter { it != scope && it != ownLevel && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) {
             val plan = prepareParallel(scope, parallelGroups)
-            requireParallelDocumentSupport(ast, plan.joined, plan.commonParent)
+            requireParallelDocumentSupport(ast, plan)
             return plan
         }
         return IterationPlan.Rows(scope)
@@ -100,6 +110,7 @@ internal class IterationScopes(private val model: ModelDef) {
             plan.commonParent,
             plan.frameGroup,
             plan.deepestFrame,
+            plan.nested,
             cellRelevant,
             indexIdentityAdmitted,
             ::capacityOf,
@@ -111,6 +122,7 @@ internal class IterationScopes(private val model: ModelDef) {
             plan.deepestFrame,
             cellRelevant,
             indexIdentityAdmitted,
+            plan.nested,
         )
     }
 
@@ -123,7 +135,7 @@ internal class IterationScopes(private val model: ModelDef) {
     fun bindsRepeatableGroup(plan: IterationPlan, group: String): Boolean = when (plan) {
         is IterationPlan.Once -> false
         is IterationPlan.Rows -> plan.group == group
-        is IterationPlan.Parallel -> group in plan.joined
+        is IterationPlan.Parallel -> group in plan.joined || group == plan.nested
     }
 
     /**
@@ -173,22 +185,28 @@ internal class IterationScopes(private val model: ModelDef) {
      * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
      */
     fun parallelIterationContexts(
-        scope: String,
-        parallelGroups: List<String>,
+        plan: IterationPlan.Parallel,
         doc: Document,
         indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
-    ): List<EvalContext> {
-        val plan = prepareParallel(scope, parallelGroups)
-        return iterationContexts(plan, doc, indexIdentityAdmitted = indexIdentityAdmitted)
-    }
+    ): List<EvalContext> = iterationContexts(plan, doc, indexIdentityAdmitted = indexIdentityAdmitted)
 
-    /** Prepare and validate the document-independent shape of one parallel join. */
-    private fun prepareParallel(scope: String, parallelGroups: List<String>): IterationPlan.Parallel {
-        val joined = (listOf(scope) + parallelGroups).distinct()
+    /**
+     * Prepare and validate the document-independent shape of one parallel join of [scope] with [parallelGroups].
+     *
+     * A [scope] without an index field joins through its repeatable parent when that parent carries one: A12 then
+     * iterates [scope] inside each joined row, an unmatched partner included (SPEC-2026-10-23-03,
+     * `adapter.laws.GroupTargetRuntimeDiffTest`). Only a direct child of the joined group is measured, so a deeper
+     * or wrapped level keeps [scope] as the join side and is refused below for its missing index.
+     */
+    fun prepareParallel(scope: String, parallelGroups: List<String>): IterationPlan.Parallel {
+        val side = parentGroup(scope).takeIf { parent ->
+            !hasIndexField(scope) && parent in model.repeatable && hasIndexField(parent)
+        } ?: scope
+        val joined = (listOf(side) + parallelGroups).distinct()
         val commonParent = commonAncestor(joined)
         val parentDepth = pathParts(commonParent).size
         val indexNames = joined.map { g ->
-            val indexField = model.indexFields.firstOrNull { parentGroup(it) == g }
+            val indexField = indexFieldOf(g)
                 ?: throw UnsupportedConstructException("parallel iteration group $g has no index field")
             pathParts(indexField).last()
         }.distinct()
@@ -208,15 +226,22 @@ internal class IterationScopes(private val model: ModelDef) {
         }
         val frameGroup = framed.firstOrNull()
         val deepestFrame = frameGroup?.let { g -> frameAncestors(g).maxByOrNull { pathParts(it).size } }
-        return IterationPlan.Parallel(joined, indexNames.single(), commonParent, frameGroup, deepestFrame)
+        return IterationPlan.Parallel(joined, indexNames.single(), commonParent, frameGroup, deepestFrame,
+            nested = scope.takeIf { it != side })
     }
+
+    private fun indexFieldOf(group: String): String? = model.indexFields.firstOrNull { parentGroup(it) == group }
+
+    private fun hasIndexField(group: String): Boolean = indexFieldOf(group) != null
 
     /**
      * Validate the views a [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s parallel row can supply.
      * This lives on the preparation boundary used by execution, so value-independent declines cannot hide behind
      * a branch or an empty document and cannot drift from a separate support-only AST recognizer.
      */
-    private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>, commonParent: String) {
+    private fun requireParallelDocumentSupport(ast: Cond, plan: IterationPlan.Parallel) {
+        val joined = plan.joined
+        val commonParent = plan.commonParent
         // A joined row reads a starred domain from its common-parent row (KERNEL-FINDINGS KF567), or, below a joined
         // group, from that group's joined row (KF573); the runtime twin is the parallel row's `domainFor`. So a star
         // may bind no repeatable level below the common parent other than a joined group; a framed join's frame is
@@ -233,7 +258,12 @@ internal class IterationScopes(private val model: ModelDef) {
                 throw UnsupportedConstructException(
                     "an aggregate over ${star.path} bound below the parallel iteration's common parent $commonParent is not modeled")
             }
-        parallelGroupReads(ast).firstOrNull { it !in joined && it != commonParent }?.let { group ->
+        // A group below a joined side reads within that side's joined row (`t8`, SPEC-2026-10-23-02); one at or
+        // below a nested level is unmeasured.
+        fun readable(group: String) = group in joined || group == commonParent ||
+            (joined.any { group.startsWith("$it/") } &&
+                plan.nested?.let { group == it || group.startsWith("$it/") } != true)
+        parallelGroupReads(ast).firstOrNull { !readable(it) }?.let { group ->
             throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($group) inside a parallel iteration is not modeled")
         }
@@ -296,9 +326,9 @@ internal class IterationScopes(private val model: ModelDef) {
     fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
         deepestRepeatableAnchor(refs) ?: defaultGroup
 
-    /** The deepest repeatable group ancestor-or-self of any [refs] path, or null when none is repeatable. */
-    private fun deepestRepeatableAnchor(refs: List<String>): String? =
-        refs.flatMap(::repeatableLevels).maxByOrNull { it.count { c -> c == '/' } }
+    /** The deepest repeatable group ancestor-or-self of any [refs] path other than [withheld], or null. */
+    private fun deepestRepeatableAnchor(refs: List<String>, withheld: String? = null): String? =
+        refs.flatMap(::repeatableLevels).filter { it != withheld }.maxByOrNull { it.count { c -> c == '/' } }
 
     // A referenced group owns its level in both ordinary scope and join detection (SPEC05).
     private fun repeatableLevels(ref: String): List<String> =

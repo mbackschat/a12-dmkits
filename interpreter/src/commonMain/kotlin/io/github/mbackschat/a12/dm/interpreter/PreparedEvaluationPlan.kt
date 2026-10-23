@@ -31,8 +31,10 @@ internal data class PreparedRulePlan(
     val messageReferences: List<MessageReference>,
     /** The subset of [messageReferences] an omission names as fill-to-fix ([omissionReferences]). */
     val omissionReferences: Set<MessageReference>,
-    /** Kernel codegen skips every rule containing a `Having` filter during partial validation. */
-    val hasFilterConditions: Boolean,
+    /** The rule takes no part in partial validation: kernel codegen skips every rule containing a `Having` filter,
+     *  and A12 reports no rule whose error entity is a group, even with the root relevant (KERNEL-FINDINGS KF603,
+     *  `adapter.laws.GroupTargetRuntimeDiffTest`). */
+    val skippedInPartial: Boolean,
     /** The condition holds a leaf that can fail at runtime, so WHICH leaves are reached is observable and the rule
      *  is evaluated in the kernel's two passes ([io.github.mbackschat.a12.dm.interpreter.eval.Interpreter.firedTypeInTwoPasses]). */
     val canFailAtRuntime: Boolean,

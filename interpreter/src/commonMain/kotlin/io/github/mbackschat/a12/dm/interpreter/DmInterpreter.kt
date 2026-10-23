@@ -1120,8 +1120,9 @@ class DmInterpreter private constructor(
     private fun rowOutcomes(rule: RuleDef, pass: ValidationPass): List<RowOutcome> {
         val prepared = preparedModel.rule(rule)
         // Kernel codegen puts this method-entry return before iteration and evaluation for every rule whose
-        // AST contains a Having filter. Keep the partial path O(1); full validation continues normally.
-        if (pass.partial && prepared.hasFilterConditions) return emptyList()
+        // AST contains a Having filter, and a rule reporting on a group never reports in a partial call. Keep the
+        // partial path O(1); full validation continues normally.
+        if (pass.partial && prepared.skippedInPartial) return emptyList()
         val ast = prepared.ast
         // The nvv META-LENGTH rule is ELIMINATED — never evaluated, no rows (IG71 → IF125). A rule whose WHOLE
         // condition is `Length(nvvField) > constant` (or the mirrored `constant < Length(nvvField)`) is the

@@ -54,6 +54,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §9 a keyed fill quantifier over a duplicated key decides nothing | — | `KeyedNotAllFieldsFilledDiffTest` | — |
 | §9 parallel validation availability, dispatch and frames | — | `ParallelValidationDispatchDiffTest` | `ParallelValidationDispatchTest` |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |
+| §9 a group error target's own level, a target below a joined side, and partial calls on a group target ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `GroupTargetRuntimeDiffTest` | — |
 | §11 computation-guard read order and reached poison | — | `MembershipComputationGuardDiffTest`, `OverlapComputationGuardDiffTest`, `UniquenessComputationGuardDiffTest`, `FilteredFillComputationGuardDiffTest`, `UnregisteredPredefinedTypeComputationTest`, `RootGroupGuardDependencyDiffTest` | — |
 | §11 group-list guards over the computed field | `GroupListSelfReadLawsTest` | — | — |
 | §7 | `PatternLawsTest`, `DeclaredPatternGateLawsTest`, `StringTypeMessageAndPatternLawsTest`, `StringTypeParameterLawsTest`, `HintListValueLawsTest`, `NumberTypeDigitLawsTest`, `StringOpLawsTest`, `LengthOperandShapeLawsTest`, `RangeOperandGateLawsTest` | `PatternDiffTest`, `EmptyAuthoredPatternDiffTest`, `PatternDialectDiffTest`, `AbsLengthDiffTest` | `LengthUnicodeCountTest`, `PatternDialectParityTest`, `PatternRegistryTest`, `EmptyAuthoredPatternTest`, `PatternCommentModeParityTest` |

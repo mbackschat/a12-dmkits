@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test
  * field-keyed selection and a group error target. The models are rebuilt here to the shapes the peer's checkpoint
  * describes.
  *
- * Own domain, shared with the peer's fixture: an order with keyed lines, keyed picks, keyed gifts and unkeyed
- * wraps, and a staffing rota of unkeyed weeks holding keyed demand and supply.
+ * Own domain, shared with the peer's fixture: [OrderK04Model], and a staffing rota of unkeyed weeks holding keyed
+ * demand and supply.
  */
 class CheckerIterationK04AgreementTest {
 
@@ -33,44 +33,6 @@ class CheckerIterationK04AgreementTest {
                 cells.getOrNull(5).orEmpty().split(',').filter { it.isNotEmpty() }.sorted())
         }
 
-    private fun order(withBows: Boolean): String = DocumentModelDraft.named("order-k04").locale("en_US")
-        .rootGroup("Order") { o -> o
-            .stringField("Email") { }
-            .stringField("Phone") { }
-            .stringField("Tier") { }
-            .numberField("Budget") { n -> n.fractionDigits(0) }
-            .group("Lines") { l -> l.repeatable(50).indexField("LineNo")
-                .stringField("LineNo") { }
-                .stringField("Sku") { }
-                .stringField("Code") { }
-                .numberField("Qty") { n -> n.fractionDigits(0) }
-                .numberField("Price") { n -> n.fractionDigits(2) }
-                .numberField("Day") { n -> n.fractionDigits(0) }
-                .numberField("Month") { n -> n.fractionDigits(0) }
-                .group("Parts") { p -> p.repeatable(5)
-                    .stringField("PartNo") { }
-                    .numberField("Count") { n -> n.fractionDigits(0) } }
-                .group("Slots") { s -> s.repeatable(2).indexField("SlotNo")
-                    .stringField("SlotNo") { }
-                    .stringField("Mark") { } } }
-            .group("Picks") { p -> p.repeatable(10).indexField("LineNo")
-                .stringField("LineNo") { }
-                .stringField("Ref") { } }
-            .group("Gifts") { g -> g.repeatable(2).indexField("GiftNo")
-                .stringField("GiftNo") { }
-                .stringField("Note") { }
-                .group("Card") { c -> c.stringField("Text") { } } }
-            .group("Wraps") { w -> w.repeatable(2)
-                .stringField("Style") { }
-                .group("Ribbon") { r -> r.stringField("Color") { } }
-                .group("Tag") { t -> t.stringField("Label") { } }
-                .apply {
-                    if (withBows) group("Bows") { b -> b.repeatable(3).indexField("BowNo")
-                        .stringField("BowNo") { }
-                        .stringField("Shade") { } }
-                } } }
-        .build().toJson()
-
     private val rota = DocumentModelDraft.named("rota-k04").locale("en_US")
         .rootGroup("Plan") { p -> p
             .group("Weeks") { w -> w.repeatable(4)
@@ -84,7 +46,8 @@ class CheckerIterationK04AgreementTest {
                     .stringField("Note") { } } } }
         .build().toJson()
 
-    private val models = mapOf("order" to order(withBows = false), "order-bows" to order(withBows = true), "rota" to rota)
+    private val models = mapOf("order" to OrderK04Model.json(withBows = false), "order-bows" to OrderK04Model.json(withBows = true),
+        "rota" to rota)
 
     private val validator = RuleValidator()
 

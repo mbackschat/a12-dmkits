@@ -385,7 +385,10 @@ internal class ComputationEngine(
                 val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
                     .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
                 if (parallelGroups.isNotEmpty()) {
-                    val joined = (listOf(targetScope) + parallelGroups).distinct()
+                    // A target below a joined group joins through that group (SPEC-2026-10-23-03), so the sides whose
+                    // invalid index marks the target are the plan's, not the target's own level.
+                    val plan = scopes.prepareParallel(targetScope, parallelGroups)
+                    val joined = plan.joined
                     val invalidCoords = joined.associateWith { g -> invalidIndexParentCoords(doc, g, formalResults) }
                         .filterValues { it.isNotEmpty() }
                     if (invalidCoords.isNotEmpty()) {
@@ -408,12 +411,7 @@ internal class ComputationEngine(
                             }
                         ) continue
                     }
-                    for (pctx in scopes.parallelIterationContexts(
-                        targetScope,
-                        parallelGroups,
-                        doc,
-                        formalResults::admitsIdentityAt,
-                    )) {
+                    for (pctx in scopes.parallelIterationContexts(plan, doc, formalResults::admitsIdentityAt)) {
                         val reps = pctx.repsOf(comp.targetPath)
                         if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
                         computeAt(pctx)

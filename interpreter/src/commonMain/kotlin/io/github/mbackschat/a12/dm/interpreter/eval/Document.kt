@@ -900,26 +900,32 @@ class Document(internal val config: DocumentConfig) {
      * the framed group's rows + index values are scoped to the current frame row, while the other (clean) joined
      * groups stay shared under [commonParent]. With no frame ([deepestFrame] null) this reduces to one join per
      * common-parent row.
+     *
+     * **Nested level (an unindexed repeatable group directly below one joined group):** [nested] names the level a
+     * rule or computation iterates inside each joined row (SPEC-2026-10-23-03). A joined row whose [nested] side has
+     * a row yields one context per [nested] row under it — validation's declared domain, computation's stored rows —
+     * and one without a row on that side yields none, since no repetition exists below its `-5` row.
      */
     fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
             frameGroup: String? = null, deepestFrame: String? = null,
             /** Partial validation only: gates which INDEX cells key the join ([IF269]). Null = every cell. */
             cellRelevant: ((String, List<Int>) -> Boolean)? = null,
             /** Complete formal-admission gate supplied by the validation/compute pass. */
-            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> =
-        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
+            nested: String? = null): List<EvalContext> =
+        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested,
             cellRelevant, indexIdentityAdmitted, validation = false)
 
     internal fun validationParallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String?, deepestFrame: String?,
+            frameGroup: String?, deepestFrame: String?, nested: String?,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
             capacityOf: (String) -> Int): List<EvalContext> =
-        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame,
+        parallelContexts(groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested,
             cellRelevant, indexIdentityAdmitted, validation = true, capacityOf)
 
     private fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String?, deepestFrame: String?,
+            frameGroup: String?, deepestFrame: String?, nested: String?,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
             validation: Boolean, capacityOf: ((String) -> Int)? = null): List<EvalContext> {
@@ -928,6 +934,12 @@ class Document(internal val config: DocumentConfig) {
         val frameDomain = if (deepestFrame != null && capacityOf != null)
             fullValidationRowsOf(deepestFrame, capacityOf).groupBy { it.take(parentDepth) }
         else null
+        val nestedSide = nested?.let { level -> groups.single { level.startsWith("$it/") } }
+        val nestedRowsBySide = nested?.let { level ->
+            val sideDepth = parts(checkNotNull(nestedSide)).size
+            (if (validation && capacityOf != null) fullValidationRowsOf(level, capacityOf)
+            else rowsOf(level).filter { it !in overLimitRows(level) }).groupBy { it.take(sideDepth) }
+        }
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
             // flags ONCE per common-parent row, NOT per frame row (else a clean group of M rows is rescanned per
@@ -970,12 +982,18 @@ class Document(internal val config: DocumentConfig) {
                 }
                 val separateMessages = validation && perGroup.values.any { it.messages !== it.values }
                 for (v in if (validation) values.sorted() else values) {
-                    out += ParallelRowContext(commonParent, cReps, groups, parentReps,
-                        groups.associateWith { perGroup.getValue(it).values[indexKeyOf(v, kinds["$it/$indexFieldName"])] },
-                        if (separateMessages) groups.associateWith {
-                            perGroup.getValue(it).messages[indexKeyOf(v, kinds["$it/$indexFieldName"])]
-                        } else null, invalid,
-                        indexFieldName, v, cellRelevant)
+                    val matches = groups.associateWith {
+                        perGroup.getValue(it).values[indexKeyOf(v, kinds["$it/$indexFieldName"])]
+                    }
+                    val messageMatches = if (separateMessages) groups.associateWith {
+                        perGroup.getValue(it).messages[indexKeyOf(v, kinds["$it/$indexFieldName"])]
+                    } else null
+                    fun row(nestedRow: List<Int>?) = ParallelRowContext(commonParent, cReps, groups, parentReps,
+                        matches, messageMatches, invalid, indexFieldName, v, cellRelevant, nested, nestedRow)
+                    if (nestedRowsBySide == null) out += row(null)
+                    else matches.getValue(checkNotNull(nestedSide))?.let { sideRow ->
+                        nestedRowsBySide[sideRow].orEmpty().forEach { out += row(it) }
+                    }
                 }
             }
         }
@@ -1858,6 +1876,9 @@ class Document(internal val config: DocumentConfig) {
         private val indexFieldName: String,
         private val indexToken: String,
         private val cellRelevant: ((String, List<Int>) -> Boolean)?,
+        /** The nested level iterated inside this joined row and the row of it this context binds, or both null. */
+        private val nested: String?,
+        private val nestedRow: List<Int>?,
     ) : EvalContext, DeclaredStarRowProvider, FilterWalkRowProvider, GroupListEnvironmentProvider, FirstFilledScanProvider {
 
         // A row over a present index value is always evaluated (the value exists in at least one group).
@@ -1901,15 +1922,20 @@ class Document(internal val config: DocumentConfig) {
         fun messageRepetitions(path: String): List<Int> =
             if (messageMatches == null || messageMatches == matches) repsOf(path) else computeReps(path, messageMatches)
 
+        private fun underNested(path: String): Boolean =
+            nested != null && (path == nested || path.startsWith("$nested/"))
+
         private fun computeReps(path: String, rows: Map<String, List<Int>?> = matches): List<Int> {
             val g = groupOf(path) ?: return repsFor(path, commonParent, cReps)
             val gDepth = groupDepths.getValue(g)
             val parent = parentReps.getValue(g)   // the group's join parent: a frame row, else the common parent
             val matched = rows[g]
             val segs = partsOf(path)
+            val nestedDepth = if (nestedRow != null && underNested(path)) nestedRow.size else gDepth
             return List(segs.size) { i ->
                 when {
                     i < parent.size -> parent[i]            // the group's parent prefix (frame / common-parent — real)
+                    i in gDepth until nestedDepth -> checkNotNull(nestedRow)[i]   // the nested row of this context
                     i >= gDepth -> 1                        // the field / deeper level
                     matched != null -> matched[i]           // a matched row carries the real index at every level
                     // Unmatched (no row for this value): a REPEATABLE level is UNKNOWN (-5); a non-repeatable
@@ -1924,7 +1950,11 @@ class Document(internal val config: DocumentConfig) {
         // Parallel partial dispatch uses its separate compressed selector (ParallelRuleSelection, SPEC10).
         override fun boundLevelsOf(path: String): Int {
             val g = groupOf(path) ?: return commonPrefixLen(partsOf(path), partsOf(commonParent))
-            val bound = if (matches[g] == null) parentReps.getValue(g).size else groupDepths.getValue(g)
+            val bound = when {
+                matches[g] == null -> parentReps.getValue(g).size
+                nestedRow != null && underNested(path) -> nestedRow.size
+                else -> groupDepths.getValue(g)
+            }
             return minOf(bound, partsOf(path).size)
         }
 
@@ -1976,11 +2006,16 @@ class Document(internal val config: DocumentConfig) {
             datePrecisions[path] ?: DatePrecision.FULL
 
         // A parallel group is "filled" for this iteration iff it has a matching row.
-        override fun groupFilled(groupPath: String): Boolean =
-            if (groupPath in groups) matches[groupPath] != null
-            else if (groupPath == commonParent) contextFor(commonParent, cReps).groupFilled(groupPath)
-            else throw UnsupportedConstructException(
+        // A group below a joined side reads within that side's joined row, and a side without one holds none
+        // (`t8`, SPEC-2026-10-23-02). [IterationScopes] refuses one at or below a nested level before any document.
+        override fun groupFilled(groupPath: String): Boolean {
+            if (groupPath in groups) return matches[groupPath] != null
+            if (groupPath == commonParent) return contextFor(commonParent, cReps).groupFilled(groupPath)
+            val side = groupOf(groupPath)
+            if (side == null || underNested(groupPath)) throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($groupPath) inside a parallel iteration is not modeled")
+            return matches[side]?.let { row -> contextFor(side, row).groupFilled(groupPath) } ?: false
+        }
 
         override fun enumCategory(path: String, category: String): Val =
             enumCategoryOf(path, category, resolved(path))

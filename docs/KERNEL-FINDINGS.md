@@ -14609,3 +14609,24 @@ So a type-defined index field is matched by the type its definition declares: a 
 The second carrier keys `Items` and `Notes` by a string `Code`, and `Notes` holds `Pages`, keyed by `PageNo`. With error field `Items/Count`, `FieldFilled(Items/Count) And` each of `FieldFilled(Notes/Pages/Text)`, `GroupFilled(Notes/Pages)`, `AtLeastOneFieldFilled(Notes/Pages)`, `RoundUpValue(Notes/Pages, 2) > 0` and `RangeAsString(Notes/Pages, 1, 3) == "a"` draws `MVK_MULTIPLE_INDEX_FIELDS`, and so does `RangeAsString($Notes/Pages, 1, 3) == "a"` in a body. A group operand meets the class as a field does, ahead of the group carriers' own class.
 
 *Locked by:* `adapter.laws.CheckerOuterMarkedResidueAgreementTest` (every row above, A12 pinned and the checker agreeing).
+
+## §9 supplement — a rule reporting on a group iterates the levels above it and reads its own level's first row, an error field below a joined side iterates its level inside each joined row, and a partial call reports no rule on a group (kernel runtime, 2026-10-23) <a id="kf603"></a>
+
+> Fold: pending — beside [KF601](#kf601)'s group-target admission and §9's frame account.
+
+On the K04 order (a12-kernel-lean SPEC-2026-10-23-02, SPEC-2026-10-23-03): `Lines` keyed by `LineNo` hold unkeyed `Parts`, `Picks` are keyed by `LineNo`, `Gifts` hold a fixed `Card`, `Wraps` hold fixed `Ribbon` and `Tag`. Every rule sits at `/Order`; both strategies agree on every row.
+
+| rule (error entity: condition) | document | A12 |
+|---|---|---|
+| `Lines/Parts`: `GroupFilled(Lines/Parts)` | line A's parts `[{}, {Count}]`, line 2's `[{Count}]` | fires at `Lines[1]/Parts[1]` and `Lines[2]/Parts[1]`, once per line |
+| `Lines/Parts`: `FieldFilled(Lines/Parts/Count) And GroupFilled(Lines/Parts)` | the same | fires at `Lines[2]/Parts[1]` only: line A's `Count` is in its second part |
+| `Gifts`: `GroupNotFilled(Gifts)` | `{"Order":{}}` | fires once, at `Gifts[1]` |
+| `Gifts/Card`: `GroupNotFilled(Gifts/Card)` | `{"Order":{}}` | fires at both declared `Gifts` rows |
+| `Lines/Parts/Count`: `FieldFilled(Lines/Parts/Count) And NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)` | line A's pick without `Ref`, line C without a pick | fires at `Lines[1]/Parts[1]/Count` and at `Lines[3]/Parts[1]/Count`, the latter referencing `Picks[-5]/Ref` |
+| `Lines/Parts`: `GroupFilled(Lines/Parts) And FieldFilled(Picks/Ref)` | pick B with `Ref`, pick D without a line | fires at `Lines[2]/Parts[1]` only |
+
+So a rule reporting on a group iterates the levels above the group and not the group's own: its pointer names the group's first row, a field read at that level reads that row, and the group's own presence holds when any of its rows is filled. A rule or computation whose target sits in an unkeyed level directly below a joined group visits that level's rows inside each joined row, an unmatched partner included, and no row of a partner that has no line. Computing `1` into `Lines/Parts/Count` under `NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)` writes every instantiated part whose precondition holds, an empty `{}` part included, and clears a seeded part of a matched line whose precondition fails.
+
+In a partial call A12 reports no rule whose error entity is a group, on any of the three carriers above (a repeatable own level, a fixed group below a repeatable parent, a root's child), whether the relevant entity is a field inside the group, the group's row, its line, or the root; the field-target twins report there. A deeper or wrapped level below a joined group, a rule reporting on the root, and a level below the group target are not measured.
+
+*Locked by:* `adapter.laws.GroupTargetRuntimeDiffTest` (A12 pinned on the rows above, both strategies agreeing on every document of both channels and on computation, the interpreter equal on the lossless pointer key).

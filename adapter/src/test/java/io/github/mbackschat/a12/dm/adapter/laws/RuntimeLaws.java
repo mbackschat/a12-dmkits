@@ -640,8 +640,7 @@ public final class RuntimeLaws {
      */
     static JsonIngress jsonIngress(String modelJson, String documentJson) {
         KernelEngine engine = sharedKernelEngine(modelJson);
-        IDocumentModelResolver resolver = id -> engine.model;
-        IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
+        IDocumentV2Serializer serializer = serializerOf(engine);
         DocumentV2 v2 = deserializeV2(serializer, modelJson, documentJson);
 
         StringWriter rewritten = new StringWriter();
@@ -660,12 +659,24 @@ public final class RuntimeLaws {
      * runtime outcome of such a value needs this route (measured 2026-10-14 on {@code 1e100000}).
      */
     static List<String> jsonIngressCodes(String modelJson, String documentJson) {
+        return jsonMessages(modelJson, documentJson).stream().map(Msg::code).sorted().toList();
+    }
+
+    /**
+     * {@link #messages} over a Document JSON read by A12's own ingress, so a differential hands the identical
+     * text to the interpreter's {@code readDocument} instead of restating the document as placements. The
+     * placement builders cannot say what A12's reader makes of an empty {@code {}} row, which is exactly what a
+     * row-position claim depends on.
+     */
+    static List<Msg> jsonMessages(String modelJson, String documentJson) {
         KernelEngine engine = sharedKernelEngine(modelJson);
+        DocumentV2 v2 = deserializeV2(serializerOf(engine), modelJson, documentJson);
+        return toMsgs(engine.rt.validateFull(v2, config(null, Locale.US)).getMessages());
+    }
+
+    private static IDocumentV2Serializer serializerOf(KernelEngine engine) {
         IDocumentModelResolver resolver = id -> engine.model;
-        IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
-        DocumentV2 v2 = deserializeV2(serializer, modelJson, documentJson);
-        return engine.rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
-                .map(IMessage::getErrorCode).sorted().toList();
+        return new MDSerializerFactory().createDocumentSerializerV2(resolver);
     }
 
     /**

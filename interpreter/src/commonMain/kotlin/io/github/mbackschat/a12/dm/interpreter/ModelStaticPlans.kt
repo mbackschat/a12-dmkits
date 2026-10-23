@@ -183,7 +183,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             messageReferences = directMessageRefs,
             omissionReferences = withJoinIndexes(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
                 .flatMap(::expandMessageReference)).toSet(),
-            hasFilterConditions = starRefs(ast).any { it.having != null },
+            skippedInPartial = starRefs(ast).any { it.having != null } || errorPath in model.groupPaths,
             canFailAtRuntime = canRaiseRuntimeFailure(ast),
             classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
         )

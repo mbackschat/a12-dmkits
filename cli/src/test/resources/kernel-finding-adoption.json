@@ -867,6 +867,80 @@
       }
      }
     },
+    "kf603": {
+      "sha256": "debb5ab4e1287b1ac55528bd5ebb8376a701a687089dd89aa542596d8f5b1364",
+      "task": "SS7",
+      "scope": {
+        "dmkits": [
+          "a typed rule reporting on a group"
+        ],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12 on a group target and below a joined side"
+        ],
+        "interpreter": [
+          "the interpreter on a group target and below a joined side"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12 on a group target and below a joined side"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The typed Rule takes only field error targets, so the lock writes its group targets as paths (DEV-API-GAPS DG151).",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime behaviour; the admission of these rules is KF601's.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "These runtime facts do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on the separating rows, and both strategies agree on every document of both channels and on computation.",
+          "evidence": {
+            "A12 on a group target and below a joined side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#a12FixesTheGroupsOwnLevelAndIteratesTheLevelBelowAJoin",
+              "witness": "The group's first row, the blank root and the nested rows of the join, as the table states."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter withholds a group target's own level, iterates an unkeyed level below a joined group inside the join, and skips a group target in partial calls.",
+          "evidence": {
+            "the interpreter on a group target and below a joined side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#theInterpreterReportsAsA12OnEveryDocument",
+              "witness": "Equal to A12 on the lossless key, full and partial, and on computed values and clears."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
     "kf601": {
      "sha256": "4c2ef62356be2a671a498818f770693facea5296d83afe0dec63c802b50ab46a",
      "task": "SS3",
