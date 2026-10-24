@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * An Enumeration's categories against its values — a POSITIONAL pairing, so equal cardinality is the law.
@@ -143,6 +144,21 @@ internal fun JsonObject.declaredEnumValues(): List<String>? {
         val value = ((entry as? JsonObject)?.get("value") as? JsonPrimitive)?.takeIf { it.isString }
         value?.content ?: return null
     }
+}
+
+/**
+ * The values this enumeration is looked up in — its own, or the named category's INSTEAD of them — or null when
+ * either list is not the measured shape.
+ */
+internal fun JsonObject.lookupDomain(category: String?): List<String>? {
+    if (category == null) {
+        return declaredEnumValues()
+    }
+    val entries = this["categories"] as? JsonArray ?: return null
+    val named = entries.filterIsInstance<JsonObject>()
+        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == category } ?: return null
+    val values = named["values"] as? JsonArray ?: return null
+    return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
 }
 
 /** The values past this category's last token, each named once. */

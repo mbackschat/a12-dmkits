@@ -6,10 +6,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Everything `CheckFeldUndWerteListenBedingungImpl.check` asks of the two SCALAR value-list predicates, in
@@ -247,17 +243,6 @@ private fun TrackedFactBase.constantListFindings(
     }.ifEmpty { null }
 }
 
-/** The values this enumeration is looked up in — its own, or the named category's INSTEAD of them. */
-private fun JsonObject.lookupDomain(category: String?): List<String>? {
-    if (category == null) {
-        return declaredEnumValues()
-    }
-    val entries = this["categories"] as? JsonArray ?: return null
-    val named = entries.filterIsInstance<JsonObject>()
-        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == category } ?: return null
-    val values = named["values"] as? JsonArray ?: return null
-    return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
-}
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
 private fun CallOperand.namesAFieldEntry(): Boolean =

@@ -7,10 +7,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Everything `CheckFeldListeUndWerteListenBedingungImpl.check` asks of a field list and the value list it is
@@ -283,14 +279,7 @@ private fun TrackedFactBase.contributedValues(entry: ListedField): List<String>?
     if (body["tableName"] != null) {
         return null
     }
-    if (entry.category == null) {
-        return body.declaredEnumValues()
-    }
-    val entries = body["categories"] as? JsonArray ?: return null
-    val named = entries.filterIsInstance<JsonObject>()
-        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == entry.category } ?: return null
-    val values = named["values"] as? JsonArray ?: return null
-    return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
+    return body.lookupDomain(entry.category)
 }
 
 /**
