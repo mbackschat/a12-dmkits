@@ -1436,7 +1436,9 @@ class Document(internal val config: DocumentConfig) {
             val scope = starScopePrefix(path, bindDepth)
             return index().starOmissionByScope.getOrPut(StarOmissionKey(path, bindDepth, scope)) {
                 val groupParts = partsOf(parentGroup(path))
-                val firstStarLevel = if (bindDepth >= 0) minOf(bindDepth, groupParts.lastIndex) else groupParts.lastIndex
+                // A depth binding every level of the path leaves no level starred: the read is the bound row's own
+                // cell, so a capacity the document leaves unused is no fillable tail (IF433).
+                val firstStarLevel = if (bindDepth >= 0) bindDepth else groupParts.lastIndex
                 var expectedParents = listOf(scope.padWithOnes(firstStarLevel))
 
                 // A multi-star operand reopens every repeatable level from its FIRST star downward. Missing

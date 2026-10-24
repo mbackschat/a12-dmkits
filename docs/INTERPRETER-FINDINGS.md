@@ -4973,3 +4973,17 @@ A12 refuses both shapes that reach the last two rows (measured 2026-10-24 with `
 
 *Locked:* `JoinPlanningShapeTest`.
 
+
+### IF433: a group operand bound at every level of a field's path reads that row's cell, not a starred tail (2026-10-24) <a id="if433"></a>
+
+Found by replaying a12-kernel-lean's `k22rg` run (SPEC-2026-10-24-04). On its row `d7`, `FieldFilled(Qty) And NumberOfFilledFields(RuleGroup) == 5` fires over a row whose five fields are all filled. Both kernel strategies type it a value error with nothing to fill, and the interpreter typed it an omission naming every field.
+
+**The mechanism.** A group operand expands to its fields with an absolute bind depth. For `RuleGroup`, or the spelled path of the group a rule is declared in, that depth binds every level of a field declared directly in the group. `starOmission` capped the first starred level at the path's last level, so such a field was read as starred over its own bound group, and the rows the document leaves below the declared capacity counted as a fillable tail. The cap is gone: a depth binding every level stars none, and the read is the bound cell.
+
+| carrier | document | A12 type | before |
+|---|---|---|---|
+| `NumberOfFilledFields(RuleGroup) == 5`, `(/Policy/Claims) == 5`, `(RuleGroup) < 6`, a claim declared in repeatable `Claims` (capacity 3) | one full claim, two full claims, a full claim beside a short one | value error, no fill | omission, every field |
+| `NoFieldValueIncludedInValueList(RuleGroup In "zz")` in repeatable `Holders` | a full holder | value error, no fill | omission |
+| the same rules | a claim short a part, a holder without a last name | omission | omission |
+
+*Locked:* `adapter.laws.RuleGroupCountPolarityDiffTest` (both carriers, every document, both kernel strategies against the interpreter).
