@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
@@ -139,8 +140,11 @@ private fun TrackedFactBase.preGateFinding(
     // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
     // elsewhere in that list is not this family's to name. Judging each operand alone reported it, which is
     // the shape of an over-rejection: a code A12 does not give, on a model it refuses for something else.
+    // `RuleGroup` is the declaring group itself, one entity with its spelled path (KERNEL-FINDINGS KF611).
     val targets = written.map {
-        addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(call.inAFilterBody)) ?: return null
+        if (isRuleContext(it.spec, conditionLanguage)) declaringGroup
+        else addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(call.inAFilterBody))
+            ?: return null
     }
     val direct = targets.firstDirectDuplicate(written)
     if (direct != null) {
@@ -238,6 +242,8 @@ private fun TrackedFactBase.entityListOperandsOf(
         if (operand.clauses.isEmpty()) {
             operand.path?.let { return@map ListOperand(it, "") }
             operand.capturedPath(conditionLanguage)?.let { return@map ListOperand(it, "", outerMarked = true) }
+            // The keyword is no path token, so `path` leaves it out; it names the declaring group.
+            operand.text.javaTrimmed().takeIf { isRuleContext(it, conditionLanguage) }?.let { return@map ListOperand(it, "") }
             // A carrier that asks its category gate only once the list is built compares a categorized operand
             // like any other, its category being part of its identity; one that asks it first leaves the list
             // to that gate ([entityListCategoryFindings]).

@@ -418,7 +418,10 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     for (entity in recognition.entities) {
         val inBody = bodies.any { entity.site.start in it }
         if (inBody != entity.inFilter) return null
+        // `RuleGroup` is the declaring group, iterating where it repeats (KERNEL-FINDINGS KF611); a starred one is
+        // refused earlier (`MVK_INVALID_WILDCARD_FOR_RULEGROUP`) and stays unresolved here.
         val written = normalizedPath(entity.path.dropWhile { it.text == OUTER_MARKER })
+            .let { if (isRuleContext(it, conditionLanguage)) group else it }
         if (entity.path.first().text == OUTER_MARKER) {
             // Outside a filter the marker is refused earlier (`MVK_INVALID_OUTER_ITERATION`).
             if (!inBody) return null
@@ -470,7 +473,6 @@ private fun TrackedFactBase.guardReferenceOf(
     element: TrackedDeclaration,
     key: GuardReference?,
 ): GuardReference? {
-    if (isRuleContext(written, conditionLanguage)) return null
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved
         ?: return null
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null

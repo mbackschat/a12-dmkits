@@ -13425,6 +13425,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf611": {
+      "sha256": "e78a3f57135312ba53bc3608cc0f7de0b1183dcc2a5fcb844ab27b50df15e9de",
+      "task": "SS15",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "RuleGroup as a field-list operand in the iteration guard and the entity-list pre-gates"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's reading of RuleGroup in a field list"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's reading of RuleGroup in a field list"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The iteration guard reads RuleGroup as the declaring group's path, and the entity-list pre-gates resolve a RuleGroup operand to that group for the root and duplicate tests.",
+          "evidence": {
+            "RuleGroup as a field-list operand in the iteration guard and the entity-list pre-gates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every RuleGroup row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's reading of RuleGroup in a field list": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every row as the finding's table states."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

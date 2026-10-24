@@ -14812,3 +14812,18 @@ A policy with `Cover` (values `BASIC`, `PLUS`; category `Tier` classifying them 
 | `Premium := [Cover -> Tier]`, `Claims/Amount := [Claims/ClaimCover -> Tier]`, `Claims/Note := True` → `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`; `Active :=` → `MVK_INVALID_COMPARE_TO_YESNO`; `StartsOn :=` → `MVK_INVALID_COMPARE_TO_DATE`; `Title :=`, `Plan :=` → admitted | an assignment walks the same ladder |
 
 *Locked by:* `adapter.laws.CheckerCategoryComparisonAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+
+## §9 supplement — `RuleGroup` in a field list is the declaring group: it iterates where that group repeats, and the list's root and duplicate gates meet it as that group (kernel `checkConsistency`, 2026-10-24) <a id="kf611"></a>
+
+> Fold: pending — beside [KF388](#kf388)'s entity-list pre-gates and [KF595](#kf595)'s guard.
+
+A policy with repeatable `Claims` (`Amount`, `Note`, `Status`), a single `Holder` and a root `Title`. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckEntityUtils.checkIndicesForA12Model` is reached "via an entity or 'RuleGroup' reference".
+
+| rule at | condition → A12 | separates |
+|---|---|---|
+| `Claims` | `NumberOfFilledFields(RuleGroup) < 1`, `NoFieldFilled(RuleGroup)` → `MVK_NEG_CONDITION_IN_ITERATION`; `> 0`, `== 0`, `AtLeastOneFieldFilled(RuleGroup)`, `MoreThanOneFieldFilled(RuleGroup)` → admitted | the keyword iterates the repeating group as its spelled path would, a count on its below arm only |
+| `Holder` | `NoFieldFilled(RuleGroup)` → admitted | a group that does not repeat iterates nothing |
+| `Claims` | `NumberOfFilledFields(RuleGroup, Amount)` → `MVK_DUPLICATE_PARAM2`; `(RuleGroup, RuleGroup)` and `(RuleGroup, /Policy/Claims)` → `MVK_DUPLICATE_PARAM1` | the keyword and the spelled path are one entity |
+| `Policy` | `NumberOfFilledFields(RuleGroup)`, `NoFieldFilled(RuleGroup)` → `MVK_ROOT_GROUP_REFERENCED` | at the root it is the root group |
+
+*Locked by:* `adapter.laws.CheckerRuleGroupOperandAgreementTest` (every row, A12 pinned and the checker naming the same classes).
