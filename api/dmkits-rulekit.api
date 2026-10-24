@@ -3074,6 +3074,12 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVERTED_REQUIREDNESS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode KERNEL_VERSION_SKEW
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode LABEL_NOT_SUPPORTED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_ABOVE_60_CHARACTERS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_ABOVE_DIGIT_BUDGET
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_ABOVE_SCALE_LIMIT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_ABOVE_TECHNICAL_LIMIT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_NOT_POSITIVE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MEMBER_SIGNED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_INPUT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_NOT_NAMED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_PREPARATION_FAILED

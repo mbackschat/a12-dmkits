@@ -27,7 +27,7 @@
         "additionalProperties": false,
         "properties": {
           "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
-          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). The group token accepts absolute or relative paths to an available group: the rule's own group, an ancestor, or a group reached by its condition. A root-level rule reading Addons/MonthlyFee may name $#Addons$. RuleGroup and RootGroup name the owning group and its root; RuleGroup is refused for a rule directly in a root group. An unavailable group is INVALID_GROUP; an absolute first segment naming no declared root is INVALID_ROOT_GROUP. A keyed group token ($#<Group> For \"key\"$ or a field key) requires matching positive presence in the condition. $index(<shortName>).value$ reads an index on the error field ancestry; $index(<shortName>)-><Category>$ reads its declared Enumeration category. A LITERAL dollar sign is written $$." }
+          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). The group token accepts absolute or relative paths to an available group: the rule's own group, an ancestor, or a group reached by its condition. A root-level rule reading Addons/MonthlyFee may name $#Addons$. RuleGroup and RootGroup name the owning group and its root; RuleGroup is refused for a rule directly in a root group. An unavailable group is INVALID_GROUP; an absolute first segment naming no declared root is INVALID_ROOT_GROUP. A keyed group token ($#<Group> For \"key\"$ or a field key) requires matching positive presence in the condition. A key-selected field renders as $<Field>.value For \"key\"$ (its value) or $<Field> For \"key\"$ (its label), the suffix before the key, and only beside a condition reading that field under the same spelled key (else MVK_INDEX_FOR_ERROR_TEXT_INVALID). $<Field>-><Category>$ renders an Enumeration field's category value; a category named like a keyword is quoted, ->'For'. A key holding a dollar sign cannot be written in a token (WRONG_NUMBER_OF_DOLLARS). The token keywords follow the model's condition language: a de_DE-condition model spells value as Wert and For as Fuer, and refuses the English spelling. $index(<shortName>).value$ reads an index on the error field ancestry; $index(<shortName>)-><Category>$ reads its declared Enumeration category. A LITERAL dollar sign is written $$." }
         }
       }
     },
@@ -61,6 +61,15 @@
           "locale": "de_DE",
           "text": "Zusatzoption $#Addons$ prüfen."
         }
+      ]
+    },
+    {
+      "field": "/Subscription/Tier",
+      "condition": "FieldFilled(/Subscription/Tier)",
+      "code": "TIER_PRICING",
+      "messages": [
+        { "locale": "en_US", "text": "Tier pricing is $/Subscription/Tier->Pricing$." },
+        { "locale": "de_DE", "text": "Die Preisstufe ist $/Subscription/Tier->Pricing$." }
       ]
     }
   ]

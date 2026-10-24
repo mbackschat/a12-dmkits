@@ -256,7 +256,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
 
 ```output
 {
-  "count": 52,
+  "count": 58,
   "severities": [
     "ERROR",
     "INFO",
@@ -267,6 +267,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
     "INTERNAL",
     "KERNEL",
     "LINT",
+    "PORTABLE_CHECKER",
     "PRECHECK"
   ]
 }

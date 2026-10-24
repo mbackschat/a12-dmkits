@@ -28,6 +28,9 @@ class CorrectiveTest {
         """
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g90","name":"SeasonalSeasonalSeasonalSeasonalSeasonalSeasonalSeasonalStock","Group":{"elements":[
+            {"type":"Field","id":"f90","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
+          ]}},
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Season","Field":{"fieldType":{"type":"DateType",
@@ -76,6 +79,16 @@ class CorrectiveTest {
               {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Field","id":"f81","name":"SignedLength","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"maxLength":-5}}}},
+            {"type":"Field","id":"f82","name":"ZeroLength","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"maxLength":0}}}},
+            {"type":"Field","id":"f83","name":"VastLength","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"maxLength":100000}}}},
+            {"type":"Field","id":"f84","name":"WideCount","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxIntegerDigits":16}}}},
+            {"type":"Field","id":"f85","name":"FineCount","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":15}}}},
             {"type":"Field","id":"f71","name":"KeyedNote","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c71","name":"IndexesByItsOwnTarget","Computation":{
               "computedFieldRelPath":"../KeyedNote",

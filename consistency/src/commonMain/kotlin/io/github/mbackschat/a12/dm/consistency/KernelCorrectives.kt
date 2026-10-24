@@ -109,6 +109,30 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "The condition has a token the DSL parser did not expect (a syntax slip the kernel reports with no message of its own). The most common causes, in order: (1) a BOOLEAN literal must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` (e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; (3) use the configured language's operator and keyword spellings; connective variants are enumerated, for example `And`/`and`/`AND`, not arbitrary mixed case; (4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, not `Approved != True` (bare names belong only inside a function/predicate's parentheses, like `FieldFilled(Approved)`). Re-check the token at the reported position against these.",
         meaning = "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar did not allow it — and it is raised WITHOUT a message, so the likely cause has to be inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, double-quoted strings, and the configured language's admitted keyword spellings).",
     ),
+    "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
+        fix = "shorten the root group's name to 60 characters or fewer.",
+        meaning = "A12's sentence \"Only values with up to 60 characters are allowed.\": a root group's name is longer than 60 characters, and its alphabet is admitted (an alphabet refusal takes this sentence's place; KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MEMBER_ABOVE_DIGIT_BUDGET" to Corrective(
+        fix = "declare 15 integer places or fewer; integer and fractional places together are bounded by the same budget.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 15 are allowed.\": a Number's integer count, declared or derived for an amount, is above A12's digit budget of 15 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MEMBER_ABOVE_SCALE_LIMIT" to Corrective(
+        fix = "declare 14 fractional places or fewer.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 14 are allowed.\": a Number's fractional count is above A12's scale cap of 14 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MEMBER_ABOVE_TECHNICAL_LIMIT" to Corrective(
+        fix = "declare a length of 99,999 or less, or -1 for no bound on a String or Custom field.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 99999 are allowed.\": a String, Custom or Number length is above A12's technical limit of 99,999 (KERNEL-FINDINGS KF556), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MEMBER_NOT_POSITIVE" to Corrective(
+        fix = "declare at least 1; to leave a String or Custom length unbounded, write -1 rather than 0.",
+        meaning = "A12's sentence \"Only values greater than 0 are allowed.\": a length, an integer count or a group's repeatability is 0, where A12 admits 1 and above (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MEMBER_SIGNED" to Corrective(
+        fix = "write a count of 0 or more, or -1 to declare no bound where the member admits it; a Number length admits no -1.",
+        meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+    ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",
         meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text would be reported valid without ever being examined.",

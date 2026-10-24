@@ -51,7 +51,7 @@
         "additionalProperties": false,
         "properties": {
           "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
-          "text": { "type": "string", "description": "the self-validation message text; may use the same kernel interpolation tokens as rule messages" }
+          "text": { "type": "string", "description": "the self-validation message text; may use the same kernel interpolation tokens as rule messages. A field token is admitted when the target, the operation, the common precondition or any alternative reads that field (else INVALID_FIELD). Declared in a root group, $#RuleGroup$ is RULEGROUP_IMMEDIATELY_BELOW_ROOT and $#RootGroup$ is admitted." }
         }
       }
     },
@@ -89,6 +89,16 @@
       "messages": [
         { "locale": "en_US", "text": "Effective fee is the base fee, rounded up." },
         { "locale": "de_DE", "text": "Die Effektivgebühr ist die aufgerundete Basisgebühr." }
+      ]
+    },
+    {
+      "computedField": "/Subscription/Billing/EffectiveFee",
+      "group": "/Subscription",
+      "name": "EffectiveFeeOfSubscription",
+      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]" } ],
+      "messages": [
+        { "locale": "en_US", "text": "Subscription $#RootGroup$: the effective fee is the base fee." },
+        { "locale": "de_DE", "text": "Abonnement $#RootGroup$: die Effektivgebühr ist die Basisgebühr." }
       ]
     }
   ]

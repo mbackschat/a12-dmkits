@@ -189,6 +189,27 @@ public enum RkCode {
             "a move takes the element out of an enclosing group that rules/computations read as a GROUP OPERAND — the kernel expands such an operand to every field below the group, so the listed elements silently lose (or gain) a member. There is no reference TEXT to rewrite and the model stays kernel-valid, so nothing downstream reports it; an advisory, not a refusal, because the move is legal and usually intended.",
             "check that each listed rule or computation still means what you intend over its new expansion; if one must keep the element, name the element directly instead of its group, or move it back."),
 
+    // --- A12's codeless model-member sentences, as the portable checker publishes them (ERROR; PORTABLE_CHECKER)
+    // A12 refuses these with a sentence and no code; the checker names each sentence so a report can be acted on.
+    MEMBER_SIGNED(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+            "write a count of 0 or more, or -1 to declare no bound where the member admits it; a Number length admits no -1."),
+    MEMBER_NOT_POSITIVE(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values greater than 0 are allowed.\": a length, an integer count or a group's repeatability is 0, where A12 admits 1 and above (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+            "declare at least 1; to leave a String or Custom length unbounded, write -1 rather than 0."),
+    MEMBER_ABOVE_TECHNICAL_LIMIT(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values smaller than or equal to 99999 are allowed.\": a String, Custom or Number length is above A12's technical limit of 99,999 (KERNEL-FINDINGS KF556), where the portable checker names the sentence by this code.",
+            "declare a length of 99,999 or less, or -1 for no bound on a String or Custom field."),
+    MEMBER_ABOVE_DIGIT_BUDGET(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values smaller than or equal to 15 are allowed.\": a Number's integer count, declared or derived for an amount, is above A12's digit budget of 15 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+            "declare 15 integer places or fewer; integer and fractional places together are bounded by the same budget."),
+    MEMBER_ABOVE_SCALE_LIMIT(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values smaller than or equal to 14 are allowed.\": a Number's fractional count is above A12's scale cap of 14 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+            "declare 14 fractional places or fewer."),
+    MEMBER_ABOVE_60_CHARACTERS(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Only values with up to 60 characters are allowed.\": a root group's name is longer than 60 characters, and its alphabet is admitted (an alphabet refusal takes this sentence's place; KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+            "shorten the root group's name to 60 characters or fewer."),
+
     // --- environment / version (advisory or fail-fast) ------------------------------------------
     // ENVIRONMENT rather than PRECHECK: every check passed and the work was done — the destination refused it.
     // Calling it a precheck would blame the input; calling it INTERNAL would blame the tool (the mistake the
