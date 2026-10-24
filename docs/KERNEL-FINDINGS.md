@@ -14883,3 +14883,22 @@ An insurance policy: root `Policy` with text `Title`, `Holder`, `Agent`, `Broker
 A categorized, keyed or marked read is not in the grid; the checker leaves such a call to A12.
 
 *Locked by:* `adapter.laws.CheckerScalarListDuplicateAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+
+## §14 supplement — a `CustomCondition` leaf in a rule whose error entity is a group raises when reached, before the condition is called (both strategies, 2026-10-24) <a id="kf615"></a>
+
+> Fold: pending — a12-kernel-lean feedback 2026-10-24 note 02; the rule-raise channel of [KF513](#kf513).
+
+An insurance policy: root `Policy` with text `Holder`, a fixed group `Contact`, and repeatable `Claims` keyed by `ClaimNo`, each with a `Status` and repeatable `Items`. Every rule ends `… And CustomCondition Approved`, with `Approved` registered to answer true. `CustomConditionGroupTargetDiffTest` compares code, type, error address and referenced fields across dynamic Groovy, static Java and the interpreter:
+
+| rule → A12, both strategies | separates |
+|---|---|
+| `GroupFilled(Contact) And …` on `../Contact`; `GroupFilled(Claims/Items) And …` on `../Claims/Items`, both in `/Policy` → one VALUE message at the first error address, nothing referenced, the condition never called | neither the group's repetition nor its depth decides it |
+| `GroupFilled(Items) And FieldFilled(Status) And …` on `../Items`, declared in `/Policy/Claims` → the same, also when only the second claim has a status, at the first claim's address | the rule's scope does not decide it; the message is the abort's, at the iterator's first state |
+| the same rule with no status on any claim → silent | the raise needs the leaf to be reached |
+| `FieldFilled(Items/ItemNo) And …` on `../Items/ItemNo`; `FieldFilled(Holder) And …` on `../Holder` → called on every row, one message per row with its reference | a field target is the control |
+
+**Mechanism (source-located, kernel 30.8.1; the throwing frames observed through the probe).** `ApplicationCondition.st` (codegen template, all three dialects) calls `controller.applikationsBedingung(name, RtInternalIdentifier.createFromIterationState("<t.uniqueAktionsFeld>", idx))`, and that bean's name is the one `CodeGenRuleDefinitionBuilder` seeds its condition converter with: `uniqueFieldNamesMap.get(errorEntity.getFullName())` (codegen backing bean, line 93). The bean's own `getUniqueErrorFieldName()`, which the rule's message path uses, returns a group's full name first; the seeded lookup has no such branch, so a group gets no name and the template renders it empty. `applikationsBedingung` converts that identifier before it looks the condition up (`MainValidatorController`, runtime class), and `ValidationCache.convert2Extern` → `MetaDataValidierungIntern.getPfadName` → `getMetaGroup("")` throws `IllegalArgumentException: The set of groups does not contain <>.`. The rule body catches it as [KF513](#kf513) describes. `CodeGenCreator` hands the seeded name to `ApplicationCondition` and to nothing else, so the class is exactly the custom-condition leaf. The probe's `evaluationRaises` shows the raise as the kernel's on both strategies, and its one-off stack capture showed those frames (2026-10-24).
+
+Limits: full validation, one registered constant condition, the listed shapes. Partial validation reaches the same call and is not measured here.
+
+*Locked by:* `adapter.laws.CustomConditionGroupTargetDiffTest` (three documents, both kernel strategies against the interpreter, A12 pinned) and `adapter.laws.KernelProbeRuleRaiseTest` (the raise's origin and class).

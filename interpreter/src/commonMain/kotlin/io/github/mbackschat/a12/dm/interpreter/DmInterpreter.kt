@@ -846,7 +846,7 @@ class DmInterpreter private constructor(
                     relevance.groupExtents?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
                 formalResults, { formallyIncorrect }, relevance.parallelSelection,
-                { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) })
+                { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) }, groupPaths = model.groupPaths)
             for (rule in model.rules) {
                 try {
                     // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -1028,6 +1028,7 @@ class DmInterpreter private constructor(
             formalResults,
             { formallyIncorrect },
             messageIndexDefaults = { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) },
+            groupPaths = model.groupPaths,
         )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {

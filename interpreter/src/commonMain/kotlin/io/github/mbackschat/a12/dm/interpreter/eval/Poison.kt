@@ -32,5 +32,13 @@ class EmptyPatternFailure : RuntimeEvaluationFailure("an authored pattern must n
 
 class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the wall label $label has no instant in the model zone")
 
+/**
+ * A custom condition reached in a rule whose error entity is a group. A12 converts the rule's error field into the
+ * condition's argument before it looks the condition up, and its generated code names no field for a group, so
+ * the call fails before any condition runs (KERNEL-FINDINGS KF615).
+ */
+class GroupErrorEntityCustomFailure(name: String) :
+    RuntimeEvaluationFailure("custom condition \"$name\" cannot receive a group as its error field")
+
 /** A message token reading a value through a key that selects no row (KERNEL-FINDINGS KF561). */
 class UnmatchedMessageKeyFailure(token: String) : RuntimeEvaluationFailure("the message parameter $token selects no row")

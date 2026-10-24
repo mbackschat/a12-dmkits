@@ -5021,3 +5021,11 @@ The gate is now the root instance's attach gate: a row is evaluated when a value
 So an empty nonrepeatable root object and a blank nonrepeatable child object are no content, while a blank repeatable row object is, as the row gate already held.
 
 *Locked:* `adapter.laws.RootContentGateDiffTest` (both kernel strategies against the interpreter).
+
+### IF436: a custom condition reached in a group-target rule aborts the rule, as A12's call does (2026-10-24) <a id="if436"></a>
+
+[KF615](KERNEL-FINDINGS.md#kf615): A12 cannot hand a custom condition a group as its error field, so a group-target rule that reaches its `CustomCondition` leaf raises before the condition runs and reports its own code once, as VALUE, at its first error address with nothing referenced. The interpreter called the condition with the group's pointer and reported every row it fired on, with the row's references.
+
+A reached custom leaf now throws `GroupErrorEntityCustomFailure`, a `RuntimeEvaluationFailure`, when the rule's error entity is one of the model's group paths. The existing catcher gives it [KF513](KERNEL-FINDINGS.md#kf513)'s outcome: the row loop ends and the rule reports once at its first iteration address, while a rule that never reaches the leaf stays silent. The check precedes the registry lookup, as A12's conversion precedes its own.
+
+*Locked:* `adapter.laws.CustomConditionGroupTargetDiffTest` (both kernel strategies against the interpreter, the condition's calls compared too).

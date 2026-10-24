@@ -92,9 +92,14 @@ class Interpreter(
         invalid: (EvalContext, String) -> Boolean,
         rnuOutcome: ((EvalContext) -> MsgType?)?,
         customFormallyIncorrect: () -> Set<CustomConditionFieldPointer>,
+        customErrorIsGroup: Boolean,
     ) : this(ctx, config, customErrorField, invalid, rnuOutcome = rnuOutcome) {
         this.customFormallyIncorrect = customFormallyIncorrect
+        this.customErrorIsGroup = customErrorIsGroup
     }
+
+    /** Whether the rule's error entity is a group, which a reached custom leaf cannot be handed (KF615). */
+    private var customErrorIsGroup = false
 
     private var customFormallyIncorrect: (() -> Set<CustomConditionFieldPointer>)? = null
 
@@ -394,6 +399,7 @@ class Interpreter(
      * hidden dependency checks; this evaluator does not pre-suppress it merely because the set is non-empty.
      */
     internal fun evalCustom(c: Cond.Custom): Tri {
+        if (customErrorIsGroup) throw GroupErrorEntityCustomFailure(c.name)
         val condition = customConditions[c.name]
             ?: throw UnsupportedConstructException("unregistered custom condition \"${c.name}\" — register it in the custom-condition registry")
         val errorField = customErrorField

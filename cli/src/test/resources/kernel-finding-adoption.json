@@ -13713,6 +13713,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf615": {
+      "sha256": "aa95261e09cdfafafa4d3afb7a089c816be1a1f693106557be967c4993c964c3",
+      "task": "SS17",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the probe attributing a group-target custom condition's raise"
+        ],
+        "interpreter": [
+          "a custom condition reached in a group-target rule"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "a custom condition beside a group error target"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime raise does not reach authoring; A12 admits the rule.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime raise is not a static admission question.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime raise does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime raise does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The probe publishes the raise as the kernel's, with its class, on both strategies.",
+          "evidence": {
+            "the probe attributing a group-target custom condition's raise": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KernelProbeRuleRaiseTest.kt#aRaiseInsideTheKernelsCallPathIsAttributedToTheKernel",
+              "witness": "Both group-target rules raise as the kernel's; the field-target control is called."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A reached custom leaf in a group-target rule aborts the rule, reporting once at its first address with nothing referenced.",
+          "evidence": {
+            "a custom condition reached in a group-target rule": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionGroupTargetDiffTest.kt#aGroupTargetRaisesWhereItsCustomLeafIsReachedOnEveryEngine",
+              "witness": "Every document matches both kernel strategies, calls included."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter, which carries the fix.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

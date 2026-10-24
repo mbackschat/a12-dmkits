@@ -47,6 +47,8 @@ internal class ValidationPass(
     private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
     val parallelSelection: ParallelRuleSelection? = null,
     messageIndexDefaults: () -> Map<Triple<String, List<Int>, String>, List<Int>> = { emptyMap() },
+    /** The model's group paths, so a rule's per-row interpreter knows whether its error entity is a group. */
+    private val groupPaths: Set<String>,
 ) {
     private val messageDefaults by lazy(LazyThreadSafetyMode.NONE, messageIndexDefaults)
 
@@ -134,7 +136,8 @@ internal class ValidationPass(
             // The pass-owned gate takes the reading context so Having still judges its own row (IF319).
             invalid = invalidOperand,
             rnuOutcome = rnuOutcome,
-            customFormallyIncorrect = formallyIncorrect)
+            customFormallyIncorrect = formallyIncorrect,
+            customErrorIsGroup = errorPath in groupPaths)
             .sharingScopeMemo(scopeMemo)
             .sharingIndexColumns(resolveIndexColumn)
 }
