@@ -56,19 +56,25 @@ public final class MessageTokens {
         return keyed(selected.index(), "");
     }
 
-    /** {@code $<path>->Category$}, an enumeration field's category value for the row the message reads. */
+    /**
+     * {@code $<path>->Category$}, an enumeration field's category value for the row the message reads, or for the
+     * row its key selects when the category carries one ({@link CategoryRef#forIndex(String)}).
+     */
     public String fieldCategory(CategoryRef category) {
-        return "$" + path(category.field()) + categorySuffix(category) + "$";
+        return category.key().map(key -> keyed(switch (key) {
+            case FirstFilledOperand.LiteralIndex literal -> category.field().semanticIndex(literal.value()).index();
+            case FirstFilledOperand.FieldIndex fieldKey -> category.field().semanticIndex(fieldKey.field()).index();
+        }, categorySuffix(category))).orElseGet(() -> "$" + path(category.field()) + categorySuffix(category) + "$");
     }
 
     /** {@code $<path>->Category For "key"$}, the category value of the row a literal key selects. */
     public String fieldCategory(CategoryRef category, String indexValue) {
-        return keyed(category.field().semanticIndex(indexValue).index(), categorySuffix(category));
+        return fieldCategory(category.forIndex(indexValue));
     }
 
     /** {@code $<path>->Category For keyField$}, the field-keyed peer. */
     public String fieldCategory(CategoryRef category, FieldRef keyField) {
-        return keyed(category.field().semanticIndex(keyField).index(), categorySuffix(category));
+        return fieldCategory(category.forIndex(keyField));
     }
 
     /** {@code $#<groupPath>$}, the 1-based row number of the group's current repetition. */

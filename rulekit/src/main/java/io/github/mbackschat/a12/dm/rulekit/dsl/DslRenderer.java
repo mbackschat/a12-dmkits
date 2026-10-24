@@ -455,7 +455,7 @@ public final class DslRenderer {
         // brackets — the bracketed [field -> Cat] form is the comparison-operand rendering, not the
         // entity-list member form the kernel grammar uses here).
         if (op instanceof EnumCategoryAccess c) {
-            return (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId()) + " " + c.category();
+            return categoryBody(c);
         }
         // An index-selected field entity renders the same bare "Field For key" body a presence condition
         // does — indexBody already folds correlation and localizes/quotes the key, so this must not fall
@@ -529,9 +529,7 @@ public final class DslRenderer {
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
             case LengthOf l -> keyword(l.operatorId()) + "(" + entityOperand(l.field()) + ")";
-            case EnumCategoryAccess c ->
-                    "[" + (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId())
-                            + " " + c.category() + "]";
+            case EnumCategoryAccess c -> "[" + categoryBody(c) + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::aggregateOperand)
                             .collect(Collectors.joining(", "))
@@ -689,6 +687,23 @@ public final class DslRenderer {
         };
     }
 
+    /**
+     * {@code field -> Cat}, then the key when one selects the row: the {@code entitySpec} order (KF568). A category
+     * named like a keyword is quoted as a field is, the quote being the grammar's escape.
+     */
+    private String categoryBody(EnumCategoryAccess c) {
+        return (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId()) + " "
+                + quoteSegment(c.category()) + c.key().map(this::ownerKey).orElse("");
+    }
+
+    /** {@code For "key"} or {@code For keyField}, with its leading space. */
+    private String ownerKey(FirstFilledOperand.SemanticIndexKey key) {
+        return " " + keyword("SemanticIndex") + " " + switch (key) {
+            case FirstFilledOperand.LiteralIndex literal -> quote(literal.value());
+            case FirstFilledOperand.FieldIndex field -> operandPath(field.field());
+        };
+    }
+
     /** Render the owner {@code entitySpec} union accepted by {@code FirstFilledValue}; semantic indexes
      *  are bare here (the surrounding operator already consumes entities), not value-bracketed. */
     private String firstFilledOperand(FirstFilledOperand operand) {
@@ -699,16 +714,8 @@ public final class DslRenderer {
         rendered.append(path(operand.renderedPath(),
                 operand.field().map(FieldOperand::styleHint).orElse(PathStyle.CANONICAL)));
         operand.category().ifPresent(category -> rendered.append(" ").append(keyword("EnumCategory"))
-                .append(" ").append(category));
-        operand.semanticIndex().ifPresent(index -> {
-            rendered.append(" ").append(keyword("SemanticIndex")).append(" ");
-            switch (index) {
-                case FirstFilledOperand.LiteralIndex literal -> rendered.append(quote(literal.value()));
-                case FirstFilledOperand.FieldIndex field -> {
-                    rendered.append(operandPath(field.field()));
-                }
-            }
-        });
+                .append(" ").append(quoteSegment(category)));
+        operand.semanticIndex().ifPresent(index -> rendered.append(ownerKey(index)));
         operand.field().filter(FieldListRef.class::isInstance).map(FieldListRef.class::cast)
                 .flatMap(FieldListRef::filter)
                 .ifPresent(filter -> rendered.append(" ").append(keyword("Having")).append(" ")

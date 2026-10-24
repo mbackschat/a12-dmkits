@@ -40,7 +40,6 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG137 — the typed surface cannot read a keyed category in a condition** (found 2026-10-14, Batch Q). A12 admits `[Lines/Grade -> Tier For "a"] == "High"` and `FirstFilledValue(Lines/Grade -> Tier For "a", Status -> Tier)` ([KF568](KERNEL-FINDINGS.md#kf568)), but `CategoryRef` has no `forIndex` and `EnumCategoryAccess` renders no key, so `CheckerEntitySpecModifierAgreementTest` writes its admitted rows as text beside the refused orders. Only the message token (`Dsl.fieldCategory(category, key)`) spells the pair. Settles with `CategoryRef.forIndex(…)` rendering `path -> Category For key`, the order KF568 measured, usable in a comparison and as a `FirstFilledValue` operand, with a kernel-checked rendering test and an adapter read-back row.
 - **DG136 — internal code still concatenates text through the `asString().plus` detour** (found 2026-10-13, cold review). [AF188](API-FINDINGS.md#af188) gave a text field `plus` off its `StringRef`, but `grep -rl 'asString().plus'` over tracked Java and Kotlin sources matches 19 files (2026-10-13; not read one by one, so some may be legitimate). Settles by migrating each internal consumer to the direct form, per the dogfooding rule.
 
 ## 3. Adjacent but out of scope

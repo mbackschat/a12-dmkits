@@ -1044,10 +1044,9 @@ final class ConditionConverter {
             String path = reconstructStarPath(entity);
             return hasSemanticIndex(entity) ? indexedGroup(entity, path, entity) : groupScopeOf(entity, path);
         }
-        String category = entity.getCategoryName();
-        if (category != null && !category.isEmpty()) {
-            CategoryRef cat = model.enumOf(entity.getFullName()).category(category);
-            return (entity.isOuter() ? cat.outer() : cat).listOperand();
+        Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), entity);
+        if (category.isPresent()) {
+            return category.get().listOperand();
         }
         return toFieldOperand(entity);
     }
@@ -1067,28 +1066,55 @@ final class ConditionConverter {
      *              it, and a dropped {@code $} has its own backstop in {@link #verifyOuterPreserved}
      */
     private Calculation fieldValueCalculation(IEntityId entity, boolean outer) {
+        Optional<CategoryRef> category = categoryOf(entity, outer, entity);
+        if (category.isPresent()) {
+            return category.get().value();
+        }
         if (hasSemanticIndex(entity)) {
             return semanticIndex(entity, entity).index();
         }
-        String category = entity.getCategoryName();
-        if (category == null || category.isEmpty()) {
-            return new FieldValue(model.field(entity.getFullName()), outer);
+        return new FieldValue(model.field(entity.getFullName()), outer);
+    }
+
+    /**
+     * The category projection {@code entity} carries, with the key that selects its row when it has one
+     * ({@code [field -> Cat For key]}, KERNEL-FINDINGS KF568). Every site that builds a {@link CategoryRef} reads it
+     * here, so none can keep the category and drop the key, or take the key branch and drop the category.
+     */
+    private Optional<CategoryRef> categoryOf(IEntityId entity, boolean outer, Object origin) {
+        String name = entity.getCategoryName();
+        if (name == null || name.isEmpty()) {
+            return Optional.empty();
         }
-        CategoryRef cat = model.enumOf(entity.getFullName()).category(category);
-        return (outer ? cat.outer() : cat).value();
+        CategoryRef category = model.enumOf(entity.getFullName()).category(name);
+        if (outer) {
+            category = category.outer();
+        }
+        if (!hasSemanticIndex(entity)) {
+            return Optional.of(category);
+        }
+        List<Object> keys = entity.getSemanticIndex();
+        if (keys.size() != 1) {
+            throw unsupported("category projection with a non-single key", origin);
+        }
+        return Optional.of(switch (keys.getFirst()) {
+            case String literal -> category.forIndex(literal);
+            case IEntityId keyField -> category.forIndex(keyFieldRef(keyField));
+            default -> throw unsupported("category projection with key "
+                    + keys.getFirst().getClass().getSimpleName(), origin);
+        });
     }
 
     /** An enum-list quantifier member (literal value-list side) — a direct {@link EnumRef} or, when the
      *  entity carries {@code getCategoryName()}, a {@link CategoryRef} projection; the union of their
      *  domains admits the literals. */
     private EnumListRef enumListRef(IEntityId entity) {
-        EnumRef enumRef = model.enumOf(entity.getFullName());
-        String category = entity.getCategoryName();
-        if (category == null || category.isEmpty()) {
-            return entity.isOuter() ? enumRef.outer() : enumRef;
+        Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), entity);
+        if (category.isPresent()) {
+            return category.get();
         }
-        CategoryRef cat = enumRef.category(category);
-        return entity.isOuter() ? cat.outer() : cat;
+        EnumRef enumRef = model.enumOf(entity.getFullName());
+        return entity.isOuter() ? enumRef.outer() : enumRef;
     }
 
     /** The single value kind shared by every field at {@code paths}, or fail if they disagree / are unknown. */
@@ -1365,6 +1391,13 @@ final class ConditionConverter {
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
         boolean leftOuter = field.getField().isOuter();
+        // an enum field navigated to one of its categories ([field -> Cat], keyed or not) rides on getCategoryName()
+        if (kind == ValueKind.ENUMERATION) {
+            Optional<CategoryRef> category = categoryOf(field.getField(), leftOuter, origin);
+            if (category.isPresent()) {
+                return categoryComparison(category.get(), op, other, origin);
+            }
+        }
         // a semantic index ([field For X]) reads the field's value in the repetition whose group index field
         // equals X — it rides on getSemanticIndex(). The kernel's index is always a single element: a constant
         // String key ([field For "x"]) or a field-ref IEntityId key ([field For keyField]).
@@ -1392,12 +1425,6 @@ final class ConditionConverter {
                 case CONFIRM -> confirmComparison(new ConfirmExpr(semantic), op, other, origin);
                 default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
             };
-        }
-        // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
-        String category = field.getField().getCategoryName();
-        if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
-            CategoryRef cat = model.enumOf(path).category(category);
-            return categoryComparison(leftOuter ? cat.outer() : cat, op, other, origin);
         }
         return switch (kind) {
             case NUMBER -> numberComparison(leftOuter ? model.num(path).outer() : model.num(path), op, other, origin);
@@ -1851,10 +1878,9 @@ final class ConditionConverter {
         if (operand instanceof IFieldIdOperation fvn
                 && fvn.getOperatorName() == FieldIdOperationName.FieldValueAsNumber) {
             var entity = fvn.getField();
-            String category = entity.getCategoryName();
-            if (category != null && !category.isEmpty()) {
-                CategoryRef ref = model.enumOf(entity.getFullName()).category(category);
-                return Dsl.fieldValueAsNumber(entity.isOuter() ? ref.outer() : ref);
+            Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), fvn);
+            if (category.isPresent()) {
+                return Dsl.fieldValueAsNumber(category.get());
             }
             return Dsl.fieldValueAsNumber(markedField(entity));
         }
@@ -2125,10 +2151,11 @@ final class ConditionConverter {
      * a category projection by its access, an unindexed enumeration by its value read, anything else as text.
      */
     private StringExpr concatenationPart(IOperation op, Object origin) {
-        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
-                && field.getField().getCategoryName() != null && !field.getField().getCategoryName().isEmpty()) {
-            var category = model.enumOf(field.getField().getFullName()).category(field.getField().getCategoryName());
-            return new StringExpr((field.getField().isOuter() ? category.outer() : category).value());
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            Optional<CategoryRef> category = categoryOf(field.getField(), field.getField().isOuter(), origin);
+            if (category.isPresent()) {
+                return new StringExpr(category.get().value());
+            }
         }
         return enumerationOperand(op).map(enumeration -> new StringExpr(enumeration.field().value()))
                 .orElseGet(() -> stringOperand(op, origin));
@@ -2333,15 +2360,14 @@ final class ConditionConverter {
                 default -> throw unsupported("enum category comparison operator " + op, origin);
             };
         }
-        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue
-                && rf.getField().getCategoryName() != null && !rf.getField().getCategoryName().isEmpty()) {
-            var other = model.enumOf(rf.getField().getFullName()).category(rf.getField().getCategoryName());
-            if (rf.getField().isOuter()) {
-                other = other.outer();   // $ correlation on the right operand (D13)
-            }
+        // $ correlation on the right operand (D13) is threaded through categoryOf
+        Optional<CategoryRef> other = right instanceof IFieldIdOperation rf
+                && rf.getOperatorName() == FieldIdOperationName.FieldValue
+                ? categoryOf(rf.getField(), rf.getField().isOuter(), origin) : Optional.empty();
+        if (other.isPresent()) {
             return switch (op) {
-                case EQ -> category.is(other);
-                case NE -> category.isNot(other);
+                case EQ -> category.is(other.get());
+                case NE -> category.isNot(other.get());
                 default -> throw unsupported("enum category comparison operator " + op, origin);
             };
         }

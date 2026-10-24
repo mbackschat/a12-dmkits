@@ -23,6 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding
+import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
@@ -361,7 +362,31 @@ internal class Functions(private val mapping: Mapping) {
         if (node is Expr.SemanticIndex && mapping.isGroup(node.path)) {
             return firstFilledIndexedGroup(mapping.indexedGroup(node))
         }
+        firstFilledCategory(node)?.let { return it }
         return FirstFilledOperand.of(mapping.fieldOperand(node))
+    }
+
+    /**
+     * `field -> Category`, keyed or not (`Lines/Grade -> Tier For "a"`), as an owner operand. A category is no
+     * [io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand], so it takes the public [CategoryRef] route rather
+     * than [FirstFilledOperand.of]; a starred or filtered category stays unmapped.
+     */
+    private fun firstFilledCategory(node: Expr): FirstFilledOperand? {
+        val (field, name, index) = when (node) {
+            is Expr.EnumCategory -> Triple(Expr.Field(node.path, node.outer), node.category, null)
+            is Expr.EntitySpec -> {
+                val source = node.source as? Expr.Field ?: return null
+                Triple(source, node.category ?: return null, node.semanticIndex)
+            }
+            else -> return null
+        }
+        val category = mapping.model().enumOf(field.path).category(name).let { if (field.outer) it.outer() else it }
+        val keyed = when (index) {
+            null -> category
+            is Expr.EntityIndex.Literal -> category.forIndex(index.value)
+            is Expr.EntityIndex.Field -> category.forIndex(mapping.fieldRef(Expr.Field(index.path, index.outer)))
+        }
+        return keyed.firstFilledOperand()
     }
 
     /**

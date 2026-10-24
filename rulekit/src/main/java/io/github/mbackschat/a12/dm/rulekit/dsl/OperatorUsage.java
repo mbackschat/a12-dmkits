@@ -90,7 +90,7 @@ public final class OperatorUsage {
                 ops.add(l.operatorId());
                 collectOperand(l.field(), ops);
             }
-            case EnumCategoryAccess c -> ops.add(c.operatorId());
+            case EnumCategoryAccess c -> collectCategory(c, ops);
             case CountAggregate a -> {
                 ops.add(a.operatorId());
                 a.operands().forEach(o -> collectAggregateOperand(o, ops));
@@ -212,11 +212,17 @@ public final class OperatorUsage {
         }
     }
 
+    /** A category projection, and the {@code For} key when one selects its row. */
+    private static void collectCategory(EnumCategoryAccess category, Set<String> ops) {
+        ops.add(category.operatorId());
+        category.key().ifPresent(key -> ops.add("SemanticIndex"));
+    }
+
     /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}
      *  filter — either is a sub-construct with a catalog entry. Accepts the wider {@link ValueListOperand}. */
     private static void collectOperand(ValueListOperand operand, Set<String> ops) {
         if (operand instanceof EnumCategoryAccess c) {
-            ops.add(c.operatorId());   // the `->` category projection is its own catalog operator
+            collectCategory(c, ops);   // the `->` category projection is its own catalog operator
         } else if (operand instanceof IndexedGroupValue) {
             ops.add("SemanticIndex");
         } else if (operand instanceof IndexedFieldValue index) {

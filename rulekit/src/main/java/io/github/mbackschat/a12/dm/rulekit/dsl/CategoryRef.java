@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
+import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
@@ -12,7 +13,8 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * domain — comparing to a plain enum value is the kernel-rejected mistake
  * ({@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON}, verified) this handle erases.
  */
-public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated)
+public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated,
+        Optional<FirstFilledOperand.SemanticIndexKey> key)
         implements EnumListRef, NumericTextSource {
 
     /** The marker lives on {@link #field()}, so every node built from it reads the rule's row; see {@link FieldRef#marked}. */
@@ -20,6 +22,11 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         correlated |= field.correlated();
         field = field.marked(correlated);
         values = List.copyOf(values);
+        java.util.Objects.requireNonNull(key, "key");
+    }
+
+    public CategoryRef(FieldRef field, String name, List<String> values, boolean correlated) {
+        this(field, name, values, correlated, Optional.empty());
     }
 
     public CategoryRef(FieldRef field, String name, List<String> values) {
@@ -27,15 +34,36 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
     }
 
     /**
+     * The category of the row a literal key selects, {@code [field -> name For "key"]}: the category before the key,
+     * as A12 orders them (KERNEL-FINDINGS KF568). Every role this handle plays reads that row.
+     */
+    public CategoryRef forIndex(String indexValue) {
+        return withKey(new FirstFilledOperand.LiteralIndex(indexValue));
+    }
+
+    /** The field-keyed peer of {@link #forIndex(String)}, {@code [field -> name For keyField]}. */
+    public CategoryRef forIndex(FieldRef keyField) {
+        return withKey(new FirstFilledOperand.FieldIndex(keyField));
+    }
+
+    /** A second key is A12's {@code MVK_UNEXPECTED_TOKEN} (KF568), so the handle refuses it. */
+    private CategoryRef withKey(FirstFilledOperand.SemanticIndexKey newKey) {
+        if (key.isPresent()) {
+            throw new IllegalStateException("category " + name + " of " + field.path() + " already has a key");
+        }
+        return new CategoryRef(field, name, values, correlated, Optional.of(newKey));
+    }
+
+    /**
      * Marks this reference as the {@code $} outer-iteration correlation ({@code [$field -> name]}) — it
      * binds to the enclosing rule iteration. Legal only inside a {@code Having} filter (D13).
      */
     public CategoryRef outer() {
-        return new CategoryRef(field, name, values, true);
+        return new CategoryRef(field, name, values, true, key);
     }
 
     private EnumCategoryAccess access() {
-        return new EnumCategoryAccess(field, name, correlated);
+        return new EnumCategoryAccess(field, name, correlated, key);
     }
 
     /**

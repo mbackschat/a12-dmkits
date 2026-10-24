@@ -14,16 +14,26 @@ import java.util.Optional;
  * {@link FieldOperand}, so it cannot appear in the slots the kernel rejects a category in
  * (presence quantifiers, aggregates, uniqueness, date-range overlap).
  */
-public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
+public record EnumCategoryAccess(FieldRef field, String category, boolean outer,
+        Optional<FirstFilledOperand.SemanticIndexKey> key)
         implements Calculation, ValueListOperand {
 
-    /** The marker lives on {@link #outer()}, the form the reader builds, so an authored read equals the one read back. */
+    /**
+     * The marker lives on {@link #outer()}, the form the reader builds, so an authored read equals the one read back.
+     * The optional key selects the row whose category is read ({@code [field -> Cat For "a"]}, KERNEL-FINDINGS KF568).
+     */
     public EnumCategoryAccess {
         outer |= field.correlated();
         field = field.marked(false);
+        java.util.Objects.requireNonNull(key, "key");
     }
 
-    /** A non-correlated category access. */
+    /** An unkeyed category access. */
+    public EnumCategoryAccess(FieldRef field, String category, boolean outer) {
+        this(field, category, outer, Optional.empty());
+    }
+
+    /** A non-correlated, unkeyed category access. */
     public EnumCategoryAccess(FieldRef field, String category) {
         this(field, category, false);
     }
@@ -41,19 +51,30 @@ public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
     /** The projection form {@code field -> Cat} — for diagnostics/F9; the renderer emits the bare quantifier form. */
     @Override
     public String renderedPath() {
-        return field.path() + " -> " + category;
+        return field.path() + " -> " + category + keySuffix();
     }
 
     /** A category projection is a distinct entity from a plain read of the same field, so the category
      *  belongs in the identity — the kernel compares {@code categoryName} too. */
     @Override
     public Optional<String> exactIdentity() {
-        return Optional.of((outer ? "$" : "") + field.path() + " -> " + category);
+        return Optional.of((outer ? "$" : "") + field.path() + " -> " + category + keySuffix());
     }
 
     @Override
     public String overlapModifier() {
-        return "Cat:" + category;
+        return "Cat:" + category + key.map(k -> switch (k) {
+            case FirstFilledOperand.LiteralIndex literal -> "For:\"" + literal.value() + "\"";
+            case FirstFilledOperand.FieldIndex fieldKey -> "For:" + fieldKey.field().renderedPath();
+        }).orElse("");
+    }
+
+    /** The key in the diagnostic form, which the identity keys on as A12 keys a read on its index. */
+    private String keySuffix() {
+        return key.map(k -> switch (k) {
+            case FirstFilledOperand.LiteralIndex literal -> " For \"" + literal.value() + "\"";
+            case FirstFilledOperand.FieldIndex fieldKey -> " For " + fieldKey.field().path();
+        }).orElse("");
     }
 
     /** The base field's path — a category projection references its underlying enum field. */

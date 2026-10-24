@@ -13758,6 +13758,8 @@ The filter rows are `CheckEntitySpecImpl.checkFilterCondition`'s chain in source
 
 Locked by `adapter.laws.CheckerEntitySpecModifierAgreementTest` (A12 and the checker per row) and `adapter.laws.FirstFilledDateLiteralComparisonDiffTest` (both strategies and the interpreter). The interpreter side is [IF403](INTERPRETER-FINDINGS.md#if403).
 
+*Extended 2026-10-24:* the keyed category takes a field key too, and its name follows the condition's quoting rule. `[Lines/Grade -> Tier For Pick] == "High"` is admitted beside the literal-keyed form, also under error field `Pick`, which the key alone references, and so is `FirstFilledValue(Lines/Grade -> Tier For "a", Status -> Tier)`. A category named `For` draws `MVK_UNEXPECTED_TOKEN` as `[Lines/Grade -> For For "a"]` and is admitted as `-> 'For'`, and `-> 'Tier'` is admitted beside `-> Tier`, so the quote is transparent there as in a message ([KF198](#kf198)). Locked by `dsl.KeyedCategoryTest`, the basis for DEV-API-GAPS DG137.
+
 ## §13 supplement — six field-declaration readings: the label family judges the default variant, labels count per declared locale, `sValue` is trimmed, `__attachment_meta` is a prefix, integer bounds are rounded, and boolean members bind as Jackson binds them (`checkConsistency`, 2026-10-14) <a id="kf569"></a>
 
 > Fold: pending — declaration-tier rules; each folds beside the finding it extends ([KF321](#kf321), [KF366](#kf366), [KF268](#kf268), [KF320](#kf320), [KF319](#kf319)).

@@ -99,7 +99,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
     }
 
     static FirstFilledOperand of(EnumCategoryAccess category) {
-        return of(category.field()).withCategory(category.category()).withOuter(category.outer());
+        FirstFilledOperand result = of(category.field()).withCategory(category.category()).withOuter(category.outer());
+        return category.key().map(result::withSemanticIndex).orElse(result);
     }
 
     static FirstFilledOperand of(IndexedFieldValue indexed) {

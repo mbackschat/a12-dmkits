@@ -251,7 +251,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case DateTimeLiteral dt -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
-            case EnumCategoryAccess c -> refs.projectedField(c.field().path().value(), c.outer());
+            case EnumCategoryAccess c -> collectCategory(c, refs);
             case CountAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case CurrentRepetition r -> refs.group(r.group().path().value(), r.outer());
@@ -355,6 +355,19 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         }
     }
 
+    /**
+     * A category read projects its field, and a field key is read as well: A12 matches a calculated field against
+     * the key as against the read (KF182), the same two halves {@link SemanticIndexFieldValue} projects.
+     */
+    private static void collectCategory(EnumCategoryAccess category, Refs refs) {
+        refs.projectedField(category.field().path().value(), category.outer());
+        category.key().ifPresent(key -> {
+            if (key instanceof FirstFilledOperand.FieldIndex fieldKey) {
+                refs.projectedField(fieldKey.field().path().value(), fieldKey.field().correlated());
+            }
+        });
+    }
+
     /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
      *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
      *  category projection in a value-list quantifier is collected too.
@@ -369,7 +382,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             return;
         }
         if (op instanceof EnumCategoryAccess category) {
-            refs.projectedField(op.fieldPath(), category.outer());
+            collectCategory(category, refs);
         } else if (op instanceof SemanticIndexValue indexed) {
             refs.projectedField(indexed.field().path().value(), indexed.field().correlated());
         } else if (op instanceof SemanticIndexFieldValue indexed) {

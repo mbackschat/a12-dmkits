@@ -9,8 +9,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess
+import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral
+import java.util.Optional
 
 /**
  * The leaf and operator shapes of a value expression — literals, the no-operand constants, arithmetic — as
@@ -30,6 +32,7 @@ internal class Expressions(private val mapping: Mapping) {
         is Expr.Const -> constant(node)
         is Expr.Arith -> arithmetic(node)
         is Expr.EnumCategory -> enumCategory(node)
+        is Expr.EntitySpec -> keyedCategory(node)
         is Expr.Star -> throw NoTypedOperationException(
             "a star in a scalar value slot: rulekit types the slot to a single field value, which is how it" +
                 " states MVK_NO_WILDCARDS_ALLOWED"
@@ -79,6 +82,24 @@ internal class Expressions(private val mapping: Mapping) {
     private fun enumCategory(node: Expr.EnumCategory): Calculation {
         val field = mapping.fieldRef(Expr.Field(node.path, node.outer))
         return EnumCategoryAccess(field, node.category, node.outer)
+    }
+
+    /**
+     * `[field -> Category For key]` — the category of a key-selected row, the one value-slot `entitySpec` rulekit
+     * has a shape for (KERNEL-FINDINGS KF568). Any other combination stays an unmapped construct.
+     */
+    private fun keyedCategory(node: Expr.EntitySpec): Calculation {
+        val source = node.source
+        val category = node.category
+        val index = node.semanticIndex
+        if (source !is Expr.Field || category == null || index == null) {
+            throw UnmappedConstructException("expression node EntitySpec")
+        }
+        val key = when (index) {
+            is Expr.EntityIndex.Literal -> FirstFilledOperand.LiteralIndex(index.value)
+            is Expr.EntityIndex.Field -> FirstFilledOperand.FieldIndex(mapping.fieldRef(Expr.Field(index.path, index.outer)))
+        }
+        return EnumCategoryAccess(mapping.fieldRef(source), category, source.outer, Optional.of(key))
     }
 
     private companion object {
