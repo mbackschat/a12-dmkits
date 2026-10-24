@@ -20,6 +20,7 @@ import io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef;
@@ -149,6 +150,14 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     /** A (possibly starred) group scope relative to this group — the group analogue of {@link #flatten(String)}. */
     public GroupListRef flattenGroup(String relativeStarPath) {
         return session.boundModel().flattenGroup(child(relativeStarPath));
+    }
+
+    /**
+     * A (possibly starred) group relative to this group as a {@code FirstFilledValue} operand, which visits the
+     * group's descendant fields in owner order (mirrors {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel#firstFilledGroup}).
+     */
+    public FirstFilledOperand firstFilledGroup(String relativeGroupPath) {
+        return session.boundModel().firstFilledGroup(child(relativeGroupPath));
     }
 
     // --- fluent structure edits (forward to the session; chain) --------------------------------------

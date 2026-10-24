@@ -163,6 +163,7 @@ public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.githu
   public io.github.mbackschat.a12.dm.edit.GroupEditor enumField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef enumOf(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledGroup(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef flatten(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef flattenGroup(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group(java.lang.String)

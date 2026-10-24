@@ -524,10 +524,10 @@ public final class Dsl {
     /**
      * Typed-handle form: each {@link DateRef} is read as a Date, whichever temporal kind declares its field.
      *
-     * <p>A handle is the proof: {@link BoundModel#date} admits a field by its kind or by its declared format, and
-     * A12 reads only the format, so a TIME field declared {@code dd.MM.yyyy} is a Date operand of
-     * {@code FirstFilledValue} (KERNEL-FINDINGS KF211, KF550; DEV-API-GAPS DG128). The field forms above keep
-     * typing an operand by its kind, so this overload widens nothing they refuse or admit.
+     * <p>A handle is the proof: {@link BoundModel#date} admits a field by its declared format alone, which is all
+     * A12 reads, so a TIME field declared {@code dd.MM.yyyy} is a Date operand of {@code FirstFilledValue}
+     * (KERNEL-FINDINGS KF211, KF550; DEV-API-GAPS DG128, DG132). A list or group operand carries its fields'
+     * declared class itself ({@link BoundModel#flatten}); a bare {@link FieldRef} carries only its kind.
      */
     public static DateExpr firstFilledDate(DateRef first, DateRef second, DateRef... rest) {
         return firstFilledDate(readAsDate(first), readAsDate(second),

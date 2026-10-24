@@ -55,12 +55,19 @@ class FirstFilledDateCrossKindTargetDiffTest {
                 .`when`(claim.date("Reported").after(Dsl.firstFilledDate(claim.date("TimeDot"), claim.date("Alternate"))))
                 .message(Dsl.en("The report follows the first known date.")).build()
         }
+        // A starred list and a group of TIME-kind cells declared as dates are Date operands, as A12 reads them
+        // (KF550; DEV-API-GAPS DG129).
+        claim.addComputation(claim.date("FirstSeen")) {
+            it.name("AssignFirstSeen").calc(Dsl.firstFilledDate(claim.flatten("Visits*/SeenOn")))
+                .message(Dsl.en("The first visit date.")).build()
+        }
+        claim.addComputation(claim.date("FirstNoted")) {
+            it.name("AssignFirstNoted").calc(Dsl.firstFilledDate(claim.firstFilledGroup("Review")))
+                .message(Dsl.en("The first review date.")).build()
+        }
         // Constants, whose literal text is the subject (KF222's cross-kind stores): a dotted date into a TIME field
-        // declared ISO and one declared dotted, and a clock into a DATE field declared as a clock. The starred list
-        // and the group of TIME-kind cells declared as dates are raw too: the typed surface refuses both, although
-        // A12 admits them (DEV-API-GAPS DG129).
-        listOf("ConstIso" to "\"05.03.2024\"", "ConstDot" to "\"05.03.2024\"", "ConstClock" to "\"12:30:00\"",
-            "FirstSeen" to "FirstFilledValue(Visits*/SeenOn)", "FirstNoted" to "FirstFilledValue(Review)")
+        // declared ISO and one declared dotted, and a clock into a DATE field declared as a clock.
+        listOf("ConstIso" to "\"05.03.2024\"", "ConstDot" to "\"05.03.2024\"", "ConstClock" to "\"12:30:00\"")
             .fold(session.toJson()) { json, (target, literal) ->
                 RuntimeLaws.withComputation(json, "/Claim", "Assign$target", "../$target", literal)
             }
@@ -93,6 +100,15 @@ class FirstFilledDateCrossKindTargetDiffTest {
         assertTrue(read is ReadComputation.Converted, "the chained Date selection reads typed, got: $read")
         val rule = adapter.read("/Claim/ReportedAfterFirst")
         assertTrue(rule is ReadResult.Converted, "the compared Date selection reads typed, got: $rule")
+    }
+
+    /** The starred list and the group of date-declared TIME cells read back typed, as they are authored (DG129). */
+    @Test
+    fun theListAndGroupSelectionsReadBackTyped() {
+        val adapter = KernelAdapter.ofJson(model)
+        val names = listOf("AssignFirstSeen", "AssignFirstNoted")
+        assertEquals(names.associateWith { true },
+            names.associateWith { adapter.readComputation("/Claim/$it") is ReadComputation.Converted })
     }
 
     /** A TIME-kind target declared as a date takes a Date selection, so it reads back typed like the DATE control. */

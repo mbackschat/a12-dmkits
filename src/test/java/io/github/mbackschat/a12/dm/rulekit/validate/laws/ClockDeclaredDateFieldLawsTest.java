@@ -1,5 +1,10 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -12,7 +17,9 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * <p>The rows use it as a date in the two ways a date handle offers, a date comparison and a date extraction, and
  * the controls use it as the time it is declared as, with a true DATE field taking the date rows' place. The same
  * holds for the two siblings the handle factories share their admission with: a TIME field declared as a date is
- * refused as a time, and a DATE_TIME field declared as a date is refused as a date-time.
+ * refused as a time, and a DATE_TIME field declared as a date is refused as a date-time. A starred list or a
+ * group of such fields is read the same way, so the operand typing of {@code BoundModel.flatten} and
+ * {@code firstFilledGroup} rests here too (DEV-API-GAPS DG129).
  */
 class ClockDeclaredDateFieldLawsTest {
 
@@ -69,6 +76,38 @@ class ClockDeclaredDateFieldLawsTest {
                 "AllFieldsFilled(ClockedAt, Opening) And [ClockedAt] == [Opening]");
         KernelLaws.acceptsModel(MODEL, "/Visit", "../ClockedAt",
                 "FieldFilled(ClockedAt) And HoursFromTime(ClockedAt) > 8");
+    }
+
+    /** A list or a group of clock-declared DATE fields, and its TIME-kind twin declared as a date (DG129). */
+    private static final String ROUNDS = DocumentModelDraft.named("visit-rounds").locale("en_US")
+            .rootGroup("Round", r -> r
+                    .dateField("Day", d -> d.format("yyyy-MM-dd"))
+                    .timeField("Opening", t -> t.format("HH:mm:ss"))
+                    .group("Stops", s -> s.repeatable(4).dateField("ArrivedAt", d -> d.format("HH:mm:ss")))
+                    .group("Pause", p -> p.dateField("BreakAt", d -> d.format("HH:mm:ss")))
+                    .group("Checks", c -> c.repeatable(4).timeField("CheckedOn", t -> t.format("yyyy-MM-dd")))
+                    .group("Audit", a -> a.timeField("AuditedOn", t -> t.format("yyyy-MM-dd"))))
+            .build().toJson();
+
+    @Test
+    void aListOrGroupOperandIsReadAsItsFieldsDeclaredClass() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("FirstFilledValue(Stops*/ArrivedAt) == [Day]", "MVK_INVALID_COMPARE_TO_DATE");
+        expected.put("FirstFilledValue(Pause) == [Day]", "MVK_INVALID_COMPARE_TO_DATE");
+        expected.put("FirstFilledValue(Stops*/ArrivedAt) == [Opening]", KernelLaws.ADMITTED);
+        expected.put("FirstFilledValue(Pause) == [Opening]", KernelLaws.ADMITTED);
+        // the TIME-kind twins declared as dates: refused as times, admitted as dates
+        expected.put("FirstFilledValue(Checks*/CheckedOn) == [Opening]", "MVK_INVALID_COMPARE_TO_DATE");
+        expected.put("FirstFilledValue(Audit) == [Opening]", "MVK_INVALID_COMPARE_TO_DATE");
+        expected.put("FirstFilledValue(Checks*/CheckedOn) == [Day]", KernelLaws.ADMITTED);
+        expected.put("FirstFilledValue(Audit) == [Day]", KernelLaws.ADMITTED);
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(condition -> {
+            String errorField = condition.substring(condition.lastIndexOf('[') + 1, condition.lastIndexOf(']'));
+            actual.put(condition, KernelLaws.verdictModel(ROUNDS, "/Round", "../" + errorField, condition));
+        });
+        assertEquals(expected, actual);
     }
 
     @Test

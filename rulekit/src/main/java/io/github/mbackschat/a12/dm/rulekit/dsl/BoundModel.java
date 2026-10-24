@@ -485,7 +485,7 @@ public final class BoundModel {
                 flattened.add(new GroupRef(EntityPath.of(groupPath), true));
             }
         }
-        return new FieldListRef(field(base.toString()), flattened);
+        return new FieldListRef(operandField(base.toString()), flattened);
     }
 
     /**
@@ -599,7 +599,20 @@ public final class BoundModel {
     }
 
     private List<FieldRef> firstFilledDescendants(GroupListRef scope) {
-        return descendantFields(scope.group()).map(FieldInfo::ref).toList();
+        return descendantFields(scope.group()).map(info -> operandField(info.path())).toList();
+    }
+
+    /**
+     * The field at {@code path} typed as the operand A12 reads it as: a temporal field by its declared class,
+     * since its declared format decides and its kind is never read (KERNEL-FINDINGS KF211, KF550). A list or a
+     * group has no handle to prove that class the way a {@link DateRef} does, so the operand carries it itself
+     * (DEV-API-GAPS DG129).
+     */
+    private FieldRef operandField(String path) {
+        FieldRef field = field(path);
+        ValueKind declared = fieldInfo(path).temporalClass();
+        return declared == field.kind() ? field
+                : new FieldRef(field.path(), declared, field.styleHint(), field.correlated(), field.repeatingAncestors());
     }
 
     /**
