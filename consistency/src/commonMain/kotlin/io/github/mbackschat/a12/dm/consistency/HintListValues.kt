@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /**
  * The values INSIDE a string type's hint list, against that type's own bounds and each other.

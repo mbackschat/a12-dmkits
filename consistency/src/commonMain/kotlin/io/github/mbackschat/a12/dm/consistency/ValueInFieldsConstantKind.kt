@@ -13,10 +13,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLitera
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Which field declarations each CONSTANT KIND of `NumberOfValueInFields` admits in its list.
