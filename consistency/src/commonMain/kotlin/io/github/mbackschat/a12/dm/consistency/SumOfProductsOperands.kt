@@ -124,6 +124,8 @@ private class ParallelOperand(
     val lowestUnstarred: Boolean,
     /** Whether the operand carries the `$` marker, which makes it a different operand from its unmarked twin. */
     val outerMarked: Boolean,
+    /** The category the operand projects onto, which keys it apart from its plain field ([KERNEL-FINDINGS KF613]). */
+    val category: String?,
     /** Whether the field is plainly not a number; a typedef or an unspecified type is not judged. */
     val notANumber: Boolean,
 )
@@ -157,7 +159,13 @@ private fun TrackedFactBase.readOperand(
         null
     }
     val captured = operand.capturedPath(conditionLanguage)
-    val written = selection?.reference ?: operand.base ?: captured ?: return null
+    // A12 asks this carrier no category gate and keys a categorized operand as its field ([KERNEL-FINDINGS KF613]).
+    val categorized = if (selection == null && operand.base == null && captured == null) {
+        operandSpec(operand, declaringGroup, element, inAFilterBody)?.takeIf { it.category != null }
+    } else {
+        null
+    }
+    val written = selection?.reference ?: operand.base ?: captured ?: categorized?.reference ?: return null
     val filters = operand.clauses.filter { it.keyword == filterKeyword }
     if (!keyed && (filters.size != operand.clauses.size || filters.any { it.text.contains('*') })) {
         return null
@@ -184,6 +192,7 @@ private fun TrackedFactBase.readOperand(
         repeats = levels.isNotEmpty(),
         lowestUnstarred = levels.lastOrNull()?.let { it !in starred } == true,
         outerMarked = captured != null,
+        category = categorized?.category,
         notANumber = effectiveFieldType(field) in PLAINLY_NON_NUMBER_TYPES,
     )
 }
@@ -197,7 +206,8 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     right.filtered || right.stars > 1 -> wildcardClassOf(right, left)
     // An identical starless pair is A12's `MVK_DUPLICATE_PARAM1`, which runs ahead of these gates; the marker
     // is part of an operand's identity, so a marked and an unmarked twin are two operands ([KERNEL-FINDINGS KF599]).
-    left.stars == 0 && right.stars == 0 && left.at == right.at && left.outerMarked == right.outerMarked -> null
+    left.stars == 0 && right.stars == 0 && left.at == right.at && left.outerMarked == right.outerMarked &&
+        left.category == right.category -> null
     !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
     left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
     left.notANumber || right.notANumber -> "MVK_NO_NUMBER"

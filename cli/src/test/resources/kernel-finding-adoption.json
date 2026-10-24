@@ -13569,6 +13569,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf613": {
+      "sha256": "e96967d6a81baaf430a9aa326491545a8abc8f267606411c5529e3b64f78aa49",
+      "task": "SS15",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the DateRange construct, one-kind value lists and a categorized product operand"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's DateRange construct, value-list kinds and categorized product operands"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's DateRange construct, value-list kinds and categorized product operands"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The recognizer reads the DateRange construct's endpoints as field specs and keeps a value list to its first member's kind; the operation reader types the construct as a range of its first date's components and refuses its endpoints as A12 does; the product pair keys a categorized operand as its field.",
+          "evidence": {
+            "the DateRange construct, one-kind value lists and a categorized product operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRangeConstructAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every construct, value-list and product row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's DateRange construct, value-list kinds and categorized product operands": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRangeConstructAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every construct, value-list and product row as pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -14846,3 +14846,24 @@ A claims book: root `Book` (`Title`, `Amount`, `Flag`), repeatable `Rows` (`RLab
 | `FieldValueIncludedInValueList(Flag, True)`, `(Flag, False)`, `(Title, "a", True)` → `MVK_UNEXPECTED_TOKEN` | a boolean constant is no value-list member: the list is parsed, not typed |
 
 *Locked by:* `adapter.laws.CheckerLedgerOperandGateAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+
+## §6 supplement — `DateRange(a, b)` takes two field specs and yields a range of the first date's components; a value list is one kind throughout; a product sum keys a categorized operand as its field (kernel `checkConsistency`, 2026-10-24) <a id="kf613"></a>
+
+> Fold: pending — beside [KF400](#kf400)'s date slot, which this construct does not use.
+
+An insurance policy: root `Policy` with text `Title`/`Holder`, numbers `Amount`/`Total`, dates `StartsOn` (`yyyy-MM-dd`), `EndsOn` (`dd.MM.yyyy`), `PolicyYear` (`yyyy`), the year-optional `Noted`, time `Clock`, stamp `Stamp`, ranges `Cover`/`Cover2` (`yyyy-MM-dd`) and `Season` (`yyyy`), the `MM-dd` fragment `Renewal`, enumeration `Tier` with category `Band`, a single group `Agent`, and repeatable `Claims` (`Qty`, date `Filed`, enumeration `Level` with category `Band`). Every rule reports on `Title`, guarded by `FieldFilled(Title) And …`. *Basis beyond the rows (source-read, kernel 30.8.1):* the grammar's `datumBereichKonstrukt` is `'DatumBereich' '(' entitySpec ',' entitySpec ')'`; `CheckDatumBereichKonstruktImpl` asks each endpoint in turn `checkIsField`, `checkNoWildCards`, then `isDate` and not partially known with a date and no time specification, then `hasSameComponents(…, false)`, every date failure being `MVK_WRONG_DATE_FORMAT_FOR_OP`, and types the result by the first format. `wertListenSpezifier` is `entityListe | stringListe` and `wertListenSpezifier2` is `stringListe | numberListe | feldWertOpListe`.
+
+| condition → A12 | separates |
+|---|---|
+| `DateRange("2020-01-01", StartsOn)`, `DateRange(StartsOn, "01.01.2020")`, `DateRange(Date("01", "01", "2020"), EndsOn)` → `MVK_UNEXPECTED_TOKEN` | the construct takes field specs, not the date slot's constants or constructions |
+| `DateRange(StartsOn, EndsOn) == [Cover]`, `DateRange(PolicyYear, PolicyYear) == [Season]`, `DateRange(StartsOn, EndsOn) == DateRange(EndsOn, StartsOn)` → admitted | the result is a range of its dates' components, whatever their spelling |
+| `DateRange(StartsOn, EndsOn) == "2020-01-01/2020-02-01"`, either side, `== [Season]`, `== [Amount]` → `MVK_INVALID_COMPARE_TO_DATE_RANGE`; `== [StartsOn]` → `MVK_INVALID_COMPARE_TO_DATE` | it compares as a range, the date gate answering before the range gate |
+| `DateRange(StartsOn, x)` with `x` = `Title`, `Cover`, `Stamp`, `Noted`, `PolicyYear`, and `DateRange(Clock, StartsOn)` → `MVK_WRONG_DATE_FORMAT_FOR_OP` | a non-date, a range, a clock, a partially known date and a different component set all fail one gate |
+| `DateRange(Renewal, Renewal) == "2020-01-01/2020-02-01"` → `MVK_INVALID_COMPARE_TO_DATE_RANGE` | a fragment is a date here, so the construct is built and typed |
+| `DateRange(Agent, StartsOn)` → `MVK_NO_GROUPS_ALLOWED`; `DateRange(Claims, StartsOn)` → `MVK_NO_WILDCARD`; `DateRange(StartsOn, Claims*/Filed)` → `MVK_NO_WILDCARDS_ALLOWED` | a group, an unstarred repeatable group (the reference reader's, earlier) and a star |
+| `AtLeastOneDateRangeOverlaps(Cover In Cover2, "2020-01-01/2020-02-01")`; `FieldValueIncludedInValueList(Amount, 1, "a")`, `(Amount, 1, [Total])`, `(Amount, [Total], 1)`, `(Title, [Holder], "a")`, `(Title, "a", [Holder])` → `MVK_UNEXPECTED_TOKEN`; `(Amount, 1, -2)`, `(Title, [Holder])`, `AtLeastOneDateRangeOverlaps(Cover In Cover2)` → admitted | a value list keeps the kind of its first member |
+| `SumOfProducts(Tier -> Band, Total)`, `(Amount, Tier -> Band)`, `(Tier -> Band, Tier)` → `MVK_REPEATABLE_LEVEL_REQUIRED`; `SumOfProducts(Claims*/Level -> Band, Claims*/Qty)` → `MVK_NO_NUMBER` | the pair gates read a categorized operand as its field, and its category keeps it apart from that field |
+
+The same classes hold on a12-kernel-lean's K22 S2 rows `tp12`, `tp16`, `tp17`, `tp19`, `ta17` and `ta18`, replayed here through `rule check` on their model.
+
+*Locked by:* `adapter.laws.CheckerRangeConstructAgreementTest` (every row, A12 pinned and the checker naming the same classes).

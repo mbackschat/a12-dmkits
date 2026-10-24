@@ -300,6 +300,7 @@ internal class OperationAnalysis(
             // A12 hands a shift the type of the date it moves (`CheckDatumAddOpImpl`), so a comparison meets the
             // shifted date as that field ([KERNEL-FINDINGS KF606]).
             "AddDays", "AddMonths", "AddYears", "AddHours", "AddMinutes", "AddSeconds" -> shifted(shape.call)
+            "DateRange" -> constructedRange(shape)
             "StartOfDateRange", "EndOfDateRange" ->
                 if (shape.call.operands.singleOrNull()?.let { facts.isBaseYearConstant(shape.call.textOf(it)) } == true)
                     UNKNOWN.copy(baseYear = BaseYearRole.ENDPOINT) else UNKNOWN
@@ -321,6 +322,51 @@ internal class OperationAnalysis(
         } else {
             null
         }
+
+    /**
+     * The range `DateRange(a, b)` builds, or its refusal.
+     *
+     * A12 reads each endpoint in turn as one unstarred field (`datumBereichKonstrukt` takes two field specs) that
+     * must be a fully known date or fragment naming a calendar and no clock, then asks the two for exactly the
+     * same components, with no base-year allowance, and types the range by the first
+     * (`CheckDatumBereichKonstruktImpl`; [KERNEL-FINDINGS KF613]). A keyed or categorized endpoint and a type this
+     * reader cannot know are left unjudged.
+     */
+    private fun constructedRange(shape: OperationShape.Call): OperationValue = with(facts) {
+        val endpoints = shape.call.operands.map { tokens ->
+            val reference = operandReferenceIn(shape.call.textOf(tokens), group, element,
+                shape.call.inAFilterBody(conditionLanguage)) {
+                operandOf(tokens, conditionLanguage, text).path?.let { OperandReference(it) }
+            } ?: return UNKNOWN
+            if (reference.indexSelected || reference.category != null) return UNKNOWN
+            val resolved = resolveEntity(group, reference.reference.replace("*", ""), element.origin)
+                as? Reference.Resolved ?: return UNKNOWN
+            val endpoint = declarationAt(resolved.path) ?: return UNKNOWN
+            when {
+                endpoint.declaredKind == DeclaredKind.GROUP -> return refuse("MVK_NO_GROUPS_ALLOWED", shape,
+                    "`${endpoint.path}` is a group, and a range is built from two date fields")
+                endpoint.declaredKind != DeclaredKind.FIELD -> return UNKNOWN
+                '*' in reference.reference -> return refuse("MVK_NO_WILDCARDS_ALLOWED", shape,
+                    "`${reference.reference}` reads across a repetition, and a range endpoint is one value")
+                else -> endpoint
+            }
+        }
+        if (endpoints.size != 2) return UNKNOWN
+        val components = endpoints.map { endpoint ->
+            val type = effectiveFieldType(endpoint)
+            val date = field(endpoint).temporal
+            when {
+                type in PLAINLY_NON_DATE_TYPES || type == FieldType.TIME || type == FieldType.DATE_TIME -> null
+                type != FieldType.DATE && type != FieldType.DATE_FRAGMENT || date == null -> return UNKNOWN
+                date.partial || !namesADate(date.components) || namesATime(date.components) -> null
+                else -> date.components
+            } ?: return refuse("MVK_WRONG_DATE_FORMAT_FOR_OP", shape,
+                "`${endpoint.path}` is no fully known calendar date, and a range is built from two of them")
+        }
+        if (components[0] != components[1]) return refuse("MVK_WRONG_DATE_FORMAT_FOR_OP", shape,
+            "`${endpoints[0].path}` and `${endpoints[1].path}` name different date components, and a range needs one set")
+        OperationValue(OperationType.Range(components[0]))
+    }
 
     /** The date [call] shifts, typed as its declared field, where A12 admits the shift and this reader judges it. */
     private fun shifted(call: CallShape): OperationValue = with(facts) {

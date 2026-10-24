@@ -317,19 +317,24 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             }
             var position = 0
             var values = false
-            var valueKind: TokenKind? = null
+            var listKind: ValueKind? = null
+            // A value list is one kind throughout: the grammar offers a string list, a number list, a list of
+            // field reads or an entity list as separate alternatives (`wertListenSpezifier`,
+            // `wertListenSpezifier2`), so a member of another kind is a parse error ([KERNEL-FINDINGS KF613]).
             fun value() {
-                val token = peek()
-                if (valueKind == TokenKind.STRING) {
-                    if (token?.kind != TokenKind.STRING) fail(SyntaxFailureKind.MATCH)
-                    take()
-                } else {
-                    valueKind = token?.kind
-                    when {
-                        token?.kind == TokenKind.STRING -> take()
-                        id in MEMBERSHIP -> if (isText("[")) primary() else number()
-                        else -> entity()
-                    }
+                val kind = when {
+                    peek()?.kind == TokenKind.STRING -> ValueKind.TEXT
+                    id !in MEMBERSHIP -> ValueKind.ENTITY
+                    isText("[") -> ValueKind.READ
+                    else -> ValueKind.NUMBER
+                }
+                if (listKind != null && kind != listKind) fail(SyntaxFailureKind.MATCH)
+                listKind = kind
+                when (kind) {
+                    ValueKind.TEXT -> take()
+                    ValueKind.ENTITY -> entity()
+                    ValueKind.READ -> primary()
+                    ValueKind.NUMBER -> number()
                 }
             }
             do {
@@ -528,6 +533,9 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */
     private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, COMPONENT, STRING }
 
+    /** The one kind a value list holds. */
+    private enum class ValueKind { TEXT, NUMBER, READ, ENTITY }
+
     private companion object {
         val CONNECTIVES = setOf("And", "AND", "and", "Or", "OR", "or", "Und", "UND", "und", "Oder", "ODER", "oder")
         val COMPARISONS = setOf("==", "!=", "<", ">", "<=", ">=")
@@ -556,8 +564,10 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             for (id in listOf("Length", "AbsValue", "FieldValueAsNumber", "FieldValueAsString", "CurrentRepetition"))
                 put(id, listOf(Slot.ENTITY))
             for (id in listOf("StartOfDateRange", "EndOfDateRange")) put(id, listOf(Slot.RANGE))
+            // The range construct takes two field specs, not the date slot (`datumBereichKonstrukt`, KF613).
+            put("DateRange", listOf(Slot.ENTITY, Slot.ENTITY))
             for (id in listOf("DifferenceInDays", "DifferenceInMonths", "DifferenceInYears", "DifferenceInHours",
-                    "DifferenceInMinutes", "DifferenceInSeconds", "DateTime", "DateRange"))
+                    "DifferenceInMinutes", "DifferenceInSeconds", "DateTime"))
                 put(id, listOf(Slot.DATE, Slot.DATE))
             for (id in listOf("YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate", "HoursFromTime",
                     "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime"))
