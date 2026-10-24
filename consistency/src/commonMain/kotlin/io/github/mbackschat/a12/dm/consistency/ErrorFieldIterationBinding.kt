@@ -85,9 +85,9 @@ private fun TrackedFactBase.parallelBindingFindings(
 ): List<Finding>? {
     if (naming.all { (it.target as Reference.Resolved).path.isRootPath() }) return null
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val targetGroup = target.substringBeforeLast('/')
+    val anchor = anchorOf(target) ?: return null
     val marks = iterating.keys.associateWith { reference ->
-        markedLevelsOf(reference.written, declaringGroup, targetGroup, element) ?: return null
+        markedLevelsOf(reference.written, declaringGroup, anchor, element) ?: return null
     }
     val joint = iterating.entries.firstOrNull { (reference, iterated) ->
         iterated.any { it !in levels && it in marks.getValue(reference).joint }

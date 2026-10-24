@@ -51,18 +51,18 @@ internal fun TrackedFactBase.filteredOperandContributions(
 ): List<ConditionFinding> {
     if (execution == null) return emptyList()
     val group = element.path.substringBeforeLast('/')
-    val targetGroup = iterationScopeOf(element.declaredReference(), group)
+    val anchor = iterationScopeOf(element.declaredReference(), group)
     return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().flatMap { entry ->
         val kindSpan = execution.carrier.semanticSpan(entry.start, entry.end) ?: return@flatMap emptyList()
         val entity = execution.entitiesByStart[entry.start]
         val span = entity?.let { execution.carrier.semanticSpan(it.start, it.end) } ?: kindSpan
         val spec = FilteredSpec(normalizedPath(entry.path), entry.indexed, entry.indexKey, kindSpan, span)
         buildList {
-            specFinding(spec, group, targetGroup, element, kindSpan.member, beforeBody = true)?.let {
+            specFinding(spec, group, anchor, element, kindSpan.member, beforeBody = true)?.let {
                 add(ConditionFinding(element.key, entry, it))
             }
             if (entity != null) {
-                specFinding(spec, group, targetGroup, element, span.member, beforeBody = false)?.let {
+                specFinding(spec, group, anchor, element, span.member, beforeBody = false)?.let {
                     add(ConditionFinding(element.key, EntityCheckSite(entity, EntityCheck.FILTER), it))
                 }
             }
@@ -87,25 +87,26 @@ private class FilteredSpec(
 )
 
 /**
- * The group whose repetitions the declaration's target is addressed by, when this reader may use it.
+ * Where the declaration's target is addressed from ([TargetAnchor]), when this reader may use it.
  *
- * Null wherever the iteration walk is not this declaration's to run: a target that is not a FIELD, and one
+ * Null wherever the iteration walk is not this declaration's to run: a target that is neither a field nor a
+ * group, and one
  * outside the declaring group, where `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers at the top of the same
  * method and no later gate is reached. Null makes the wildcard gate below silent, which is the safe
  * direction: it can only under-report a class A12 states.
  */
-internal fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
+internal fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): TargetAnchor? {
     val target = (declared?.target as? Reference.Resolved)?.path ?: return null
     if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) {
         return null
     }
-    return groupOfTargetField(target)
+    return anchorOf(target)
 }
 
 private fun TrackedFactBase.specFinding(
     spec: FilteredSpec,
     declaringGroup: String,
-    targetGroup: String?,
+    anchor: TargetAnchor?,
     element: TrackedDeclaration,
     member: String,
     beforeBody: Boolean,
@@ -148,7 +149,7 @@ private fun TrackedFactBase.specFinding(
     // gate is only reached where that walk has nothing to say — the condition measured on all three
     // iteration carriers rather than read off the chain's written order. An index addresses one row, so an
     // indexed spec leaves that walk nothing to say (measured on the string-key row).
-    if (targetGroup == null || (!spec.indexed && levelClassOf(path, declaringGroup, targetGroup, element) != null)) {
+    if (anchor == null || (!spec.indexed && levelClassOf(path, declaringGroup, anchor, element) != null)) {
         return null
     }
     val repair = if (spec.key) {

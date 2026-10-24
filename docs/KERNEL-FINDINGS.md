@@ -14780,3 +14780,19 @@ Measured on this one carrier: a group target whose key, `SlotNo`, differs from t
 The constant rows refute three rivals: exact decimal rounding then narrowing (the `…001` count would be one and refuse), a saturating `int` cast (`…001` would be `Integer.MAX_VALUE` and admit), and a plain `floor(x + 0.5)` on the double (`0.49999999999999994` would round to one). The `$` rows refute both "it iterates as an outside reference does" (the first would be admitted) and "the filter is ignored" (the second and third would have no level to judge). The product-sum rows refute "an amount" through `!= 5` and "a count" through `< 5`.
 
 *Locked by:* `adapter.laws.CheckerIterationGuardAgreementTest` (every row above and its siblings, A12 pinned and the checker agreeing); `consistency.IterationGuardTest` (the constant conversion on the JVM and on Node, including a 21-digit constant just past a double midpoint).
+
+## §9 supplement — a GROUP error target's scope is the group, its parallel index chain is its parent's (kernel `checkConsistency`, 2026-10-24) <a id="kf609"></a>
+
+> Fold: pending — beside [KF371](#kf371)'s operand-scope walk.
+
+A12 reads two different paths off a group error target. The order of [KF608](#kf608): `Lines` (keyed `LineNo`) holds unkeyed `Parts` (with `Tags`, keyed `TagNo`) and `Slots` (keyed `SlotNo`); `Picks` is keyed `LineNo`, `Gifts` keyed `GiftNo` with a single `Card`, and `Wraps` repeats unkeyed with `Bows` keyed `BowNo`. Each row is one rule at `/Order`. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckEntityUtils.checkParallelIteration` resolves the target's index field from `EntityUtils.getParentGroup(errorEntity)`, while `EntityUtils.isGroupAboveOrEqualErrorEntityPath` and `isGroupBelowErrorEntityPath` take a group target's own path.
+
+| target | condition → A12 | separates |
+|---|---|---|
+| `Lines` | `NoFieldFilled(Lines/Sku, Picks/Ref)` → `MVK_ERROR_FIELD_NO_INDEX`; `GroupFilled(Lines) And FieldFilled(Picks/Ref)` → the same | the parent `Order` keys nothing, against "the group's own chain", which finds `LineNo` and admits |
+| `Wraps/Bows` | `FieldFilled(Picks/Ref) And GroupFilled(Wraps/Bows)` → `MVK_ERROR_FIELD_NO_INDEX` | the group's own `BowNo` is not read |
+| `Gifts/Card` | `FieldFilled(Picks/Ref) And GroupFilled(Gifts/Card)` → `MVK_ERROR_FIELD_INVALID_INDEX` | the parent's `GiftNo` is read |
+| `Lines/Slots` | `GroupNotFilled(Lines/Slots) And FieldFilled(Picks/Ref)` → admitted; its `Or` twin → `MVK_PARALLEL_ITERATION_INVALID` | the parent `Lines` joins `Picks` on `LineNo`; on the group's own chain `SlotNo` would sit beside it and draw `MVK_MULTIPLE_INDEX_FIELDS` |
+| `Lines` | `FieldFilled(Lines/Parts/PartNo) And GroupFilled(Lines)` → `MVK_NO_WILDCARD`; `GroupFilled(Lines) And FieldFilled(Picks/Ref For Lines/LineNo)` → admitted | the scope is the group itself, against "a field of its parent", which addresses no `Lines` row |
+
+*Locked by:* `adapter.laws.CheckerGroupErrorTargetAgreementTest` (these rows and their siblings, A12 pinned and the checker naming the same classes).

@@ -42,10 +42,10 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
     val uses = semanticIndexUsesIn(execution.carrier.text, conditionLanguage, keyword).associateBy { it.keywordAt }
     val group = element.path.substringBeforeLast('/')
-    val targetGroup = (element.declaredReference()?.target as? Reference.Resolved)?.path?.substringBeforeLast('/')
+    val anchor = (element.declaredReference()?.target as? Reference.Resolved)?.path?.let { anchorOf(it) }
     val iteration = entityContributions(element, EntityCheck.ADDRESS, execution) { entity, span ->
         if (!entity.indexKey) return@entityContributions null
-        keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, targetGroup,
+        keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, anchor,
             element, span.member, entity.inFilter, span)
     }
     val bodies = filterBodiesIn(execution.carrier.text, conditionLanguage)
@@ -55,7 +55,7 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
         val key = use.keyPath ?: return@mapNotNull null
         val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
         val inABody = bodies.any { it.encloses(use.keywordAt, use.keywordAt + 1) }
-        keyFieldFinding(key, group, element, span.member, span, inABody, targetGroup)?.let { ConditionFinding(element.key, site, it) }
+        keyFieldFinding(key, group, element, span.member, span, inABody, anchor)?.let { ConditionFinding(element.key, site, it) }
     }
     return iteration + fields
 }
@@ -63,7 +63,7 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
 private fun TrackedFactBase.keyIterationFinding(
     key: String,
     group: String,
-    targetGroup: String?,
+    anchor: TargetAnchor?,
     element: TrackedDeclaration,
     member: String,
     insideAFilter: Boolean,
@@ -74,12 +74,13 @@ private fun TrackedFactBase.keyIterationFinding(
     if ('*' in key) {
         return null
     }
-    if (insideAFilter || targetGroup == null) return null
+    if (insideAFilter || anchor == null) return null
+    val targetGroup = anchor.scope
     // Containment answers first on an iterating key (SelectedContainmentAgreementTest, KF488).
-    if (targetGroup != group && !targetGroup.startsWith("$group/")) return null
+    if (!targetGroup.isAtOrBelow(group)) return null
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
     val addressClass = if (declarationAt(resolved.path)?.declaredKind == DeclaredKind.FIELD) {
-        levelClassOf(key, group, targetGroup, element)
+        levelClassOf(key, group, anchor, element)
     } else {
         iteratedBelow(resolved.path, targetGroup)?.let { "MVK_NO_WILDCARD" }
     } ?: return null
@@ -101,20 +102,20 @@ private fun TrackedFactBase.keyIterationFinding(
 
 /**
  * The key-kind class of a key naming a group. Outside a `Having` body, a repeating group the error target's
- * [targetGroup] does not bind to one row is read as iterating, which asks the iteration question first; a bound one,
+ * [anchor] does not bind to one row is read as iterating, which asks the iteration question first; a bound one,
  * and any group inside a body, where no iteration question is asked, draws the class
  * ([KERNEL-FINDINGS KF605], `rulekit.validate.laws.SemanticIndexInFilterLawsTest`,
  * `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
  */
 private fun TrackedFactBase.keyFieldFinding(
     key: String, group: String, element: TrackedDeclaration, member: String, span: TextSpan, inABody: Boolean,
-    targetGroup: String?,
+    anchor: TargetAnchor?,
 ): Finding? {
     if ('*' in key) return null
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
     val named = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
-    if (!inABody && repeatsAnywhereOnThePathTo(named.path) && (targetGroup == null || !readsOneRow(named.path, targetGroup))) {
+    if (!inABody && repeatsAnywhereOnThePathTo(named.path) && (anchor == null || !readsOneRow(named.path, anchor))) {
         return null
     }
     return Finding(

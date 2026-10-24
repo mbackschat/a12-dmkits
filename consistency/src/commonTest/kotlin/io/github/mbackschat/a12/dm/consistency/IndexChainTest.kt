@@ -54,7 +54,7 @@ class IndexChainTest {
     private fun PreparedModel.levelClass(): String? {
         val tracked = tracked()
         return tracked.levelClassOf(
-            "Charges/Amount", "/Claim", "/Claim/Items",
+            "Charges/Amount", "/Claim", TargetAnchor("/Claim/Items", "/Claim/Items"),
             tracked.declarations().single { it.path == "/Claim/ItemCovered" })
     }
 

@@ -67,7 +67,7 @@ internal fun TrackedFactBase.filteredEntityContributions(
 internal fun TrackedFactBase.filteredEntityIterationFindings(element: TrackedDeclaration): List<Finding> {
     val rule = parallelRuleOf(element) ?: return emptyList()
     return listOfNotNull(conditionTexts(element.kind, rule.body).firstNotNullOfOrNull { (member, text) ->
-        markedFilteredOperand(text, member, rule.declaringGroup, rule.targetGroup, element, rule.filterKeyword,
+        markedFilteredOperand(text, member, rule.declaringGroup, rule.anchor, element, rule.filterKeyword,
             rule.indexKeyword, rule.uniqueness)?.let { operand ->
             filteredEntityFinding(operand, rule.filterKeyword, rule.target, element, member)
         }
@@ -103,7 +103,7 @@ internal fun TrackedFactBase.filterBodyParallelContributions(
 private class ParallelRule(
     val body: kotlinx.serialization.json.JsonObject,
     val target: String,
-    val targetGroup: String,
+    val anchor: TargetAnchor,
     val declaringGroup: String,
     val filterKeyword: String,
     val indexKeyword: String?,
@@ -116,11 +116,11 @@ private fun TrackedFactBase.parallelRuleOf(element: TrackedDeclaration): Paralle
     val filterKeyword = keywords[HAVING] ?: return null
     val body = element.body ?: return null
     val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return null
-    val targetGroup = groupOfTargetField(target) ?: return null
+    val anchor = anchorOf(target) ?: return null
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     // KF372: an error field outside its declaring group is refused during the parse.
     if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) return null
-    return ParallelRule(body, target, targetGroup, declaringGroup, filterKeyword, keywords[SEMANTIC_INDEX],
+    return ParallelRule(body, target, anchor, declaringGroup, filterKeyword, keywords[SEMANTIC_INDEX],
         keywords[REPETITION_NOT_UNIQUE])
 }
 
@@ -139,10 +139,10 @@ private fun TrackedFactBase.markedBodyRead(
     if (bodies.isEmpty() || rule.indexKeyword != null && bodies.any { rule.indexKeyword in it.text }) return null
     val parallel = referencesIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)
         .filterNot { isRuleContext(it, conditionLanguage) }
-        .any { markedLevelsOf(it, rule.declaringGroup, rule.targetGroup, element)?.joint?.isNotEmpty() == true }
+        .any { markedLevelsOf(it, rule.declaringGroup, rule.anchor, element)?.joint?.isNotEmpty() == true }
     if (!parallel) return null
     return bodies.flatMap { markedReferenceSpansIn(it.text) }.map { it.written }.firstOrNull { read ->
-        markedLevelsOf(read, rule.declaringGroup, rule.targetGroup, element)?.marked?.isNotEmpty() == true
+        markedLevelsOf(read, rule.declaringGroup, rule.anchor, element)?.marked?.isNotEmpty() == true
     }
 }
 
@@ -151,7 +151,7 @@ private fun TrackedFactBase.markedFilteredOperand(
     text: String,
     member: String,
     declaringGroup: String,
-    targetGroup: String,
+    anchor: TargetAnchor,
     element: TrackedDeclaration,
     filterKeyword: String,
     indexKeyword: String?,
@@ -181,7 +181,7 @@ private fun TrackedFactBase.markedFilteredOperand(
     ) {
         return null
     }
-    if (!parallelIterates(text, filtered, filterKeyword, declaringGroup, targetGroup, element)) {
+    if (!parallelIterates(text, filtered, filterKeyword, declaringGroup, anchor, element)) {
         return null
     }
     // The filtered ENTITY is the operand only where the filter is its own: one written after an index key
@@ -189,7 +189,7 @@ private fun TrackedFactBase.markedFilteredOperand(
     return filtered.firstOrNull { operand ->
         val written = operand.base ?: return@firstOrNull false
         operand.clauses.any { it.keyword == filterKeyword && it.filtersKey == null } &&
-            markedLevelsOf(written, declaringGroup, targetGroup, element)?.marked?.isNotEmpty() == true
+            markedLevelsOf(written, declaringGroup, anchor, element)?.marked?.isNotEmpty() == true
     }?.base
 }
 
@@ -206,7 +206,7 @@ private fun TrackedFactBase.parallelIterates(
     filtered: List<CallOperand>,
     filterKeyword: String,
     declaringGroup: String,
-    targetGroup: String,
+    anchor: TargetAnchor,
     element: TrackedDeclaration,
 ): Boolean {
     val insideFilters = filtered
@@ -215,7 +215,7 @@ private fun TrackedFactBase.parallelIterates(
         .toSet()
     return referencesIn(text, conditionLanguage)
         .filterNot { it in insideFilters || isRuleContext(it, conditionLanguage) }
-        .any { markedLevelsOf(it, declaringGroup, targetGroup, element)?.joint?.isNotEmpty() == true }
+        .any { markedLevelsOf(it, declaringGroup, anchor, element)?.joint?.isNotEmpty() == true }
 }
 
 /**
@@ -233,7 +233,7 @@ internal data class MarkedLevels(val joint: List<String>, val marked: List<Strin
 internal fun TrackedFactBase.markedLevelsOf(
     written: String,
     declaringGroup: String,
-    targetGroup: String,
+    anchor: TargetAnchor,
     element: TrackedDeclaration,
 ): MarkedLevels? {
     val bare = written.replace("*", "")
@@ -249,10 +249,10 @@ internal fun TrackedFactBase.markedLevelsOf(
         }
         when {
             wildcardSeen -> return null
-            level.path.startsWith("$targetGroup/") -> return null
-            targetGroup == level.path || targetGroup.startsWith("${level.path}/") ->
+            level.path.startsWith("${anchor.scope}/") -> return null
+            anchor.scope.isAtOrBelow(level.path) ->
                 indexFieldNameOf(level)?.let { onTargetPath += level.path }
-            parallelVerdictOf(level, targetGroup) == ParallelVerdict.Joint -> joint += level.path
+            parallelVerdictOf(level, anchor) == ParallelVerdict.Joint -> joint += level.path
             else -> return null
         }
     }

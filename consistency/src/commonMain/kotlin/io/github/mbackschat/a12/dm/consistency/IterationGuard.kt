@@ -405,13 +405,11 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
         ?.takeIf { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET } ?: return null
     val target = (declared.target as? Reference.Resolved)?.path ?: return null
     // A group error target is judged as a field one is, at the levels its references iterate (rows `g01`–`g06`,
-    // `y1`–`y9`, `t0`–`t8`, `f1`, `f5a`–`f5f`), in parallel too (rows `q1`–`q3` and `q8`–`q12` of
-    // `adapter.laws.CheckerIterationGuardAgreementTest`).
-    val targetKind = declarationAt(target)?.declaredKind
-    if (targetKind != DeclaredKind.FIELD && targetKind != DeclaredKind.GROUP) return null
+    // `y1`–`y9`, `t0`–`t8`, `f1`, `f5a`–`f5f` of `adapter.laws.CheckerIterationK04AgreementTest`), in parallel
+    // against its parent's index chain (rows `g2`, `g2b` of `adapter.laws.CheckerGroupErrorTargetAgreementTest`).
+    val anchor = anchorOf(target) ?: return null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val bodies = recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().map { it.entry.end until it.end }
-    val targetGroup = if (targetKind == DeclaredKind.GROUP) target else target.substringBeforeLast('/')
     val references = mutableListOf<GuardReference>()
     val outer = mutableListOf<GuardReference>()
     // Each reference's levels beside the levels A12's pass marks on them, a field key's included.
@@ -428,7 +426,7 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
             continue
         }
         if (inBody) continue
-        val levels = markedLevelsOf(written, group, targetGroup, element)
+        val levels = markedLevelsOf(written, group, anchor, element)
         // A field key is recognized ahead of the selection it keys, and joins that selection rather than
         // standing as a reference of its own.
         if (entity.indexKey) {

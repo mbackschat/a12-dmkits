@@ -13281,6 +13281,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf609": {
+      "sha256": "f223311d7ca1cf78e434420a1f256f94ecd8f9482abff42c61bef2b084d608bf",
+      "task": "DG157",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a group error target's scope and parallel index chain in every family reading the target's anchor"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's reading of a group error target's scope and parallel index chain"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's reading of a group error target's scope and parallel index chain"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "TargetAnchor carries a group target's own path as the scope and its parent as the start of the index chain, and every family that read the target's group now reads the anchor.",
+          "evidence": {
+            "a group error target's scope and parallel index chain in every family reading the target's anchor": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupErrorTargetAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every group-target row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row of the order model.",
+          "evidence": {
+            "A12's reading of a group error target's scope and parallel index chain": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupErrorTargetAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every row as the finding's table states."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

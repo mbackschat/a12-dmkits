@@ -434,14 +434,14 @@ internal fun TrackedFactBase.unstarredRepeatableLevels(
  * because `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers ahead of the walk ([operandScopeContributions]).
  */
 internal fun TrackedFactBase.iteratesJointly(level: String, element: TrackedDeclaration): Boolean {
-    val targetGroup = iterationGroupOf(element) ?: return false
+    val anchor = iterationAnchorOf(element) ?: return false
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val parallel = !targetGroup.isAtOrBelow(level) && !level.isAtOrBelow(targetGroup)
-    if (!parallel || !targetGroup.isAtOrBelow(declaringGroup)) {
+    val parallel = !anchor.scope.isAtOrBelow(level) && !level.isAtOrBelow(anchor.scope)
+    if (!parallel || !anchor.scope.isAtOrBelow(declaringGroup)) {
         return false
     }
     val declared = declarationAt(level) ?: return false
-    return parallelVerdictOf(declared, targetGroup) == ParallelVerdict.Joint
+    return parallelVerdictOf(declared, anchor) == ParallelVerdict.Joint
 }
 
 internal fun String.isAtOrBelow(ancestor: String): Boolean = this == ancestor || startsWith("$ancestor/")

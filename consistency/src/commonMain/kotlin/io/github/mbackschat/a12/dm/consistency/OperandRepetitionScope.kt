@@ -76,14 +76,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  */
 internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return emptyList()
-    val targetGroup = groupOfTargetField(target) ?: return emptyList()
+    val anchor = anchorOf(target) ?: return emptyList()
     val group = element.path.substringBeforeLast('/')
     if (!(target == group || target.startsWith("$group/"))) return emptyList()
     return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
         if (entity.indexKey || entity.inFilter && entity.path.first().text != "$") return@entityContributions null
         val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
         if (isRuleContext(written, conditionLanguage)) return@entityContributions null
-        levelClassOf(written, group, targetGroup, element, entity.filtered, entity.indexed)
+        levelClassOf(written, group, anchor, element, entity.filtered, entity.indexed)
             ?.let { scopeFinding(it, written, target, element, span) }
     }
 }
@@ -167,7 +167,7 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
         it.declaredAt == element.path &&
             (it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET)
     }?.target as? Reference.Resolved ?: return false
-    val targetGroup = groupOfTargetField(target.path) ?: return false
+    val anchor = anchorOf(target.path) ?: return false
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val contained = target.path == declaringGroup || target.path.startsWith("$declaringGroup/")
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]
@@ -184,7 +184,7 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
         val base = read.reference
         if (contained) {
             val filtered = operand.clauses.any { it.keyword in filter }
-            return@any levelClassOf(base, declaringGroup, targetGroup, element, filtered, isKeyed) != null
+            return@any levelClassOf(base, declaringGroup, anchor, element, filtered, isKeyed) != null
         }
         if (isKeyed) {
             return@any false
@@ -195,13 +195,27 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
     }
 }
 
-/** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
-internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
-    if (declarationAt(target)?.declaredKind == DeclaredKind.FIELD) {
-        target.substringBeforeLast('/', missingDelimiterValue = "")
-    } else {
-        null
+/**
+ * Where A12 addresses a rule's error entity — or a computation's computed field — from.
+ *
+ * Two paths, because A12 reads two: [scope] bounds which repetitions the target's coordinates address
+ * (`EntityUtils.isGroupAboveOrEqualErrorEntityPath` and `isGroupBelowErrorEntityPath`, which take a GROUP
+ * target's own path and a field's group), while [indexChainFrom] is where `checkParallelIteration` starts the
+ * index-field walk it matches a parallel level against (`getParentGroup(errorEntity)`, the PARENT of either
+ * kind). The two coincide for a field and part company for a group, whose own index field never joins a
+ * parallel level ([KERNEL-FINDINGS KF609], `adapter.laws.CheckerGroupErrorTargetAgreementTest`).
+ */
+internal data class TargetAnchor(val scope: String, val indexChainFrom: String)
+
+/** The [TargetAnchor] of [target], or null when it is neither a field nor a group. */
+internal fun TrackedFactBase.anchorOf(target: String): TargetAnchor? {
+    val parent = target.substringBeforeLast('/', missingDelimiterValue = "")
+    return when (declarationAt(target)?.declaredKind) {
+        DeclaredKind.FIELD -> TargetAnchor(parent, parent)
+        DeclaredKind.GROUP -> TargetAnchor(target, parent)
+        else -> null
     }
+}
 
 /**
  * The class ONE reference draws, walking the repeatable levels it crosses from the outermost inwards.
@@ -227,7 +241,7 @@ internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
 internal fun TrackedFactBase.levelClassOf(
     written: String,
     declaringGroup: String,
-    targetGroup: String,
+    anchor: TargetAnchor,
     element: TrackedDeclaration,
     filtered: Boolean = false,
     keyed: Boolean = false,
@@ -253,9 +267,9 @@ internal fun TrackedFactBase.levelClassOf(
             // A keyed level below a starred one was never measured, so the walk says nothing past it.
             level.path == pinned -> if (wildcardSeen) return null
             wildcardSeen -> return NO_WILDCARD
-            level.path.startsWith("$targetGroup/") -> return NO_WILDCARD
-            targetGroup == level.path || targetGroup.startsWith("${level.path}/") -> Unit
-            else -> when (val verdict = parallelVerdictOf(level, targetGroup)) {
+            level.path.startsWith("${anchor.scope}/") -> return NO_WILDCARD
+            anchor.scope.isAtOrBelow(level.path) -> Unit
+            else -> when (val verdict = parallelVerdictOf(level, anchor)) {
                 is ParallelVerdict.Refused -> return verdict.code.takeUnless { isGroup && it !in GROUP_PARALLEL_CLASSES }
                 ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
             }
@@ -266,15 +280,15 @@ internal fun TrackedFactBase.levelClassOf(
 
 /**
  * Whether an unstarred read of [path] addresses one row of every repetition it reaches, each one bound by
- * [targetGroup]'s own chain or iterated JOINTLY with it.
+ * [anchor]'s scope or iterated JOINTLY with it.
  *
  * Asked separately from [levelClassOf] because that answer's null covers a declined parallel level as well as
  * an admitted one, and only an admission says the read is one row ([ParallelVerdict.Unjudged]).
  */
-internal fun TrackedFactBase.readsOneRow(path: String, targetGroup: String): Boolean =
+internal fun TrackedFactBase.readsOneRow(path: String, anchor: TargetAnchor): Boolean =
     repetitionsReachedBy(path).all { level ->
-        targetGroup.isAtOrBelow(level.path) ||
-            !level.path.startsWith("$targetGroup/") && parallelVerdictOf(level, targetGroup) == ParallelVerdict.Joint
+        anchor.scope.isAtOrBelow(level.path) ||
+            !level.path.startsWith("${anchor.scope}/") && parallelVerdictOf(level, anchor) == ParallelVerdict.Joint
     }
 
 private const val NO_WILDCARD = "MVK_NO_WILDCARD"
@@ -311,7 +325,7 @@ internal sealed interface ParallelVerdict {
 }
 
 /**
- * Whether A12 iterates [level] jointly with [targetGroup]'s chain, and with what class if not.
+ * Whether A12 iterates [level] jointly with the chain [anchor] starts, and with what class if not.
  *
  * A12's route here is `checkParallelIteration`, which asks whether the two branches iterate JOINTLY: each
  * end must resolve to exactly one index field, and the two must agree. The gates are transcribed in source
@@ -320,7 +334,7 @@ internal sealed interface ParallelVerdict {
  */
 internal fun TrackedFactBase.parallelVerdictOf(
     level: TrackedDeclaration,
-    targetGroup: String,
+    anchor: TargetAnchor,
 ): ParallelVerdict {
     val operandIndexName = indexFieldNameOf(level) ?: return ParallelVerdict.Refused(NO_WILDCARD)
     val operandChain = keyedGroupsAtOrAbove(level.path)
@@ -331,7 +345,7 @@ internal fun TrackedFactBase.parallelVerdictOf(
     // that model shape is measured NOT BUILDABLE with no code at all (KF295) — so it cannot arrive here,
     // and silence is what a reader of a model that somehow carries it should get.
     val operandIndex = indexFieldAt(level.path, operandIndexName) ?: return ParallelVerdict.Unjudged
-    val targetChain = keyedGroupsAtOrAbove(targetGroup)
+    val targetChain = keyedGroupsAtOrAbove(anchor.indexChainFrom)
     if (targetChain.size > 1) {
         return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }

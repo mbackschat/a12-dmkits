@@ -239,8 +239,8 @@ private fun TrackedFactBase.keyVerdict(
     return when (anchoring) {
         KeyAnchoring.FILTER_BODY -> KeyVerdict.PLAIN
         KeyAnchoring.ERROR_TARGET -> {
-            val targetGroup = iterationScopeOf(element.declaredReference(), declaringGroup) ?: return KeyVerdict.UNJUDGEABLE
-            if (readsOneRow(resolved.path, targetGroup)) KeyVerdict.PLAIN else KeyVerdict.UNJUDGEABLE
+            val anchor = iterationScopeOf(element.declaredReference(), declaringGroup) ?: return KeyVerdict.UNJUDGEABLE
+            if (readsOneRow(resolved.path, anchor)) KeyVerdict.PLAIN else KeyVerdict.UNJUDGEABLE
         }
     }
 }

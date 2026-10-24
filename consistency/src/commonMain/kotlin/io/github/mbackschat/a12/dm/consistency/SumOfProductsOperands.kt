@@ -55,7 +55,7 @@ internal fun TrackedFactBase.sumOfProductsContributions(
     val operator = keywords[SUM_OF_PRODUCTS] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val targetGroup = iterationScopeOf(element.declaredReference(), group)
+    val targetGroup = iterationScopeOf(element.declaredReference(), group)?.scope
     return callContributions(element, execution) { member, call ->
         if (call.operator != operator) return@callContributions null
         groupOperandFinding(call.operands, group, element, call.inAFilterBody, member, call.spanIn(member))

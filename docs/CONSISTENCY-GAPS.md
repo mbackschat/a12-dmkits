@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG157 — a group error target beside a parallel iteration (opened 2026-10-24).** The operand-scope family judges only a field error target, so a rule at `/Order` reporting on the group `Lines`, keyed by `LineNo`, under `NoFieldFilled(Lines/Sku, Picks/Ref)` reads clean where A12 answers `MVK_ERROR_FIELD_NO_INDEX`; and the parallel chain read for a group target includes the group's own index, where A12 admits `GroupNotFilled(Lines/Slots) And FieldFilled(Picks/Ref)` on `Lines/Slots` (keyed by `SlotNo`) and refuses its `Or` twin with `MVK_PARALLEL_ITERATION_INVALID`. Measured on the order model of `CheckerIterationGuardAgreementTest` (2026-10-24), A12 reading the group's PARENT chain against the parallel level in every row. Settled by the operand-scope and guard rows in that differential.
+_None open._
 
 ## 2. Out of scope
 

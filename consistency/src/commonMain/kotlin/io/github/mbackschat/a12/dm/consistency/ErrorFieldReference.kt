@@ -110,12 +110,12 @@ private fun TrackedFactBase.iteratesPastTheTarget(
         return false
     }
     val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
-    val targetGroup = groupOfTargetField(target)
+    val anchor = anchorOf(target)
     return repeatableGroups().any { candidate ->
         resolved.startsWith("${candidate.path}/") &&
             (iterated == null || candidate.path in iterated) &&
             !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
-            !(targetGroup != null && parallelVerdictOf(candidate, targetGroup) == ParallelVerdict.Joint)
+            !(anchor != null && parallelVerdictOf(candidate, anchor) == ParallelVerdict.Joint)
     }
 }
 

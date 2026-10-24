@@ -97,7 +97,7 @@ private inline fun resolveRelativeIn(
 }
 
 /**
- * The group whose repetitions this declaration's own target is addressed by — the level it ITERATES.
+ * Where this declaration's own target is addressed from — its [TargetAnchor], whose scope is the level it ITERATES.
  *
  * A rule's iteration is set by where its error field sits, not by where the rule is declared, and the two
  * part company exactly when the error field reaches into a repeatable group below the declaring one. A
@@ -109,13 +109,17 @@ private inline fun resolveRelativeIn(
  * called from inside per-reference loops.
  *
  * @return null for a declaration that names no target, one that resolves to nothing, and one whose target is
- *   not a FIELD — in each case the caller falls back to the declaring group, which is what it asked before.
+ *   neither a field nor a group — in each case the caller falls back to the declaring group, which is what it
+ *   asked before.
  */
-internal fun TrackedFactBase.iterationGroupOf(element: TrackedDeclaration): String? {
+internal fun TrackedFactBase.iterationAnchorOf(element: TrackedDeclaration): TargetAnchor? {
     val relative = declaredTargetRelPathOf(element.kind, element.body) ?: return null
     val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null
-    return groupOfTargetField(target)
+    return anchorOf(target)
 }
+
+/** The level this declaration's own target ITERATES — its anchor's scope ([iterationAnchorOf]). */
+internal fun TrackedFactBase.iterationGroupOf(element: TrackedDeclaration): String? = iterationAnchorOf(element)?.scope
 
 /** The relative target path a rule or computation spells, or null for any other carrier. */
 private fun declaredTargetRelPathOf(kind: String, body: JsonObject?): String? {
