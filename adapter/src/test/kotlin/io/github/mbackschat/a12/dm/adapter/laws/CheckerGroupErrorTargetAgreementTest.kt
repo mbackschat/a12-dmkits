@@ -125,6 +125,10 @@ class CheckerGroupErrorTargetAgreementTest {
             // A key below the group's scope stays the index's own iteration class.
             "k3" to Row("Lines", "GroupFilled(Lines) And FieldFilled(Lines/Slots/Mark For Lines/Parts/PartNo)",
                 listOf("MVK_SEMANTIC_INDEX_INVALID_ITER")),
+            // A group key on the target's own level reads one row, so the key's kind answers, against "the parent's
+            // scope", which calls the key iterated below the target.
+            "k6" to Row("Lines/Slots", "GroupFilled(Lines/Slots) And FieldFilled(Lines/Slots/Mark For Lines/Slots)",
+                listOf("MVK_SEMANTIC_INDEX_NO_FIELD")),
         )
     }
 }
