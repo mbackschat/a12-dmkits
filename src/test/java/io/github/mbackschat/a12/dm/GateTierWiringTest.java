@@ -446,8 +446,9 @@ class GateTierWiringTest {
     void theKernelProbeAndItsLockShareTheAssertionFreeSetting() throws IOException {
         String build = Files.readString(locate("adapter/build.gradle"));
         for (String task : List.of("kernelProbe", "kernelProbeProductionAssertionsTest")) {
-            assertTrue(taskBlock(build, "tasks.register('" + task + "'").contains("enableAssertions = false"),
-                    task + " must declare enableAssertions = false");
+            String block = taskBlock(build, "tasks.register('" + task + "'");
+            assertTrue(block.contains("enableAssertions = false") && !block.contains("enableAssertions = true"),
+                    task + " must declare enableAssertions = false, and only that");
         }
     }
 
