@@ -50,7 +50,7 @@ internal fun TrackedFactBase.repetitionScopeContributions(element: TrackedDeclar
         if (call.operator != spelling || !repetitionKeyListIsSound(call, group, element)) return@callContributions null
         call.operands.firstNotNullOfOrNull { operand ->
             val scope = scopeTextOf(operand, scopeKeyword) ?: return@firstNotNullOfOrNull null
-            val read = categorySpecIn(scope.text, group, element) { scope.bare } ?: return@firstNotNullOfOrNull null
+            val read = categorySpecIn(scope.text, group, element, call.inAFilterBody) { scope.bare } ?: return@firstNotNullOfOrNull null
             scopeFinding(read, group, element, member, call.spanIn(member))
         }
     }

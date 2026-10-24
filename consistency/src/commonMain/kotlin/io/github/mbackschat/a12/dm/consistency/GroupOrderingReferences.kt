@@ -256,18 +256,18 @@ private fun TrackedFactBase.gateFinding(
 }
 
 /**
- * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`.
+ * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`, the
+ * declaration a type definition supplies included (KERNEL-FINDINGS KF602,
+ * `adapter.laws.CheckerTypeDefinedRawFieldAgreementTest`).
  *
  * The predicate keys on the STRING body carrying the flag, which is `FieldUtils.isNoValueValidation`'s own
  * shape — it reads the flag only after `isString`, so the same flag on any other type is not this law. A
  * field whose `fieldType` A12 cannot BIND at all is not judged here either: that model never loads, and
- * saying so is [fieldTypeBindingFindings]'s business rather than a second opinion from this family.
+ * saying so is [fieldTypeBindingFindings]'s business rather than a second opinion from this family. An
+ * unbindable flag is not `true`, so it draws nothing here, and the string-parameter family reports it.
  */
-private fun noValueValidationFinding(field: TrackedDeclaration, member: String, code: String): Finding? {
-    val string = FieldType.STRING.bodyIn(field.body?.get("fieldType") as? JsonObject)
-        ?: return null
-    // An unbindable flag keeps the model from loading, which the string-parameter family reports.
-    if (string.flag("noValueValidation") != true) {
+private fun TrackedFactBase.noValueValidationFinding(field: TrackedDeclaration, member: String, code: String): Finding? {
+    if (!waivesValueValidation(field)) {
         return null
     }
     return Finding(

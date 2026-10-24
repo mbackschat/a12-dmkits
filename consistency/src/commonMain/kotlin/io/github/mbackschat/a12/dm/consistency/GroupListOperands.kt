@@ -154,7 +154,7 @@ private fun TrackedFactBase.operandFinding(
     // A keyed operand is its path AND its key (kf439), so the same group under the same key repeats: `Legs For
     // "X"` twice is `MVK_DUPLICATE_PARAM1` (`rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`). How keyed
     // operands overlap is unmeasured, so they meet only the exact comparison.
-    val keyed = call.operands.mapNotNull { keyedIdentityOf(it, declaringGroup, element) }
+    val keyed = call.operands.mapNotNull { keyedIdentityOf(it, call.inAFilterBody, declaringGroup, element) }
     // The exact duplicate wins over an overlap in the same call whatever the authored order, as A12 does.
     exactDuplicate(comparable + keyed)?.let { repeated ->
         return finding(
@@ -259,13 +259,14 @@ private fun CallOperand.resolvedBy(
  */
 private fun TrackedFactBase.keyedIdentityOf(
     operand: CallOperand,
+    inAFilterBody: Boolean,
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
     val written = operand.text.javaTrimmedStart()
     val captured = written.startsWith(OUTER_MARKER)
     val text = if (captured) written.removePrefix(OUTER_MARKER).javaTrimmedStart() else operand.text
-    val read = operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { null }?.takeIf { it.indexSelected }
+    val read = operandReferenceIn(text, declaringGroup, element, inAFilterBody) { null }?.takeIf { it.indexSelected }
         ?: return null
     val path = (resolveEntity(declaringGroup, read.reference, element.origin) as? Reference.Resolved)?.path
         ?: return null

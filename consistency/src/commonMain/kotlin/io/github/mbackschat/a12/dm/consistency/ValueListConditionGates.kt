@@ -149,7 +149,7 @@ private fun TrackedFactBase.gateFinding(
     // family must stay SILENT rather than add the class its own lists would draw. The group and both field
     // arms were measured beside a number field, where the varying-types gate would otherwise answer, and all
     // three still draw the access's class — so the silence is as wide as the pre-emption, not wider.
-    if (aCategoryAccessAnotherFamilyOwns(written + opposite, declaringGroup, element)) {
+    if (aCategoryAccessAnotherFamilyOwns(written + opposite, declaringGroup, element, call.inAFilterBody)) {
         return null
     }
 
@@ -159,18 +159,18 @@ private fun TrackedFactBase.gateFinding(
     val subjects = builtEntityList(written, declaringGroup, element, call.inAFilterBody)
     val members = if (literalList) null else builtEntityList(opposite, declaringGroup, element, call.inAFilterBody)
     if (subjects == null || !literalList && members == null) {
-        if ((written + opposite).any { declaredTargetOf(it, declaringGroup, element)?.path?.isRootGroup() == true }) {
+        if ((written + opposite).any { declaredTargetOf(it, declaringGroup, element, call.inAFilterBody)?.path?.isRootGroup() == true }) {
             return null
         }
     }
     (subjects?.duplicateClass() ?: subjects?.rootGroupClass())
         ?.let { return listClass(it, call, member, element) }
-    val listed = listedFields(written, declaringGroup, element) ?: return null
+    val listed = listedFields(written, declaringGroup, element, call.inAFilterBody) ?: return null
     val fields = listed.map { it.field }
     if (subjects == null && repeated(fields)) {
         return null
     }
-    val fieldKinds = fields.map { it.baseTypeClass() ?: return null }
+    val fieldKinds = fields.map { effectiveBaseTypeClass(it) ?: return null }
 
     // The FIELD list's own two gates, both asked before the value list is looked at.
     fieldKinds.zipWithNext().forEachIndexed { at, (left, right) ->
@@ -179,7 +179,7 @@ private fun TrackedFactBase.gateFinding(
         }
     }
     if (dateRange) {
-        rangeShapeDefect(written, declaringGroup, element)
+        rangeShapeDefect(written, declaringGroup, element, call.inAFilterBody)
             ?.let { return gate(BAD_RANGE_OPERAND, call.operator, it, member, element, call.spanIn(member)) }
     } else {
         fields.forEachIndexed { at, field ->
@@ -197,11 +197,11 @@ private fun TrackedFactBase.gateFinding(
         // The value list is built only now, so its own repeat and root answer here, behind the field list's gates.
         (members?.duplicateClass() ?: members?.rootGroupClass())
             ?.let { return listClass(it, call, member, element) }
-        val values = expandedFields(opposite, declaringGroup, element) ?: return null
+        val values = expandedFields(opposite, declaringGroup, element, call.inAFilterBody) ?: return null
         if (members == null && repeated(values)) {
             return null
         }
-        val valueKinds = values.map { it.baseTypeClass() ?: return null }
+        val valueKinds = values.map { effectiveBaseTypeClass(it) ?: return null }
         valueKinds.forEachIndexed { at, kind ->
             if (kind != fieldKinds.firstOrNull()) {
                 return gate(VARYING_TYPES, call.operator, values[at], member, element, call.spanIn(member))
@@ -238,9 +238,10 @@ private fun TrackedFactBase.rangeShapeDefect(
     written: List<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
 ): TrackedDeclaration? {
-    val only = written.singleOrNull() ?: return declaredTargetOf(written.first(), declaringGroup, element)
-    val declared = declaredTargetOf(only, declaringGroup, element) ?: return null
+    val only = written.singleOrNull() ?: return declaredTargetOf(written.first(), declaringGroup, element, inAFilterBody)
+    val declared = declaredTargetOf(only, declaringGroup, element, inAFilterBody) ?: return null
     return if (declared.declaredKind != DeclaredKind.FIELD || '*' in only) declared else null
 }
 
@@ -305,9 +306,10 @@ private fun TrackedFactBase.listedFields(
     operands: List<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
 ): List<ListedField>? = operands.flatMap { operand ->
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category
-    val declared = declaredTargetOf(operand, declaringGroup, element) ?: return null
+    val declared = declaredTargetOf(operand, declaringGroup, element, inAFilterBody) ?: return null
     // The category rides the REFERENCE, so only an operand that IS a field carries one: the fields a group
     // expands into were never named, and A12 groups by the name it was given.
     val referenced = if (declared.declaredKind == DeclaredKind.FIELD) category else null
@@ -327,9 +329,10 @@ private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
     operands: List<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
 ): Boolean = operands.any { operand ->
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category ?: return@any false
-    val target = declaredTargetOf(operand, declaringGroup, element) ?: return@any false
+    val target = declaredTargetOf(operand, declaringGroup, element, inAFilterBody) ?: return@any false
     target.declaredKind == DeclaredKind.GROUP ||
         target.declaredKind == DeclaredKind.FIELD && ListedField(target, category).contributedValues() == null
 }
@@ -339,7 +342,8 @@ private fun TrackedFactBase.expandedFields(
     operands: List<String>,
     declaringGroup: String,
     element: TrackedDeclaration,
-): List<TrackedDeclaration>? = listedFields(operands, declaringGroup, element)?.map { it.field }
+    inAFilterBody: Boolean,
+): List<TrackedDeclaration>? = listedFields(operands, declaringGroup, element, inAFilterBody)?.map { it.field }
 
 /** Whether a value list is written out, every entry a string literal, rather than read from fields. */
 internal fun List<String>.isWrittenOutValueList(): Boolean =
@@ -364,7 +368,7 @@ private fun listClass(code: String, call: ConditionCall, member: String, element
     call.spanIn(member),
 )
 
-private fun gate(
+private fun TrackedFactBase.gate(
     code: String,
     operator: String,
     field: TrackedDeclaration,
@@ -378,12 +382,12 @@ private fun gate(
     when (code) {
         VARYING_TYPES ->
             "in `$member`: `$operator` compares one list against another, so every entry has to be " +
-                "declared alike, and `${field.path}` is `${field.declaredFieldType()}` where the entry " +
+                "declared alike, and `${field.path}` is `${effectiveFieldType(field)}` where the entry " +
                 "before it is not — split the call in two, one per declared type"
         ONLY_STRING_ENUM_NUMBER ->
             "in `$member`: `$operator` reads its entries as values to look up, which only a text, " +
                 "enumeration or number declaration offers — `${field.path}` is " +
-                "`${field.declaredFieldType()}`; compare it directly instead"
+                "`${effectiveFieldType(field)}`; compare it directly instead"
         BAD_RANGE_OPERAND ->
             "in `$member`: `$operator` overlaps ONE date range against a list, and `${field.path}` is not " +
                 "one plain field — name a single unstarred date-range field on the left"

@@ -86,7 +86,7 @@ private fun TrackedFactBase.keyListOf(
         // the scope leaves no bare path, and the reader then takes a keyed or categorized text itself. The
         // clauses after the scope are its own, such as its index.
         val bare = operand.base.takeIf { operand.clauses.firstOrNull()?.let { it.keyword == scopeKeyword } ?: true }
-        categorySpecIn(keyTextOf(operand, scopeKeyword), declaringGroup, element) { bare }
+        categorySpecIn(keyTextOf(operand, scopeKeyword), declaringGroup, element, call.inAFilterBody) { bare }
             ?: return KeyList.AnsweredEarlier
     }
     val targets = reads.map {

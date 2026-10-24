@@ -58,6 +58,35 @@ class TypeDefAndModelCommentTest {
         assertTrue(round.contains("a demo order model"), "model comment survives");
     }
 
+    /** Every field kind the group builder declares inline is also a type definition the kernel builds and reads back. */
+    @Test
+    void everyFieldKindIsAKernelValidTypeDefThatReadsBackAsItsKind() {
+        String json = DocumentModelDraft.named("m").locale("en_US")
+                .typeDef("Settled", t -> t.bool(b -> b.trueValue("yes")))
+                .typeDef("Signed", t -> t.confirm(b -> { }))
+                .typeDef("Incurred", t -> t.date(d -> d.format("dd.MM.yyyy")))
+                .typeDef("Reported", t -> t.time(d -> d.format("HH:mm:ss")))
+                .typeDef("Logged", t -> t.dateTime(d -> d.format("yyyy-MM-dd'T'HH:mm:ss")))
+                .typeDef("Cover", t -> t.dateRange(d -> d.format("dd.MM.yyyy").separator("-")))
+                .typeDef("Period", t -> t.dateFragment(d -> d.fragmentFormat("yyyy-MM")))
+                .typeDef("Policy", t -> t.custom(c -> c.type("PolicyNumber")))
+                .rootGroup("Claim", g -> g.typedefField("Paid", "Settled").typedefField("Ack", "Signed")
+                        .typedefField("On", "Incurred").typedefField("At", "Reported").typedefField("Entered", "Logged")
+                        .typedefField("Covered", "Cover").typedefField("Month", "Period").typedefField("No", "Policy"))
+                .build().toJson();
+
+        ModelLoader.loadSelfContained(json);
+        var types = ModelDocument.read(json).typeDefinitions();
+        assertEquals(new FieldTypeSpec.BooleanSpec("yes", null), types.get("Settled").type());
+        assertEquals(new FieldTypeSpec.ConfirmSpec(null, null), types.get("Signed").type());
+        assertEquals(new FieldTypeSpec.DateSpec("dd.MM.yyyy", null, false), types.get("Incurred").type());
+        assertEquals(new FieldTypeSpec.TimeSpec("HH:mm:ss"), types.get("Reported").type());
+        assertEquals(new FieldTypeSpec.DateTimeSpec("yyyy-MM-dd'T'HH:mm:ss"), types.get("Logged").type());
+        assertEquals("dd.MM.yyyy", ((FieldTypeSpec.DateRangeSpec) types.get("Cover").type()).format());
+        assertEquals(new FieldTypeSpec.DateFragmentSpec("yyyy-MM", false), types.get("Period").type());
+        assertEquals(new FieldTypeSpec.CustomSpec("PolicyNumber", null, null), types.get("Policy").type());
+    }
+
     @Test
     void editsTypeDefByIdAndModelComment_thenRemoves() throws Exception {
         ModelDocument doc = ModelDocument.read(base())

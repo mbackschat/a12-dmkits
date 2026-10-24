@@ -131,7 +131,7 @@ private fun TrackedFactBase.gateFindings(
     val entries = call.operands.drop(1).takeIf { it.isNotEmpty() } ?: return null
     // The subject's key is read by the shared reader: reduced to its base, `Settled For 5` would reach this
     // gate where A12 names the key's `MVK_INVALID_ENTITY` ([KERNEL-FINDINGS KF477]).
-    val read = operandReferenceIn(subjectOperand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
+    val read = operandReferenceIn(subjectOperand.text, declaringGroup, element, call.inAFilterBody) {
         referencesIn(subjectOperand.text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
     } ?: return null
     val subject = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
@@ -147,7 +147,7 @@ private fun TrackedFactBase.gateFindings(
     if ('*' in subjectOperand.text) {
         return listOf(gate(NO_WILDCARDS, call.operator, subject, member, element, call.spanIn(member)))
     }
-    val declared = subject.declaredFieldType() ?: return null
+    val declared = effectiveFieldType(subject) ?: return null
     // A type this reader cannot resolve has no base-type class, so no gate here may judge it.
     if (declared.baseTypeClass == null) {
         return null
@@ -183,16 +183,16 @@ private fun TrackedFactBase.entryListFindings(
     member: String,
 ): List<Finding>? {
     val fields = entries.map { entry ->
-        declaredTargetOf(entry.text, declaringGroup, element)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
+        declaredTargetOf(entry.text, declaringGroup, element, call.inAFilterBody)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
             ?: return null
     }
     val walked = listOf(subject) + fields
     if (walked.map { it.path }.distinct().size != walked.size) {
         return null
     }
-    var expected = subject.baseTypeClass() ?: return null
+    var expected = effectiveBaseTypeClass(subject) ?: return null
     fields.forEach { field ->
-        val kind = field.baseTypeClass() ?: return null
+        val kind = effectiveBaseTypeClass(field) ?: return null
         if (kind != expected) {
             return listOf(gate(VARYING_TYPES, call.operator, field, member, element, call.spanIn(member)))
         }
@@ -220,7 +220,7 @@ private fun TrackedFactBase.constantListFindings(
     if (!numberList && !stringList) {
         return null
     }
-    if ((subject.declaredFieldType() == FieldType.NUMBER) != numberList) {
+    if ((effectiveFieldType(subject) == FieldType.NUMBER) != numberList) {
         return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element, call.spanIn(member)))
     }
     val body = subject.enumerationBody() ?: return null
@@ -268,7 +268,7 @@ private fun CallOperand.namesAFieldEntry(): Boolean =
 /** Whether this operand is one number constant — the spelling A12's grammar sorts into a `numberListe`. */
 private fun CallOperand.isNumberLiteral(): Boolean = isNumberLiteral(tokenize(text))
 
-private fun gate(
+private fun TrackedFactBase.gate(
     code: String,
     operator: String,
     field: TrackedDeclaration,
@@ -287,14 +287,14 @@ private fun gate(
             "in `$member`: `$operator` compares ONE value, so `${field.path}` may not be read across a " +
                 "repetition — drop the star, or quantify with a value-list condition"
         ONLY_STRING_ENUM_NUMBER ->
-            "in `$member`: `$operator` reads `${field.path}`, declared `${field.declaredFieldType()}` — a " +
+            "in `$member`: `$operator` reads `${field.path}`, declared `${effectiveFieldType(field)}` — a " +
                 "value list takes a text, custom, enumeration or number field; compare a boolean with " +
                 "`== True` and a date with a date comparison"
         RAW_TYPE ->
             "in `$member`: `${field.path}` waives value validation, and `$operator` refuses a subject that " +
                 "does — drop `noValueValidation`, or compare the field another way"
         else ->
-            "in `$member`: `$operator` compares `${field.path}`, declared `${field.declaredFieldType()}`, " +
+            "in `$member`: `$operator` compares `${field.path}`, declared `${effectiveFieldType(field)}`, " +
                 "against a list of another base type — every entry has to be declared like the subject"
     },
     element.path,

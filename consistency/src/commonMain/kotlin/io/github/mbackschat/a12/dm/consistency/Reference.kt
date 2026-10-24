@@ -571,9 +571,9 @@ internal fun TrackedFactBase.bareReferenceField(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    inAFilterBody: Boolean = false,
+    inAFilterBody: Boolean,
 ): TrackedDeclaration? {
-    val read = operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
+    val read = operandReferenceIn(text, declaringGroup, element, inAFilterBody) {
         bareReferenceIn(text, conditionLanguage)?.let { OperandReference(it) }
     } ?: return null
     val target = addressedTargetOf(read, declaringGroup, element, inAFilterBody) ?: return null
@@ -586,15 +586,22 @@ internal fun TrackedFactBase.bareReferenceField(
  * [DECLARING_GROUP] binds only the repetitions the declaration sits in. [ERROR_TARGET] also binds every level
  * the error target's chain holds or iterates jointly with it ([readsOneRow]): a rule declared at the root with
  * its error field in `Lines` reads the key `Lines/LineNo` as one row, and A12 judges the index behind it
- * ([KERNEL-FINDINGS KF605], `adapter.laws.CheckerKeyedListOperandAgreementTest`). That holds only for a key the
- * rule reads directly; inside a `Having` body the filtered entity anchors it ([KERNEL-FINDINGS KF377]), so a
- * caller that cannot tell which it has passes [DECLARING_GROUP] and judges less (CONSISTENCY-GAPS DG152).
+ * ([KERNEL-FINDINGS KF605], `adapter.laws.CheckerKeyedListOperandAgreementTest`). [FILTER_BODY] binds every
+ * level: inside a `Having` body A12 asks no iteration question of a key, so the operand's own gates judge the
+ * selected field whatever binds the key, and the filter walk refuses the index after them
+ * (`adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
  */
-internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET }
+internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET, FILTER_BODY }
 
-/** The anchoring of a key [this] call's operands carry: the error target's, unless a `Having` body holds the call. */
-internal val ConditionCall.keyAnchoring: KeyAnchoring
-    get() = if (inAFilterBody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
+/**
+ * The anchoring of a key an operand gate reads where a `Having` body does or does not hold it.
+ *
+ * Every operand reader takes the body flag rather than an anchoring, so none can fall back to
+ * [KeyAnchoring.DECLARING_GROUP], which judges less in both places (KERNEL-FINDINGS KF605,
+ * `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
+ */
+internal fun keyAnchoringOf(inAFilterBody: Boolean): KeyAnchoring =
+    if (inAFilterBody) KeyAnchoring.FILTER_BODY else KeyAnchoring.ERROR_TARGET
 
 /**
  * A written operand reduced to the reference an operand gate reads.
@@ -637,9 +644,10 @@ internal fun TrackedFactBase.operandReferenceIn(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-    anchoring: KeyAnchoring,
+    inAFilterBody: Boolean,
     plain: () -> OperandReference?,
-): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, anchoring, plain)
+): OperandReference? =
+    keyedReferenceIn(text, declaringGroup, element, keepsCategory = false, keyAnchoringOf(inAFilterBody), plain)
 
 /**
  * [operandReferenceIn], where [keepsCategory] says whether the caller reads [OperandReference.category]. A keyed
@@ -713,8 +721,9 @@ internal fun TrackedFactBase.declaredTargetOf(
     operand: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
 ): TrackedDeclaration? {
-    val reference = singleReferenceOf(operand, declaringGroup, element) ?: return null
+    val reference = singleReferenceOf(operand, declaringGroup, element, inAFilterBody) ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
     return declarationAt(target)
@@ -732,7 +741,8 @@ internal fun TrackedFactBase.singleReferenceOf(
     operand: String,
     declaringGroup: String,
     element: TrackedDeclaration,
-): String? = operandReferenceIn(operand, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
+    inAFilterBody: Boolean,
+): String? = operandReferenceIn(operand, declaringGroup, element, inAFilterBody) {
     referencesIn(operand, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
 }?.reference
 
@@ -864,7 +874,8 @@ internal fun TrackedFactBase.operandSpec(
     operand: CallOperand,
     declaringGroup: String,
     element: TrackedDeclaration,
-): OperandReference? = categorySpecIn(operand.text, declaringGroup, element) { operand.path }
+    inAFilterBody: Boolean,
+): OperandReference? = categorySpecIn(operand.text, declaringGroup, element, inAFilterBody) { operand.path }
 
 /**
  * The reference [text] names, with the category a `->` projects it onto, read through [operandReferenceIn] — so a
@@ -876,8 +887,9 @@ internal fun TrackedFactBase.categorySpecIn(
     text: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
     bare: () -> String? = { bareReferenceIn(text, conditionLanguage) },
-): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = true, KeyAnchoring.DECLARING_GROUP) {
+): OperandReference? = keyedReferenceIn(text, declaringGroup, element, keepsCategory = true, keyAnchoringOf(inAFilterBody)) {
     categoryAccessesIn(text, conditionLanguage).singleOrNull()
         ?.let { (path, category) -> OperandReference(path, category = category) }
         ?: bare()?.let { OperandReference(it) }
@@ -918,6 +930,19 @@ internal fun TrackedFactBase.waivesValueValidation(field: TrackedDeclaration): B
     val string = FieldType.STRING.bodyIn(resolved.declared) ?: return false
     return string.flag("noValueValidation") == true
 }
+
+/**
+ * [field]'s type with a type definition read as the type it defines, which is how A12 types an operand at
+ * every operand-kind gate: a type-defined field draws the class its plain twin draws, gate by gate
+ * (KERNEL-FINDINGS KF602, `adapter.laws.CheckerTypeDefinedOperandKindAgreementTest`). A gate that also reads a
+ * setting of the type (a format, a domain) still reads the field's own declaration, so a type-defined field
+ * stays unjudged there.
+ */
+internal fun TrackedFactBase.effectiveFieldType(field: TrackedDeclaration): FieldType? = resolvedFieldTypeOf(field)?.type
+
+/** The [BaseTypeClass] of [effectiveFieldType]. */
+internal fun TrackedFactBase.effectiveBaseTypeClass(field: TrackedDeclaration): BaseTypeClass? =
+    effectiveFieldType(field)?.baseTypeClass
 
 /** Whether [tokens] spell one written-out number. */
 internal fun isNumberLiteral(tokens: List<Token>): Boolean = numberLiteralScale(tokens) != null

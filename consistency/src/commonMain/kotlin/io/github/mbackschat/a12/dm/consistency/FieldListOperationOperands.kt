@@ -134,7 +134,7 @@ private fun TrackedFactBase.operandDefect(
     element: TrackedDeclaration,
 ): FieldListDefect? {
     val reads = call.operands.map { operand ->
-        operandReferenceIn(operand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { operand.path?.let { OperandReference(it) } }
+        operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) { operand.path?.let { OperandReference(it) } }
             ?: return null
     }
     val targets = reads.map { read ->
@@ -152,19 +152,19 @@ private fun TrackedFactBase.operandDefect(
         return null
     }
     return when (arm) {
-        FieldListArm.NO_CONFIRM -> fields.firstOrNull { it.declaredFieldType() == FieldType.CONFIRM }
+        FieldListArm.NO_CONFIRM -> fields.firstOrNull { effectiveFieldType(it) == FieldType.CONFIRM }
             ?.let { FieldListDefect("MVK_NO_BOOLY_ALLOWED", "takes no confirm declaration in its list", it) }
             ?: varyingTypeDefect(fields)
-        FieldListArm.ALL_NUMBERS -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
+        FieldListArm.ALL_NUMBERS -> fields.firstOrNull { effectiveFieldType(it) in PLAINLY_NON_NUMBER_TYPES }
             ?.let {
                 FieldListDefect("MVK_NO_NUMBER", "adds up its list, so every field in it must be a number", it)
             }
         FieldListArm.SORTABLE ->
             // The leader picks the arm, so an unplaceable or temporal one is not this family's to judge.
-            if (fields.first().declaredFieldType().let { it == null || it in TEMPORAL_DECLARED_TYPES }) {
+            if (effectiveFieldType(fields.first()).let { it == null || it in TEMPORAL_DECLARED_TYPES }) {
                 null
             } else {
-                fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }?.let {
+                fields.firstOrNull { effectiveFieldType(it) in PLAINLY_NON_NUMBER_TYPES }?.let {
                     FieldListDefect(
                         "MVK_NOT_SORTABLE",
                         "orders its list, and a list led by a non-date must be all numbers",
@@ -182,7 +182,7 @@ private fun TrackedFactBase.operandDefect(
  * A field whose type this reader does not place is skipped, as every arm here skips one; an unplaceable FIRST
  * field leaves the list untyped and so unjudged.
  */
-private fun varyingTypeDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
+private fun TrackedFactBase.varyingTypeDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
     val first = fields.first()
     val listType = matchedTypeOf(first) ?: return null
     return fields.drop(1).firstOrNull { field -> matchedTypeOf(field)?.let { it != listType } == true }?.let {
@@ -200,7 +200,7 @@ private data class MatchedType(val base: MatchedBase, val format: String? = null
 private enum class MatchedBase { TEXT, NUMBER, YES_NO, YES, DATETIME, DATE_RANGE }
 
 /** [field]'s [MatchedType], or null where this reader does not place its type or finds no declared format. */
-private fun matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (field.declaredFieldType() ?: return null) {
+private fun TrackedFactBase.matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (effectiveFieldType(field) ?: return null) {
     FieldType.STRING, FieldType.CUSTOM_FIELD, FieldType.ENUMERATION -> MatchedType(MatchedBase.TEXT)
     FieldType.NUMBER -> MatchedType(MatchedBase.NUMBER)
     FieldType.BOOLEAN -> MatchedType(MatchedBase.YES_NO)
@@ -223,10 +223,10 @@ private fun matchedTypeOf(field: TrackedDeclaration): MatchedType? = when (field
  * are sequential rather than one pass.
  */
 private fun TrackedFactBase.distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
-    val leader = fields.first().declaredFieldType() ?: return null
+    val leader = effectiveFieldType(fields.first()) ?: return null
     return when {
         leader in STRING_LIKE_LEADERS ->
-            fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_STRING_LIKE_TYPES }?.let {
+            fields.firstOrNull { effectiveFieldType(it) in PLAINLY_NON_STRING_LIKE_TYPES }?.let {
                 FieldListDefect(
                     "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
                     "counts distinct values of a list led by a text, custom or enumeration field, so " +
@@ -240,7 +240,7 @@ private fun TrackedFactBase.distinctDefect(fields: List<TrackedDeclaration>): Fi
                     it,
                 )
             }
-        leader == FieldType.NUMBER -> fields.firstOrNull { it.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES }
+        leader == FieldType.NUMBER -> fields.firstOrNull { effectiveFieldType(it) in PLAINLY_NON_NUMBER_TYPES }
             ?.let {
                 FieldListDefect(
                     "MVK_NUMBER_AND_NON_NUMBER",
@@ -268,7 +268,7 @@ private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReferenc
     return entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
 }
 
-private fun finding(
+private fun TrackedFactBase.finding(
     defect: FieldListDefect,
     call: ConditionCall,
     element: TrackedDeclaration,
@@ -278,7 +278,7 @@ private fun finding(
     FindingSeverity.ERROR,
     defect.code,
     "in `$member`: `${call.operator}` ${defect.demand}, and `${defect.field.path}` is declared " +
-        "`${defect.field.declaredFieldType()}` — drop that field from the list, or reach for an operator " +
+        "`${effectiveFieldType(defect.field)}` — drop that field from the list, or reach for an operator " +
         "whose list admits its kind",
     element.path,
     call.spanIn(member),

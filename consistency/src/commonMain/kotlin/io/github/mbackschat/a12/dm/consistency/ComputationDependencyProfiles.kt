@@ -85,7 +85,11 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
     private fun containingGroup(call: ConditionCall, writer: TrackedDeclaration, target: String): String? {
         if (call.operator != keywords["GroupFilled"]) return null
         val operand = call.operands.singleOrNull() ?: return null
-        val path = operand.path ?: return null
+        // A selection guards as the group it selects: A12 admits two computations a keyed `GroupFilled` over their
+        // group guards, as it does the plain form (`adapter.laws.CheckerKeyedGuardCycleAgreementTest`).
+        val path = facts.operandReferenceIn(operand.text, writer.path.substringBeforeLast('/'), writer, call.inAFilterBody) {
+            operand.path?.let(::OperandReference)
+        }?.reference ?: return null
         val group = if (isRuleContext(path, facts.conditionLanguage)) writer.path.substringBeforeLast('/') else resolve(path, writer)
         return group?.takeIf { it in groups && target.startsWith("$it/") }
     }

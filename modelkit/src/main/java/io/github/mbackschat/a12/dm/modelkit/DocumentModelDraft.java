@@ -929,6 +929,62 @@ public final class DocumentModelDraft {
             return set(b.spec());
         }
 
+        /** A three-state Boolean, the type {@code booleanField} declares inline. */
+        public TypeDefBuilder bool(Consumer<BooleanFieldBuilder> body) {
+            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.BOOLEAN);
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** A Confirm, the type {@code confirmField} declares inline. */
+        public TypeDefBuilder confirm(Consumer<BooleanFieldBuilder> body) {
+            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.CONFIRM);
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code dateField} declares inline. */
+        public TypeDefBuilder date(Consumer<DateFieldBuilder> body) {
+            DateFieldBuilder b = new DateFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code timeField} declares inline. */
+        public TypeDefBuilder time(Consumer<TimeFieldBuilder> body) {
+            TimeFieldBuilder b = new TimeFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code dateTimeField} declares inline. */
+        public TypeDefBuilder dateTime(Consumer<DateTimeFieldBuilder> body) {
+            DateTimeFieldBuilder b = new DateTimeFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code dateRangeField} declares inline. */
+        public TypeDefBuilder dateRange(Consumer<DateRangeFieldBuilder> body) {
+            DateRangeFieldBuilder b = new DateRangeFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code dateFragmentField} declares inline. */
+        public TypeDefBuilder dateFragment(Consumer<DateFragmentFieldBuilder> body) {
+            DateFragmentFieldBuilder b = new DateFragmentFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        /** The type {@code customField} declares inline. */
+        public TypeDefBuilder custom(Consumer<CustomFieldBuilder> body) {
+            CustomFieldBuilder b = new CustomFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
         private TypeDefBuilder set(FieldTypeSpec s) {
             if (spec != null) {
                 throw new IllegalStateException("a type definition has exactly one underlying type");

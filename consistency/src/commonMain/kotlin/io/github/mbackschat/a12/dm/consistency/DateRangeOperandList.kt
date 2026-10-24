@@ -164,7 +164,7 @@ private fun TrackedFactBase.groupOperandDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): RangeDefect? = call.operands.firstNotNullOfOrNull { operand ->
-    val target = declaredTargetOf(operand.text, declaringGroup, element) ?: return null
+    val target = declaredTargetOf(operand.text, declaringGroup, element, call.inAFilterBody) ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
         RangeDefect(
             "MVK_NO_GROUPS_ALLOWED", target.path,
@@ -216,7 +216,7 @@ private fun TrackedFactBase.valueList(
     }
     val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element, call.inAFilterBody)
         ?: return null
-    val values = opposite.map { operand -> expandedReference(operand, declaringGroup, element) ?: return null }
+    val values = opposite.map { operand -> expandedReference(operand, declaringGroup, element, call.inAFilterBody) ?: return null }
     if (values.any { reference -> reference.fields.any { it.baseTypeClass() != subject.baseTypeClass() } }) {
         return null
     }
@@ -228,8 +228,9 @@ private fun TrackedFactBase.expandedReference(
     operand: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
 ): ListedReference? {
-    val target = declaredTargetOf(operand, declaringGroup, element) ?: return null
+    val target = declaredTargetOf(operand, declaringGroup, element, inAFilterBody) ?: return null
     val fields = expandToFields(target.path) ?: return null
     return ListedReference(target.path, fields)
 }

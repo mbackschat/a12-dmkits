@@ -175,7 +175,7 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
     val filter = setOfNotNull(keywords?.get(HAVING))
     return call.operands.any { operand ->
         val isKeyed = operand.clauses.any { it.keyword in keyed }
-        val read = operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+        val read = operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {
             operand.base?.let(::OperandReference)
         } ?: return@any false
         if (isKeyed && !read.indexSelected || bodyAddresses(call.inAFilterBody, read.outerMarked)) {

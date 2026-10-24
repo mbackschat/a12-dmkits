@@ -64,7 +64,7 @@ private fun TrackedFactBase.rawTypeRead(
     .filter { it.operator == length }
     .firstNotNullOfOrNull { call ->
         val operand = call.operands.singleOrNull() ?: return@firstNotNullOfOrNull null
-        val written = operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+        val written = operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {
             operand.path?.let(::OperandReference)
         }?.reference ?: return@firstNotNullOfOrNull null
         val resolved = resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved

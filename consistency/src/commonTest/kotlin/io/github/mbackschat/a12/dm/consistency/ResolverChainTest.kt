@@ -122,11 +122,11 @@ class ResolverChainTest {
         // (`BareEntitySpecStarTest`), so it would answer null for a different reason.
         assertEquals(
             "/Policy/Claims/Amount",
-            tracked.bareReferenceField("Claims/Amount", "/Policy", tracked.rule("ClaimAmountRequired"))?.path,
+            tracked.bareReferenceField("Claims/Amount", "/Policy", tracked.rule("ClaimAmountRequired"), inAFilterBody = false)?.path,
             "the bare spec must reduce to the claim amount",
         )
         assertNull(
-            tracked.bareReferenceField("{[Claims/Amount] + 1}", "/Policy", tracked.rule("ClaimAmountRequired")),
+            tracked.bareReferenceField("{[Claims/Amount] + 1}", "/Policy", tracked.rule("ClaimAmountRequired"), inAFilterBody = false),
             "an expression must not reduce to the field inside it, whose type says nothing about the whole",
         )
     }

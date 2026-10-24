@@ -94,7 +94,7 @@ private fun TrackedFactBase.slotDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): DateArgumentDefect? {
-    val read = operandReferenceIn(operand.text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) { operand.path?.let { OperandReference(it) } }
+    val read = operandReferenceIn(operand.text, declaringGroup, element, inAFilterBody) { operand.path?.let { OperandReference(it) } }
     val leadingName = tokenize(operand.text).firstOrNull()?.takeIf { it.kind == TokenKind.NAME }?.text
     if (leadingName != null && read == null) {
         // A nested OPERATION rather than a reference. Only the extractions are typed here; every other
@@ -122,7 +122,7 @@ private fun TrackedFactBase.slotDefect(
         }
     }
     val written = read?.reference ?: return null
-    val target = declaredTargetOf(written, declaringGroup, element) ?: return null
+    val target = declaredTargetOf(written, declaringGroup, element, inAFilterBody) ?: return null
     if (addressedTargetOf(read, declaringGroup, element, inAFilterBody) == null) {
         return null
     }

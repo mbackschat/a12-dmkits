@@ -107,10 +107,12 @@ private fun TrackedFactBase.readDefect(
     element: TrackedDeclaration,
 ): String? {
     // The bracket's own reader spells a climbing `..`, which the bare-spec reader refuses as a token.
-    val (written, keyed, category) = categorySpecIn(text, declaringGroup, element)
-        ?: categorySpecIn(text, declaringGroup, element) { soleFieldValueReadIn(text, conditionLanguage)?.path }
-        ?: return null
     // The source is the whole operation, so no filter body can hold it.
+    val (written, keyed, category) = categorySpecIn(text, declaringGroup, element, inAFilterBody = false)
+        ?: categorySpecIn(text, declaringGroup, element, inAFilterBody = false) {
+            soleFieldValueReadIn(text, conditionLanguage)?.path
+        }
+        ?: return null
     val addressed = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed = false)
         ?: return null
     val source = declarationAt(addressed)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null

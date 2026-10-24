@@ -113,7 +113,7 @@ private fun TrackedFactBase.valueOperandDefect(
     element: TrackedDeclaration,
 ): ValueOperandDefect? {
     val operand = call.operands.singleOrNull() ?: return null
-    val read = operandSpec(operand, declaringGroup, element) ?: return null
+    val read = operandSpec(operand, declaringGroup, element, call.inAFilterBody) ?: return null
     val (written, _, category) = read
     val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null

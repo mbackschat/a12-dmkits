@@ -111,7 +111,7 @@ class FieldListOperationOperandsTest {
         actual["a date following a number leader"] = subject("MaxValue(Amount, ReportedOn) > 0")
         actual["a temporal leader, which the component gate types"] =
             subject("MaxValue(ReportedOn, ClosedOn) == [ReportedOn]")
-        actual["a typedef, whose base this reader does not resolve"] = subject("Sum(PolicyRef, Amount) > 0")
+        actual["a typedef, read as the string it defines"] = subject("Sum(PolicyRef, Amount) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a text field in a Sum"] = listOf("MVK_NO_NUMBER")
@@ -124,8 +124,9 @@ class FieldListOperationOperandsTest {
         // The component-set gate owns a temporal leader, and it agrees here, so the row is silent for the
         // reason the handover names rather than because nothing looked.
         expected["a temporal leader, which the component gate types"] = emptyList()
-        // A number-based typedef is admitted by both arms, so refusing one would be an over-rejection.
-        expected["a typedef, whose base this reader does not resolve"] = emptyList()
+        // A12 reads a type-defined field as the type its definition declares, here a string
+        // (`rulekit.validate.laws.TypedefBaseKindGateLawsTest`, KERNEL-FINDINGS KF602).
+        expected["a typedef, read as the string it defines"] = listOf("MVK_NO_NUMBER")
         assertEquals(expected, actual, "the numeric arms, and where the leader hands the list on")
     }
 
@@ -177,7 +178,7 @@ class FieldListOperationOperandsTest {
         actual["a DATE-RANGE leader"] = subject("NumberOfDifferentValues(CoverWindow, Notes) > 0")
         actual["a TEMPORAL leader, which the component gate owns"] =
             subject("NumberOfDifferentValues(ReportedOn, Notes) > 0")
-        actual["a TYPEDEF leader, whose base this reader does not resolve"] =
+        actual["a TYPEDEF leader, read as the string it defines"] =
             subject("NumberOfDifferentValues(PolicyRef, Amount) > 0")
         actual["a GROUP leader, read from its first EXPANDED field"] =
             subject("NumberOfDifferentValues(Ledger, Notes) > 0")
@@ -208,7 +209,7 @@ class FieldListOperationOperandsTest {
         // The handover, working: this family declines a temporal leader and `TEMPORAL_AGGREGATE_OPERANDS`
         // reports A12's own class for it on the same call — so the arm is covered, by the other family.
         expected["a TEMPORAL leader, which the component gate owns"] = listOf("MVK_DATE_AND_NONDATE")
-        expected["a TYPEDEF leader, whose base this reader does not resolve"] = emptyList()
+        expected["a TYPEDEF leader, read as the string it defines"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
         expected["a GROUP leader, read from its first EXPANDED field"] = listOf("MVK_NUMBER_AND_NON_NUMBER")
         expected["a lone unstarred field, which the arity gate answers"] = listOf("MVK_PARAMSIZE_INVALIDN")
         // A12 answers `MVK_CATEGORY_NOT_ALLOWED` — from the FIRST statement of the method, ahead even of

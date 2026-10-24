@@ -72,8 +72,8 @@ private fun TrackedFactBase.readDefect(
     if ('*' in written) {
         return ReadDefect(ReadGate.STAR, written, target.path)
     }
-    // A type definition or an unspecified type has no class this reader can know, so both type gates stay silent.
-    target.baseTypeClass() ?: return null
+    // An unspecified type has no class this reader can know, so both type gates stay silent.
+    effectiveBaseTypeClass(target) ?: return null
     return when {
         waivesValueValidation(target) -> ReadDefect(ReadGate.RAW, written, target.path)
         declaresAPartialPrecision(target) -> ReadDefect(ReadGate.PARTIAL, written, target.path)

@@ -1,11 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
-import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
-import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -17,45 +11,7 @@ import org.junit.jupiter.api.Test
  */
 class CheckerKeyedListOperandAgreementTest {
 
-    private val order = DocumentModelDraft.named("order-keyed-gates").locale("en_US")
-        .rootGroup("Order") { o -> o
-            .numberField("Total") { n -> n.fractionDigits(0) }
-            .group("Lines") { l -> l.repeatable(10).indexField("LineNo")
-                .stringField("LineNo") { }
-                .stringField("Sku") { }
-                .numberField("Qty") { n -> n.fractionDigits(0) }
-                .dateField("ShipOn") { d -> d.format("yyyy-MM-dd") }
-                .stringField("RawRef") { s -> s.noValueValidation().lineBreaks() }
-                .numberField("Total") { n -> n.fractionDigits(0) }
-                .group("Boxes") { b -> b.stringField("Tag") { } } }
-            .group("Notes") { n -> n.repeatable(10)
-                .stringField("Text") { } }
-            .group("Picks") { p -> p.repeatable(10).indexField("Ref")
-                .stringField("Ref") { }
-                .numberField("Qty") { n -> n.fractionDigits(0) }
-                .numberField("Price") { n -> n.fractionDigits(2) }
-                .dateField("ShipOn") { d -> d.format("dd.MM.yyyy") }
-                .dateField("ShipIso") { d -> d.format("yyyy-MM-dd") }
-                .dateRangeField("Window") { it.format("yyyy-MM-dd").separator("/") }
-                .stringField("RawNote") { s -> s.noValueValidation().lineBreaks() } } }
-        .build().toJson()
-
-    private val validator = RuleValidator()
-
-    private fun judge(row: Row): Pair<List<String>, List<String>> {
-        val (result, injected) = if (row.computed) {
-            val draft = DraftComputation("/Order", "KeyedProbe", "../${row.errorField}", null,
-                listOf(DraftComputation.Alternative(null, row.condition, null)), listOf())
-            validator.check(order, draft) to validator.inject(order, draft)
-        } else {
-            val draft = DraftRule("/Order", "KeyedProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
-            validator.check(order, draft) to validator.inject(order, draft)
-        }
-        val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(injected)).findings
-            .filter { it.justifiesRejection }.map { it.code }
-        return a12.sorted() to ours.sorted()
-    }
+    private fun judge(row: Row) = KeyedOrderModel.judge(row.errorField, row.condition, row.computed)
 
     @Test
     fun a12AnswersEveryRowAsPinned() {

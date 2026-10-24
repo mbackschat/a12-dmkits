@@ -79,7 +79,7 @@ private fun TrackedFactBase.valueAsDateDefect(
     if (call.operands.size != VALUE_AS_DATE_ARITY) {
         return null
     }
-    val read = operandSpec(call.operands[0], declaringGroup, element) ?: return null
+    val read = operandSpec(call.operands[0], declaringGroup, element, call.inAFilterBody) ?: return null
     val (written, _, category) = read
     val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null

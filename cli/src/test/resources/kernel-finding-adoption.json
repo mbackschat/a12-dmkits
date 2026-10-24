@@ -796,17 +796,19 @@
      }
     },
     "kf602": {
-     "sha256": "029057532f026d837691c43882938e7e827ddd2a6fa6f63781e72a893c8c639d",
-     "task": "SS1",
+     "sha256": "d148cff62257c62c742bd5a43f34f70c6fd98255c1d2a9af7f0a8867f7ceb341",
+     "task": "SS12",
      "scope": {
       "dmkits": [],
       "checker": [
-       "the parallel walk on a type-defined index and a doubly keyed group operand"
+       "the parallel walk on a type-defined index and a doubly keyed group operand",
+       "every operand-kind gate and ordering key on a type-defined field"
       ],
       "json-schema-import": [],
       "json-schema-export": [],
       "adapter": [
-       "A12's parallel-level classes on type-defined and nested keys"
+       "A12's parallel-level classes on type-defined and nested keys",
+       "A12's classes on type-defined twins and ordering keys"
       ],
       "interpreter": [],
       "dmtool-cli": [],
@@ -822,11 +824,15 @@
       },
       "checker": {
        "state": "APPLIED",
-       "basis": "The parallel walk compares a type-defined index by the type its definition declares, and names the multiple-index class on a group operand as on a field.",
+       "basis": "The parallel walk compares a type-defined index by the type its definition declares, and names the multiple-index class on a group operand as on a field. Every operand-kind gate and both ordering keys read a field typed through a definition by the type and waiver the definition declares; a gate that also reads a date format stays silent on such a field (CONSISTENCY-GAPS DG154).",
        "evidence": {
         "the parallel walk on a type-defined index and a doubly keyed group operand": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedResidueAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
          "witness": "The checker names A12's class on every row."
+        },
+        "every operand-kind gate and ordering key on a type-defined field": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedOperandKindAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwinOrStaysSilent",
+         "witness": "The checker names A12's class on every twin except the two format-reading probes."
         }
        }
       },
@@ -847,6 +853,10 @@
         "A12's parallel-level classes on type-defined and nested keys": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedResidueAgreementTest.kt#a12AnswersEveryRowAsPinned",
          "witness": "A12 answers every row as the finding's table states."
+        },
+        "A12's classes on type-defined twins and ordering keys": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedOperandKindAgreementTest.kt#a12AnswersEachTwinAsItsPlainField",
+         "witness": "A12 draws the plain field's class on every twin."
         }
        }
       },
@@ -940,17 +950,19 @@
       }
     },
     "kf605": {
-      "sha256": "ae4703be5461e4b2ae410fac8ed19f73c290ea4a663a065067a89ed77f6faecb",
-      "task": "SS10",
+      "sha256": "bb70818661f386f99467f9537eb6e2111515b187653e19e4d48fd050f26bc572",
+      "task": "SS12",
       "scope": {
         "dmkits": [],
         "checker": [
-          "the list gates on a selection and a key read in the error field's repetition"
+          "the list gates on a selection and a key read in the error field's repetition",
+          "every operand family on a field-keyed selection, in and out of a body, and a keyed cycle guard"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "A12's classes on keyed list operands"
+          "A12's classes on keyed list operands",
+          "A12's classes on keyed operands of every family"
         ],
         "interpreter": [],
         "dmtool-cli": [],
@@ -966,11 +978,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "Each list gate reads an admitted selection's own field, and a key the error target's iteration addresses is judged by the index chain.",
+          "basis": "Each list gate reads an admitted selection's own field, and a key the error target's iteration addresses is judged by the index chain. Every operand family reads a selection the same way, the key bound by the error target's iteration outside a body and asked no iteration question inside one, and a selected containing group guards a computation as the group does; an entity-keyed index in a body stays the filter walk's silence (CONSISTENCY-GAPS DG155).",
           "evidence": {
             "the list gates on a selection and a key read in the error field's repetition": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedListOperandAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
               "witness": "The checker names A12's class on every row."
+            },
+            "every operand family on a field-keyed selection, in and out of a body, and a keyed cycle guard": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandFamilyAgreementTest.kt#theCheckerNamesA12sClassOrLeavesTheFilterWalksRowsToA12",
+              "witness": "The checker names A12's class on every row except the four filter-walk rows."
             }
           }
         },
@@ -991,6 +1007,10 @@
             "A12's classes on keyed list operands": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedListOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
               "witness": "A12 answers every row as the finding's table states."
+            },
+            "A12's classes on keyed operands of every family": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandFamilyAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 is pinned on every family, body and guard row."
             }
           }
         },

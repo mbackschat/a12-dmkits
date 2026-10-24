@@ -140,7 +140,7 @@ private fun TrackedFactBase.constantKindFinding(
     val arm = armOf(constantText, spellings)
         ?: return unexpectedConstantToken(constantText, element, member, call.constantSlotIn(member))
     val reads = entities.map { text ->
-        operandReferenceIn(text, declaringGroup, element, KeyAnchoring.DECLARING_GROUP) {
+        operandReferenceIn(text, declaringGroup, element, call.inAFilterBody) {
             referencesIn(text, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
         } ?: return null
     }
@@ -174,7 +174,7 @@ private fun TrackedFactBase.constantKindFinding(
         is ListVerdict.Offender -> ListDefect(
             arm.code,
             "counts `${constantText.javaTrimmed()}`, and `${verdict.field.path}` is declared " +
-                "`${verdict.field.declaredFieldType()}` — that constant only counts " +
+                "`${effectiveFieldType(verdict.field)}` — that constant only counts " +
                 arm.admitted.joinToString { "`$it`" } +
                 " declarations; drop the field from the list, or count a constant of its own kind",
         )
@@ -251,13 +251,13 @@ private fun TrackedFactBase.stringArmTailDefect(
  * reported, and reading the second as the first would name a later gate's class on a list A12 has already
  * refused.
  */
-private fun typeWalkVerdict(
+private fun TrackedFactBase.typeWalkVerdict(
     fields: List<TrackedDeclaration>,
     arm: ConstantArm,
     constantText: String,
 ): ListVerdict {
     fields.forEach { field ->
-        val type = field.declaredFieldType() ?: return ListVerdict.Opaque
+        val type = effectiveFieldType(field) ?: return ListVerdict.Opaque
         // A type this reader cannot resolve has no base-type class, so no arm may judge it.
         if (type.baseTypeClass == null) {
             return ListVerdict.Opaque

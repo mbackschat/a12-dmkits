@@ -60,7 +60,7 @@ internal fun TrackedFactBase.sumOfProductsContributions(
         if (call.operator != operator) return@callContributions null
         groupOperandFinding(call.operands, group, element, call.inAFilterBody, member, call.spanIn(member))
             ?.let { return@callContributions it }
-        val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword, call.keyAnchoring) }
+        val pair = call.operands.map { readOperand(it, group, targetGroup, element, filterKeyword, call.inAFilterBody) }
         if (pair.size != 2 || pair.any { it == null }) return@callContributions null
         classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
     }
@@ -143,12 +143,12 @@ private fun TrackedFactBase.readOperand(
     targetGroup: String?,
     element: TrackedDeclaration,
     filterKeyword: String,
-    anchoring: KeyAnchoring,
+    inAFilterBody: Boolean,
 ): ParallelOperand? {
     val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
     val keyed = operand.clauses.isNotEmpty() && operand.clauses.all { it.keyword == indexKeyword }
     val selection = if (keyed) {
-        operandReferenceIn(operand.text, declaringGroup, element, anchoring) { null }?.takeIf { it.indexSelected }
+        operandReferenceIn(operand.text, declaringGroup, element, inAFilterBody) { null }?.takeIf { it.indexSelected }
             ?: return null
     } else {
         null

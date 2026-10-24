@@ -1285,7 +1285,7 @@ String json = DocumentModelDraft.named("orders").locale("en_US")
         .toJson();                         // kernel-valid DM-JSON — ready to read/edit
 ```
 
-The smallest valid model is just `named(id).locale(l).rootGroup(name, g -> {})` — an empty root group is accepted. For a type-def-only library, `DocumentModelDraft.typeDefModel(id)` (a consumer pulls it in via `importTypeDefs(ref)`). *This is the shape every test fixture is built with (e.g. `ModelDrafts`).*
+The smallest valid model is just `named(id).locale(l).rootGroup(name, g -> {})` — an empty root group is accepted. For a type-def-only library, `DocumentModelDraft.typeDefModel(id)` (a consumer pulls it in via `importTypeDefs(ref)`). A type definition takes every kind the group builder declares inline: `typeDef(id, t -> t.dateRange(d -> d.format("dd.MM.yyyy").separator("-")))`, likewise `string`, `number`, `enumeration`, `bool`, `confirm`, `date`, `time`, `dateTime`, `dateFragment` and `custom`, each taking the matching field builder (`TypeDefAndModelCommentTest`). *This is the shape every test fixture is built with (e.g. `ModelDrafts`).*
 
 A multi-select String field accepts the same configuration callback: `multiSelectGroup("Tags", m -> m.stringField("Tag", f -> f.minLength(2).maxLength(8).label("en_US", "Tag")).maxRows(5))`. The callback preserves field constraints and metadata, and the template still defaults its value field to required. `MultiSelectTemplateTest` checks kernel admission and read-back; the schema importer's VALUE_LIST strategy uses this overload rather than dropping item constraints ([AF185](API-FINDINGS.md#af185)).
 

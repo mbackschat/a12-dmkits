@@ -864,7 +864,7 @@ class CheckFamilyWiringTest {
             {"type":"Group","id":"go1","name":"BadKey","Group":{"repeatability":20,
               "indexFieldName":"Key","elements":[
                 {"type":"Field","id":"fo0","name":"Key","Field":{
-                  "fieldType":{"StringType":{"noValueValidation":true,"lineBreaks":true}}}}
+                  "fieldType":{"type":"StringType","StringType":{"noValueValidation":true,"lineBreaks":true}}}}
               ]}}
           ]}}
          ]}}}

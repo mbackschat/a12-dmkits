@@ -62,11 +62,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * carries a `MVK_SEMANTIC_INDEX_NOT_ALLOWED` branch of its own and never reaches it, the filter walk having
  * thrown during the parse — measured against the whole-rule gate that would otherwise have answered.
  *
- * **A filter whose index has an ENTITY key is left alone entirely**, which is an under-report and a
- * deliberate one: A12 answers those from the index's own spec gates, which run while the spec is parsed and
- * so ahead of this walk, and their order among themselves inside a filter is measured on two shapes that
- * disagree with the order [semanticIndexKeyContributions] applies outside one. Judging such a body here would
- * name a third class beside a pair that is already one too many.
+ * **A filter whose index has an ENTITY key is left alone entirely**, an under-report (CONSISTENCY-GAPS DG155): A12
+ * answers those from the index's own spec gates, which run while the spec is parsed and so ahead of this walk,
+ * and their order among themselves inside a filter is measured on two shapes that disagree with the order
+ * [semanticIndexKeyContributions] applies outside one. Judging such a body here would name a third class beside
+ * a pair that is already one too many.
  *
  * **A filter an entity key owns is walked against the KEY.** A `Having` after an entity key is the key's
  * ([SyntaxSite.FilterEntry.indexKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead of the

@@ -121,9 +121,17 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
 
 public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>
   public TypeDefBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder bool(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder confirm(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder custom(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder date(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder dateFragment(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder dateRange(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder dateTime(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder enumeration(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder number(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder string(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder time(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder>)
 
 public sealed interface io.github.mbackschat.a12.dm.modelkit.ElementDraft
   public abstract java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()

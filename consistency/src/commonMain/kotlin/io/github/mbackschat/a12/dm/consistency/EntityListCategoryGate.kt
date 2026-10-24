@@ -97,7 +97,7 @@ internal fun TrackedFactBase.categoryGateAnswersBeforeTheList(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): Boolean = categoryGateOf(call.operator) == CategoryGate.BEFORE_THE_LIST &&
-    call.operands.any { operandSpec(it, declaringGroup, element)?.category != null }
+    call.operands.any { operandSpec(it, declaringGroup, element, call.inAFilterBody)?.category != null }
 
 private fun TrackedFactBase.categoryGateFinding(
     call: ConditionCall,
@@ -106,7 +106,7 @@ private fun TrackedFactBase.categoryGateFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val reads = call.operands.map { operandSpec(it, declaringGroup, element) ?: return null }
+    val reads = call.operands.map { operandSpec(it, declaringGroup, element, call.inAFilterBody) ?: return null }
     val categorized = reads.firstOrNull { it.category != null } ?: return null
     val targets = reads.map { read ->
         addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)

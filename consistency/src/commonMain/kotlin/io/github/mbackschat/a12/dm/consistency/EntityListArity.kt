@@ -152,7 +152,7 @@ private fun TrackedFactBase.arityFinding(
     // base this gate was measured with.
     val spelled = call.splitAtIn()?.second?.map { it to it } ?: call.operands.map { it.text to (it.base ?: it.text) }
     val reads = spelled.map { (text, base) ->
-        operandReferenceIn(text, declaringGroup, element, call.keyAnchoring) {
+        operandReferenceIn(text, declaringGroup, element, call.inAFilterBody) {
             referencesIn(base, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
         } ?: return null
     }

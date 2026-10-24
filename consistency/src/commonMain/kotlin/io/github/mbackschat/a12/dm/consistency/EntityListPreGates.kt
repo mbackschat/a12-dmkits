@@ -251,7 +251,7 @@ private fun TrackedFactBase.entityListOperandsOf(
         val keyed = operand.clauses.any { it.keyword == indexKeyword }
         // A key A12 refuses answers ahead of every list gate, the duplicates included ([KERNEL-FINDINGS KF476]),
         // so a list holding one is the key's to report; only a key the shared reader honours leaves them to answer.
-        if (keyed && operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) { null } == null) {
+        if (keyed && operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) { null } == null) {
             return null
         }
         ListOperand(

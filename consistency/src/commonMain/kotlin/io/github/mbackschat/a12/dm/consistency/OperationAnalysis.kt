@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -237,7 +238,7 @@ internal class OperationAnalysis(
         fun fields(): List<OperationValue>? = with(facts) {
             shape.call.operands.flatMap { tokens ->
                 val written = shape.call.textOf(tokens)
-                val reference = operandReferenceIn(written, group, element, KeyAnchoring.DECLARING_GROUP) {
+                val reference = operandReferenceIn(written, group, element, shape.call.inAFilterBody(conditionLanguage)) {
                     operandOf(tokens, conditionLanguage, text).base
                         ?.let { OperandReference(it) }
                 } ?: return null

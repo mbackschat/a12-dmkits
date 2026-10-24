@@ -74,7 +74,7 @@ private fun TrackedFactBase.operandKindFinding(
     // cannot know, and judging the rest would judge a shorter list than A12 judged. A selection whose key A12
     // admits is judged by the field it selects, never by its key ([KERNEL-FINDINGS KF605]).
     val reads = call.operands.map { operand ->
-        operandReferenceIn(operand.text, declaringGroup, element, call.keyAnchoring) {
+        operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {
             operand.path?.let(::OperandReference)
         } ?: return null
     }
@@ -89,7 +89,7 @@ private fun TrackedFactBase.operandKindFinding(
     var spelling: Pair<String, String>? = null
     fields.forEach { field ->
         // The one declared type measured as refused by this gate; every other refusal belongs to a later one.
-        if (field.declaredFieldType() == FieldType.DATE_RANGE) {
+        if (effectiveFieldType(field) == FieldType.DATE_RANGE) {
             return finding(
                 "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${field.path}` is a " +
                     "date RANGE — list the range's own fields, or compare a field of another kind",
@@ -111,7 +111,7 @@ private fun TrackedFactBase.operandKindFinding(
             )
         }
     }
-    val classes = fields.map { it.baseTypeClass() ?: return null }
+    val classes = fields.map { effectiveBaseTypeClass(it) ?: return null }
     // A12 refuses the two boolean kinds at the kind gate this family leaves silent, so the base-type gate behind
     // it may not answer for them.
     if (classes.any { it == BaseTypeClass.YES_NO || it == BaseTypeClass.YES }) {
@@ -121,8 +121,8 @@ private fun TrackedFactBase.operandKindFinding(
         if (left != right) {
             return finding(
                 "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares values of one kind, and `${fields[at + 1].path}` " +
-                    "is `${fields[at + 1].declaredFieldType()}` beside `${fields[at].path}`, " +
-                    "`${fields[at].declaredFieldType()}` — compare each kind in its own condition",
+                    "is `${effectiveFieldType(fields[at + 1])}` beside `${fields[at].path}`, " +
+                    "`${effectiveFieldType(fields[at])}` — compare each kind in its own condition",
                 element,
                 call.spanIn(member),
                 VARYING_TYPES,
