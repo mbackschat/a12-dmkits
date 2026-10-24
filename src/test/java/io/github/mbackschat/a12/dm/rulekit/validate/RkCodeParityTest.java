@@ -28,15 +28,18 @@ import org.junit.jupiter.api.Test;
  *       (as a literal or an enum reference) — so the catalog can't accrete codes nothing emits.</li>
  * </ul>
  *
- * Scans {@code src/main} (core: lint/validate/dsl codes) and {@code cli/src/main} (structure/apply codes),
- * the two trees that emit {@code RK_*}; {@code RkCode.java} itself is excluded (it defines, not emits).
- * {@code MVK_*} codes are the kernel's — covered by the MVK ledger, not here.
+ * Scans every tree that mints {@code RK_*}: the Java kits and {@code cli/src/main}, and the portable checker's
+ * {@code consistency/src/commonMain}, which cannot reference {@link RkCode} and so spells its codes as text with
+ * nothing else joining them to the registry (CLI-CONFORMANCE-GAPS CG25 found fifteen unregistered there).
+ * {@code RkCode.java} is excluded because it defines rather than emits, and the checker's generated
+ * {@code KernelCorrectives.kt} because it spells every registered code it projects, which would make the reverse
+ * direction vacuous. {@code MVK_*} codes are the kernel's — covered by the MVK ledger, not here.
  */
 class RkCodeParityTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    private static final Pattern RK_LITERAL = Pattern.compile("\"(RK_[A-Z_]+)\"");
+    private static final Pattern RK_LITERAL = Pattern.compile("\"(RK_[A-Z0-9_]+)\"");
 
     @Test
     void everyEmittedCodeIsCataloguedAndEveryCatalogueCodeIsEmitted() throws IOException {
@@ -80,14 +83,14 @@ class RkCodeParityTest {
     private static List<Path> mainSources() throws IOException {
         List<Path> out = new ArrayList<>();
         for (String tree : List.of("core/src/main/java", "rulekit/src/main/java",
-                "modelkit/src/main/java", "edit/src/main/java", "cli/src/main/java")) {
+                "modelkit/src/main/java", "edit/src/main/java", "cli/src/main/java", "consistency/src/commonMain")) {
             Path dir = CHECKOUT.resolve(tree);
             if (!Files.isDirectory(dir)) {
                 continue;
             }
             try (Stream<Path> walk = Files.walk(dir)) {
-                walk.filter(f -> f.toString().endsWith(".java"))
-                        .filter(f -> !f.getFileName().toString().equals("RkCode.java"))
+                walk.filter(f -> f.toString().endsWith(".java") || f.toString().endsWith(".kt"))
+                        .filter(f -> !Set.of("RkCode.java", "KernelCorrectives.kt").contains(f.getFileName().toString()))
                         .forEach(out::add);
             }
         }

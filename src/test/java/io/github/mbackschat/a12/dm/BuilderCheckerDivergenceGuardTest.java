@@ -380,6 +380,10 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_ENTITY", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
+            // RkCode's checker-sentence prose names these two as the classes its sentences withhold or ride
+            // beside (KF569, KF579); the checker reports both.
+            Map.entry("MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE", Disposition.PROSE_ONLY),
+            Map.entry("MVK_ERROR_CODE_MISSING", Disposition.PROSE_ONLY),
             // Both estates enforce it now, over carriers that cannot share: FieldListRef.having refuses all
             // three constructs on a typed handle, while the checker reads a stored filter body and can only
             // reach the gate once the four gates before it pass. Changed from PROSE_ONLY 2026-09-15, when

@@ -1109,13 +1109,16 @@ tasks.register('vocabularyGuardTest', Test) {
 // edit to either owner or to the checker's emitted codes re-runs this guard alone, and the inputs are declared
 // so a cached green cannot leave the projection stale.
 tasks.register('correctiveGuardTest', Test) {
-    description = 'The portable checker\'s corrective table is the projection of its Java diagnostic owners.'
+    description = 'The RK_ registry and the portable checker\'s corrective table agree with every tree that mints a code.'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCorrectiveProjectionGuardTest'
+        // The registry's parity reads the same checker tree as text, and `:consistency` is on no root runtime
+        // classpath, so in the broad suite a checker-only edit left it UP-TO-DATE (CG25).
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.RkCodeParityTest'
     }
     guardInputs(it, [
             'the diagnostic owners' : files(
@@ -1124,6 +1127,9 @@ tasks.register('correctiveGuardTest', Test) {
             // The checker's whole main tree, because its EMITTED codes are the projection's denominator: a
             // family added anywhere in it can widen the table.
             'the checker\'s sources'  : fileTree('consistency/src/commonMain') { include '**/*.kt' },
+            // The other trees the parity reads for RK_ literals.
+            'the minting Java trees' : files('core/src/main/java', 'rulekit/src/main/java', 'modelkit/src/main/java',
+                    'edit/src/main/java', 'cli/src/main/java').collect { fileTree(it) { include '**/*.java' } },
     ])
 }
 

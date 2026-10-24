@@ -3061,11 +3061,20 @@ public class io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException exte
 public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode APPLY_OP_FAILED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ATTACHMENT_LOCALE_UNSUPPORTED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode BOUND_SIGNED_ZERO
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode BOUND_TOO_MANY_DIGITS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_FORBIDDEN_CONSTRUCT
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_OVERLAPPING_PRECONDITIONS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CONTRADICTORY_PRESENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_FORMAT_INVALID
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_SEPARATOR_INVALID
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ENUM_TEXT_LINE_BREAK
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_CODE_ALPHABET
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_CODE_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_FIELD_OUTSIDE_GROUP
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode FIELD_NAME_ALPHABET
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GOTCHA
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GROUP_PATH_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INCOMPLETE_RULE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INPUT_UNREADABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERNAL_ERROR
@@ -3101,6 +3110,8 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_INCLUDE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_RULE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_TYPEDEF
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NUMBER_MAX_VALUE_EXCEEDED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NUMBER_MIN_VALUE_EXCEEDED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode OUTPUT_UNWRITABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode OUTWARD_REFERENCE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode PRESENCE_NOT_COMPLEMENTARY
@@ -3108,6 +3119,9 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode REFERENCED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode REPEATABLE_INCLUDE_ROOT
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RETYPE_AFFECTS_READERS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ROOT_GROUP_NAME_ALPHABET
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RULE_NAME_ALPHABET
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode SORT_LIST_ABOVE_CAPACITY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_MISMATCH
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_ENTITY_REFERENCE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_MESSAGE_LOCALE
@@ -3116,6 +3130,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNKNOWN_ARG
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNKNOWN_OP
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNRESOLVED_REFERENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNSUPPORTED_CHARACTER
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode WRONG_BATCH_KIND
   public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.RkCode> byCode(java.lang.String)
   public java.lang.String code()

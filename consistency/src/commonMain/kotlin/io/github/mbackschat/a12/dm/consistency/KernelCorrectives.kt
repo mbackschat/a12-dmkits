@@ -109,6 +109,42 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "The condition has a token the DSL parser did not expect (a syntax slip the kernel reports with no message of its own). The most common causes, in order: (1) a BOOLEAN literal must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` (e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; (3) use the configured language's operator and keyword spellings; connective variants are enumerated, for example `And`/`and`/`AND`, not arbitrary mixed case; (4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, not `Approved != True` (bare names belong only inside a function/predicate's parentheses, like `FieldFilled(Approved)`). Re-check the token at the reported position against these.",
         meaning = "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar did not allow it — and it is raised WITHOUT a message, so the likely cause has to be inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, double-quoted strings, and the configured language's admitted keyword spellings).",
     ),
+    "RK_BOUND_SIGNED_ZERO" to Corrective(
+        fix = "write a bound that keeps its value at the declared fractional digits — 0 itself, or allow a fractional digit so a small negative bound does not round to -0.",
+        meaning = "A12's sentence \"The value '0' as well as positive values must be provided without a sign.\": a Number's `minValue` or `maxValue` prints as `-0`, A12 rounding it half away from zero to a whole number when no fractional digit is allowed (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
+    ),
+    "RK_BOUND_TOO_MANY_DIGITS" to Corrective(
+        fix = "write the bound with 15 digits or fewer, counting a leading 0; drop precision the field's fractional digits cannot hold.",
+        meaning = "A12's sentence \"Only values with up to 15 digits are allowed.\": a Number's `minValue` or `maxValue`, as A12 prints it, has more than 15 digits, a leading `0` counted (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
+    ),
+    "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
+        fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
+        meaning = "A12's sentence \"The date range format is invalid.\": a DateRange type composes `format + rangeSeparator + format`, and A12 allowlists that PAIR rather than either half, so a valid format and a valid separator can still be refused together (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
+    ),
+    "RK_DATE_RANGE_SEPARATOR_INVALID" to Corrective(
+        fix = "use `-` or `/` as the range separator.",
+        meaning = "A12's sentence \"Only minus (-) or slash (/) may be used for date range types.\": a DateRange type's `rangeSeparator`, trimmed, is neither empty, `-` nor `/` (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
+        fix = "remove the line break from the value, label or category token.",
+        meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break (KERNEL-FINDINGS KF418), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ERROR_CODE_ALPHABET" to Corrective(
+        fix = "write the error code, or the computation's name, in letters, digits, spaces and underscores only.",
+        meaning = "A12's sentence \"The error code is only allowed to contain letters, digits, blanks and underscores.\": a rule's trimmed error code, or a computation's name, carries anything else, the letters including the German umlauts and `ß` (KERNEL-FINDINGS KF578), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ERROR_CODE_EMPTY" to Corrective(
+        fix = "give the rule a non-empty `errorCode`.",
+        meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is absent or empty, drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence before any variant filter (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
+    ),
+    "RK_FIELD_NAME_ALPHABET" to Corrective(
+        fix = "rename the field to letters, digits, underscores and colons, separating parts with a dot and starting each later part with a letter.",
+        meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with a letter. Despite the sentence, a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
+    "RK_GROUP_PATH_INVALID" to Corrective(
+        fix = "rename the group: a nested group name begins with an ASCII letter or `_` and continues in letters, digits, `_`, the German umlauts and `ß`, at most 60 characters.",
+        meaning = "A12's sentence \"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …\": a part of the trimmed group path an element lives in is over 60 characters or outside the group alphabet, so A12 states it at that group and at every element beneath (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
     "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
         fix = "shorten the root group's name to 60 characters or fewer.",
         meaning = "A12's sentence \"Only values with up to 60 characters are allowed.\": a root group's name is longer than 60 characters, and its alphabet is admitted (an alphabet refusal takes this sentence's place; KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
@@ -133,8 +169,32 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "write a count of 0 or more, or -1 to declare no bound where the member admits it; a Number length admits no -1.",
         meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
     ),
+    "RK_NUMBER_MAX_VALUE_EXCEEDED" to Corrective(
+        fix = "lower the maximum to 10^(15 - k) - 10^(-k) or less, or declare fewer fractional digits to widen that limit.",
+        meaning = "A12's sentence \"The maximum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `maxValue`, signed and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
+    ),
+    "RK_NUMBER_MIN_VALUE_EXCEEDED" to Corrective(
+        fix = "raise the minimum until its absolute value is within 10^(15 - k) - 10^(-k), or declare fewer fractional digits to widen that limit.",
+        meaning = "A12's sentence \"The minimum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `minValue`, by its absolute value and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ROOT_GROUP_NAME_ALPHABET" to Corrective(
+        fix = "rename the root group to letters, digits, underscores, the German umlauts and `ß`.",
+        meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
+    "RK_RULE_NAME_ALPHABET" to Corrective(
+        fix = "rename it to an ASCII letter followed by ASCII letters, digits and underscores.",
+        meaning = "A12's sentence \"A rule name must start with a letter followed by letters, digits and underscores.\": a rule's or computation's trimmed name is not an ASCII letter followed by ASCII letters, digits and underscores (KERNEL-FINDINGS KF578), and it withholds `MVK_RULE_NAME_INVALID`, where the portable checker names the sentence by this code.",
+    ),
+    "RK_SORT_LIST_ABOVE_CAPACITY" to Corrective(
+        fix = "keep at most three `sortFields` entries.",
+        meaning = "A12's sentence \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.\": a group's `sortFields` holds more than three entries, and each entry beyond the third draws it once (KERNEL-FINDINGS KF345), where the portable checker names the sentence by this code.",
+    ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",
         meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text would be reported valid without ever being examined.",
+    ),
+    "RK_UNSUPPORTED_CHARACTER" to Corrective(
+        fix = "replace the character above U+FFFF, such as an emoji, in that text.",
+        meaning = "A12's sentence \"The field contains one or several unsupported signs.\": a text A12 validates as part of the model, such as a rule's condition, code or message, or an enum value, carries a character outside the Basic Multilingual Plane. Model, group and field labels are not checked (KERNEL-FINDINGS KF489), where the portable checker names the sentence by this code, once per element.",
     ),
 )

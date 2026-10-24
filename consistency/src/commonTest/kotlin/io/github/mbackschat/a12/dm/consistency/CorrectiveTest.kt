@@ -31,6 +31,15 @@ class CorrectiveTest {
           {"type":"Group","id":"g90","name":"SeasonalSeasonalSeasonalSeasonalSeasonalSeasonalSeasonalStock","Group":{"elements":[
             {"type":"Field","id":"f90","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
           ]}},
+          {"type":"Group","id":"g91","name":"Stock-Room","Group":{"elements":[
+            {"type":"Field","id":"f91","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
+          ]}},
+          {"type":"Group","id":"g92","name":"Depot","Group":{"elements":[
+            {"type":"Field","id":"f92","name":"Bin-Label","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Group","id":"g93","name":"Codeé","Group":{"elements":[
+              {"type":"Field","id":"f93","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
+            ]}}
+          ]}},
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Season","Field":{"fieldType":{"type":"DateType",
@@ -89,6 +98,39 @@ class CorrectiveTest {
               "NumberType":{"maxIntegerDigits":16}}}},
             {"type":"Field","id":"f85","name":"FineCount","Field":{"fieldType":{"type":"NumberType",
               "NumberType":{"maxFractionalDigits":15}}}},
+            {"type":"Field","id":"f86","name":"Rebate","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":0,"minValue":-0.4}}}},
+            {"type":"Field","id":"f87","name":"Ratio","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":14,"maxValue":0.123456789012345}}}},
+            {"type":"Field","id":"f88","name":"Ceiling","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":2,"maxValue":1e13}}}},
+            {"type":"Field","id":"f89","name":"Floor","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":2,"minValue":-1e13}}}},
+            {"type":"Field","id":"f94","name":"Window","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"yyyy","rangeSeparator":"-"}}}},
+            {"type":"Field","id":"f95","name":"Span","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"dd.MM","rangeSeparator":"x"}}}},
+            {"type":"Field","id":"f96","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
+              "EnumerationType":{"values":[{"value":"TOP\nTIER"}]}}}},
+            {"type":"Group","id":"g94","name":"Bins","Group":{"repeatability":5,
+              "sortFields":[{"name":"BinA"},{"name":"BinB"},{"name":"BinC"},{"name":"BinD"}],"elements":[
+              {"type":"Field","id":"f97","name":"BinA","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f98","name":"BinB","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f99","name":"BinC","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f100","name":"BinD","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
+            {"type":"Rule","id":"r93","name":"1stNoteCheck","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
+              "errorCode":"C93","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r94","name":"HyphenatedCode","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
+              "errorCode":"C-94","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r95","name":"EmptyCode","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
+              "errorCode":"","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r96","name":"EmojiMessage","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
+              "errorCode":"C96","errorMessage":[{"locale":"en_US","text":"x \uD83D\uDE00"}]}},
             {"type":"Field","id":"f71","name":"KeyedNote","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c71","name":"IndexesByItsOwnTarget","Computation":{
               "computedFieldRelPath":"../KeyedNote",
