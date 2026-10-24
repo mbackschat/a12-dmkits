@@ -73,7 +73,7 @@ internal class IterationScopes(private val model: ModelDef) {
         val semanticAnchors = semanticIndexSpecs(ast, includeFilterBodies = false).flatMap(::ordinaryLevelsOfSelection)
             .filter { it != ownLevel }
         val scope = (listOfNotNull(deepestRepeatableAnchor(refs, ownLevel)) + semanticAnchors)
-            .maxByOrNull { it.count { c -> c == '/' } } ?: starBindingAnchor(ast)?.takeIf { it != ownLevel }
+            .maxByOrNull { it.count { c -> c == '/' } } ?: starBindingAnchor(ast, withheld = ownLevel)
             ?: return rootGroupOf(errorPath).let { root -> IterationPlan.Once(root, isGlobal(root, ast)) }
         // A star bound to another indexed group joins it as a field read does: alone it anchors the join, and a
         // rule reading both sides only through stars joins them too (KERNEL-FINDINGS KF573). A level below the
@@ -126,7 +126,8 @@ internal class IterationScopes(private val model: ModelDef) {
     fun bindsRepeatableGroup(plan: IterationPlan, group: String): Boolean = when (plan) {
         is IterationPlan.Once -> false
         is IterationPlan.Rows -> plan.group == group
-        is IterationPlan.Parallel -> group in plan.joined || group == plan.nested
+        // Not [IterationPlan.Parallel.nested]: a selection names a keyed group, and the nested level has no key.
+        is IterationPlan.Parallel -> group in plan.joined
     }
 
     /**
@@ -147,9 +148,13 @@ internal class IterationScopes(private val model: ModelDef) {
             (entityPaths(ast).map(::rootGroupOf) + errorRoot).toSet().size > 1 ||
             comparesACountOnItsSmallSide(ast)
 
-    /** The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. */
-    private fun starBindingAnchor(ast: Cond): String? =
-        starRefs(ast).flatMap { bindingLevels(it) }.filter { it in model.repeatable }
+    /**
+     * The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. [withheld] leaves
+     * before the choice, as in [deepestRepeatableAnchor]: dropped after it, a tie between it and another level
+     * depended on which star was written first (`JoinPlanningShapeTest`).
+     */
+    private fun starBindingAnchor(ast: Cond, withheld: String?): String? =
+        starRefs(ast).flatMap { bindingLevels(it) }.filter { it in model.repeatable && it != withheld }
             .maxByOrNull { it.count { c -> c == '/' } }
 
     /** The group paths STRICTLY ABOVE [star]'s first `*`-marked group — the levels the star binds (its
@@ -194,6 +199,11 @@ internal class IterationScopes(private val model: ModelDef) {
             !hasIndexField(scope) && parent in model.repeatable && hasIndexField(parent)
         } ?: scope
         val joined = (listOf(side) + parallelGroups).distinct()
+        // A12 refuses a reference chain crossing two keyed levels beside a join (`MVK_MULTIPLE_INDEX_FIELDS`,
+        // KERNEL-FINDINGS KF602), so a joined group inside another has no runtime behaviour to match.
+        joined.firstOrNull { inner -> joined.any { inner.startsWith("$it/") } }?.let { inner ->
+            throw UnsupportedConstructException("parallel iteration joining $inner inside another joined group is not modeled")
+        }
         val commonParent = commonAncestor(joined)
         val parentDepth = pathParts(commonParent).size
         val indexNames = joined.map { g ->

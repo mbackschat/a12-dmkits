@@ -4957,3 +4957,19 @@ The interpreter evaluated a rule in the kernel's two passes only when a leaf cou
 The plan's flag is now `reachObservable`, from `reachIsObservable`: a leaf that can fail at runtime or a `CustomCondition` anywhere in the condition. Such a rule takes `firedTypeInTwoPasses`, whose short-circuited truth pass and eager classification pass already matched the kernel for failures. A rule without either keeps the single walk, since there the reached leaves are unobservable.
 
 *Locked:* `adapter.laws.CustomConditionCallCountDiffTest` (full and partial, root and repeating carriers).
+
+### IF432: join planning chooses its star anchor without the target's own level, and declines a joined group inside another (2026-10-24) <a id="if432"></a>
+
+Closes IG181, which the batch R cold review opened on four join-planning branches. Each was settled by its own oracle.
+
+| branch | oracle | outcome |
+|---|---|---|
+| `bindsRepeatableGroup`'s `group == plan.nested` | mutant over `:interpreter:jvmTest` and the adapter group-target differentials: survived; by source, a selection names a keyed group and the nested level has none | deleted |
+| the parallel row's nested arm of `boundLevelsOf` | the same mutant net: survived; by source, parallel partial dispatch goes through `ParallelRuleSelection`, and a parallel computation refuses a group read below the joined groups | deleted |
+| the star anchor dropped after the deepest was chosen | `JoinPlanningShapeTest`: a group target tied with another star's binding level fired once or twice depending on which star came first | the target's own level now leaves before the choice, as in the tier-1 anchor |
+| a joined group inside another joined group | `JoinPlanningShapeTest`: evaluated, unrefused | declined as unsupported |
+
+A12 refuses both shapes that reach the last two rows (measured 2026-10-24 with `rule check`): the tie with `MVK_ERROR_FIELD_NO_INDEX` for a keyed sibling and `MVK_NO_WILDCARD` for an unkeyed one, and a reference chain crossing two keyed levels beside a join with `MVK_MULTIPLE_INDEX_FIELDS` (KERNEL-FINDINGS [KF602](KERNEL-FINDINGS.md#kf602)). So neither has a runtime answer to match. They are held deterministic and loud because the interpreter also reads models nobody checked.
+
+*Locked:* `JoinPlanningShapeTest`.
+

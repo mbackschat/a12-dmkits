@@ -1993,13 +1993,13 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
-        // Matched joins bind their group; unmatched joins retain only their ordinary parent prefix.
-        // Parallel partial dispatch uses its separate compressed selector (ParallelRuleSelection, SPEC10).
+        // Matched joins bind their group; unmatched joins retain only their ordinary parent prefix. No nested arm:
+        // parallel partial dispatch uses its own compressed selector (ParallelRuleSelection, SPEC10), and a parallel
+        // computation refuses a group read below the joined groups, so nothing asks about a nested path here.
         override fun boundLevelsOf(path: String): Int {
             val g = groupOf(path) ?: return commonPrefixLen(partsOf(path), partsOf(commonParent))
             val bound = when {
                 matches[g] == null -> parentReps.getValue(g).size
-                nestedRow != null && underNested(path) -> nestedRow.size
                 else -> groupDepths.getValue(g)
             }
             return minOf(bound, partsOf(path).size)
