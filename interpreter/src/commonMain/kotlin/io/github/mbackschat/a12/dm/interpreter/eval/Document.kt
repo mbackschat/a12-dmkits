@@ -665,7 +665,11 @@ class Document(internal val config: DocumentConfig) {
      */
     fun fullValidationContextsFor(groupPath: String, capacityOf: (String) -> Int): List<EvalContext> =
         index().fullValidationContextsByGroup.getOrPut(groupPath) {
-            contextsForRows(groupPath, fullValidationRowsOf(groupPath, capacityOf))
+            // A12 runs a root's rules inside a root instance holding content and asks no content question of the
+            // row itself (`RulesInRootGroup_method.st`, `CodeGenRuleDefinition.st`; IF435), so the gate is the
+            // root instance's: a valued cell or an instantiated repeatable row anywhere below it.
+            val rootGate = attachGate(rootOf(groupPath))
+            fullValidationRowsOf(groupPath, capacityOf).map { RowContext(groupPath, it, rootGate.admits(it.take(1))) }
         }
 
     /**

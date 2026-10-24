@@ -5004,3 +5004,20 @@ The interpreter applied the bucket only to rules it evaluates once ([IF351](#if3
 Partial validation and a repeatable root are not measured for this bucket, so both keep the earlier domain.
 
 *Locked:* `adapter.laws.GlobalRowRuleDiffTest` (both kernel strategies against the interpreter).
+
+### IF435: full validation gates a rule on its root instance's content, never on the row it judges (2026-10-24) <a id="if435"></a>
+
+Found beside [IF434](#if434), whose gated control fired at an unused claim once the policy held a first one. `RulesInRootGroup_method.st` runs a root's rules inside `mindestensEinVordruckAngegeben(root, l)`, and `CodeGenRuleDefinition.st` then iterates the rule's declared domain and evaluates the condition with no content question of its own. The interpreter gated each row on content in that row's scope, so a comparison stayed silent on a declared slot no row held even though its root instance held content.
+
+The gate is now the root instance's attach gate: a row is evaluated when a valued cell or an instantiated repeatable row lies anywhere below its root instance, the same content set the row gate already counted.
+
+| rule (own carrier) | document | A12 and now the interpreter | before |
+|---|---|---|---|
+| `[Claims/Amount] < 5` in the nonrepeatable root `Policy`, `[Parts/Qty] < 5` in `Claims` (capacities 2 × 2) | a keyed first claim, a blank claim object, one part | every claim and every part slot | only the rows holding content |
+| the same | an agent alone, a stored second claim | every slot | same |
+| the same | `{"Policy":{}}`, a blank agent object | silent | same |
+| `[Units/Km] < 5` in the repeatable root `Fleet` | one vehicle, a blank vehicle before a used one | every slot of each instance holding content, a blank instance object counting | same |
+
+So an empty nonrepeatable root object and a blank nonrepeatable child object are no content, while a blank repeatable row object is, as the row gate already held.
+
+*Locked:* `adapter.laws.RootContentGateDiffTest` (both kernel strategies against the interpreter).
