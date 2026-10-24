@@ -14229,15 +14229,15 @@ The spelling `../Items/Sku` is the discriminator for the judged value: it would 
 
 *Locked by:* `adapter.laws.CheckerOrderingNameSentenceAgreementTest`, A12 against the portable checker class by class with multiplicity and attachment path; `consistency.OrderingMemberFieldNameKf589Test` replays the checker's half on the JVM and Node.
 
-## §13 supplement — a group's count below 1 is refused at every element beneath it, beside the member's range sentence (model check, 2026-10-21) <a id="kf590"></a>
+## §13 supplement — a group's count below 1 is refused at every group and field beneath it, beside the member's range sentence (model check, 2026-10-21) <a id="kf590"></a>
 
 > Fold: pending — beside [KF221](#kf221)'s repeatability domain.
 
-A12 derives each element's repetition layers from every ancestor (`NoMetaModelChecks.check_MVK_MAX_VALUES_INVALID` reads the element's whole `getMax()` array), so one group's non-positive count is a defect in each group and field beneath it. Measured on `/Policy/Coverages` (holding `Amount` and a repeatable `Riders` with `Code`), its nested group, and the root, at `0`, `-1`, `-7` and a literal `null`:
+A12 derives each element's repetition layers from every ancestor (`NoMetaModelChecks.check_MVK_MAX_VALUES_INVALID` reads the element's whole `getMax()` array), so one group's non-positive count is a defect in each group and field beneath it. A rule or computation beneath draws nothing, because the entity walk judging the layers (`NoMetaModelChecks.checkEntity`, kernel-core-codegen) visits groups and fields only *(Corrected 2026-10-24: the heading said "every element"; a rule and a computation declared in `Coverages` draw no class on any row below, measured after a12-kernel-lean's SPEC-2026-10-23-04 narrowed the wording from the source walk, and the checker, which had reported them, was fixed)*. Measured on `/Policy/Coverages` (holding `Amount` and a repeatable `Riders` with `Code`), its nested group, and the root, at `0`, `-1`, `-7` and a literal `null`:
 
 | declared on | A12 |
 |---|---|
-| `Coverages`, `0` or `null` | `MVK_MAX_VALUES_INVALID` at `Coverages`, `Amount`, `Riders` and `Riders/Code`, and *"Only values greater than 0 are allowed."* at `Coverages` |
+| `Coverages`, `0` or `null` | `MVK_MAX_VALUES_INVALID` at `Coverages`, `Amount`, `Note`, `Riders` and `Riders/Code`, none at the rule `AmountSet` or the computation `NoteFromAmount` declared beside them, and *"Only values greater than 0 are allowed."* at `Coverages` |
 | `Coverages`, `-1` or `-7` | the same four classes, and *"Only values without a sign are allowed."* |
 | `Riders`, any of them | the class at `Riders` and `Riders/Code` only, and the sentence |
 | both at `0` | each element once, whichever ancestor refused it |

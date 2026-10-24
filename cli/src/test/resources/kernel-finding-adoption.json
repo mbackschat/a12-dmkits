@@ -1713,7 +1713,7 @@
       }
     },
     "kf590": {
-      "sha256": "f7ed5054cbf144f39bda6f6d3b20d3fe79cff700b9b6f03f4d8b5fa226a39632",
+      "sha256": "c4918660d46efc95c08ea93aeb5f07ad4afed73a3f61f47ac41207ba64f91f65",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -1727,7 +1727,7 @@
       },
       "consumers": {
         "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits author models through the typed builder and leave these verdicts to the kernel check.", "evidence": {}},
-        "checker": {"state": "APPLIED", "basis": "Each element beneath a group counted below 1 draws MVK_MAX_VALUES_INVALID, keyed on a dedicated model fact, and the group states the member's range sentence.", "evidence": {"repetition count cascade": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/GroupRepetitionCountTest.kt#aNonPositiveCountIsInvalidOnEitherCarrier", "witness": "Nested and root carriers at 0, -1, the floor and null replay the class beneath and the sentence on JVM and Node."}}},
+        "checker": {"state": "APPLIED", "basis": "Each group and field beneath a group counted below 1 draws MVK_MAX_VALUES_INVALID, a rule or computation none, keyed on a dedicated model fact, and the group states the member's range sentence.", "evidence": {"repetition count cascade": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/GroupRepetitionCountTest.kt#aNonPositiveCountIsInvalidOnEitherCarrier", "witness": "Nested and root carriers at 0, -1, the floor and null replay the class beneath and the sentence on JVM and Node."}}},
         "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes none of these members.", "evidence": {}},
         "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on twelve rows over three carriers and four counts, with every attachment path.", "evidence": {"repetition count cascade": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRepeatabilityCascadeAgreementTest.kt#theCheckerReportsA12sClassesWhereA12Does", "witness": "Every row's classes and paths agree; A12's answer on the nested zero row is pinned."}}},

@@ -8,6 +8,9 @@ import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -17,7 +20,8 @@ import org.junit.jupiter.api.Test
  *
  * A12 derives each element's repetition layers from its ancestors, so the rival readings are "the group alone" and
  * "the group and everything beneath it"; a nested group and a field two levels down separate them, and a sibling
- * outside the group is the control. The member's own range sentence rides beside the class. Own domain (an
+ * outside the group is the control. A rule and a computation declared in the group ask whether "everything" reaches
+ * past groups and fields: A12's entity walk visits only those two (SPEC-2026-10-23-04). The member's own range sentence rides beside the class. Own domain (an
  * insurance policy's coverages and their riders), built by editing the drafted model's JSON, because the typed
  * builder refuses these counts.
  */
@@ -31,10 +35,10 @@ class CheckerRepeatabilityCascadeAgreementTest {
 
     /** A12's own answer on the row that separates the two readings, so an agreement on a broken fixture cannot pass. */
     @Test
-    fun a12ReportsEveryElementBeneathTheGroup() {
+    fun a12ReportsEveryGroupAndFieldBeneathTheGroup() {
         assertEquals(listOf(
-            "$INVALID@/Policy/Coverages", "$INVALID@/Policy/Coverages/Amount", "$INVALID@/Policy/Coverages/Riders",
-            "$INVALID@/Policy/Coverages/Riders/Code", "$NOT_POSITIVE@/Policy/Coverages",
+            "$INVALID@/Policy/Coverages", "$INVALID@/Policy/Coverages/Amount", "$INVALID@/Policy/Coverages/Note",
+            "$INVALID@/Policy/Coverages/Riders", "$INVALID@/Policy/Coverages/Riders/Code", "$NOT_POSITIVE@/Policy/Coverages",
         ), kernel(model(Row(coverages = mapper.valueToTree(0)))))
     }
 
@@ -82,9 +86,13 @@ class CheckerRepeatabilityCascadeAgreementTest {
                 policy.group("Coverages") { coverages ->
                     coverages.repeatable(4).stringField("Amount") { }
                         .group("Riders") { riders -> riders.repeatable(3).stringField("Code") { } }
+                        .stringField("Note") { }
                 }.stringField("Holder") { }
             }
             .build().toJson()
+            .let { RuleValidator().inject(it, DraftRule("/Policy/Coverages", "AmountSet", "../Amount", "FieldFilled(Amount)", "AMOUNT_SET", "ERROR")) }
+            .let { RuleValidator().inject(it, DraftComputation("/Policy/Coverages", "NoteFromAmount", "../Note", null,
+                listOf(DraftComputation.Alternative(null, "[Amount]")))) }
         val ROWS = listOf(0, -1, -7).flatMap { count ->
             val node = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(count)
             listOf(Row(coverages = node), Row(riders = node), Row(root = node))

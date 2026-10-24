@@ -43,11 +43,12 @@ internal fun TrackedFactBase.groupRepetitionCountFindings(element: TrackedDeclar
 /**
  * The class an element draws for a non-positive count declared by a group ABOVE it ([KERNEL-FINDINGS KF590]).
  * A12 judges each element's repetition layers, which it derives from every ancestor, so one group's `0` is a
- * defect in each group and field beneath it, and every one of them carries the class once.
+ * defect in each group and field beneath it, and every one of them carries the class once. A rule or computation
+ * beneath carries none: the entity walk that judges the layers visits groups and fields only (measured, KF590).
  */
 private fun TrackedFactBase.inheritedInvalidCount(element: TrackedDeclaration): Finding? {
     val refused = nonPositiveCountGroupPaths()
-    if (refused.isEmpty()) {
+    if (refused.isEmpty() || element.declaredKind !in REPETITION_LAYERED) {
         return null
     }
     val ancestor = element.path.split('/').filter { it.isNotEmpty() }.dropLast(1)
@@ -58,7 +59,7 @@ private fun TrackedFactBase.inheritedInvalidCount(element: TrackedDeclaration): 
         FindingSeverity.ERROR,
         "MVK_MAX_VALUES_INVALID",
         "`$ancestor` above it declares a `repeatability` below 1, and A12 derives each element's repetition " +
-            "from its ancestors, so every element beneath that group is refused with it",
+            "from its ancestors, so every group and field beneath that group is refused with it",
         element.path,
     )
 }
@@ -154,6 +155,9 @@ private fun TrackedDeclaration.invalidCount(declared: String): Finding = Finding
         "repeating a non-positive number of times has no index range to address",
     path,
 )
+
+/** The declarations whose repetition layers A12's entity walk judges. */
+private val REPETITION_LAYERED = setOf(DeclaredKind.GROUP, DeclaredKind.FIELD)
 
 /** A root group's own cap, measured: 999999999 is admitted and one more is not. */
 private const val ROOT_GROUP_CAP = 999999999L
