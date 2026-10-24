@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.FieldValueRead
 import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
@@ -36,6 +37,8 @@ internal sealed interface OperationType {
  * same facts as a brace leaves them: A12 types a braced operand by what it encloses and finds a constant inside
  * any number of braces (`CheckOpUtils.isConstant`), while its display gate against a text asks for an immediate
  * field read (`isFeldWertOp`) — measured on both positions by `adapter.laws.CheckerComparisonOperandShapeAgreementTest`.
+ * [categoryDomain] is the value domain of a category read, which carries no declaration of its own ([KERNEL-FINDINGS
+ * KF610]).
  */
 internal data class OperationValue(
     val type: OperationType,
@@ -44,12 +47,14 @@ internal data class OperationValue(
     val baseYear: BaseYearRole? = null,
     val typedBy: TrackedDeclaration? = field,
     val domainConstant: WrittenConstant? = constant,
+    val categoryDomain: Set<String>? = null,
 ) {
     val numeric get() = type as? OperationType.Number
     val temporal get() = type as? OperationType.Temporal
 
     /** The same type as a computed result, which carries no field, constant or base-year provenance. */
-    fun derived() = copy(field = null, constant = null, baseYear = null, typedBy = null, domainConstant = null)
+    fun derived() =
+        copy(field = null, constant = null, baseYear = null, typedBy = null, domainConstant = null, categoryDomain = null)
 
     /** The same value behind a brace: no longer an immediate read or literal, still typed and still constant. */
     fun braced() = copy(field = null, constant = null, baseYear = null)
@@ -95,13 +100,31 @@ internal class OperationAnalysis(
     private fun operation(shape: OperationShape): OperationValue = when (shape) {
         is OperationShape.Literal -> literal(written(shape))
         is OperationShape.Read -> with(facts) {
-            if (fieldValueReadIsRefused(shape.read, group, element)) UNKNOWN
-            else bareReferenceField(written(shape), group, element,
-                bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarked))?.let(::field) ?: UNKNOWN
+            when {
+                fieldValueReadIsRefused(shape.read, group, element) -> UNKNOWN
+                shape.read.category != null -> categoryRead(shape.read)
+                else -> bareReferenceField(written(shape), group, element,
+                    bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarked))?.let(::field) ?: UNKNOWN
+            }
         }
         is OperationShape.Group -> value(shape.child).braced()
         is OperationShape.Arithmetic -> arithmetic(shape)
         is OperationShape.Call -> call(shape)
+    }
+
+    /**
+     * A category read, typed as A12 types it: the Enumeration it hangs off, looked up in the CATEGORY's values
+     * (`CheckVergleichsBedingungImpl.getValidEnumValues`, [KERNEL-FINDINGS KF610]). It is no immediate field read,
+     * so the display gates that ask for one pass it, and a keyed read stays unjudged because no row measures it.
+     */
+    private fun categoryRead(read: FieldValueRead): OperationValue = with(facts) {
+        val written = read.path ?: return UNKNOWN
+        val category = read.category?.trim('`') ?: return UNKNOWN
+        val target = addressedTargetOf(written, group, element, indexSelected = false,
+            everyLevelAddressed = bodyAddresses(read.inAFilterBody, read.outerMarked)) ?: return UNKNOWN
+        val field = declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return UNKNOWN
+        val domain = enumerationBodyOf(field)?.lookupDomain(category) ?: return UNKNOWN
+        OperationValue(OperationType.Enumeration, categoryDomain = domain.toSet())
     }
 
     fun finding(code: String, at: Int, end: Int, because: (String) -> String): Finding? {

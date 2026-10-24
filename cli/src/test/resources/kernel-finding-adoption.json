@@ -13353,6 +13353,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf610": {
+      "sha256": "86ec6287f802558c4c4ecb1ae94f11733b5828ef74073cce24754aeb114aba01",
+      "task": "SS15",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a category read and a boolean constant on the comparison ladder"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's typing of a category read in a comparison"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's typing of a category read in a comparison"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "OperationAnalysis types a category read as an Enumeration over the category's values, and the comparison walk refuses a text or enumeration side against any non-textual partner.",
+          "evidence": {
+            "a category read and a boolean constant on the comparison ladder": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerCategoryComparisonAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every comparison and assignment row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's typing of a category read in a comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerCategoryComparisonAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every row as the finding's table states."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

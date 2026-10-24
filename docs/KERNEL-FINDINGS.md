@@ -14796,3 +14796,19 @@ A12 reads two different paths off a group error target. The order of [KF608](#kf
 | `Lines` | `FieldFilled(Lines/Parts/PartNo) And GroupFilled(Lines)` → `MVK_NO_WILDCARD`; `GroupFilled(Lines) And FieldFilled(Picks/Ref For Lines/LineNo)` → admitted | the scope is the group itself, against "a field of its parent", which addresses no `Lines` row |
 
 *Locked by:* `adapter.laws.CheckerGroupErrorTargetAgreementTest` (these rows and their siblings, A12 pinned and the checker naming the same classes).
+
+## §6 supplement — a category read compares as an Enumeration over the CATEGORY's values, and a text or enumeration side refuses a boolean constant (kernel `checkConsistency`, 2026-10-24) <a id="kf610"></a>
+
+> Fold: pending — beside [KF384](#kf384)'s string-and-enum comparison.
+
+A policy with `Cover` (values `BASIC`, `PLUS`; category `Tier` classifying them `Gold`, `Silver`), `Plan` (values `Gold`, `Silver`), a text `Title`, a number `Premium`, a boolean `Active` and a date `StartsOn`. Each row is one rule at `/Policy` reporting on `Title`, its condition `FieldFilled(Title) And` the comparison; a computation assigns to the named field. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckVergleichsBedingungImpl.getValidEnumValues` looks a constant up in `getEnumCategoryValues(category)` whenever the operand's result type carries a category, and `checkStringOrEnumType` refuses a string or enumeration against any other base type.
+
+| comparison or assignment → A12 | separates |
+|---|---|
+| `[Cover -> Tier] == "Gold"` → admitted; `== "BASIC"`, `"BASIC" == …`, `!= "PLUS"` → `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | the lookup is in the category's values, not the enumeration's own |
+| `[Cover -> Tier] == 5`, `== [Premium]`, `[Premium] == …` → `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`; `> [Premium]` → `MVK_INVALID_TYPE_FOR_COMPARISON`; `== [Active]` → `MVK_INVALID_COMPARE_TO_YESNO`; `== [StartsOn]` → `MVK_INVALID_COMPARE_TO_DATE` | an Enumeration on the comparison ladder, every arm in its usual order |
+| `[Cover -> Tier] == [Title]`, `== [Cover]`, `== [Plan]`, `== [Cover -> Tier]` → admitted | text and enumeration partners pass, whatever their domain |
+| `[Cover -> Tier] == True`, `[Title] == True`, `[Title] == False`, `[Cover] == True` → `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | a boolean CONSTANT draws the text-or-enumeration class, where a boolean FIELD draws `MVK_INVALID_COMPARE_TO_YESNO` |
+| `Premium := [Cover -> Tier]`, `Claims/Amount := [Claims/ClaimCover -> Tier]`, `Claims/Note := True` → `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`; `Active :=` → `MVK_INVALID_COMPARE_TO_YESNO`; `StartsOn :=` → `MVK_INVALID_COMPARE_TO_DATE`; `Title :=`, `Plan :=` → admitted | an assignment walks the same ladder |
+
+*Locked by:* `adapter.laws.CheckerCategoryComparisonAgreementTest` (every row, A12 pinned and the checker naming the same classes).

@@ -124,17 +124,21 @@ private fun OperationAnalysis.comparisonFinding(
             else problem("MVK_INVALID_COMPARE_TO_DATE_RANGE", "a date range compares only to a date range declaring the same components")
     }
     if (!equality) return null
+    // A text or enumeration side admits only text or an enumeration opposite it; a boolean field was refused above,
+    // so what remains is a number or a boolean constant (`checkStringOrEnumType`, [KERNEL-FINDINGS KF610]).
     val textual = setOf(OperationType.Text, OperationType.Enumeration)
-    if (left.type in textual && right.numeric != null || right.type in textual && left.numeric != null)
+    if ((left.type in textual) != (right.type in textual))
         return problem("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING",
-            "one side of `${comparison.left}` / `${comparison.right}` is text or an enumeration and the other is a number — compare a number against a number")
+            "one side of `${comparison.left}` / `${comparison.right}` is text or an enumeration and the other is not — compare text or an enumeration against text or an enumeration")
     if (customField) return null
     for ((enumeration, partner) in listOf(left to right, right to left)) {
-        val field = enumeration.typedBy?.takeIf { enumeration.type == OperationType.Enumeration } ?: continue
+        if (enumeration.type != OperationType.Enumeration) continue
         val constant = (partner.domainConstant as? WrittenConstant.Text)?.value ?: continue
-        val values = facts.enumerationBodyOf(field)?.declaredEnumValues() ?: continue
+        val (owner, values) = enumeration.categoryDomain?.let { "the category" to it }
+            ?: enumeration.typedBy?.let { field -> facts.enumerationBodyOf(field)?.declaredEnumValues()?.let { "`${field.path}`" to it } }
+            ?: continue
         if (constant !in values) return problem("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
-            "`${field.path}` declares ${values.joinToString { "`$it`" }}, and `$constant` is none of them — compare against a stored value, not its display label")
+            "$owner declares ${values.joinToString { "`$it`" }}, and `$constant` is none of them — compare against a stored value, not its display label")
     }
     displayDefect(left, right)?.let { (code, reason) -> return problem(code, reason) }
     val number = left.numeric ?: right.numeric ?: return null
