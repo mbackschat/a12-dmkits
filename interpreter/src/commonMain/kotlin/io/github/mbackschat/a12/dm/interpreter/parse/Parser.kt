@@ -54,6 +54,20 @@ fun parseRuleCondition(
     language: ConditionLanguage,
 ): Cond = ConditionParser(text, base, resolver, language).parseRule().lowerArithmetic()
 
+/** A rule condition split at its optional preamble: whether it waives the scale gate, and the condition after it. */
+data class RulePreamble(val waivesScaleGate: Boolean, val condition: String)
+
+/**
+ * Split a RULE's condition at the preamble [parseRuleCondition] consumes, for a reader that has to keep the waiver
+ * rather than evaluate past it: A12 holds it on the root of the condition, so a read that drops it rebuilds a rule
+ * A12 refuses (KERNEL-FINDINGS KF75).
+ */
+fun rulePreamble(text: String, language: ConditionLanguage): RulePreamble {
+    val parser = ConditionParser(text, "", DEFAULT_RESOLVER, language)
+    val waives = parser.consumePreamble()
+    return RulePreamble(waives, parser.rest())
+}
+
 /** Parse a value expression (a computation's right-hand side), paths relative to [base]. */
 fun parseExpression(text: String, base: String): Expr =
     parseExpression(text, base, DEFAULT_RESOLVER, ConditionLanguage.EN)
@@ -105,6 +119,12 @@ private class ConditionParser(
     }
 
     fun parseRule(): Cond {
+        consumePreamble()
+        return parse()
+    }
+
+    /** Consume the optional scale-gate waiver, answering whether it was there. */
+    fun consumePreamble(): Boolean {
         skipWs()
         if (peek() == '@') {
             next()
@@ -117,9 +137,13 @@ private class ConditionParser(
                 "parser: only $SCALE_GATE_WAIVER can be waived, in \"$src\""
             }
             skipWsAndExpect(')')
+            return true
         }
-        return parse()
+        return false
     }
+
+    /** The source from the current position on. */
+    fun rest(): String = src.substring(pos)
 
     fun parseTopExpr(): Expr {
         val e = parseExpr()

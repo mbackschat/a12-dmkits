@@ -2186,6 +2186,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Now implements io.github.m
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public NumberExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr allowingDifferingDecimals()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition differsWithTolerance(io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dividedBy(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dividedBy(long)
@@ -2468,7 +2469,8 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
   public java.lang.String wire()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
-  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, boolean, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public boolean allowsDifferingDecimals()
   public java.lang.String code()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition()
@@ -2488,6 +2490,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
   public final java.lang.String toString()
 
 public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder allowDifferingDecimals()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule build()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder code(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
@@ -2822,6 +2825,8 @@ public sealed interface io.github.mbackschat.a12.dm.rulekit.read.ReadResult
 
 public static record io.github.mbackschat.a12.dm.rulekit.read.ReadResult.Converted implements io.github.mbackschat.a12.dm.rulekit.read.ReadResult
   public Converted(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public Converted(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, boolean)
+  public boolean allowsDifferingDecimals()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition()
   public final boolean equals(java.lang.Object)
   public final int hashCode()

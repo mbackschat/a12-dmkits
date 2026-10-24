@@ -16,8 +16,9 @@ import org.junit.jupiter.params.provider.EnumSource;
  * and nothing else lifts the gate. {@link ConditionDirectives} is the one place that spells it, so this class
  * locks the helper the CLI's {@code allowDifferingDecimals} writes through.
  *
- * <p>The comparison is condition text, spelled the same in both languages: the typed surface refuses a
- * cross-scale {@code ==} when it is built and has no waiver to lift that refusal (DEV-API-GAPS DG140).
+ * <p>The comparison is condition text, spelled the same in both languages, because this class locks the text
+ * helper; a typed rule carries the same waiver through {@code Rule.Builder.allowDifferingDecimals}
+ * ({@code dsl.ScaleWaiverRuleTest}).
  */
 class ScaleWaiverLanguageLawsTest {
 

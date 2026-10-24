@@ -51,6 +51,7 @@ internal class ConditionBridge @JvmOverloads constructor(
     private val expressions = Expressions(this)
 
     private var base: String = ""
+    private var waived: Boolean = false
     private var declaredPaths: Set<String>? = null
     private var fieldsByShortName: Map<String, List<String>> = emptyMap()
 
@@ -74,13 +75,22 @@ internal class ConditionBridge @JvmOverloads constructor(
         return if (matches.size == 1) matches[0] else candidate
     }
 
-    /** Parse [conditionText] against [basePath] and map it. */
-    fun translate(conditionText: String, basePath: String, language: ConditionLanguage): Condition {
+    /** Parse [conditionText] against [basePath] and map it, with the scale gate lifted when [scaleGateWaived]. */
+    @JvmOverloads
+    fun translate(
+        conditionText: String,
+        basePath: String,
+        language: ConditionLanguage,
+        scaleGateWaived: Boolean = false,
+    ): Condition {
         base = basePath
+        waived = scaleGateWaived
         return condition(parse(conditionText, basePath, language, ::resolveBareReference))
     }
 
     override fun basePath(): String = base
+
+    override fun scaleGateWaived(): Boolean = waived
 
     override fun model(): BoundModel = boundModel
 

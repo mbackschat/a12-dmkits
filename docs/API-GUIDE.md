@@ -1024,6 +1024,22 @@ rule.errorEntityRelPath();                            // "../Lines/Parts"
 
 What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group, deliberately stricter than A12 there ([FEATURE-GAPS §4](FEATURE-GAPS.md)), and the rule's own group, which A12 cannot build a model around. A read inside a `Having` body references the target only when it carries `$` (`outer()`), as for A12 ([KF488](KERNEL-FINDINGS.md#kf488)). The model-context lints treat a group target as a field one: a group nested in, or itself, a repeating group pre-warns an unguarded negative where A12 refuses it ([KF601](KERNEL-FINDINGS.md#kf601)).
 
+### 4.1b A rule that waives the scale gate
+
+A numeric `==` or `!=` between different scales is refused when it is built, as A12 refuses it with `MVK_INVALID_COMPARE_DEC_PLACES`. A12 admits it under the condition's leading waiver, the editor's "Allow Differing Decimal Places" ([KF75](KERNEL-FINDINGS.md#kf75)). A12 keeps that waiver on the root of the condition, not on a comparison, so it is the rule's: `allowDifferingDecimals()` renders it in the model's condition language, and the read path returns it on `ReadResult.Converted.allowsDifferingDecimals()`. The comparison is built from an operand marked `allowingDifferingDecimals()`, which only skips the builder's own refusal. Without the rule's waiver, A12 still refuses the rule.
+
+<!-- snippet: rule-scale-waiver -->
+```java
+Rule waived = M.rule(M.group("/Policy")).name("UnitsAtRate").errorField(UNITS.field())
+        .when(RATE.filled().and(UNITS.eq(RATE.asNumber().allowingDifferingDecimals())))  // scales 0 and 2
+        .allowDifferingDecimals()                     // A12's waiver, on the rule's condition
+        .code("UNITS_AT_RATE").message(Dsl.en("Units equal the rate."))
+        .build();
+waived.render();   // "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) FieldFilled(Rate) And [Units] == [Rate]"
+```
+
+The waiver lifts a static gate only. Evaluation stays exact, so `5 == 5.01` still does not hold (`adapter.laws.RuleConditionPreambleDiffTest`).
+
 ### 4.2 Render → validate → emit
 
 <!-- teaser -->

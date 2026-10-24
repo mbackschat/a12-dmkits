@@ -44,8 +44,18 @@ import java.util.Optional;
  */
 public sealed interface ReadResult permits ReadResult.Converted, ReadResult.Opaque, ReadResult.Refused {
 
-    /** A rule whose condition converted to a typed rulekit AST. */
-    record Converted(Condition condition) implements ReadResult {}
+    /**
+     * A rule whose condition converted to a typed rulekit AST, and whether it opens with A12's scale-gate waiver.
+     * The waiver is the rule's rather than the AST's because A12 keeps it on the root of the parsed condition, not
+     * on a comparison (KERNEL-FINDINGS KF75); dropping it here would let a consumer rebuild a rule A12 refuses.
+     */
+    record Converted(Condition condition, boolean allowsDifferingDecimals) implements ReadResult {
+
+        /** A converted condition without the waiver. */
+        public Converted(Condition condition) {
+            this(condition, false);
+        }
+    }
 
     /** A rule preserved verbatim because its condition uses a not-yet-modeled construct. */
     record Opaque(String canonicalText, String reason) implements ReadResult {}

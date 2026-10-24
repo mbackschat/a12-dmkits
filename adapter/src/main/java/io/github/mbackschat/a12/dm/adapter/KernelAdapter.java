@@ -451,7 +451,6 @@ public final class KernelAdapter {
      */
     public ReadResult read(String ruleFullName) {
         try {
-            ConditionConverter converter = new ConditionConverter(model);
             ICondition parsed = parseCondition(ruleFullName);
             if (parsed == null) {
                 // The kernel's parser is SILENT here, so it answers an unparseable stored condition with null
@@ -464,6 +463,8 @@ public final class KernelAdapter {
                 return new ReadResult.Opaque(verbatimConditionText(ruleFullName),
                         "the kernel could not parse the stored condition against this model");
             }
+            boolean waived = ConditionConverter.waivesScaleGate(parsed);
+            ConditionConverter converter = new ConditionConverter(model, waived);
             int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
             int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
             int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
@@ -485,7 +486,7 @@ public final class KernelAdapter {
                         + "while refusing the rendering — so the rule is preserved verbatim "
                         + "[kernel node: BRACKET_OP, recorded only on ICompositeOperation]");
             }
-            return new ReadResult.Converted(converted);
+            return new ReadResult.Converted(converted, waived);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
         // There is deliberately NO `catch (KernelCodeRefusal)` here, and it was tried (DG1001, 2026-09-20).

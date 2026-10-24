@@ -30,6 +30,7 @@ public record Rule(
         String name,
         ErrorEntity errorEntity,
         Condition condition,
+        boolean allowsDifferingDecimals,
         String code,
         Severity severity,
         List<LocalizedText> messages,
@@ -59,9 +60,14 @@ public record Rule(
         return render(ConditionLanguage.EN);
     }
 
-    /** Canonical condition text in {@code language}, with paths relative to the rule's group. */
+    /**
+     * Canonical condition text in {@code language}, with paths relative to the rule's group, opened by the
+     * scale-gate waiver when the rule {@link #allowsDifferingDecimals}. A12 keeps that waiver on the root of
+     * the condition rather than on a comparison, which is why it is the rule's and not the AST's.
+     */
     public String render(ConditionLanguage language) {
-        return new DslRenderer(language, group.path().value()).render(condition, comments);
+        String text = new DslRenderer(language, group.path().value()).render(condition, comments);
+        return allowsDifferingDecimals ? ConditionDirectives.allowDifferingDecimals(language, text) : text;
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */
@@ -121,6 +127,7 @@ public record Rule(
         private String name;
         private ErrorEntity errorEntity;
         private Condition condition;
+        private boolean allowsDifferingDecimals;
         private String code;
         private Severity severity;
         private final List<LocalizedText> messages = new ArrayList<>();
@@ -207,6 +214,18 @@ public record Rule(
          */
         public Builder when(Condition condition) {
             this.condition = condition;
+            return this;
+        }
+
+        /**
+         * Open the condition with A12's scale-gate waiver, the editor's "Allow Differing Decimal Places", so
+         * a numeric {@code ==}/{@code !=} between different scales is admitted (KERNEL-FINDINGS KF75). It waives
+         * the static gate only: evaluation stays exact, so {@code 5 == 5.01} still does not hold. Build such a
+         * comparison from an operand marked {@link NumberExpr#allowingDifferingDecimals()}; whether the pair
+         * then needs the waiver is A12's to judge, since the builder cannot see a field's scale from the AST.
+         */
+        public Builder allowDifferingDecimals() {
+            this.allowsDifferingDecimals = true;
             return this;
         }
 
@@ -325,8 +344,8 @@ public record Rule(
             if (rootCommentAfter != null) {
                 finalComments = finalComments.after(condition, rootCommentAfter);
             }
-            return new Rule(group, name, errorEntity, condition, code, declaredSeverity, messages,
-                    finalComments);
+            return new Rule(group, name, errorEntity, condition, allowsDifferingDecimals, code, declaredSeverity,
+                    messages, finalComments);
         }
 
         /** A refusal naming the KERNEL code it prevents. */

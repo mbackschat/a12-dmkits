@@ -15,9 +15,11 @@ public final class io.github.mbackschat.a12.dm.bridge.ConditionBridge implements
   public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue indexedValue(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel model()
   public io.github.mbackschat.a12.dm.core.ValueKind operandTemporalClass(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public boolean scaleGateWaived()
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public io.github.mbackschat.a12.dm.core.ValueKind temporalClass(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public final io.github.mbackschat.a12.dm.rulekit.dsl.Condition translate(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Condition translate(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage, boolean)
   public java.lang.Object typedRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
 
 public final class io.github.mbackschat.a12.dm.bridge.ConditionParseException extends java.lang.IllegalArgumentException
@@ -55,6 +57,7 @@ public interface io.github.mbackschat.a12.dm.bridge.Mapping
   public default boolean isGroup(java.lang.String)
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel model()
   public abstract io.github.mbackschat.a12.dm.core.ValueKind operandTemporalClass(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public abstract boolean scaleGateWaived()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public abstract io.github.mbackschat.a12.dm.core.ValueKind temporalClass(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public abstract java.lang.Object typedRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)

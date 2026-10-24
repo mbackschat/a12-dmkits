@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.ToIntFunction;
 
+import com.mgmtp.a12.kernel.core.parser.internal.parsebaum.impl.bedingung.ConditionImpl;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IApplicationCondition;
@@ -64,6 +65,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
@@ -170,9 +172,36 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 final class ConditionConverter {
 
     private final BoundModel model;
+    /** Whether the condition being converted opens with the scale-gate waiver, which lifts the typed equality gate. */
+    private final boolean scaleGateWaived;
 
     ConditionConverter(BoundModel model) {
+        this(model, false);
+    }
+
+    /**
+     * A converter for a condition whose root does or does not carry the scale-gate waiver. Under it, A12 admits a
+     * numeric {@code ==}/{@code !=} between different scales, so rebuilding that comparison through the typed
+     * gate would refuse a rule A12 accepts and leave it opaque (KERNEL-FINDINGS KF75, {@code adapter.ScaleWaiverReadTest}).
+     */
+    ConditionConverter(BoundModel model, boolean scaleGateWaived) {
         this.model = model;
+        this.scaleGateWaived = scaleGateWaived;
+    }
+
+    /**
+     * Whether a parsed rule condition opens with the scale-gate waiver. A12 keeps the directive on the root
+     * condition's suppressed-warning set, outside the {@code ICondition} API, and its formatter prints it back as
+     * the leading {@code @SuppressWarning(…)} ({@code FormatterVisitor}, kernel 30.8.1).
+     */
+    static boolean waivesScaleGate(ICondition root) {
+        return root instanceof ConditionImpl impl && impl.getSuppressedWarnings() != null
+                && impl.getSuppressedWarnings().contains(ConditionDirectives.SCALE_GATE);
+    }
+
+    /** The left side of a numeric equality, with the typed scale gate lifted when the rule waives it. */
+    private NumberExpr equalitySide(NumberExpr left) {
+        return scaleGateWaived ? left.allowingDifferingDecimals() : left;
     }
 
     /**
@@ -1776,8 +1805,8 @@ final class ConditionConverter {
                 case LT -> expr.lt(v);
                 case GE -> expr.ge(v);
                 case LE -> expr.le(v);
-                case EQ -> expr.eq(v);
-                case NE -> expr.ne(v);
+                case EQ -> equalitySide(expr).eq(v);
+                case NE -> equalitySide(expr).ne(v);
                 default -> throw unsupported("aggregate comparison operator " + op, origin);
             };
         }
@@ -1946,8 +1975,8 @@ final class ConditionConverter {
             case LE -> left.le(right);
             case GT -> left.gt(right);
             case GE -> left.ge(right);
-            case EQ -> left.eq(right);
-            case NE -> left.ne(right);
+            case EQ -> equalitySide(left).eq(right);
+            case NE -> equalitySide(left).ne(right);
             default -> throw unsupported("expression comparison operator " + op, origin);
         };
     }
@@ -1989,8 +2018,8 @@ final class ConditionConverter {
                 case LT -> left.lt(v);
                 case GE -> left.ge(v);
                 case LE -> left.le(v);
-                case EQ -> left.eq(v);
-                case NE -> left.ne(v);
+                case EQ -> equalitySide(left.asNumber()).eq(v);
+                case NE -> equalitySide(left.asNumber()).ne(v);
                 default -> throw unsupported("number comparison operator " + op, origin);
             };
         }
@@ -2005,8 +2034,8 @@ final class ConditionConverter {
                 case LT -> left.lt(other);
                 case GE -> left.ge(other);
                 case LE -> left.le(other);
-                case EQ -> left.eq(other);
-                case NE -> left.ne(other);
+                case EQ -> equalitySide(left.asNumber()).eq(other.asNumber());
+                case NE -> equalitySide(left.asNumber()).ne(other.asNumber());
                 default -> throw unsupported("number field comparison operator " + op, origin);
             };
         }

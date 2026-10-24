@@ -180,7 +180,7 @@ internal class Conditions(private val mapping: Mapping) {
     }
 
     private fun numberComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
-        val l = numberExpr(left)
+        val l = numberExpr(left).let { if (mapping.scaleGateWaived()) it.allowingDifferingDecimals() else it }
         val r = numberExpr(right)
         return when (op) {
             CmpOp.LT -> l.lt(r)

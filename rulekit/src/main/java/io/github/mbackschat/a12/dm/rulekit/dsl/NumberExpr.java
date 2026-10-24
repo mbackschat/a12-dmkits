@@ -236,6 +236,15 @@ public final class NumberExpr implements TemporalComponent {
         return toThePowerOf(new NumberExpr(NumberLiteral.of(literal)));
     }
 
+    /**
+     * This expression with the {@code ==}/{@code !=} scale gate lifted, for a rule that carries A12's waiver
+     * ({@link Rule.Builder#allowDifferingDecimals()}, KERNEL-FINDINGS KF75). The comparison it builds is the
+     * ordinary one; only this builder's refusal is skipped, so without the waiver A12 still refuses the rule.
+     */
+    public NumberExpr allowingDifferingDecimals() {
+        return new NumberExpr(expression, NumericScaleSummary.deferred());
+    }
+
     private NumberExpr arith(Arithmetic.Op op, NumberExpr other) {
         var arithmetic = new Arithmetic(op, expression, other.expression());
         return new NumberExpr(arithmetic,

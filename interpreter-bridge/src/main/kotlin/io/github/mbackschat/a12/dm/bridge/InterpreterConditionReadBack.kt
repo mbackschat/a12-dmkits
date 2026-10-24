@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ModelReader
 import io.github.mbackschat.a12.dm.core.ModelResolver
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
+import io.github.mbackschat.a12.dm.interpreter.parse.rulePreamble
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
 import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
@@ -104,7 +105,10 @@ public class InterpreterConditionReadBack : ConditionReadBack {
             basePath: String,
             language: ConditionLanguage,
         ): ReadResult = try {
-            ReadResult.Converted(bridge.translate(condition, basePath, language))
+            rulePreamble(condition, language).let { split ->
+                ReadResult.Converted(
+                    bridge.translate(split.condition, basePath, language, split.waivesScaleGate), split.waivesScaleGate)
+            }
         } catch (e: UnmappedConstructException) {
             ReadResult.Opaque(condition, "not mapped by the interpreter bridge: " + e.message)
         } catch (e: KernelCodeRefusal) {

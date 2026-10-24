@@ -58,6 +58,13 @@ internal interface Mapping {
      */
     fun basePath(): String
 
+    /**
+     * Whether the condition being mapped opens with the scale-gate waiver. Under it A12 admits a numeric `==`/`!=`
+     * between different scales, so a mapper must lift the typed gate rather than refuse the rule (KERNEL-FINDINGS
+     * KF75, `adapter.ScaleWaiverReadTest`).
+     */
+    fun scaleGateWaived(): Boolean
+
     /** Resolve an operand that must name a field. */
     fun fieldRef(node: Expr): FieldRef
 

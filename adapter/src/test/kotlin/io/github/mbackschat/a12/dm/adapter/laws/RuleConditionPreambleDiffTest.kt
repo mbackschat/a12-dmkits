@@ -5,8 +5,11 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -18,40 +21,56 @@ import org.junit.jupiter.api.Test
  * in a German-condition model (a12-kernel-lean's SPEC-2026-10-14-11 report, re-measured here on an own-domain
  * policy model). The interpreter had no reading of the preamble and refused the model at its first rule.
  *
- * The waived comparisons are condition text: the typed surface refuses a cross-scale `==`/`!=` when it is built
- * and has no waiver to lift that refusal (DEV-API-GAPS DG140).
+ * The plain, filter and German rows are typed rules carrying the waiver (`Rule.Builder.allowDifferingDecimals`,
+ * DEV-API-GAPS DG140), checked to render the spellings they stand for; the padded and commented rows stay text,
+ * because they are spellings A12 admits and the renderer never emits.
  */
 class RuleConditionPreambleDiffTest {
 
     @Test
     fun aWaivedRuleEvaluatesExactlyOnEveryAdmittedSpelling() {
         val waiver = ConditionDirectives.allowDifferingDecimals(ConditionLanguage.EN, "")
+        val plain = waived(rateEqualsUnits, ConditionLanguage.EN)
+        val filter = waived(filteredSum, ConditionLanguage.EN)
+        assertEquals("${waiver}FieldFilled(Rate) And [Units] == [Rate]", plain)
+        assertEquals("${waiver}FieldFilled(Units) And Sum(Lines*/Amount Having [Lines/Amount] != 1.5) > 2", filter)
         val rules = mapOf(
-            "PLAIN" to "${waiver}FieldFilled(Rate) And [Units] == [Rate]",
+            "PLAIN" to plain,
             "PADDED" to "@ SuppressWarning ( ${ConditionDirectives.SCALE_GATE} ) FieldFilled(Rate) And [Units] == [Rate]",
             "NOTED" to "$waiver;;the rate is stored to two places\nFieldFilled(Rate) And [Units] == [Rate]",
-            "FILTER" to "${waiver}FieldFilled(Units) And Sum(Lines*/Amount Having [Lines/Amount] != 1.5) > 2",
+            "FILTER" to filter,
         )
         assertFires(model("en_US", rules), mapOf("5.00" to rules.keys, "5.01" to setOf("FILTER")))
     }
 
     @Test
     fun aGermanModelsWaiverEvaluatesExactly() {
-        val rules = mapOf(
-            "PLAIN" to ConditionDirectives.allowDifferingDecimals(
-                ConditionLanguage.DE, "FeldAngegeben(Rate) Und [Units] == [Rate]"),
-        )
-        assertFires(model("de_DE", rules), mapOf("5.00" to setOf("PLAIN"), "5.01" to emptySet()))
+        val plain = waived(rateEqualsUnits, ConditionLanguage.DE)
+        assertEquals(ConditionDirectives.allowDifferingDecimals(ConditionLanguage.DE,
+            "FeldAngegeben(Rate) Und [Units] == [Rate]"), plain)
+        assertFires(model("de_DE", mapOf("PLAIN" to plain)), mapOf("5.00" to setOf("PLAIN"), "5.01" to emptySet()))
     }
 
+    private val base = DocumentModelDraft.named("policy").locale("en_US")
+        .rootGroup("Policy") { policy ->
+            policy.numberField("Units") { n -> n.fractionDigits(0) }
+                .numberField("Rate") { n -> n.fractionDigits(2) }
+                .group("Lines") { lines -> lines.repeatable(5).numberField("Amount") { n -> n.fractionDigits(0) } }
+        }
+        .build().toJson()
+    private val bound = BoundModel.ofJson(base)
+    private val units = bound.num("/Policy/Units")
+    private val rate = bound.num("/Policy/Rate")
+    private val rateEqualsUnits = rate.filled().and(units.eq(rate.asNumber().allowingDifferingDecimals()))
+    private val filteredSum = units.filled().and(Dsl.sum(bound.flatten("/Policy/Lines*/Amount")
+        .having(bound.num("/Policy/Lines/Amount").asNumber().allowingDifferingDecimals().ne("1.5"))).gt(2))
+
+    /** The typed rule's condition text, waiver included, as it would be written into a [language] model. */
+    private fun waived(condition: Condition, language: ConditionLanguage): String =
+        bound.rule(bound.group("/Policy")).name("Typed").errorField(units.field()).`when`(condition)
+            .allowDifferingDecimals().code("TYPED").message(Dsl.en("Units match the rate.")).build().render(language)
+
     private fun model(conditionLanguage: String, rules: Map<String, String>): String {
-        val base = DocumentModelDraft.named("policy").locale("en_US")
-            .rootGroup("Policy") { policy ->
-                policy.numberField("Units") { n -> n.fractionDigits(0) }
-                    .numberField("Rate") { n -> n.fractionDigits(2) }
-                    .group("Lines") { lines -> lines.repeatable(5).numberField("Amount") { n -> n.fractionDigits(0) } }
-            }
-            .build().toJson()
         var model = EditSession.read(base).setConditionLanguage(conditionLanguage).toJson()
         rules.forEach { (code, condition) ->
             model = RuntimeLaws.withRule(model, "/Policy", "R_$code", "../Units", code, condition)
