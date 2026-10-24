@@ -308,6 +308,12 @@ Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult
 | kernel / `a12-kernel-mm` bump | follow [`docs/KERNEL-UPGRADE.md`](docs/KERNEL-UPGRADE.md) | the ledger guardians |
 | measured a kernel fact that **corrects or extends `a12-kernel-lean`'s `spec/`**, or fixed a defect worth disclosing to it | amend the outbound letter in the same pass, per [`docs/A12-KERNEL-LEAN-HANDBACK.md`](docs/A12-KERNEL-LEAN-HANDBACK.md) | **none possible** — it lives outside this repo |
 
+### Read `a12-kernel-lean` through git only, never its working tree (owner directive, 2026-10-24)
+
+**Every read of the sibling `../a12-kernel-lean` goes through git at a named commit.** That covers its ledger, `spec/`, evidence captures and probe requests. Use `git -C ../a12-kernel-lean show <sha>:<path>`, `ls-tree` and `log`. When a tool needs files on disk, such as a probe request and the model it names, extract them with `git archive <sha> <paths> | tar -x -C <scratchpad dir>`. Never `cat`, `grep`, `ls` or `Read` a path inside its tree, and never point a build or test at one.
+
+The working tree belongs to a live peer session that may be mid-edit. Uncommitted content can be half-written or later reverted, so a measurement taken against it cites a state no commit holds, and neither side can re-derive it. The peer reads our revisions the same way, with git only. Cite the commit you read in anything you send back.
+
 ### Sending a measured correction to `a12-kernel-lean` (standing requirement, 2026-08-14)
 
 **Trigger:** you measured a kernel fact that corrects or extends their `spec/`, or fixed a defect worth disclosing to them. **Read [`docs/A12-KERNEL-LEAN-HANDBACK.md`](docs/A12-KERNEL-LEAN-HANDBACK.md) before writing or sending anything** — it carries the letter's location, its load-bearing structure, and the failure modes that have already cost a round.
