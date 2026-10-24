@@ -112,16 +112,63 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
     /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
     private record Observation(List<Message> messages, Optional<Computations> computations,
             Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
-            Optional<List<ConditionCall>> customConditionCalls, Optional<Fault> fault) {
+            Optional<List<ConditionCall>> customConditionCalls, List<EvaluationRaise> evaluationRaises,
+            Optional<Fault> fault) {
     }
 
     /**
      * One invocation the kernel made of a custom condition the request declared, in call order across the block's
      * channels. {@code observation} names the channel the call came from, which the arguments cannot: both
      * {@code validateFull} and {@code compute} hand over no relevant set.
+     *
+     * <p>A call either answered ({@code result}) or raised inside the probe's own condition ({@code raised}),
+     * never both. A raised call keeps its {@code arguments} unless projecting them was what raised.
      */
     public record ConditionCall(KernelRuntimeProbe.Observation observation, String name,
-            ConditionArguments arguments, boolean result) {
+            Optional<ConditionArguments> arguments, Optional<Boolean> result, Optional<List<Fault.Raise>> raised) {
+
+        public ConditionCall {
+            raised = raised.map(List::copyOf);
+            if (result.isPresent() == raised.isPresent()) {
+                throw new IllegalArgumentException("a condition call either answered or raised: " + name);
+            }
+        }
+
+        /** A call the condition answered. */
+        public static ConditionCall answered(KernelRuntimeProbe.Observation observation, String name,
+                ConditionArguments arguments, boolean result) {
+            return new ConditionCall(observation, name, Optional.of(arguments), Optional.of(result), Optional.empty());
+        }
+    }
+
+    /**
+     * One exception A12 caught while evaluating a rule and reported as that rule's VALUE message, in the order A12
+     * caught them. {@code origin} says whose code raised it: {@code probe} when the cause chain holds an exception
+     * the probe's custom condition threw, {@code kernel} otherwise. The chain is outermost first, as a
+     * {@link Fault}'s is.
+     */
+    public record EvaluationRaise(KernelRuntimeProbe.Observation observation, Origin origin,
+            List<Fault.Raise> chain) {
+
+        public EvaluationRaise {
+            chain = List.copyOf(chain);
+        }
+
+        /** Whose code raised: decided by identity against the throwables the probe's conditions threw. */
+        public enum Origin {
+            KERNEL("kernel"),
+            PROBE("probe");
+
+            private final String wireName;
+
+            Origin(String wireName) {
+                this.wireName = wireName;
+            }
+
+            public String wireName() {
+                return wireName;
+            }
+        }
     }
 
     /**
@@ -158,12 +205,14 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      */
     public record Engine(String engine, List<Message> messages, Optional<Computations> computations,
             Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
-            Optional<List<ConditionCall>> customConditionCalls, Optional<Fault> fault) {
+            Optional<List<ConditionCall>> customConditionCalls, List<EvaluationRaise> evaluationRaises,
+            Optional<Fault> fault) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
             partialMessages = partialMessages.map(list -> list.stream().sorted().toList());
             customConditionCalls = customConditionCalls.map(List::copyOf);
+            evaluationRaises = List.copyOf(evaluationRaises);
             requireRaisedChannelAbsent(engine, messages, computations, partialMessages, computeResults, fault);
         }
 
@@ -241,7 +290,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         /** The strategy raised instead of observing — the whole block IS the fault. */
         public static Engine faulted(String engine, Fault fault) {
             return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.of(fault));
+                    Optional.empty(), List.of(), Optional.of(fault));
         }
 
         /** The public construction path for an observed block; an unset channel means "not observed". */
@@ -253,6 +302,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             private Optional<List<Message>> partialMessages = Optional.empty();
             private Optional<ComputeResults> computeResults = Optional.empty();
             private Optional<List<ConditionCall>> customConditionCalls = Optional.empty();
+            private List<EvaluationRaise> evaluationRaises = List.of();
             private Optional<Fault> fault = Optional.empty();
 
             private Builder(String engine) {
@@ -284,6 +334,12 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return this;
             }
 
+            /** The rule raises A12 caught in this block's completed channels. */
+            public Builder evaluationRaises(List<EvaluationRaise> caught) {
+                this.evaluationRaises = caught;
+                return this;
+            }
+
             /**
              * The raise that ended this block's observation, leaving whatever channels had already completed.
              * Set it on a block that observed nothing and the result equals {@link Engine#faulted}.
@@ -295,7 +351,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
             public Engine build() {
                 return new Engine(engine, messages, computations, partialMessages, computeResults,
-                        customConditionCalls, fault);
+                        customConditionCalls, evaluationRaises, fault);
             }
         }
 
@@ -306,7 +362,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         // that could not state it left the reader with "one of them faults" (a12-kernel-lean, 2026-09-04).
         private Observation observation() {
             return new Observation(messages, computations, partialMessages, computeResults, customConditionCalls,
-                    fault);
+                    evaluationRaises, fault);
         }
     }
 
@@ -554,6 +610,17 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                     ArrayNode callNodes = engineNode.putArray("customConditionCalls");
                     calls.forEach(call -> write(callNodes.addObject(), call));
                 });
+                // Only when A12 caught one, so an artifact whose rules all evaluated keeps its bytes; the
+                // capture is verified live before any row runs, so absent means "caught none".
+                if (!engine.evaluationRaises().isEmpty()) {
+                    ArrayNode raiseNodes = engineNode.putArray("evaluationRaises");
+                    engine.evaluationRaises().forEach(raise -> {
+                        ObjectNode raiseNode = raiseNodes.addObject();
+                        raiseNode.put("observation", raise.observation().wireName());
+                        raiseNode.put("origin", raise.origin().wireName());
+                        write(raiseNode.putArray("chain"), raise.chain());
+                    });
+                }
             }
         }
 
@@ -593,14 +660,18 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
     private static void write(ObjectNode node, ConditionCall call) {
         node.put("observation", call.observation().wireName());
         node.put("name", call.name());
-        call.arguments().relevant().ifPresentOrElse(relevant -> {
-            ArrayNode addresses = node.putArray("relevant");
-            relevant.forEach(addresses::add);
-        }, () -> node.putNull("relevant"));
-        ArrayNode incorrect = node.putArray("formallyIncorrect");
-        call.arguments().formallyIncorrect().forEach(incorrect::add);
-        node.put("errorEntity", call.arguments().errorEntity());
-        node.put("result", call.result());
+        call.arguments().ifPresent(arguments -> {
+            arguments.relevant().ifPresentOrElse(relevant -> {
+                ArrayNode addresses = node.putArray("relevant");
+                relevant.forEach(addresses::add);
+            }, () -> node.putNull("relevant"));
+            ArrayNode incorrect = node.putArray("formallyIncorrect");
+            arguments.formallyIncorrect().forEach(incorrect::add);
+            node.put("errorEntity", arguments.errorEntity());
+        });
+        // `result: null` plus the chain marks a call that raised, rather than omitting the call it was.
+        call.result().ifPresentOrElse(result -> node.put("result", result), () -> node.putNull("result"));
+        call.raised().ifPresent(chain -> write(node.putArray("raised"), chain));
     }
 
     private static void write(ObjectNode messageNode, Message message) {
@@ -617,8 +688,11 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
     private static void write(ObjectNode node, Fault fault) {
         node.put("observation", fault.observation());
-        ArrayNode chain = node.putArray("chain");
-        for (Fault.Raise raise : fault.chain()) {
+        write(node.putArray("chain"), fault.chain());
+    }
+
+    private static void write(ArrayNode chain, List<Fault.Raise> raises) {
+        for (Fault.Raise raise : raises) {
             ObjectNode raiseNode = chain.addObject();
             raiseNode.put("type", raise.type());
             // A throwable legitimately carries no message; absent rather than "" for the same reason `value` is.

@@ -181,20 +181,7 @@
                       "enum": ["validateFull", "compute", "computeResults", "validatePart", "documentInstance", "engineBuild"],
                       "description": "where the raise happened. The first three are the request's own `observe` names \u2014 the channel that threw, and the block ends there, because a strategy that cannot validate a document is not one whose compute answer means anything. `documentInstance` is a raise deserializing the row's document, before any channel could be read \u2014 **not observed on kernel 30.8.1**: two malformations (an object where a String field's value belongs, and the root group as a bare scalar) are both TOLERATED by the deserializer, which keeps unreadable content rather than refusing the document, so this locus is defensive rather than demonstrated (locked as a non-observation by `adapter.laws.KernelProbeFaultCaptureTest`). `engineBuild` is a raise building this strategy's engine, which is per REQUEST rather than per row, so it appears on every row of that strategy \u2014 that is the blast radius of one failed build, not a repeated measurement; it has no reproducer either, so the three CHANNEL loci are the observed ones."
                     },
-                    "chain": {
-                      "type": "array",
-                      "minItems": 1,
-                      "description": "the cause chain, THROWN EXCEPTION FIRST, then each `getCause()` in turn (bounded at 16 links and cycle-safe). `type` is the exception's fully qualified class name and is stable across machines; `message` is whatever the kernel wrote and is deliberately NOT normalized \u2014 a message we rewrote would not be the observation. So if a particular raise embeds environment-specific detail (a temp path from the static-Java codegen, say), a fault-carrying artifact is byte-stable only as far as that text is; compare `type` when you need a machine-independent key.",
-                      "items": {
-                        "type": "object",
-                        "required": ["type"],
-                        "additionalProperties": false,
-                        "properties": {
-                          "type": { "type": "string", "description": "the throwable's fully qualified class name" },
-                          "message": { "type": "string", "description": "the throwable's message, ABSENT when it carried none \u2014 never rendered as an empty string" }
-                        }
-                      }
-                    }
+                    "chain": { "$ref": "#/$defs/raiseChain" }
                   }
                 },
                 "partialMessages": {
@@ -207,7 +194,7 @@
                   "description": "every invocation this strategy made of a custom condition the request declared, in CALL order across the block's channels. PRESENT exactly when the request declares `customConditions`, so an unchanged request keeps its bytes; an EMPTY list then means the kernel called none. It is no channel: calls a raise interrupted are kept, since each one completed.",
                   "items": {
                     "type": "object",
-                    "required": ["observation", "name", "relevant", "formallyIncorrect", "errorEntity", "result"],
+                    "required": ["observation", "name", "result"],
                     "additionalProperties": false,
                     "properties": {
                       "observation": {
@@ -230,7 +217,35 @@
                         "format": "a12-message-address",
                         "description": "the rule's error entity, with the repetition indices of the row being evaluated."
                       },
-                      "result": { "type": "boolean", "description": "what the declared behaviour answered." }
+                      "result": {
+                        "type": ["boolean", "null"],
+                        "description": "what the declared behaviour answered; `null` exactly when the call RAISED inside the probe's condition, and `raised` then says how."
+                      },
+                      "raised": {
+                        "$ref": "#/$defs/raiseChain",
+                        "description": "what the probe's condition threw, PRESENT exactly when `result` is `null`. A raised call is recorded rather than omitted; it keeps `relevant`, `formallyIncorrect` and `errorEntity` unless projecting them is what raised, in which case all three are absent."
+                      }
+                    },
+                    "if": { "properties": { "result": { "type": "null" } } },
+                    "then": { "required": ["raised"] },
+                    "else": { "required": ["relevant", "formallyIncorrect", "errorEntity"], "not": { "required": ["raised"] } }
+                  }
+                },
+                "evaluationRaises": {
+                  "type": "array",
+                  "minItems": 1,
+                  "description": "every exception A12 CAUGHT while evaluating a rule in this block's completed channels, in the order A12 caught them. A12 reports each such rule as ONE VALUE_ERROR message at the rule's first error address, whose text is a fixed prefix plus the exception's message and keeps neither its class nor its cause; this list is where those go. PRESENT exactly when A12 caught at least one, so a request whose rules all evaluate keeps its bytes; ABSENT means it caught none, which is a measurement because the probe refuses to run unless its capture is installed. A raise in a channel that then faulted is not listed, since a faulted channel publishes nothing. The entries are not keyed to messages: A12 hands the exception to its logger without the rule's code.",
+                  "items": {
+                    "type": "object",
+                    "required": ["observation", "origin", "chain"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "observation": { "enum": ["validateFull", "compute", "computeResults", "validatePart"], "description": "the channel A12 caught it in." },
+                      "origin": {
+                        "enum": ["kernel", "probe"],
+                        "description": "`probe` when some link of the chain is, by identity, an exception one of the probe's declared conditions threw (A12 wraps those, so the probe's own is then the second link); `kernel` otherwise, including a name A12 cannot look up, which A12 raises itself."
+                      },
+                      "chain": { "$ref": "#/$defs/raiseChain" }
                     }
                   }
                 },
@@ -305,6 +320,20 @@
     }
   },
   "$defs": {
+    "raiseChain": {
+      "type": "array",
+      "minItems": 1,
+      "description": "the cause chain, THROWN EXCEPTION FIRST, then each `getCause()` in turn (bounded at 16 links and cycle-safe). `type` is the exception's fully qualified class name and is stable across machines; `message` is whatever the kernel wrote and is deliberately NOT normalized \u2014 a message we rewrote would not be the observation. So if a particular raise embeds environment-specific detail (a temp path from the static-Java codegen, say), a fault-carrying artifact is byte-stable only as far as that text is; compare `type` when you need a machine-independent key.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "description": "the throwable's fully qualified class name" },
+          "message": { "type": "string", "description": "the throwable's message, ABSENT when it carried none \u2014 never rendered as an empty string" }
+        }
+      }
+    },
     "resultInstance": {
       "type": "object",
       "required": ["field"],

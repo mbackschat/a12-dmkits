@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +116,8 @@ final class DeclarativeCustomConditions {
     }
 
     /**
-     * The invocations of one (row, strategy) block, in the order the kernel made them. Each block gets its own,
+     * The invocations of one (row, strategy) block, in the order the kernel made them, and the rule raises A12
+     * caught in it. Each block gets its own,
      * so a call is attributed to the strategy that made it, and {@link #enter} tags it with the channel it came
      * from: {@code validateFull} and {@code compute} both pass no relevant set, so the set cannot tell them apart.
      */
@@ -122,6 +125,8 @@ final class DeclarativeCustomConditions {
 
         private final Map<String, ICustomCondition> conditions = new LinkedHashMap<>();
         private final List<KernelProbeArtifact.ConditionCall> calls = new ArrayList<>();
+        private final Set<Throwable> thrown = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final List<KernelProbeArtifact.EvaluationRaise> raises = new ArrayList<>();
         private final boolean declared;
         private KernelRuntimeProbe.Observation observation;
 
@@ -139,6 +144,32 @@ final class DeclarativeCustomConditions {
             this.observation = channel;
         }
 
+        /**
+         * Attribute the rule raises A12 caught in the current channel: {@code probe} when any link of a cause
+         * chain is, by identity, an exception one of this block's conditions threw, {@code kernel} otherwise.
+         */
+        void caught(List<Throwable> caughtByKernel) {
+            for (Throwable raised : caughtByKernel) {
+                raises.add(new KernelProbeArtifact.EvaluationRaise(observation, originOf(raised),
+                        KernelRuntimeProbe.chain(raised)));
+            }
+        }
+
+        List<KernelProbeArtifact.EvaluationRaise> raises() {
+            return List.copyOf(raises);
+        }
+
+        private KernelProbeArtifact.EvaluationRaise.Origin originOf(Throwable raised) {
+            Throwable link = raised;
+            for (int depth = 0; link != null && depth < KernelRuntimeProbe.MAX_CAUSE_DEPTH; depth++) {
+                if (thrown.contains(link)) {
+                    return KernelProbeArtifact.EvaluationRaise.Origin.PROBE;
+                }
+                link = link.getCause();
+            }
+            return KernelProbeArtifact.EvaluationRaise.Origin.KERNEL;
+        }
+
         /** The record, present exactly when the request declares a condition. */
         Optional<List<KernelProbeArtifact.ConditionCall>> calls() {
             return declared ? Optional.of(List.copyOf(calls)) : Optional.empty();
@@ -150,23 +181,39 @@ final class DeclarativeCustomConditions {
                 public boolean check(DocumentV2 document, Set<? extends DocumentMultiPointer> relevantEntities,
                         Set<DocumentPointer> formallyIncorrectEntities,
                         PartiallyKnownDocumentMultiPointer errorEntityInstance) {
-                    boolean result = behaviour.answer(document);
-                    // Both pointer sets are sorted: the kernel hands over sets, whose iteration order is no
-                    // observation.
-                    calls.add(new KernelProbeArtifact.ConditionCall(observation, name,
-                            new KernelProbeArtifact.ConditionArguments(
-                                    Optional.ofNullable(relevantEntities).map(set -> set.stream()
-                                            .map(p -> KernelRuntimeProbe.address(p.fullName(), p.repetitionIndexes()))
-                                            .sorted().toList()),
-                                    formallyIncorrectEntities.stream()
-                                            .map(p -> KernelRuntimeProbe.address(p.fullName(), p.repetitionIndexes()))
-                                            .sorted().toList(),
-                                    KernelRuntimeProbe.address(errorEntityInstance.fullName(),
-                                            errorEntityInstance.repetitionIndexes())),
-                            result));
-                    return result;
+                    Optional<KernelProbeArtifact.ConditionArguments> arguments = Optional.empty();
+                    try {
+                        arguments = Optional.of(arguments(relevantEntities, formallyIncorrectEntities,
+                                errorEntityInstance));
+                        boolean result = behaviour.answer(document);
+                        calls.add(KernelProbeArtifact.ConditionCall.answered(observation, name, arguments.get(),
+                                result));
+                        return result;
+                    } catch (RuntimeException | Error raised) {
+                        // Recorded rather than omitted, and remembered by identity so the rule raise A12 then
+                        // reports can be attributed to the probe; rethrown unchanged, because what A12 does
+                        // with a raising condition is the observation.
+                        thrown.add(raised);
+                        calls.add(new KernelProbeArtifact.ConditionCall(observation, name, arguments,
+                                Optional.empty(), Optional.of(KernelRuntimeProbe.chain(raised))));
+                        throw raised;
+                    }
                 }
             };
+        }
+
+        // Both pointer sets are sorted: the kernel hands over sets, whose iteration order is no observation.
+        private static KernelProbeArtifact.ConditionArguments arguments(
+                Set<? extends DocumentMultiPointer> relevantEntities, Set<DocumentPointer> formallyIncorrectEntities,
+                PartiallyKnownDocumentMultiPointer errorEntityInstance) {
+            return new KernelProbeArtifact.ConditionArguments(
+                    Optional.ofNullable(relevantEntities).map(set -> set.stream()
+                            .map(p -> KernelRuntimeProbe.address(p.fullName(), p.repetitionIndexes()))
+                            .sorted().toList()),
+                    formallyIncorrectEntities.stream()
+                            .map(p -> KernelRuntimeProbe.address(p.fullName(), p.repetitionIndexes()))
+                            .sorted().toList(),
+                    KernelRuntimeProbe.address(errorEntityInstance.fullName(), errorEntityInstance.repetitionIndexes()));
         }
     }
 }

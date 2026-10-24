@@ -571,6 +571,7 @@ public final class KernelRuntimeProbe {
             // half of a run, and a model-level query reads the rule collection rather than generated code.
             return new KernelProbeArtifact(header, List.of(), mandatory, dynamicEnumerations);
         }
+        KernelRaiseCapture.requireInstalled();
 
         // Built once for the whole request: generating and compiling the kernel's Java validator is the
         // expensive half, and every row shares one model. A build that RAISES is captured rather than fatal,
@@ -684,7 +685,7 @@ public final class KernelRuntimeProbe {
             }
         }
         // Set on every path, a raise included: the calls it interrupted each completed.
-        return block.customConditionCalls(calls.calls()).build();
+        return block.customConditionCalls(calls.calls()).evaluationRaises(calls.raises()).build();
     }
 
     /** One (row, strategy) observation over a built engine, recording condition calls into {@code calls}. */
@@ -694,14 +695,23 @@ public final class KernelRuntimeProbe {
         void accept(E engine, DeclarativeCustomConditions.Recorder calls, KernelProbeArtifact.Engine.Builder block);
     }
 
-    /** Runs one observed channel, converting a kernel raise into the fault that replaces the whole block. */
+    /**
+     * Runs one observed channel, converting a kernel raise into the fault that replaces the whole block. The rule
+     * raises A12 caught on the way are kept only when the channel completes, since a faulted channel publishes
+     * nothing.
+     */
     private static <T> T channel(Observation observation, DeclarativeCustomConditions.Recorder calls,
             Supplier<T> read) {
         calls.enter(observation);
+        KernelRaiseCapture.open();
         try {
-            return read.get();
+            T value = read.get();
+            calls.caught(KernelRaiseCapture.close());
+            return value;
         } catch (RuntimeException e) {
             throw new Raised(fault(observation.wireName(), e));
+        } finally {
+            KernelRaiseCapture.close();
         }
     }
 
@@ -738,6 +748,11 @@ public final class KernelRuntimeProbe {
     }
 
     private static KernelProbeArtifact.Fault fault(String observation, Throwable raised) {
+        return new KernelProbeArtifact.Fault(observation, chain(raised));
+    }
+
+    /** A raise and its causes, outermost first, as type and message. */
+    static List<KernelProbeArtifact.Fault.Raise> chain(Throwable raised) {
         List<KernelProbeArtifact.Fault.Raise> chain = new ArrayList<>();
         // Bounded and cycle-safe: a self-referencing cause chain would otherwise hang a run that is already
         // failing, and the depth is generous enough that no real kernel chain reaches it.
@@ -748,10 +763,10 @@ public final class KernelRuntimeProbe {
                 break;
             }
         }
-        return new KernelProbeArtifact.Fault(observation, chain);
+        return chain;
     }
 
-    private static final int MAX_CAUSE_DEPTH = 16;
+    static final int MAX_CAUSE_DEPTH = 16;
 
     /**
      * Every fault the run captured, as {@code <row> / <strategy> at <locus>: <type>: <message>} lines, in row

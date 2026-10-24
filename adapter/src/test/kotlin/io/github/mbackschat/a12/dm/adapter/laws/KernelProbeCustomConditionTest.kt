@@ -108,8 +108,9 @@ class KernelProbeCustomConditionTest {
 
     /**
      * A name the request does not declare stays unregistered even beside one it does, so the missing lookup stays
-     * observable. The kernel raises nothing for it: it reports the rule under the rule's own code, naming the
-     * missing condition and referencing no field, while the declared condition is still called.
+     * observable. A12 raises the lookup failure itself and catches it, so no fault reaches the probe: it reports the
+     * rule under the rule's own code, naming the missing condition and referencing no field, publishes the raise as
+     * the kernel's, and still calls the declared condition.
      */
     @Test
     fun anUndeclaredNameStaysUnregisteredBesideADeclaredOne() {
@@ -122,6 +123,10 @@ class KernelProbeCustomConditionTest {
             val missing = engine.path("messages").single { it.path("code").asText() == "ADJUSTER_APPROVED" }
             assertTrue("Custom condition 'AdjusterApproved'" in missing.path("message").asText(), missing.toString())
             assertTrue(missing.path("referenced").isEmpty, missing.toString())
+            val raise = engine.path("evaluationRaises").single()
+            assertEquals("kernel", raise.path("origin").asText(), raise.toString())
+            assertEquals("com.mgmtp.a12.kernel.core.rt.a12internal.ValidatorException",
+                raise.path("chain")[0].path("type").asText(), raise.toString())
             assertEquals(listOf("FraudSuspected"), engine.path("customConditionCalls").map { it.path("name").asText() },
                 engine.toString())
         }
