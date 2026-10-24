@@ -796,7 +796,7 @@
      }
     },
     "kf602": {
-     "sha256": "9cf44ed1435aea1ccde94fe5a04e499d21e9adf87f56e5b76175c6659c016d80",
+     "sha256": "7028c6b5491e94ece4de4ed4ff2aaf68125060134935f1f69f243c7e388d3da2",
      "task": "SS13",
      "scope": {
       "dmkits": [],
@@ -838,7 +838,7 @@
         },
         "every setting gate on a type-defined field": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedSettingAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwin",
-         "witness": "The checker names A12's class on every setting twin but the value-in-fields membership row, which it leaves to A12 on both twins (CONSISTENCY-GAPS DG156)."
+         "witness": "The checker names A12's class on every setting twin."
         }
        }
       },
@@ -1021,6 +1021,78 @@
             "A12's classes on keyed operands of every family": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandFamilyAgreementTest.kt#a12AnswersEveryRowAsPinned",
               "witness": "A12 is pinned on every family, body and guard row."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf379": {
+      "sha256": "a4d0f192478b8159018dd2bf860585036e7afc2d7c37d08f47189a1f5d2fc12f",
+      "task": "SS13",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the string arm's walk stopping at a non-member"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's classes on the string arm's walk over an enumeration"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the string arm's walk stopping at a non-member"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Whether a rule is admitted is the kernel's or the checker's answer; the kits author the condition without judging it.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The string arm's walk names the membership class at the first enumeration whose declared tokens omit the constant, and stays silent on a table-backed enumeration and a category read.",
+          "evidence": {
+            "the string arm's walk stopping at a non-member": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerValueInFieldsMembershipAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+              "witness": "The checker names A12's class on every row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's classes on the string arm's walk over an enumeration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerValueInFieldsMembershipAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every row as the extension states."
             }
           }
         },

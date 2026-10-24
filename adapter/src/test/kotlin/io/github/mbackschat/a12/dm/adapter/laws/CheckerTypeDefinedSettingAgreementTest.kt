@@ -110,14 +110,12 @@ class CheckerTypeDefinedSettingAgreementTest {
 
     @Test
     fun theCheckerNamesA12sClassOnThePlainField() {
-        assertEquals(verdicts.mapValues { (id, v) -> if (id in MEMBERSHIP_LEFT_TO_A12) emptyList() else v.first.first },
-            verdicts.mapValues { it.value.first.second })
+        assertEquals(verdicts.mapValues { it.value.first.first }, verdicts.mapValues { it.value.first.second })
     }
 
     @Test
     fun theCheckerNamesA12sClassOnTheTypeDefinedTwin() {
-        assertEquals(verdicts.mapValues { (id, v) -> if (id in MEMBERSHIP_LEFT_TO_A12) emptyList() else v.second.first },
-            verdicts.mapValues { it.value.second.second })
+        assertEquals(verdicts.mapValues { it.value.second.first }, verdicts.mapValues { it.value.second.second })
     }
 
     /** A probe: a condition, or with [target] a computation's operation, and what A12 draws on the plain field. */
@@ -136,9 +134,6 @@ class CheckerTypeDefinedSettingAgreementTest {
         const val WRONG_FORMAT = "MVK_WRONG_DATE_FORMAT_FOR_OP"
         const val INDEX_VALUE_INVALID = "MVK_INDEX_VALUE_INVALID"
         const val CONSTANT_FOR_ENUMERATION = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION"
-
-        /** The value-in-fields membership class, which the checker leaves to A12 on either twin (CONSISTENCY-GAPS DG156). */
-        val MEMBERSHIP_LEFT_TO_A12 = setOf("value in fields, a constant outside the domain")
 
         val PROBES: Map<String, Probe> = linkedMapOf(
             // An enumeration's domain, labels and categories.

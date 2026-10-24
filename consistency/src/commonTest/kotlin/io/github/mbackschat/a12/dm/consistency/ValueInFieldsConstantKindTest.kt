@@ -166,8 +166,8 @@ class ValueInFieldsConstantKindTest {
      * The shapes it deliberately does not report, each because A12 answers them with another class.
      *
      * The enumeration row is the subtle one: A12 walks the list field by field, so a constant that is not a
-     * member of `Channel` is answered at THAT position and the number declaration behind it is never
-     * reached. Reporting the type class there would name the wrong class on a correct rejection.
+     * member of `Channel` is answered at THAT position with the membership class, and the number declaration
+     * behind it is never reached. Reporting the type class there would name the wrong class on a correct rejection.
      */
     @Test
     fun theShapesItDeliberatelyDoesNotReport() {
@@ -184,7 +184,8 @@ class ValueInFieldsConstantKindTest {
         // the row locks; the arity family owns the class A12 actually answers with.
         expected["a lone unstarred field, which A12 answers on arity"] = listOf("MVK_PARAMSIZE_INVALIDN")
         expected["a member of the enumeration, beside a text declaration"] = emptyList()
-        expected["a NON-member of the enumeration, beside a number declaration"] = emptyList()
+        expected["a NON-member of the enumeration, beside a number declaration"] =
+            listOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION")
         assertEquals(expected, actual, "the shapes it deliberately does not report")
     }
 

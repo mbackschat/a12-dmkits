@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
 import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
@@ -45,11 +46,12 @@ import kotlinx.serialization.json.contentOrNull
  * `MVK_ROOT_GROUP_REFERENCED`. Naming a type class on any of those would be the wrong class on a correct
  * rejection.
  *
- * **The string arm yields to enumeration membership for the same reason.** A12 walks the list field by field
- * and a non-member constant on an Enumeration draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` there and
- * then, so the walk stops at such a field instead of continuing to a later one it could refuse. That class
- * belongs to [scalarValueListGateFindings], whose own carriers are a different kernel method's — so this
- * construct's domain class is nobody's yet.
+ * **The string arm stops at enumeration membership.** A12 walks the list field by field and a non-member constant on
+ * an Enumeration draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` there and then, so the walk names that class at
+ * such a field instead of continuing to a later one it could refuse. The domain is the declared tokens, in their case
+ * and never a label (`adapter.laws.CheckerValueInFieldsMembershipAgreementTest`). A table-backed enumeration carries
+ * no domain in the model, and a category read is counted against the category's tokens, which is unmeasured, so
+ * both leave the call unjudged.
  *
  * **Two classes of this construct are deliberately unreported because they cannot be reached through a
  * consistency check at all.** `MVK_DIFFERENT_YES_VALUE` and `MVK_DIFFERENT_NO_VALUE` compare the two
@@ -170,13 +172,19 @@ private fun TrackedFactBase.constantKindFinding(
         val declared = declarationAt(target) ?: return null
         fieldsUnder(declared) ?: return null
     }
-    val defect = when (val verdict = typeWalkVerdict(fields, arm, constantText)) {
+    val categoryRead = entities.any { categoryAccessesIn(it, conditionLanguage).isNotEmpty() }
+    val defect = when (val verdict = typeWalkVerdict(fields, arm, constantText, categoryRead)) {
         is ListVerdict.Offender -> ListDefect(
             arm.code,
             "counts `${constantText.javaTrimmed()}`, and `${verdict.field.path}` is declared " +
                 "`${effectiveFieldType(verdict.field)}` — that constant only counts " +
                 arm.admitted.joinToString { "`$it`" } +
                 " declarations; drop the field from the list, or count a constant of its own kind",
+        )
+        is ListVerdict.NotAMember -> ListDefect(
+            "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION",
+            "counts `${constantText.javaTrimmed()}`, which is not a value of `${verdict.field.path}` — it declares " +
+                verdict.domain.joinToString { "`$it`" } + "; count a stored value, never its label",
         )
         ListVerdict.Opaque -> return null
         ListVerdict.Clean -> stringArmTailDefect(fields, arm, constantText) ?: return null
@@ -196,6 +204,9 @@ private class ListDefect(val code: String, val detail: String)
 /** What the type walk found: a field this arm refuses, a class this family does not own, or neither. */
 private sealed interface ListVerdict {
     data class Offender(val field: TrackedDeclaration) : ListVerdict
+
+    /** The text constant is outside this enumeration's declared [domain], where A12's walk stops. */
+    data class NotAMember(val field: TrackedDeclaration, val domain: List<String>) : ListVerdict
 
     /** A12 answers with a class this family does not carry, so naming one of its own would be the wrong one. */
     data object Opaque : ListVerdict
@@ -255,6 +266,7 @@ private fun TrackedFactBase.typeWalkVerdict(
     fields: List<TrackedDeclaration>,
     arm: ConstantArm,
     constantText: String,
+    categoryRead: Boolean,
 ): ListVerdict {
     fields.forEach { field ->
         val type = effectiveFieldType(field) ?: return ListVerdict.Opaque
@@ -263,9 +275,11 @@ private fun TrackedFactBase.typeWalkVerdict(
             return ListVerdict.Opaque
         }
         if (arm == ConstantArm.TEXT && type == FieldType.ENUMERATION) {
-            val domain = enumerationBodyOf(field)?.declaredEnumValues()?.toSet() ?: return ListVerdict.Opaque
+            val body = enumerationBodyOf(field) ?: return ListVerdict.Opaque
+            val domain = body.declaredEnumValues() ?: return ListVerdict.Opaque
             if (stringConstantOf(constantText) !in domain) {
-                return ListVerdict.Opaque
+                val judged = !categoryRead && body["tableName"] == null
+                return if (judged) ListVerdict.NotAMember(field, domain) else ListVerdict.Opaque
             }
             return@forEach
         }
