@@ -729,6 +729,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Comments
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments after(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments before(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments before(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public boolean equals(java.lang.Object)
+  public int hashCode()
   public boolean isEmpty()
   public static java.lang.String leadingCommentBlock(java.lang.String)
   public static java.util.Optional<java.lang.String> leadingCommentOf(java.lang.String)

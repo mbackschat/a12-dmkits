@@ -2,9 +2,11 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Comments carried as a <b>side-channel</b> beside the immutable AST (the "carrier (c)" design): a map of
@@ -13,6 +15,11 @@ import java.util.regex.Pattern;
  * node kinds the kernel attaches a comment to are carried: a {@link Condition} branch ({@code teilBedingung})
  * and a {@link Calculation} {@code operation}. Identity-keyed (not value-keyed) so two structurally-equal
  * nodes keep distinct comments. Immutable — {@link #before}/{@link #after} return a copy.
+ *
+ * <p>Equality is by value, not identity, so two identically built {@link Rule}s, whose record equality includes
+ * this component, are equal: two side-channels are equal when they attach the same texts, on the same side, to
+ * value-equal nodes. Value equality cannot tell two value-equal nodes of one tree apart, so a comment moved
+ * between two identical branches still compares equal although it renders elsewhere.
  *
  * <p>Mirrors the kernel grammar, where a comment attaches {@code before}/{@code after} a condition branch
  * or an operation. A trailing ({@code after}) comment is rendered newline-terminated so a following
@@ -120,6 +127,23 @@ public final class Comments {
     /** The trailing comment on {@code node} (a {@link Condition} or {@link Calculation}), if any. */
     Optional<String> afterOf(Object node) {
         return Optional.ofNullable(after.get(node));
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof Comments that && entries(before).equals(entries(that.before))
+                && entries(after).equals(entries(that.after));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(entries(before), entries(after));
+    }
+
+    /** The entries as a multiset keyed by value, which an identity map's own equality does not compare. */
+    private static Map<Map.Entry<Object, String>, Long> entries(Map<Object, String> side) {
+        return side.entrySet().stream().collect(Collectors.groupingBy(
+                e -> Map.entry(e.getKey(), e.getValue()), Collectors.counting()));
     }
 
     /** Whether no comments are attached (the renderer can then take its plain canonical path). */
