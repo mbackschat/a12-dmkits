@@ -26,8 +26,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
  * without that A12 refuses the pairing at the wildcard gate and draws `MVK_NO_WILDCARD` long before it asks
  * where anything sits. So every parallel shape here is judged only on an index-keyed pair, and the
  * index-free one is left to [operandScopeContributions], which owns that class. The `@From` arm carries
- * the same condition against the SCOPE rather than against another key, which is why a key with no
- * repetition at all — above the scope entirely — is silent here and answered there.
+ * the same condition against the SCOPE rather than against another key. A key with no repetition at all
+ * crosses no level the wildcard gate could refuse, so it draws the class outright ([KERNEL-FINDINGS KF612]).
  *
  * **The rule-group gate asks only where the key list is sound**, every key read without a wildcard class
  * ([repetitionKeyListIsSound]). A key outside the rule group then draws `MVK_NOT_IN_RULEGROUP` whether it
@@ -95,12 +95,14 @@ private fun TrackedFactBase.containmentDefect(
 /**
  * The `@From` arm: every key's parent has to sit under the scope.
  *
- * A key outside it is only ASKED where the two branches iterate jointly; otherwise the wildcard gate has
- * already answered, which is the measured difference between an index-keyed pair and an index-free one.
+ * A key outside it in a repetition of its own is only ASKED where the two branches iterate jointly; otherwise
+ * the wildcard gate has already answered, which is the measured difference between an index-keyed pair and an
+ * index-free one. A key in no repetition meets no wildcard gate and is asked outright.
  */
 private fun TrackedFactBase.outsideScope(keys: List<String>, scope: TrackedDeclaration): ContainmentDefect? {
     val outside = keys.firstOrNull { !parentOf(it).startsWith("${scope.path}/") } ?: return null
-    return if (iteratesJointlyWith(lowestRepetitionOf(outside), scope)) {
+    val repetition = lowestRepetitionOf(outside)
+    return if (repetition == null || iteratesJointlyWith(repetition, scope)) {
         ContainmentDefect("MVK_NOT_IN_GROUP", outside, scope.path)
     } else {
         null

@@ -14827,3 +14827,22 @@ A policy with repeatable `Claims` (`Amount`, `Note`, `Status`), a single `Holder
 | `Policy` | `NumberOfFilledFields(RuleGroup)`, `NoFieldFilled(RuleGroup)` → `MVK_ROOT_GROUP_REFERENCED` | at the root it is the root group |
 
 *Locked by:* `adapter.laws.CheckerRuleGroupOperandAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+
+## §9 supplement — operand gates on seven shapes a12-kernel-lean's K22 checkpoint reached: a filtered operand's kind, a product sum's text twin, a rounded marked read in a filter, a `@From` scope its key is not in, a root beside its own category, a keyed group list, and a boolean in a value list (kernel `checkConsistency`, 2026-10-24) <a id="kf612"></a>
+
+> Fold: pending — beside [KF388](#kf388)'s entity-list pre-gates.
+
+A claims book: root `Book` (`Title`, `Amount`, `Flag`), repeatable `Rows` (`RLabel` text, `RQty`, `RCost`), repeatable `Items` (`ICode` text, `ICount`), keyed repeatable `Zone` (index `ZKey`) holding repeatable `Plain`, a single `Box`, and a second root `Annex` whose enumeration `AKey` carries the category `Band`. Every rule but the `Items`/`Rows` rows reports on `Title`, guarded by `FieldFilled(Title) And …`. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckFeldListenOpImpl` runs the list, then the root gate, then the SumOfProducts pair gates, and the number gate `checkAllFieldsAreNumbers` last, with no category gate, so a categorized operand is keyed as its field and meets the root gate. `CheckFeldListenAnzahlOpImpl` runs `checkNoCategories`, the list, `checkNoRootGroupWhenMoreThanOneParameter`, `checkNoSemanticIndex`, then `checkOnlyGroups`. The grammar's `wertListenSpezifier2` admits only a string, number or field-value list.
+
+| condition → A12 | separates |
+|---|---|
+| `MaxValue(Rows*/RLabel Having [Rows/RQty] > 0)` → `MVK_NOT_SORTABLE`; `NumberOfDifferentValues(Rows*/RLabel Having …, Flag)` → `MVK_STRING_ENUM_AND_NON_STRING_ENUM`; `Sum(Rows*/RLabel Having …)` → `MVK_NO_NUMBER`; `MaxValue(Rows*/RQty Having …)` → admitted | a filter does not exempt the operand from its operator's kind gate |
+| `MaxValue(Rows*/RLabel Having [Rows/Missing] > 0)` → `MVK_INVALID_ENTITY` alone | the body is read before the kind gate, and its defect answers alone |
+| `SumOfProducts(Rows*/RLabel, Rows*/RQty)` and `(Rows*/RQty, Rows*/RLabel)` → `MVK_NO_NUMBER`; `(Rows*/RQty, Rows*/RCost)` → admitted | a text field on either side of a product pair fails the number gate |
+| at `Items/ICount`: `RoundUp([$Items/ICode], 2) > 0` inside a `Having` → `MVK_NO_NUMBER`; `RoundUp([$Items/ICount], 2)` → admitted | a marked read rounds only when it is a number, as a bare read does |
+| at `Rows/RLabel`: `RepetitionNotUnique(Title @From /Book/Rows)` → `MVK_NOT_IN_GROUP`; `(Rows/RLabel @From /Book/Rows)` → admitted | a key that does not repeat lies outside every `@From` scope |
+| `FirstFilledValue(/Annex, /Annex/AKey -> Band)`, either order, `Sum(/Annex, /Annex/AKey -> Band)`, `MaxValue(/Annex, /Annex/AKey -> Band)` → `MVK_ROOT_GROUP_REFERENCED`; `FirstFilledValue(/Annex, /Annex/AKey)` → `MVK_DUPLICATE_PARAM2` | a category keys an entity of its own, so no duplicate gate pre-empts the root gate; its plain field nests under the root and does |
+| `NumberOfFilledGroups(Zone/Plain* For "z1")`, `(Zone For "z1", Box)`, `(Zone/Plain* For "z1", Box)` → `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | a key in a counted group list is refused, starred or not |
+| `FieldValueIncludedInValueList(Flag, True)`, `(Flag, False)`, `(Title, "a", True)` → `MVK_UNEXPECTED_TOKEN` | a boolean constant is no value-list member: the list is parsed, not typed |
+
+*Locked by:* `adapter.laws.CheckerLedgerOperandGateAgreementTest` (every row, A12 pinned and the checker naming the same classes).

@@ -327,7 +327,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     valueKind = token?.kind
                     when {
                         token?.kind == TokenKind.STRING -> take()
-                        id in MEMBERSHIP -> if (isText("[")) primary() else constant()
+                        id in MEMBERSHIP -> if (isText("[")) primary() else number()
                         else -> entity()
                     }
                 }
@@ -385,6 +385,18 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         return CallShape(operator.text, operator.start, tokens[cursor - 1].end, operands, source).also {
             calls += it
             completed(SyntaxSite.Kind.CALL, it.at, it.end)
+        }
+    }
+
+    /**
+     * A number in a membership value list, whose grammar admits strings, numbers and field reads only
+     * (`wertListenSpezifier2`), so a constant keyword such as `True` is a parse error there ([KERNEL-FINDINGS KF612]).
+     */
+    private fun number() {
+        when {
+            consume("-") -> digits(decimal = true)
+            peek()?.kind == TokenKind.NUMBER -> digits(decimal = true)
+            else -> fail(SyntaxFailureKind.DECISION)
         }
     }
 

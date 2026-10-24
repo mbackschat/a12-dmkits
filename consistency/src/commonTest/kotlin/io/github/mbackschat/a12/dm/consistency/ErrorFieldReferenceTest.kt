@@ -31,6 +31,7 @@ class ErrorFieldReferenceTest {
                 {"type":"Group","id":"g2","name":"Parcels","Group":{"repeatability":9,
                   "elements":[
                   {"type":"Field","id":"f2","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Field","id":"f4","name":"Volume","Field":{"fieldType":{"type":"NumberType"}}},
                   {"type":"Field","id":"f3","name":"Contents","Field":{"fieldType":{"type":"StringType"}}}
                 ]}},
                 {"type":"Rule","id":"r0","name":"Probe","Rule":{
@@ -58,7 +59,7 @@ class ErrorFieldReferenceTest {
         actual["a GROUP as the error target, with a field INSIDE it named"] =
             codes("../Parcels", "FieldFilled(Parcels/Weight)")
         actual["the target inside a HAVING filter only"] =
-            codes("../Parcels/Weight", "Sum(Parcels*/Contents Having [Parcels/Weight] > 0) > 0")
+            codes("../Parcels/Weight", "Sum(Parcels*/Volume Having [Parcels/Weight] > 0) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the bare name — the control"] = emptyList()
@@ -71,7 +72,8 @@ class ErrorFieldReferenceTest {
         // does not. Either one alone licenses the wrong implementation.
         expected["the enclosing GROUP rather than the field"] = emptyList()
         expected["a GROUP as the error target, with a field INSIDE it named"] = listOf(notReferenced)
-        // A filter body's read is not the rule's own: A12 decides the gate over the rule's reads alone.
+        // A filter body's read is not the rule's own: A12 decides the gate over the rule's reads alone. The sum is
+        // over a number, as in the kernel twin `ErrorFieldReferenceReachLawsTest`: summing text answers `MVK_NO_NUMBER` first (KF612).
         expected["the target inside a HAVING filter only"] = listOf(notReferenced)
         assertEquals(expected, actual, "which spellings count as referencing the error field")
     }

@@ -244,10 +244,10 @@ private fun TrackedFactBase.entityListOperandsOf(
             operand.capturedPath(conditionLanguage)?.let { return@map ListOperand(it, "", outerMarked = true) }
             // The keyword is no path token, so `path` leaves it out; it names the declaring group.
             operand.text.javaTrimmed().takeIf { isRuleContext(it, conditionLanguage) }?.let { return@map ListOperand(it, "") }
-            // A carrier that asks its category gate only once the list is built compares a categorized operand
-            // like any other, its category being part of its identity; one that asks it first leaves the list
-            // to that gate ([entityListCategoryFindings]).
-            if (categoryGateOf(call.operator) != CategoryGate.AFTER_THE_LIST) {
+            // A carrier that asks its category gate only once the list is built, or asks none, compares a
+            // categorized operand like any other, its category being part of its identity; one that asks it first
+            // leaves the list to that gate ([entityListCategoryFindings], KERNEL-FINDINGS KF612).
+            if (categoryGateOf(call.operator) == CategoryGate.BEFORE_THE_LIST) {
                 return null
             }
             val access = categoryAccessesIn(operand.text, conditionLanguage).singleOrNull() ?: return null

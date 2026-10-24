@@ -697,7 +697,7 @@ internal fun TrackedFactBase.writesASemanticIndex(text: String): Boolean {
 }
 
 /** [this] inside the one bracket pair that encloses all of it, or unchanged where no pair does. */
-private fun String.withoutEnclosingBrackets(): String {
+internal fun String.withoutEnclosingBrackets(): String {
     val tokens = tokenize(this)
     val first = tokens.firstOrNull() ?: return this
     val last = tokens.last()

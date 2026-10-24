@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
 
 /**
  * What KIND of declaration each FIELD-LIST operation admits in the entity list it shares with the others.
@@ -133,9 +134,13 @@ private fun TrackedFactBase.operandDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): FieldListDefect? {
+    // A filtered operand is its base: A12 reads the whole spec, body included, before this switch, and a body
+    // defect closes at an earlier site (KERNEL-FINDINGS KF612).
+    val filter = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(HAVING)
     val reads = call.operands.map { operand ->
-        operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) { operand.path?.let { OperandReference(it) } }
-            ?: return null
+        operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {
+            (operand.path ?: operand.base?.takeIf { operand.clauses.all { it.keyword == filter } })?.let { OperandReference(it) }
+        } ?: return null
     }
     val targets = reads.map { read ->
         addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
+import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 
 /**
  * What rounding and absolute-value operations demand of their immediate operands.
@@ -140,8 +141,10 @@ private fun TrackedFactBase.operationDefect(
         )
     }
     // A12 types the whole operation; this reader types only a bare field reference, so an expression is left
-    // alone rather than typed from its most visible operand.
-    val field = bareReferenceField(rounded.text, declaringGroup, element, inAFilterBody) ?: return null
+    // alone rather than typed from its most visible operand. A `$`-marked read in a filter body is the rule's own
+    // reference, addressed as it would be outside the body (KERNEL-FINDINGS KF599, KF612).
+    val field = markedBodyField(rounded, inAFilterBody, declaringGroup, element)
+        ?: bareReferenceField(rounded.text, declaringGroup, element, inAFilterBody) ?: return null
     val type = effectiveFieldType(field)
     return if (type in PLAINLY_NON_NUMBER_TYPES) {
         RoundingDefect(
@@ -151,6 +154,20 @@ private fun TrackedFactBase.operationDefect(
     } else {
         null
     }
+}
+
+/** The field a `$`-marked read in a filter body names, or null for any other operand. */
+private fun TrackedFactBase.markedBodyField(
+    rounded: CallOperand,
+    inAFilterBody: Boolean,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
+    if (!inAFilterBody) return null
+    val marked = outerMarkedPathIn(rounded.text.withoutEnclosingBrackets(), conditionLanguage) ?: return null
+    val target = addressedTargetOf(marked, declaringGroup, element, indexSelected = false,
+        everyLevelAddressed = bodyAddresses(inAFilterBody, outerMarked = true)) ?: return null
+    return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
 
 /**

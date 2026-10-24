@@ -104,6 +104,9 @@ private val GROUP_LIST_OPERATORS = setOf(
 /** …and the three that refuse a FIELD operand, which is not the same set and not a subset of one law's. */
 private val FIELD_REFUSING_OPERATORS = setOf("NumberOfFilledGroups", "GroupFilled", "GroupNotFilled")
 
+/** The one group-list carrier that refuses a keyed operand. */
+private const val GROUP_COUNT = "NumberOfFilledGroups"
+
 /** The three carriers that admit a root as the list's SOLE operand. */
 private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
 
@@ -176,7 +179,26 @@ private fun TrackedFactBase.operandFinding(
     }
     // The root law runs after both duplicate classes because they pre-empt it, measured on a root beside its
     // own descendant. A starred root still counts here, unlike in the comparisons above.
-    return rootFinding(call, resolved, member, element.path) ?: kindFinding(call, resolved, member, element.path)
+    return rootFinding(call, resolved, member, element.path)
+        ?: semanticIndexFinding(call, member, element.path)
+        ?: kindFinding(call, resolved, member, element.path)
+}
+
+/**
+ * The keyed-operand finding for `NumberOfFilledGroups`, which counts whole groups and asks `checkNoSemanticIndex`
+ * between its root and field gates (source-read, [KERNEL-FINDINGS KF612]). Any written index counts, starred
+ * value or not: a key the index chain refuses is reported at its own site, which closes before this call.
+ */
+private fun TrackedFactBase.semanticIndexFinding(call: ConditionCall, member: String, at: String): Finding? {
+    if (call.operator != CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(GROUP_COUNT)) return null
+    val selected = call.operands.firstOrNull { writesASemanticIndex(it.text) }?.text?.javaTrimmed() ?: return null
+    return finding(
+        "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+        "this $member hands `${call.operator}` the selection `$selected`, and a group count takes whole groups — " +
+            "drop the key, or count the selected row's fields instead",
+        at,
+        call.spanIn(member),
+    )
 }
 
 /**

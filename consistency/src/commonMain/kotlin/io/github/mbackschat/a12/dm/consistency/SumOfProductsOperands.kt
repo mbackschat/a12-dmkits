@@ -27,7 +27,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
  *    it through its error field or by being declared inside it — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`
  *    again, for one unstarred operand or both ([KERNEL-FINDINGS KF370], measured 2026-10-20 by
  *    `adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest`) — and so does a selection whose key A12
- *    admits, which addresses one row of its level and stars none ([KERNEL-FINDINGS KF605]).
+ *    admits, which addresses one row of its level and stars none ([KERNEL-FINDINGS KF605]);
+ * 6. a field is plainly not a number — `MVK_NO_NUMBER`, the last check of the method ([KERNEL-FINDINGS KF612]).
  *
  * The fifth gate is placed after the third and fourth only for the cells measured; a pair that also stars two
  * levels is left silent, because which of those classes A12 reaches first is not measured. A missing star on a
@@ -123,6 +124,8 @@ private class ParallelOperand(
     val lowestUnstarred: Boolean,
     /** Whether the operand carries the `$` marker, which makes it a different operand from its unmarked twin. */
     val outerMarked: Boolean,
+    /** Whether the field is plainly not a number; a typedef or an unspecified type is not judged. */
+    val notANumber: Boolean,
 )
 
 /**
@@ -181,6 +184,7 @@ private fun TrackedFactBase.readOperand(
         repeats = levels.isNotEmpty(),
         lowestUnstarred = levels.lastOrNull()?.let { it !in starred } == true,
         outerMarked = captured != null,
+        notANumber = effectiveFieldType(field) in PLAINLY_NON_NUMBER_TYPES,
     )
 }
 
@@ -196,6 +200,7 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     left.stars == 0 && right.stars == 0 && left.at == right.at && left.outerMarked == right.outerMarked -> null
     !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
     left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+    left.notANumber || right.notANumber -> "MVK_NO_NUMBER"
     else -> null
 }
 
@@ -226,4 +231,5 @@ private val ADVICE = mapOf(
         "restricted by a `$HAVING` filter, so star that level on both",
     "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED" to "one of them stars more than the lowest level",
     "MVK_REPEATABLE_LEVEL_REQUIRED" to "neither of them has a repeatable level to iterate",
+    "MVK_NO_NUMBER" to "one of them names a field that is not a number, and only numbers multiply",
 )

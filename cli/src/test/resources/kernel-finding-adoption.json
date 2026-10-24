@@ -13497,6 +13497,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf612": {
+      "sha256": "92d22fdd2c617397ac85a3eb41be73b06d55761b7a24a4ce7458f7b6d821c384",
+      "task": "SS15",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the operand gates of the K22 checkpoint's single-row shapes"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's operand gates on the K22 checkpoint's single-row shapes"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's operand gates on the K22 checkpoint's single-row shapes"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker judges a filtered operand's kind, a product pair's number gate, a rounded marked read in a filter, a non-repeating key against a @From scope, a root beside its own category, a keyed counted group list, and a boolean value-list member as A12 does.",
+          "evidence": {
+            "the operand gates of the K22 checkpoint's single-row shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLedgerOperandGateAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every operand-gate row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's operand gates on the K22 checkpoint's single-row shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLedgerOperandGateAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every operand-gate row as pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
