@@ -120,8 +120,10 @@ class KernelProbeRuleRaiseTest {
                 KernelProbeRuleRaiseTest::class.java.classLoader.getResource("kernel-probe/artifact.schema.json")!!.readText()))
         }
 
-        private val header = KernelProbeArtifact.Header("0.0.0", "30.8.1", "30.8.1", "(unknown)", "UNKNOWN",
-            "m.json", "en_US", Optional.empty())
+        private val header = KernelProbeArtifact.Header.builder()
+            .dmtoolVersion("0.0.0").kernelBuiltAgainst("30.8.1").kernelRuntime("30.8.1")
+            .sourceRevision("(unknown)").sourceState("UNKNOWN").model("m.json").locale("en_US")
+            .build()
 
         private val model: String by lazy {
             val base = DocumentModelDraft.named("probe-rule-raise").locale("en_US")

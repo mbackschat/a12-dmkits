@@ -89,6 +89,71 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      */
     public record Header(String dmtoolVersion, String kernelBuiltAgainst, String kernelRuntime,
             String sourceRevision, String sourceState, String model, String locale, Optional<String> clock) {
+
+        /** The construction path: seven same-typed strings are too easy to swap positionally. */
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** Names each header member; an unset {@code clock} means the request pinned none. */
+        public static final class Builder {
+            private String dmtoolVersion;
+            private String kernelBuiltAgainst;
+            private String kernelRuntime;
+            private String sourceRevision;
+            private String sourceState;
+            private String model;
+            private String locale;
+            private Optional<String> clock = Optional.empty();
+
+            private Builder() {
+            }
+
+            public Builder dmtoolVersion(String value) {
+                this.dmtoolVersion = value;
+                return this;
+            }
+
+            public Builder kernelBuiltAgainst(String value) {
+                this.kernelBuiltAgainst = value;
+                return this;
+            }
+
+            public Builder kernelRuntime(String value) {
+                this.kernelRuntime = value;
+                return this;
+            }
+
+            public Builder sourceRevision(String value) {
+                this.sourceRevision = value;
+                return this;
+            }
+
+            public Builder sourceState(String value) {
+                this.sourceState = value;
+                return this;
+            }
+
+            public Builder model(String value) {
+                this.model = value;
+                return this;
+            }
+
+            public Builder locale(String value) {
+                this.locale = value;
+                return this;
+            }
+
+            public Builder clock(Optional<String> value) {
+                this.clock = value;
+                return this;
+            }
+
+            public Header build() {
+                return new Header(dmtoolVersion, kernelBuiltAgainst, kernelRuntime, sourceRevision, sourceState,
+                        model, locale, clock);
+            }
+        }
     }
 
     /** One named request row: the same document observed on every kernel strategy. */

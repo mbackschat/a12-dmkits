@@ -1012,17 +1012,18 @@ public final class KernelRuntimeProbe {
 
     /** The producer header, from the build-supplied properties plus the kernel actually on the classpath. */
     static KernelProbeArtifact.Header header(Request request) {
-        return new KernelProbeArtifact.Header(
-                property("a12.probe.dmtoolVersion"),
-                property("a12.probe.kernelBuiltAgainst"),
-                Optional.ofNullable(KernelVersion.runtimeVersion()).orElse("(unknown)"),
-                property("a12.probe.sourceRevision"),
+        return KernelProbeArtifact.Header.builder()
+                .dmtoolVersion(property("a12.probe.dmtoolVersion"))
+                .kernelBuiltAgainst(property("a12.probe.kernelBuiltAgainst"))
+                .kernelRuntime(Optional.ofNullable(KernelVersion.runtimeVersion()).orElse("(unknown)"))
+                .sourceRevision(property("a12.probe.sourceRevision"))
                 // The state's own "we could not tell" spelling, not the generic one: it is a closed domain,
                 // shared with dmtool's version surface, and `(unknown)` is not a member of it.
-                System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
-                request.modelRef(),
-                request.locale().getLanguage() + "_" + request.locale().getCountry(),
-                request.clock().map(clock -> clock.toInstant().toString()));
+                .sourceState(System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE))
+                .model(request.modelRef())
+                .locale(request.locale().getLanguage() + "_" + request.locale().getCountry())
+                .clock(request.clock().map(clock -> clock.toInstant().toString()))
+                .build();
     }
 
     private static String property(String key) {

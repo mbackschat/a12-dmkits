@@ -321,11 +321,10 @@ class KernelProbeComputeShapeTest {
         return KernelRuntimeProbe.parse(request)
     }
 
-    private fun header() = KernelProbeArtifact.Header(
-        "0.0.0-test", "30.8.1", "30.8.1",
-        "0000000000000000000000000000000000000000", "CLEAN", "order.dm.json", "en_US",
-        Optional.of("2026-08-11T00:00:00Z"),
-    )
+    private fun header() = KernelProbeArtifact.Header.builder()
+        .dmtoolVersion("0.0.0-test").kernelBuiltAgainst("30.8.1").kernelRuntime("30.8.1")
+        .sourceRevision("0000000000000000000000000000000000000000").sourceState("CLEAN").model("order.dm.json").locale("en_US").clock(Optional.of("2026-08-11T00:00:00Z"))
+        .build()
 
     /** The value the pre-change producer rendered into the committed baseline — reproduced exactly. */
     private fun baselineRow(): KernelProbeArtifact.Row {

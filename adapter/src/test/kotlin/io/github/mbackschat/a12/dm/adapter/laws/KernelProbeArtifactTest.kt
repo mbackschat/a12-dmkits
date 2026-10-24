@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
-import java.util.Optional
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -23,10 +22,10 @@ class KernelProbeArtifactTest {
 
     private val mapper = ObjectMapper()
 
-    private fun header() = KernelProbeArtifact.Header(
-        "0.0.0-test", "30.8.1", "30.8.1",
-        "0000000000000000000000000000000000000000", "CLEAN", "order.dm.json", "en_US", Optional.empty(),
-    )
+    private fun header() = KernelProbeArtifact.Header.builder()
+        .dmtoolVersion("0.0.0-test").kernelBuiltAgainst("30.8.1").kernelRuntime("30.8.1")
+        .sourceRevision("0000000000000000000000000000000000000000").sourceState("CLEAN").model("order.dm.json").locale("en_US")
+        .build()
 
     private fun message(code: String, fillToFix: List<String> = emptyList()) = KernelProbeArtifact.Message(
         code, "Order/Quantity", "ERROR", if (fillToFix.isEmpty()) "VALUE_ERROR" else "OMISSION_ERROR",
