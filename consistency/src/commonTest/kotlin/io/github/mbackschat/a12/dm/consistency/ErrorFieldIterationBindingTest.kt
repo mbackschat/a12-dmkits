@@ -48,7 +48,9 @@ class ErrorFieldIterationBindingTest {
 
     /**
      * A `$`-marked filter read of the claim's own detail binds the rule where the error field is that detail, and an
-     * unmarked one binds nothing; A12 refuses neither with this class.
+     * unmarked one binds nothing; A12 refuses neither with this class. The marked row is the iteration guard's
+     * instead: its marked read iterates the claim and guards nothing (row "AtLeastOneFieldFilled marked" of
+     * `CheckerIterationBindingAgreementTest`, KERNEL-FINDINGS KF608).
      */
     @Test
     fun aMarkedFilterReadOfTheErrorFieldBindsItAndAnUnmarkedOneBindsNothing() {
@@ -56,7 +58,7 @@ class ErrorFieldIterationBindingTest {
             "CurrentRepetition(Claims) > 0))"
         val candidate = "AtLeastOneFieldFilled(Claims*/Amount Having (FieldFilled(Claims/Detail/Units) And " +
             "CurrentRepetition(Claims) > 0))"
-        assertEquals(emptyList(), codes(policy("Claims/Detail/Units", marked)))
+        assertEquals(listOf("MVK_NEG_CONDITION_IN_ITERATION"), codes(policy("Claims/Detail/Units", marked)))
         assertEquals(emptyList(), codes(policy("Claims/Amount", candidate)))
     }
 

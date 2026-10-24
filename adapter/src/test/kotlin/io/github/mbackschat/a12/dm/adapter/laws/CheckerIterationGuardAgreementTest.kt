@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 /**
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody filled,
  * `MVK_NEG_CONDITION_IN_ITERATION` on the rule's own iteration and `MVK_PARALLEL_ITERATION_INVALID` across
- * parallel groups (KERNEL-FINDINGS KF537, KF595, KF596; the shapes left to A12 are CONSISTENCY-GAPS DG146).
+ * parallel groups (KERNEL-FINDINGS KF537, KF595, KF596, KF601, KF608).
  *
  * [ROWS] pins A12's own answer on every row, so a kernel bump that moves one fails here before it is mistaken
  * for a checker defect; the checker must then agree with A12 on every row. Each row's comment names the rival
@@ -29,6 +29,7 @@ class CheckerIterationGuardAgreementTest {
             .numberField("Budget") { n -> n.fractionDigits(0) }
             .dateField("OrderedOn") { d -> d.format("yyyy-MM-dd") }
             .dateRangeField("Season") { r -> r.format("yyyy-MM-dd").separator("/") }
+            .group("Billing") { b -> b.stringField("Street") { }.stringField("City") { } }
             .group("Lines") { l -> l.repeatable(50).indexField("LineNo")
                 .stringField("LineNo") { }
                 .stringField("Sku") { }
@@ -42,10 +43,17 @@ class CheckerIterationGuardAgreementTest {
                 .dateRangeField("Window") { r -> r.format("yyyy-MM-dd").separator("/") }
                 .group("Parts") { p -> p.repeatable(5)
                     .stringField("PartNo") { }
-                    .numberField("Count") { n -> n.fractionDigits(0) } } }
+                    .numberField("Count") { n -> n.fractionDigits(0) }
+                    .group("Tags") { t -> t.repeatable(3).indexField("TagNo")
+                        .stringField("TagNo") { }
+                        .stringField("Label") { } } }
+                .group("Slots") { t -> t.repeatable(4).indexField("SlotNo")
+                    .stringField("SlotNo") { }
+                    .stringField("Mark") { } } }
             .group("Picks") { p -> p.repeatable(10).indexField("LineNo")
                 .stringField("LineNo") { }
-                .stringField("Ref") { } }
+                .stringField("Ref") { }
+                .numberField("Weight") { n -> n.fractionDigits(0) } }
             .group("Gifts") { g -> g.repeatable(2).indexField("GiftNo")
                 .stringField("GiftNo") { }
                 .stringField("Note") { }
@@ -95,8 +103,9 @@ class CheckerIterationGuardAgreementTest {
     }
 
     /**
-     * The shapes this checker does not judge for the law. A12's answer is pinned like any row's; the checker must
-     * stay silent on the law there and name the rule in a gap, so an unreported refusal is never read as examined.
+     * The shapes this checker does not judge for the law, each refused by A12 with a class it decides first. A12's
+     * answer is pinned like any row's; the checker must stay silent on the law there and name the rule in a gap,
+     * so an unreported refusal is never read as examined.
      */
     @Test
     fun aDeclinedShapeIsNamedAtItsRuleAndNeverJudged() {
@@ -145,6 +154,7 @@ class CheckerIterationGuardAgreementTest {
     private companion object {
         const val NEG = "MVK_NEG_CONDITION_IN_ITERATION"
         const val PAR = "MVK_PARALLEL_ITERATION_INVALID"
+        const val PARALLEL_NOT_ALLOWED = "MVK_PARALLEL_ITERATION_NOT_ALLOWED"
         const val DECLINED_MARK = "(declined, named in a gap)"
         const val A12_LEVEL_MESSAGE = "Rule with path '/Order/Lines/Parts/GuardProbe': Iteration for '/Order/Lines' is " +
             "specified, but the rule can fire for not filled repetitions of this repetition level. " +
@@ -188,19 +198,195 @@ class CheckerIterationGuardAgreementTest {
 
         /** Shapes the guard declines, each with A12's own answer. */
         val DECLINED: Map<String, Row> = linkedMapOf(
-            // A pattern leaf is outside the measured leaf set; A12 admits it as a leaf that iterates.
-            "pattern beside a per-row positive" to
-                order("Lines/Sku", "[Lines/Code] PatternViolated \"[0-9]+\" And FieldFilled(Lines/Sku)"),
-            "pattern alone" to order("Lines/Code", "[Lines/Code] PatternViolated \"[0-9]+\""),
-            // A root group read beside a negative: A12 judges it apart from the entity list.
-            "root group beside a negative" to
-                order("Lines/Sku", "GroupFilled(/Order) And FieldNotFilled(Lines/Sku)", NEG),
             // Only a starred reference names the error field while another iterates: the error-field binding is
             // A12's to answer first, so the guard has no verdict here.
             "error field named only starred" to order("Lines/Sku",
                 "FieldsNotCollectivelyFilled(Lines*/Sku, Picks/Ref)", "MVK_ERROR_FIELD_AND_ITERATION_INVALID"),
-            // Constants beyond the exact range a double holds: A12 still compares them, the checker declines.
+            // A `$` marker beside a parallel iteration, over the picks' own star and over another group's.
+            "a marked filter beside a parallel pick" to order("Lines/Sku", "FieldFilled(Picks/Ref) And FieldFilled(Lines/Sku) " +
+                "And Sum(Picks*/Weight Having [Picks/LineNo] == [\$Lines/LineNo]) > [Budget]", PARALLEL_NOT_ALLOWED),
+            "a marked filter on the wraps beside a parallel pick" to order("Lines/Sku", "FieldFilled(Picks/Ref) And " +
+                "FieldFilled(Lines/Sku) And NumberOfFilledFields(Wraps*/Style Having [Wraps/Style] == [\$Lines/Sku]) > [Budget]",
+                PARALLEL_NOT_ALLOWED),
+            "a marked filter first, beside a parallel pick" to order("Lines/Sku", "NumberOfFilledFields(Wraps*/Style " +
+                "Having [Wraps/Style] == [\$Lines/Sku]) > [Budget] And FieldFilled(Picks/Ref)", PARALLEL_NOT_ALLOWED),
+        )
+
+        private val PAT = "PatternViolated \"[0-9]+\""
+
+        /** KERNEL-FINDINGS KF608: the leaves, operators, constants and references the guard once declined. */
+        val KF608_ROWS: Map<String, Row> = linkedMapOf(
+            // A pattern is a comparison no arm reads: admitted, and iterating where its field does. Against
+            // "a pattern refuses like a negative" (the first two) and "a pattern iterates always" (the fixed ones).
+            "a per-row pattern beside a negative" to order("Lines/Sku", "[Lines/Code] $PAT And FieldNotFilled(Lines/Sku)"),
+            "a fixed pattern beside a negative" to order("Lines/Sku", "[Email] $PAT And FieldNotFilled(Lines/Sku)", NEG),
+            "a per-row pattern or a positive" to order("Lines/Sku", "[Lines/Code] $PAT Or FieldFilled(Lines/Sku)"),
+            "a matched pattern beside a negative" to
+                order("Lines/Sku", "[Lines/Code] PatternMatched \"[0-9]+\" And FieldNotFilled(Lines/Sku)"),
+            "a fixed pattern or a negative" to order("Lines/Sku", "[Email] $PAT Or FieldNotFilled(Lines/Sku)", NEG),
+            "a fixed pattern or a positive" to order("Lines/Sku", "[Email] $PAT Or FieldFilled(Lines/Sku)", NEG),
+            "a matched pattern alone" to order("Lines/Code", "[Lines/Code] PatternMatched \"[0-9]+\""),
+            "a pattern between a positive and a negative" to order("Lines/Sku",
+                "FieldFilled(Lines/Qty) And [Lines/Code] $PAT And FieldNotFilled(Lines/Sku)"),
+            "a negative or a pattern" to order("Lines/Sku", "FieldNotFilled(Lines/Sku) Or [Lines/Code] $PAT", NEG),
+            "pattern beside a per-row positive" to
+                order("Lines/Sku", "[Lines/Code] $PAT And FieldFilled(Lines/Sku)"),
+            "pattern alone" to order("Lines/Code", "[Lines/Code] $PAT"),
+            // A tolerance comparison takes part where `!=` does: the count's below arm and the mixed constant, not
+            // the zero arm. Against "a tolerance is a leaf without arms" (t5, t7) and "it meets zero as == does" (t6).
+            "a tolerance between per-row reads" to order("Lines/Qty", "[Lines/Qty] DiffersWithToleranceRange1 [Lines/Price]"),
+            "a tolerance against the budget" to order("Lines/Qty", "[Lines/Qty] DiffersWithToleranceRange1 [Budget]"),
+            "a per-row tolerance beside a negative" to order("Lines/Sku",
+                "[Lines/Qty] DiffersWithToleranceRange1 [Lines/Price] And FieldNotFilled(Lines/Sku)"),
+            "a fixed tolerance beside a negative" to order("Lines/Sku",
+                "[Budget] DiffersWithToleranceRange1 [Budget] And FieldNotFilled(Lines/Sku)", NEG),
+            "a count differing from three" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) DiffersWithToleranceRange1 3", NEG),
+            "a sum differing from zero" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) DiffersWithToleranceRange1 0"),
+            "a mixed sum differing from five" to order("Lines/Qty", "Sum(Lines/Qty, Budget) DiffersWithToleranceRange1 5", NEG),
+            "a count differing from zero" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) DiffersWithToleranceRange10 0"),
+            // RepetitionNotUnique has no arm: admitted, iterating where its field does.
+            "a repeated line number" to order("Lines/LineNo", "RepetitionNotUnique(Lines/LineNo)"),
+            "a repeated line number beside a negative" to
+                order("Lines/Sku", "RepetitionNotUnique(Lines/LineNo) And FieldNotFilled(Lines/Sku)"),
+            "a repeated line number or a negative" to
+                order("Lines/Sku", "RepetitionNotUnique(Lines/LineNo) Or FieldNotFilled(Lines/Sku)", NEG),
+            // The field-and-type Valid and Invalid have no arm, unlike the date form's Invalid. Against "the field
+            // form's Invalid refuses as the date form's does", which refuses the first and the last two.
+            "an invalid address per row" to order("Lines/Code", "Invalid(Lines/Code, \"EMail\")"),
+            "a valid address per row" to order("Lines/Code", "Valid(Lines/Code, \"EMail\")"),
+            "a valid address beside a negative" to
+                order("Lines/Sku", "Valid(Lines/Code, \"EMail\") And FieldNotFilled(Lines/Sku)"),
+            "a fixed invalid address beside a positive" to
+                order("Lines/Sku", "Invalid(Email, \"EMail\") And FieldFilled(Lines/Sku)"),
+            "a fixed valid address beside a negative" to
+                order("Lines/Sku", "Valid(Email, \"EMail\") And FieldNotFilled(Lines/Sku)", NEG),
+            "an invalid address beside a negative" to
+                order("Lines/Sku", "Invalid(Lines/Code, \"EMail\") And FieldNotFilled(Lines/Sku)"),
+            "an invalid address or a positive" to
+                order("Lines/Sku", "Invalid(Lines/Code, \"EMail\") Or FieldFilled(Lines/Sku)"),
+            // The root group is a reference at no repeatable level, as any fixed one is.
+            "root group beside a negative" to
+                order("Lines/Sku", "GroupFilled(/Order) And FieldNotFilled(Lines/Sku)", NEG),
+            "root group between a positive and a negative" to
+                order("Lines/Sku", "FieldFilled(Lines/Qty) And GroupFilled(/Order) And FieldNotFilled(Lines/Sku)"),
+            "root group or a negative" to order("Lines/Sku", "GroupFilled(/Order) Or FieldNotFilled(Lines/Sku)", NEG),
+            "no root group beside a positive" to order("Lines/Sku", "GroupNotFilled(/Order) And FieldFilled(Lines/Sku)"),
+            "a positive beside the root group" to order("Lines/Sku", "FieldFilled(Lines/Sku) And GroupFilled(/Order)"),
+            "root group or a positive" to order("Lines/Sku", "GroupFilled(/Order) Or FieldFilled(Lines/Sku)", NEG),
+            // A constant is parsed to the nearest double, rounded by Math.round, saturating, then cast to an int.
+            // Against "exact rounding, then narrowing" (the last two rows), "a saturating int cast" (the first and
+            // the saturating rows) and "a plain half-up on the double" (the 0.49999999999999994 row).
             "sum equals 2^32 times 10^9" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000000", NEG),
+            "sum equals 2^32 times 10^9 plus one" to
+                order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000001", NEG),
+            "count below 2^32 times 10^9" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 4294967296000000000"),
+            "count below 2^32 times 10^9 plus one" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 4294967296000000001"),
+            "sum equals 2^32 times 10^9 and a fraction" to
+                order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 4294967296000000000.4", NEG),
+            "sum equals minus 2^32 times 10^9" to
+                order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == -4294967296000000000", NEG),
+            "count below twenty nines" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 99999999999999999999"),
+            "sum equals 2^64" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 18446744073709551616"),
+            "count below 2^32 plus one" to order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 4294967297", NEG),
+            "count below a nineteen-digit near-half" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 0.4999999999999999999", NEG),
+            "count below the double before a half" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 0.49999999999999994"),
+            "count below a midpoint above 2^53" to
+                order("Lines/Qty", "NumberOfFilledFields(Lines/Qty, Lines/Price) < 9007199254740993.00001", NEG),
+            "sum equals an exponent" to order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 1E3", "MVK_UNEXPECTED_TOKEN"),
+            // A product sum meets only the zero arm. Against "it is an amount" (the != row) and "a count" (< 5).
+            "product sum equals zero beside a positive" to order("Lines/Qty",
+                "SumOfProducts(Lines/Parts*/Count, Lines/Parts*/Count) == 0 And FieldFilled(Lines/Qty)"),
+            "product sum above zero beside a negative" to order("Lines/Qty",
+                "SumOfProducts(Lines/Parts*/Count, Lines/Parts*/Count) > 0 And FieldNotFilled(Lines/Qty)"),
+            "product sum equals zero beside a negative" to order("Lines/Qty",
+                "SumOfProducts(Lines/Parts*/Count, Lines/Parts*/Count) == 0 And FieldNotFilled(Lines/Qty)", NEG),
+            "product sum below five beside a negative" to order("Lines/Qty",
+                "SumOfProducts(Lines/Parts*/Count, Lines/Parts*/Count) < 5 And FieldNotFilled(Lines/Qty)"),
+            "product sum not five beside a negative" to order("Lines/Qty",
+                "SumOfProducts(Lines/Parts*/Count, Lines/Parts*/Count) != 5 And FieldNotFilled(Lines/Qty)"),
+            // A group in a field list counts as its fields: billing is two. Against "a group counts once", which
+            // admits the first row.
+            "MoreThanOne, billing" to
+                order("Lines/Sku", "MoreThanOneFieldFilled(Lines/Qty, Billing) And FieldNotFilled(Lines/Sku)", NEG),
+            "AtLeastOne, billing" to
+                order("Lines/Sku", "AtLeastOneFieldFilled(Lines/Qty, Billing) And FieldNotFilled(Lines/Sku)", NEG),
+            "not together, billing" to
+                order("Lines/Sku", "FieldsNotCollectivelyFilled(Lines/Qty, Billing) And FieldNotFilled(Lines/Sku)", NEG),
+            "none of the line and billing" to order("Lines/Sku", "NoFieldFilled(Lines/Sku, Billing)", NEG),
+            "no billing beside a positive" to order("Lines/Sku", "NoFieldFilled(Billing) And FieldFilled(Lines/Sku)"),
+            "all billing beside a negative" to
+                order("Lines/Sku", "AllFieldsFilled(Billing) And FieldNotFilled(Lines/Sku)", NEG),
+            "AtLeastOne, starred slots" to
+                order("Lines/Sku", "AtLeastOneFieldFilled(Lines/Sku, Lines/Slots*) And FieldNotFilled(Lines/Sku)"),
+            "not all billing beside a positive" to
+                order("Lines/Sku", "NotAllFieldsFilled(Billing) And FieldFilled(Lines/Sku)"),
+            "AtLeastOne of the line and billing, guarded" to
+                order("Lines/Sku", "AtLeastOneFieldFilled(Lines/Sku, Billing) And FieldFilled(Lines/Qty)"),
+            "MoreThanOne, starred bows" to order("Lines/Sku",
+                "MoreThanOneFieldFilled(Lines/Qty, Wraps*/Bows) And FieldNotFilled(Lines/Sku)", "MVK_NO_WILDCARD"),
+            // A `$`-marked reference adds the levels it iterates and iterates nothing itself. Against "it iterates
+            // as a reference outside the filter does" (the first and third rows) and "the filter is ignored" (the
+            // third and the parts row).
+            "a negative beside a marked sum" to order("Lines/Sku", "FieldNotFilled(Lines/Sku) And " +
+                "Sum(Picks*/Weight Having [Picks/LineNo] == [\$Lines/LineNo]) > [Budget]", NEG),
+            "a positive beside a marked sum" to order("Lines/Sku",
+                "FieldFilled(Lines/Sku) And Sum(Picks*/Weight Having [Picks/LineNo] == [\$Lines/LineNo]) > 0"),
+            "a marked sum beside a fixed positive" to order("Lines/Sku",
+                "Sum(Picks*/Weight Having [Picks/Ref] == [\$Lines/Sku]) > [Budget] And FieldFilled(Email)", NEG),
+            "a marked sum alone" to order("Lines/Sku", "Sum(Picks*/Weight Having [Picks/Ref] == [\$Lines/Sku]) > [Budget]"),
+            "a marked sum between a fixed and a per-row positive" to order("Lines/Sku", "FieldFilled(Email) And " +
+                "Sum(Picks*/Weight Having [Picks/Ref] == [\$Lines/Sku]) > [Budget] And FieldFilled(Lines/Code)"),
+            "a marked part beside its own positive" to order("Lines/Parts/PartNo", "FieldFilled(Lines/Parts/PartNo) " +
+                "And Sum(Picks*/Weight Having [Picks/Ref] == [\$Lines/Parts/PartNo]) > [Budget]"),
+            "a marked part beside a line's positive" to order("Lines/Parts/PartNo", "FieldFilled(Lines/Sku) " +
+                "And Sum(Picks*/Weight Having [Picks/Ref] == [\$Lines/Parts/PartNo]) > [Budget]", NEG),
+            "a negative beside a marked count" to order("Lines/Sku", "FieldNotFilled(Lines/Sku) And " +
+                "NumberOfFilledFields(Wraps*/Style Having [Wraps/Style] == [\$Lines/Sku]) > [Budget]", NEG),
+            "a marked count below three, guarded" to order("Lines/Sku",
+                "NumberOfFilledFields(Wraps*/Style Having [Wraps/Style] == [\$Lines/Sku]) < 3 And FieldFilled(Lines/Sku)"),
+            "a guarded marked count below three" to order("Lines/Sku",
+                "FieldFilled(Lines/Sku) And NumberOfFilledFields(Wraps*/Style Having [Wraps/Style] == [\$Lines/Sku]) < 3"),
+            "a marked line number outside a filter" to order("Lines/Qty",
+                "FieldFilled(Lines/Qty) And Sum(Lines/Parts*/Count Having [\$Lines/Qty] > 1) > 0", "MVK_NO_ITERATION_FOR_WILDCARD"),
+            // A group target iterated in parallel is judged as a field target is. Against "the parallel pass alone
+            // decides a group target", which admits the first row and the parts-or-pick row.
+            "a fixed and a parallel positive around the parts" to order("Lines/Parts",
+                "FieldFilled(Email) And GroupNotFilled(Lines/Parts) And FieldFilled(Picks/Ref)", NEG),
+            "the parts beside a parallel negative" to
+                order("Lines/Parts", "GroupFilled(Lines/Parts) And FieldNotFilled(Picks/Ref)"),
+            "no parts or a parallel positive" to
+                order("Lines/Parts", "GroupNotFilled(Lines/Parts) Or FieldFilled(Picks/Ref)", PAR),
+            "a parallel positive beside no parts" to
+                order("Lines/Parts", "FieldFilled(Picks/Ref) And GroupNotFilled(Lines/Parts)", NEG),
+            "the parts or a parallel positive" to
+                order("Lines/Parts", "GroupFilled(Lines/Parts) Or FieldFilled(Picks/Ref)", NEG),
+            "a parallel and a part positive beside no parts" to order("Lines/Parts",
+                "FieldFilled(Picks/Ref) And FieldFilled(Lines/Parts/PartNo) And GroupNotFilled(Lines/Parts)"),
+            // A field key's level is marked parallel with the rest. Against "a key keeps its own iteration", which
+            // refuses the first two rows on the parallel pass.
+            "a keyed pick beside a parallel negative" to order("Lines/Sku",
+                "FieldFilled(Picks/Ref For Lines/LineNo) And NoFieldFilled(Lines/Sku, Picks/Ref)"),
+            "a keyed pick after a parallel negative" to order("Lines/Sku",
+                "FieldFilled(Email) And NoFieldFilled(Lines/Sku, Picks/Ref) And FieldFilled(Picks/Ref For Lines/LineNo)"),
+            "no keyed pick beside a parallel positive" to order("Lines/Sku",
+                "FieldNotFilled(Picks/Ref For Lines/LineNo) And AtLeastOneFieldFilled(Lines/Sku, Picks/Ref)"),
+            "no keyed pick between positives" to order("Lines/Sku",
+                "FieldFilled(Lines/Sku) And FieldNotFilled(Picks/Ref For Lines/LineNo) And FieldFilled(Picks/Ref)"),
+            "a keyed pick or a parallel negative" to order("Lines/Sku",
+                "FieldFilled(Picks/Ref For Lines/LineNo) Or NoFieldFilled(Lines/Sku, Picks/Ref)", PAR),
+            "a keyed pick beside no pick and the line" to order("Lines/Sku",
+                "FieldFilled(Picks/Ref For Lines/LineNo) And FieldNotFilled(Picks/Ref) And FieldFilled(Lines/Sku)"),
+            // A constant selection still iterating a level above it never reaches the guard beside a parallel
+            // iteration: its chain then declares two index fields.
+            "a selected tag beside a parallel pick" to order("Lines/Parts/PartNo", "FieldFilled(Picks/Ref) And " +
+                "FieldFilled(Lines/Parts/PartNo) And FieldNotFilled(Lines/Parts/Tags/Label For \"t\")", "MVK_MULTIPLE_INDEX_FIELDS"),
         )
 
         val ROWS: Map<String, Row> = linkedMapOf(
@@ -368,6 +554,7 @@ class CheckerIterationGuardAgreementTest {
             "sum equals a 19-digit fraction" to
                 order("Lines/Qty", "Sum(Lines/Qty, Lines/Price) == 0.4000000000000000001", "MVK_INVALID_COMPARE_DEC_PLACES"),
             "error field not referenced" to order("Lines/Sku", "FieldNotFilled(Lines/Qty)", "MVK_ERROR_FIELD_NOT_REFERENCED"),
-        )
+        ) + KF608_ROWS
+
     }
 }

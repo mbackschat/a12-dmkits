@@ -575,8 +575,8 @@
       }
     },
     "kf595": {
-     "sha256": "65c4ad2603e49c26f542196aae9a7f5dec470bca9c2e606c2c176c331dbb381a",
-     "task": "DG146",
+     "sha256": "a4496da35ca2633f307ec9177b8af2853c2e443c09b37d8e31b2751fda3edaf0",
+     "task": "SS14",
      "scope": {
       "dmkits": [],
       "checker": [
@@ -602,7 +602,7 @@
       },
       "checker": {
        "state": "APPLIED",
-       "basis": "The ITERATION_GUARD family rounds and narrows the constant as A12 does, exempts the two-row keyed level, judges a computation on the condition A12 joins it into, and counts a group operand under FieldValuesNotUnique as its fields.",
+       "basis": "The ITERATION_GUARD family reads the constant as A12 does, Math.round of the nearest double narrowed to an int, exempts the two-row keyed level, judges a computation on the condition A12 joins it into, and counts a group operand under FieldValuesNotUnique as its fields.",
        "evidence": {
         "the iteration guard's constants and exempt level": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#theCheckerAgreesWithA12OnEveryRow",
@@ -13203,6 +13203,83 @@
         "interpreter": {"state": "APPLIED", "basis": "Every boolean reader refuses an unbindable value (IF417).", "evidence": {"an unbindable boolean member": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BooleanMemberUnreadableDiffTest.kt#aMemberA12CannotBindRefusesTheModelOnBothSides", "witness": "Nine members, three unbindable values each: A12 and the interpreter both refuse, and both load the true control."}}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool loads models through A12 and the interpreter.", "evidence": {}},
         "a12-kernel-lean": {"state": "APPLIED", "basis": "Triaged at bf2216b6 as implemented (§1.3) with the boolean binding law.", "evidence": {"an unbindable boolean member": {"reference": "a12-kernel-lean@bf2216b69d5a3bbaefe182b76271ddf8d6b27ecf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-21", "witness": "§1.3 is implemented with the boolean and int binding laws (MemberBindingLocks.lean)."}}}
+      }
+    },
+    "kf608": {
+      "sha256": "e1f059cb43a346390378f33d5e3da1650a16022b4f15edf99baeeb00b857e7eb",
+      "task": "SS14",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the iteration guard on every shape it declined",
+          "the constant conversion on every platform"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's iteration-guard reading on the declined shapes"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's iteration-guard reading on the declined shapes"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The ITERATION_GUARD family judges a pattern, RepetitionNotUnique and the field-and-type Valid and Invalid as arm-less leaves, a tolerance comparison where != takes part, a product sum on the zero arm only, a group in a field list as its fields, the root group as a fixed reference, a $-marked reference as levels without iteration, a group target and a field key in parallel, and declines only where A12 answers with an earlier class.",
+          "evidence": {
+            "the iteration guard on every shape it declined": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#theCheckerAgreesWithA12OnEveryRow",
+              "witness": "The checker names A12's class on every KF608 row without a gap."
+            },
+            "the constant conversion on every platform": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/IterationGuardTest.kt#aConstantIsComparedAsTheNearestDouble",
+              "witness": "A near-half, the double below a half, a constant past a double midpoint and one past a long's range answer alike on the JVM and on Node."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row of the order model.",
+          "evidence": {
+            "A12's iteration-guard reading on the declined shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationGuardAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every row as the finding's table states."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
       }
     }
   }

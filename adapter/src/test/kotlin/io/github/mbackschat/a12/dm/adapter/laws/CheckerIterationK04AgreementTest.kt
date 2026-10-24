@@ -133,12 +133,11 @@ class CheckerIterationK04AgreementTest {
         const val NEGATIVE = "MVK_NEG_CONDITION_IN_ITERATION"
 
         /**
-         * The rows whose guard the checker leaves to A12 (CONSISTENCY-GAPS DG146). All but one are refused by a
-         * class A12 decides before the guard, the error field's reference or binding or a wildcard's, so the
-         * guard has no verdict of its own to give there; `t8` is admitted, a group target iterated in parallel,
-         * which no refusal row measures.
+         * The rows whose guard the checker leaves to A12. Each is refused by a class A12 decides before the guard,
+         * the error field's reference or binding or a wildcard's, so the guard has no verdict of its own to give
+         * there (KERNEL-FINDINGS KF608).
          */
-        val DECLINED = setOf("o01", "o02", "o03", "o04", "a09", "d1", "d2", "d3", "y12", "t3", "t5", "t8", "f2b",
+        val DECLINED = setOf("o01", "o02", "o03", "o04", "a09", "d1", "d2", "d3", "y12", "t3", "t5", "f2b",
             "f2d", "f2d-f", "f3", "f3-f", "f5f")
 
         /** Name → (computed field below `/Order`, precondition). */

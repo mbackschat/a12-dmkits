@@ -6,12 +6,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionNode
 import io.github.mbackschat.a12.dm.consistency.syntax.ConnectiveKind
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
+import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.spanning
+import kotlin.math.floor
 
 /**
  * The iteration guard: A12 refuses an iterating rule whose condition can be true for a repetition nobody
@@ -28,12 +30,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.spanning
  *
  * **How a condition is judged.** Every part starts admitted, and a part refuses by its kind and by how its
  * references iterate the judged level: a negative presence over an iterating reference, a positive presence that
- * counts references not iterating it (a starred one counting as often as its level repeats), a count compared
- * below a positive constant or an amount compared equal to zero over references that all iterate, an amount
- * against a constant over mixed references, `CurrentRepetition` of the judged level, `Invalid` and the value-list
- * forms. An `And` is admitted when one of its parts is admitted and iterates the level, an `Or` only when every
- * part is ([KERNEL-FINDINGS KF537]). A selection keyed by a field is one reference that iterates wherever its
- * key does ([KF601]).
+ * counts references not iterating it (a starred one counting as often as its level repeats, a group as its
+ * fields), a count compared below a positive constant or an amount compared equal to zero over references that
+ * all iterate, an amount against a constant over mixed references, `CurrentRepetition` of the judged level, the
+ * date form of `Invalid` and the value-list forms. A tolerance comparison takes part where `!=` does; a pattern,
+ * `RepetitionNotUnique` and the field-and-type `Valid`/`Invalid` have no arm. An `And` is admitted when one of
+ * its parts is admitted and iterates the level, an `Or` only when every part is ([KERNEL-FINDINGS KF537]). A
+ * selection keyed by a field is one reference that iterates wherever its key does ([KF601]); a `$`-marked
+ * reference adds the levels it iterates and iterates nothing itself.
  *
  * **Which levels.** Parallel iteration is judged as one whole. The rule's own iteration is judged level by
  * level, shallowest first, and the first refused level is the one named; a level repeating exactly twice that
@@ -41,8 +45,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.spanning
  * references iterate ([KF601]). A computation is judged through the condition A12 joins it into
  * ([computationCondition]), whose leading `FieldFilled` of the computed field is what guards it.
  *
- * **Silent wherever the reading is not this checker's to give, and then the declaration carries a coverage gap
- * ([iterationGuardGaps])**: CONSISTENCY-GAPS DG146 lists the shapes, and every `null` this file returns is one.
+ * **Silent wherever A12 answers before this law, and then the declaration carries a coverage gap
+ * ([iterationGuardGaps])**: every `null` this file returns is a shape whose earlier class the differential pins
+ * beside the checker's own (`adapter.laws.CheckerIterationGuardAgreementTest`, [KF608]).
  */
 internal fun TrackedFactBase.iterationGuardContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()
@@ -64,9 +69,8 @@ internal fun TrackedFactBase.iterationGuardGaps(element: TrackedDeclaration): Li
     return listOf(CoverageGap(element.path,
         "this ${if (element.declaredKind == DeclaredKind.RULE) "rule" else "computation"} iterates a repetition, and whether its condition can be " +
             "true for a repetition nobody filled (`MVK_NEG_CONDITION_IN_ITERATION`, " +
-            "`MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a shape this checker does not judge for " +
-            "that law, such as a `$` marker, a condition kind outside the measured set, or a parallel iteration " +
-            "beside a group error target or a field-keyed selection"))
+            "`MVK_PARALLEL_ITERATION_INVALID`) was left to A12: it uses a shape A12 refuses before that law, such " +
+            "as a `$` marker beside a parallel iteration or an error field named only by a starred reference"))
 }
 
 /** The stage that answered and its finding, null when the condition is admitted. */
@@ -124,6 +128,11 @@ private class GuardReference(
      * reference iterates, which levels it asks and what it names include the key.
      */
     val weight: Long get() = levels.filter { it.mark == LevelMark.STARRED }.fold(1L) { n, l -> n * l.repeats }
+    /**
+     * How many references A12 counts this one as in a field list: a group stands for its [fields] (rows `m1` and
+     * `m10`–`m11` of `adapter.laws.CheckerIterationGuardAgreementTest`, beside the uniqueness rows).
+     */
+    val entries: Long get() = weight * if (isField) 1 else fields
     val starred: Boolean get() = levels.any { it.mark == LevelMark.STARRED }
     val iterates: Boolean
         get() = levels.any { it.mark == LevelMark.ITERATED || it.mark == LevelMark.PARALLEL } || key?.iterates == true
@@ -148,6 +157,13 @@ private class IterationGuard(
     val target: String,
     val tree: ConditionNode,
     val references: List<GuardReference>,
+    /**
+     * The `$`-marked references inside a filter. A12 takes the levels the rule iterates from them as from any
+     * reference, but its verdict never reads inside a filter, so they iterate nothing there
+     * (`IterationNotValidVisitor.getIterationLevels` against `AnalyseService.isIteration`, kernel 30.8.1; rows
+     * `d7`, `d9` and `d14`).
+     */
+    val outer: List<GuardReference>,
     val operations: List<OperationShape>,
     val identities: Map<String, String>,
     /** The condition text the recognized offsets index into. */
@@ -174,7 +190,7 @@ private class IterationGuard(
 
     /** Null where the walk has no verdict to give at a level it reaches before any refusal. */
     fun ordinaryOutcome(): Outcome? {
-        val depths = references.flatMap { it.judgedDepths }.distinct().sorted()
+        val depths = (references + outer).flatMap { it.judgedDepths }.distinct().sorted()
         for (depth in depths) {
             when (admitted(tree, Judged.Ordinary(depth))) {
                 null -> return null
@@ -223,27 +239,20 @@ private class IterationGuard(
     private fun callAdmitted(call: CallShape, judged: Judged): Boolean? {
         val id = identities[call.operator] ?: return null
         val list = within(call.at, call.end)
-        fun counted(threshold: Long) =
-            list.filterNot { iterates(it, judged) }.sumOf { it.weight } >= threshold
-        val single = list.size == 1 && !list.single().starred
-        // A group named where fields are listed stands for its fields, which is measured only for the uniqueness
-        // condition; elsewhere the count it contributes is unknown.
-        val groupAsFields = id in FIELD_LISTS && list.any { !it.isField }
-        if (groupAsFields && id != "FieldValuesNotUnique") return null
+        fun counted(threshold: Long) = list.filterNot { iterates(it, judged) }.sumOf { it.entries } >= threshold
         return when (id) {
             in NEGATIVE_PRESENCE -> list.none { iterates(it, judged) }
             in POSITIVE_PRESENCE -> !counted(1)
-            "MoreThanOneFieldFilled" -> !counted(2)
-            "FieldValuesNotUnique" ->
-                list.filterNot { iterates(it, judged) }.sumOf { it.weight * if (it.isField) 1 else it.fields } < 2
-            "FieldFilled", "AllFieldsFilled" -> !(single && list.single().isField && counted(1))
-            "GroupFilled", "AllGroupsFilled" -> !(single && counted(1))
-            "DateRangesOverlap", "AtLeastOneDateRangeOverlaps" -> true
+            "MoreThanOneFieldFilled", "FieldValuesNotUnique" -> !counted(2)
+            "FieldFilled", "AllFieldsFilled" -> !(list.sumOf { it.entries } == 1L && counted(1))
+            "GroupFilled", "AllGroupsFilled" -> !(list.size == 1 && !list.single().starred && counted(1))
+            // Leaves A12's guard has no arm for, admitted and iterating where their references do.
+            "DateRangesOverlap", "AtLeastOneDateRangeOverlaps", REPETITION_NOT_UNIQUE -> true
             // One spelling names both forms, so the operand decides: only a `Date` construction is A12's date
-            // validity condition, and the field-and-type form is not measured here.
+            // validity condition (`IDateValidityCondition`); the field-and-type form has no arm.
             "Valid", "ValidType", "Invalid", "InvalidType" ->
-                if (identities[call.operands.firstOrNull()?.firstOrNull()?.text] != "Date") null
-                else id.startsWith("Valid") || list.none { iterates(it, judged) }
+                identities[call.operands.firstOrNull()?.firstOrNull()?.text] != "Date" ||
+                    id.startsWith("Valid") || list.none { iterates(it, judged) }
             "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList",
             "AtLeastOneFieldValueIncludedInValueList" -> listMembershipAdmitted(id, call, judged)
             "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList" -> valueListAdmitted(id, call, judged)
@@ -290,7 +299,7 @@ private class IterationGuard(
     private fun comparisonAdmitted(shape: ComparisonShape, judged: Judged): Boolean? {
         val left = operations.spanning(shape.left) ?: return null
         val right = operations.spanning(shape.right) ?: return null
-        val written = shape.operator.text.takeIf { it in COMPARISON_SYMBOLS } ?: return null
+        val written = shape.operator.text.let { identities[it] ?: it }.takeIf { it in FACING } ?: return null
         val kinds = (kindOf(left) ?: return null) to (kindOf(right) ?: return null)
         if (readsJudgedRepetition(shape, judged)) return false
         var admitted: Boolean? = true
@@ -331,9 +340,7 @@ private class IterationGuard(
         is OperationShape.Literal, is OperationShape.Arithmetic -> OperationKind.OTHER
         is OperationShape.Call -> when (val id = identities[op.call.operator]) {
             null -> null
-            // A product sum needs a star at its lowest level and one group for its operands, so every row we
-            // could author was answered by an earlier class and its arm stays unmeasured: declined.
-            "SumOfProducts" -> null
+            "SumOfProducts" -> OperationKind.PRODUCT_SUM
             in ENTITY_LIST_KINDS -> ENTITY_LIST_KINDS.getValue(id)
             in OPERATION_LISTS -> OperationKind.OPERATION_LIST
             in FIELD_OPERATIONS -> OperationKind.FIELD
@@ -343,11 +350,12 @@ private class IterationGuard(
     }
 
     /**
-     * A number constant as A12 compares it: rounded half up on its sign to a whole number, then narrowed to 32
-     * bits, so `-0.5`, `-0.4` and `0.4` all compare as zero ([KERNEL-FINDINGS KF595]). Read from its digits, with
-     * any space after the sign dropped, rather than through a platform number parser, which shared code may not
-     * depend on. A value with an exponent or more significant digits than a double holds exactly is
-     * [Constant.Unknown]: still a constant, but one whose value this reading does not claim.
+     * A number constant as A12 compares it: parsed to the nearest double, rounded to the nearest whole number with
+     * a tie going up and the result saturating at a long's bounds, then narrowed to 32 bits
+     * (`FeldOperationUtil.getZahlKonstanteWert`, kernel 30.8.1: `parseDouble`, `Math.round`, an `int` cast). So
+     * `-0.5` compares as zero and `2^32` as zero ([KERNEL-FINDINGS KF595]), a value past a long's range as `-1`, and
+     * `0.4999999999999999999` as one, because its nearest double is a half. A text that is not plain digits
+     * (an exponent) is [Constant.Unknown]: still a constant, but one whose value this reading does not claim.
      */
     private fun constantOf(op: OperationShape): Constant? {
         if (op is OperationShape.Group) return constantOf(op.child)
@@ -357,16 +365,13 @@ private class IterationGuard(
         val digits = text.removePrefix("-")
         if (digits.firstOrNull() !in '0'..'9') return null
         val whole = digits.substringBefore('.')
-        val fraction = digits.substringAfter('.', missingDelimiterValue = "").trimEnd('0')
-        if ((whole + fraction).any { it !in '0'..'9' } || (whole + fraction).trimStart('0').length > EXACT_DIGITS) {
-            return Constant.Unknown
-        }
-        val magnitude = whole.fold(0L) { value, digit -> value * 10 + (digit - '0') }
-        val half = fraction.firstOrNull()?.let { it >= '5' } ?: false
-        // Half up on the signed value: a positive half rounds away from zero, a negative one towards it.
-        val rounded = if (!negative) magnitude + if (half) 1 else 0
-        else -magnitude - if (half && fraction != "5") 1 else 0
-        return Constant.Known(rounded.toInt())
+        val fraction = digits.substringAfter('.', missingDelimiterValue = "")
+        if ((whole + fraction).any { it !in '0'..'9' }) return Constant.Unknown
+        // Rebuilt from its digits so that only plain decimal text reaches the parser, which every platform reads
+        // as the nearest double (`IterationGuardTest`, whose rows run on the JVM and on Node).
+        val value = "${if (negative) "-" else ""}$whole.${fraction.ifEmpty { "0" }}".toDouble()
+        val below = floor(value)
+        return Constant.Known((if (value - below >= 0.5) below + 1 else below).toLong().toInt())
     }
 
     private fun allIterate(op: OperationShape, judged: Judged) =
@@ -386,6 +391,8 @@ private enum class OperationKind(
     COUNT_OF_VALUE(needsRowBelow = true, needsRowAtZero = true, needsRowAgainstConstant = true),
     AMOUNT(needsRowAtZero = true, needsRowAgainstConstant = true),
     OPERATION_LIST(needsRowAtZero = true, needsRowAgainstConstant = true),
+    /** A12 leaves a product sum out of the constant arm, unlike every other aggregate. */
+    PRODUCT_SUM(needsRowAtZero = true),
     FIELD(needsRowAtZero = true),
     DATE(needsRowAtZero = true),
     OTHER,
@@ -398,62 +405,73 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
         ?.takeIf { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET } ?: return null
     val target = (declared.target as? Reference.Resolved)?.path ?: return null
     // A group error target is judged as a field one is, at the levels its references iterate (rows `g01`–`g06`,
-    // `y1`–`y9`, `t0`–`t8`, `f1`, `f5a`–`f5f`), except in parallel, where only an admitted row (`t8`) is measured.
+    // `y1`–`y9`, `t0`–`t8`, `f1`, `f5a`–`f5f`), in parallel too (rows `q1`–`q3` and `q8`–`q12` of
+    // `adapter.laws.CheckerIterationGuardAgreementTest`).
     val targetKind = declarationAt(target)?.declaredKind
     if (targetKind != DeclaredKind.FIELD && targetKind != DeclaredKind.GROUP) return null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val bodies = recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().map { it.entry.end until it.end }
     val targetGroup = if (targetKind == DeclaredKind.GROUP) target else target.substringBeforeLast('/')
     val references = mutableListOf<GuardReference>()
-    val marked = mutableListOf<MarkedLevels>()
+    val outer = mutableListOf<GuardReference>()
+    // Each reference's levels beside the levels A12's pass marks on them, a field key's included.
+    val marking = mutableListOf<Pair<List<GuardLevel>, MarkedLevels>>()
     var pendingKey: GuardReference? = null
     for (entity in recognition.entities) {
-        if (entity.path.first().text == "$") return null
         val inBody = bodies.any { entity.site.start in it }
         if (inBody != entity.inFilter) return null
+        val written = normalizedPath(entity.path.dropWhile { it.text == OUTER_MARKER })
+        if (entity.path.first().text == OUTER_MARKER) {
+            // Outside a filter the marker is refused earlier (`MVK_INVALID_OUTER_ITERATION`).
+            if (!inBody) return null
+            outer += guardReferenceOf(entity, written, group, element, key = null) ?: return null
+            continue
+        }
         if (inBody) continue
+        val levels = markedLevelsOf(written, group, targetGroup, element)
         // A field key is recognized ahead of the selection it keys, and joins that selection rather than
         // standing as a reference of its own.
         if (entity.indexKey) {
             if (pendingKey != null) return null
-            pendingKey = guardReferenceOf(entity, group, element, key = null) ?: return null
+            pendingKey = guardReferenceOf(entity, written, group, element, key = null) ?: return null
+            marking += pendingKey.levels to (levels ?: return null)
             continue
         }
         if (pendingKey != null && !entity.indexed) return null
-        val reference = guardReferenceOf(entity, group, element, key = pendingKey) ?: return null
+        val reference = guardReferenceOf(entity, written, group, element, key = pendingKey) ?: return null
         pendingKey = null
         references += reference
         // A selected level is never marked parallel: A12's pass marks only an iterated one.
-        marked += if (entity.indexed) MarkedLevels(emptyList(), emptyList())
-        else markedLevelsOf(normalizedPath(entity.path), group, targetGroup, element) ?: return null
+        if (!entity.indexed) marking += reference.levels to (levels ?: return null)
     }
     if (pendingKey != null) return null
     // A12's two passes (KF376), read where the filtered-entity family reads them: only once some reference
-    // iterates jointly does every reference's keyed level on the error field's path become parallel too.
-    if (marked.any { it.joint.isNotEmpty() }) {
-        if (targetKind == DeclaredKind.GROUP) return null
-        // How that pass marks the level a selection still iterates is unmeasured.
-        if (references.any { it.selected && it.iterates }) return null
-        references.zip(marked).forEach { (reference, levels) ->
-            reference.levels.filter { it.mark == LevelMark.ITERATED && it.group in levels.marked }
-                .forEach { it.mark = LevelMark.PARALLEL }
+    // iterates jointly does every reference's keyed level on the error field's path become parallel too, a
+    // field key's included (rows `x1`–`x4` of `adapter.laws.CheckerIterationGuardAgreementTest`).
+    if (marking.any { it.second.joint.isNotEmpty() }) {
+        // A `$` marker beside a parallel iteration is refused earlier (`MVK_PARALLEL_ITERATION_NOT_ALLOWED`,
+        // rows `d11`, `d15`–`d17`).
+        if (outer.isNotEmpty()) return null
+        marking.forEach { (levels, marked) ->
+            levels.filter { it.mark == LevelMark.ITERATED && it.group in marked.marked }.forEach { it.mark = LevelMark.PARALLEL }
         }
     }
-    if (references.any { r -> r.allLevels.any { it.mark == LevelMark.ITERATED && !target.isAtOrBelow(it.group) } }) return null
+    val all = references + outer
+    if (all.any { r -> r.allLevels.any { it.mark == LevelMark.ITERATED && !target.isAtOrBelow(it.group) } }) return null
     // A12 decides the error-field binding (KF417) before this law, so where no reference naming the error
     // field iterates while another does, that earlier class may answer and this reading has no verdict.
-    if (references.any { it.iterates } && references.none { it.iterates && it.names(target) }) return null
-    return IterationGuard(element, target, tree, references, recognition.operations,
+    if (references.any { it.iterates } && all.none { it.iterates && it.names(target) }) return null
+    return IterationGuard(element, target, tree, references, outer, recognition.operations,
         CONDITION_OPERATOR_IDENTITIES.getValue(conditionLanguage), execution.carrier.text)
 }
 
 private fun TrackedFactBase.guardReferenceOf(
     entity: RecognizedEntity,
+    written: String,
     declaringGroup: String,
     element: TrackedDeclaration,
     key: GuardReference?,
 ): GuardReference? {
-    val written = normalizedPath(entity.path)
     if (isRuleContext(written, conditionLanguage)) return null
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved
         ?: return null
@@ -462,7 +480,6 @@ private fun TrackedFactBase.guardReferenceOf(
     val segments = resolved.path.split('/').drop(1)
     val groups = segments.indices.map { "/" + segments.take(it + 1).joinToString("/") }
         .let { if (declaration.declaredKind == DeclaredKind.FIELD) it.dropLast(1) else it }
-    if (declaration.declaredKind == DeclaredKind.GROUP && groups.size == 1) return null
     // A constant selection fixes the level it selects, which then neither iterates nor multiplies; the levels
     // above it iterate as they would without it (KERNEL-FINDINGS KF64's "replaces only its own level").
     val selected = if (entity.indexed) indexGroupOf(resolved.path) ?: return null else null
@@ -486,18 +503,10 @@ private fun TrackedFactBase.guardReferenceOf(
         selected = entity.indexed, key = key)
 }
 
-
-/** Significant digits a double carries exactly, so a half is never produced by the parse itself. */
-private const val EXACT_DIGITS = 15
-
 private val JUDGED = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
 
 private val NEGATIVE_PRESENCE = setOf("FieldNotFilled", "NoFieldFilled", "NotAllFieldsFilled", "NotExactlyOneFieldFilled",
     "GroupNotFilled", "NoGroupFilled", "NotAllGroupsFilled")
-/** The conditions that list fields, where a named group stands for the fields beneath it. */
-private val FIELD_LISTS = setOf("FieldFilled", "AllFieldsFilled", "AtLeastOneFieldFilled", "FieldsNotCollectivelyFilled",
-    "MoreThanOneFieldFilled", "FieldValuesNotUnique", "FieldNotFilled", "NoFieldFilled", "NotAllFieldsFilled",
-    "NotExactlyOneFieldFilled")
 private val POSITIVE_PRESENCE = setOf("AtLeastOneFieldFilled", "FieldsNotCollectivelyFilled", "AtLeastOneGroupFilled",
     "GroupsNotCollectivelyFilled")
 private val ENTITY_LIST_KINDS = mapOf(
@@ -513,11 +522,19 @@ private val DATE_DIFFERENCES = setOf("DifferenceInSeconds", "DifferenceInMinutes
     "DifferenceInMonths", "DifferenceInYears")
 private val DATE_EXTRACTIONS = setOf("DayFromDate", "MonthFromDate", "YearFromDate", "QuarterFromDate", "HoursFromTime",
     "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime")
-private val COMPARISON_SYMBOLS = setOf("==", "!=", "<", ">", "<=", ">=")
-/** The operator as read from the right-hand side. */
-private val FACING = mapOf("==" to "==", "!=" to "!=", "<" to ">", ">" to "<", "<=" to ">=", ">=" to "<=")
+/**
+ * A12's tolerance comparisons, which take part in the arms where `!=` does (`ComparisonOperation` `NE1`…`NE10`,
+ * read by `IterationNotValidVisitor.checkIfVergleichMitKleiner`, kernel 30.8.1).
+ */
+private val TOLERANCES = setOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5",
+    "DiffersWithToleranceRange10")
+/** A12's pattern comparisons, which no arm reads (`NM`, `WM`). */
+private val PATTERNS = setOf("PatternMatched", "PatternViolated")
+/** Every comparison operator, as read from the right-hand side. */
+private val FACING = mapOf("==" to "==", "!=" to "!=", "<" to ">", ">" to "<", "<=" to ">=", ">=" to "<=") +
+    (TOLERANCES + PATTERNS).associateWith { it }
 /** Comparisons below a bound, which an operation counting filled rows cannot meet without one. */
-private val BELOW = setOf("<", "<=", "!=")
+private val BELOW = setOf("<", "<=", "!=") + TOLERANCES
 /** Comparisons an amount meets at zero. */
 private val AT_ZERO = setOf("==", "<=", ">=")
 private val IN_WORDS = setOf("In", "IN", "in")

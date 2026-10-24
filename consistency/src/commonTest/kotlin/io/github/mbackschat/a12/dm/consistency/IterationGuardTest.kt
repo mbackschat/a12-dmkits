@@ -33,13 +33,34 @@ class IterationGuardTest {
         assertEquals(emptyList(), report.gaps.filter { it.at == "/Policy/AmountMissing" })
     }
 
-    /** No report names the law as unread model-wide any more: what remains undecided is named per rule. */
+    /**
+     * No report names the law as unread model-wide any more: what remains undecided is named per rule. A12 answers
+     * this shape with the error field's binding first (row "error field named only starred" of
+     * `CheckerIterationGuardAgreementTest`).
+     */
     @Test
     fun aShapeLeftToA12IsNamedAtItsRule() {
-        val report = withCondition("[Claims/ClaimId] PatternViolated \\\"[0-9]+\\\" And FieldFilled(Claims/Amount)")
-        assertEquals(emptyList(), report.findings.map { it.code })
+        val report = withCondition("FieldsNotCollectivelyFilled(Claims*/Amount, Claims/ClaimId)")
+        assertEquals(listOf("MVK_ERROR_FIELD_AND_ITERATION_INVALID"), report.findings.map { it.code })
         val named = report.gaps.filter { "MVK_NEG_CONDITION_IN_ITERATION" in it.reason }
         assertEquals(listOf<String?>("/Policy/AmountMissing"), named.map { it.at }, report.gaps.toString())
+    }
+
+    /**
+     * A constant is compared as the nearest double, so these rows run on every platform the checker ships to: a
+     * nineteen-digit near-half reads as a half and refuses, the double just below a half does not, and a value
+     * just above a midpoint past `2^53` rounds up to the double whose low 32 bits are two. A12's answers on the
+     * same constants are the KF608 rows of `CheckerIterationGuardAgreementTest`.
+     */
+    @Test
+    fun aConstantIsComparedAsTheNearestDouble() {
+        fun refused(constant: String) = withCondition("NumberOfFilledFields(Claims/Amount, Claims/ClaimId) < $constant")
+            .findings.map { it.code }
+        assertEquals(mapOf("0.4999999999999999999" to listOf("MVK_NEG_CONDITION_IN_ITERATION"),
+            "0.49999999999999994" to emptyList(), "9007199254740993.00001" to listOf("MVK_NEG_CONDITION_IN_ITERATION"),
+            "99999999999999999999" to emptyList()),
+            listOf("0.4999999999999999999", "0.49999999999999994", "9007199254740993.00001", "99999999999999999999")
+                .associateWith { refused(it) })
     }
 
     private companion object {
