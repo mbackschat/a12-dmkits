@@ -23,7 +23,7 @@ class ConcatComputeDiffTest {
     private val person = person()
     private val m = BoundModel.ofJson(person)
     private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Person", c)
-    private val operation = renderOp(m.str(FIRST).asString().plus(" ").plus(m.str(LAST).asString()).expression())
+    private val operation = renderOp(m.str(FIRST).plus(" ").plus(m.str(LAST).asString()).expression())
     private val fields = listOf(FieldDef(FIRST, Kind.STRING), FieldDef(LAST, Kind.STRING), FieldDef(FULL, Kind.STRING))
     private val def = ModelDef(fields, emptyList(), computations = listOf(ComputationDef(FULL, "/Person", operation)))
     private val model = RuntimeLaws.withComputation(person, "/Person", "FullComp", "../Full", operation)

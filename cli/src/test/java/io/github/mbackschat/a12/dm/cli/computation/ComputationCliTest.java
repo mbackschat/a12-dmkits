@@ -73,7 +73,7 @@ class ComputationCliTest {
         Path model = write(dir, "parcel.dm.json", structure);
         for (var target : java.util.List.of(bound.str("/Parcel/Label"), bound.custom("/Parcel/Copy"))) {
             var computation = bound.computation(target).name("Derive" + target.field().path().segments().getLast())
-                    .calc(source.asString().plus("-verified").expression())
+                    .calc(source.plus("-verified").expression())
                     .message(Dsl.en("Derived parcel text.")).build();
             var spec = MAPPER.createObjectNode().put("computedField", target.field().path().value())
                     .put("name", computation.name());

@@ -46,7 +46,7 @@ class EnumConcatenationDiffTest {
         val tier = p.enumOf("Tier")
         val lines: Map<String, StringExpr> = linkedMapOf(
             "TierFirst" to tier.plus(" / ").plus(note.asString()),
-            "TierLast" to note.asString().plus(" / ").plus(tier),
+            "TierLast" to note.plus(" / ").plus(tier),
             "PlanFirst" to p.enumOf("Plan").plus(note.asString()),
             "TierPlan" to tier.plus(p.enumOf("Plan")),
             "KeyedCover" to p.enumOf("Claims/Cover").forIndex(p.field("Key")).plus(" / ").plus(note.asString()),

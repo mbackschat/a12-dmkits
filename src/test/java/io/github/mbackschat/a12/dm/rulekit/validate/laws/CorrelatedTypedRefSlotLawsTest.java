@@ -59,7 +59,7 @@ class CorrelatedTypedRefSlotLawsTest {
         matches.put("value list of fields", CODE.outer().in(CODE));
         matches.put("pattern", CODE.outer().matches("AB.*"));
         matches.put("length", CODE.outer().length().eq(CODE.length()));
-        matches.put("concatenation", CODE.outer().asString().plus("-").eq(CODE.asString().plus("-")));
+        matches.put("concatenation", CODE.outer().plus("-").eq(CODE.plus("-")));
         matches.put("text against an expression", CODE.outer().eq(CODE.asString()));
         matches.put("equal or both empty", CODE.outer().agreesWith(CODE));
         matches.put("number value list", UNITS.outer().in(1, 2));

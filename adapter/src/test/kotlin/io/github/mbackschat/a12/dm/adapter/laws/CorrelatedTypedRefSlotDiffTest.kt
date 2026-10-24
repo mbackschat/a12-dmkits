@@ -50,7 +50,7 @@ class CorrelatedTypedRefSlotDiffTest {
             "CodeListed" to code.outer().`in`("AB12"),
             "SamePattern" to code.outer().matches("AB.*").and(code.matches("AB.*")),
             "SameLength" to code.outer().length().eq(code.length()),
-            "SameTagged" to code.outer().asString().plus("-").eq(code.asString().plus("-")),
+            "SameTagged" to code.outer().plus("-").eq(code.plus("-")),
             "SameText" to code.outer().eq(code.asString()),
             "Agrees" to code.outer().agreesWith(code),
             "UnitsListed" to units.outer().`in`(1),

@@ -50,7 +50,7 @@ class ValidationIterationDomainDiffTest {
         val note = scope.str("Note")
         return TypedRules.inject(session.toJson(), scope.rule {
             it.name("NoteMissing").code("NoteMissing").errorField(note.field())
-                .`when`(note.asString().plus(Dsl.text("x")).eq(Dsl.text("x"))).message(Dsl.en("Add a note.")).build()
+                .`when`(note.plus(Dsl.text("x")).eq(Dsl.text("x"))).message(Dsl.en("Add a note.")).build()
         })
     }
 

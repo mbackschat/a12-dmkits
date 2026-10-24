@@ -43,8 +43,8 @@ class TextComputationAdmissionReadTest {
                 Source.TEXT_READ -> text.asString().expression()
                 Source.CUSTOM_READ -> custom.asString().expression()
                 Source.LITERAL -> StringLiteral("checked")
-                Source.TEXT_CONCAT -> text.asString().plus("-verified").expression()
-                Source.CUSTOM_CONCAT -> custom.asString().plus("-verified").expression()
+                Source.TEXT_CONCAT -> text.plus("-verified").expression()
+                Source.CUSTOM_CONCAT -> custom.plus("-verified").expression()
             }
             val field = when (target) {
                 Target.TEXT -> textTarget.field()
@@ -61,7 +61,7 @@ class TextComputationAdmissionReadTest {
                 listOf("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING")))
         }
         // EnumComputationSourceTest locks this delegated composite case; the kernel still refuses it.
-        add(Probe(candidate("TextConcat_TO_ENUM", enumTarget.field(), text.asString().plus("-verified").expression()),
+        add(Probe(candidate("TextConcat_TO_ENUM", enumTarget.field(), text.plus("-verified").expression()),
             listOf("MVK_ERROR_INVALID_ENUM_CALCULATION"), emptyList()))
     }
 

@@ -112,7 +112,7 @@ object CorpusScenarios {
 
     /** `CustomerName := [ProductCode] + "-X"` on the root Order — a STRING concatenation computation. */
     private val orderNameComputeModel = model("order-name-compute", TypedRules.inject(order, ord.computation(ord.str("CustomerName")) {
-        it.name("NameComp").calc(ord.str("ProductCode").asString().plus("-X").expression())
+        it.name("NameComp").calc(ord.str("ProductCode").plus("-X").expression())
             .message(Dsl.en("x")).build()
     }))
 

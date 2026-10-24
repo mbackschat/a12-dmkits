@@ -34,7 +34,7 @@ class ConcatInvalidOperandDiffTest {
 
     /** `[Code] + "-" + [Suffix]`, rendered relative to /Product through the typed DSL. */
     private fun operation(m: BoundModel): String {
-        val c: Calculation = m.str(CODE).asString().plus("-").plus(m.str(SUFFIX).asString()).expression()
+        val c: Calculation = m.str(CODE).plus("-").plus(m.str(SUFFIX).asString()).expression()
         return RuntimeLaws.render("/Product", c)
     }
 

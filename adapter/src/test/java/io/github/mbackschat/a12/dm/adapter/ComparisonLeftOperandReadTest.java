@@ -45,12 +45,12 @@ class ComparisonLeftOperandReadTest {
         authored.put("LiteralBelowCount", named.and(Dsl.number(0).lt(skus)));
         authored.put("LiteralAtMostCount", named.and(Dsl.number(1).le(skus)));
         authored.put("NegativeLiteralBelowCount", named.and(Dsl.number(-2).lt(skus)));
-        authored.put("ConcatenationEqualsField", named.and(m.str("/Order/FirstName").asString().plus(" ")
+        authored.put("ConcatenationEqualsField", named.and(m.str("/Order/FirstName").plus(" ")
                 .plus(m.str("/Order/LastName").asString()).eq(m.str("/Order/ShipTo").asString())));
-        authored.put("ConcatenationDiffersFromText", named.and(m.str("/Order/FirstName").asString().plus(" ")
+        authored.put("ConcatenationDiffersFromText", named.and(m.str("/Order/FirstName").plus(" ")
                 .plus(m.str("/Order/LastName").asString()).ne("Guest Buyer")));
         authored.put("TextDiffersFromConcatenation", named.and(Dsl.text("Guest Buyer")
-                .ne(m.str("/Order/FirstName").asString().plus(" ").plus(m.str("/Order/LastName").asString()))));
+                .ne(m.str("/Order/FirstName").plus(" ").plus(m.str("/Order/LastName").asString()))));
         authored.put("TextEqualsInitials", named.and(Dsl.text("Gu")
                 .eq(Dsl.rangeAsString(m.field("/Order/FirstName"), 1, 2))));
         authored.put("TextDiffersFromFirstSku", named.and(Dsl.text("X1")

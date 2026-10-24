@@ -66,7 +66,7 @@ class KernelProbeExponentFidelityTest {
             base.addAll(
                 emptyList(),
                 listOf(base.computation(base.str("/Order/Echo")).name("EchoComputation")
-                    .calc(base.str("/Order/Code").asString().plus("!")).message(Dsl.en("Echo the code.")).build()),
+                    .calc(base.str("/Order/Code").plus("!")).message(Dsl.en("Echo the code.")).build()),
             ).toJson()
         }
 

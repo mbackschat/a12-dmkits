@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG136 — internal code still concatenates text through the `asString().plus` detour** (found 2026-10-13, cold review). [AF188](API-FINDINGS.md#af188) gave a text field `plus` off its `StringRef`, but `grep -rl 'asString().plus'` over tracked Java and Kotlin sources matches 19 files (2026-10-13; not read one by one, so some may be legitimate). Settles by migrating each internal consumer to the direct form, per the dogfooding rule.
+_None open._
 
 ## 3. Adjacent but out of scope
 

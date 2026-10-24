@@ -50,12 +50,12 @@ class EmptyConcatStoreDiffTest {
 
     private fun concatOp(json: String): String {
         val m = BoundModel.ofJson(json)
-        return render(m.str(HOLDER).asString().plus(m.str(RIDER).asString()).expression())
+        return render(m.str(HOLDER).plus(m.str(RIDER).asString()).expression())
     }
 
     private fun suffixOp(json: String): String {
         val m = BoundModel.ofJson(json)
-        return render(m.str(HOLDER).asString().plus("-GOLD").expression())
+        return render(m.str(HOLDER).plus("-GOLD").expression())
     }
 
     private fun render(c: Calculation): String = RuntimeLaws.render("/Policy", c)

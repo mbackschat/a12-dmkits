@@ -55,7 +55,7 @@ class CorrelatedTypedRefReadTest {
         matches.put("FieldValueList", code.outer().in(code));
         matches.put("Pattern", code.outer().matches("AB.*"));
         matches.put("Length", code.outer().length().eq(code.length()));
-        matches.put("Concatenation", code.outer().asString().plus("-").eq(code.asString().plus("-")));
+        matches.put("Concatenation", code.outer().plus("-").eq(code.plus("-")));
         matches.put("Text", code.outer().eq(code.asString()));
         matches.put("Agrees", code.outer().agreesWith(code));
         matches.put("NumberList", units.outer().in(1, 2));

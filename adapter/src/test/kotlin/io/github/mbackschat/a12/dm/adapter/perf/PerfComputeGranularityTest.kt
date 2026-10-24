@@ -53,7 +53,7 @@ class PerfComputeGranularityTest {
         val bound = BoundModel.ofJson(base)
         val computation = bound.computation(bound.str(STATUS))
             .name("ClearStatus")
-            .calc(bound.str(LEFT).asString().plus(bound.str(RIGHT).asString()).expression())
+            .calc(bound.str(LEFT).plus(bound.str(RIGHT).asString()).expression())
             .message(Dsl.en("status"))
             .build()
         val modelJson = TypedRules.inject(base, computation)

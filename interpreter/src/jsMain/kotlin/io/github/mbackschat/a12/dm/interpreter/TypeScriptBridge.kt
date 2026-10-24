@@ -375,7 +375,7 @@ class InterpreterBridgeModelMetadata internal constructor(
     fun pointer(path: String, coordinates: Array<Int>): InterpreterBridgePointerResult =
         try {
             InterpreterBridgePointerResult(
-                InterpreterBridgePointer(prepared.model.pointer(path, coordinates.toList()) as CoreDocumentPointer),
+                InterpreterBridgePointer(prepared.model.pointer(path, coordinates.toList())),
                 null,
             )
         } catch (error: CoreUnknownModelPathError) {

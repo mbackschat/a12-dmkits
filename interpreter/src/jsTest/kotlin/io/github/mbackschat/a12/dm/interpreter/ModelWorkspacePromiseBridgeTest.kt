@@ -49,7 +49,6 @@ class ModelWorkspacePromiseBridgeTest {
                     ModelSourceProviderFailureReason.CANCELLED,
                     error.diagnostics.single().providerFailureReason,
                 )
-                Unit
             },
         )
     }
