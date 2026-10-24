@@ -4987,3 +4987,20 @@ Found by replaying a12-kernel-lean's `k22rg` run (SPEC-2026-10-24-04). On its ro
 | the same rules | a claim short a part, a holder without a last name | omission | omission |
 
 *Locked:* `adapter.laws.RuleGroupCountPolarityDiffTest` (both carriers, every document, both kernel strategies against the interpreter).
+
+### IF434: a global rule iterating rows runs at every declared row under a blank nonrepeatable root, each row evaluated (2026-10-24) <a id="if434"></a>
+
+Found by replaying a12-kernel-lean's `k0607` and `k0607t` runs (SPEC-2026-10-23-05). A12 files a rule in its GLOBAL bucket when it can fire empty, counts on its small side or names a second root (`RuleInfoBuilder.isAlwaysEvaluated`, `AnalyseService.referenziertMehrereVordrucke`; KERNEL-FINDINGS [KF507](KERNEL-FINDINGS.md#kf507)), and that bucket runs with no `mindestensEinVordruckAngegeben` root gate. The per-rule template asks no row-content question either (`CodeGenRuleDefinition.st` iterates its `EbenenIterator` and evaluates the condition), so such a rule is judged at every row of its declared domain whatever the row holds.
+
+The interpreter applied the bucket only to rules it evaluates once ([IF351](#if351)). A rule iterating a repeatable level kept the stored root instances, so a blank document visited nothing, and kept the row-content gate, so a comparison inside a global rule stayed silent on an unused row. A rows plan below a nonrepeatable root is now global for the same reasons plus the fourth, a condition that can fire empty, and a full call visits the declared domain under root instance 1 with every row evaluated.
+
+| rule (own carrier, declared in `Policy`, iterating the keyed `Claims` of two) | documents | A12 and now the interpreter | before |
+|---|---|---|---|
+| `FieldNotFilled`, a small-side count, a negative beside a second root's `< 5`, a negative `Or` a presence, a second root's `> 5` `Or` a presence, a nested negative beside a second root | `{}`, `{"Policy":{}}`, the agency root alone at 1 or 9, an empty policy beside rating 9, a policy holding only its email | fires at both claims wherever its value is true | nothing on a root-blank document |
+| the same rules | one keyed claim | fires at both claims | the comparison-bearing rules silent at the second claim |
+| `[Email] == "e" And FieldNotFilled(…)` | the same documents | only beside `Email` `e` | same |
+| the gated control `[Claims/Amount] < 5` | the root-blank documents | silent | same |
+
+Partial validation and a repeatable root are not measured for this bucket, so both keep the earlier domain.
+
+*Locked:* `adapter.laws.GlobalRowRuleDiffTest` (both kernel strategies against the interpreter).

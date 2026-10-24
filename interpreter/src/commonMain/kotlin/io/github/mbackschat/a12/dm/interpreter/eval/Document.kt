@@ -275,6 +275,8 @@ class Document(internal val config: DocumentConfig) {
         // Full validation's rule domain (SPEC-2026-10-04-03), distinct from the partial-validation and uniqueness
         // domain above because it can visit declared slots that no stored row holds.
         val fullValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // The same domain under a blank root, every row evaluated, for a GLOBAL rule (IF434).
+        val globalValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // Depth → parent coordinate prefix → the child coordinates some instantiated row of ANY group sets there.
         var occupiedChildren: Map<Int, Map<List<Int>, IntArray>>? = null
         // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
@@ -350,6 +352,7 @@ class Document(internal val config: DocumentConfig) {
                 (idx.rootInstancesByRoot?.size ?: 0) +
                 idx.validationContextsByGroup.size +
                 idx.fullValidationContextsByGroup.size +
+                idx.globalValidationContextsByGroup.size +
                 idx.highestRepetitionsByCount.size +
                 idx.filterPrefixesByCount.size +
                 idx.filterPrefixesByCount.values.sumOf { it.size } +
@@ -665,11 +668,22 @@ class Document(internal val config: DocumentConfig) {
             contextsForRows(groupPath, fullValidationRowsOf(groupPath, capacityOf))
         }
 
-    private fun fullValidationRowsOf(groupPath: String, capacityOf: (String) -> Int): List<List<Int>> {
+    /**
+     * The contexts of a GLOBAL rule iterating [groupPath] below a nonrepeatable root: [fullValidationContextsFor]'s
+     * declared domain, the root's single instance taken whether or not the document holds it, and every row
+     * evaluated, since A12 runs that bucket with neither gate ([IterationScopes] `isGlobalRows`, IF434).
+     */
+    fun globalValidationContextsFor(groupPath: String, capacityOf: (String) -> Int): List<EvalContext> =
+        index().globalValidationContextsByGroup.getOrPut(groupPath) {
+            fullValidationRowsOf(groupPath, capacityOf, blankRoot = true).map { RowContext(groupPath, it, evaluated = true) }
+        }
+
+    private fun fullValidationRowsOf(groupPath: String, capacityOf: (String) -> Int, blankRoot: Boolean = false): List<List<Int>> {
         val segs = parts(groupPath)
         val levels = (1..segs.size).map { d -> "/" + segs.take(d).joinToString("/") }
         val capacities = levels.map(capacityOf)
-        var frontier = rootInstances(levels[0]).filter { it <= capacities[0] }.map { listOf(it) }
+        val roots = if (blankRoot) listOf(1) else rootInstances(levels[0]).filter { it <= capacities[0] }
+        var frontier = roots.map { listOf(it) }
         val dense = capacities.fold(1L) { product, capacity ->
             if (product > DENSE_PRODUCT_LIMIT) product else product * capacity
         } <= DENSE_PRODUCT_LIMIT

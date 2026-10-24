@@ -7,12 +7,15 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.JoinShape
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
+import io.github.mbackschat.a12.dm.interpreter.eval.canFireEmpty
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 
 /** A rule's value-independent iteration decision, prepared once and consumed by every document evaluation. */
 internal sealed interface IterationPlan {
-    data class Rows(val group: String) : IterationPlan
+    /** The rows of [group]. A [global] rule visits every declared row under its root on a full call, each one
+     *  evaluated whatever it holds ([IterationScopes.isGlobalRows]). */
+    data class Rows(val group: String, val global: Boolean = false) : IterationPlan
     /** One evaluation in [rootGroup]. A [global] rule runs with no root-content gate, a root rule only where that
      *  root instance holds content ([IterationScopes.isGlobal]). */
     data class Once(val rootGroup: String, val global: Boolean) : IterationPlan
@@ -92,7 +95,7 @@ internal class IterationScopes(private val model: ModelDef) {
             requireParallelDocumentSupport(ast, plan)
             return plan
         }
-        return IterationPlan.Rows(scope)
+        return IterationPlan.Rows(scope, isGlobalRows(rootGroupOf(errorPath), ast))
     }
 
     /** Execute the already-prepared iteration decision against one document. */
@@ -109,8 +112,11 @@ internal class IterationScopes(private val model: ModelDef) {
          *  ([Document.fullValidationContextsFor]); computation keeps its stored rows. */
         validation: Boolean = false,
     ): List<EvalContext> = when (plan) {
-        is IterationPlan.Rows ->
-            if (validation) doc.fullValidationContextsFor(plan.group, ::capacityOf) else doc.contextsFor(plan.group)
+        is IterationPlan.Rows -> when {
+            !validation -> doc.contextsFor(plan.group)
+            plan.global && cellRelevant == null -> doc.globalValidationContextsFor(plan.group, ::capacityOf)
+            else -> doc.fullValidationContextsFor(plan.group, ::capacityOf)
+        }
         is IterationPlan.Once -> if (plan.global) doc.globalContextFor(plan.rootGroup) else doc.onceContextFor(plan.rootGroup)
         is IterationPlan.Parallel ->
             if (validation) doc.validationParallelContexts(plan.join, cellRelevant, indexIdentityAdmitted, ::capacityOf)
@@ -144,9 +150,21 @@ internal class IterationScopes(private val model: ModelDef) {
      * already admits it, and its legacy `Usb` and root-count reasons have no interpreter construct.
      */
     private fun isGlobal(errorRoot: String, ast: Cond): Boolean =
-        errorRoot in model.repeatable ||
-            (entityPaths(ast).map(::rootGroupOf) + errorRoot).toSet().size > 1 ||
-            comparesACountOnItsSmallSide(ast)
+        errorRoot in model.repeatable || namesASecondRoot(errorRoot, ast) || comparesACountOnItsSmallSide(ast)
+
+    /**
+     * Whether a rule iterating rows below the nonrepeatable [errorRoot] sits in A12's GLOBAL bucket, which runs with
+     * no root gate and no row-content gate at every declared row ([KERNEL-FINDINGS KF507]; INTERPRETER-FINDINGS
+     * IF434, `adapter.laws.GlobalRowRuleDiffTest`). Here the fourth reason counts too, a condition that can fire
+     * empty, because the row gate admitting it does not supply the root instance a blank document lacks. Below a
+     * repeatable root the dispatch is unmeasured, so such a rule keeps its stored root instances.
+     */
+    private fun isGlobalRows(errorRoot: String, ast: Cond): Boolean =
+        errorRoot !in model.repeatable &&
+            (namesASecondRoot(errorRoot, ast) || comparesACountOnItsSmallSide(ast) || ast.canFireEmpty())
+
+    private fun namesASecondRoot(errorRoot: String, ast: Cond): Boolean =
+        (entityPaths(ast).map(::rootGroupOf) + errorRoot).toSet().size > 1
 
     /**
      * The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. [withheld] leaves
