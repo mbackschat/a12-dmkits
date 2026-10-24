@@ -25,13 +25,9 @@ class CheckerKeyedOperandFamilyAgreementTest {
         assertEquals(ROWS.mapValues { it.value.a12 }, verdicts.mapValues { it.value.first })
     }
 
-    /** The checker names A12's class on every row but the [FILTER_WALK] ones, where it stays silent instead. */
     @Test
-    fun theCheckerNamesA12sClassOrLeavesTheFilterWalksRowsToA12() {
-        assertEquals(
-            verdicts.mapValues { (id, verdict) -> if (id in FILTER_WALK) emptyList() else verdict.first },
-            verdicts.mapValues { it.value.second },
-        )
+    fun theCheckerNamesA12sClassOnEveryRow() {
+        assertEquals(verdicts.mapValues { it.value.first }, verdicts.mapValues { it.value.second })
     }
 
     private class Row(val errorField: String, val condition: String, val a12: List<String>, val computed: Boolean = false)
@@ -39,13 +35,6 @@ class CheckerKeyedOperandFamilyAgreementTest {
     private companion object {
         const val NO_NUMBER = "MVK_NO_NUMBER"
         const val NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
-
-        /**
-         * A body whose index has an entity key, which the filter walk leaves to A12 whatever the index's state
-         * (CONSISTENCY-GAPS DG155): the sound selection's `NOT_ALLOWED`, and the key-type class the index's own
-         * gates raise in a body.
-         */
-        val FILTER_WALK = setOf("b-sound-field", "b-sound-unbound", "b-sound-filtered", "b-key-type")
 
         val ROWS: Map<String, Row> = LinkedHashMap<String, Row>().apply {
             fun row(id: String, errorField: String, condition: String, vararg a12: String) =
@@ -83,6 +72,9 @@ class CheckerKeyedOperandFamilyAgreementTest {
             val sum = "Sum(Total, Picks/Ref For Lines/LineNo) > 0"
             row("o-unbound-kind", "Total", sum, "MVK_SEMANTIC_INDEX_INVALID_ITER")
             row("o-unbound-sound", "Total", "Sum(Total, Picks/Qty For Lines/LineNo) > 0", "MVK_SEMANTIC_INDEX_INVALID_ITER")
+            // A key naming a repeating group, the control that the body's key-kind class rests on the body alone.
+            row("o-key-group-unbound", "Total", "Sum(Total, Picks/Qty For Lines) > 0", "MVK_SEMANTIC_INDEX_INVALID_ITER")
+            row("o-key-group-bound", "Lines/Sku", "Sum(Total, Picks/Qty For Lines) > 0", "MVK_SEMANTIC_INDEX_NO_FIELD")
 
             // Inside a body, the four ways the filter and the target can bind `Lines`, and the constant-key control.
             body("b-filter-binds", "Total", "Lines*/Qty", sum, NO_NUMBER)
@@ -101,11 +93,15 @@ class CheckerKeyedOperandFamilyAgreementTest {
             body("b-comparison-order", "Total", "Notes*/Text", "[Picks/Ref For Lines/LineNo] > 5",
                 "MVK_INVALID_TYPE_FOR_COMPARISON")
             body("b-field-operand", "Total", "Notes*/Text", "FieldFilled(Picks For Lines/LineNo)", "MVK_NO_GROUPS_ALLOWED")
-            // A sound selection, and one whose key the index refuses, which no operand gate judges.
+            // A sound selection, one whose key the index refuses, and one whose key names a group, which no operand
+            // gate judges: the index's own gates answer the key ahead of the filter walk.
             body("b-sound-field", "Lines/Sku", "Lines*/Qty", "FieldFilled(Picks/Ref For Lines/LineNo)", NOT_ALLOWED)
             body("b-sound-unbound", "Total", "Notes*/Text", "Sum(Total, Picks/Qty For Lines/LineNo) > 0", NOT_ALLOWED)
             body("b-sound-filtered", "Total", "Lines*/Qty", "Sum(Total, Picks/Qty For Lines/LineNo) > 0", NOT_ALLOWED)
             body("b-key-type", "Total", "Notes*/Text", "Sum(Total, Picks/Qty For Lines/Qty) > 0", "MVK_INDEX_TYPE_INCONSISTENT")
+            body("b-key-group", "Total", "Notes*/Text", "Sum(Total, Picks/Qty For Lines) > 0", "MVK_SEMANTIC_INDEX_NO_FIELD")
+            body("b-key-bound-type", "Lines/Sku", "Lines*/Qty", "FieldFilled(Picks/Ref For Lines/Qty)",
+                "MVK_INDEX_TYPE_INCONSISTENT")
         }
     }
 }

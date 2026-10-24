@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -53,21 +52,22 @@ private val TEMPORAL_FORMAT_MEMBERS = mapOf(
 internal val TEMPORAL_DECLARED_TYPES: Set<FieldType> = TEMPORAL_FORMAT_MEMBERS.keys
 
 /**
- * The format this field declares as a temporal one, or null when it declares none.
+ * The format this field's type declares as a temporal one, or null when it declares none.
  *
- * Null leaves a reader unjudged rather than defaulting, because it means the declaration is not one A12
- * typed as temporal at all — a format A12 does not recognise is a separate answer, handled where a caller
- * needs it.
+ * The type is the one A12 judges the field by, so a field typed through a type definition reads the definition's
+ * format ([KERNEL-FINDINGS KF602], `adapter.laws.CheckerTypeDefinedSettingAgreementTest`). Null leaves a reader
+ * unjudged rather than defaulting, because it means the declaration is not one A12 typed as temporal at all — a
+ * format A12 does not recognise is a separate answer, handled where a caller needs it.
  */
-internal fun declaredTemporalFormatOf(field: TrackedDeclaration): String? =
-    field.declaredFormat(TEMPORAL_FORMAT_MEMBERS)
+internal fun TrackedFactBase.temporalFormatOf(field: TrackedDeclaration): String? =
+    resolvedFieldTypeOf(field)?.member(TEMPORAL_FORMAT_MEMBERS)
 
 /**
  * The declared field types this reader is CERTAIN A12 gives a non-DATETIME base type.
  *
  * An allow-list rather than the complement of the temporal one, because the complement would include
- * `CustomFieldType`, `TypeDefType`, `UnspecifiedType` and `DateRangeType` — types whose effective base type this
- * reader does not resolve — and refusing on those would be an over-rejection on a model A12 may admit.
+ * `CustomFieldType`, an unresolvable type definition, `UnspecifiedType` and `DateRangeType` — types whose base type this reader does
+ * not place — and refusing on those would be an over-rejection on a model A12 may admit.
  */
 internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
     FieldType.STRING,
@@ -77,39 +77,36 @@ internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
     FieldType.ENUMERATION,
 )
 
-/** The format a `DateRangeType` declares, or null when this field is not one. */
-internal fun declaredDateRangeFormatOf(field: TrackedDeclaration): String? =
-    field.declaredFormat(mapOf(FieldType.DATE_RANGE to "format"))
+/** The format this field's `DateRangeType` declares, or null when its type is not one. */
+internal fun TrackedFactBase.dateRangeFormatOf(field: TrackedDeclaration): String? =
+    resolvedFieldTypeOf(field)?.member(mapOf(FieldType.DATE_RANGE to "format"))
 
 /**
- * The `interpretationOfYear` a `DateRangeType` declares, or null where it declares none.
+ * The `interpretationOfYear` this field's `DateRangeType` declares, or null where it declares none.
  *
  * An absent key is A12's `STANDARD`, which is why null and `"STANDARD"` mean the same thing to every caller:
  * the declaration expresses the default by omitting the property.
  */
-internal fun declaredRangeYearInterpretationOf(field: TrackedDeclaration): String? =
-    field.declaredFormat(mapOf(FieldType.DATE_RANGE to "interpretationOfYear"))
+internal fun TrackedFactBase.rangeYearInterpretationOf(field: TrackedDeclaration): String? =
+    resolvedFieldTypeOf(field)?.member(mapOf(FieldType.DATE_RANGE to "interpretationOfYear"))
 
-private fun TrackedDeclaration.declaredFormat(members: Map<FieldType, String>): String? {
-    val declared = body?.get("fieldType") as? JsonObject ?: return null
-    val type = declared.namedFieldType() ?: return null
+private fun ResolvedFieldType.member(members: Map<FieldType, String>): String? {
     val member = members[type] ?: return null
     val carrier = type.bodyIn(declared) ?: return null
     return (carrier[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
 /**
- * Whether this field declares a PARTIALLY KNOWN date — A12's `FieldUtils.isDatePartialKnown`.
+ * Whether this field's type is a PARTIALLY KNOWN date — A12's `FieldUtils.isDatePartialKnown`.
  *
- * Only a `DateType` carries the member, so every other declaration answers false rather than unknown: the
- * precision is a `DateType` body key and its absence there is A12's own default.
+ * Only a `DateType` carries the member, so every other type answers false rather than unknown: the precision is a
+ * `DateType` body key and its absence there is A12's own default.
  */
-internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean = declaredPartialPrecisionOf(field) != null
+internal fun TrackedFactBase.hasAPartialPrecision(field: TrackedDeclaration): Boolean = partialPrecisionOf(field) != null
 
-/** Which of the [PARTIAL_PRECISIONS] this field declares, or null where it declares none. */
-internal fun declaredPartialPrecisionOf(field: TrackedDeclaration): String? {
-    val declared = field.body?.get("fieldType") as? JsonObject ?: return null
-    val dateType = FieldType.DATE.bodyIn(declared) ?: return null
+/** Which of the [PARTIAL_PRECISIONS] this field's type declares, or null where it declares none. */
+internal fun TrackedFactBase.partialPrecisionOf(field: TrackedDeclaration): String? {
+    val dateType = typeBodyOf(field, FieldType.DATE) ?: return null
     return (dateType["datePrecision"] as? JsonPrimitive)?.contentOrNull?.takeIf { it in PARTIAL_PRECISIONS }
 }
 

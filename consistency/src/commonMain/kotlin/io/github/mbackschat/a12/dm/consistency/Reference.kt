@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
@@ -509,8 +508,8 @@ internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = declaredFieldT
  * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
  *
  * An allow-list rather than the complement of `NumberType`, for the same reason [PLAINLY_NON_TEMPORAL_TYPES]
- * is one: the complement would sweep in `TypeDefType` and `UnspecifiedType`, whose effective type this
- * reader does not resolve, and refusing those would be an over-rejection. Every member is measured — the six
+ * is one: the complement would sweep in an unresolvable type definition and `UnspecifiedType`, whose type this reader cannot
+ * know, and refusing those would be an over-rejection. Every member is measured — the six
  * non-temporal ones in this family's own grid, the four temporal ones behind a number leader in
  * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`, and the custom one on all five carriers that ask
  * the question separately in `rulekit.validate.laws.CustomFieldTypeOperandLawsTest`.
@@ -583,22 +582,21 @@ internal fun TrackedFactBase.bareReferenceField(
 /**
  * What binds the repetition a field key is read in, which decides whether the key's read iterates.
  *
- * [DECLARING_GROUP] binds only the repetitions the declaration sits in. [ERROR_TARGET] also binds every level
- * the error target's chain holds or iterates jointly with it ([readsOneRow]): a rule declared at the root with
+ * [ERROR_TARGET] binds the repetitions the declaration sits in and every level the error target's chain holds or
+ * iterates jointly with it ([readsOneRow]): a rule declared at the root with
  * its error field in `Lines` reads the key `Lines/LineNo` as one row, and A12 judges the index behind it
  * ([KERNEL-FINDINGS KF605], `adapter.laws.CheckerKeyedListOperandAgreementTest`). [FILTER_BODY] binds every
  * level: inside a `Having` body A12 asks no iteration question of a key, so the operand's own gates judge the
- * selected field whatever binds the key, and the filter walk refuses the index after them
- * (`adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
+ * selected field whatever binds the key, the index's own gates judge the key, and the filter walk refuses a sound
+ * index after them (`adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
  */
-internal enum class KeyAnchoring { DECLARING_GROUP, ERROR_TARGET, FILTER_BODY }
+internal enum class KeyAnchoring { ERROR_TARGET, FILTER_BODY }
 
 /**
  * The anchoring of a key an operand gate reads where a `Having` body does or does not hold it.
  *
- * Every operand reader takes the body flag rather than an anchoring, so none can fall back to
- * [KeyAnchoring.DECLARING_GROUP], which judges less in both places (KERNEL-FINDINGS KF605,
- * `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
+ * Every reader takes the body flag rather than an anchoring, so the anchoring of a key cannot disagree with where it
+ * is written (KERNEL-FINDINGS KF605, `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
  */
 internal fun keyAnchoringOf(inAFilterBody: Boolean): KeyAnchoring =
     if (inAFilterBody) KeyAnchoring.FILTER_BODY else KeyAnchoring.ERROR_TARGET
@@ -858,8 +856,8 @@ internal val PLAINLY_NON_STRING_TYPES = setOf(
 /**
  * The declared types this reader is CERTAIN are not TEMPORAL at all, every member measured.
  *
- * An allow-list rather than the complement of [TEMPORAL_DECLARED_TYPES], so a `TypeDefType` or
- * `UnspecifiedType` — whose effective type this checker does not resolve — is left unjudged rather than
+ * An allow-list rather than the complement of [TEMPORAL_DECLARED_TYPES], so an unresolvable type definition or an
+ * `UnspecifiedType` — whose type this checker cannot know — is left unjudged rather than
  * refused, which would be the one direction this checker may not take. Two families ask it: the shared date
  * ARGUMENT slot, whose kind gate stops here, and `ValueAsDate`, which adds the temporal kinds back because
  * its own gate wants one precision rather than one interface.
@@ -935,10 +933,17 @@ internal fun TrackedFactBase.waivesValueValidation(field: TrackedDeclaration): B
  * [field]'s type with a type definition read as the type it defines, which is how A12 types an operand at
  * every operand-kind gate: a type-defined field draws the class its plain twin draws, gate by gate
  * (KERNEL-FINDINGS KF602, `adapter.laws.CheckerTypeDefinedOperandKindAgreementTest`). A gate that also reads a
- * setting of the type (a format, a domain) still reads the field's own declaration, so a type-defined field
- * stays unjudged there.
+ * setting of the type reads it through [typeBodyOf], from the same declaration.
  */
 internal fun TrackedFactBase.effectiveFieldType(field: TrackedDeclaration): FieldType? = resolvedFieldTypeOf(field)?.type
+
+/**
+ * The body of [type] that A12 reads [field]'s settings from — a format, a domain, a scale, a length — or null where
+ * the field is not of that type. A type-defined field reads its definition's body, setting by setting as its type
+ * (KERNEL-FINDINGS KF602, `adapter.laws.CheckerTypeDefinedSettingAgreementTest`).
+ */
+internal fun TrackedFactBase.typeBodyOf(field: TrackedDeclaration, type: FieldType): JsonObject? =
+    resolvedFieldTypeOf(field)?.takeIf { it.type == type }?.let { type.bodyIn(it.declared) }
 
 /** The [BaseTypeClass] of [effectiveFieldType]. */
 internal fun TrackedFactBase.effectiveBaseTypeClass(field: TrackedDeclaration): BaseTypeClass? =

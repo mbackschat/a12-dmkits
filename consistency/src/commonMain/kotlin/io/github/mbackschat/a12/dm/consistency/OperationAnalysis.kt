@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 
@@ -133,22 +132,22 @@ internal class OperationAnalysis(
         null -> UNKNOWN
     }
 
-    private fun field(field: TrackedDeclaration): OperationValue {
-        val type = when (field.declaredFieldType()) {
-            FieldType.NUMBER -> OperationType.Number((FieldType.NUMBER.bodyIn(field.body?.get("fieldType") as? JsonObject)
+    private fun field(field: TrackedDeclaration): OperationValue = with(facts) {
+        val type = when (effectiveFieldType(field)) {
+            FieldType.NUMBER -> OperationType.Number((typeBodyOf(field, FieldType.NUMBER)
                 ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0)
             FieldType.STRING, FieldType.CUSTOM_FIELD -> OperationType.Text
             FieldType.ENUMERATION -> OperationType.Enumeration
             FieldType.BOOLEAN -> OperationType.Boolean
             FieldType.CONFIRM -> OperationType.Confirm
             FieldType.DATE, FieldType.DATE_TIME, FieldType.TIME, FieldType.DATE_FRAGMENT ->
-                declaredTemporalFormatOf(field)?.let { OperationType.Temporal(componentsOf(it), declaresAPartialPrecision(field)) }
+                temporalFormatOf(field)?.let { OperationType.Temporal(componentsOf(it), hasAPartialPrecision(field)) }
                     ?: OperationType.Unknown
-            FieldType.DATE_RANGE -> declaredDateRangeFormatOf(field)?.let { OperationType.Range(componentsOf(it)) }
+            FieldType.DATE_RANGE -> dateRangeFormatOf(field)?.let { OperationType.Range(componentsOf(it)) }
                 ?: OperationType.Unknown
             else -> OperationType.Unknown
         }
-        return OperationValue(type, field)
+        OperationValue(type, field)
     }
 
     private fun arithmetic(shape: OperationShape.Arithmetic): OperationValue {
@@ -170,7 +169,7 @@ internal class OperationAnalysis(
         if (operator == "^") {
             // The harvested partial-model contract declines an exponent whose declaration omits its scale.
             val undeclaredScale = right.field?.let { field ->
-                FieldType.NUMBER.bodyIn(field.body?.get("fieldType") as? JsonObject)?.get("maxFractionalDigits") == null
+                facts.typeBodyOf(field, FieldType.NUMBER)?.get("maxFractionalDigits") == null
             } == true
             if (!undeclaredScale && (b.scale == null || b.scale > 0)) return refuse("MVK_INVALID_NUMBER_FOR_EXP", shape,
                 "the exponent `${written(shape.right)}` needs a known whole-number scale")
@@ -198,7 +197,7 @@ internal class OperationAnalysis(
      * `+` refuses an operand only as an immediate field read, so a braced or computed value carries no field here
      * and passes; a category access reduces to no declaration and passes too ([KF396]).
      */
-    private fun OperationValue.remapsDisplay(): Boolean = field?.let(::bearsDisplayValues) == true
+    private fun OperationValue.remapsDisplay(): Boolean = field?.let { facts.bearsDisplayValues(it) } == true
 
     /**
      * A12's division check from one operator node: a pre-order walk carrying one division mark, which a second

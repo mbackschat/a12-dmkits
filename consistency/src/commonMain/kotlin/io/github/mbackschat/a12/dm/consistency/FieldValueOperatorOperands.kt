@@ -138,7 +138,7 @@ private fun TrackedFactBase.valueOperandDefect(
             "reads the category `$category` of `$target`, and only `FieldValueAsNumber` reads one",
         )
     }
-    val type = declared.declaredFieldType() ?: return null
+    val type = effectiveFieldType(declared) ?: return null
     return when (arm) {
         ValueOperatorArm.REPETITION -> null
         ValueOperatorArm.ABSOLUTE, ValueOperatorArm.AS_STRING ->
@@ -164,7 +164,7 @@ private fun TrackedFactBase.valueOperandDefect(
 }
 
 /** The conversion arm's three branches, in the order `checkIsConvertableToNumber` takes them. */
-private fun conversionDefect(
+private fun TrackedFactBase.conversionDefect(
     declared: TrackedDeclaration,
     type: FieldType,
     category: String?,
@@ -174,7 +174,7 @@ private fun conversionDefect(
         ValueOperandDefect("MVK_NO_CONVERT_IN_NUMBER", "reads `$target`, which $because")
     return when (type) {
         FieldType.STRING -> {
-            val body = FieldType.STRING.bodyIn(declared.body?.get("fieldType") as? JsonObject)
+            val body = typeBodyOf(declared, FieldType.STRING)
             val maxLength = (body?.get("maxLength") as? JsonPrimitive)?.intOrNull?.takeIf { it != UNDEFINED }
             val pattern = (body?.get("pattern") as? JsonPrimitive)?.contentOrNull
             when {
@@ -189,7 +189,7 @@ private fun conversionDefect(
             }
         }
         FieldType.ENUMERATION -> {
-            val values = declared.convertibleValues(category) ?: return null
+            val values = convertibleValues(declared, category) ?: return null
             val offending = values.firstOrNull { !it.readsAsANumber() } ?: return null
             refuse("declares the value `$offending`, which is not a number this conversion can read")
         }
@@ -205,8 +205,8 @@ private fun conversionDefect(
  * Null where the declaration is not the shape this reader knows, which leaves the call unjudged rather than
  * refusing on a reading.
  */
-private fun TrackedDeclaration.convertibleValues(category: String?): List<String>? {
-    val body = enumerationBody() ?: return null
+private fun TrackedFactBase.convertibleValues(declared: TrackedDeclaration, category: String?): List<String>? {
+    val body = enumerationBodyOf(declared) ?: return null
     if (category == null) {
         return body.declaredEnumValues()
     }

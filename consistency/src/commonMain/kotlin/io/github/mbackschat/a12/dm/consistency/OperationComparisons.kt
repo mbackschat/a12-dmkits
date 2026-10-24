@@ -43,7 +43,7 @@ private fun OperationAnalysis.baseYearResolved(
         partner.type == OperationType.Unknown) return null
     val date = OperationValue(OperationType.Temporal(componentsOf(DATE_FORMAT)))
     val resolved = when (year.baseYear) {
-        BaseYearRole.ENDPOINT -> if (partner.field.declaredFieldType() == FieldType.DATE_TIME) return null else date
+        BaseYearRole.ENDPOINT -> if (facts.effectiveFieldType(partner.field) == FieldType.DATE_TIME) return null else date
         BaseYearRole.YEAR -> if (partner.temporal != null) date else OperationValue(OperationType.Number(0))
         null -> return left to right
     }
@@ -62,8 +62,7 @@ private fun OperationAnalysis.comparisonFinding(
     val b = right.constant
     if (a != null && b != null && !constantGateAdmits(a, b)) return problem("MVK_INVALID_COMPARE_TO_CONST",
         "`${comparison.left}` and `${comparison.right}` are both written-out values, so the comparison decides nothing about the document — put a field on one side")
-    val customField = left.field?.declaredFieldType() == FieldType.CUSTOM_FIELD ||
-        right.field?.declaredFieldType() == FieldType.CUSTOM_FIELD
+    val customField = listOfNotNull(left.field, right.field).any { facts.effectiveFieldType(it) == FieldType.CUSTOM_FIELD }
     val words = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
     val tolerance = listOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10")
         .mapNotNull { words[it] }
@@ -133,7 +132,7 @@ private fun OperationAnalysis.comparisonFinding(
     for ((enumeration, partner) in listOf(left to right, right to left)) {
         val field = enumeration.typedBy?.takeIf { enumeration.type == OperationType.Enumeration } ?: continue
         val constant = (partner.domainConstant as? WrittenConstant.Text)?.value ?: continue
-        val values = field.enumerationBody()?.declaredEnumValues() ?: continue
+        val values = facts.enumerationBodyOf(field)?.declaredEnumValues() ?: continue
         if (constant !in values) return problem("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
             "`${field.path}` declares ${values.joinToString { "`$it`" }}, and `$constant` is none of them — compare against a stored value, not its display label")
     }
@@ -163,8 +162,8 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
     val a = left.typedBy ?: return null
     val b = right.typedBy ?: return null
     fun labels(value: OperationValue, field: TrackedDeclaration): Map<String, Map<String, String>>? {
-        if (field.declaredFieldType() == FieldType.STRING) return if (value.field != null) emptyMap() else null
-        val body = field.enumerationBody() ?: return null
+        if (facts.effectiveFieldType(field) == FieldType.STRING) return if (value.field != null) emptyMap() else null
+        val body = facts.enumerationBodyOf(field) ?: return null
         if (body["tableName"] != null) return null
         val values = body["values"] as? JsonArray ?: return null
         val entries = values.map { it as? JsonObject ?: return null }

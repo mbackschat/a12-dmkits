@@ -62,11 +62,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * carries a `MVK_SEMANTIC_INDEX_NOT_ALLOWED` branch of its own and never reaches it, the filter walk having
  * thrown during the parse — measured against the whole-rule gate that would otherwise have answered.
  *
- * **A filter whose index has an ENTITY key is left alone entirely**, an under-report (CONSISTENCY-GAPS DG155): A12
- * answers those from the index's own spec gates, which run while the spec is parsed and so ahead of this walk,
- * and their order among themselves inside a filter is measured on two shapes that disagree with the order
- * [semanticIndexKeyContributions] applies outside one. Judging such a body here would name a third class beside
- * a pair that is already one too many.
+ * **An index with an ENTITY key is walked as a literal-keyed one.** A12 asks such a key no iteration question inside a
+ * body, and the index's own spec gates, which run while the spec is parsed, answer a refused key ahead of this walk:
+ * a key naming a group is `MVK_SEMANTIC_INDEX_NO_FIELD` and one of the wrong type `MVK_INDEX_TYPE_INCONSISTENT`, while
+ * a sound key is this walk's index class ([KERNEL-FINDINGS KF605], `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
  *
  * **A filter an entity key owns is walked against the KEY.** A `Having` after an entity key is the key's
  * ([SyntaxSite.FilterEntry.indexKey]), so A12 asks every gate here of the key's spec while the key is parsed, ahead of the
@@ -228,11 +227,10 @@ private fun TrackedFactBase.filterVerdictOf(
         ?.let { semanticIndexUsesIn(text, conditionLanguage, it) }
         .orEmpty()
         .partition { use -> marked.any { it.end <= use.keywordAt && text.substring(it.end, use.keywordAt).isLexerBlank() } }
-    // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
-    // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
-    // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks. On a
-    // marked read the same key is unmeasured.
-    if ((uses + markedUses).any { it.keyLiteral == null || it.keyCategory != null || it.nested }) {
+    // An ENTITY key is read like a literal one: the index's own spec gates answer a refused key ahead of this walk,
+    // while the key is parsed, and a sound one is this walk's index class (KERNEL-FINDINGS KF605,
+    // `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`). On a marked read the same key is unmeasured.
+    if (markedUses.any { it.keyLiteral == null } || (uses + markedUses).any { it.keyCategory != null || it.nested }) {
         return null
     }
     val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }

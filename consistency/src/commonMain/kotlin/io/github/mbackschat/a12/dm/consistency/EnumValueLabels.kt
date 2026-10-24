@@ -35,7 +35,7 @@ import kotlinx.serialization.json.JsonObject
  */
 internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
-        val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
+        val values = field.ownEnumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         val entries = values.map { it as? JsonObject }
         duplicateTokenFindings(field, entries) + labelFindings(field, entries)
     }

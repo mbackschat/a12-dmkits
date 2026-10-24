@@ -71,8 +71,8 @@ import kotlinx.serialization.json.contentOrNull
  * the typing switches on LENGTH first, so `"01.02"` is never tested, and `"32.01.2024"` matches its pattern
  * and fails a non-lenient parse. Both stay strings and are counted.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
- * resolve.
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` declaration**, whose type this reader cannot know; a resolvable
+ * definition is judged as the type it defines ([KERNEL-FINDINGS KF602]).
  */
 internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> = declarations().flatMap { element ->
     valueInFieldsConstantContributions(element).take(1).map { it.finding }
@@ -263,7 +263,7 @@ private fun TrackedFactBase.typeWalkVerdict(
             return ListVerdict.Opaque
         }
         if (arm == ConstantArm.TEXT && type == FieldType.ENUMERATION) {
-            val domain = field.enumerationBody()?.declaredEnumValues()?.toSet() ?: return ListVerdict.Opaque
+            val domain = enumerationBodyOf(field)?.declaredEnumValues()?.toSet() ?: return ListVerdict.Opaque
             if (stringConstantOf(constantText) !in domain) {
                 return ListVerdict.Opaque
             }

@@ -104,16 +104,17 @@ private fun TrackedFactBase.rangeListDefect(
 
     // A12 sweeps every expanded field for both per-member gates before it asks about agreement at all.
     fields.forEach { field ->
-        if (field.declaredFieldType() != FieldType.DATE_RANGE) {
+        val type = effectiveFieldType(field)
+        if (type != FieldType.DATE_RANGE) {
             return RangeDefect(
                 "MVK_NO_DATE_RANGE", field.path,
-                "is declared `${field.declaredFieldType()}`, and overlapping ranges needs a date range",
+                "is declared `$type`, and overlapping ranges needs a date range",
             )
         }
-        if (declaredRangeYearInterpretationOf(field) in YEAR_INTERPRETING) {
+        if (rangeYearInterpretationOf(field) in YEAR_INTERPRETING) {
             return RangeDefect(
                 "MVK_INVALID_DATE_RANGE_FORMAT", field.path,
-                "reads its year as a `${declaredRangeYearInterpretationOf(field)}` boundary, a declaration " +
+                "reads its year as a `${rangeYearInterpretationOf(field)}` boundary, a declaration " +
                     "this operator refuses — compare ranges that interpret their year the standard way",
             )
         }
@@ -127,11 +128,11 @@ private fun TrackedFactBase.rangeListDefect(
  * The distinct-FORMATS step is A12's and is reproduced rather than simplified: collapsing it to "does this
  * reference carry a year" would admit the group of two differently-spelled dated ranges that A12 refuses.
  */
-private fun yearDisagreement(listed: List<ListedReference>): RangeDefect? {
+private fun TrackedFactBase.yearDisagreement(listed: List<ListedReference>): RangeDefect? {
     var carriesYear: Boolean? = null
     listed.forEach { reference ->
         val formats = reference.fields
-            .map { declaredDateRangeFormatOf(it) ?: return null }
+            .map { dateRangeFormatOf(it) ?: return null }
             .distinct()
         val years = formats.map { 'y' in it }
         if (years.size > 1 || (carriesYear != null && carriesYear != years.first())) {

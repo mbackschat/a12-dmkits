@@ -48,8 +48,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * nothing else reads this carrier: the mirror's empty cells are what established that, and declining on the
  * first three would have left a model A12 refuses with no finding at all.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` subject**, whose effective type this reader does not
- * resolve, and on a subject shape it cannot reduce to one bare path.
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` subject**, whose type this reader cannot know, and on a subject shape it cannot reduce to one bare path.
  */
 internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> = declarations().flatMap { element ->
     validityConditionContributions(element).take(1).map { it.finding }
@@ -146,7 +145,7 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
                 "a predefined type",
         )
     }
-    val type = field.declaredFieldType() ?: return null
+    val type = effectiveFieldType(field) ?: return null
     // A type this reader cannot resolve has no base-type class, so the kind gate may not judge it.
     if (type.baseTypeClass == null) {
         return null

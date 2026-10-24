@@ -1,11 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
-import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
-import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -49,25 +44,10 @@ class CheckerTypeDefinedOperandKindAgreementTest {
                 .typedefField("OnDef", "Day") } }
         .build().toJson()
 
-    private val validator = RuleValidator()
-
-    private fun judge(condition: String): Pair<List<String>, List<String>> {
-        val draft = DraftRule.builder().groupPath("/Claim").name("KindProbe").errorEntityRelPath("../Other")
-            .errorCondition("FieldFilled(Other) And $condition").errorCode("PROBE").severity("ERROR")
-            .messages(listOf(Dsl.en("Check the claim."))).build()
-        val result = validator.check(claim, draft)
-        val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(claim, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }
-        return a12.sorted() to ours.sorted()
-    }
-
-    private fun twin(condition: String, defined: Boolean) =
-        if (!defined) condition else listOf("Payout", "Paid", "Ack", "Ref", "Size", "Span", "On")
-            .fold(condition) { text, name -> text.replace(Regex("\\b$name\\b"), "${name}Def") }
+    private val twins = TypeDefinedTwins(claim, "/Claim", "Other", listOf("Payout", "Paid", "Ack", "Ref", "Size", "Span", "On"))
 
     private val verdicts by lazy {
-        PROBES.mapValues { (_, probe) -> judge(probe.condition) to judge(twin(probe.condition, defined = true)) }
+        PROBES.mapValues { (_, probe) -> twins.judge(probe.condition) to twins.judge(twins.twin(probe.condition)) }
     }
 
     @Test
@@ -82,15 +62,9 @@ class CheckerTypeDefinedOperandKindAgreementTest {
         assertEquals(verdicts.mapValues { it.value.first.first }, verdicts.mapValues { it.value.first.second })
     }
 
-    /** Where its gate reads only the type, the checker names A12's class; [SETTING_UNRESOLVED] rows stay silent. */
     @Test
-    fun theCheckerNamesA12sClassOnTheTypeDefinedTwinOrStaysSilent() {
-        assertEquals(
-            verdicts.mapValues { (probe, verdict) ->
-                if (probe in SETTING_UNRESOLVED) emptyList() else verdict.second.first
-            },
-            verdicts.mapValues { it.value.second.second },
-        )
+    fun theCheckerNamesA12sClassOnTheTypeDefinedTwin() {
+        assertEquals(verdicts.mapValues { it.value.second.first }, verdicts.mapValues { it.value.second.second })
     }
 
     private class Probe(val condition: String, vararg codes: String) {
@@ -110,12 +84,6 @@ class CheckerTypeDefinedOperandKindAgreementTest {
         const val ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
         const val STRING_ENUM_AND_NON_STRING_ENUM = "MVK_STRING_ENUM_AND_NON_STRING_ENUM"
         const val VARYING_TYPES_NOT_ALLOWED = "MVK_VARYING_TYPES_NOT_ALLOWED"
-
-        /**
-         * The probes whose gate also reads a SETTING of the type, the date format, which the checker reads off the
-         * field's own declaration, so a type-defined field stays unjudged there (CONSISTENCY-GAPS DG154).
-         */
-        val SETTING_UNRESOLVED = setOf("max, date leader beside number", "first filled, date beside text")
 
         val PROBES: Map<String, Probe> = linkedMapOf(
             "scalar list, boolean subject" to

@@ -45,7 +45,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
-        val body = field.enumerationBody() ?: return@flatMap emptyList()
+        val body = field.ownEnumerationBody() ?: return@flatMap emptyList()
         val texts = declaredTexts(body)
         val broken = texts.filter { it.text.javaTrimmed().any(::isALineBreak) }
         // A12 states the line-break refusal once for the field and ahead of every coded class, and the coded
@@ -65,7 +65,7 @@ internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding>
  */
 internal fun TrackedFactBase.enumTextForbiddenCharacterGaps(): List<CoverageGap> =
     defaultVariantFields().mapNotNull { field ->
-        val unread = field.enumerationBody()?.unreadableText() ?: return@mapNotNull null
+        val unread = field.ownEnumerationBody()?.unreadableText() ?: return@mapNotNull null
         CoverageGap(
             field.path,
             "a declared text of this Enumeration was not judged against the characters A12 refuses in one, " +

@@ -64,8 +64,7 @@ import kotlinx.serialization.json.contentOrNull
  * is categorized. Both are measured in the same grid, and widening this family by analogy would name the
  * scalars' class on them.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` subject**, whose effective type this reader does not
- * resolve; on an enumeration declaring a `tableName`, which A12 exempts from the domain check; and on a
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` subject**, whose type this reader cannot know; on an enumeration declaring a `tableName`, which A12 exempts from the domain check; and on a
  * subject whose repetition stars do not match its repeating levels, where a wildcard-validity class answers
  * ahead of every gate here.
  */
@@ -223,7 +222,7 @@ private fun TrackedFactBase.constantListFindings(
     if ((effectiveFieldType(subject) == FieldType.NUMBER) != numberList) {
         return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element, call.spanIn(member)))
     }
-    val body = subject.enumerationBody() ?: return null
+    val body = enumerationBodyOf(subject) ?: return null
     if (body["tableName"] != null) {
         return null
     }

@@ -83,7 +83,7 @@ private fun TrackedFactBase.repeatabilityDefect(matched: IndexFieldOnPath, eleme
  * halves, and each was moved on its own: a second value refuses, and so does dropping the special value.
  */
 private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String): Boolean {
-    val body = declarationAt(fieldPath)?.enumerationBody() ?: return false
+    val body = declarationAt(fieldPath)?.let { enumerationBodyOf(it) } ?: return false
     return body.declaredEnumValues()?.size == 1 && !body.string("sValue").isNullOrEmpty()
 }
 

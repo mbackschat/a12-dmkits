@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonObject
  */
 internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
     defaultVariantFields().mapNotNull { field ->
-        val body = field.enumerationBody() ?: return@mapNotNull null
+        val body = field.ownEnumerationBody() ?: return@mapNotNull null
         val special = body.string("sValue")?.takeIf { it.javaTrimmed().isNotEmpty() } ?: return@mapNotNull null
         val declared = (body["values"] as? JsonArray)
             ?.mapNotNull { (it as? JsonObject)?.string("value") }

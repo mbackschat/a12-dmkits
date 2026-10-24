@@ -8,8 +8,8 @@ import kotlinx.serialization.json.JsonPrimitive
 internal fun TrackedFactBase.messageCategoryDefect(path: String, category: String?): String? {
     if (category == null) return "NO_CATEGORY"
     val field = declarationAt(path) ?: return null
-    if (field.declaredFieldType() != FieldType.ENUMERATION) return "FIELD_NO_ENUM"
-    val declared = field.enumerationBody()?.categoryNames() ?: return null
+    if (effectiveFieldType(field) != FieldType.ENUMERATION) return "FIELD_NO_ENUM"
+    val declared = enumerationBodyOf(field)?.categoryNames() ?: return null
     return if (category.trim('\'') in declared) null else "INVALID_CATEGORY"
 }
 

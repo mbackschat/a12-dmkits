@@ -205,9 +205,9 @@ private fun TrackedFactBase.matchedTypeOf(field: TrackedDeclaration): MatchedTyp
     FieldType.NUMBER -> MatchedType(MatchedBase.NUMBER)
     FieldType.BOOLEAN -> MatchedType(MatchedBase.YES_NO)
     FieldType.CONFIRM -> MatchedType(MatchedBase.YES)
-    FieldType.DATE_RANGE -> declaredDateRangeFormatOf(field)?.let { MatchedType(MatchedBase.DATE_RANGE, it) }
+    FieldType.DATE_RANGE -> dateRangeFormatOf(field)?.let { MatchedType(MatchedBase.DATE_RANGE, it) }
     FieldType.DATE, FieldType.DATE_FRAGMENT, FieldType.TIME, FieldType.DATE_TIME ->
-        declaredTemporalFormatOf(field)?.let { MatchedType(MatchedBase.DATETIME, it) }
+        temporalFormatOf(field)?.let { MatchedType(MatchedBase.DATETIME, it) }
     FieldType.TYPE_DEF, FieldType.UNSPECIFIED -> null
 }
 

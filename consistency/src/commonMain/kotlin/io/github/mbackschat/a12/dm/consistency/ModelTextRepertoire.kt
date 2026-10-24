@@ -64,8 +64,8 @@ private fun TrackedDeclaration.carriedTexts(declaredLocales: List<String>): List
             body.messages(declaredLocales)
         DeclaredKind.COMPUTATION -> listOfNotNull(body.member("commonPrecondition")) +
             body.alternativeTexts() + body.messages(declaredLocales)
-        DeclaredKind.FIELD -> annotationTexts() + (enumerationBody()?.enumTexts(declaredLocales) ?: emptyList()) +
-            (stringTypeBody() ?: enumerationBody())?.messages(declaredLocales).orEmpty()
+        DeclaredKind.FIELD -> annotationTexts() + (ownEnumerationBody()?.enumTexts(declaredLocales) ?: emptyList()) +
+            (stringTypeBody() ?: ownEnumerationBody())?.messages(declaredLocales).orEmpty()
         DeclaredKind.GROUP -> annotationTexts()
     }
     return listOf(CarriedText("its path `$path`", path)) + members

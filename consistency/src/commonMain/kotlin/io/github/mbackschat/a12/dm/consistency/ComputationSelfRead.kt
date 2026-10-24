@@ -110,7 +110,7 @@ private const val AT_LEAST_ONE_GROUP_FILLED = "AtLeastOneGroupFilled"
 private fun TrackedFactBase.scaleGateStandsAside(target: String, element: TrackedDeclaration): Boolean {
     val field = declarationAt(target, DeclaredKind.FIELD)
         ?: return false
-    val declaredType = field.declaredFieldType() ?: return false
+    val declaredType = effectiveFieldType(field) ?: return false
     if (declaredType != FieldType.NUMBER) {
         return true
     }

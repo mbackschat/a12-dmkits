@@ -47,7 +47,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
     defaultVariantFields().flatMap { field ->
-        val body = field.enumerationBody() ?: return@flatMap emptyList()
+        val body = field.ownEnumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.map { it.javaTrimmed() }
             ?: return@flatMap emptyList()
         val categories = (body["categories"] as? JsonArray ?: return@flatMap emptyList()).mapNotNull { it.pairing() }
@@ -78,21 +78,29 @@ internal fun String.namedByA12(): Boolean = none { it.isSurrogate() }
  */
 internal fun TrackedFactBase.enumCategoryGaps(): List<CoverageGap> =
     defaultVariantFields().mapNotNull { field ->
-        val unread = field.enumerationBody()?.unreadableHalf() ?: return@mapNotNull null
+        val unread = field.ownEnumerationBody()?.unreadableHalf() ?: return@mapNotNull null
         CoverageGap(
             field.path,
             "this Enumeration's categories were not paired with its values, so A12 alone judges them: $unread",
         )
     }
 
-/** The `EnumerationType` body this field declares, or null when it declares another kind or none at all. */
-internal fun TrackedDeclaration.enumerationBody(): JsonObject? {
+/**
+ * The `EnumerationType` body this field's OWN declaration carries, or null when it declares another kind or none.
+ *
+ * For a family that judges the declaration itself. A rule or computation reading the field reads
+ * [enumerationBodyOf] instead, which A12 resolves through a type definition ([KERNEL-FINDINGS KF602]).
+ */
+internal fun TrackedDeclaration.ownEnumerationBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if (declared.namedFieldType() != FieldType.ENUMERATION) {
         return null
     }
     return FieldType.ENUMERATION.bodyIn(declared)
 }
+
+/** The `EnumerationType` body A12 reads this field by, through its type definition where it has one. */
+internal fun TrackedFactBase.enumerationBodyOf(field: TrackedDeclaration): JsonObject? = typeBodyOf(field, FieldType.ENUMERATION)
 
 /**
  * Which half of the body this family could not read, or null when it read both.

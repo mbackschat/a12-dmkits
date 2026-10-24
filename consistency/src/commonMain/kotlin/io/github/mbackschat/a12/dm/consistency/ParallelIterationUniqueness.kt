@@ -88,9 +88,9 @@ private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = repeatab
         KeyedGroup(group.path, name, type)
     }
 
-/** The `fieldType.type` a field declares, or null when it declares none this reader can see. */
+/** The type a field is declared by, through its type definition, or null when it declares none this reader can see. */
 private fun TrackedFactBase.declaredTypeOf(path: String): FieldType? = declarationAt(path, DeclaredKind.FIELD)
-    ?.declaredFieldType()
+    ?.let(::effectiveFieldType)
 
 /**
  * The first two groups that A12 would iterate jointly, or null.

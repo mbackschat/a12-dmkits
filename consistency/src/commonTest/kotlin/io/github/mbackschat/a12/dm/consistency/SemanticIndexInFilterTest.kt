@@ -90,18 +90,16 @@ class SemanticIndexInFilterTest {
         // The group the index addresses is not a variable: A12 asks only whether some level of some
         // reference in the body carries an index at all.
         expected["an index over ANOTHER group, literal key"] = listOf(notAllowed)
-        // Under-reported: an ENTITY key is left to the index's own spec gates, which run ahead of this
-        // walk, and the one that answers here reports nothing on a key that repeats.
-        expected["an index whose key is READ from the filtered group"] = emptyList()
+        // An ENTITY key is asked no iteration question in a body, so a sound one is the walk's class too.
+        expected["an index whose key is READ from the filtered group"] = listOf(notAllowed)
         // The control that makes the POSITION load-bearing rather than the construct.
         expected["the same index OUTSIDE any filter — the control"] = emptyList()
         expected["an off-path iterating reference BEFORE the indexed one"] =
             listOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
         expected["the same two, the indexed reference FIRST"] = listOf(notAllowed)
-        // A12 answers this from the index's OWN spec gates, which run while the spec is parsed. Under-
-        // reported for the same reason as the row above, and the pair is what says the iteration class
-        // `semanticIndexKeyContributions` draws outside a filter must not be drawn inside one: A12 draws neither.
-        expected["an index in the filter whose key names a GROUP"] = emptyList()
+        // A12 answers this from the index's OWN spec gates, which run while the spec is parsed and ahead of the
+        // walk: the key-kind class, with no iteration class although the group repeats.
+        expected["an index in the filter whose key names a GROUP"] = listOf("MVK_SEMANTIC_INDEX_NO_FIELD")
         assertEquals(expected, actual, "where a semantic index is refused for sitting in a filter")
     }
 

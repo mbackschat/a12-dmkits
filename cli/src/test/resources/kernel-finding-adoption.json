@@ -796,19 +796,21 @@
      }
     },
     "kf602": {
-     "sha256": "d148cff62257c62c742bd5a43f34f70c6fd98255c1d2a9af7f0a8867f7ceb341",
-     "task": "SS12",
+     "sha256": "9cf44ed1435aea1ccde94fe5a04e499d21e9adf87f56e5b76175c6659c016d80",
+     "task": "SS13",
      "scope": {
       "dmkits": [],
       "checker": [
        "the parallel walk on a type-defined index and a doubly keyed group operand",
-       "every operand-kind gate and ordering key on a type-defined field"
+       "every operand-kind gate and ordering key on a type-defined field",
+       "every setting gate on a type-defined field"
       ],
       "json-schema-import": [],
       "json-schema-export": [],
       "adapter": [
        "A12's parallel-level classes on type-defined and nested keys",
-       "A12's classes on type-defined twins and ordering keys"
+       "A12's classes on type-defined twins and ordering keys",
+       "A12's classes on setting twins"
       ],
       "interpreter": [],
       "dmtool-cli": [],
@@ -824,15 +826,19 @@
       },
       "checker": {
        "state": "APPLIED",
-       "basis": "The parallel walk compares a type-defined index by the type its definition declares, and names the multiple-index class on a group operand as on a field. Every operand-kind gate and both ordering keys read a field typed through a definition by the type and waiver the definition declares; a gate that also reads a date format stays silent on such a field (CONSISTENCY-GAPS DG154).",
+       "basis": "The parallel walk compares a type-defined index by the type its definition declares, and names the multiple-index class on a group operand as on a field. Every operand gate and both ordering keys read a field typed through a definition by the type, waiver and settings the definition declares.",
        "evidence": {
         "the parallel walk on a type-defined index and a doubly keyed group operand": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedResidueAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
          "witness": "The checker names A12's class on every row."
         },
         "every operand-kind gate and ordering key on a type-defined field": {
-         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedOperandKindAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwinOrStaysSilent",
-         "witness": "The checker names A12's class on every twin except the two format-reading probes."
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedOperandKindAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwin",
+         "witness": "The checker names A12's class on every twin."
+        },
+        "every setting gate on a type-defined field": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedSettingAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwin",
+         "witness": "The checker names A12's class on every setting twin but the value-in-fields membership row, which it leaves to A12 on both twins (CONSISTENCY-GAPS DG156)."
         }
        }
       },
@@ -857,6 +863,10 @@
         "A12's classes on type-defined twins and ordering keys": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedOperandKindAgreementTest.kt#a12AnswersEachTwinAsItsPlainField",
          "witness": "A12 draws the plain field's class on every twin."
+        },
+        "A12's classes on setting twins": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedSettingAgreementTest.kt#a12AnswersEachTwinAsItsPlainField",
+         "witness": "A12 draws the plain field's class on every setting twin."
         }
        }
       },
@@ -950,8 +960,8 @@
       }
     },
     "kf605": {
-      "sha256": "bb70818661f386f99467f9537eb6e2111515b187653e19e4d48fd050f26bc572",
-      "task": "SS12",
+      "sha256": "96c1122c038b3fd0728782982471ba65381825fa89b0498f4655f65d2bbd0253",
+      "task": "SS13",
       "scope": {
         "dmkits": [],
         "checker": [
@@ -978,15 +988,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "Each list gate reads an admitted selection's own field, and a key the error target's iteration addresses is judged by the index chain. Every operand family reads a selection the same way, the key bound by the error target's iteration outside a body and asked no iteration question inside one, and a selected containing group guards a computation as the group does; an entity-keyed index in a body stays the filter walk's silence (CONSISTENCY-GAPS DG155).",
+          "basis": "Each list gate reads an admitted selection's own field, and a key the error target's iteration addresses is judged by the index chain. Every operand family reads a selection the same way, the key bound by the error target's iteration outside a body and asked no iteration question inside one, where the key's own gates answer ahead of the filter walk; a selected containing group guards a computation as the group does.",
           "evidence": {
             "the list gates on a selection and a key read in the error field's repetition": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedListOperandAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
               "witness": "The checker names A12's class on every row."
             },
             "every operand family on a field-keyed selection, in and out of a body, and a keyed cycle guard": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandFamilyAgreementTest.kt#theCheckerNamesA12sClassOrLeavesTheFilterWalksRowsToA12",
-              "witness": "The checker names A12's class on every row except the four filter-walk rows."
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedOperandFamilyAgreementTest.kt#theCheckerNamesA12sClassOnEveryRow",
+              "witness": "The checker names A12's class on every row."
             }
           }
         },

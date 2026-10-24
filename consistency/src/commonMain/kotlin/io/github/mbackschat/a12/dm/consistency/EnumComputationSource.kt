@@ -36,8 +36,8 @@ import kotlinx.serialization.json.contentOrNull
  * **Silent on every operation shape this reader will not reduce**, which is a disclosed under-report: A12
  * refuses anything outside its three kinds, measured on a concatenation of the target's own declared value,
  * but the shapes between that and an aggregate were not measured and the comparison walk owns a class for
- * some of them. Silent too on a table-backed enumeration, on a `TypeDefType` or `UnspecifiedType`, and
- * wherever the target or a source does not resolve.
+ * some of them. Silent too on a table-backed enumeration, on an unresolvable type definition or an `UnspecifiedType`, and
+ * wherever the target or a source does not resolve; a resolvable definition is read as the type it defines.
  */
 internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = declarations()
     .filter { it.declaredKind == DeclaredKind.COMPUTATION }
@@ -45,10 +45,7 @@ internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = de
         val declared = element.declaredReference() ?: return@flatMap emptyList()
         val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
         val target = declarationAt(targetPath) ?: return@flatMap emptyList()
-        if (target.declaredFieldType() != FieldType.ENUMERATION) {
-            return@flatMap emptyList()
-        }
-        val admitted = target.enumerationBody()?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
+        val admitted = enumerationBodyOf(target)?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body)
@@ -116,14 +113,15 @@ private fun TrackedFactBase.readDefect(
     val addressed = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed = false)
         ?: return null
     val source = declarationAt(addressed)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
-    if (source.declaredFieldType() == FieldType.STRING) {
+    val sourceType = effectiveFieldType(source)
+    if (sourceType == FieldType.STRING) {
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +
             "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
     }
-    if (source.declaredFieldType() != FieldType.ENUMERATION) {
+    if (sourceType != FieldType.ENUMERATION) {
         return null
     }
-    val body = source.enumerationBody() ?: return null
+    val body = enumerationBodyOf(source) ?: return null
     if (body["tableName"] != null) {
         return null
     }
@@ -174,8 +172,8 @@ private fun sourceValues(body: JsonObject, category: String?): Set<String>? {
  * Not shared with the comparison family, which asks it of a per-locale map it has already built. The predicate is
  * one line and the shapes are not, so a shared reader would have to carry both.
  */
-internal fun bearsDisplayValues(field: TrackedDeclaration): Boolean {
-    val values = field.enumerationBody()?.get("values") as? JsonArray ?: return false
+internal fun TrackedFactBase.bearsDisplayValues(field: TrackedDeclaration): Boolean {
+    val values = enumerationBodyOf(field)?.get("values") as? JsonArray ?: return false
     return values.filterIsInstance<JsonObject>().any { entry ->
         val token = (entry["value"] as? JsonPrimitive)?.contentOrNull
         (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()

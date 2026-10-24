@@ -60,10 +60,9 @@ internal fun TrackedFactBase.semanticIndexStructureContributions(element: Tracke
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
         val use = uses[site.start] ?: return@mapNotNull null
         val inABody = bodies.any { it.encloses(use.keywordAt, use.keywordAt + 1) }
-        // In a body this family stays silent on an entity key that crosses a repetition: A12 orders the index's own
-        // gates there differently from outside one ([filterBodyGateFindings], CONSISTENCY-GAPS DG155), so it anchors at
-        // the declaring group.
-        val anchoring = if (inABody) KeyAnchoring.DECLARING_GROUP else KeyAnchoring.ERROR_TARGET
+        // In a body A12 asks the key no iteration question, and the index's own gates answer ahead of the filter walk
+        // (KERNEL-FINDINGS KF605, `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
+        val anchoring = keyAnchoringOf(inABody)
         val verdict = firstClassIn(listOf(use), element.path.substringBeforeLast('/'), element, anchoring)
             ?: return@mapNotNull null
         val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
@@ -238,7 +237,6 @@ private fun TrackedFactBase.keyVerdict(
         ?: return KeyVerdict.UNJUDGEABLE
     if (!crossesARepetitionOutside(declaringGroup, resolved.path)) return KeyVerdict.PLAIN
     return when (anchoring) {
-        KeyAnchoring.DECLARING_GROUP -> KeyVerdict.UNJUDGEABLE
         KeyAnchoring.FILTER_BODY -> KeyVerdict.PLAIN
         KeyAnchoring.ERROR_TARGET -> {
             val targetGroup = iterationScopeOf(element.declaredReference(), declaringGroup) ?: return KeyVerdict.UNJUDGEABLE

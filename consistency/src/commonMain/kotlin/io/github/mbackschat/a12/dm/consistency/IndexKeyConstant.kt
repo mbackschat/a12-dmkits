@@ -18,14 +18,13 @@ import kotlinx.serialization.json.intOrNull
  *
  * Unjudged, and therefore safe to under-report: a constant meeting its length bounds beside a declared String
  * pattern outside [KeyPattern]'s represented Java-to-JS domain; a table-backed enumeration, whose values a model does
- * not carry; a non-String or ambiguous type definition, an unspecified field, and a constant
- * holding a CR on another type. The authored-token boundary decodes the key before length and pattern
+ * not carry; an unresolvable type definition, an unspecified field, and a constant holding a CR on another type. A
+ * type-defined field is judged by its definition's type and body ([KERNEL-FINDINGS KF602]). The authored-token boundary decodes the key before length and pattern
  * checks (DG102-E2 kernel population); this validator must not normalize that value a second time.
  */
 internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
     val resolved = resolvedFieldTypeOf(field) ?: return null
     val type = resolved.type
-    if (resolved.viaTypeDefinition && type != FieldType.STRING) return null
     val typeBody = type.bodyIn(resolved.declared)
     if (type == FieldType.STRING && typeBody.constrainsNoString()) {
         return true
@@ -42,11 +41,11 @@ internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, cons
         )
         FieldType.BOOLEAN -> constant == TRUE || constant == FALSE
         FieldType.CONFIRM -> constant == TRUE
-        FieldType.ENUMERATION -> field.enumerationAdmits(constant)
+        FieldType.ENUMERATION -> enumerationAdmits(field, constant)
         FieldType.DATE, FieldType.DATE_TIME, FieldType.TIME, FieldType.DATE_FRAGMENT ->
-            declaredTemporalFormatOf(field)?.let { temporalShapeAdmits(it, constant) }
+            temporalFormatOf(field)?.let { temporalShapeAdmits(it, constant) }
         FieldType.DATE_RANGE -> {
-            val format = declaredDateRangeFormatOf(field)
+            val format = dateRangeFormatOf(field)
             val separator = typeBody?.declaredText("rangeSeparator")
             if (format == null || separator == null) null else dateRangeShapeAdmits(format, separator, constant)
         }
@@ -85,8 +84,8 @@ private fun JsonObject.stringAdmits(constant: String): Boolean? {
  * An enumeration without a table admits exactly the tokens its values declare, in their case and never a label
  * ([KERNEL-FINDINGS KF479], `IEnumerationType.isValueApplicable`).
  */
-private fun TrackedDeclaration.enumerationAdmits(constant: String): Boolean? {
-    val enumeration = enumerationBody()?.takeIf { it["tableName"] == null } ?: return null
+private fun TrackedFactBase.enumerationAdmits(field: TrackedDeclaration, constant: String): Boolean? {
+    val enumeration = enumerationBodyOf(field)?.takeIf { it["tableName"] == null } ?: return null
     return enumeration.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.let { constant in it }
 }
 

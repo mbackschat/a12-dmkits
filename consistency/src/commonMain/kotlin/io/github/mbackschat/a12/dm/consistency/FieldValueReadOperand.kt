@@ -66,7 +66,7 @@ private fun TrackedFactBase.readDefect(
         DeclaredKind.FIELD -> Unit
         else -> return null
     }
-    if (read.category != null && read.category !in target.enumerationBody()?.declaredCategoryNames().orEmpty()) {
+    if (read.category != null && read.category !in enumerationBodyOf(target)?.declaredCategoryNames().orEmpty()) {
         return null
     }
     if ('*' in written) {
@@ -76,7 +76,7 @@ private fun TrackedFactBase.readDefect(
     effectiveBaseTypeClass(target) ?: return null
     return when {
         waivesValueValidation(target) -> ReadDefect(ReadGate.RAW, written, target.path)
-        declaresAPartialPrecision(target) -> ReadDefect(ReadGate.PARTIAL, written, target.path)
+        hasAPartialPrecision(target) -> ReadDefect(ReadGate.PARTIAL, written, target.path)
         else -> null
     }
 }

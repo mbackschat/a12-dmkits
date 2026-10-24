@@ -115,10 +115,11 @@ private fun TrackedFactBase.entitySpecDefect(
             "rounds `$target` through a repetition star, and rounding takes one addressed value",
         )
     }
-    return if (declared.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
+    val type = effectiveFieldType(declared)
+    return if (type in PLAINLY_NON_NUMBER_TYPES) {
         RoundingDefect(
             "MVK_NO_NUMBER",
-            "rounds `$target`, declared `${declared.declaredFieldType()}` — only a number can be rounded",
+            "rounds `$target`, declared `$type` — only a number can be rounded",
         )
     } else {
         null
@@ -141,10 +142,11 @@ private fun TrackedFactBase.operationDefect(
     // A12 types the whole operation; this reader types only a bare field reference, so an expression is left
     // alone rather than typed from its most visible operand.
     val field = bareReferenceField(rounded.text, declaringGroup, element, inAFilterBody) ?: return null
-    return if (field.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
+    val type = effectiveFieldType(field)
+    return if (type in PLAINLY_NON_NUMBER_TYPES) {
         RoundingDefect(
             "MVK_NO_NUMBER",
-            "takes `${field.path}`, declared `${field.declaredFieldType()}` — a numeric operand is required",
+            "takes `${field.path}`, declared `$type` — a numeric operand is required",
         )
     } else {
         null

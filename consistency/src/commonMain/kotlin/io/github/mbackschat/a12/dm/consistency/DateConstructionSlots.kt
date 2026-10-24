@@ -437,9 +437,8 @@ private fun slotFinding(
  * string by its stored width alone, a date only by being the complete year written exactly `yyyy`.
  *
  * **Silent on a GROUP operand**, whose own gate runs even earlier ([groupSlotDefect]); a starred one never reaches
- * this arm, since [armOf] gives it its own. Silent too on every declared type but the
- * three: A12 refuses the rest outright, but a `TypeDefType` stands for a definition whose body this reader
- * may not have, and that is the one type whose refusal cannot be told apart from the others by name.
+ * this arm, since [armOf] gives it its own. Silent too on every type but the three, which A12 refuses outright. A
+ * type-defined field is judged by its definition's type and body, as A12 judges it ([KERNEL-FINDINGS KF602]).
  */
 private fun Slot.entityDefect(
     model: TrackedFactBase,
@@ -457,9 +456,9 @@ private fun Slot.entityDefect(
     // the gate down where A12 names its class (`adapter.laws.CheckerKeyedOperandAgreementTest`).
     val target = model.addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed) ?: return null
     val field = model.declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
-    val declared = (field.body?.get("fieldType") as? JsonObject) ?: return null
-    val discriminator = declared.namedFieldType() ?: return null
-    return when (discriminator) {
+    val resolved = model.resolvedFieldTypeOf(field) ?: return null
+    val declared = resolved.declared ?: return null
+    return when (resolved.type) {
         // A string declaring no body declares no pattern, which the pattern gate refuses like any non-digit one.
         FieldType.STRING -> stringDefect(FieldType.STRING.bodyIn(declared) ?: JsonObject(emptyMap()), written)
         FieldType.NUMBER -> numberDefect(FieldType.NUMBER.bodyIn(declared) ?: return null, written)

@@ -66,17 +66,12 @@ private fun TrackedFactBase.categoryFinding(
         )
     }
     val target = named.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
-    val declaredType = target.declaredFieldType() ?: return null
-    // A field typed by REFERENCE to a type definition, whose body this checker never reads. Preparation keeps
-    // type definitions' IDS alone, which `Check.kt` already declares as a coverage gap — so such a field may
-    // well BE an Enumeration with the category named, and judging it from the reference would refuse what A12
-    // admits. It did: the reference corpus reports a date `format` field typed through `DATE_FORMAT_1`, and
-    // `[format->containsYear]` is legal there (caught by `adapter.laws.CheckerSilenceOnCleanModelsTest`,
-    // 2026-09-14, before this family landed).
-    if (declaredType == FieldType.TYPE_DEF) {
-        return null
-    }
-    val enumeration = target.enumerationBody()
+    // A field typed through a type definition is the type the definition declares ([KERNEL-FINDINGS KF602]), and an
+    // unresolvable one stays unjudged: judging it from the reference once refused what A12 admits, a date `format`
+    // field typed through an Enumeration definition reading `[format->containsYear]`
+    // (`adapter.laws.CheckerSilenceOnCleanModelsTest`, 2026-09-14).
+    val declaredType = effectiveFieldType(target) ?: return null
+    val enumeration = enumerationBodyOf(target)
         ?: return if (declaredType == FieldType.ENUMERATION) {
             null
         } else {

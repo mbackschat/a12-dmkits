@@ -33,8 +33,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
  * classes. The same read from the row's OWN rule reaches the gates, measured, so the anchoring is what
  * decides rather than the operand's spelling.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` field**, whose effective type this reader does not
- * resolve — a typedef may well resolve to a partially known date, and refusing it would be the one
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` field**, whose type this reader cannot know — either may
+ * well be a partially known date, and refusing it would be the one
  * direction this checker may not take.
  */
 internal fun TrackedFactBase.valueAsDateOperandFindings(): List<Finding> = declarations().flatMap { element ->
@@ -63,8 +63,8 @@ private class PartialDateDefect(val code: String, val detail: String)
 /**
  * The declarations this reader is CERTAIN A12's kind gate refuses, all eleven measured.
  *
- * An allow-list rather than the complement of one kind, so a `TypeDefType` or `UnspecifiedType` — whose
- * effective type this checker does not resolve — is left unjudged. `DateType` is a member: a date field with
+ * An allow-list rather than the complement of one kind, so an unresolvable type definition or an `UnspecifiedType` — whose type this
+ * checker cannot know — is left unjudged. `DateType` is a member: a date field with
  * no partial precision is refused exactly like the kinds that carry none at all, and the one date that
  * passes has already returned before this set is consulted.
  */
@@ -111,10 +111,10 @@ private fun TrackedFactBase.valueAsDateDefect(
     return partialDateDefect(declared, target)
 }
 
-/** The kind gate's own verdict: A12's `isDatePartialKnown`, read off the stored declaration. */
-private fun partialDateDefect(declared: TrackedDeclaration, target: String): PartialDateDefect? {
-    val type = declared.declaredFieldType() ?: return null
-    if (type == FieldType.DATE && declaresAPartialPrecision(declared)) {
+/** The kind gate's own verdict: A12's `isDatePartialKnown`, read off the type the field is declared by. */
+private fun TrackedFactBase.partialDateDefect(declared: TrackedDeclaration, target: String): PartialDateDefect? {
+    val type = effectiveFieldType(declared) ?: return null
+    if (type == FieldType.DATE && hasAPartialPrecision(declared)) {
         return null
     }
     if (type !in PLAINLY_NOT_A_PARTIAL_DATE) {

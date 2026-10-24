@@ -36,8 +36,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
  * gate outside this method, and it pre-empts all six classes — the interval included, which needs no model.
  * Measured, so this family declines such an operand rather than naming the class its own chain would give.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` field**, whose effective type this reader does not
- * resolve, and on an interval whose bounds are not both written as integers.
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` field**, whose type this reader cannot know, and on an interval whose bounds are not both written as integers.
  */
 internal fun TrackedFactBase.rangeOperandGateFindings(): List<Finding> = declarations().flatMap { element ->
     rangeOperandContributions(element).map { it.finding }
@@ -103,7 +102,7 @@ private fun TrackedFactBase.rangeDefect(
         )
     }
     intervalDefect(call)?.let { return it }
-    val type = declared.declaredFieldType() ?: return null
+    val type = effectiveFieldType(declared) ?: return null
     if (type in PLAINLY_NON_STRING_TYPES) {
         return SubstringDefect(
             "MVK_INVALID_TYPE",

@@ -72,8 +72,7 @@ import kotlinx.serialization.json.contentOrNull
  * cannot ride. A12 reports nothing after it, so this family stays SILENT there rather than adding the class
  * its own lists would draw.
  *
- * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
- * resolve; on the date-range arm's two format-and-year walks, which run after everything here and belong to
+ * **Silent on an unresolvable type definition or an `UnspecifiedType` declaration**, whose type this reader cannot know; on the date-range arm's two format-and-year walks, which run after everything here and belong to
  * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
  * domain check and which makes a model unreadable here anyway.
  */
@@ -262,7 +261,7 @@ private fun TrackedFactBase.constantDomainFinding(
 ): Finding? {
     val domain = mutableSetOf<String>()
     listed.forEach { entry ->
-        domain += entry.contributedValues() ?: return null
+        domain += contributedValues(entry) ?: return null
     }
     val offending = opposite.map { it.javaTrimmed().decodeAuthoredStringLiteral() }
         .firstOrNull { it !in domain } ?: return null
@@ -279,17 +278,17 @@ private fun TrackedFactBase.constantDomainFinding(
 }
 
 /** What this entry adds to the lookup domain, or null where this reader cannot settle its contribution. */
-private fun ListedField.contributedValues(): List<String>? {
-    val body = field.enumerationBody() ?: return null
+private fun TrackedFactBase.contributedValues(entry: ListedField): List<String>? {
+    val body = enumerationBodyOf(entry.field) ?: return null
     if (body["tableName"] != null) {
         return null
     }
-    if (category == null) {
+    if (entry.category == null) {
         return body.declaredEnumValues()
     }
     val entries = body["categories"] as? JsonArray ?: return null
     val named = entries.filterIsInstance<JsonObject>()
-        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == category } ?: return null
+        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == entry.category } ?: return null
     val values = named["values"] as? JsonArray ?: return null
     return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
 }
@@ -319,7 +318,7 @@ private fun TrackedFactBase.listedFields(
 /**
  * Whether an operand's category access is one another family already answers for.
  *
- * A GROUP under an access is one, and for a field it asks [ListedField.contributedValues], so the answer is
+ * A GROUP under an access is one, and for a field it asks [contributedValues], so the answer is
  * exactly "this reader cannot settle what the access contributes" — a field that is no enumeration, an
  * enumeration declaring no such category, or a table-backed one whose values are not in the model. The group
  * and the first two are classes A12 reports from the access's own gates; the third is beyond any reader
@@ -334,7 +333,7 @@ private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.category ?: return@any false
     val target = declaredTargetOf(operand, declaringGroup, element, inAFilterBody) ?: return@any false
     target.declaredKind == DeclaredKind.GROUP ||
-        target.declaredKind == DeclaredKind.FIELD && ListedField(target, category).contributedValues() == null
+        target.declaredKind == DeclaredKind.FIELD && contributedValues(ListedField(target, category)) == null
 }
 
 /** The same expansion where only the declarations matter — the value list, which carries no category law. */

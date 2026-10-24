@@ -37,8 +37,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.asCall
  *
  * **Silent where another family owns the answer** — a slot defect ([CheckFamily.DATE_ARGUMENT_SLOT]), a refused
  * shift, a missing Base Year, a starred operand A12 refuses as a wildcard first — and on what it cannot type: an
- * unresolved operand, a declaration with no temporal format, a four-component `Date(…)` or a construction over a `TypeDefType`
- * component, whose slot gates [CheckFamily.DATE_CONSTRUCTION_SLOT] delegates, and a `DateTime(…)` over a
+ * unresolved operand, a declaration with no temporal format, a four-component `Date(…)` or a construction over a component
+ * typed through an unresolvable type definition, and a `DateTime(…)` over a
  * partially known date, whose own refusal is `MVK_INVALID_DATE_TYPE` rather than a format class.
  */
 internal fun TrackedFactBase.temporalExtractorContributions(
@@ -128,8 +128,8 @@ private class ExtractorOperandReader(
             else -> return null
         }
         val field = bareReferenceField(operand.text, group, element, inAFilterBody) ?: return null
-        val format = declaredTemporalFormatOf(field) ?: return null
-        ExtractedFrom.Field(componentsOf(format), field.path, declaredPartialPrecisionOf(field))
+        val format = temporalFormatOf(field) ?: return null
+        ExtractedFrom.Field(componentsOf(format), field.path, partialPrecisionOf(field))
     }
 
     /** The format A12 registers for a nested operation it admits, or null where this reader cannot say. */
@@ -157,21 +157,21 @@ private class ExtractorOperandReader(
             }
             "StartOfDateRange", "EndOfDateRange" -> endpointFormat(operands.singleOrNull() ?: return null, inBody)
             else -> admittedShiftField(shape.asCall(conditionLanguage, inBody), group, element)
-                ?.let(::declaredTemporalFormatOf)
+                ?.let { temporalFormatOf(it) }
         } ?: return null
         ExtractedFrom.Computed(componentsOf(format))
     }
 
     /**
      * Whether a construction's component is one whose slot gates [CheckFamily.DATE_CONSTRUCTION_SLOT] answers
-     * completely: a quoted constant, a nested extract operation, or a bare number or text field. A `TypeDefType`
-     * component is the one it delegates.
+     * completely: a quoted constant, a nested extract operation, or a bare number or text field, typed through its
+     * definition where it has one.
      */
     private fun judgedComponent(operand: CallOperand, inAFilterBody: Boolean): Boolean = with(facts) {
         operand.literal != null ||
             execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }
                 ?.let { shape -> identities[shape.operator]?.let(Extractor::of) } != null ||
-            bareReferenceField(operand.text, group, element, inAFilterBody)?.declaredFieldType()
+            bareReferenceField(operand.text, group, element, inAFilterBody)?.let(::effectiveFieldType)
                 .let { it == FieldType.NUMBER || it == FieldType.STRING }
     }
 
@@ -179,8 +179,8 @@ private class ExtractorOperandReader(
     private fun endpointFormat(operand: CallOperand, inAFilterBody: Boolean): String? = with(facts) {
         if (isBaseYearConstant(operand.text)) return if (hasBaseYear) DATE_FORMAT else null
         val range = bareReferenceField(operand.text, group, element, inAFilterBody) ?: return null
-        val format = declaredDateRangeFormatOf(range) ?: return null
-        val interpretation = declaredRangeYearInterpretationOf(range)
+        val format = dateRangeFormatOf(range) ?: return null
+        val interpretation = rangeYearInterpretationOf(range)
         if (interpretation == null || interpretation == "STANDARD") format else DATE_FORMAT
     }
 }

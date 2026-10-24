@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.encloses
+import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
@@ -24,8 +26,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **Addressing is relative to the error target.** A field key uses the same per-level address walk as an
  * ordinary operand: a compatible parallel index is admitted; missing, mismatched or ambiguous indexes
  * retain their own diagnostic. Only `MVK_NO_WILDCARD` is renamed to `MVK_SEMANTIC_INDEX_INVALID_ITER`
- * (`SemanticKeyAddressAgreementTest`, SPEC-2026-10-10-03). Group keys retain the measured below-target
- * boundary; parallel group-key admission has not been calibrated here.
+ * (`SemanticKeyAddressAgreementTest`, SPEC-2026-10-10-03). A group key is the key-kind class wherever it reads one row
+ * ([keyFieldFinding]); parallel group-key admission has not been calibrated here.
  *
  * **And it is asked only of a key the RULE reads directly.** Inside a `Having` filter the anchoring is the
  * filtered entity rather than the error target, and A12 draws no iteration class there: two measured shapes
@@ -46,12 +48,14 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
         keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, targetGroup,
             element, span.member, entity.inFilter, span)
     }
+    val bodies = filterBodiesIn(execution.carrier.text, conditionLanguage)
     val fields = execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
         val use = uses[site.start] ?: return@mapNotNull null
         val key = use.keyPath ?: return@mapNotNull null
         val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
-        keyFieldFinding(key, group, element, span.member, span)?.let { ConditionFinding(element.key, site, it) }
+        val inABody = bodies.any { it.encloses(use.keywordAt, use.keywordAt + 1) }
+        keyFieldFinding(key, group, element, span.member, span, inABody, targetGroup)?.let { ConditionFinding(element.key, site, it) }
     }
     return iteration + fields
 }
@@ -95,14 +99,22 @@ private fun TrackedFactBase.keyIterationFinding(
     )
 }
 
+/**
+ * The key-kind class of a key naming a group. Outside a `Having` body, a repeating group the error target's
+ * [targetGroup] does not bind to one row is read as iterating, which asks the iteration question first; a bound one,
+ * and any group inside a body, where no iteration question is asked, draws the class
+ * ([KERNEL-FINDINGS KF605], `rulekit.validate.laws.SemanticIndexInFilterLawsTest`,
+ * `adapter.laws.CheckerKeyedOperandFamilyAgreementTest`).
+ */
 private fun TrackedFactBase.keyFieldFinding(
-    key: String, group: String, element: TrackedDeclaration, member: String, span: TextSpan,
+    key: String, group: String, element: TrackedDeclaration, member: String, span: TextSpan, inABody: Boolean,
+    targetGroup: String?,
 ): Finding? {
     if ('*' in key) return null
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
     val named = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
-    if (repeatsAnywhereOnThePathTo(named.path)) {
+    if (!inABody && repeatsAnywhereOnThePathTo(named.path) && (targetGroup == null || !readsOneRow(named.path, targetGroup))) {
         return null
     }
     return Finding(

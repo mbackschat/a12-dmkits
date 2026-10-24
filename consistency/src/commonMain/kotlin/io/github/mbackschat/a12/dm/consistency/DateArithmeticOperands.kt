@@ -79,10 +79,10 @@ internal fun TrackedFactBase.admittedShiftField(
     if (shiftDefect(call, unit, declaringGroup, element) != null) return null
     val date = call.operands.firstOrNull() ?: return null
     val field = bareReferenceField(date.text, declaringGroup, element, call.inAFilterBody) ?: return null
-    if (declaredTemporalFormatOf(field) == null) return null
+    if (temporalFormatOf(field) == null) return null
     val amount = call.operands.getOrNull(1) ?: return null
     val judged = amount.constant && amount.literal == null ||
-        bareReferenceField(amount.text, declaringGroup, element, call.inAFilterBody)?.declaredFieldType() == FieldType.NUMBER
+        bareReferenceField(amount.text, declaringGroup, element, call.inAFilterBody)?.let(::effectiveFieldType) == FieldType.NUMBER
     return field.takeIf { judged }
 }
 
@@ -110,13 +110,13 @@ private fun TrackedFactBase.shiftDefect(
 ): ShiftDefect? {
     val date = call.operands.firstOrNull() ?: return null
     val field = bareReferenceField(date.text, declaringGroup, element, call.inAFilterBody) ?: return null
-    if (declaresAPartialPrecision(field)) {
+    if (hasAPartialPrecision(field)) {
         return ShiftDefect(
             "MVK_INVALID_DATE_TYPE", field.path,
             "declares a PARTIAL precision, and shifting a date needs one that is fully known",
         )
     }
-    val format = declaredTemporalFormatOf(field) ?: return null
+    val format = temporalFormatOf(field) ?: return null
     val components = componentsOf(format)
     if (unit !in components && !(unit == Component.YEAR && hasBaseYear)) {
         return ShiftDefect(
@@ -139,10 +139,11 @@ private fun TrackedFactBase.shiftDefect(
     }
     val amount = call.operands.getOrNull(1) ?: return null
     val amountField = bareReferenceField(amount.text, declaringGroup, element, call.inAFilterBody) ?: return null
-    return if (amountField.declaredFieldType() in PLAINLY_NON_NUMBER_TYPES) {
+    val amountType = effectiveFieldType(amountField)
+    return if (amountType in PLAINLY_NON_NUMBER_TYPES) {
         ShiftDefect(
             "MVK_NON_NUMERIC", amountField.path,
-            "is declared `${amountField.declaredFieldType()}`, and the amount to shift by must be a number",
+            "is declared `$amountType`, and the amount to shift by must be a number",
         )
     } else {
         null
