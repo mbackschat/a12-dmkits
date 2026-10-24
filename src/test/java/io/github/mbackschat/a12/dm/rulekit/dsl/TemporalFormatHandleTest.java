@@ -88,12 +88,12 @@ class TemporalFormatHandleTest {
         assertTrue(clock.getMessage().contains("HH:mm:ss"),
                 "the refusal must name the declared format that decided it — got: " + clock.getMessage());
 
-        // But a KIND-matching field is always admitted, format notwithstanding: the declared format only ADDS
-        // handles, it never takes one away, because a refusal justified by the format alone would have no
-        // measured kernel basis for this exact input. The kernel's authoring gate still reports any operand it
-        // does not accept, so nothing here promises a condition it would refuse.
-        assertTrue(m.time("/P/TimeAsDate").field().path().value().endsWith("TimeAsDate"),
-                "a TIME field stays a time handle on its kind, whatever it declares");
+        // And a KIND-matching field is refused when its declaration says otherwise: A12 refuses a TIME field
+        // declared yyyy-MM-dd as a time operand (validate.laws.ClockDeclaredDateFieldLawsTest, DG132).
+        IllegalArgumentException dateDeclared =
+                assertThrows(IllegalArgumentException.class, () -> m.time("/P/TimeAsDate"));
+        assertTrue(dateDeclared.getMessage().contains("yyyy-MM-dd"),
+                "the refusal names the declared format, not only the kind: " + dateDeclared.getMessage());
 
         // A non-temporal kind carries no format, so the kind test alone refuses it.
         IllegalArgumentException number =

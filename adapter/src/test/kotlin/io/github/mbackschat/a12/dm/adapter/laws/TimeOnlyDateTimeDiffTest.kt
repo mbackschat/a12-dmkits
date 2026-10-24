@@ -90,8 +90,10 @@ class TimeOnlyDateTimeDiffTest {
      */
     @Test
     fun aTimeOnlyDateTimeCellIsFilledAndComparesInBothDirections() {
-        val clocked = bound.dateTime(CLOCKED)
-        val other = bound.dateTime(OTHER)
+        // A time-only DATE_TIME field is a time to A12, so it is authored through a time handle
+        // (validate.laws.ClockDeclaredDateFieldLawsTest, DEV-API-GAPS DG132).
+        val clocked = bound.time(CLOCKED)
+        val other = bound.time(OTHER)
 
         agree("time-only cell is FILLED", "../ClockedAt",
             render(Dsl.fieldFilled(bound.field(CLOCKED))), listOf(CLOCKED to "14:30:00"), listOf("SH@ClockedAt"))
@@ -116,7 +118,6 @@ class TimeOnlyDateTimeDiffTest {
      */
     @Test
     fun theIsoFormatStillWorksAndAMalformedTimeOnlyValueIsStillRejected() {
-        val started = bound.dateTime(ISO)
         agree("the ISO sibling on the same kind is unaffected", "../StartedAt",
             render(Dsl.fieldFilled(bound.field(ISO))), listOf(ISO to "2024-06-01T12:30:00"),
             listOf("SH@StartedAt"))
@@ -132,7 +133,7 @@ class TimeOnlyDateTimeDiffTest {
             "missing the seconds its format requires" to "14:30",
         )) {
             val (kernel, interpreter) = readings("../ClockedAt",
-                render(bound.dateTime(CLOCKED).eq(bound.dateTime(OTHER))),
+                render(bound.time(CLOCKED).eq(bound.time(OTHER))),
                 listOf(CLOCKED to value, OTHER to "14:30:00"))
             assertEquals(kernel, interpreter, "$label — kernel/interpreter messages")
         }

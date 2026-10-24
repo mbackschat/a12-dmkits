@@ -520,10 +520,11 @@ final class RuleModelSynthesizer {
     private static Condition dateMathCondition(
             BoundModel model, String scope, Map<String, List<FieldInfo>> byGroup) {
         for (FieldInfo candidate : byGroup.getOrDefault(scope, List.of())) {
-            if (candidate.kind() == ValueKind.DATE) {
+            // Selected by declared class, the test BoundModel.date/dateTime admit by (DEV-API-GAPS DG132).
+            if (candidate.temporalClass() == ValueKind.DATE) {
                 return Dsl.yearFromDate(model.date(candidate.path())).gt(2000);
             }
-            if (candidate.kind() == ValueKind.DATE_TIME) {
+            if (candidate.temporalClass() == ValueKind.DATE_TIME) {
                 return Dsl.yearFromDate(model.dateTime(candidate.path())).gt(2000);
             }
         }

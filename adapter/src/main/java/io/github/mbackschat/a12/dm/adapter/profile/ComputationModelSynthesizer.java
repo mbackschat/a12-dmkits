@@ -754,7 +754,8 @@ final class ComputationModelSynthesizer {
             ValueKind kind) {
         for (String g = scope; ; ) {
             for (FieldInfo f : fieldsByGroup.getOrDefault(g, List.of())) {
-                if (!f.path().equals(exclude) && (kind == null || f.kind() == kind)) {
+                // The declared class, which a temporal handle admits by (DG132); it is the kind for any other field.
+                if (!f.path().equals(exclude) && (kind == null || f.temporalClass() == kind)) {
                     return f.path();
                 }
             }

@@ -5046,6 +5046,88 @@
         }
       }
     },
+    "kf271": {
+      "sha256": "9c51f1578842c4f320582c0832cf5451fb453fe0a0ed3aaa4b39ccae22704063",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [
+          "the date-range endpoint and year-position gates",
+          "the typed temporal handles"
+        ],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the cross-kind temporal read path"
+        ],
+        "interpreter": [
+          "the cross-kind temporal extremum"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The constructor gates read the declared format, and the typed handles admit by the declared class alone.",
+          "evidence": {
+            "the date-range endpoint and year-position gates": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalConstructorDeclaredFormatGateLawsTest.java#aDateRangeEndpointReadsTheDeclaredFormatAndNotTheKind",
+              "witness": "A cross-kind endpoint declared as a date is admitted and one carrying no date component is refused, as A12 answers."
+            },
+            "the typed temporal handles": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalHandleDeclaredClassTest.java#aFieldIsRefusedTheHandleOfItsKindWhenItsDeclarationSaysOtherwise",
+              "witness": "Each kind-matching field declared as another class is refused its kind's handle, on the kernel basis in ClockDeclaredDateFieldLawsTest."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition-operand gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A condition-operand gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The read path dispatches every temporal operand on its declared class.",
+          "evidence": {
+            "the cross-kind temporal read path": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CrossKindTemporalOperandReadTest.java#aCrossKindTemporalComparisonReadsBack",
+              "witness": "A kernel-admitted cross-kind comparison converts rather than reading back opaque."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The extremum over cross-kind temporal carriers computes as both kernel strategies do.",
+          "evidence": {
+            "the cross-kind temporal extremum": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CrossKindTemporalExtremumDiffTest.kt#theTimeCarriersExtremumComputesTheSameOnAllThreeEngines",
+              "witness": "All three engines agree on the TIME carrier's extremum."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool authors through rulekit and reads through the adapter, which carry the rule.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        }
+      }
+    },
     "kf275": {
       "sha256": "417fe585f6599a7446e6411206608a6b1a517570d0b4f43ce5e3948be6e636cb",
       "task": "F-USE-BACKLOG",
@@ -12654,7 +12736,7 @@
       }
     },
     "kf211": {
-      "sha256": "80f0e5fccda45e6a150bd9eae819be159453533989c8d53c0d765f0b5aff351c",
+      "sha256": "36c656e866fae03ac60682a9c5ee365da6df0958674e5f369107c1564654efeb",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["date literal beside a date-declared TIME field"],

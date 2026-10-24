@@ -167,7 +167,8 @@ internal class Operands(private val mapping: Mapping) {
     fun typedRef(node: Expr): Any {
         val field = fieldRef(node)
         val path = field.fieldPath()
-        return when (field.kind()) {
+        // The declared class, which the temporal handles admit by; it is the kind for any other field (DG132).
+        return when (mapping.model().fieldAt(path).map { it.temporalClass() }.orElse(field.kind())) {
             ValueKind.STRING -> mapping.model().str(path)
             ValueKind.CUSTOM -> mapping.model().custom(path)
             ValueKind.NUMBER -> mapping.model().num(path)

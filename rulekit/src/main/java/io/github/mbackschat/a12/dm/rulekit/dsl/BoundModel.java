@@ -292,18 +292,20 @@ public final class BoundModel {
      * it here is what makes that kernel-legal condition authorable at all; before, there was no error to read,
      * only a missing factory, so the shape read as "not a thing" rather than "refused".
      *
-     * <p>The kind test is kept as an alternative rather than replaced, deliberately: refusing a kind-matching
-     * field because its declared format disagrees would be a client-side refusal with no measured kernel basis,
-     * and the kernel's own authoring gate still reports any operand it does not accept.
+     * <p>The declared class is the whole test, and a matching kind is not a second way in: A12 refuses a DATE
+     * field declared {@code HH:mm:ss} as a date operand, compared or extracted, and admits it as a time, and
+     * likewise refuses a TIME or DATE_TIME field declared {@code yyyy-MM-dd} as its own kind
+     * ({@code validate.laws.ClockDeclaredDateFieldLawsTest}). Admitting by kind handed out a handle its field
+     * could not be (DEV-API-GAPS DG132).
      */
     public DateRef date(String path) {
-        requireTemporalShape(path, ValueKind.DATE, TemporalFormats.Shape.DATE, "date");
+        requireTemporalShape(path, ValueKind.DATE, "date");
         return new DateRef(field(path));
     }
 
     /** A typed time-of-day handle — a TIME field, or a temporal field declared with a clock format ({@link #date}). */
     public TimeRef time(String path) {
-        requireTemporalShape(path, ValueKind.TIME, TemporalFormats.Shape.TIME, "time");
+        requireTemporalShape(path, ValueKind.TIME, "time");
         return new TimeRef(field(path));
     }
 
@@ -312,26 +314,18 @@ public final class BoundModel {
      * field whose declared format carries both halves ({@link #date}).
      */
     public DateTimeRef dateTime(String path) {
-        requireTemporalShape(path, ValueKind.DATE_TIME, TemporalFormats.Shape.DATE_TIME, "date-time");
+        requireTemporalShape(path, ValueKind.DATE_TIME, "date-time");
         return new DateTimeRef(field(path));
     }
 
     /** The admission shared by {@link #date}/{@link #time}/{@link #dateTime} — see {@link #date} for the why. */
-    private void requireTemporalShape(
-            String path, ValueKind wantedKind, TemporalFormats.Shape wantedShape, String label) {
-        ValueKind kind = index.kindOf(path);
-        if (kind == wantedKind) {
+    private void requireTemporalShape(String path, ValueKind wantedClass, String label) {
+        FieldInfo info = fieldInfo(path);
+        if (info.temporalClass() == wantedClass) {
             return;
         }
-        if (TemporalFormats.isTemporal(kind)) {
-            String declared = index.temporalFormat(path).orElseGet(() -> TemporalFormats.defaultFormat(kind));
-            if (TemporalFormats.shapeOf(declared) == wantedShape) {
-                return;
-            }
-            throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + kind
-                    + ", declared format=" + declared + ")");
-        }
-        throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + kind + ")");
+        throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + info.kind()
+                + info.format().map(format -> ", declared format=" + format).orElse("") + ")");
     }
 
     /**
