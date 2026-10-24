@@ -2176,6 +2176,21 @@ public static enum io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op[] values()
 
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.MessageTokens
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.MessageTokens ENGLISH
+  public java.lang.String fieldCategory(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public java.lang.String fieldCategory(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public java.lang.String fieldCategory(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef, java.lang.String)
+  public java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
+  public java.lang.String fieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public java.lang.String fieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
+  public java.lang.String indexCategory(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public java.lang.String indexValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.MessageTokens of(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
+  public java.lang.String repetitionIndex(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public java.lang.String repetitionIndex(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue)
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Now implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public Now()
   public final boolean equals(java.lang.Object)

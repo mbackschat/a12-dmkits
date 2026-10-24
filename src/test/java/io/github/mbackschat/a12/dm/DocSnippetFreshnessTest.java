@@ -98,6 +98,8 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RuleGroupErrorEntityTest.java"),
             new Lock("rule-scale-waiver", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ScaleWaiverRuleTest.java"),
+            new Lock("message-tokens-language", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MessageTokensTest.java"),
             new Lock("editor-number-field", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"),
             new Lock("model-computations", "docs/API-GUIDE.md",

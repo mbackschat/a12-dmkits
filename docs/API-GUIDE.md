@@ -356,6 +356,15 @@ This is the bulk-authoring payoff: a *rule template* is a function `BoundModel �
 
 For indexed messages, `Dsl.repetitionIndex(depot.flattenGroup("Bins").forIndex("b"))` renders the selected group’s row token, and `Dsl.fieldValue(note.semanticIndex("c1"))`, `Dsl.fieldLabel(note.semanticIndex("c1"))` and `Dsl.fieldCategory(status.category("Band"), "c1")` render a key-selected field's value, label and category, the key written after the suffix (`$/Policy/Claims/Note.value For "c1"$`); a field key is the `FieldRef` overload. `Dsl.fieldCategory(category)` is the unkeyed category token. Each keyed token is admitted only beside a condition reading the same field under the same spelled key ([KF412](KERNEL-FINDINGS.md#kf412)); locks: `KeyedMessageTokenTest`. Pair it with a matching positive presence condition. `Dsl.indexValue(depot.field("Bins/BinCode"))` and `Dsl.indexCategory(depot.enumOf("Bins/BinCode").category("Band"))` render the index terminal’s short-name value/category forms. These helpers use English condition-language tokens independently of the message locale; kernel consistency checks ancestry, index membership and presence. Authoring locks: `MessageInterpolationTest`; admission and rendered-text locks: `SelectedMessageReferenceDiffTest` and `RuleMessageParameterRenderingDiffTest` ([KF546](KERNEL-FINDINGS.md#kf546)).
 
+**A token is written in the model's condition language.** Five terminals of the message grammar are bilingual, `value`/`Wert` and `For`/`Fuer` among them, and A12 refuses a token spelled in the other language ([KF198](KERNEL-FINDINGS.md#kf198)). The `Dsl` helpers are English; on a German model take the tokens from the editor, which reads the model's language, or from `MessageTokens.of(ConditionLanguage.DE)`. A path segment or a category named like a keyword is quoted, as in the condition, and a literal key holding `$` is refused, because A12 splits the message there (`WRONG_NUMBER_OF_DOLLARS`). Locks: `MessageTokensTest`.
+
+<!-- snippet: message-tokens-language -->
+```java
+GroupEditor de = EditSession.read(DE).group("/Policy");      // the model's conditions are German
+SemanticIndex deNote = de.str("Claims/Note").semanticIndex("c1");
+String token = de.messageTokens().fieldValue(deNote);        // "$/Policy/Claims/Note.Wert Fuer \"c1\"$"
+```
+
 ### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress`
 
 When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)

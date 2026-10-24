@@ -167,6 +167,7 @@ public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.githu
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef flatten(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef flattenGroup(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.MessageTokens messageTokens()
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef num(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.GroupEditor numberField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()

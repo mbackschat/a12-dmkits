@@ -132,6 +132,24 @@ public final class DslRenderer {
     }
 
     /**
+     * A message token's path, every keyword-named segment quoted. The message grammar's quote is transparent and
+     * a keyword-named name must carry it there as in a condition ({@code $'For'$}, KERNEL-FINDINGS KF198).
+     */
+    String messagePath(String absolutePath) {
+        return quoteKeywordSegments(absolutePath);
+    }
+
+    /** A message token's category name, quoted when it is a keyword, on the same transparent-quote basis. */
+    String messageName(String name) {
+        return quoteSegment(name);
+    }
+
+    /** The language this renderer writes its keywords in. */
+    ConditionLanguage language() {
+        return language;
+    }
+
+    /**
      * Single-quote any path segment that collides with a DSL keyword (fork #9 / F3a) — the kernel
      * rejects an unquoted keyword-named entity with {@code MVK_UNEXPECTED_TOKEN} (KERNEL-FINDINGS
      * §10, paths), and {@code '<name>'} is the grammar's escape (NameOhnePunktMitQuotes). Detection uses

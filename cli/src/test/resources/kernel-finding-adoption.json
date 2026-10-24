@@ -8266,6 +8266,69 @@
         }
       }
     },
+    "kf198": {
+      "sha256": "a59eff4de6aec182853fce46228a2c1ecccf7e5464ddfaf666062dbb599aac84",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [
+          "message tokens in the condition language"
+        ],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "MessageTokens renders every token through the condition renderer of the model's language, quotes keyword-named names, and refuses a literal key holding a dollar sign.",
+          "evidence": {
+            "message tokens in the condition language": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MessageTokensTest.java#eachTokenIsWrittenInTheModelsConditionLanguage",
+              "witness": "On a German model each German token is admitted and its English spelling refused, as A12 answers."
+            }
+          }
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Schema import writes no rule message token.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Schema export reads no rule message.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool authors message text as given and renders it through the interpreter.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not assessed in this review.",
+          "evidence": {}
+        }
+      }
+    },
     "kf209": {
       "sha256": "6bce0e2912d19627a141570559fb3373c1b292bc601ee8c95e6cf5baf1107bd8",
       "task": "F-USE-BACKLOG",

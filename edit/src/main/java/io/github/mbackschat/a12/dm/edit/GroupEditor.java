@@ -34,6 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference;
+import io.github.mbackschat.a12.dm.rulekit.dsl.MessageTokens;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
@@ -150,6 +151,11 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     /** A (possibly starred) group scope relative to this group — the group analogue of {@link #flatten(String)}. */
     public GroupListRef flattenGroup(String relativeStarPath) {
         return session.boundModel().flattenGroup(child(relativeStarPath));
+    }
+
+    /** The message tokens of this model's condition language, which a token in the other one is refused for (KF198). */
+    public MessageTokens messageTokens() {
+        return MessageTokens.of(session.conditionLanguage());
     }
 
     /**

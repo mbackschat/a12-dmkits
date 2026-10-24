@@ -2375,7 +2375,7 @@ public final class Dsl {
      * {@code en("Fee " + fieldValue(fee) + " exceeds the cap.")}.
      */
     public static String fieldValue(FieldRef field) {
-        return "$" + field.path() + ".value$";
+        return MessageTokens.ENGLISH.fieldValue(field);
     }
 
     /**
@@ -2385,7 +2385,7 @@ public final class Dsl {
      * label peer of {@link #fieldValue}: {@code en(fieldLabel(fee) + " is too high.")}.
      */
     public static String fieldLabel(FieldRef field) {
-        return "$" + field.path() + "$";
+        return MessageTokens.ENGLISH.fieldLabel(field);
     }
 
     /**
@@ -2394,17 +2394,17 @@ public final class Dsl {
      * {@code en("Note " + fieldValue(note.semanticIndex("c1")))}.
      */
     public static String fieldValue(SemanticIndex selected) {
-        return keyedToken(selected.index(), ".value");
+        return MessageTokens.ENGLISH.fieldValue(selected);
     }
 
     /** The label of a key-selected field, {@code $<path> For key$}; the keyed peer of {@link #fieldLabel(FieldRef)}. */
     public static String fieldLabel(SemanticIndex selected) {
-        return keyedToken(selected.index(), "");
+        return MessageTokens.ENGLISH.fieldLabel(selected);
     }
 
     /** An enumeration field's category value, {@code $<path>->Category$}, for the row the message reads. */
     public static String fieldCategory(CategoryRef category) {
-        return "$" + category.field().path() + "->" + category.name() + "$";
+        return MessageTokens.ENGLISH.fieldCategory(category);
     }
 
     /**
@@ -2412,16 +2412,12 @@ public final class Dsl {
      * field is the category's own, so the token cannot name two fields.
      */
     public static String fieldCategory(CategoryRef category, String indexValue) {
-        return keyedToken(category.field().semanticIndex(indexValue).index(), "->" + category.name());
+        return MessageTokens.ENGLISH.fieldCategory(category, indexValue);
     }
 
     /** The field-keyed peer of {@link #fieldCategory(CategoryRef, String)}: {@code $<path>->Category For keyField$}. */
     public static String fieldCategory(CategoryRef category, FieldRef keyField) {
-        return keyedToken(category.field().semanticIndex(keyField).index(), "->" + category.name());
-    }
-
-    private static String keyedToken(IndexedFieldValue index, String suffix) {
-        return "$" + index.field().path() + suffix + " " + new DslRenderer().keyClause(index) + "$";
+        return MessageTokens.ENGLISH.fieldCategory(category, keyField);
     }
 
     /**
@@ -2440,7 +2436,7 @@ public final class Dsl {
      * one verbatim. Relative group parameters can also be legal; this helper does not decide admission.
      */
     public static String repetitionIndex(GroupRef group) {
-        return "$#" + group.path() + "$";
+        return MessageTokens.ENGLISH.repetitionIndex(group);
     }
 
     /**
@@ -2448,7 +2444,7 @@ public final class Dsl {
      * condition operand. Kernel consistency checks the matching reference and positive presence guard.
      */
     public static String repetitionIndex(IndexedGroupValue group) {
-        return "$#" + new DslRenderer().render(group) + "$";
+        return MessageTokens.ENGLISH.repetitionIndex(group);
     }
 
     /**
@@ -2456,12 +2452,12 @@ public final class Dsl {
      * Quoted message names keep a terminal-named field in the name grammar.
      */
     public static String indexValue(FieldRef indexField) {
-        return "$index('" + indexField.path().segments().getLast() + "').value$";
+        return MessageTokens.ENGLISH.indexValue(indexField);
     }
 
     /** The firing context's enum index category, with admission left to kernel consistency (KF280). */
     public static String indexCategory(CategoryRef category) {
-        return "$index('" + category.field().path().segments().getLast() + "')->'" + category.name() + "'$";
+        return MessageTokens.ENGLISH.indexCategory(category);
     }
 
     /** Sugar for the common {@code en_US} — only valid if the model declares it. */
