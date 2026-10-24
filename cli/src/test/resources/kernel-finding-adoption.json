@@ -13641,6 +13641,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf614": {
+      "sha256": "38aad1caba2f3f7db85b2df53458254e665dc3e59fd12ebe769cfec2d4061db7",
+      "task": "SS15",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the duplicate walk of a scalar value list's field entries"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's duplicate walk over a scalar value list's subject and entries"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "A12's duplicate walk over a scalar value list's subject and entries"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave the iteration guard to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The scalar value-list family refuses a plain read named twice among the subject and its entries as a duplicate parameter, ahead of the base-type gate, and leaves categorized, keyed or marked reads to A12.",
+          "evidence": {
+            "the duplicate walk of a scalar value list's field entries": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerScalarListDuplicateAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every duplicate row."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A rule's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's duplicate walk over a scalar value list's subject and entries": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerScalarListDuplicateAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every duplicate row as pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

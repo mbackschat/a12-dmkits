@@ -174,9 +174,9 @@ class ScalarValueListGatesTest {
         expected["a custom-typed field against a string"] = emptyList()
         expected["another enumeration against an enumeration"] = emptyList()
         // The duplicate walk takes the subject together with the entries, and A12 answers it as a duplicate
-        // parameter — so naming a type class on either row would be the wrong class on a correct rejection.
-        expected["the SUBJECT itself in its own list"] = emptyList()
-        expected["one entry written twice"] = emptyList()
+        // parameter rather than a self-comparison (KF614).
+        expected["the SUBJECT itself in its own list"] = listOf("MVK_DUPLICATE_PARAM1")
+        expected["one entry written twice"] = listOf("MVK_DUPLICATE_PARAM1")
         // The subject gates run on this list form too, which is what makes the two spellings one method.
         expected["a subject the head gate refuses"] = listOf(onlyThreeKinds)
         expected["an entry waiving value validation"] = listOf(rawType)

@@ -14867,3 +14867,19 @@ An insurance policy: root `Policy` with text `Title`/`Holder`, numbers `Amount`/
 The same classes hold on a12-kernel-lean's K22 S2 rows `tp12`, `tp16`, `tp17`, `tp19`, `ta17` and `ta18`, replayed here through `rule check` on their model.
 
 *Locked by:* `adapter.laws.CheckerRangeConstructAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+
+## §8 supplement — a scalar value list of `[field]` entries names each plain read once, the subject included, and the duplicate walk runs before the base types (kernel `checkConsistency`, 2026-10-24) <a id="kf614"></a>
+
+> Fold: pending — beside [KF398](#kf398)'s scalar value-list gates.
+
+An insurance policy: root `Policy` with text `Title`, `Holder`, `Agent`, `Broker` and numbers `Amount`, `Total`. Every rule reports on `Title`, guarded by `FieldFilled(Title) And …`. *Basis beyond the rows (source-read, kernel 30.8.1):* `CheckFeldUndWerteListenBedingungImpl.checkFelderWerteListe` appends the subject to the entries and calls `checkParamsReferencedOnlyOnce`, then `matchBaseType`.
+
+| condition → A12 | separates |
+|---|---|
+| `FieldValueIncludedInValueList(Holder, [Holder])`, `(Holder, [Agent], [Agent])`, `(Holder, [Agent], [Holder])`, `FieldValueNotIncludedInValueList(Amount, [Total], [Amount])` → `MVK_DUPLICATE_PARAM1` | the subject is walked with the entries, in either position |
+| `(Amount, [Holder], [Amount])` → `MVK_DUPLICATE_PARAM1`; `(Amount, [Holder])` → `MVK_VARYING_TYPES_NOT_ALLOWED` | the duplicate walk answers before the base types |
+| `(Holder, [Agent])`, `(Holder, [Agent], [Broker])` → admitted | distinct reads |
+
+A categorized, keyed or marked read is not in the grid; the checker leaves such a call to A12.
+
+*Locked by:* `adapter.laws.CheckerScalarListDuplicateAgreementTest` (every row, A12 pinned and the checker naming the same classes).

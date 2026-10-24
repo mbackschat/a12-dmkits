@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.soleFieldValueReadIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
@@ -22,7 +23,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * | the subject carries a repetition star | `MVK_NO_WILDCARDS_ALLOWED` |
  * | the subject is neither text, custom, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
  * | the subject waives value validation | `MVK_INVALID_RAW_TYPE` |
- * | `[field]` entries: one named twice, the subject included | `MVK_DUPLICATE_PARAM1` |
+ * | `[field]` entries: one plain read named twice, the subject included | `MVK_DUPLICATE_PARAM1` |
  * | `[field]` entries: one of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
  * | a written-out list whose KIND is not the subject's | `MVK_INVALID_TYPES_FOR_COMPARISON` |
  * | a written-out value outside a plain enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
@@ -99,6 +100,8 @@ private const val ONLY_STRING_ENUM_NUMBER = "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED
 
 private const val RAW_TYPE = "MVK_INVALID_RAW_TYPE"
 
+private const val DUPLICATE = "MVK_DUPLICATE_PARAM1"
+
 private const val VARYING_TYPES = "MVK_VARYING_TYPES_NOT_ALLOWED"
 
 private const val INVALID_TYPES_FOR_COMPARISON = "MVK_INVALID_TYPES_FOR_COMPARISON"
@@ -154,7 +157,8 @@ private fun TrackedFactBase.gateFindings(
     }
 
     return if (entries.all { it.namesAFieldEntry() }) {
-        entryListFindings(subject, entries, call, declaringGroup, element, member)
+        val plainSubject = read.category == null && read.key == null && !read.indexSelected && !read.outerMarked
+        entryListFindings(subject, plainSubject, entries, call, declaringGroup, element, member)
     } else {
         constantListFindings(subject, subjectOperand, entries, call, member, element)
     }
@@ -163,13 +167,15 @@ private fun TrackedFactBase.gateFindings(
 /**
  * The `[field]`-entry list's two gates, in A12's order: duplicates, then base types.
  *
- * The duplicate walk takes the SUBJECT together with the entries, so naming it inside its own list is a
- * duplicate parameter rather than a self-comparison — measured, and the reason this leaves such a call to
- * A12 rather than naming a type class on it. An entry naming a group is left to the bracket, which refuses
+ * The duplicate walk (`checkParamsReferencedOnlyOnce`) takes the SUBJECT together with the entries, so naming it
+ * inside its own list is a duplicate parameter rather than a self-comparison ([KERNEL-FINDINGS KF614]). Only plain
+ * reads are compared: a categorized, keyed or marked read carries more identity than its path, and how A12 pairs
+ * it is unmeasured, so such a call is left to A12. An entry naming a group is left to the bracket, which refuses
  * it before this method runs.
  */
 private fun TrackedFactBase.entryListFindings(
     subject: TrackedDeclaration,
+    plainSubject: Boolean,
     entries: List<CallOperand>,
     call: ConditionCall,
     declaringGroup: String,
@@ -182,7 +188,12 @@ private fun TrackedFactBase.entryListFindings(
     }
     val walked = listOf(subject) + fields
     if (walked.map { it.path }.distinct().size != walked.size) {
-        return null
+        val plain = plainSubject && entries.all { entry ->
+            soleFieldValueReadIn(entry.text, conditionLanguage)
+                ?.let { it.path != null && it.category == null && !it.outerMarked } == true
+        }
+        val repeated = walked.groupBy { it.path }.values.first { it.size > 1 }.first()
+        return if (plain) listOf(gate(DUPLICATE, call.operator, repeated, member, element, call.spanIn(member))) else null
     }
     var expected = effectiveBaseTypeClass(subject) ?: return null
     fields.forEach { field ->
@@ -273,6 +284,9 @@ private fun TrackedFactBase.gate(
             "in `$member`: `$operator` reads `${field.path}`, declared `${effectiveFieldType(field)}` — a " +
                 "value list takes a text, custom, enumeration or number field; compare a boolean with " +
                 "`== True` and a date with a date comparison"
+        DUPLICATE ->
+            "in `$member`: `$operator` names `${field.path}` twice among its subject and entries — compare a " +
+                "field against other fields, each named once"
         RAW_TYPE ->
             "in `$member`: `${field.path}` waives value validation, and `$operator` refuses a subject that " +
                 "does — drop `noValueValidation`, or compare the field another way"
