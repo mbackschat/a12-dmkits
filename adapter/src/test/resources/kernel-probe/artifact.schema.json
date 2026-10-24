@@ -72,6 +72,11 @@
           "type": "string",
           "format": "date-time",
           "description": "the pinned evaluation instant; ABSENT when the request pinned none, in which case the real clock was used and a clock-reading rule will not reproduce"
+        },
+        "observe": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "every observation the request named, in the probe's declaration order. PRESENT exactly when they include `repetitionIndexes`, the one observation a block's keys do not reveal; recording it on every request would change the bytes of artifacts already pinned."
         }
       }
     },
@@ -390,6 +395,17 @@
           "type": "array",
           "items": { "type": "string", "format": "a12-message-address" },
           "description": "for an OMISSION_ERROR, the operand fields whose filling could clear it (`IMessage.getRefOmissionErrorResponsiblePointers`) — measured to be ALL of the rule's operands, not only the empty ones; EMPTY for a VALUE_ERROR. Same per-address form contract as `field`, and sorted for the same reason as `referenced`."
+        },
+        "repetitionIndexes": {
+          "type": "object",
+          "required": ["field", "referenced", "fillToFix"],
+          "additionalProperties": false,
+          "description": "the kernel's own coordinates for each address of this message, `PartiallyKnownDocumentMultiPointer.repetitionIndexes()` verbatim. PRESENT exactly when the request observes `repetitionIndexes`. It keeps the last coordinate the house form drops, which on a message about a group is the group's own row or a sentinel: `-5` for a level that matched no row, `-6` for a parallel iteration, `0` for a wildcard. `referenced` and `fillToFix` are aligned by position with the address lists of the same names, which sort by address and then by these coordinates, so two addresses sharing one house-form string keep a stable order.",
+          "properties": {
+            "field": { "type": "array", "items": { "type": "integer" } },
+            "referenced": { "type": "array", "items": { "type": "array", "items": { "type": "integer" } } },
+            "fillToFix": { "type": "array", "items": { "type": "array", "items": { "type": "integer" } } }
+          }
         }
       }
     }

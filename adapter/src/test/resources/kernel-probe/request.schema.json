@@ -65,8 +65,8 @@
       "minItems": 1,
       "default": ["validateFull"],
       "items": {
-        "enum": ["validateFull", "compute", "computeResults", "validatePart", "mandatoryInformation", "dynamicEnumerations"],
-        "description": "a kernel entry point, named as the kernel names the method. Four are PER-ROW: `validateFull` produces each engine block's `messages`, `compute` its `computations`, `computeResults` its `computeResults`, `validatePart` its `partialMessages`. `compute` and `computeResults` read the SAME `IDocumentRtService.compute` call through different faces: `compute` publishes the kernel's CHANGE projection, `computeResults` its own result collections plus the document after `applyTo`. Ask for `computeResults` when you need a successful instance whose value did not change (`getComputedFieldInstancesWithChanges` is a subset of `…WithoutErrors`, so such an instance appears in no `computations` channel), the per-instance `getErrorMessage()`, or the applied destination. Two are PER-MODEL: `mandatoryInformation` (`IRuleCollectionMetaInformation.getMandatoryInformationFromRules`) reads the model's rule conditions, needs no document, and produces the top-level `mandatoryInformation` block once for the request. `dynamicEnumerations` (`IRuleCollectionMetaInformation.getDynamicEnumerationStringValues`) is the same shape and the ONLY route to the kernel's dynamic-enumeration derivation — its checker has exactly one caller in the kernel, so `checkConsistency` never reaches its twelve MVK_DYNENUM_* classes. Its diagnostics are NOT defects: the derivation checks every rule and reports one problem per rule that is not a dynamic enumeration in form, which is true of almost every ordinary rule. `validatePart` additionally requires every row to carry `relevant`, because a partial validation with no declared coverage would silently be a full one."
+        "enum": ["validateFull", "compute", "computeResults", "validatePart", "mandatoryInformation", "dynamicEnumerations", "repetitionIndexes"],
+        "description": "a kernel entry point, or one accessor of what they return, named as the kernel names the method. `repetitionIndexes` (`PartiallyKnownDocumentMultiPointer.repetitionIndexes()`) produces no channel of its own: it adds to every published message the kernel's raw coordinates for `field`, each `referenced` and each `fillToFix` address, keeping the last coordinate the house form drops (`0`, `-5` and `-6` included), and makes the artifact record `request.observe`. It is per-row, so it needs rows and `validateFull`. Four entry points are PER-ROW: `validateFull` produces each engine block's `messages`, `compute` its `computations`, `computeResults` its `computeResults`, `validatePart` its `partialMessages`. `compute` and `computeResults` read the SAME `IDocumentRtService.compute` call through different faces: `compute` publishes the kernel's CHANGE projection, `computeResults` its own result collections plus the document after `applyTo`. Ask for `computeResults` when you need a successful instance whose value did not change (`getComputedFieldInstancesWithChanges` is a subset of `…WithoutErrors`, so such an instance appears in no `computations` channel), the per-instance `getErrorMessage()`, or the applied destination. Two are PER-MODEL: `mandatoryInformation` (`IRuleCollectionMetaInformation.getMandatoryInformationFromRules`) reads the model's rule conditions, needs no document, and produces the top-level `mandatoryInformation` block once for the request. `dynamicEnumerations` (`IRuleCollectionMetaInformation.getDynamicEnumerationStringValues`) is the same shape and the ONLY route to the kernel's dynamic-enumeration derivation — its checker has exactly one caller in the kernel, so `checkConsistency` never reaches its twelve MVK_DYNENUM_* classes. Its diagnostics are NOT defects: the derivation checks every rule and reports one problem per rule that is not a dynamic enumeration in form, which is true of almost every ordinary rule. `validatePart` additionally requires every row to carry `relevant`, because a partial validation with no declared coverage would silently be a full one."
       },
       "description": "which kernel entry points to observe. OMIT IT for validation alone — that is the default, and a request without this key produces a BYTE-IDENTICAL artifact to the one it produced before `compute` was observable, so an already-pinned SHA-256 stays valid. `validateFull` may not be dropped WHENEVER ANY ROW IS OBSERVED: an engine block's `messages` is a REQUIRED key of schemaVersion 1, so a list left empty because nobody looked would be indistinguishable from one where nothing fired. (`computations` avoids that ambiguity by being absent when unobserved; `messages` was not given the same treatment because making a required key optional changes the shape of artifacts consumers already pin. The refusal is therefore a compatibility decision, and it costs a compute-only consumer a validation pass per row per strategy.) A request naming ONLY model-level observations observes no row, so it neither needs nor accepts `rows`, and `validateFull` does not apply. Duplicates are accepted — this is a set. An explicit empty array is refused: omitting the key means the default, writing `[]` means a mistake."
     },
@@ -145,6 +145,13 @@
     },
     {
       "model": "order.dm.json",
+      "observe": ["validateFull", "repetitionIndexes"],
+      "rows": [
+        { "name": "line-without-slot", "documentInline": { "Order": { "Lines": [{ "LineNo": "A" }] } } }
+      ]
+    },
+    {
+      "model": "order.dm.json",
       "customFieldTypes": {
         "CouponCode": { "pattern": "[A-Z]{4}-[0-9]{4}" },
         "LoyaltyId": { "minLength": 4, "maxLength": 12 }
@@ -195,7 +202,7 @@
       "$comment": "any per-row observation requires both `rows` and `validateFull`",
       "if": {
         "required": ["observe"],
-        "properties": { "observe": { "contains": { "enum": ["validateFull", "compute", "computeResults", "validatePart"] } } }
+        "properties": { "observe": { "contains": { "enum": ["validateFull", "compute", "computeResults", "validatePart", "repetitionIndexes"] } } }
       },
       "then": {
         "required": ["rows"],
@@ -207,7 +214,7 @@
       "if": {
         "required": ["observe"],
         "properties": {
-          "observe": { "not": { "contains": { "enum": ["validateFull", "compute", "computeResults", "validatePart"] } } }
+          "observe": { "not": { "contains": { "enum": ["validateFull", "compute", "computeResults", "validatePart", "repetitionIndexes"] } } }
         }
       },
       "then": { "not": { "required": ["rows"] } }

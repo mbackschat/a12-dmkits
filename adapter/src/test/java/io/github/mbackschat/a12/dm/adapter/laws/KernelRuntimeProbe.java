@@ -134,8 +134,9 @@ public final class KernelRuntimeProbe {
     }
 
     /**
-     * A kernel runtime entry point the probe can be asked to observe. Named on the wire exactly as the kernel
-     * names the method, so a request says which kernel API produced a block rather than a probe-local synonym.
+     * A kernel runtime entry point the probe can be asked to observe, or one accessor of the values those entry
+     * points return. Named on the wire exactly as the kernel names the method, so a request says which kernel
+     * API produced a value rather than a probe-local synonym.
      */
     public enum Observation {
 
@@ -189,7 +190,20 @@ public final class KernelRuntimeProbe {
          * true of almost every ordinary rule. Read the block as "which rules are dynamic enumerations, and why
          * the rest are not", never as a model-health verdict.
          */
-        DYNAMIC_ENUMERATIONS("dynamicEnumerations", Scope.MODEL);
+        DYNAMIC_ENUMERATIONS("dynamicEnumerations", Scope.MODEL),
+
+        /**
+         * {@code PartiallyKnownDocumentMultiPointer.repetitionIndexes()} of every address a published message
+         * carries, beside the address string. Per-row, because it annotates the message channels rather than
+         * producing one of its own.
+         *
+         * <p><b>It exists because the house form is lossy.</b> A message address that names no single cell is
+         * published in the interpreter's house form, which drops the last coordinate; on a message reporting on
+         * a group that coordinate is the group's own row or {@code -5}, so the string cannot say which
+         * (KERNEL-PROBE-SPEC §4). a12-kernel-lean asked for the raw vector, {@code -5} and {@code -6}
+         * included, to settle such measurements, and for it to be opt-in so pinned artifacts keep their bytes.
+         */
+        REPETITION_INDEXES("repetitionIndexes", Scope.ROW);
 
         /** Whether an observation needs a document. The request contract is derived from this, never listed. */
         enum Scope { ROW, MODEL }
@@ -584,6 +598,7 @@ public final class KernelRuntimeProbe {
 
         boolean compute = request.observe().contains(Observation.COMPUTE);
         boolean computeResults = request.observe().contains(Observation.COMPUTE_RESULTS);
+        MessageProjection messages = new MessageProjection(request.observe().contains(Observation.REPETITION_INDEXES));
         // Bound identically on both strategies, because a type resolvable on one and not the other would
         // report a split that is the harness's rather than the kernel's.
         ICustomFieldTypeFactory fieldTypes = request.bindings().fieldTypeFactory();
@@ -599,38 +614,38 @@ public final class KernelRuntimeProbe {
                     observe(GROOVY_DYNAMIC, groovyDynamic, request.bindings().recorder(), (engine, calls, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
                         var conditions = calls.conditions();
-                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> project(
+                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> messages.project(
                                 engine.validationMessages(instance, clock, locale, conditions, fieldTypes))));
                         if (compute) {
-                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> project(
+                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> messages.project(
                                     engine.computation(instance, clock, locale, conditions, fieldTypes)))));
                         }
                         row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
-                                channel(Observation.VALIDATE_PART, calls, () -> project(engine
+                                channel(Observation.VALIDATE_PART, calls, () -> messages.project(engine
                                         .partialValidationMessages(
                                                 instance, rel, clock, locale, conditions, fieldTypes))))));
                         if (computeResults) {
                             block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, calls,
-                                    () -> project(engine.computeResults(
+                                    () -> messages.project(engine.computeResults(
                                             instance, clock, locale, conditions, fieldTypes)))));
                         }
                     }),
                     observe(JAVA_STATIC, javaStatic, request.bindings().recorder(), (engine, calls, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
                         var conditions = calls.conditions();
-                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> project(
+                        block.messages(channel(Observation.VALIDATE_FULL, calls, () -> messages.project(
                                 engine.validationMessages(instance, clock, locale, conditions, fieldTypes))));
                         if (compute) {
-                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> project(
+                            block.computations(Optional.of(channel(Observation.COMPUTE, calls, () -> messages.project(
                                     engine.computation(instance, clock, locale, conditions, fieldTypes)))));
                         }
                         row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
-                                channel(Observation.VALIDATE_PART, calls, () -> project(engine
+                                channel(Observation.VALIDATE_PART, calls, () -> messages.project(engine
                                         .partialValidationMessages(
                                                 instance, rel, clock, locale, conditions, fieldTypes))))));
                         if (computeResults) {
                             block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, calls,
-                                    () -> project(engine.computeResults(
+                                    () -> messages.project(engine.computeResults(
                                             instance, clock, locale, conditions, fieldTypes)))));
                         }
                     }))));
@@ -846,53 +861,72 @@ public final class KernelRuntimeProbe {
         return notification.severity() + ": " + notification.message();
     }
 
-    private static List<KernelProbeArtifact.Message> project(List<IMessage> messages) {
-        return messages.stream().map(KernelRuntimeProbe::project).toList();
-    }
-
-    private static KernelProbeArtifact.Message project(IMessage message) {
-        return new KernelProbeArtifact.Message(
-                message.getErrorCode(),
-                address(message.getErrorFieldPointer()),
-                message.getSeverity().name(),
-                message.getMessageType().name(),
-                message.getErrorText(),
-                addresses(message.getReferencedFieldsPointers()),
-                addresses(message.getRefOmissionErrorResponsiblePointers()));
-    }
-
     /**
-     * One strategy's {@code compute()} run. The operand formal errors are projected through the <b>same</b>
-     * {@link #project(IMessage)} the message channel uses, so one parser reads both and a consumer comparing an
-     * operand error with the validation message it explains is comparing like with like.
+     * The projection of the kernel's messages into the artifact, and of every value that carries one. One
+     * record rather than a flag on each method, because the operand formal errors and a result instance's
+     * error message go through the SAME message projection the validation channel uses, and a coordinate
+     * vector published on one of them and withheld on another would make like no longer compare with like.
+     *
+     * @param repetitionIndexes whether the request named {@link Observation#REPETITION_INDEXES}
      */
-    private static KernelProbeArtifact.Computations project(RuntimeLaws.ComputationObservation observation) {
-        return new KernelProbeArtifact.Computations(
-                observation.outcomes().stream().map(KernelRuntimeProbe::project).toList(),
-                project(observation.formalErrorsInOperands()));
+    private record MessageProjection(boolean repetitionIndexes) {
+
+        List<KernelProbeArtifact.Message> project(List<IMessage> messages) {
+            return messages.stream().map(this::project).toList();
+        }
+
+        KernelProbeArtifact.Message project(IMessage message) {
+            return new KernelProbeArtifact.Message(
+                    message.getErrorCode(),
+                    address(message.getErrorFieldPointer()),
+                    message.getSeverity().name(),
+                    message.getMessageType().name(),
+                    message.getErrorText(),
+                    addresses(message.getReferencedFieldsPointers()),
+                    addresses(message.getRefOmissionErrorResponsiblePointers()),
+                    repetitionIndexes ? Optional.of(new KernelProbeArtifact.RepetitionIndexes(
+                            message.getErrorFieldPointer().repetitionIndexes(),
+                            indexes(message.getReferencedFieldsPointers()),
+                            indexes(message.getRefOmissionErrorResponsiblePointers()))) : Optional.empty());
+        }
+
+        /**
+         * One strategy's {@code compute()} run. The operand formal errors are projected through the <b>same</b>
+         * {@link #project(IMessage)} the message channel uses, so one parser reads both and a consumer comparing
+         * an operand error with the validation message it explains is comparing like with like.
+         */
+        KernelProbeArtifact.Computations project(RuntimeLaws.ComputationObservation observation) {
+            return new KernelProbeArtifact.Computations(
+                    observation.outcomes().stream().map(KernelRuntimeProbe::project).toList(),
+                    project(observation.formalErrorsInOperands()));
+        }
+
+        /**
+         * One strategy's {@code compute()} run read through the RESULT. The applied document is re-parsed rather
+         * than embedded as a string: it is A12's canonical Document JSON, and a consumer of this artifact
+         * already has a JSON parser in hand, so a quoted blob would make them run a second one.
+         */
+        KernelProbeArtifact.ComputeResults project(RuntimeLaws.ComputeResultObservation observation) {
+            return new KernelProbeArtifact.ComputeResults(
+                    observation.withoutErrors().stream().map(this::project).toList(),
+                    observation.errored().stream().map(this::project).toList(),
+                    readTree(observation.applied()));
+        }
+
+        KernelProbeArtifact.ResultInstance project(RuntimeLaws.ResultInstance instance) {
+            return new KernelProbeArtifact.ResultInstance(
+                    address(instance.pointer()), instance.value(),
+                    instance.errorMessage().map(this::project));
+        }
+
+        private static List<List<Integer>> indexes(Collection<PartiallyKnownDocumentMultiPointer> pointers) {
+            return pointers.stream().map(PartiallyKnownDocumentMultiPointer::repetitionIndexes).toList();
+        }
     }
 
     private static KernelProbeArtifact.Outcome project(RuntimeLaws.ComputedInstance instance) {
         return new KernelProbeArtifact.Outcome(
                 address(instance.pointer()), instance.value(), instance.cleared(), instance.errored());
-    }
-
-    /**
-     * One strategy's {@code compute()} run read through the RESULT. The applied document is re-parsed rather
-     * than embedded as a string: it is A12's canonical Document JSON, and a consumer of this artifact already
-     * has a JSON parser in hand, so a quoted blob would make them run a second one.
-     */
-    private static KernelProbeArtifact.ComputeResults project(RuntimeLaws.ComputeResultObservation observation) {
-        return new KernelProbeArtifact.ComputeResults(
-                observation.withoutErrors().stream().map(KernelRuntimeProbe::project).toList(),
-                observation.errored().stream().map(KernelRuntimeProbe::project).toList(),
-                readTree(observation.applied()));
-    }
-
-    private static KernelProbeArtifact.ResultInstance project(RuntimeLaws.ResultInstance instance) {
-        return new KernelProbeArtifact.ResultInstance(
-                address(instance.pointer()), instance.value(),
-                instance.errorMessage().map(KernelRuntimeProbe::project));
     }
 
     /**
@@ -1023,6 +1057,11 @@ public final class KernelRuntimeProbe {
                 .model(request.modelRef())
                 .locale(request.locale().getLanguage() + "_" + request.locale().getCountry())
                 .clock(request.clock().map(clock -> clock.toInstant().toString()))
+                // Recorded only with the coordinates, the one observation whose effect a block's keys do not
+                // already show, so a request that does not name it keeps its bytes.
+                .observe(request.observe().contains(Observation.REPETITION_INDEXES)
+                        ? Optional.of(request.observe().stream().map(Observation::wireName).toList())
+                        : Optional.empty())
                 .build();
     }
 

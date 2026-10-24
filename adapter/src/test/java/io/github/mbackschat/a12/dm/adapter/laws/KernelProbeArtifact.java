@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -88,14 +89,22 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * @param clock              the pinned evaluation instant, when the request pinned one
      */
     public record Header(String dmtoolVersion, String kernelBuiltAgainst, String kernelRuntime,
-            String sourceRevision, String sourceState, String model, String locale, Optional<String> clock) {
+            String sourceRevision, String sourceState, String model, String locale, Optional<String> clock,
+            Optional<List<String>> observe) {
+
+        public Header {
+            observe = observe.map(List::copyOf);
+        }
 
         /** The construction path: seven same-typed strings are too easy to swap positionally. */
         public static Builder builder() {
             return new Builder();
         }
 
-        /** Names each header member; an unset {@code clock} means the request pinned none. */
+        /**
+         * Names each header member; an unset {@code clock} means the request pinned none, and an unset
+         * {@code observe} that the artifact does not record the request's observations.
+         */
         public static final class Builder {
             private String dmtoolVersion;
             private String kernelBuiltAgainst;
@@ -105,6 +114,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             private String model;
             private String locale;
             private Optional<String> clock = Optional.empty();
+            private Optional<List<String>> observe = Optional.empty();
 
             private Builder() {
             }
@@ -149,9 +159,14 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return this;
             }
 
+            public Builder observe(Optional<List<String>> value) {
+                this.observe = value;
+                return this;
+            }
+
             public Header build() {
                 return new Header(dmtoolVersion, kernelBuiltAgainst, kernelRuntime, sourceRevision, sourceState,
-                        model, locale, clock);
+                        model, locale, clock, observe);
             }
         }
     }
@@ -309,14 +324,15 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             String locus = fault.get().observation();
             // Empty means a locus that precedes every channel, so every channel must be absent. The row-level
             // observations map one-to-one onto the channel each produces; a MODEL-level one never rides an
-            // engine block, so it can only be a coding error here and is refused as an unpublishable channel.
+            // engine block, and neither does the coordinate accessor, which runs no channel to raise in, so either
+            // can only be a coding error here and is refused as an unpublishable channel.
             boolean published = KernelRuntimeProbe.Observation.find(locus)
                     .map(observation -> switch (observation) {
                         case VALIDATE_FULL -> !messages.isEmpty();
                         case COMPUTE -> computations.isPresent();
                         case VALIDATE_PART -> partialMessages.isPresent();
                         case COMPUTE_RESULTS -> computeResults.isPresent();
-                        case MANDATORY_INFORMATION, DYNAMIC_ENUMERATIONS -> true;
+                        case MANDATORY_INFORMATION, DYNAMIC_ENUMERATIONS, REPETITION_INDEXES -> true;
                     })
                     .orElse(!(messages.isEmpty() && computations.isEmpty()
                             && partialMessages.isEmpty() && computeResults.isEmpty()));
@@ -585,7 +601,14 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * probe exists to answer.
      */
     public record Message(String code, String field, String severity, String type, String message,
-            List<String> referenced, List<String> fillToFix) implements Comparable<Message> {
+            List<String> referenced, List<String> fillToFix, Optional<RepetitionIndexes> repetitionIndexes)
+            implements Comparable<Message> {
+
+        /** A message published without its coordinates, as every request that does not ask for them gets. */
+        public Message(String code, String field, String severity, String type, String message,
+                List<String> referenced, List<String> fillToFix) {
+            this(code, field, severity, type, message, referenced, fillToFix, Optional.empty());
+        }
 
         /**
          * A total order over every published channel. Ordering on {@code code} alone would leave two firings of
@@ -602,7 +625,10 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 .thenComparing(Message::severity)
                 .thenComparing(m -> String.join("\0", m.referenced()))
                 .thenComparing(m -> String.join("\0", m.fillToFix()))
-                .thenComparing(Message::message);
+                .thenComparing(Message::message)
+                // Last, so it can only separate messages whose every string channel is equal, which render
+                // identically without it; an artifact that does not carry coordinates keeps its order.
+                .thenComparing(m -> m.repetitionIndexes().map(Object::toString).orElse(""));
 
         /**
          * The two address channels are sorted, for the same reason {@link Engine} sorts its messages: the
@@ -611,13 +637,74 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
          * already a set or a sorted list (the differentials, the KF183 table), and no consumer reads position.
          */
         public Message {
-            referenced = referenced.stream().sorted().toList();
-            fillToFix = fillToFix.stream().sorted().toList();
+            if (repetitionIndexes.isPresent()) {
+                RepetitionIndexes indexes = repetitionIndexes.get();
+                List<Address> sortedReferenced = Address.sorted(referenced, indexes.referenced());
+                List<Address> sortedFillToFix = Address.sorted(fillToFix, indexes.fillToFix());
+                referenced = sortedReferenced.stream().map(Address::text).toList();
+                fillToFix = sortedFillToFix.stream().map(Address::text).toList();
+                repetitionIndexes = Optional.of(new RepetitionIndexes(indexes.field(),
+                        sortedReferenced.stream().map(Address::indexes).toList(),
+                        sortedFillToFix.stream().map(Address::indexes).toList()));
+            } else {
+                referenced = referenced.stream().sorted().toList();
+                fillToFix = fillToFix.stream().sorted().toList();
+            }
+        }
+
+        /**
+         * An address paired with its coordinates, so the two sort together. The house form drops the last
+         * coordinate, so two addresses can share a string and differ only here (KERNEL-PROBE-SPEC §4);
+         * the vector breaks that tie, where a string sort alone would leave their order to the kernel.
+         */
+        private record Address(String text, List<Integer> indexes) {
+
+            private static final Comparator<Address> ORDER = Comparator.comparing(Address::text)
+                    .thenComparing(Address::indexes, Address::compareIndexes);
+
+            static List<Address> sorted(List<String> texts, List<List<Integer>> indexes) {
+                if (texts.size() != indexes.size()) {
+                    throw new IllegalArgumentException("each address needs its coordinates: " + texts.size()
+                            + " addresses, " + indexes.size() + " coordinate vectors");
+                }
+                List<Address> pairs = new ArrayList<>();
+                for (int i = 0; i < texts.size(); i++) {
+                    pairs.add(new Address(texts.get(i), indexes.get(i)));
+                }
+                pairs.sort(ORDER);
+                return pairs;
+            }
+
+            private static int compareIndexes(List<Integer> left, List<Integer> right) {
+                for (int i = 0; i < Math.min(left.size(), right.size()); i++) {
+                    int order = Integer.compare(left.get(i), right.get(i));
+                    if (order != 0) {
+                        return order;
+                    }
+                }
+                return Integer.compare(left.size(), right.size());
+            }
         }
 
         @Override
         public int compareTo(Message other) {
             return ORDER.compare(this, other);
+        }
+    }
+
+    /**
+     * The kernel's own coordinates for each address of one message: {@code repetitionIndexes()} of A12's
+     * {@code PartiallyKnownDocumentMultiPointer}, verbatim, so the last coordinate the house form drops is kept,
+     * {@code 0}, {@code -5} and {@code -6} included. {@code referenced} and {@code fillToFix} are positionally
+     * aligned with the message's address lists of the same names.
+     */
+    public record RepetitionIndexes(List<Integer> field, List<List<Integer>> referenced,
+            List<List<Integer>> fillToFix) {
+
+        public RepetitionIndexes {
+            field = List.copyOf(field);
+            referenced = referenced.stream().<List<Integer>>map(List::copyOf).toList();
+            fillToFix = fillToFix.stream().<List<Integer>>map(List::copyOf).toList();
         }
     }
 
@@ -642,6 +729,10 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         request.put("model", header.model());
         request.put("locale", header.locale());
         header.clock().ifPresent(clock -> request.put("clock", clock));
+        header.observe().ifPresent(observe -> {
+            ArrayNode names = request.putArray("observe");
+            observe.forEach(names::add);
+        });
 
         ArrayNode rowNodes = root.putArray("rows");
         for (Row row : rows) {
@@ -749,6 +840,15 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         message.referenced().forEach(referenced::add);
         ArrayNode fillToFix = messageNode.putArray("fillToFix");
         message.fillToFix().forEach(fillToFix::add);
+        // Last and only when asked for, so a request that does not name `repetitionIndexes` keeps its bytes.
+        message.repetitionIndexes().ifPresent(indexes -> {
+            ObjectNode node = messageNode.putObject("repetitionIndexes");
+            indexes.field().forEach(node.putArray("field")::add);
+            ArrayNode referencedIndexes = node.putArray("referenced");
+            indexes.referenced().forEach(vector -> vector.forEach(referencedIndexes.addArray()::add));
+            ArrayNode fillToFixIndexes = node.putArray("fillToFix");
+            indexes.fillToFix().forEach(vector -> vector.forEach(fillToFixIndexes.addArray()::add));
+        });
     }
 
     private static void write(ObjectNode node, Fault fault) {

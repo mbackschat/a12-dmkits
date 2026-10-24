@@ -36,11 +36,7 @@ class KernelProbeParallelIterationPointerTest {
         assertFalse(Class.forName(KERNEL_POINTER_IMPL).desiredAssertionStatus(),
             "the kernel's pointer assertion must be off, as in the probe's own JVM, or -6 is unreachable")
 
-        val fired = listOf(
-            "SLOTS_BESIDE_PICK @ /Order[1]/Lines[1]/Slots OMISSION_ERROR" +
-                " referenced=[/Order[1]/Lines[1]/Slots[-6]/Mark, /Order[1]/Lines[1]/Slots[-6]/SlotNo," +
-                " Order/Picks/LineNo, Order/Picks/Ref]" +
-                " fillToFix=[/Order[1]/Lines[1]/Slots[-6]/Mark, /Order[1]/Lines[1]/Slots[-6]/SlotNo]")
+        val fired = listOf(fired)
         assertEquals(
             mapOf("noSlot" to fired, "twoSlots" to fired, "noRef" to emptyList()).mapValues { (_, messages) ->
                 ENGINES.associateWith { messages } },
@@ -52,7 +48,7 @@ class KernelProbeParallelIterationPointerTest {
 
     /**
      * The error pointer's own level, which the published `field` cannot show: its house form drops the last
-     * coordinate (CLI-CONFORMANCE-GAPS CG24), so the lossless key is read off the dynamic-Groovy pointer
+     * coordinate (KERNEL-PROBE-SPEC §4), so the lossless key is read off the dynamic-Groovy pointer
      * instead. A kernel lock only: it never reaches our pointer factory, so it is no part of the regression
      * guard above.
      */
@@ -63,7 +59,48 @@ class KernelProbeParallelIterationPointerTest {
             listOf("noSlot", "twoSlots").associateWith { RuntimeLaws.jsonMessages(model, DOCUMENTS.getValue(it)).map { m -> m.key() } })
     }
 
+    /**
+     * With `repetitionIndexes` requested, each address carries the kernel's own coordinates beside the string
+     * that cannot hold them: the error field's `-5` at the group's own level, which its house form drops, and
+     * the `-6` on the joined slot's references (KERNEL-PROBE-SPEC §4). The strings are those the default
+     * request publishes, so the coordinates add to the message without changing it; the request records what it
+     * observed, because the coordinates' presence is not otherwise visible from the request block.
+     */
+    @Test
+    fun theRequestedCoordinatesKeepTheGroupsOwnLevelAndTheParallelIndex() {
+        val indexed = RuntimeProbeComparison.probe(dir, "parallel-iteration-indexed", model,
+            """["validateFull", "repetitionIndexes"]""", mapOf("noSlot" to DOCUMENTS.getValue("noSlot")))
+        val message = indexed.path("rows").single().path("engines").map { it.path("messages").single() }
+
+        assertEquals(
+            ENGINES.associateWith {
+                mapOf(
+                    "field" to "[1,1,-5]",
+                    "referenced" to "[[1,1,-6,1],[1,1,-6,1],[1,1,1],[1,1,1]]",
+                    "fillToFix" to "[[1,1,-6,1],[1,1,-6,1]]",
+                    "strings" to fired)
+            },
+            ENGINES.zip(message).associate { (engine, m) ->
+                val indexes = m.path("repetitionIndexes")
+                engine to mapOf(
+                    "field" to indexes.path("field").toString(),
+                    "referenced" to indexes.path("referenced").toString(),
+                    "fillToFix" to indexes.path("fillToFix").toString(),
+                    "strings" to render(m))
+            },
+        )
+        assertEquals("""["validateFull","repetitionIndexes"]""", indexed.path("request").path("observe").toString())
+        assertFalse(artifact.path("request").has("observe"), "a default request records no observations")
+        assertFalse(artifact.path("rows").first().path("engines").first().path("messages").first()
+            .has("repetitionIndexes"), "a default request publishes no coordinates")
+    }
+
     internal companion object {
+
+        val fired = "SLOTS_BESIDE_PICK @ /Order[1]/Lines[1]/Slots OMISSION_ERROR" +
+            " referenced=[/Order[1]/Lines[1]/Slots[-6]/Mark, /Order[1]/Lines[1]/Slots[-6]/SlotNo," +
+            " Order/Picks/LineNo, Order/Picks/Ref]" +
+            " fillToFix=[/Order[1]/Lines[1]/Slots[-6]/Mark, /Order[1]/Lines[1]/Slots[-6]/SlotNo]"
 
         const val KERNEL_POINTER_IMPL = "com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointerImpl"
 
