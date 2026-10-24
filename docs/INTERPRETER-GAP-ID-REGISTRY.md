@@ -21,6 +21,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
 | IAG15 <a id="iag15"></a> | shipped | cross-check the two published message-address projections without adding interpreter API |
+| IAG16 <a id="iag16"></a> | deferred | kernel negatives other than `-5` and `-6` on a message pointer are refused unmeasured |
 | IG148 <a id="ig148"></a> | shipped → [IF323](INTERPRETER-FINDINGS.md#if323) | the rule-message `$#…$` group parameter is not implemented and renders verbatim |
 | IG149 <a id="ig149"></a> | shipped → [IF327](INTERPRETER-FINDINGS.md#if327) | the fragment runtime completion is measured only on the four conventional formats, and the kind admits all twelve |
 | IG150 <a id="ig150"></a> | out-of-scope | the two form-line message parameters render verbatim, and both kernel strategies fault on them |

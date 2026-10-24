@@ -128,6 +128,10 @@ The adapters preserve factory lookup and lifecycle, stored/display mode, effecti
 
 **Acceptance:** the compatibility artifact is separately licensed EUPL-1.2, contains no Kernel implementation bytecode, performs no Kernel evaluation, adds no adapter work to the no-customization path, and preserves every used callback's observable invocation and result behavior.
 
+### IAG16 — kernel negatives other than `-5` and `-6` on a message pointer are refused unmeasured <a id="iag16"></a>
+
+`A12PartiallyKnownMultiPointer.of` refuses every negative index except `UNKNOWN` (`-5`) and `PARALLEL_ITERATION` (`-6`). A12's production runtime enforces no index domain on its message pointer, since the check is a bare `assert`. Its own documentation also says return values "should usually not contain" `-6`, and `-6` was then measured on a message ([KF607](KERNEL-FINDINGS.md#kf607)). So the same sentence's `SEMANTIC_INDEX` (`-4`), and `REP_NOT_UNQ_REF_LEVEL_HAS_TO_BE_REPLACED` (`-7`, a referenced-field level of `RepetitionNotUnique`), may reach a message too. A reader would then refuse it, and the kernel probe would fault the whole row. Admission stays measured-only, because admitting a value no message has been seen to carry would invent a domain. **Re-open when** a candidate carrier is measured with assertions off. The candidates are a semantic-index read whose key matches no row, and `RepetitionNotUnique` where no repetition is erroneous. Either one carrying the value would be admitted the way `-6` was.
+
 ## 3. Out of scope
 
 - **Kernel-generated evaluator execution or translation.** The interpreter remains clean-room and kernel-free.

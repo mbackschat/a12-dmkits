@@ -35,11 +35,13 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
  *     need to check the length of both lists, as we only construct valid instances" — and would then throw
  *     inside a `try` whose `catch` asserts the throw is impossible. We enforce the invariant that comment claims.
  *  2. **A negative other than `-5` and `-6` is rejected outright.** The kernel expresses that rule as a bare
- *     Java `assert` admitting `-5` alone, so it binds under `-ea` (our test JVMs) and is silently absent in
- *     production. Its own comment says the assertion exists so the javadoc can be adapted if the set ever
- *     widens, and the set has widened without that: a keyed group target beside a join puts `-6` on the message
- *     (kf607), which under `-ea` makes A12's own accessor raise. We admit the documented set plus that measured
- *     production value, and nothing else. `A12PointerKernelDomainDiffTest` measures both against the real
+ *     Java `assert` admitting `-5` alone, so it binds under `-ea` (most of our test JVMs) and is silently
+ *     absent in production. Its own comment says the assertion exists so the javadoc can be adapted if the set
+ *     ever widens, and A12's own runtime has widened it without that: on the one measured carrier, a rule
+ *     reporting on a keyed group inside a group joined on another key, `-6` reaches the message's references
+ *     (kf607), and under `-ea` A12's own accessor raises on it. We admit the documented set plus that measured
+ *     production value, and nothing else; whether `-4` or `-7` also reach a message is unmeasured
+ *     (INTERPRETER-API-GAPS IAG16). `A12PointerKernelDomainDiffTest` measures both against the real
  *     factory.
  *
  * Every other admission decision is measured against the owner factory rather than derived — in particular the
@@ -124,10 +126,10 @@ class A12PartiallyKnownMultiPointer private constructor(
         const val UNKNOWN: Int = -5
 
         /**
-         * `IIdentifier.PARALLEL_ITERATION`, source-verified as `-6` in kernel 30.8.1: a level repeated in
-         * parallel across joined groups. A12 documents it as a template value that return values "should usually
-         * not contain", and yet a rule reporting on a keyed group beside a join carries it on its message
-         * pointer (kf607), so a message reader must be able to hold it.
+         * `IIdentifier.PARALLEL_ITERATION`, source-verified as `-6` in kernel 30.8.1: "a level that is repeated
+         * parallel in independent groups". A12 says return values "should usually not contain" it, and yet on
+         * the measured carrier, a rule reporting on a keyed group inside a group joined on another key, it
+         * reaches the message's references (kf607), so a message reader must be able to hold it.
          */
         const val PARALLEL_ITERATION: Int = -6
 

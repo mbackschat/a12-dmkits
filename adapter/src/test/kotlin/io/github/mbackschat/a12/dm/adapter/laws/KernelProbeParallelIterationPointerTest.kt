@@ -28,8 +28,8 @@ class KernelProbeParallelIterationPointerTest {
 
     /**
      * The whole message survives, `-6` included: the error field, its type, and both reference lists, on both
-     * strategies. `noRef` is the control that never faulted, so a probe that dropped the row instead of the
-     * pointer would still fail it.
+     * strategies. The regression guard: before the fix both firing rows faulted. `noRef` is the liveness
+     * control, showing that the message depends on the pick's `Ref`.
      */
     @Test
     fun theProbePublishesTheParallelIterationIndexInsteadOfFaulting() {
@@ -52,15 +52,18 @@ class KernelProbeParallelIterationPointerTest {
 
     /**
      * The error pointer's own level, which the published `field` cannot show: its house form drops the last
-     * coordinate (CLI-CONFORMANCE-GAPS CG24), so the lossless key is read off the kernel's pointer instead.
+     * coordinate (CLI-CONFORMANCE-GAPS CG24), so the lossless key is read off the dynamic-Groovy pointer
+     * instead. A kernel lock only: it never reaches our pointer factory, so it is no part of the regression
+     * guard above.
      */
     @Test
     fun theErrorPointerLeavesTheGroupsOwnLevelUnknown() {
-        assertEquals(listOf("/Order[1]/Lines[1]/Slots[-5]"),
-            RuntimeLaws.jsonMessages(model, DOCUMENTS.getValue("noSlot")).map { it.key() })
+        assertEquals(mapOf("noSlot" to listOf("/Order[1]/Lines[1]/Slots[-5]"),
+                "twoSlots" to listOf("/Order[1]/Lines[1]/Slots[-5]")),
+            listOf("noSlot", "twoSlots").associateWith { RuntimeLaws.jsonMessages(model, DOCUMENTS.getValue(it)).map { m -> m.key() } })
     }
 
-    private companion object {
+    internal companion object {
 
         const val KERNEL_POINTER_IMPL = "com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointerImpl"
 

@@ -438,6 +438,20 @@ class GateTierWiringTest {
     }
 
     /**
+     * The kernel probe and the one class locking what it publishes run with assertions OFF, and must agree:
+     * with them on, A12 cannot read back a message carrying its own parallel-iteration index (KERNEL-FINDINGS
+     * kf607), so a probe flipped to -ea dies on those rows while its lock, still assertion-free, stays green.
+     */
+    @Test
+    void theKernelProbeAndItsLockShareTheAssertionFreeSetting() throws IOException {
+        String build = Files.readString(locate("adapter/build.gradle"));
+        for (String task : List.of("kernelProbe", "kernelProbeProductionAssertionsTest")) {
+            assertTrue(taskBlock(build, "tasks.register('" + task + "'").contains("enableAssertions = false"),
+                    task + " must declare enableAssertions = false");
+        }
+    }
+
+    /**
      * A guard cheap enough that dropping it saves nothing must never be behind {@code -Pfast}, in ANY module.
      *
      * <p><b>The incident this exists for.</b> Every guard prerequisite of the root {@code test} task used to sit

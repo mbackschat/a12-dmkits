@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 
 /**
  * The two A12 addressing domains are separate types, and neither leaks into the other.
@@ -117,8 +119,8 @@ class A12PointerDomainTest {
         val pointer = A12PartiallyKnownMultiPointer.of("/Plan/Demand", repetitions)
         repetitions[1] = 99
         assertEquals(listOf(1, -5), pointer.repetitionIndexes)
-        // -1 is IIdentifier.ITERATION and -4 SEMANTIC_INDEX, template placeholders a message has not been
-        // measured to carry; -7 names nothing.
+        // -1 is IIdentifier.ITERATION, -4 SEMANTIC_INDEX and -7 REP_NOT_UNQ_REF_LEVEL_HAS_TO_BE_REPLACED, none of
+        // them measured on a message (INTERPRETER-API-GAPS IAG16).
         listOf(-1, -4, -7).forEach { placeholder ->
             assertFailsWith<IllegalArgumentException> {
                 A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1, placeholder))
@@ -131,7 +133,8 @@ class A12PointerDomainTest {
 
     /**
      * `IIdentifier.PARALLEL_ITERATION` is a message-pointer value, because A12's runtime emits it on one
-     * (KERNEL-FINDINGS kf607). Like `-5` it resolves to no row, so the value names no exact pointer.
+     * (KERNEL-FINDINGS kf607). Like `-5` it resolves to no row, so the value names no exact pointer, and both
+     * renderings write it where they write any coordinate.
      */
     @Test
     fun thePartiallyKnownPointerHoldsTheParallelIterationIndexA12Emits() {
@@ -139,6 +142,10 @@ class A12PointerDomainTest {
         val reported = A12PartiallyKnownMultiPointer.of("/Order/Lines/Slots/SlotNo", listOf(1, 1, -6, 1))
         assertEquals(listOf(1, 1, -6, 1), reported.repetitionIndexes)
         assertNull(reported.toExactPointer())
+        assertEquals("/Order[1]/Lines[1]/Slots[-6]/SlotNo",
+            formatPointer(reported.fullName, reported.repetitionIndexes))
+        assertEquals("/Order[1]/Lines[1]/Slots[-6]/SlotNo[1]",
+            pointerComparisonKey(reported.fullName, reported.repetitionIndexes))
     }
 
     /**

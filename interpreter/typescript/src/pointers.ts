@@ -42,7 +42,7 @@ export interface A12Pointer {
  *
  * Its indexes admit {@link A12PartiallyKnownMultiPointer.WILDCARD} at any part,
  * {@link A12PartiallyKnownMultiPointer.UNKNOWN} for a level that matched no row, and
- * {@link A12PartiallyKnownMultiPointer.PARALLEL_ITERATION}, which A12's runtime leaves on a joined level.
+ * {@link A12PartiallyKnownMultiPointer.PARALLEL_ITERATION}, which A12's runtime can leave on a parallel level.
  *
  * **There is no pointer string for this type.** A12 defines neither a parser nor a renderer for one, so this
  * package publishes the owner's value and the owner's operations and nothing else.
@@ -153,8 +153,9 @@ export const A12PartiallyKnownMultiPointer = Object.freeze({
   UNKNOWN: bridge.interpreterBridgeA12PartiallyKnownUnknown() as number,
 
   /**
-   * `IIdentifier.PARALLEL_ITERATION` — a level repeated in parallel across joined groups. A12 documents it as an
-   * internal value, yet its runtime leaves it on the references of a rule reporting on a keyed group beside a join.
+   * `IIdentifier.PARALLEL_ITERATION` — a level repeated in parallel across joined groups. A12 says return values
+   * should usually not contain it, yet it reaches the references of a rule reporting on a keyed group inside a
+   * group joined on another key.
    */
   PARALLEL_ITERATION: bridge.interpreterBridgeA12PartiallyKnownParallelIteration() as number,
 
@@ -171,8 +172,8 @@ export const A12PartiallyKnownMultiPointer = Object.freeze({
   /**
    * `toDocumentPointer()` — the exact pointer when this message pointer is one, else `null`.
    *
-   * `null` is a legitimate answer, not a failure: a wildcard above the last part, or an unknown index anywhere,
-   * names a set or an unresolved level rather than one cell. The **root** raises instead of answering, which is
+   * `null` is a legitimate answer, not a failure: a wildcard above the last part, or a negative index (unknown
+   * or parallel iteration) anywhere, names a set or an unresolved level rather than one cell. The **root** raises instead of answering, which is
    * A12's own measured behaviour for that edge rather than a choice made here.
    */
   toExactPointer(pointer: A12PartiallyKnownMultiPointer): A12Pointer | null {

@@ -14727,11 +14727,11 @@ So a shift's result is typed as its date operand, a stamp keeping its clock, and
 
 *Locked by:* `adapter.laws.CheckerShiftedDateComparisonAgreementTest` (every row above, A12 pinned and the checker agreeing).
 
-## §9 supplement — A12 leaves `PARALLEL_ITERATION` (`-6`) on the references of a rule reporting on a keyed group beside a join, and its own assertion refuses that value (kernel runtime, 2026-10-24) <a id="kf607"></a>
+## §9 supplement — A12 leaves `PARALLEL_ITERATION` (`-6`) on the references of a rule reporting on a keyed group inside a group joined on another key, and its own assertion refuses that value (kernel runtime, 2026-10-24) <a id="kf607"></a>
 
 > Fold: pending — beside [KF603](#kf603)'s keyed group target and §9's frame account.
 
-On [KF603](#kf603)'s order, a rule at `/Order` reporting on the `SlotNo`-keyed `Lines/Slots` under `GroupNotFilled(Lines/Slots) And FieldFilled(Picks/Ref)`, `Picks` joined to `Lines` on `LineNo`. Both strategies agree on every row; assertions off, as in production.
+On [KF603](#kf603)'s order, a rule at `/Order` reports on `Lines/Slots`, keyed by `SlotNo`, under `GroupNotFilled(Lines/Slots) And FieldFilled(Picks/Ref)`; `Lines` is joined to `Picks` on `LineNo`. Assertions are off, as in production. Both strategies publish the same messages on every row; the error pointer's last coordinate, which the published address drops ([CG24](CLI-CONFORMANCE-GAPS.md#cg24)), is read off the dynamic-Groovy pointer.
 
 | document | A12 |
 |---|---|
@@ -14739,6 +14739,8 @@ On [KF603](#kf603)'s order, a rule at `/Order` reporting on the `SlotNo`-keyed `
 | line A with slots `1` and `2`, its pick with `Ref` | the same message |
 | line A without slots, its pick without `Ref` | none |
 
-`IIdentifier` documents `-6` as a value return values "should usually not contain", and `PartiallyKnownDocumentMultiPointerImpl.checkValidity` asserts every negative index is `-5` (source-read). So under `-ea` the referenced pointers cannot be read at all: `getReferencedFieldsPointers()` raises `AssertionError: The repetition indexes are only expected to be >= 0 or -5`. Every adapter test JVM runs `-ea`, so no differential there can observe this message; the kernel probe runs without it.
+`IIdentifier` says return values "should usually not contain" `-6`, and `PartiallyKnownDocumentMultiPointerImpl.checkValidity` asserts that every negative index is `-5` (source-read). So with assertions on, reading the message's references raises `AssertionError: The repetition indexes are only expected to be >= 0 or -5`, and a kernel-probe run dies before it writes an artifact. Every adapter test task except the one locking this runs `-ea`.
 
-*Locked by:* `adapter.laws.KernelProbeParallelIterationPointerTest`, run by its own assertion-free task `:adapter:kernelProbeProductionAssertionsTest` (the rows above, as the probe publishes them), and `…A12PointerKernelDomainDiffTest.weAdmitTheParallelIterationIndexA12EmitsDespiteItsOwnAssertion` (the factory under both assertion modes).
+Measured on this one carrier: a group target whose key, `SlotNo`, differs from the join's `LineNo`. A target keyed by the join's own key, a field error entity, and other conditions are unmeasured.
+
+*Locked by:* `adapter.laws.KernelProbeParallelIterationPointerTest`, run by its own assertion-free task `:adapter:kernelProbeProductionAssertionsTest` (the rows above, as the probe publishes them, and the error pointer's last coordinate on both firing rows); `…ParallelIterationAssertionLawsTest` (the `-ea` raise, and the probe run dying); and `…A12PointerKernelDomainDiffTest.weAdmitTheParallelIterationIndexA12EmitsDespiteItsOwnAssertion` (the factory under both assertion modes).

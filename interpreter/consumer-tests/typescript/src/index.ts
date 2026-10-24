@@ -275,8 +275,15 @@ if (!Object.isFrozen(errorCell) || !Object.isFrozen(errorCell.repetitionIndexes)
 }
 if (A12PointerFormat.LAST_PART_ZERO !== 0 ||
     A12PartiallyKnownMultiPointer.WILDCARD !== 0 ||
-    A12PartiallyKnownMultiPointer.UNKNOWN !== -5) {
+    A12PartiallyKnownMultiPointer.UNKNOWN !== -5 ||
+    A12PartiallyKnownMultiPointer.PARALLEL_ITERATION !== -6) {
   throw new Error("the pointer types do not publish A12's reserved repetitions");
+}
+// A12's runtime leaves its parallel-iteration index on some message references, so a reader must hold it.
+const parallel = A12PartiallyKnownMultiPointer.of("/Order/Lines/Slots/SlotNo", [1, 1, -6, 1]);
+if (parallel.repetitionIndexes.join(",") !== "1,1,-6,1" ||
+    A12PartiallyKnownMultiPointer.toExactPointer(parallel) !== null) {
+  throw new Error("a message pointer with A12's parallel-iteration index did not read as unresolved");
 }
 // The two domains really are different: the unknown index is a message value and nothing else.
 const unresolved = A12PartiallyKnownMultiPointer.of("/Plan/Demand/Headcount", [1, -5, 1]);

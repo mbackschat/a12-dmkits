@@ -338,7 +338,7 @@
         "field": {
           "type": "string",
           "format": "a12-message-address",
-          "description": "the offending field's address (`IMessage.getErrorFieldPointer`). Canonical A12 pointer — no leading slash, `[1]` omitted — exactly when the address names ONE cell; otherwise, when it carries a wildcard or a level that matched no row, the interpreter house form (`/Order[1]/Items[0]/Quantity`), because A12 defines no pointer string for such a value. Test the leading slash to tell them apart."
+          "description": "the offending field's address (`IMessage.getErrorFieldPointer`). Canonical A12 pointer — no leading slash, `[1]` omitted — exactly when the address names ONE cell; otherwise, when it carries a wildcard, a level that matched no row (`-5`) or a parallel-iteration level (`-6`), the interpreter house form (`/Order[1]/Items[0]/Quantity`), because A12 defines no pointer string for such a value. The house form omits the last coordinate. Test the leading slash to tell them apart."
         },
         "severity": {
           "enum": ["ERROR", "WARNING", "INFO"],
