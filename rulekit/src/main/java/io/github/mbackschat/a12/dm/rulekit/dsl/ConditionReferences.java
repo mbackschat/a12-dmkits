@@ -1,10 +1,11 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
-import io.github.mbackschat.a12.dm.core.EntityPaths;
+import io.github.mbackschat.a12.dm.predicates.ReferenceReachPredicatesKt;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * The field and group paths a {@link Condition} references — collected by exhaustive switch over
@@ -38,6 +39,18 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         Refs refs = new Refs();
         collect(condition, refs);
         return new ConditionReferences(refs.fields, refs.groups);
+    }
+
+    /**
+     * The references A12 counts as the rule's OWN when it asks whether the error entity is referenced: every read
+     * outside a {@code Having} filter's body, and a read inside one only when it carries the {@code $} marker. A12
+     * keeps a reference made with the filter flag on only when it is marked, so a target read only in an unmarked
+     * body draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} (KERNEL-FINDINGS KF488, {@code dsl.FilterBodyErrorReferenceTest}).
+     */
+    public static ConditionReferences rulesOwn(Condition condition) {
+        Refs refs = new Refs();
+        collect(condition, refs);
+        return new ConditionReferences(refs.ownFields, refs.ownGroups);
     }
 
     /** The references of a value expression — e.g. a computation slot's {@code operation}. */
@@ -78,25 +91,50 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
 
     /**
      * The channels one traversal fills. {@code projected} is a subset of {@code fields}: a projected read
-     * is still a reference to its underlying field.
+     * is still a reference to its underlying field. {@code ownFields}/{@code ownGroups} are the subsets
+     * {@link #rulesOwn} answers with: a read inside a filter body joins them only when it is marked.
      */
     private static final class Refs {
         private final Set<String> fields = new LinkedHashSet<>();
         private final Set<String> groups = new LinkedHashSet<>();
         private final Set<String> projected = new LinkedHashSet<>();
+        private final Set<String> ownFields = new LinkedHashSet<>();
+        private final Set<String> ownGroups = new LinkedHashSet<>();
+        private boolean inFilterBody;
 
-        void field(String path) {
-            fields.add(path);
+        void field(FieldRef ref) {
+            field(ref.path().value(), ref.correlated());
         }
 
-        void group(String path) {
+        void field(String path, boolean marked) {
+            fields.add(path);
+            if (own(marked)) {
+                ownFields.add(path);
+            }
+        }
+
+        void group(String path, boolean marked) {
             groups.add(path);
+            if (own(marked)) {
+                ownGroups.add(path);
+            }
         }
 
         /** A field read through a semantic index or an enum category — a reference AND a projection. */
-        void projectedField(String path) {
-            fields.add(path);
+        void projectedField(String path, boolean marked) {
+            field(path, marked);
             projected.add(path);
+        }
+
+        private boolean own(boolean marked) {
+            return !inFilterBody || marked;
+        }
+
+        void filterBody(Condition filter) {
+            boolean enclosing = inFilterBody;
+            inFilterBody = true;
+            collect(filter, this);
+            inFilterBody = enclosing;
         }
 
         ReadMode readModeOf(String fieldPath) {
@@ -107,21 +145,16 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         }
     }
 
-    /** Whether {@code fieldPath} is referenced directly or lies under a referenced group. */
-    public boolean covers(String fieldPath) {
-        return fieldPaths.contains(fieldPath)
-                || groupPaths.stream().anyMatch(g -> EntityPaths.isStrictlyInside(fieldPath, g));
-    }
-
     /**
-     * Whether a rule reporting on the group {@code groupPath} references it: the group itself or a group
-     * enclosing it is named. A field inside it is not enough — with {@code Lines/Parts} as the error entity,
-     * {@code FieldFilled(Lines/Parts/PartNo)} draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} while
+     * Whether the condition references the entity at {@code path}, a field or a group: it names that entity or a
+     * group enclosing it. A field inside a group target is not enough — with {@code Lines/Parts} as the error
+     * entity, {@code FieldFilled(Lines/Parts/PartNo)} draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} while
      * {@code GroupFilled(Lines)} is admitted (KERNEL-FINDINGS KF324 and KF601, {@code dsl.RuleGroupErrorEntityTest}).
+     * The relation is the portable checker's too, so both consume the one statement of it in {@code :predicates}.
      */
-    public boolean coversGroup(String groupPath) {
-        return groupPaths.contains(groupPath)
-                || groupPaths.stream().anyMatch(g -> EntityPaths.isStrictlyInside(groupPath, g));
+    public boolean covers(String path) {
+        return Stream.concat(fieldPaths.stream(), groupPaths.stream())
+                .anyMatch(reference -> ReferenceReachPredicatesKt.referenceReaches(reference, path));
     }
 
     /**
@@ -154,7 +187,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
 
     private static void collect(Condition condition, Refs refs) {
         switch (condition) {
-            case FieldPresenceCondition f -> refs.field(f.field().path().value());
+            case FieldPresenceCondition f -> refs.field(f.field());
             case EntityListPredicate p -> p.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ComparisonCondition c -> {
                 collect(c.left(), refs);
@@ -164,7 +197,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(l.left(), refs);
                 collect(l.right(), refs);
             }
-            case GroupPresenceCondition g -> refs.group(g.group().path().value());
+            case GroupPresenceCondition g -> refs.group(g.group().path().value(), g.outer());
             // RuleGroup is the rule's OWN group; its path is unknown here (no rule context), so it
             // contributes no concrete reference. Rule.deferredChecks() treats it as covering the error
             // field via referencesRuleGroup(...) below (the field is always under the rule's group).
@@ -173,8 +206,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case IndexedGroupPresenceCondition p -> collectIndexedGroup(p.group(), refs);
             case GroupListPredicate p -> p.operands().forEach(operand -> {
                 switch (operand) {
-                    case FieldRef field -> refs.field(field.path().value());
-                    case GroupListRef scope -> refs.group(scope.path());
+                    case FieldRef field -> refs.field(field);
+                    case GroupListRef scope -> refs.group(scope.path(), scope.correlated());
                     case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
                     case IndexedFieldValue indexed -> collect(indexed, refs);
                 }
@@ -198,18 +231,18 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produced a false advisory
             // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
             case RepetitionNotUniqueCondition r -> {
-                r.keys().forEach(k -> refs.field(k.path().value()));
-                r.scope().ifPresent(s -> refs.group(s.path().value()));
+                r.keys().forEach(refs::field);
+                r.scope().ifPresent(s -> refs.group(s.path().value(), false));
             }
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
             case DateValidity v -> collect(v.dateConstruct(), refs);
-            case CustomTypeValidity v -> refs.field(v.field().path().value());
+            case CustomTypeValidity v -> refs.field(v.field());
         }
     }
 
     private static void collect(Calculation calculation, Refs refs) {
         switch (calculation) {
-            case FieldValue v -> refs.field(v.field().path().value());
+            case FieldValue v -> refs.field(v.field().path().value(), v.outer());
             case LengthOf l -> collectOperand(l.field(), refs);
             case NumberLiteral n -> { }
             case StringLiteral s -> { }
@@ -218,10 +251,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case DateTimeLiteral dt -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
-            case EnumCategoryAccess c -> refs.projectedField(c.field().path().value());
+            case EnumCategoryAccess c -> refs.projectedField(c.field().path().value(), c.outer());
             case CountAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
-            case CurrentRepetition r -> refs.group(r.group().path().value());
+            case CurrentRepetition r -> refs.group(r.group().path().value(), r.outer());
             case Today ignored -> { }
             case Now ignored -> { }
             case BaseYear ignored -> { }
@@ -233,14 +266,14 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(s.date(), refs);
                 collect(s.amount(), refs);
             }
-            case SemanticIndexValue v -> refs.projectedField(v.field().path().value());
+            case SemanticIndexValue v -> refs.projectedField(v.field().path().value(), v.field().correlated());
             case SemanticIndexFieldValue v -> {
-                refs.projectedField(v.field().path().value());
+                refs.projectedField(v.field().path().value(), v.field().correlated());
                 // The KEY counts as projected too — measured, not assumed: a computation whose operation reads
                 // `[Legs/LegRef For <computedField>]` draws MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD,
                 // not the plain class, so the kernel matches the calculated field against the key as well
                 // (KF182; ComputedTargetProjectedReadLawsTest).
-                refs.projectedField(v.indexField().path().value());
+                refs.projectedField(v.indexField().path().value(), v.indexField().correlated());
             }
             case Arithmetic a -> {
                 collect(a.left(), refs);
@@ -250,11 +283,11 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case Concatenation c -> c.parts().forEach(p -> collect(p, refs));
             case DateListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, refs));
-            case FieldValueAsString c -> refs.field(c.field().path().value());
+            case FieldValueAsString c -> refs.field(c.field());
             case IndexedFieldValueAsString c -> collect(c.index(), refs);
-            case RangeAsString c -> refs.field(c.field().path().value());
-            case FieldValueAsNumber c -> refs.field(c.field().path().value());
-            case RangeAsNumber c -> refs.field(c.field().path().value());
+            case RangeAsString c -> refs.field(c.field());
+            case FieldValueAsNumber c -> refs.field(c.field());
+            case RangeAsNumber c -> refs.field(c.field());
             case OpListMath m -> m.operands().forEach(o -> collect(o, refs));
             case NumberOfValueInFields n -> {
                 collect(n.value(), refs);
@@ -262,7 +295,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             }
             case ValueAsDate v -> {
                 switch (v.source()) {
-                    case FieldRef field -> refs.field(field.path().value());
+                    case FieldRef field -> refs.field(field);
                     case IndexedFieldValue indexed -> collect(indexed, refs);
                 }
             }
@@ -280,9 +313,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(dtc.date(), refs);
                 collect(dtc.time(), refs);
             }
-            case FieldRounding r -> refs.field(r.field().path().value());
+            case FieldRounding r -> refs.field(r.field());
             case DateRangeBound b -> collect(b.source(), refs);
-            case RootGroupCount c -> refs.group(c.rootGroup().path().value());
+            case RootGroupCount c -> refs.group(c.rootGroup().path().value(), false);
             case DateRangeConstruction dr -> {
                 collect(dr.start(), refs);
                 collect(dr.end(), refs);
@@ -295,7 +328,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collectAggregateOperand(AggregateOperand op, Refs refs) {
         switch (op) {
             case FieldOperand field -> collectOperand(field, refs);
-            case GroupListRef group -> refs.group(group.path());
+            case GroupListRef group -> refs.group(group.path(), group.correlated());
             case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
         }
     }
@@ -316,9 +349,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
      * can never participate in.
      */
     private static void collectIndexedGroup(IndexedGroupValue indexed, Refs refs) {
-        refs.group(indexed.group().path());
+        refs.group(indexed.group().path(), indexed.group().correlated());
         if (indexed instanceof GroupSemanticIndexFieldValue keyed) {
-            refs.field(keyed.indexField().path().value());
+            refs.field(keyed.indexField());
         }
     }
 
@@ -335,15 +368,15 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             collectFirstFilledOperand(list.firstFilledOperand(), refs);
             return;
         }
-        if (op instanceof EnumCategoryAccess) {
-            refs.projectedField(op.fieldPath());
+        if (op instanceof EnumCategoryAccess category) {
+            refs.projectedField(op.fieldPath(), category.outer());
         } else if (op instanceof SemanticIndexValue indexed) {
-            refs.projectedField(indexed.field().path().value());
+            refs.projectedField(indexed.field().path().value(), indexed.field().correlated());
         } else if (op instanceof SemanticIndexFieldValue indexed) {
             // Both halves projected, exactly as the value-expression switch above reads them: the kernel
             // matches a calculated field against the KEY as well as against the read (KF182).
-            refs.projectedField(indexed.field().path().value());
-            refs.projectedField(indexed.indexField().path().value());
+            refs.projectedField(indexed.field().path().value(), indexed.field().correlated());
+            refs.projectedField(indexed.indexField().path().value(), indexed.indexField().correlated());
         } else if (op instanceof IndexedGroupValue indexed) {
             collectIndexedGroup(indexed, refs);
         } else if (op instanceof GroupListRef group) {
@@ -351,12 +384,14 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // typecheck and read plausibly, and it would make `covers` blind to every field the kernel expands
             // the group to — the exact reachability-vs-exactness confusion that produced CG13-CG18 one layer up.
             // `covers` already walks `groupPaths` for containment, so this arm gets that for free.
-            refs.group(group.path());
+            refs.group(group.path(), group.correlated());
+        } else if (op instanceof FieldListRef list) {
+            refs.field(op.fieldPath(), list.correlated());
         } else {
-            refs.field(op.fieldPath());
+            refs.field(op.fieldPath(), op instanceof FieldRef field && field.correlated());
         }
         if (op instanceof FieldListRef list) {
-            list.filter().ifPresent(f -> collect(f, refs));
+            list.filter().ifPresent(refs::filterBody);
         }
     }
 
@@ -370,16 +405,20 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         boolean projected = operand.category().isPresent() || operand.semanticIndex().isPresent();
         operand.field().ifPresent(field -> {
             if (projected) {
-                refs.projectedField(field.fieldPath());
+                refs.projectedField(field.fieldPath(), operand.outerReference());
             }
             collectOperand(field, refs);
+            if (operand.outerReference()) {
+                // The operand keeps its marker on itself, not on the field it carries.
+                refs.field(field.fieldPath(), true);
+            }
         });
         operand.group().ifPresent(group -> {
-            refs.group(group.path());
-            operand.expandedGroupFields().forEach(field -> refs.field(field.path().value()));
+            refs.group(group.path(), group.correlated() || operand.outerReference());
+            operand.expandedGroupFields().forEach(field -> refs.field(field.path().value(), operand.outerReference()));
         });
         operand.semanticIndex().filter(FirstFilledOperand.FieldIndex.class::isInstance)
                 .map(FirstFilledOperand.FieldIndex.class::cast)
-                .ifPresent(index -> refs.projectedField(index.field().path().value()));   // the key, as above
+                .ifPresent(index -> refs.projectedField(index.field().path().value(), index.field().correlated()));   // the key, as above
     }
 }

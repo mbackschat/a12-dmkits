@@ -1365,7 +1365,7 @@
       }
     },
     "kf601": {
-     "sha256": "029a82ce4399d748a028d50e313d0271c5e53cf86325acca4504c9c6c76ae49d",
+     "sha256": "786d3f856b5434b93b27aaa4d89c8d931fc940838fe66ac0a5b0497f4e27fc74",
      "task": "SS3",
      "scope": {
       "dmkits": [
@@ -11090,7 +11090,7 @@
       }
     },
     "kf488": {
-      "sha256": "1853e71f12af8e8da9140f3c05f23263ac36673fb4033cf84dcadd0080267b29",
+      "sha256": "303d47812a56ae71c47af59260ad8494f0eab850c2821fa3c291f059725bbfd1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [

@@ -123,13 +123,17 @@ class RuleGroupErrorEntityTest {
         assertEquals(List.of(), rule.deferredChecks());
     }
 
-    /** The model-context lints read a field target's iteration, so a group target gets the condition's lints only. */
+    /**
+     * A group nested in a repeating group iterates as a field there does, so its unguarded negative is pre-warned
+     * where A12 refuses it (DEV-API-GAPS DG153; the guarded controls are {@code lint.GroupTargetLintParityTest}).
+     */
     @Test
-    void aGroupTargetGetsTheConditionLintsOnly() {
+    void aGroupTargetGetsTheIterationLintWhereA12RefusesItsNegative() {
         Rule rule = onParts(parts.notFilled());
-        Linter linter = new Linter();
 
-        assertEquals(linter.lint(rule.group().path() + "/" + rule.name(), rule.condition()), linter.lint(M, rule));
+        assertEquals(List.of("MVK_NEG_CONDITION_IN_ITERATION"), kernelCodes(rule));
+        assertEquals(List.of("RK_NEG_CONDITION_IN_ITERATION"),
+                new Linter().lint(M, rule).stream().map(d -> d.code().orElseThrow()).toList());
     }
 
     /**

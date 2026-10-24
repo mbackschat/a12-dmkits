@@ -17,8 +17,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  * construction ({@link #in(GroupRef)}), and {@code errorEntityRelPath} is computed from the
  * error-entity handle, a field or a group ({@link ErrorEntity}). {@link Builder#build()} hard-fails
  * only on completeness and rulekit's own structural invariants; the kernel-semantic
- * error-entity-referenced check ({@code MVK_ERROR_FIELD_NOT_REFERENCED}, the {@code covers()} and
- * {@code coversGroup()} heuristics) is <i>deferred</i> to the live kernel (F11) via
+ * error-entity-referenced check ({@code MVK_ERROR_FIELD_NOT_REFERENCED}, the {@code covers()}
+ * heuristic) is <i>deferred</i> to the live kernel (F11) via
  * {@link #deferredChecks()}, so a heuristic that drifts from a newer kernel can never be the sole
  * reason an accepted rule is reported corrupt.
  *
@@ -83,22 +83,19 @@ public record Rule(
      * advisory WARNINGs by {@link io.github.mbackschat.a12.dm.rulekit.lint.RuleDiagnostics}, and
      * suppressed there when the live kernel already ruled on the same {@code MVK_*} code.
      *
-     * <p>Currently one: the error entity referenced by the condition (the {@code covers()} heuristic for a
-     * field, {@code coversGroup()} for a group, which only approximate the kernel's
-     * {@code MVK_ERROR_FIELD_NOT_REFERENCED}). Completeness
+     * <p>Currently one: the error entity referenced by the condition (the {@code covers()} heuristic, which
+     * only approximates the kernel's
+     * {@code MVK_ERROR_FIELD_NOT_REFERENCED}), over the rule's own references: an unmarked read inside a
+     * {@code Having} body does not count, as it does not for A12 ({@link ConditionReferences#rulesOwn}). Completeness
      * pre-checks (name/condition/error-entity/code/severity/message) stay hard in {@code build()} —
      * they are rulekit's own API contract, and the validator masks {@code MVK_ERROR_MESSAGE_MISSING}
      * so the kernel can't arbitrate message presence — and the under-group placement check guards
      * rulekit's own relative-path math. Neither is deferred.
      */
     public List<Diagnostic> deferredChecks() {
-        ConditionReferences references = ConditionReferences.of(condition);
+        ConditionReferences references = ConditionReferences.rulesOwn(condition);
         String target = errorEntity.entityPath().value();
-        boolean referenced = switch (errorEntity) {
-            case FieldRef ignored -> references.covers(target);
-            case GroupRef ignored -> references.coversGroup(target);
-        };
-        if (referenced || ConditionReferences.referencesRuleGroup(condition)) {
+        if (references.covers(target) || ConditionReferences.referencesRuleGroup(condition)) {
             return List.of();
         }
         String kind = switch (errorEntity) {

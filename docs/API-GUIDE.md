@@ -1022,7 +1022,7 @@ Rule rule = M.rule(order).name("PartsCheck")
 rule.errorEntityRelPath();                            // "../Lines/Parts"
 ```
 
-What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group, deliberately stricter than A12 there ([FEATURE-GAPS §4](FEATURE-GAPS.md)), and the rule's own group, which A12 cannot build a model around. The model-context lints read a field target only.
+What references a group target differs from a field target, and `deferredChecks()` follows A12 on it ([KF601](KERNEL-FINDINGS.md#kf601)): the group itself or a group enclosing it references the target, but a field inside it does not, so a condition reading only `Lines/Parts/PartNo` reports `MVK_ERROR_FIELD_NOT_REFERENCED`. `build()` refuses a target outside the rule's group, deliberately stricter than A12 there ([FEATURE-GAPS §4](FEATURE-GAPS.md)), and the rule's own group, which A12 cannot build a model around. A read inside a `Having` body references the target only when it carries `$` (`outer()`), as for A12 ([KF488](KERNEL-FINDINGS.md#kf488)). The model-context lints treat a group target as a field one: a group nested in, or itself, a repeating group pre-warns an unguarded negative where A12 refuses it ([KF601](KERNEL-FINDINGS.md#kf601)).
 
 ### 4.2 Render → validate → emit
 

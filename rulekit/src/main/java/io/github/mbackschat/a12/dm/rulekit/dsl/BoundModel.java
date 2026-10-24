@@ -435,12 +435,14 @@ public final class BoundModel {
     }
 
     /**
-     * Whether a rule whose error entity is {@code errorFieldPath} <em>iterates</em> — i.e. a
-     * repeatable group lies on the path to it (the §5a error-field rule). The F4a lint layer uses
-     * this to pre-warn the kernel-delegated {@code MVK_NEG_CONDITION_IN_ITERATION}.
+     * Whether a rule whose error entity, a field or a group, is at {@code errorEntityPath} <em>iterates</em>: a
+     * repeatable group lies on the path to it (the §5a error-field rule), or it is itself a repeating group, which
+     * A12 guards at its own level as it guards a field's (KERNEL-FINDINGS KF601). The F4a lint layer uses this to
+     * pre-warn the kernel-delegated {@code MVK_NEG_CONDITION_IN_ITERATION}.
      */
-    public boolean iteratesForErrorField(String errorFieldPath) {
-        return nearestRepeatableAncestor(errorFieldPath).isPresent();
+    public boolean iteratesForErrorEntity(String errorEntityPath) {
+        return nearestRepeatableAncestor(errorEntityPath).isPresent()
+                || groupAt(errorEntityPath).filter(GroupInfo::repeating).isPresent();
     }
 
     /** Whether the group at {@code groupPath} itself repeats — the peer of {@link #nearestRepeatableAncestor}

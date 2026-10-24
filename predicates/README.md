@@ -13,6 +13,7 @@ Before this module existed, those two could share a law **only by each restating
 |---|---|
 | the reserved-namespace refusal | **three** copies existed, and they had already drifted apart |
 | A12's pattern-admission blacklist | **two** copies, disagreeing in *both* directions — `:core`'s `KernelPatternPolicy` against the checker's pattern family |
+| whether a reference reaches the error entity | **two** spellings, rulekit's `covers`/`coversGroup` pair against the checker's `reaches` (DEV-API-GAPS DG153) |
 
 Drift here is the expensive kind: each copy is individually plausible, every test passes, and the two products quietly disagree about what A12 accepts.
 
@@ -24,6 +25,7 @@ It is the one place either side can reach. A law lives here as a plain function 
 |---|---|---|
 | `isReservedElementName` | [`Rule`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Rule.java), [`Computation`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Computation.java) | the checker's declaration-slot family |
 | `kernelPatternBlacklist` | [`KernelPatternPolicy`](../core/src/main/java/io/github/mbackschat/a12/dm/core/KernelPatternPolicy.java) | the checker's pattern-admission and comparison families |
+| `referenceReaches` | [`ConditionReferences`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/ConditionReferences.java), behind `Rule`'s deferred reference check | the checker's error-field-reference family |
 
 Being reachable from both is the *whole* requirement, and it is what forces the module's shape: Kotlin Multiplatform, so the JVM kits and the JS checker both resolve it, and every function pure and side-effect-free, so neither caller inherits a dependency or a lifecycle.
 

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.referenceReaches
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
@@ -146,7 +147,7 @@ private fun namesRuleContextIn(kind: String, body: JsonObject?, language: Condit
 /** Whether this condition reference resolves to [target] or to a group containing it. */
 internal fun ConditionReference.reaches(target: String): Boolean {
     val resolved = (this.target as? Reference.Resolved)?.path ?: return false
-    return resolved == target || target.startsWith("$resolved/")
+    return referenceReaches(resolved, target)
 }
 
 /**

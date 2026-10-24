@@ -644,7 +644,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groupAt(java.lang.String)
   public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groups()
   public boolean isRepeatingGroup(java.lang.String)
-  public boolean iteratesForErrorField(java.lang.String)
+  public boolean iteratesForErrorEntity(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr latestDateTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr latestOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr latestTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
@@ -884,7 +884,6 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
   public ConditionReferences(java.util.Set<java.lang.String>, java.util.Set<java.lang.String>)
   public boolean covers(java.lang.String)
-  public boolean coversGroup(java.lang.String)
   public final boolean equals(java.lang.Object)
   public java.util.Set<java.lang.String> fieldPaths()
   public java.util.Set<java.lang.String> groupPaths()
@@ -895,6 +894,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode readMode(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public boolean referencesField(java.lang.String)
   public static boolean referencesRuleGroup(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences rulesOwn(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public final java.lang.String toString()
 
 public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode

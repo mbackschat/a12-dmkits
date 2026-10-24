@@ -32,6 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue;
@@ -181,40 +182,46 @@ public final class Linter {
     }
 
     /**
-     * Lint {@code rule} against {@code model} — the pure-AST lints, plus, for a FIELD error entity, the
-     * model-context ones that need the rule's iteration (whether its error field lies under a repeatable group).
+     * Lint {@code rule} against {@code model} — the pure-AST lints, plus the model-context ones that need the
+     * rule's iteration (whether its error entity lies under a repeatable group).
      */
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
-        // The model-context lints read a FIELD target's iteration; a group target is guarded at the levels its
-        // references iterate (KERNEL-FINDINGS KF601), which they do not model, so it gets the AST lints only.
-        if (!(rule.errorEntity() instanceof FieldRef errorField)) {
-            return List.copyOf(out);
-        }
-        String errorFieldPath = errorField.path().value();
-        invertedRequiredness(rule.condition(), errorFieldPath, rulePath, out);
-        if (model.iteratesForErrorField(errorFieldPath)) {
-            negativeUnderIteration(rule.condition(), errorFieldPath, rule.group().path().value(), model, rulePath, out);
-        }
+        modelContext(model, rule.condition(), rule.errorEntity().entityPath().value(), rule.group().path().value(),
+                rulePath, out);
         return List.copyOf(out);
     }
 
     /**
-     * Lint a candidate condition for a rule whose error field is {@code errorFieldPath}, without a
-     * built {@link Rule} — the entry the CLI's {@code add} uses on a condition read from text
+     * Lint a candidate condition for a rule whose error entity is {@code errorFieldPath}, a field or a group,
+     * without a built {@link Rule} — the entry the CLI's {@code add} uses on a condition read from text
      * (F10), so the model-context lints (inverted requiredness, negative-under-iteration) can fire on
-     * the BA path. The rule's group is taken as the error field's parent (the {@code add} default).
+     * the BA path. The rule's group is taken as the error entity's parent (the {@code add} default).
      */
     public List<Diagnostic> lint(BoundModel model, String errorFieldPath, Condition condition) {
         List<Diagnostic> out = new ArrayList<>(lint("", condition));
-        invertedRequiredness(condition, errorFieldPath, "", out);
-        if (model.iteratesForErrorField(errorFieldPath)) {
-            int slash = errorFieldPath.lastIndexOf('/');
-            String groupPath = slash > 0 ? errorFieldPath.substring(0, slash) : errorFieldPath;
-            negativeUnderIteration(condition, errorFieldPath, groupPath, model, "", out);
-        }
+        int slash = errorFieldPath.lastIndexOf('/');
+        String groupPath = slash > 0 ? errorFieldPath.substring(0, slash) : errorFieldPath;
+        modelContext(model, condition, errorFieldPath, groupPath, "", out);
         return List.copyOf(out);
+    }
+
+    /**
+     * The model-context lints, decided once for both entries and for a field or a group error entity alike. A
+     * group target is not exempt: A12 refuses an unguarded negative beside a group nested in a repeating group
+     * with {@code MVK_NEG_CONDITION_IN_ITERATION} exactly as beside a field, and admits the guarded twin
+     * (DEV-API-GAPS DG153, {@code lint.GroupTargetLintParityTest}, which asks the kernel per row). A repeating group
+     * that is itself the target iterates too: A12 refuses {@code GroupNotFilled(Lines)} reporting on {@code Lines}
+     * (KERNEL-FINDINGS KF601), and whether a level is guarded stays {@link #reportUnguarded}'s question.
+     * {@link #invertedRequiredness} matches a field-presence leaf on the target, so a group path never meets it.
+     */
+    private void modelContext(BoundModel model, Condition condition, String errorEntityPath, String ruleGroupPath,
+            String rulePath, List<Diagnostic> out) {
+        invertedRequiredness(condition, errorEntityPath, rulePath, out);
+        if (model.iteratesForErrorEntity(errorEntityPath)) {
+            negativeUnderIteration(condition, errorEntityPath, ruleGroupPath, model, rulePath, out);
+        }
     }
 
     /**
@@ -257,11 +264,13 @@ public final class Linter {
             return;
         }
         String[] negative = negatives.get(0);
-        String guardGroup = model.nearestRepeatableAncestor(errorFieldPath)
+        // A repeating target is guarded at its own level (KF601), anything else at its nearest repeating ancestor.
+        String guardGroup = model.groupAt(errorFieldPath).filter(GroupInfo::repeating).map(GroupInfo::path)
+                .or(() -> model.nearestRepeatableAncestor(errorFieldPath))
                 .orElse(ruleGroupPath);
         out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                 Optional.of("RK_NEG_CONDITION_IN_ITERATION"),
-                "this rule iterates (error field '" + errorFieldPath + "' is under a repeatable group)"
+                "this rule iterates (error entity '" + errorFieldPath + "' is or lies under a repeatable group)"
                         + " and uses the negative condition " + negative[0] + "(" + negative[1] + ") with no"
                         + " positive presence guard — the kernel rejects unguarded negatives in iteration",
                 new Diagnostic.Where(rulePath, Optional.of(negative[0])),
