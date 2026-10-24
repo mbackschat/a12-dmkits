@@ -312,6 +312,8 @@ Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult
 
 **Every read of the sibling `../a12-kernel-lean` goes through git at a named commit.** That covers its ledger, `spec/`, evidence captures and probe requests. Use `git -C ../a12-kernel-lean show <sha>:<path>`, `ls-tree` and `log`. When a tool needs files on disk, such as a probe request and the model it names, extract them with `git archive <sha> <paths> | tar -x -C <scratchpad dir>`. Never `cat`, `grep`, `ls` or `Read` a path inside its tree, and never point a build or test at one.
 
+**The one exception is the spec-sync ledger, `docs/A12-DMKITS-SPEC-SYNC-LEDGER.md`.** Read it directly from the working tree, and only when the owner or an a12-kernel-lean session tells you to; it is their cross-project feedback queue.
+
 The working tree belongs to a live peer session that may be mid-edit. Uncommitted content can be half-written or later reverted, so a measurement taken against it cites a state no commit holds, and neither side can re-derive it. The peer reads our revisions the same way, with git only. Cite the commit you read in anything you send back.
 
 ### Sending a measured correction to `a12-kernel-lean` (standing requirement, 2026-08-14)
