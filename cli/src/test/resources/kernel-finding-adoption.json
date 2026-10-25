@@ -6802,7 +6802,7 @@
               "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
             },
             "several declarations for one field in one flat group": {
-              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/JoinedTargetDeclarationTableTest.kt#aSelectedPartnerlessDeclarationBehindAJoinedLeadStoresNothing",
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/JoinedTargetDeclarationTableTest.kt#aPassedOverDeclarationWithNoJoinedOneAfterItLeavesTheTargetCleared",
               "witness": "Declarations of one field in one group form one table on JVM and JS."
             }
           }
@@ -14261,7 +14261,7 @@
       }
     },
     "kf619": {
-      "sha256": "583b06667791705a6a3b629dbbb9266b95132a6a2606701a2b5342eac36fcf03",
+      "sha256": "799be1db3f122d5dd31f16cd9d4b8a8f40a3dc54b4f1c5686b844ee29933a58d",
       "task": "SS19",
       "scope": {
         "dmkits": [],
@@ -14276,7 +14276,7 @@
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "a partnerless declaration behind a joined lead, its guard false"
+          "a partnerless declaration behind a joined lead, its guard false, holding, absent or reading a malformed cell"
         ]
       },
       "consumers": {

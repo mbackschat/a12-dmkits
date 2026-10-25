@@ -87,11 +87,12 @@ internal class ComputationEngine(
 
     /**
      * How each declaration takes part in its target's first-match table when some declaration of that target
-     * JOINS another keyed group (a12-kernel-lean SPEC-2026-10-24-09). Measured on the dynamic Kernel by
-     * `adapter.laws.JoinedTargetDeclarationTableDiffTest`: a partnerless declaration LEADING such a table clears
-     * the target at every row whatever any guard says, while one behind a joined lead stores nothing only where
-     * it is selected. Derived from the whole model in document order, because [computeField]'s closure must not
-     * change which table a declaration sits in or where.
+     * JOINS another keyed group (a12-kernel-lean SPEC-2026-10-24-09 and SPEC-2026-10-25-03, KERNEL-FINDINGS KF619).
+     * Measured on the dynamic Kernel by `adapter.laws.JoinedTargetDeclarationTableDiffTest`: a partnerless
+     * declaration LEADING such a table clears the target at every row whatever any guard says, while one behind a
+     * joined lead is passed over unread, so a later joined declaration computes even where its guard holds.
+     * Derived from the whole model in document order, because [computeField]'s closure must not change which table
+     * a declaration sits in or where.
      */
     private val tableRoles: Map<ComputationDef, TableRole> by lazy {
         buildMap {
@@ -104,7 +105,7 @@ internal class ComputationEngine(
                 // role; behind a clearing lead it is never reached, and otherwise the two roles coincide.
                 declarations.forEachIndexed { i, declaration ->
                     if (!joined[i] && declaration !in this) {
-                        put(declaration, if (i == 0) TableRole.CLEARS else TableRole.STORES_NOTHING_WHEN_SELECTED)
+                        put(declaration, if (i == 0) TableRole.CLEARS else TableRole.PASSED_OVER)
                     }
                 }
             }
@@ -112,7 +113,7 @@ internal class ComputationEngine(
     }
 
     /** A declaration's part in a joined target's table; a declaration absent from [tableRoles] is ordinary. */
-    private enum class TableRole { ORDINARY, STORES_NOTHING_WHEN_SELECTED, CLEARS }
+    private enum class TableRole { ORDINARY, PASSED_OVER, CLEARS }
 
     /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
@@ -595,14 +596,14 @@ internal class ComputationEngine(
         role: TableRole,
     ): Selection {
         when (role) {
-            // Nothing is read, so nothing it would read can poison the target or its readers.
+            // Nothing is read in either role, so nothing it would read can poison the target or its readers.
             TableRole.CLEARS -> return Selection.STORES_NOTHING
-            TableRole.ORDINARY, TableRole.STORES_NOTHING_WHEN_SELECTED -> Unit
+            TableRole.PASSED_OVER -> return Selection.NONE
+            TableRole.ORDINARY -> Unit
         }
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
-                if (role == TableRole.STORES_NOTHING_WHEN_SELECTED) return Selection.STORES_NOTHING
                 // The target's declared kind types a bare literal operand: a date CONSTANT is written German and
                 // has to reach the store canonicalized, or the target's own format cannot render it. The format
                 // rides along because a YEARLESS literal needs a reference year only when the target renders one.

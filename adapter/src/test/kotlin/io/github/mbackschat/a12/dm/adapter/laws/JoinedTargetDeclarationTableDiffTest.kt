@@ -12,11 +12,16 @@ import org.junit.jupiter.api.Test
 
 /**
  * Several computations writing one KEY-JOINED target, against the Kernel (a12-kernel-lean SPEC-2026-10-24-09 and
- * its `k22-cross-declaration` capture; the capacity row is SPEC-2026-10-24-08's). The declarations form one first-match table over the join, and a
- * declaration that reads no partner field acts by its POSITION: leading the table, it clears the target at every
- * row whatever any guard says; behind a joined lead, it ends the scan with nothing stored where it is selected and
- * falls through where it is not. Orders and Stock join by `Sku`; order B asks for two units, so every declaration
+ * its `k22-cross-declaration` capture, corrected by SPEC-2026-10-25-03; the capacity row is SPEC-2026-10-24-08's).
+ * The declarations form one first-match table over the join, and a declaration that reads no partner field acts by
+ * its POSITION: leading the table, it clears the target at every row whatever any guard says; behind a joined lead,
+ * the scan passes over it unread. Orders and Stock join by `Sku`; order B asks for two units, so every declaration
  * guarded by `Qty == 1` falls through there, and no row satisfies a `Qty >= 5` guard.
+ *
+ * `Passed`, `PassedConstant` and `PassedBad` separate passing over from "stores nothing where its guard selects
+ * it", which this class first recorded: at B the middle declaration's guard holds, is absent, or reads a malformed
+ * `Bad`, and the joined declaration after it computes all the same. `Allocated` and `Fallback` could not separate
+ * the two, since no joined declaration follows theirs.
  *
  * Two rival accounts. "A partnerless declaration is an ordinary row of the table" predicts a value at B for
  * `Allocated` and `Fallback`, and at every row for `Buffered`. "It clears wherever the scan reaches it, whatever
@@ -38,6 +43,7 @@ class JoinedTargetDeclarationTableDiffTest {
             .group("Orders") { o -> o.repeatable(3).indexField("Sku")
                 .stringField("Sku") { }
                 .numberField("Qty") { it.fractionDigits(0) }
+                .numberField("Bad") { it.fractionDigits(0) }
                 .numberField("Allocated") { it.fractionDigits(0) }
                 .numberField("Buffered") { it.fractionDigits(0) }
                 .numberField("Fallback") { it.fractionDigits(0) }
@@ -49,7 +55,10 @@ class JoinedTargetDeclarationTableDiffTest {
                 .numberField("CommonByStock") { it.fractionDigits(0) }
                 .numberField("LeadFalse") { it.fractionDigits(0) }
                 .numberField("LeadFalseTwice") { it.fractionDigits(0) }
-                .numberField("LeadThenTwo") { it.fractionDigits(0) } }
+                .numberField("LeadThenTwo") { it.fractionDigits(0) }
+                .numberField("Passed") { it.fractionDigits(0) }
+                .numberField("PassedConstant") { it.fractionDigits(0) }
+                .numberField("PassedBad") { it.fractionDigits(0) } }
             .group("Stock") { s -> s.repeatable(4).indexField("Sku")
                 .stringField("Sku") { }
                 .numberField("OnHand") { it.fractionDigits(0) } } }
@@ -57,6 +66,7 @@ class JoinedTargetDeclarationTableDiffTest {
 
     private val bound = BoundModel.ofJson(skeleton)
     private val qty = bound.num("/Fulfilment/Orders/Qty")
+    private val bad = bound.num("/Fulfilment/Orders/Bad")
     private val onHand = bound.num("/Fulfilment/Stock/OnHand")
     private val single = qty.eq(1)
 
@@ -92,6 +102,15 @@ class JoinedTargetDeclarationTableDiffTest {
             computing("LeadThenTwo", "LeadThenLarge").`when`(qty.ge(5)).calc(qty.plus(100)).build(),
             computing("LeadThenTwo", "LeadThenStock").`when`(single).calc(onHand.asNumber()).build(),
             computing("LeadThenTwo", "LeadThenReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
+            computing("Passed", "PassedFromStock").`when`(single).calc(onHand.asNumber()).build(),
+            computing("Passed", "PassedOrder").`when`(qty.ge(1)).calc(qty.plus(100)).build(),
+            computing("Passed", "PassedReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
+            computing("PassedConstant", "ConstantFromStock").`when`(single).calc(onHand.asNumber()).build(),
+            computing("PassedConstant", "ConstantSeven").calc(Dsl.number(7L)).build(),
+            computing("PassedConstant", "ConstantReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
+            computing("PassedBad", "BadFromStock").`when`(single).calc(onHand.asNumber()).build(),
+            computing("PassedBad", "BadOrder").`when`(bad.ge(1)).calc(qty.plus(100)).build(),
+            computing("PassedBad", "BadReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
             bound.computation(bound.num("/Fulfilment/BufferedTotal")).name("BufferedTotalComputation")
                 .calc(Dsl.sum(bound.flatten("/Fulfilment/Orders*/Buffered")).plus(1))
                 .message(Dsl.en("Total computed.")).build(),
@@ -100,11 +119,12 @@ class JoinedTargetDeclarationTableDiffTest {
 
     // Every computed cell is seeded, so a cleared one is reported rather than left unmentioned.
     private val targets = listOf("Allocated", "Buffered", "Fallback", "Skipped", "Pooled", "Mixed", "Plain",
-        "GuardedByStock", "CommonByStock", "LeadFalse", "LeadFalseTwice", "LeadThenTwo")
+        "GuardedByStock", "CommonByStock", "LeadFalse", "LeadFalseTwice", "LeadThenTwo", "Passed", "PassedConstant",
+        "PassedBad")
     private val seeds = targets.joinToString("") { ""","$it":999""" }
 
     private val sheet = """{"Fulfilment":{"BufferedTotal":999,
-        "Orders":[{"Sku":"A","Qty":1$seeds},{"Sku":"B","Qty":2$seeds},{"Sku":"C","Qty":1$seeds}],
+        "Orders":[{"Sku":"A","Qty":1$seeds},{"Sku":"B","Qty":2,"Bad":"x"$seeds},{"Sku":"C","Qty":1$seeds}],
         "Stock":[{"Sku":"B","OnHand":5},{"Sku":"A","OnHand":3},{"Sku":"D","OnHand":9}]}}"""
 
     // A fourth order past the group's capacity of three, its key stocked so the join would pair it.
@@ -145,8 +165,12 @@ class JoinedTargetDeclarationTableDiffTest {
             "LeadFalse" to listOf("CLEARED", "CLEARED", "CLEARED"),
             "LeadFalseTwice" to listOf("CLEARED", "CLEARED", "CLEARED"),
             "LeadThenTwo" to listOf("CLEARED", "CLEARED", "CLEARED"),
+            "Passed" to listOf("VALUE|3", "VALUE|1005", "VALUE|0"),
+            "PassedConstant" to listOf("VALUE|3", "VALUE|1005", "VALUE|0"),
+            "PassedBad" to listOf("VALUE|3", "VALUE|1005", "VALUE|0"),
         ), listOf("Allocated", "Buffered", "Fallback", "Skipped", "GuardedByStock", "CommonByStock", "Pooled",
-            "Mixed", "Plain", "LeadFalse", "LeadFalseTwice", "LeadThenTwo").associateWith(::row))
+            "Mixed", "Plain", "LeadFalse", "LeadFalseTwice", "LeadThenTwo", "Passed", "PassedConstant", "PassedBad")
+            .associateWith(::row))
         assertEquals("VALUE|1", outcomes["BufferedTotal"])
     }
 

@@ -13,14 +13,14 @@ import kotlin.test.assertEquals
 
 /**
  * Multiplatform (JVM + JS) lock for IF437: in a target some declaration JOINS to another keyed group, a
- * partnerless declaration leading the table clears it at every row, and one behind a joined lead stores nothing
- * where it is selected and falls through where it is not; a row past capacity clears in a table of joined
- * declarations alone. The Kernel answers are `adapter.laws.JoinedTargetDeclarationTableDiffTest`'s.
+ * partnerless declaration leading the table clears it at every row, and one behind a joined lead is passed over
+ * unread, so a later joined declaration computes even where its guard holds; a row past capacity clears in a table
+ * of joined declarations alone. The Kernel answers are `adapter.laws.JoinedTargetDeclarationTableDiffTest`'s.
  */
 class JoinedTargetDeclarationTableTest {
 
     private fun model(capacity: Int, vararg comps: ComputationDef) = ModelDef(
-        fields = listOf("Allocated", "Buffered", "Skipped", "Pooled").map { FieldDef("/Fulfilment/Orders/$it", Kind.NUMBER) } +
+        fields = listOf("Allocated", "Buffered", "Skipped", "Passed", "Pooled").map { FieldDef("/Fulfilment/Orders/$it", Kind.NUMBER) } +
             listOf(
                 FieldDef("/Fulfilment/Orders/Sku", Kind.STRING),
                 FieldDef("/Fulfilment/Orders/Qty", Kind.NUMBER),
@@ -53,7 +53,15 @@ class JoinedTargetDeclarationTableTest {
             .sortedBy { it.indices[1] }
             .map { if (it.outcome == ComputeOutcome.VALUE) "VALUE|${it.value}" else it.outcome.name }
 
-    @Test fun aSelectedPartnerlessDeclarationBehindAJoinedLeadStoresNothing() {
+    @Test fun aPartnerlessDeclarationBehindAJoinedLeadIsPassedOverEvenWhereItsGuardHolds() {
+        val m = model(3,
+            declaration("Passed", "[Qty] == 1", fromStock),
+            declaration("Passed", "[Qty] >= 1", "[Qty] + 100"),
+            declaration("Passed", "[Qty] >= 1", "$fromStock + 1000"))
+        assertEquals(listOf("VALUE|3", "VALUE|1004"), rows(m, orders(m), "Passed"))
+    }
+
+    @Test fun aPassedOverDeclarationWithNoJoinedOneAfterItLeavesTheTargetCleared() {
         val m = model(3,
             declaration("Allocated", "[Qty] == 1", fromStock),
             declaration("Allocated", "[Qty] >= 1", "[Qty] + 100"))

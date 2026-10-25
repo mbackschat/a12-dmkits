@@ -14982,6 +14982,9 @@ An order-fulfilment sheet joins `Orders` and `Stock` by `Sku`, every computation
 | `Allocated` | J `Qty == 1 → OnHand`; P `Qty >= 1 → Qty + 100` | 3 | cleared | 0 |
 | `Fallback` | J `Qty == 1 → OnHand`; P unguarded `7` | 3 | cleared | 0 |
 | `Skipped` | J `Qty == 1 → OnHand`; P `Qty >= 5 → Qty + 100`; J `Qty >= 1 → OnHand + 1000` | 3 | 1005 | 0 |
+| `Passed` | J `Qty == 1 → OnHand`; P `Qty >= 1 → Qty + 100`; J `Qty >= 1 → OnHand + 1000` | 3 | 1005 | 0 |
+| `PassedConstant` | J `Qty == 1 → OnHand`; P unguarded `7`; J `Qty >= 1 → OnHand + 1000` | 3 | 1005 | 0 |
+| `PassedBad` | J `Qty == 1 → OnHand`; P `Bad >= 1 → Qty + 100`, `Bad` malformed at B; J `Qty >= 1 → OnHand + 1000` | 3 | 1005 | 0 |
 | `Buffered` | P `Qty >= 1 → Qty + 100`; J `Qty == 1 → OnHand` | cleared | cleared | cleared |
 | `LeadFalse` | P `Qty >= 5`; J `Qty >= 1 → OnHand + 1000` | cleared | cleared | cleared |
 | `LeadFalseTwice` | P `Qty >= 5`; P `Qty >= 6`; J `Qty >= 1` | cleared | cleared | cleared |
@@ -14993,12 +14996,12 @@ An order-fulfilment sheet joins `Orders` and `Stock` by `Sku`, every computation
 | `Plain` | P `Qty == 1 → Qty`; P `Qty >= 1 → Qty + 100` (nobody joins) | 1 | 102 | 1 |
 
 - **A partnerless declaration LEADING the table clears the target at every row**, whatever any guard says and whatever follows it.
-- **Behind a joined lead, it stores nothing where it is selected and falls through where it is not**: `Skipped` computes its third declaration at B, where the partnerless middle one's guard is false.
+- **Behind a joined lead, the scan passes over it unread**: its guard selects nothing even where it holds, a malformed cell it reads poisons nothing, and a later joined declaration computes. `Skipped`, `Passed`, `PassedConstant` and `PassedBad` all compute their third declaration at B. *Corrected 2026-10-25:* this bullet first said such a declaration "stores nothing where it is selected and falls through where it is not". `Allocated` and `Fallback` cannot separate that from passing over, since no joined declaration follows theirs, and a12-kernel-lean's `k22-joined-declaration-order` rows `W02`, `WS2` and `WD2` (SPEC-2026-10-25-03) were the first to put one there; `Passed` reproduces them on this carrier.
 - **The declaration is the unit.** A partner read only in a guard, either precondition kind, makes a declaration joined, and a partnerless alternative inside a joined declaration computes (`Mixed`). A target no declaration joins keeps [KF20](#kf20)'s ordinary table (`Plain`).
 - A reader of a cleared cell reads it empty: `Sum(Orders*/Buffered) + 1` computes 1.
 - With `Orders` capped at three rows, a fourth stocked order clears every target of that row, joined tables included, while the rows within capacity compute.
 
-a12-kernel-lean's account (SPEC-2026-10-24-09, `spec/09` at `e9c7259f`) says the partnerless declaration clears wherever the scan reaches it, "whatever that declaration's preconditions". That holds for a leading one only. Their rows could not tell the two apart, because none put a declaration behind a partnerless one that does not lead; `Skipped` is the discriminating row. Their `k22-cross-declaration`, `k22-joined-group-target-leaves` and `k22-joined-computations` captures all reproduce through the interpreter here.
+a12-kernel-lean's first account (SPEC-2026-10-24-09, `spec/09` at `e9c7259f`) said the partnerless declaration clears wherever the scan reaches it, "whatever that declaration's preconditions". That holds for a leading one only, and `Skipped` was the discriminating row. Their corrected account (SPEC-2026-10-25-03, at `1ac375a6`) is the passing-over rule above, measured on Number, String and Date targets. Their `k22-cross-declaration`, `k22-joined-group-target-leaves`, `k22-joined-computations` and `k22-joined-declaration-order` captures all reproduce through the interpreter here; the last covers the String and Date targets this carrier does not.
 
 The mechanism is not established. Source-verified by reading only: code generation hands every alternative the field's single parallel level (`CodeGenCalculatedFieldBuilder` builds each `CodeGenCalculationAlternative` with `getParallelIterationLevel()`), so no per-alternative level marks a partnerless declaration. Where the position effect arises is a hypothesis still to test.
 
