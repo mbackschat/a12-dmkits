@@ -161,10 +161,13 @@ private fun TrackedFactBase.readsTheTarget(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): Boolean {
-    val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
-    val path = (resolved as? Reference.Resolved)?.path ?: return false
+    val path = resolvedPathOf(written, declaringGroup, element) ?: return false
     return target == path || target.startsWith("$path/")
 }
+
+/** The model path [written] resolves to from [declaringGroup], or null where it resolves to nothing. */
+private fun TrackedFactBase.resolvedPathOf(written: String, declaringGroup: String, element: TrackedDeclaration): String? =
+    (resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
 
 /**
  * The PROJECTED read of the computed field [text] carries, as authored, or null when it carries none.
@@ -172,6 +175,10 @@ private fun TrackedFactBase.readsTheTarget(
  * Both halves of the class are asked, because A12 matches the computed field against a semantic index's KEY
  * as well as against its indexed value — a computation whose operation reads another field keyed by its own
  * target is this class even though the target is not the field being read ([KERNEL-FINDINGS KF182]).
+ *
+ * Either half must name the computed field ITSELF. A key selecting the group that holds it projects the group,
+ * which A12 admits (`GroupFilled(Lines For "a")`, [KERNEL-FINDINGS KF605]), and no measured row shows a keyed
+ * group drawing this class.
  */
 private fun TrackedFactBase.projectedSelfReadIn(
     text: String,
@@ -181,13 +188,13 @@ private fun TrackedFactBase.projectedSelfReadIn(
     indexKeyword: String?,
 ): String? {
     categoryAccessesIn(text, conditionLanguage)
-        .firstOrNull { (path, _) -> readsTheTarget(path, target, declaringGroup, element) }
+        .firstOrNull { (path, _) -> resolvedPathOf(path, declaringGroup, element) == target }
         ?.let { (path, category) -> return "$path -> $category" }
     val keyword = indexKeyword ?: return null
     return semanticIndexUsesIn(text, conditionLanguage, keyword)
         .firstOrNull { use ->
             listOfNotNull(use.valuePath, use.keyPath)
-                .any { readsTheTarget(it, target, declaringGroup, element) }
+                .any { resolvedPathOf(it, declaringGroup, element) == target }
         }
         ?.let { use -> "${use.valuePath} $keyword ${use.keyPath ?: use.keyLiteral?.let { key -> "\"$key\"" }}" }
 }

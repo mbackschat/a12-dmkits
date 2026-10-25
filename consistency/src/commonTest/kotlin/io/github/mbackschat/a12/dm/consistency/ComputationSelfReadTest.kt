@@ -47,6 +47,9 @@ class ComputationSelfReadTest {
             codes(inLegs("../Note", "[LegRef]", "GroupFilled(/Routing/Legs)"))
         actual["CurrentRepetition of its own group"] =
             codes(inLegs("../Note", "[LegRef]", "CurrentRepetition(/Routing/Legs) == 1"))
+        // KF605: a key selecting the computed field's group projects the group, not the field.
+        actual["GroupFilled over its own group, selected by key"] =
+            codes(inLegs("../Note", "[LegRef]", "GroupFilled(/Routing/Legs For \\\"L-1\\\")"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["no guard at all — the liveness control"] = emptyList()
@@ -57,6 +60,7 @@ class ComputationSelfReadTest {
         expected["GroupNotFilled over the ROOT — an ancestor like any other"] = listOf(selfRead)
         expected["GroupFilled over its own group — the context escape"] = emptyList()
         expected["CurrentRepetition of its own group"] = emptyList()
+        expected["GroupFilled over its own group, selected by key"] = emptyList()
         assertEquals(expected, actual, "which reads of the computed field's group count as reading it")
     }
 

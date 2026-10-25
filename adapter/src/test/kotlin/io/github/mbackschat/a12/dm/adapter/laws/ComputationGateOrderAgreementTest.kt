@@ -20,10 +20,8 @@ import org.junit.jupiter.api.Test
  * `[Total] ^ 2`, and the two-alternative rows, which separate an order from a shape list and from a
  * computation-wide names stage.
  *
- * The portable checker is held to the same rows, and every row where it reports less is named below with its
- * reason: the checker's deliberate silence on a number target whose scale gate is live
- * (`consistency.ComputationSelfRead`). On every
- * remaining row, the suppressed `S…` rows included, it must name exactly the kernel's classes.
+ * The portable checker is held to the same rows and must name exactly the kernel's classes on every one, the
+ * suppressed `S…` rows included.
  */
 class ComputationGateOrderAgreementTest {
     data class Row(val id: String, val model: String, val classes: List<String>)
@@ -189,27 +187,11 @@ class ComputationGateOrderAgreementTest {
         assertEquals(144, rows.size, "a12-kernel-lean's three verdict tables, every row into a computed target")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
-        assertEquals(LIVE_SCALE_GATE_SELF_READ - rows.map { it.id }.toSet(), emptySet<String>(),
-            "every declined row is a row of the grid")
-        assertEquals(rows.map { it.id to portableExpectation(it) }, rows.map { it.id to portable(it.model) }, "portable classes")
-    }
-
-    private fun portableExpectation(row: Row): List<String> = when (row.id) {
-        in LIVE_SCALE_GATE_SELF_READ -> row.classes.filter { it != SELF_READ }
-        else -> row.classes
+        assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to portable(it.model) }, "portable classes")
     }
 
     private companion object {
         val NONE = emptyList<String>()
         val SUPPRESSED = listOf("MVK_INVALID_COMPARE_DEC_PLACES")
-        const val SELF_READ = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"
-
-        /** The self-reads of the number target the checker leaves unjudged while the scale gate can answer first. */
-        val LIVE_SCALE_GATE_SELF_READ = setOf(
-            "J03", "J04", "J05", "J06", "J07", "J08", "J09", "J10", "J11", "J12", "A05", "W01", "W04", "W07", "W08",
-            "B05", "B06", "B07", "B08", "U10", "U12", "U13", "D01", "D02", "D03", "D04", "D05", "D06",
-            "T01", "T02", "T03", "T04", "T05", "T11", "T12", "E01",
-        )
-
     }
 }
