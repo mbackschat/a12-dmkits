@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **IG182 — per-call recomputation on the nested join (opened 2026-10-23).** <a id="ig182"></a> `Document.parallelContexts` rebuilds the nested level's stored-row map and occupancy per call, `ParallelRowContext` allocates its depth table per nested row although it is call-invariant, and `ComputationEngine` re-plans the document-independent `prepareParallel` per run. No timed row covers a nested join; measure one before changing them.
+_None open._
 
 ## 2. Deferred / ongoing-incremental
 

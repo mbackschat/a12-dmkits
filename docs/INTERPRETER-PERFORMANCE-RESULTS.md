@@ -21,6 +21,18 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-10-25-nested-join"></a>
+### Checkpoint 2026-10-25 — the nested join wins by an order of magnitude, so IG182's three recomputations stay as they are
+
+One routine gate run at `95b57fb4a`, source state CLEAN, record `perf-results/darwin-aarch64/2026-10-25T201958Z.jsonl`, 1-minute load 1.8 at the start. It was the first to time a nested join (`PerfCatalog.nestedJoin`, `nestedJoinComputation`). IG182 had named three per-call costs on that path and asked for a timed row before any of them changed.
+
+| row | N=250 interp / groovy / java | N=1000 interp / groovy / java | interp growth over 4× N |
+|---|---|---|---|
+| `NJ nested join` | 1.97 / 29.31 / 28.17 ms | 8.54 / 133.14 / 131.06 ms | 4.3× |
+| `NJ nested join compute` | 2.82 / 31.31 / 29.29 ms | 13.09 / 139.45 / 136.77 ms | 4.6× |
+
+**Conclusion.** Both rows beat both kernel strategies by 10× to 15× at both scales, at a lower per-unit cost, and grow linearly. Each of the three costs is paid once per call or once per nested row, so none of them can change the growth, and there is no loss for an optimization to close. They are deferred with a measured re-open trigger ([IG182](INTERPRETER-GAP-DISPOSITIONS.md#ig182)), not changed on speculation.
+
 ### Checkpoint 2026-10-22 — the linux block gains the 24 keys it lacked, and keeps its 66 existing ones
 
 Three `Nightly performance` runs at `c6468912b`, dispatched one at a time (runs `39704985260`, `39706147273`, `39707551621`), each on a different hosted CPU (EPYC 9V45, EPYC 9V74, Xeon 8370C). Every anchored lane passed in all three. Each run failed only on the twelve lanes with no linux anchor, the same gap that made `AnchorBlockKeyParityTest` red on push. The 24 keys of those lanes were added at their three-run median, and nothing else in the block changed. A full refresh would also have moved every existing key, by 0.49× to 1.72×, 25 of them upward. Those keys stay where they were: three runs on three CPU models do not separate a code change from runner variance, and every one of them already passed its bar.
