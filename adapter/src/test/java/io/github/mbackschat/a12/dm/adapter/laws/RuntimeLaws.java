@@ -1406,6 +1406,11 @@ public final class RuntimeLaws {
                     rt.validateFull(instance, config(clock, locale, conditions, fieldTypes)).getMessages());
         }
 
+        /** As above under a caller-built config, for a law that observes the factory itself. */
+        List<IMessage> validationMessages(DocumentV2 instance, DocumentProcessingConfig config) {
+            return List.copyOf(rt.validateFull(instance, config).getMessages());
+        }
+
         /**
          * The {@code validatePart} twin of {@link #validationMessages}, <b>unprojected</b>, over an
          * already-built instance. An EMPTY relevant set is meaningful and not a no-op request: it is the
@@ -1730,6 +1735,11 @@ public final class RuntimeLaws {
                 Map<String, ICustomCondition> conditions, ICustomFieldTypeFactory fieldTypes) {
             return List.copyOf(
                     rt.validateFull(instance, config(clock, locale, conditions, fieldTypes)).getMessages());
+        }
+
+        /** As above under a caller-built config, for a law that observes the factory itself. */
+        List<IMessage> validationMessages(DocumentV2 instance, DocumentProcessingConfig config) {
+            return List.copyOf(rt.validateFull(instance, config).getMessages());
         }
 
         /**
