@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
@@ -126,6 +127,8 @@ internal class ConditionBridge @JvmOverloads constructor(
     override fun typedRef(node: Expr): Any = operands.typedRef(node)
 
     override fun aggregateOperand(node: Expr): AggregateOperand = operands.aggregateOperand(node)
+
+    override fun categoryRef(node: Expr): CategoryRef? = operands.categoryRef(node)
 
     private companion object {
         /**

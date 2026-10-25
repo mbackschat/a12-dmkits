@@ -35,9 +35,11 @@ class KeyedCategoryReadTest {
                     .numberField("Total", n -> n.fractionDigits(0))
                     .stringField("Pick", f -> { })
                     .enumField("Status", e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low"))
+                    .enumField("Level", e -> e.value("L1").value("L2").category("Rank", "1", "2"))
                     .group("Lines", l -> l.repeatable(5).indexField("Sku")
                             .stringField("Sku", f -> { })
-                            .enumField("Grade", e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low"))))
+                            .enumField("Grade", e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low"))
+                            .enumField("Band", e -> e.value("B1").value("B2").category("Rank", "1", "2"))))
             .build().toJson());
     private static final DslRenderer RENDER = new DslRenderer();
     private static final NumberRef TOTAL = M.num("/Order/Total");
@@ -75,6 +77,42 @@ class KeyedCategoryReadTest {
                 } else {
                     assertEquals(condition, converted.condition(), () -> backend + " " + name);
                 }
+            });
+        }
+    }
+
+    /**
+     * The roles beyond comparison and first-filled: a value-list member, a concatenation and FieldValueAsNumber each
+     * read the keyed row too (KF568), so each reads back keyed on both backends. The bridge had no category arm in
+     * FieldValueAsNumber or a value list at all, so the unkeyed rows are cases of their own (2026-10-25 cold review, R10).
+     */
+    @Test
+    void everyKeyedRoleReadsBackKeyedOnBothBackends() {
+        Map<String, Condition> authored = new java.util.LinkedHashMap<>();
+        authored.put("ValueList", guarded(Dsl.atLeastOneFieldValueIncludedInValueList(List.of("High"), TIER.forIndex("a"))));
+        authored.put("ValueListMixed", guarded(Dsl.atLeastOneFieldValueIncludedInValueList(List.of("High", "OPEN"),
+                M.enumOf("/Order/Status").category("Tier"), M.enumOf("/Order/Status"))));
+        authored.put("Concatenation", guarded(M.str("/Order/Pick").asString().eq(TIER.forIndex("a").plus("-x"))));
+        authored.put("AsNumber", guarded(Dsl.fieldValueAsNumber(M.enumOf("/Order/Lines/Band").category("Rank").forIndex("a"))
+                .gt(1)));
+        authored.put("AsNumberUnkeyed", guarded(Dsl.fieldValueAsNumber(M.enumOf("/Order/Level").category("Rank")).gt(1)));
+        assertReadsBackOnBothBackends(authored);
+    }
+
+    private static void assertReadsBackOnBothBackends(Map<String, Condition> authored) {
+        BoundModel model = M;
+        for (var entry : authored.entrySet()) {
+            model = model.add(M.rule(M.group("/Order")).name(entry.getKey()).errorField(TOTAL.field())
+                    .when(entry.getValue()).code(entry.getKey().toUpperCase()).message(Dsl.en("Check the tier."))
+                    .build());
+        }
+        String json = model.toJson();
+        for (ConditionReadBack backend : List.of(new KernelConditionReadBack(), new InterpreterConditionReadBack())) {
+            Map<String, ReadResult> read = backend.readAll(json, ReferenceResolvers.selfContained());
+            authored.forEach((name, condition) -> {
+                var converted = assertInstanceOf(ReadResult.Converted.class, read.get("/Order/" + name),
+                        () -> backend + " " + name + ": " + read.get("/Order/" + name));
+                assertEquals(RENDER.render(condition), RENDER.render(converted.condition()), () -> backend + " " + name);
             });
         }
     }

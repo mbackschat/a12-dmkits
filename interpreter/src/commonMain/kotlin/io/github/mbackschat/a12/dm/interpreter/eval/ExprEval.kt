@@ -337,7 +337,7 @@ private fun Interpreter.evalEntitySpec(e: Expr.EntitySpec): Val {
     return e.category?.let { ctxOf(source).enumCategoryValue(source.path, it, selected) } ?: selected
 }
 
-private fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticIndex = when (index) {
+internal fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticIndex = when (index) {
     is Expr.EntityIndex.Literal -> Expr.SemanticIndex(path, indexValue = index.value, outer = outer)
     is Expr.EntityIndex.Field -> Expr.SemanticIndex(
         path,
@@ -1348,6 +1348,7 @@ private fun Interpreter.fieldValueAsString(arg: Expr): Val = when (arg) {
  *  decimal; an EMPTY field reads as `0` (kernel `feldWertAlsZahl`), and a formally-invalid read is unavailable
  *  (or poisons a computation). Admission guarantees the selected domain obeys [fieldValueDecimalOrNull]. */
 private fun Interpreter.fieldValueAsNumber(source: Expr): Val {
+    if (source is Expr.EntitySpec || source is Expr.SemanticIndex) return keyedFieldValueAsNumber(source)
     val path = when (source) {
         is Expr.Field -> source.path
         is Expr.EnumCategory -> source.path
@@ -1363,6 +1364,31 @@ private fun Interpreter.fieldValueAsNumber(source: Expr): Val {
         else -> null
     }
     return selected?.let(::fieldValueDecimalOrNull)?.let { Val.Num(it) } ?: Val.Unknown
+}
+
+/** `FieldValueAsNumber(field [-> category] For key)`: the keyed cell through the read path the direct operand and
+ *  `FieldValueAsString` share ([computeGuardedIndexCell]), so a key no row carries and an empty matched cell read
+ *  `0` as an empty unkeyed field does, and an undecidable key or an invalid matched cell leave the read unavailable
+ *  (`adapter.laws.KeyedCategoryRoleDiffTest`). A direct keyed field parses as a [Expr.SemanticIndex], a keyed
+ *  category as an [Expr.EntitySpec]. */
+private fun Interpreter.keyedFieldValueAsNumber(source: Expr): Val {
+    val (cell, category) = when (source) {
+        is Expr.SemanticIndex -> source to null
+        is Expr.EntitySpec -> {
+            val field = source.source as? Expr.Field
+                ?: throw UnsupportedConstructException("unsupported starred operand in FieldValueAsNumber")
+            val key = source.semanticIndex
+                ?: throw UnsupportedConstructException("unsupported unkeyed EntitySpec in FieldValueAsNumber")
+            field.semanticIndex(key) to source.category
+        }
+        else -> error("not a keyed operand: $source")
+    }
+    val selected = computeGuardedIndexCell(cell) ?: return Val.Num(DEC_ZERO)
+    val token = if (category == null) selected else ctxOf(cell).enumCategoryValue(cell.path, category, selected)
+    return when (token) {
+        is Val.Txt -> fieldValueDecimalOrNull(token.v)?.let { Val.Num(it) } ?: Val.Unknown
+        else -> Val.Unknown
+    }
 }
 
 /** Kernel FieldValueAsNumber decimal grammar, normalized for cross-host parsing. Decimal digits are Unicode

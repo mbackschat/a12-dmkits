@@ -23,7 +23,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding
-import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
@@ -362,31 +361,8 @@ internal class Functions(private val mapping: Mapping) {
         if (node is Expr.SemanticIndex && mapping.isGroup(node.path)) {
             return firstFilledIndexedGroup(mapping.indexedGroup(node))
         }
-        firstFilledCategory(node)?.let { return it }
+        mapping.categoryRef(node)?.let { return it.firstFilledOperand() }
         return FirstFilledOperand.of(mapping.fieldOperand(node))
-    }
-
-    /**
-     * `field -> Category`, keyed or not (`Lines/Grade -> Tier For "a"`), as an owner operand. A category is no
-     * [io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand], so it takes the public [CategoryRef] route rather
-     * than [FirstFilledOperand.of]; a starred or filtered category stays unmapped.
-     */
-    private fun firstFilledCategory(node: Expr): FirstFilledOperand? {
-        val (field, name, index) = when (node) {
-            is Expr.EnumCategory -> Triple(Expr.Field(node.path, node.outer), node.category, null)
-            is Expr.EntitySpec -> {
-                val source = node.source as? Expr.Field ?: return null
-                Triple(source, node.category ?: return null, node.semanticIndex)
-            }
-            else -> return null
-        }
-        val category = mapping.model().enumOf(field.path).category(name).let { if (field.outer) it.outer() else it }
-        val keyed = when (index) {
-            null -> category
-            is Expr.EntityIndex.Literal -> category.forIndex(index.value)
-            is Expr.EntityIndex.Field -> category.forIndex(mapping.fieldRef(Expr.Field(index.path, index.outer)))
-        }
-        return keyed.firstFilledOperand()
     }
 
     /**
@@ -713,16 +689,18 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     /**
-     * `FieldValueAsNumber(field)` — a string or enumeration field's stored value coerced to a number.
-     * `FieldRef` itself is a `NumericTextSource`, so the bare-field overload already reaches an enum field too;
-     * the domain gates the catalog documents are the kernel's call — not pre-checked by the record, so not
-     * pre-checked here either.
+     * `FieldValueAsNumber(field)` or `FieldValueAsNumber(field -> Category)`, keyed or not — the selected stored or
+     * category value coerced to a number. `FieldRef` itself is a `NumericTextSource`, so the bare-field overload
+     * already reaches an enum field too; the domain gates the catalog documents are the kernel's call — not
+     * pre-checked by the record, so not pre-checked here either.
      */
     private fun fieldValueAsNumber(args: List<Expr>): Calculation {
         if (args.size != 1) {
             throw UnmappedConstructException("FieldValueAsNumber with " + args.size + " operands")
         }
-        return Dsl.fieldValueAsNumber(mapping.fieldRef(args[0])).expression()
+        val category = mapping.categoryRef(args[0])
+        val number = if (category != null) Dsl.fieldValueAsNumber(category) else Dsl.fieldValueAsNumber(mapping.fieldRef(args[0]))
+        return number.expression()
     }
 
     /**

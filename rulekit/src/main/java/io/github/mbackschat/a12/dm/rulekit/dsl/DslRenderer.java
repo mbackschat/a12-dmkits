@@ -598,8 +598,7 @@ public final class DslRenderer {
         return switch (source) {
             case FieldRef field -> canonicalOperandPath(field);
             case EnumRef field -> operandPath(field.field());
-            case CategoryRef category -> operandPath(category.field())
-                    + " " + keyword("EnumCategory") + " " + category.name();
+            case CategoryRef category -> categoryBody(category.access());
         };
     }
 

@@ -62,7 +62,10 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return new CategoryRef(field, name, values, true, key);
     }
 
-    private EnumCategoryAccess access() {
+    /** The projection every role renders and references, key included. Package-visible so the
+     *  {@code FieldValueAsNumber} source is rendered and referenced from it rather than rebuilt from its parts,
+     *  which once dropped the key (2026-10-25 cold review, R10). */
+    EnumCategoryAccess access() {
         return new EnumCategoryAccess(field, name, correlated, key);
     }
 

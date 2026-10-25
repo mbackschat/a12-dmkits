@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG158 — a keyed direct `FieldValueAsNumber` has no typed form** (found 2026-10-25, cold review R10). A12 admits `FieldValueAsNumber(Lines/Level For "a")` ([KF568](KERNEL-FINDINGS.md#kf568)) and the interpreter evaluates it ([IF442](INTERPRETER-FINDINGS.md#if442)). `Dsl.fieldValueAsNumber` takes a field, an enumeration or a category, none of them keyed, so `KeyedCategoryRoleDiffTest` writes that rule as text. Its sibling has the form, `Dsl.fieldValueAsString(SemanticIndex)`. Settles by a `Dsl.fieldValueAsNumber(SemanticIndex)` factory, rendered bare as A12 requires, with a read-back arm on both backends.
 
 ## 3. Adjacent but out of scope
 

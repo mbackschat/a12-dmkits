@@ -5072,3 +5072,11 @@ The Document already kept the distinction: a String `""` is stored as `""`, whil
 The Document already held every group instance, densely materialized as A12 does, so `CustomConditionData` gained `groups()` (default empty) and `getValue` reads the placeholder (`CustomConditionData.REPEATABLE_GROUP_INSTANCE_VALUE`) for such an instance. The `KernelCustomConditions` bridge iterates groups, then fields. The public view lists fields only, as A12's md `DocumentV2` field traversal does. The iterator's order is not compared; the lock sorts both sides.
 
 *Locked:* `adapter.laws.CustomConditionEmptyCellDiffTest.aShippedCoreConditionSeesA12sCoreView` (the core view pinned per input, a bare row and an empty list among them) and multiplatform `interpreter … CustomConditionEmptyCellTest.groupInstancesAreListedAndARepeatableOneReadsThePlaceholder` (JVM + JS).
+
+### IF442: `FieldValueAsNumber` reads a keyed cell, and a keyed scalar spec is fillable as its cell is (2026-10-25) <a id="if442"></a>
+
+[KF568](KERNEL-FINDINGS.md#kf568) admits a keyed `FieldValueAsNumber(Lines/Band -> Rank For "a")` and the direct `FieldValueAsNumber(Lines/Level For "a")`. The interpreter refused both as an unsupported operand. It now reads the keyed cell through `computeGuardedIndexCell`, the read the direct `[F For key]` operand and `FieldValueAsString` already share, and parses the selected or category token as it does unkeyed. A key no row carries and an empty matched cell read `0`, as an empty field does. An undecidable key and an invalid matched cell are unavailable.
+
+The second defect was in message class, not in value. `PolarityWalk.leafOmission` answered `false` for every keyed scalar `EntitySpec`, so a fired `FieldValueAsNumber(… For "a") < 1` on a missed key was a `VALUE_ERROR` where both strategies answer `OMISSION_ERROR`. The arm now asks the keyed cell's fill, as its `SemanticIndex` sibling already did. A first design selected the keyed row and re-read in it; it got the value right and the class wrong, which is what made the second locus visible.
+
+*Locked:* `adapter.laws.KeyedCategoryRoleDiffTest` (seven documents, message class and fill reads included).

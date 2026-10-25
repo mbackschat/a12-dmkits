@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
@@ -74,6 +75,29 @@ internal class Operands(private val mapping: Mapping) {
                 " MVK_NO_WILDCARDS_ALLOWED"
         )
         else -> throw UnmappedConstructException("field operand " + node.javaClass.simpleName)
+    }
+
+    /**
+     * `field -> Category`, keyed or not (`Lines/Grade -> Tier For "a"`), as the [CategoryRef] every role of it
+     * reads, or null when [node] is no category. A category is no [FieldOperand], so each operator that admits
+     * one asks here first; a starred or filtered category stays unmapped.
+     */
+    fun categoryRef(node: Expr): CategoryRef? {
+        val (field, name, index) = when (node) {
+            is Expr.EnumCategory -> Triple(Expr.Field(node.path, node.outer), node.category, null)
+            is Expr.EntitySpec -> {
+                val source = node.source as? Expr.Field ?: return null
+                Triple(source, node.category ?: return null, node.semanticIndex)
+            }
+            else -> return null
+        }
+        val category = mapping.model().enumOf(declared(field.path)).category(name)
+            .let { if (field.outer) it.outer() else it }
+        return when (index) {
+            null -> category
+            is Expr.EntityIndex.Literal -> category.forIndex(index.value)
+            is Expr.EntityIndex.Field -> category.forIndex(fieldRef(Expr.Field(index.path, index.outer)))
+        }
     }
 
     /** Resolve an operand that must name a group. */

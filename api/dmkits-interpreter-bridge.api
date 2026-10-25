@@ -4,6 +4,7 @@ public final class io.github.mbackschat.a12.dm.bridge.ConditionBridge implements
   public io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public java.lang.String basePath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation calculation(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef categoryRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition(io.github.mbackschat.a12.dm.interpreter.ast.Cond)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
@@ -45,6 +46,7 @@ public interface io.github.mbackschat.a12.dm.bridge.Mapping
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public abstract java.lang.String basePath()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation calculation(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef categoryRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition(io.github.mbackschat.a12.dm.interpreter.ast.Cond)
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
@@ -74,6 +76,7 @@ public final class io.github.mbackschat.a12.dm.bridge.OperandResolutionException
 public final class io.github.mbackschat.a12.dm.bridge.Operands
   public Operands(io.github.mbackschat.a12.dm.bridge.Mapping)
   public final io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef categoryRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public final io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public final io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)

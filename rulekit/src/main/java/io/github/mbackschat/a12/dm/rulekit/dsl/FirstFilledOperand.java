@@ -111,7 +111,11 @@ public final class FirstFilledOperand implements DuplicateOperand {
         };
     }
 
-    /** Adds the checked category projection represented by {@code category}. */
+    /**
+     * Adds the checked category projection represented by {@code category}, with the key that selects its row when
+     * it has one ({@link CategoryRef#forIndex}); a key on both this operand and the category is A12's second key,
+     * refused as {@link #forIndex} refuses it (KERNEL-FINDINGS KF568).
+     */
     public FirstFilledOperand withCategory(CategoryRef category) {
         Objects.requireNonNull(category, "category");
         requireCategoryTarget();
@@ -119,7 +123,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
             throw new IllegalArgumentException("category " + category.name()
                     + " does not belong to FirstFilledValue target " + renderedPath());
         }
-        return withCategory(category.name());
+        FirstFilledOperand result = withCategory(category.name());
+        return category.key().map(result::withSemanticIndex).orElse(result);
     }
 
     FirstFilledOperand withCategory(String category) {

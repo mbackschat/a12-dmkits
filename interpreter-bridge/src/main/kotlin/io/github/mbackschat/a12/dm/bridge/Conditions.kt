@@ -23,6 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr
+import io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition
@@ -351,6 +352,9 @@ internal class Conditions(private val mapping: Mapping) {
         fields: List<Expr>,
         values: List<String>,
     ): Condition {
+        if (fields.any { mapping.categoryRef(it) != null }) {
+            return enumListValueList(op, fields, values)
+        }
         val operands = fields.map { mapping.aggregateOperand(it) }
         val head = operands.first()
         if (head is GroupListRef) {
@@ -411,6 +415,22 @@ internal class Conditions(private val mapping: Mapping) {
             else -> throw UnmappedConstructException(
                 op.kernelName + " over a " + fieldRefOperand(op, head).kind() + " field list"
             )
+        }
+    }
+
+    /**
+     * An enumeration list with a category member, keyed or not (`Lines/Grade -> Tier For "a"`): rulekit's
+     * [EnumListRef] mixes direct and category members and admits the literals against the union of their domains,
+     * so each member is its [io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef] or the direct [EnumRef] of a
+     * plain field.
+     */
+    private fun enumListValueList(op: ValueListQuantOp, fields: List<Expr>, values: List<String>): Condition {
+        val refs: List<EnumListRef> = fields.map { mapping.categoryRef(it) ?: enumRef(mapping.fieldRef(it)) }
+        val rest = refs.subList(1, refs.size).toTypedArray()
+        return when (op) {
+            ValueListQuantOp.AT_LEAST_ONE -> Dsl.atLeastOneFieldValueIncludedInValueList(values, refs[0], *rest)
+            ValueListQuantOp.NO -> Dsl.noFieldValueIncludedInValueList(values, refs[0], *rest)
+            ValueListQuantOp.NOT_ALL -> Dsl.notAllFieldValuesIncludedInValueList(values, refs[0], *rest)
         }
     }
 

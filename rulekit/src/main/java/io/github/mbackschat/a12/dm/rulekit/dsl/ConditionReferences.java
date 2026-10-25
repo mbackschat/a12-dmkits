@@ -286,7 +286,13 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case FieldValueAsString c -> refs.field(c.field());
             case IndexedFieldValueAsString c -> collect(c.index(), refs);
             case RangeAsString c -> refs.field(c.field());
-            case FieldValueAsNumber c -> refs.field(c.field());
+            case FieldValueAsNumber c -> {
+                if (c.source() instanceof CategoryRef category) {
+                    collectCategory(category.access(), refs);
+                } else {
+                    refs.field(c.field());
+                }
+            }
             case RangeAsNumber c -> refs.field(c.field());
             case OpListMath m -> m.operands().forEach(o -> collect(o, refs));
             case NumberOfValueInFields n -> {

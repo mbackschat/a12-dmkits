@@ -712,7 +712,13 @@ private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter
     // on an unvisited later slot is excluded (IF184). An ordinary unfiltered star keeps [EvalContext.starOmission].
     is Expr.Star -> e.having != null || ctx.starOmission(e.path, e.bindDepth)
-    is Expr.EntitySpec -> if (e.isIndexedStar()) withIndexedStar(e, false) { leafOmission(it) } else false
+    // A keyed scalar spec, `[F -> C For key]`, is fillable as its keyed cell is: empty or unmatched, as the
+    // `SemanticIndex` arm below asks (`adapter.laws.KeyedCategoryRoleDiffTest`).
+    is Expr.EntitySpec -> when {
+        e.isIndexedStar() -> withIndexedStar(e, false) { leafOmission(it) }
+        else -> (e.source as? Expr.Field)?.let { field -> e.semanticIndex?.let { !semanticIndexFilled(field.semanticIndex(it)) } }
+            ?: false
+    }
     is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
         firstFilledScan(e).fill.let { it.canGrow || it.canShrink }
     else e.args.any { leafOmission(it) }
