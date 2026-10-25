@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG160 — `rule modify --condition` has no waiver flag, while the scale-gate corrective names one** (found 2026-10-25, cold review R2). The waiver is part of A12's condition text (KF75), so a new `--condition` replaces it, and the diff now shows the drop. A re-expression that still needs it is refused `MVK_INVALID_COMPARE_DEC_PLACES`, and the enricher's corrective (`StructuralKernelFix`) says "allowDifferingDecimals:true on the rule spec", a key `rule add` and `apply` take and `rule modify` does not. Writing the directive into `--condition` is admitted (`ScaleWaiverReadBackCliTest`). Settles by either a `rule modify` flag or a corrective that names the inline directive for this verb.
+_None open._
 
 ## 3. Adjacent but out of scope
 

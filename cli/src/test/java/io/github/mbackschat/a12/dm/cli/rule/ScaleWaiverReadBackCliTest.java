@@ -80,6 +80,19 @@ class ScaleWaiverReadBackCliTest {
                 changed.path("after").asText(), changed.path("changed").asBoolean()), modify::out);
     }
 
+    /**
+     * `rule modify` takes no spec, so the waiver is re-expressed inline. Dropping it is refused, and the corrective
+     * names that inline route rather than only the spec key `rule modify` has no flag for.
+     */
+    @Test
+    void aModifyThatDropsTheWaiverIsToldToWriteItInline(@TempDir Path dir) throws Exception {
+        Path model = waivedModel(dir);
+        var modify = CliTestSupport.run("-m", model.toString(), "rule", "modify", RULE, "--condition",
+                "[Quantity] == [UnitPrice]", "--dry-run");
+        assertTrue(modify.code() != 0 && modify.out().contains("MVK_INVALID_COMPARE_DEC_PLACES"), modify::out);
+        assertTrue(modify.out().contains("at the head of `--condition`"), modify::out);
+    }
+
     /** The control: the same text without the flag is what A12 refuses, so the flag is what the read must carry. */
     @Test
     void theConditionAloneIsRefused(@TempDir Path dir) throws Exception {
