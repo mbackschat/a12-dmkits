@@ -46,6 +46,7 @@ class PartialDispatchSelectorDiffTest {
         Triple("WIDE", parts.field("Count"), tag.filled().and(order.str("Email").filled().or(count.filled()))),
         Triple("EXACT", parts.field("Count"), tag.filled().and(Dsl.currentRepetition(lines.ref()).gt(Dsl.number(2L)).or(count.filled()))),
         Triple("NESTED", parts.field("Count"), count.filled().and(Dsl.noFieldFilled(parts.field("PartNo"), picks.field("Ref")))),
+        Triple("NESTED_OR", parts.field("Count"), count.filled().or(tag.filled().and(Dsl.noFieldFilled(parts.field("PartNo"), picks.field("Ref"))))),
         Triple("FLAT", lines.field("Sku"), lines.str("Sku").filled().or(lines.str("Code").filled().and(ref.notFilled()))),
     ).fold(edit.toJson()) { json, (code, errorField, condition: Condition) ->
         ModelWriter.addRule(json, order.rule { it.name(code + "Rule").code(code).errorField(errorField)
@@ -75,7 +76,7 @@ class PartialDispatchSelectorDiffTest {
     )
 
     private fun observed(messages: List<MessageSignature>) =
-        messages.filter { it.code in setOf("WIDE", "EXACT", "NESTED", "FLAT") }.map { it.toString().substringBefore("|ref=") }.sorted()
+        messages.filter { it.code in setOf("WIDE", "EXACT", "NESTED", "NESTED_OR", "FLAT") }.map { it.toString().substringBefore("|ref=") }.sorted()
 
     @Test
     fun a12AndTheInterpreterDispatchTheMergedSelector() {
@@ -125,14 +126,17 @@ class PartialDispatchSelectorDiffTest {
 
     private companion object {
         /** The dynamic Kernel on the rows that separate the merge from its rivals. A disagreed coordinate widens
-         *  dispatch (`sharedPart`: every line's second part, not every part), a formally invalid pointer still
+         *  dispatch (`sharedPart`: every line's second part, not every part, and a joined rule below its join keeps
+         *  the part coordinate when it can fire without the error cell), a formally invalid pointer still
          *  takes part in the merge (`badCount`), a joined rule iterating below the join is silent under a concrete
          *  line (`one`), and one without that level ignores the line coordinate (`skuOfLine3`). */
         val PINNED = mapOf(
             "one" to listOf("1.1 EXACT", "1.1 WIDE"),
-            "sharedPart" to listOf("1.2 EXACT", "3.2 EXACT", "1.2 NESTED", "3.2 NESTED", "1.2 WIDE", "2.2 WIDE", "3.2 WIDE"),
+            "sharedPart" to listOf("1.2 EXACT", "3.2 EXACT", "1.2 NESTED_OR", "3.2 NESTED_OR", "1.2 NESTED", "3.2 NESTED",
+                "1.2 WIDE", "2.2 WIDE", "3.2 WIDE"),
             "skuOfLine3" to listOf("1 FLAT", "3 FLAT"),
-            "badCount" to listOf("1.1 EXACT", "3.1 EXACT", "3.2 EXACT", "1.1 NESTED",
+            "badCount" to listOf("1.1 EXACT", "3.1 EXACT", "3.2 EXACT", "1.2 NESTED_OR", "1.3 NESTED_OR", "3.1 NESTED_OR",
+                "3.2 NESTED_OR", "1.1 NESTED_OR", "1.1 NESTED",
                 "1.1 WIDE", "1.2 WIDE", "1.3 WIDE", "2.1 WIDE", "2.2 WIDE", "3.1 WIDE", "3.2 WIDE"),
         )
     }

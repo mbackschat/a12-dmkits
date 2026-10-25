@@ -32,6 +32,9 @@ class PartialDispatchSelectorTest {
                 "FieldFilled(Lines/Parts/Tag) And (FieldFilled(Email) Or FieldFilled(Lines/Parts/Count))", "WIDE", "../Lines/Parts/Count"),
             RuleDef("/Order/NestedRule", "/Order",
                 "FieldFilled(Lines/Parts/Count) And NoFieldFilled(Lines/Parts/PartNo, Picks/Ref)", "NESTED", "../Lines/Parts/Count"),
+            RuleDef("/Order/NestedOrRule", "/Order",
+                "FieldFilled(Lines/Parts/Count) Or (FieldFilled(Lines/Parts/Tag) And NoFieldFilled(Lines/Parts/PartNo, Picks/Ref))",
+                "NESTED_OR", "../Lines/Parts/Count"),
         ),
         groupPaths = setOf("/Order", "/Order/Lines", "/Order/Lines/Parts", "/Order/Picks"),
         declaredReps = mapOf("/Order/Lines" to 4, "/Order/Lines/Parts" to 3, "/Order/Picks" to 4),
@@ -56,11 +59,12 @@ class PartialDispatchSelectorTest {
         return report.messages.map { m -> m.errorPointer.repetitionIndexes.drop(1).take(2).joinToString(".") + " " + m.code }.sorted()
     }
 
-    @Test fun aSingleCellDispatchesItsOwnRowAndSilencesTheRuleBelowTheJoin() =
+    @Test fun aSingleCellDispatchesItsOwnRowAndSilencesTheRulesBelowTheJoin() =
         assertEquals(listOf("1.1 WIDE"), fired(1 to 1))
 
     @Test fun twoCellsSharingAPartWidenOnlyTheLineCoordinate() =
-        assertEquals(listOf("1.2 NESTED", "1.2 WIDE", "2.2 WIDE", "3.2 NESTED", "3.2 WIDE"), fired(1 to 2, 3 to 2))
+        assertEquals(listOf("1.2 NESTED", "1.2 NESTED_OR", "1.2 WIDE", "2.2 WIDE", "3.2 NESTED", "3.2 NESTED_OR", "3.2 WIDE"),
+            fired(1 to 2, 3 to 2))
 
     @Test fun twoCellsInOneLineWidenThatLinesPartsAndKeepTheJoinedRuleSilent() =
         assertEquals(listOf("1.1 WIDE", "1.2 WIDE", "1.3 WIDE"), fired(1 to 1, 1 to 2))
