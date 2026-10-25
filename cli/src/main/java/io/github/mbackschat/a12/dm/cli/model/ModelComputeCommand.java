@@ -87,8 +87,9 @@ final class ModelComputeCommand extends BaseCommand {
 
         ObjectNode data;
         try {
-            data = InterpreterEngine.computeData(interpJson, documentJson, localeTag,
-                    customSupport.runtimeInputs(clock.get()));
+            data = InterpreterEngine.computeData(InterpreterEngine.Evaluation.builder().model(interpJson)
+                    .document(documentJson).locale(localeTag).inputs(customSupport.runtimeInputs(clock.get()))
+                    .build());
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());

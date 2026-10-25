@@ -171,14 +171,12 @@ public final class InterpreterEngine {
 
     /**
      * {@code model eval} over the whole model, optionally narrowing the {@code rule} verdict to {@code targetRule}.
-     * {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
-     * bare {@code validateFull} ({@code --no-computations}). A non-null {@code relevantJson} selects
-     * {@code validatePart}.
+     * {@link Computations#APPLIED} runs the form-engine flow (compute → apply → validate, the default);
+     * {@link Computations#SKIPPED} is the bare {@code validateFull} ({@code --no-computations}). A relevant
+     * selection on the evaluation selects {@code validatePart}.
      */
-    public static ObjectNode evalData(String modelJson, String documentJson, String locale, String targetRule,
-            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
-        return evalFor(InterpreterModelLoader.load(modelJson), documentJson, locale, targetRule, inputs,
-                applyComputations, relevantJson);
+    public static ObjectNode evalData(Evaluation evaluation, String targetRule) {
+        return evalFor(InterpreterModelLoader.load(evaluation.modelJson()), evaluation, targetRule);
     }
 
     /**
@@ -188,12 +186,82 @@ public final class InterpreterEngine {
      * identical to persisting the rule (G42), never a single index-less collapse; {@code rule} narrows to it.
      * A candidate carries no message template, so it renders its {@code name} (matching the kernel's fallback).
      */
-    public static ObjectNode evalCandidateData(String modelJson, String documentJson, CandidateRule candidate,
-            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
+    public static ObjectNode evalCandidateData(Evaluation evaluation, CandidateRule candidate) {
         RuleDef rule = candidateRule(candidate, candidate.name());
-        ModelDef def = InterpreterModelLoader.load(modelJson).withRule(rule);
-        return evalFor(def, documentJson, candidate.locale(), rule.getPath(), inputs, applyComputations,
-                relevantJson);
+        ModelDef def = InterpreterModelLoader.load(evaluation.modelJson()).withRule(rule);
+        return evalFor(def, evaluation, rule.getPath());
+    }
+
+    /**
+     * What one runtime evaluation reads: the model and the document, the locale it renders in, the host inputs,
+     * and whether the computations run first. Built through {@link #builder()} because the two JSON texts and the
+     * locale are same-typed and would trade places silently in a positional call. A candidate's own locale names
+     * its message; this one is the locale the run renders in, and both eval verbs set the two alike.
+     *
+     * @param relevantJson {@code model eval}'s {@code validatePart} selection, or {@code null} for the whole
+     *        document; the focused rule verbs evaluate one rule and refuse a selection
+     */
+    public record Evaluation(String modelJson, String documentJson, String locale, RuntimeInputs inputs,
+            Computations computations, String relevantJson) {
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** Applies the computations first unless told otherwise, the default of every eval verb. */
+        public static final class Builder {
+            private String modelJson;
+            private String documentJson;
+            private String locale;
+            private RuntimeInputs inputs;
+            private Computations computations = Computations.APPLIED;
+            private String relevantJson;
+
+            private Builder() {
+            }
+
+            public Builder model(String modelJson) {
+                this.modelJson = modelJson;
+                return this;
+            }
+
+            public Builder document(String documentJson) {
+                this.documentJson = documentJson;
+                return this;
+            }
+
+            public Builder locale(String locale) {
+                this.locale = locale;
+                return this;
+            }
+
+            public Builder inputs(RuntimeInputs inputs) {
+                this.inputs = inputs;
+                return this;
+            }
+
+            public Builder computations(Computations computations) {
+                this.computations = computations;
+                return this;
+            }
+
+            /** Leave unset, or pass {@code null}, to validate the whole document. */
+            public Builder relevant(String relevantJson) {
+                this.relevantJson = relevantJson;
+                return this;
+            }
+
+            public Evaluation build() {
+                return new Evaluation(modelJson, documentJson, locale, inputs, computations, relevantJson);
+            }
+        }
+
+        private Document apply(DmInterpreter interpreter, Document document) {
+            return switch (computations) {
+                case APPLIED -> interpreter.applyComputations(document, locale);
+                case SKIPPED -> document;
+            };
+        }
     }
 
     /**
@@ -308,11 +376,12 @@ public final class InterpreterEngine {
      * fired}). Both the persisted-rule path ({@link #evalData}) and the injected-candidate path
      * ({@link #evalCandidateData}) end here, so candidate and persisted evaluation are bit-identical.
      */
-    private static ObjectNode evalFor(ModelDef def, String documentJson, String locale, String targetRule,
-            RuntimeInputs inputs, boolean applyComputations, String relevantJson) {
-        Document doc = InterpreterModelLoader.document(documentJson, def);
-        DmInterpreter interp = inputs.interpreter(def);
-        Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
+    private static ObjectNode evalFor(ModelDef def, Evaluation evaluation, String targetRule) {
+        String locale = evaluation.locale();
+        Document doc = InterpreterModelLoader.document(evaluation.documentJson(), def);
+        DmInterpreter interp = evaluation.inputs().interpreter(def);
+        Document evalDoc = evaluation.apply(interp, doc);
+        String relevantJson = evaluation.relevantJson();
         Set<RelevantEntity> relevant = relevantJson == null ? null : RelevantSelection.parse(relevantJson, def);
         ValidationOutcome outcome = relevant == null
                 ? interp.validate(evalDoc, locale)
@@ -342,12 +411,14 @@ public final class InterpreterEngine {
     }
 
     /** {@code model compute}: each computed field's outcome (value / cleared / error). */
-    public static ObjectNode computeData(String modelJson, String documentJson, String locale,
-            RuntimeInputs inputs) {
-        ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(documentJson, def);
-        var evaluation = inputs.interpreter(def).computeWithSupport(doc, locale);
-        List<Computed> computed = evaluation.getResults();
+    public static ObjectNode computeData(Evaluation evaluation) {
+        if (evaluation.computations() != Computations.APPLIED || evaluation.relevantJson() != null) {
+            throw new IllegalStateException("a compute run computes the whole document");
+        }
+        ModelDef def = InterpreterModelLoader.load(evaluation.modelJson());
+        Document doc = InterpreterModelLoader.document(evaluation.documentJson(), def);
+        var outcome = evaluation.inputs().interpreter(def).computeWithSupport(doc, evaluation.locale());
+        List<Computed> computed = outcome.getResults();
 
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode arr = data.putArray("computed");
@@ -370,31 +441,24 @@ public final class InterpreterEngine {
         // "field(s)" — which was wrong on both axes.
         data.put("declarations", declarations.size());
         data.put("instances", computed.size());
-        addUnsupported(data, evaluation.getUnsupported());
+        addUnsupported(data, outcome.getUnsupported());
         return data;
     }
 
     /** {@code rule eval}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
-    public static ObjectNode ruleTestData(String modelJson, String documentJson, String locale, String rulePath,
-            RuntimeInputs inputs, boolean applyComputations) {
-        ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(documentJson, def);
-        return focusedRuleData(def, doc, locale, rulePath, inputs, applyComputations,
-                (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
+    public static ObjectNode ruleTestData(Evaluation evaluation, String rulePath) {
+        return focusedRuleData(evaluation, rulePath,
+                (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, evaluation.locale()));
     }
 
     /**
      * {@code rule eval --condition/--field}: focused runtime evaluation of one non-stored candidate, rendered
      * through the same fired/passed/suppressed/unsupported data contract as a stored rule.
      */
-    public static ObjectNode ruleTestCandidateData(String modelJson, String documentJson, CandidateRule candidate,
-            RuntimeInputs inputs, boolean applyComputations) {
-        ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(documentJson, def);
-        String locale = candidate.locale();
+    public static ObjectNode ruleTestCandidateData(Evaluation evaluation, CandidateRule candidate) {
         RuleDef rule = focusedRule(candidate);
-        return focusedRuleData(def, doc, locale, rule.getPath(), inputs, applyComputations,
-                (interpreter, evaluated) -> interpreter.evalCandidate(rule, evaluated, locale));
+        return focusedRuleData(evaluation, rule.getPath(),
+                (interpreter, evaluated) -> interpreter.evalCandidate(rule, evaluated, evaluation.locale()));
     }
 
     @FunctionalInterface
@@ -403,12 +467,16 @@ public final class InterpreterEngine {
     }
 
     /** One focused-rule execution and projection for both stored and candidate routes. */
-    private static ObjectNode focusedRuleData(ModelDef def, Document doc, String locale, String rulePath,
-            RuntimeInputs inputs, boolean applyComputations, FocusedRuleEvaluator evaluator) {
+    private static ObjectNode focusedRuleData(Evaluation evaluation, String rulePath, FocusedRuleEvaluator evaluator) {
+        if (evaluation.relevantJson() != null) {
+            throw new IllegalStateException("a focused rule evaluation takes no relevant selection");
+        }
+        ModelDef def = InterpreterModelLoader.load(evaluation.modelJson());
+        Document doc = InterpreterModelLoader.document(evaluation.documentJson(), def);
         RuleResult result;
         try {
-            DmInterpreter interp = inputs.interpreter(def);
-            Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
+            DmInterpreter interp = evaluation.inputs().interpreter(def);
+            Document evalDoc = evaluation.apply(interp, doc);
             result = evaluator.evaluate(interp, evalDoc);
         } catch (UnsupportedConstructException e) {
             // The rule uses a construct the engine can't evaluate (a CustomCondition with no impl) → report it

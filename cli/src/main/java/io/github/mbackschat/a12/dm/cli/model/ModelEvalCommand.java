@@ -186,9 +186,13 @@ final class ModelEvalCommand extends BaseCommand {
 
         ObjectNode data;
         try {
+            // The host inputs are read at each call, after the refusal below: reading them can fail on a bad file
+            InterpreterEngine.Evaluation.Builder evaluation = InterpreterEngine.Evaluation.builder().model(interpJson)
+                    .document(documentJson).locale(localeTag)
+                    .computations(InterpreterEngine.Computations.of(!noComputations)).relevant(relevant);
             if (candidate) {
-                data = InterpreterEngine.evalCandidateData(interpJson, documentJson, spec,
-                        customSupport.runtimeInputs(clock.get()), !noComputations, relevant);
+                data = InterpreterEngine.evalCandidateData(
+                        evaluation.inputs(customSupport.runtimeInputs(clock.get())).build(), spec);
             } else {
                 // a structured refusal for an unknown --rule narrowing — otherwise it would silently report
                 // the missing rule as fired:false.
@@ -196,8 +200,8 @@ final class ModelEvalCommand extends BaseCommand {
                     return refuseNotFound(RkCode.NO_SUCH_RULE,
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
                 }
-                data = InterpreterEngine.evalData(interpJson, documentJson, localeTag, ruleId,
-                        customSupport.runtimeInputs(clock.get()), !noComputations, relevant);
+                data = InterpreterEngine.evalData(
+                        evaluation.inputs(customSupport.runtimeInputs(clock.get())).build(), ruleId);
             }
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),

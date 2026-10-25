@@ -142,6 +142,10 @@ final class RuleEvalCommand extends BaseCommand {
                         "field '" + field + "' does not exist — refusing candidate evaluation",
                         field, RkCode.NO_SUCH_FIELD.fix());
             }
+            // The host inputs are read at each call, after the refusals below: reading them can fail on a bad file
+            InterpreterEngine.Evaluation.Builder evaluation = InterpreterEngine.Evaluation.builder().model(interpJson)
+                    .document(documentJson).locale(localeTag)
+                    .computations(InterpreterEngine.Computations.of(!noComputations));
             ObjectNode data;
             if (candidate) {
                 InterpreterEngine.CandidateRule spec = InterpreterEngine.CandidateRule.builder()
@@ -157,8 +161,8 @@ final class RuleEvalCommand extends BaseCommand {
                 if (!undeclared.isEmpty()) {
                     return refuseUndeclaredReferences(undeclared);
                 }
-                data = InterpreterEngine.ruleTestCandidateData(interpJson, documentJson, spec,
-                        customSupport.runtimeInputs(clock.get()), !noComputations);
+                data = InterpreterEngine.ruleTestCandidateData(
+                        evaluation.inputs(customSupport.runtimeInputs(clock.get())).build(), spec);
             } else {
                 // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
                 if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
@@ -170,8 +174,8 @@ final class RuleEvalCommand extends BaseCommand {
                 if (!undeclared.isEmpty()) {
                     return refuseUndeclaredReferences(undeclared);
                 }
-                data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
-                        customSupport.runtimeInputs(clock.get()), !noComputations);
+                data = InterpreterEngine.ruleTestData(
+                        evaluation.inputs(customSupport.runtimeInputs(clock.get())).build(), rule);
             }
             RuntimeEvidence evidence = RuntimeEvidence.interpreter();
             ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);
