@@ -628,7 +628,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 .thenComparing(Message::message)
                 // Last, so it can only separate messages whose every string channel is equal, which render
                 // identically without it; an artifact that does not carry coordinates keeps its order.
-                .thenComparing(m -> m.repetitionIndexes().map(Object::toString).orElse(""));
+                .thenComparing(m -> m.repetitionIndexes().orElse(null), Comparator.nullsFirst(RepetitionIndexes.ORDER));
 
         /**
          * The two address channels are sorted, for the same reason {@link Engine} sorts its messages: the
@@ -660,7 +660,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         private record Address(String text, List<Integer> indexes) {
 
             private static final Comparator<Address> ORDER = Comparator.comparing(Address::text)
-                    .thenComparing(Address::indexes, Address::compareIndexes);
+                    .thenComparing(Address::indexes, RepetitionIndexes::compareIndexes);
 
             static List<Address> sorted(List<String> texts, List<List<Integer>> indexes) {
                 if (texts.size() != indexes.size()) {
@@ -675,15 +675,6 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return pairs;
             }
 
-            private static int compareIndexes(List<Integer> left, List<Integer> right) {
-                for (int i = 0; i < Math.min(left.size(), right.size()); i++) {
-                    int order = Integer.compare(left.get(i), right.get(i));
-                    if (order != 0) {
-                        return order;
-                    }
-                }
-                return Integer.compare(left.size(), right.size());
-            }
         }
 
         @Override
@@ -700,6 +691,32 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      */
     public record RepetitionIndexes(List<Integer> field, List<List<Integer>> referenced,
             List<List<Integer>> fillToFix) {
+
+        /** Numeric, vector by vector, so row 2 precedes row 10 as it does in the document. */
+        static final Comparator<RepetitionIndexes> ORDER = Comparator
+                .comparing(RepetitionIndexes::field, RepetitionIndexes::compareIndexes)
+                .thenComparing(RepetitionIndexes::referenced, RepetitionIndexes::compareVectors)
+                .thenComparing(RepetitionIndexes::fillToFix, RepetitionIndexes::compareVectors);
+
+        static int compareIndexes(List<Integer> left, List<Integer> right) {
+            for (int i = 0; i < Math.min(left.size(), right.size()); i++) {
+                int order = Integer.compare(left.get(i), right.get(i));
+                if (order != 0) {
+                    return order;
+                }
+            }
+            return Integer.compare(left.size(), right.size());
+        }
+
+        private static int compareVectors(List<List<Integer>> left, List<List<Integer>> right) {
+            for (int i = 0; i < Math.min(left.size(), right.size()); i++) {
+                int order = compareIndexes(left.get(i), right.get(i));
+                if (order != 0) {
+                    return order;
+                }
+            }
+            return Integer.compare(left.size(), right.size());
+        }
 
         public RepetitionIndexes {
             field = List.copyOf(field);

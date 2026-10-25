@@ -60,6 +60,19 @@ class KernelProbeRepetitionIndexesTest {
             published[0])
     }
 
+    /**
+     * Two firings of one group-target rule on rows 2 and 10 share every string channel, so only the vectors tell
+     * them apart, and they order as numbers: row 2 first. A text order would put `[1, 1, 10]` first (2026-10-25
+     * cold review, R8).
+     */
+    @Test
+    fun firingsDifferingOnlyInTheirCoordinatesSortNumerically() {
+        fun firing(row: Int) = KernelProbeArtifact.Message("C", "/Order[1]/Lines", "ERROR", "VALUE_ERROR", "x",
+            listOf(), listOf(), Optional.of(KernelProbeArtifact.RepetitionIndexes(listOf(1, row), listOf(), listOf())))
+        assertEquals(listOf(listOf(1, 2), listOf(1, 10)),
+            listOf(firing(10), firing(2)).sorted().map { it.repetitionIndexes().orElseThrow().field() })
+    }
+
     /** A vector list that does not match its address list is refused rather than misaligned. */
     @Test
     fun aVectorPerAddressIsRequired() {
