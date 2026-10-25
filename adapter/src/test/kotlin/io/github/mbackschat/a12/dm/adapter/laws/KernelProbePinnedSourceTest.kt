@@ -62,6 +62,19 @@ class KernelProbePinnedSourceTest {
         }
     }
 
+    /** The JVM default zone is pinned on the same route: A12's code generation reads it, and the artifact does
+     *  not name it, so a Berlin run and a UTC run of one request could differ in bytes. */
+    @Test
+    fun aHandOverRunRefusesAnyZoneButUtc() {
+        KernelRuntimeProbe.requirePinnedTimeZone("UTC", true)
+        val refused = assertThrows(IllegalStateException::class.java) {
+            KernelRuntimeProbe.requirePinnedTimeZone("Europe/Berlin", true)
+        }
+        assertTrue("Europe/Berlin" in refused.message.orEmpty() && "kernelProbe" in refused.message.orEmpty(),
+            "the refusal must name the zone it saw and the route that pins it: ${refused.message}")
+        KernelRuntimeProbe.requirePinnedTimeZone("Europe/Berlin", false)
+    }
+
     /** The does-not-fire arm: with enforcement off, an exploration run proceeds on a dirty tree. */
     @Test
     fun theEscapeLetsAnExplorationRunProceed() {

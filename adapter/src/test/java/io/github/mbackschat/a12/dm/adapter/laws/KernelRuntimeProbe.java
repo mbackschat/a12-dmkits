@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -989,8 +990,9 @@ public final class KernelRuntimeProbe {
         if (args.length != 2) {
             throw new IllegalArgumentException(USAGE);
         }
-        requirePinnedSource(System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
-                Boolean.parseBoolean(System.getProperty(REQUIRE_PINNED_PROPERTY, "false")));
+        boolean requirePinned = Boolean.parseBoolean(System.getProperty(REQUIRE_PINNED_PROPERTY, "false"));
+        requirePinnedSource(System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE), requirePinned);
+        requirePinnedTimeZone(TimeZone.getDefault().getID(), requirePinned);
         Path requestFile = Path.of(args[0]);
         Path out = Path.of(args[1]);
 
@@ -1041,6 +1043,26 @@ public final class KernelRuntimeProbe {
                     + "these rows. Commit (or stash) first, then re-run. For a local exploration run whose "
                     + "artifact you will not hand over, pass -PprobeAllowUnpinned=true — the artifact still "
                     + "stamps state=" + sourceState + ".");
+        }
+    }
+
+    /** The JVM default zone every hand-over artifact is produced under; the Gradle task passes it. */
+    static final String PINNED_TIME_ZONE = "UTC";
+
+    /**
+     * Refuses to produce a hand-over artifact under any JVM default zone but {@link #PINNED_TIME_ZONE}.
+     *
+     * <p>The header does not name the zone, yet A12's consistency gate reads it (KERNEL-FINDINGS kf231): under
+     * Europe/Berlin a model whose DateTime constant falls into a daylight-saving gap is refused, while the same
+     * request under UTC evaluates. One fixed zone keeps "identical input and source give identical bytes" true
+     * across machines without adding a header member, so an artifact produced under UTC keeps its bytes.
+     */
+    static void requirePinnedTimeZone(String zoneId, boolean requirePinned) {
+        if (requirePinned && !PINNED_TIME_ZONE.equals(zoneId)) {
+            throw new IllegalStateException("kernel-probe refuses to write a hand-over artifact under the JVM "
+                    + "default time zone " + zoneId + ": A12's consistency gate reads it and the artifact does not "
+                    + "name it. Run it through :adapter:kernelProbe, which passes -Duser.timezone="
+                    + PINNED_TIME_ZONE + ".");
         }
     }
 

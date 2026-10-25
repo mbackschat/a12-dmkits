@@ -1676,6 +1676,9 @@ tasks.register('kernelProbe', JavaExec) {
     // Explicit, not JavaExec's default: under -ea A12 cannot read back a message carrying -6 and the whole run
     // dies (KERNEL-FINDINGS kf607). kernelProbeProductionAssertionsTest must match it; GateTierWiringTest locks both.
     enableAssertions = false
+    // A12's consistency gate reads the JVM default zone (KERNEL-FINDINGS kf231) and the artifact does not name it, so every hand-over run
+    // is made under one zone; KernelRuntimeProbe.requirePinnedTimeZone refuses any other.
+    jvmArgs '-Duser.timezone=UTC'
     args probeRequest.getOrElse(''), probeOut.getOrElse('')
     // Supplied through an argument provider rather than `systemProperty`, so the git calls happen when the probe
     // runs — not while configuring any other adapter task.
