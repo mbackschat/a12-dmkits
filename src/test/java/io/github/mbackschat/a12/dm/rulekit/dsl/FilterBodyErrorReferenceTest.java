@@ -3,12 +3,14 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
@@ -79,5 +81,14 @@ class FilterBodyErrorReferenceTest {
                 "field read outside the filter too", false,
                 "group named only in the body", true,
                 "group named outside the filter too", false), kernel, "the pinned kernel verdicts");
+    }
+
+    /** The error-field suggestion reads the same law: an unmarked body read offers nothing, a marked one its field. */
+    @Test
+    void theErrorFieldCandidatesFollowTheSameLaw() {
+        ModelContext context = new ModelContext(M);
+        assertEquals(List.of("/Shipment/Received/Quantity"), context.errorFieldCandidates(sumHaving(NOTE.eq("x"))));
+        assertEquals(List.of("/Shipment/Received/Note", "/Shipment/Received/Quantity"),
+                context.errorFieldCandidates(sumHaving(QUANTITY.gt(1).and(NOTE.outer().eq("x")))));
     }
 }

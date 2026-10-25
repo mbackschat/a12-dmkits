@@ -59,6 +59,24 @@ class RuleCheckSuggestVerbTest {
                 () -> "Name is not referenced by the condition → not a candidate: " + res.out());
     }
 
+    /**
+     * A read made only inside an unmarked {@code Having} body is not the rule's own, so A12 refuses that field as
+     * the error field (KERNEL-FINDINGS KF488); the suggestion must not offer it. The kernel's verdict is pinned
+     * beside the list, so the row fails if A12 ever admits it (2026-10-25 cold review, R1).
+     */
+    @Test
+    void aFieldReadOnlyInAnUnmarkedFilterBodyIsNoCandidate(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
+                "--field", "/Subscription/Addons/Name", "--group", "/Subscription/Addons",
+                "--condition", "Sum(/Subscription/Addons*/MonthlyFee Having [/Subscription/Addons/Name] == \"x\") > 0",
+                "--code", "FEE_SUM", "--suggest-error-field");
+        JsonNode j = MAPPER.readTree(res.out());
+        assertFalse(j.path("valid").asBoolean(), res::out);
+        assertTrue(res.out().contains("MVK_ERROR_FIELD_NOT_REFERENCED"), res::out);
+        assertFalse(strings(j.path("data").path("candidates")).contains("/Subscription/Addons/Name"), res::out);
+        assertFalse(j.path("data").path("fieldIsCandidate").asBoolean(), res::out);
+    }
+
     @Test
     void aModelLevelErrorFieldGetsAClarifyingNoteNotAFalseVerdict(@TempDir Path dir) throws Exception {
         // probe 06-6: `candidates` lists only iteration-scope refs, so fieldIsCandidate is false for a

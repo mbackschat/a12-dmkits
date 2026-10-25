@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
+import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CheckEngine;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
@@ -247,6 +248,18 @@ final class RuleCheckCommand extends BaseCommand {
                 List.of(), data, evidence));
     }
 
+    /**
+     * Whether A12 refuses {@code candidate} as this rule's error field for not being referenced. The kernel's
+     * directly-referenced set includes a read made only inside an unmarked {@code Having} body, which A12 does not
+     * count as the rule's own (KERNEL-FINDINGS KF488), and the sets it does judge by are internal to its parser,
+     * so each candidate is asked of the kernel rather than re-derived here.
+     */
+    private boolean referenceRefused(String json, String effectiveGroup, String candidate, ModelResolver resolver) {
+        DraftRule draft = candidate(effectiveGroup, EntityPath.of(effectiveGroup).elementReference(EntityPath.of(candidate)));
+        return new RuleValidator().check(json, draft, resolver).diagnostics().stream()
+                .anyMatch(d -> d.code().filter(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()::equals).isPresent());
+    }
+
     /** This invocation's candidate rule, messages included — built once so both routes check the same thing. */
     private DraftRule candidate(String effectiveGroup, String errorEntityRelPath) {
         return DraftRule.builder()
@@ -297,7 +310,8 @@ final class RuleCheckCommand extends BaseCommand {
             // rulekit converter NPEs on an inconsistent candidate; it returns the condition's references
             // regardless of error-field validity, which is exactly what we filter into candidates.
             java.util.Set<String> references = KernelAdapter.of(lenient).referencedFields(candidateFullName);
-            java.util.List<String> candidates = new ModelContext(lenient).errorFieldCandidates(references);
+            java.util.List<String> candidates = new ModelContext(lenient).errorFieldCandidates(references).stream()
+                    .filter(candidate -> !referenceRefused(json, effectiveGroup, candidate, resolver)).toList();
             ArrayNode arr = data.putArray("candidates");
             candidates.forEach(arr::add);
             data.put("fieldIsCandidate", candidates.contains(field));

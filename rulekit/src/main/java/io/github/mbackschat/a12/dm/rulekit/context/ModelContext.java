@@ -159,7 +159,8 @@ public final class ModelContext {
     /**
      * The fields a candidate condition could legally use as its <b>error field</b> (FEATURE-GAPS G4) — the
      * referenced fields that satisfy the kernel's {@code MVK_ERROR_FIELD_NOT_REFERENCED} law: the error
-     * field must be <em>referenced</em> by the condition and, when the condition iterates a repeatable group,
+     * field must be <em>referenced</em> by the condition, a read only inside an unmarked {@code Having} body not
+     * counting (KERNEL-FINDINGS KF488), and, when the condition iterates a repeatable group,
      * lie <em>inside</em> that group (so it has a per-row instance to attach the error to). Returns the
      * qualifying referenced field paths, sorted; empty when the condition references only groups, or only
      * fields outside its iteration scope (then no referenced field is a valid error field — the author must
@@ -167,7 +168,7 @@ public final class ModelContext {
      * up-front pick; the kernel stays the authority on the final verdict.
      */
     public List<String> errorFieldCandidates(Condition condition) {
-        return errorFieldCandidates(ConditionReferences.of(condition));
+        return errorFieldCandidates(ConditionReferences.rulesOwn(condition));
     }
 
     /**
