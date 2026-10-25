@@ -191,9 +191,11 @@ internal class ComputationEngine(
         // FLATTENS them, in document order, into one per-field first-match table, so the first SELECTED alternative
         // ends the scan for that cell even when it stores nothing; only an UNSELECTED computation (common
         // precondition false / no guard matched) falls through (the kernel's `CalculationController.handleBerechnetenWert` —
-        // "for empty values, do like no calculation was done"). [outcomeByCell] keeps the winner per target cell
-        // (insertion-ordered), [decided] marks the cells whose flattened scan has ENDED — every SELECTED
-        // alternative ends it, whether or not it stored a value (SPEC-2026-07-26-03).
+        // "for empty values, do like no calculation was done"). One exception, by table role: in a joined target's
+        // table a partnerless declaration behind a joined lead is PASSED OVER, selected or not (KF619).
+        // [outcomeByCell] keeps the winner per target cell (insertion-ordered), [decided] marks the cells whose
+        // flattened scan has ENDED — every other SELECTED alternative ends it, whether or not it stored a value
+        // (SPEC-2026-07-26-03).
         val outcomeByCell = LinkedHashMap<Pair<String, List<Int>>, Computed>()
         val decided = HashSet<Pair<String, List<Int>>>()
         // The cascade's own state: one entry per cell, carrying overlaid / cleared / poisoned (IF286).

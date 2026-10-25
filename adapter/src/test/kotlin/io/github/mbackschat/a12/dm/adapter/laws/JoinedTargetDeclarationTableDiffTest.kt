@@ -58,7 +58,8 @@ class JoinedTargetDeclarationTableDiffTest {
                 .numberField("LeadThenTwo") { it.fractionDigits(0) }
                 .numberField("Passed") { it.fractionDigits(0) }
                 .numberField("PassedConstant") { it.fractionDigits(0) }
-                .numberField("PassedBad") { it.fractionDigits(0) } }
+                .numberField("PassedBad") { it.fractionDigits(0) }
+                .numberField("PoisonedLead") { it.fractionDigits(0) } }
             .group("Stock") { s -> s.repeatable(4).indexField("Sku")
                 .stringField("Sku") { }
                 .numberField("OnHand") { it.fractionDigits(0) } } }
@@ -111,6 +112,8 @@ class JoinedTargetDeclarationTableDiffTest {
             computing("PassedBad", "BadFromStock").`when`(single).calc(onHand.asNumber()).build(),
             computing("PassedBad", "BadOrder").`when`(bad.ge(1)).calc(qty.plus(100)).build(),
             computing("PassedBad", "BadReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
+            computing("PoisonedLead", "PoisonedFromStock").`when`(bad.ge(1)).calc(onHand.asNumber()).build(),
+            computing("PoisonedLead", "PoisonedReserve").`when`(qty.ge(1)).calc(onHand.plus(1000)).build(),
             bound.computation(bound.num("/Fulfilment/BufferedTotal")).name("BufferedTotalComputation")
                 .calc(Dsl.sum(bound.flatten("/Fulfilment/Orders*/Buffered")).plus(1))
                 .message(Dsl.en("Total computed.")).build(),
@@ -120,12 +123,17 @@ class JoinedTargetDeclarationTableDiffTest {
     // Every computed cell is seeded, so a cleared one is reported rather than left unmentioned.
     private val targets = listOf("Allocated", "Buffered", "Fallback", "Skipped", "Pooled", "Mixed", "Plain",
         "GuardedByStock", "CommonByStock", "LeadFalse", "LeadFalseTwice", "LeadThenTwo", "Passed", "PassedConstant",
-        "PassedBad")
+        "PassedBad", "PoisonedLead")
     private val seeds = targets.joinToString("") { ""","$it":999""" }
 
     private val sheet = """{"Fulfilment":{"BufferedTotal":999,
         "Orders":[{"Sku":"A","Qty":1$seeds},{"Sku":"B","Qty":2,"Bad":"x"$seeds},{"Sku":"C","Qty":1$seeds}],
         "Stock":[{"Sku":"B","OnHand":5},{"Sku":"A","OnHand":3},{"Sku":"D","OnHand":9}]}}"""
+
+    // Order B is the one without stock here, so a passed-over declaration is reached at an unmatched row.
+    private val unmatchedTwo = """{"Fulfilment":{"BufferedTotal":999,
+        "Orders":[{"Sku":"A","Qty":1$seeds},{"Sku":"B","Qty":2$seeds},{"Sku":"C","Qty":1$seeds}],
+        "Stock":[{"Sku":"A","OnHand":3},{"Sku":"C","OnHand":6}]}}"""
 
     // A fourth order past the group's capacity of three, its key stocked so the join would pair it.
     private val overCapacity = """{"Fulfilment":{"BufferedTotal":999,
@@ -143,7 +151,8 @@ class JoinedTargetDeclarationTableDiffTest {
     @Test
     fun allThreeEnginesAgree() {
         DocumentDifferential.assertAgree(model,
-            mapOf("orders A, B and an unstocked C" to sheet, "a stocked fourth order past capacity" to overCapacity))
+            mapOf("orders A, B and an unstocked C" to sheet, "a stocked fourth order past capacity" to overCapacity,
+                "an unstocked order of two" to unmatchedTwo))
     }
 
     /** What the dynamic Kernel stores, so agreement cannot pass on a table both engines got wrong alike. */
@@ -172,6 +181,20 @@ class JoinedTargetDeclarationTableDiffTest {
             "Mixed", "Plain", "LeadFalse", "LeadFalseTwice", "LeadThenTwo", "Passed", "PassedConstant", "PassedBad")
             .associateWith(::row))
         assertEquals("VALUE|1", outcomes["BufferedTotal"])
+    }
+
+    /**
+     * The two rows the carrier above leaves unmeasured (cold review 2026-10-25). `PoisonedLead` is the positive
+     * control that a malformed `Bad` read poisons a JOINED declaration here, so `PassedBad`'s value at B shows the
+     * passed-over guard unread rather than read and ignored. At an unmatched B the passed-over declaration is
+     * skipped too: `Passed` computes from the empty partner, where reading it as an ordinary row would give 102.
+     */
+    @Test
+    fun aReadPoisonsAJoinedLeadAndAPassedOverDeclarationIsSkippedAtAnUnmatchedRow() {
+        assertEquals("CLEARED", DocumentDifferential.kernel(model, sheet, dynamic = true).outcomes["Orders[2]/PoisonedLead"])
+        val unmatched = DocumentDifferential.kernel(model, unmatchedTwo, dynamic = true).outcomes
+        assertEquals(mapOf("Passed" to "VALUE|1000", "PassedConstant" to "VALUE|1000", "Skipped" to "VALUE|1000"),
+            listOf("Passed", "PassedConstant", "Skipped").associateWith { unmatched["Orders[2]/$it"] })
     }
 
     /** The row past capacity clears in every table, joined or not, while the rows within it still compute. */

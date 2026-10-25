@@ -14261,7 +14261,7 @@
       }
     },
     "kf619": {
-      "sha256": "799be1db3f122d5dd31f16cd9d4b8a8f40a3dc54b4f1c5686b844ee29933a58d",
+      "sha256": "110e515d50ec65dd35a4d48707c71cf5e6f437067d8dfe15cd53c7ed350300f2",
       "task": "SS19",
       "scope": {
         "dmkits": [],
@@ -14302,7 +14302,7 @@
         },
         "adapter": {
           "state": "APPLIED",
-          "basis": "Both kernel strategies are pinned on every row, the carrier's admission asserted.",
+          "basis": "The dynamic Kernel's outcomes are pinned on every row, the static strategy by its agreement with the interpreter, the carrier's admission asserted.",
           "evidence": {
             "the joined target's declaration table on both kernel strategies": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedTargetDeclarationTableDiffTest.kt#aPartnerlessDeclarationActsByItsPositionInTheJoinedTargetsTable",

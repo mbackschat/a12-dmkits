@@ -68,7 +68,7 @@ class JoinedTargetDeclarationTableTest {
         assertEquals(listOf("VALUE|3", "CLEARED"), rows(m, orders(m), "Allocated"))
     }
 
-    @Test fun anUnselectedPartnerlessDeclarationBehindAJoinedLeadFallsThrough() {
+    @Test fun aPartnerlessDeclarationBehindAJoinedLeadIsPassedOverWhereItsGuardFailsAlike() {
         val m = model(3,
             declaration("Skipped", "[Qty] == 1", fromStock),
             declaration("Skipped", "[Qty] >= 5", "[Qty] + 100"),
