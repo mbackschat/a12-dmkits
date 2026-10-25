@@ -1,249 +1,127 @@
-# locmetry policy for a12-dmkits — `locmetry --schema config` is the contract, `locmetry explain <path>`
-# shows which entry decided a file. The production / verification / tooling split mirrors the one
-# scripts/update-code-statistics.sh already publishes in the READMEs; keep the two in step.
+# locmetry policy for a12-dmkits. Contract: `locmetry --schema config`; which entry decided a file: `locmetry explain <path>`.
+#
+# Purpose answers "is it maintained product, a check on the product, or neither"; category answers "what kind of code is it".
+# The component (kit, adapter, CLI, interpreter, checker) is the FOLDER axis, so `--show-folders` carries it and no
+# category repeats it. Locmetry decides purpose from paths alone, so every test category below rests on a directory
+# or a class-name convention that docs/TESTING-SPEC.md already names; an entry's `reason` cites it.
+#
+# Stage order is fixed (overrides → built-in conventions → rules → build modules → fallback, then refinements), so this
+# policy needs no override: conventions already decide every test file's purpose, and refinements only relabel them.
 version = 1
 
 [categories]
-implementation = "The shipped product: the dmkits, adapter, CLI, interpreter, consistency checker and their facades"
-showcase = "The browser playground published with the interpreter release"
-release-site = "Static pages of the public interpreter release mirror"
-plugin = "The Claude Code and Codex plugin bundles and the agent skill they ship"
-generated = "Committed output a task regenerates, kept for packaging or API-compatibility checks"
-build-tooling = "Gradle build logic"
-tooling = "Maintainer scripts, probes, eval harness and hooks: maintained, but neither shipped nor a check on what ships"
-ci = "GitHub Actions workflows"
-agent-config = "Agent harness settings for Claude Code, Codex and AGENTS.md readers"
-documentation = "Maintained specs, findings, ledgers and guides"
-example = "Showboat walkthroughs and the sample models they own, plus worked consumer examples such as the Node CI gate"
-test = "Tests, laws, differentials, fixtures and test utilities"
-consumer-test = "External consumer projects that install the packed artifacts and import them by package name"
-script-selftest = "Self-tests of the maintainer scripts"
-conformance-corpus = "The kernel-verified conformance corpus that every engine replays"
-measurement-history = "Recorded benchmark results, read back by the perf-trend tooling"
+# production
+implementation = "The shipped product: the dmkits, the kernel adapter, the dmtool CLI, the interpreter and its TypeScript facade, the consistency checker, and the resources they load (operator catalog, published JSON schemas)"
+generated = "Committed output a task or sync script regenerates: native-image metadata, API dumps, generated checker projections, plugin copies of canonical assets, the parity corpus"
+example = "Showboat walkthroughs and the models they own, the interpreter's browser playground, and the Node CI-gate example"
+plugin = "The Claude Code and Codex plugin bundles and the canonical agent skills they ship"
+distribution = "Publishing releases: mirror assembly, publish and rehearsal scripts, release-asset manifests, mirror workflows, the installer and the public release pages"
+deployment = "Running the hosted MCP endpoint"
+build-tooling = "Gradle build logic, its environment wrapper, and the native-image configuration generators"
+verification-tooling = "Programs that run, gate or score checks: CI, git hooks, demo and native gates, perf lanes, mutation tooling, the N6 eval harness and the DX probe pipeline"
+tooling = "Other maintainer tools: the dev launcher, doctor, gap minting, findings analysis, code ownership"
+agent-config = "Agent harness settings and the CLAUDE.md / AGENTS.md instructions for agents working in this repository"
+documentation = "Maintained specs, findings, ledgers, guides and READMEs"
+# test
+accept-law = "Law tier 1: the real kernel accepts a condition or rejects it with the expected MVK code (validate/laws, via KernelLaws)"
+runtime-law = "Law tier 2: a valid rule fires or stays silent on real data under the kernel runtime (adapter laws, via RuntimeLaws)"
+differential = "The interpreter checked against the kernel runtime as the reference engine (*DiffTest)"
+agreement = "The portable consistency checker checked against the kernel's verdicts (*AgreementTest)"
+conformance = "The kernel-verified conformance corpus and the replays that run it on every engine"
+read-back = "Read-path round trips: render, kernel-parse, convert, re-render (ReadRoundTripTest and the per-construct ...ReadTest)"
+property = "Kernel-free for-all laws over sampled inputs (the interpreter property pack)"
+fuzz = "Generated-input differential nets that run in the heavy fuzz lane"
+performance = "Perf gates, benchmarks, and the tests of the measurement harness itself"
+guard = "Repository guards: docs, ledgers, schemas, fixtures, pins and structural-law guardians that fail when a tracked surface drifts"
+integration = "External consumer projects that install the packed artifacts and import them by package name (Node, browser, Kotlin JVM/JS, TypeScript, the kernel-closure consumer)"
+agent-eval = "Agent-experience test cases: the N6 self-sufficiency eval tasks and the DX probe tasks"
+selftest = "Tests of the maintainer scripts and their TypeScript modules"
+test-support = "Test code and data without test cases: harnesses, oracles, fixture builders, fixture models and recorded expectations"
+# other
+measurement-history = "Recorded results read back later: perf-results, the eval results log, DX probe reports"
 archived = "Archived proposals and designs kept as history, not authority"
 
-# Overrides win before the built-in conventions and before every rule. They are used only where a convention
-# decides the right purpose but too coarse a category (consumer projects contain *.test.* files the
-# js-test-file convention would label plain `test`), and to carve a program out of a broader override that
-# would otherwise swallow it: entries cannot be negated, so the narrow entry must come first.
+# ─── rules: claim what no convention or build module decides, most specific first ───────────────────────────────
 
-[[overrides]]
-id = "consistency-ci-gate-example"
-match = ["consistency/consumer-tests/node/ci-gate.mjs"]
-kind = ["source"]
-purpose = "production"
-category = "example"
-reason = "docs/CONSISTENCY-API.md presents it as a runnable pipeline step (`node ci-gate.mjs <sources>`) and consistency/consumer-tests/node/README.md calls it a worked example with its own test, ci-gate.test.mjs; a program with its own tests is code under test, not test"
-
-[[overrides]]
-id = "consistency-parity-corpus-writer"
-match = ["consistency/consumer-tests/node/write-parity-corpus.mjs"]
-kind = ["source"]
-purpose = "production"
-category = "tooling"
-reason = "Regenerates the three-arm parity corpus from the packed package (consistency/consumer-tests/shared/parity/README.md: generated, never edited by hand); run only by the syncCheckerParityCorpus task, which is a sync task and never a gate"
-
-[[overrides]]
-id = "script-selftests"
+[[rules]]
+id = "generated-product"
 match = [
-  "scripts/selftest-*.sh",
-  "scripts/typescript/*.test.ts",
-  "interpreter/typescript/scripts/*.test.mjs",
-]
-kind = ["source"]
-purpose = "test"
-category = "script-selftest"
-reason = "Each selftest-*.sh locks the behaviour of another maintainer script and each .test.ts / .test.mjs imports its sibling script (scripts/README.md names the pairs); an override because builtin:js-test-file would label the .test files plain `test`"
-
-[[overrides]]
-id = "consistency-consumer-tests"
-match = ["consistency/consumer-tests/**"]
-kind = ["source", "data"]
-purpose = "test"
-category = "consumer-test"
-reason = "consistency/consumer-tests/README.md: each project packs the npm tarball, installs it and imports it by package name"
-
-[[overrides]]
-id = "interpreter-consumer-tests"
-match = [
-  "interpreter/consumer-tests/browser/scripts/**",
-  "interpreter/consumer-tests/browser/tsconfig.scripts.json",
-  "interpreter/consumer-tests/typescript/**",
-  "interpreter/consumer-tests/kotlin-jvm/src/**",
-  "interpreter/consumer-tests/kotlin-js/src/**",
-]
-kind = ["source", "data"]
-purpose = "test"
-category = "consumer-test"
-reason = "update-code-statistics.sh counts these as Verification; their Gradle build scripts stay build-tooling by convention; tsconfig.scripts.json compiles only scripts/**/*.ts, so it follows them rather than the showcase's tsconfig*.json rule"
-
-# Rules run after the conventions and before build-module inference, so they also correct what an
-# inferred Gradle/npm module would claim as production.
-
-[[rules]]
-id = "native-image-metadata"
-match = ["cli/src/main/resources/META-INF/native-image/**"]
-kind = ["data"]
-purpose = "production"
-category = "generated"
-reason = "rulekit-agent is captured from the test suite by scripts/capture-native-config.sh, rulekit-manual by scripts/gen-native-reflect-metadata.sh (NATIVE-IMAGE-GRAALVM.md)"
-
-[[rules]]
-id = "api-dumps"
-match = ["**/api/*.api", "interpreter/api/*-package-files.txt"]
-purpose = "production"
-category = "generated"
-reason = "Kotlin binary-compatibility dumps and the locked package file lists, regenerated by their tasks"
-
-[[rules]]
-id = "regenerated-records"
-match = ["interpreter/published-performance.json", "cli/native-capture-stamp.txt"]
-purpose = "production"
-category = "generated"
-reason = "Written by :interpreter:syncInterpreterPerformanceClaims and the native-config capture; never hand-edited"
-
-[[rules]]
-id = "consumer-test-text-fixtures"
-match = ["consistency/consumer-tests/shared/parity/sources/*.txt"]
-kind = ["documentation"]
-purpose = "test"
-category = "consumer-test"
-reason = "Deliberately non-model inputs the parity corpus replays; .txt reads as documentation, so the kind-scoped consistency-consumer-tests override misses them, and no convention competes for the file"
-
-[[rules]]
-id = "generated-checker-projections"
-match = [
+  "cli/src/main/resources/META-INF/native-image/**",
+  "cli/native-capture-stamp.txt",
+  "api/*.api",
+  "**/api/*.api",
+  "interpreter/api/*-package-files.txt",
+  "interpreter/published-performance.json",
   "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/syntax/ConditionKeywords.kt",
   "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/KernelCorrectives.kt",
+  "plugin/skills/a12-dmtool/{SKILL.md,ensure-dmtool.sh,release-assets.sh}",
+  "plugin/skills/a12-dmtool-bug-report/SKILL.md",
+  "plugin-codex/skills/a12-dmtool/{SKILL.md,ensure-dmtool.sh,release-assets.sh}",
+  "plugin-codex/skills/a12-dmtool-bug-report/SKILL.md",
 ]
-kind = ["source"]
 purpose = "production"
 category = "generated"
-reason = "Both files open with a GENERATED / do-not-edit header: ConditionKeywords.kt comes from catalog/operators.json via :consistency:generateConditionKeywords (verifyConditionKeywords diffs it), KernelCorrectives.kt via :dumpCheckerCorrectives (CheckerCorrectiveProjectionGuardTest re-derives it); a rule takes them from the :consistency Gradle module"
+reason = "Native metadata: scripts/capture-native-config.sh + gen-native-reflect-metadata.sh; *.api: the ABI tasks; the two .kt files open with a GENERATED header (generateConditionKeywords, dumpCheckerCorrectives); plugin skill files: the ASSETS list in scripts/typescript/sync-plugin-assets.ts"
 
 [[rules]]
-id = "interpreter-showcase"
-match = [
-  "interpreter/consumer-tests/browser/src/**",
-  "interpreter/consumer-tests/browser/public/**",
-  "interpreter/consumer-tests/browser/index.html",
-  "interpreter/consumer-tests/browser/package.json",
-  "interpreter/consumer-tests/browser/tsconfig*.json",
-]
-purpose = "production"
-category = "showcase"
-reason = "update-code-statistics.sh counts the browser showcase as Production"
-
-[[rules]]
-id = "interpreter-release-site"
-match = ["interpreter/public-release/**"]
-kind = ["source"]
-purpose = "production"
-category = "release-site"
-reason = "Pages assembled into the public interpreter release mirror by scripts/assemble-interpreter-release-repo.sh"
-
-[[rules]]
-id = "interpreter-typescript-facade"
-match = ["interpreter/typescript/src/**", "interpreter/typescript/tsconfig.json"]
-purpose = "production"
-category = "implementation"
-reason = "The published TypeScript facade; no package descriptor sits beside it, so no module inference claims it"
-
-[[rules]]
-id = "shared-regex"
-match = ["shared-regex/src/**"]
-kind = ["source"]
-purpose = "production"
-category = "implementation"
-reason = "Compiled into :interpreter and :consistency as a second commonMain srcDir (interpreter/build.gradle, consistency/build.gradle)"
-
-[[rules]]
-id = "kernel-closure-consumer"
-match = ["adapter/src/kernelClosureConsumer/**"]
-kind = ["source"]
+id = "generated-parity-corpus"
+match = ["consistency/consumer-tests/shared/parity/**"]
 purpose = "test"
-category = "consumer-test"
-reason = "A consumer compiled against the adapter's kernel closure; update-code-statistics.sh counts it as Verification"
-
-[[rules]]
-id = "plugin-synced-scripts"
-match = [
-  "plugin/skills/a12-dmtool/ensure-dmtool.sh",
-  "plugin/skills/a12-dmtool/release-assets.sh",
-  "plugin-codex/skills/a12-dmtool/ensure-dmtool.sh",
-  "plugin-codex/skills/a12-dmtool/release-assets.sh",
-]
-kind = ["source"]
-purpose = "production"
 category = "generated"
-reason = "Byte-identical copies of scripts/ensure-dmtool.sh and scripts/release-assets.sh, written by scripts/sync-plugin-assets.sh (ASSETS in scripts/typescript/sync-plugin-assets.ts; skill/README.md: copies are generated, never edited); the originals stay tooling"
-
-[[rules]]
-id = "plugin-bundles"
-match = ["plugin/**", "plugin-codex/**", "skill/**"]
-purpose = "production"
-category = "plugin"
-reason = "Distributed plugin assets, kept in sync by scripts/sync-plugin-assets.sh; skill/ is their canonical source"
-
-[[rules]]
-id = "gradle-build-logic"
-match = ["gradle/*.gradle", "scripts/*.gradle", "gradle.properties", "gradle/*.properties"]
-purpose = "production"
-category = "build-tooling"
-reason = "Gradle script plugins and init scripts applied by the build; the build-script convention only knows build/settings files"
-
-[[rules]]
-id = "maintainer-tooling"
-match = [
-  "scripts/**",
-  "probe/**",
-  "eval/**",
-  "bin/**",
-  "build.sh",
-  ".envrc",
-  ".githooks/**",
-  ".claude/hooks/**",
-  "interpreter/typescript/scripts/**",
-]
-kind = ["source", "data"]
-purpose = "production"
-category = "tooling"
-reason = "update-code-statistics.sh's Tooling section: build scripts, generators and the eval harness"
-
-[[rules]]
-id = "ci-workflows"
-match = [".github/**"]
-purpose = "production"
-category = "ci"
-reason = "GitHub Actions workflows and their configuration"
-
-[[rules]]
-id = "agent-config"
-match = [".claude/**", ".codex/**", ".agents/**"]
-purpose = "production"
-category = "agent-config"
-reason = "Harness settings and pointer skills; CLAUDE.md names .claude/skills as canonical with pointers in .agents/skills"
+reason = "parity/README.md: generated, never edited by hand; :consistency:syncCheckerParityCorpus rewrites every file"
 
 [[rules]]
 id = "examples"
-match = ["examples/**"]
+match = [
+  "examples/**",
+  "consistency/consumer-tests/node/ci-gate.mjs",
+  "interpreter/consumer-tests/browser/{src,public}/**",
+  "interpreter/consumer-tests/browser/{index.html,package.json,tsconfig.json,tsconfig.service-worker.json,README.md}",
+]
 purpose = "production"
 category = "example"
-reason = "CLAUDE.md: the showboat demos own examples/models and are published with the release mirror"
+reason = "CLAUDE.md: examples/ are the showboat demos published with the release mirror; docs/CONSISTENCY-API.md presents ci-gate.mjs as a runnable pipeline step; the browser playground ships with the interpreter release (interpreter-release-assets.sh names it the showcase payload)"
+
+[[rules]]
+id = "consumer-projects"
+match = [
+  "consistency/consumer-tests/**",
+  "interpreter/consumer-tests/**",
+  "adapter/src/kernelClosureConsumer/**",
+]
+except = ["consistency/consumer-tests/node/write-parity-corpus.mjs"]
+purpose = "test"
+category = "integration"
+reason = "consumer-tests/README.md: each project installs the packed artifact and imports it by package name; kernelClosureConsumer compiles against the adapter's kernel closure; their Gradle scripts stay build-tooling by convention"
 
 [[rules]]
 id = "conformance-corpus"
 match = ["corpus/**"]
 purpose = "test"
-category = "conformance-corpus"
-reason = "corpus/README.md: kernel-verified cases that the interpreter and other engines replay"
+category = "conformance"
+reason = "corpus/README.md: kernel-verified cases that the interpreter and the kernel strategies replay"
 
 [[rules]]
-id = "perf-results"
-match = ["perf-results/**"]
+id = "agent-eval-tasks"
+match = ["eval/tasks/**", "probe/tasks/**"]
+purpose = "test"
+category = "agent-eval"
+reason = "TESTING-SPEC tiers 3 and 4: the N6 eval and the DX probe; these files are their test cases, run by the harness in eval/ and probe/"
+
+[[rules]]
+id = "script-selftests"
+match = ["scripts/selftest-*.sh"]
+kind = ["source"]
+purpose = "test"
+category = "selftest"
+reason = "scripts/README.md: each selftest-*.sh is the behavioural guard of a named sibling script"
+
+[[rules]]
+id = "measurement-history"
+match = ["perf-results/**", "eval/RESULTS.md", "probe/reports/**"]
 purpose = "other"
 category = "measurement-history"
-reason = "Recorded measurements, not code; counted so their growth stays visible"
+reason = "Dated records, not maintained code or docs: perf-results is read back by perf-trend/perf-history, eval/RESULTS.md and probe reports are the dated run logs"
 
 [[rules]]
 id = "archived-docs"
@@ -253,14 +131,225 @@ category = "archived"
 reason = "CLAUDE.md treats archived proposals as history, not authority"
 
 [[rules]]
+id = "plugin-bundles"
+match = ["plugin/**", "plugin-codex/**", "skill/**"]
+purpose = "production"
+category = "plugin"
+reason = "The distributed agent plugins; skill/ holds the canonical skills that scripts/sync-plugin-assets.sh copies into both"
+
+[[rules]]
+id = "distribution"
+match = [
+  "scripts/{publish,assemble,rehearse,bump}-*.sh",
+  "scripts/*release*.sh",
+  "scripts/check-interpreter-release-repo.sh",
+  "scripts/{ensure-dmtool,sync-plugin-assets,gen-scenarios}.sh",
+  "scripts/typescript/{sync-plugin-assets,gen-scenarios}.ts",
+  ".github/mirror-workflows/**",
+  ".github/interpreter-mirror-workflows/**",
+  "interpreter/public-release/**",
+]
+purpose = "production"
+category = "distribution"
+reason = "scripts/README.md and RELEASE-SPEC §4: mirror assembly, publishing, rehearsal and the asset manifests; the mirror workflows and public-release pages are copied into the public mirrors; ensure-dmtool.sh is the release installer"
+
+[[rules]]
+id = "deployment"
+match = [".github/workflows/deploy-mcp-endpoint.yml"]
+purpose = "production"
+category = "deployment"
+reason = "Deploys the hosted MCP endpoint"
+
+[[rules]]
+id = "build-tooling"
+match = [
+  "gradle/*.gradle",
+  "gradle.properties",
+  "gradle/*.properties",
+  "build.sh",
+  "scripts/gradle-environment.sh",
+  "scripts/SourceProvenance.java",
+  "scripts/{capture-native-config,gen-native-reflect-metadata}.sh",
+  "scripts/native-agent-caller-filter.json",
+  "interpreter/typescript/scripts/{api-reference,public-api}.mjs",
+  "consistency/consumer-tests/node/write-parity-corpus.mjs",
+]
+purpose = "production"
+category = "build-tooling"
+reason = "Applied by or feeding the build: Gradle script plugins and properties, the isolated-home wrapper, SourceProvenance (build helper), the native-image metadata generators, the TypeScript API-reference/public-API locks the interpreter build runs, and the parity-corpus writer :consistency:syncCheckerParityCorpus runs"
+
+[[rules]]
+id = "verification-tooling"
+match = [
+  ".github/workflows/{ci,nightly-performance}.yml",
+  ".githooks/**",
+  "scripts/{check,verify}-*.sh",
+  "scripts/codex-plugin-activation.schema.json",
+  "scripts/*{smoke,gate,battery}*.sh",
+  "scripts/smoke-*.sh",
+  "scripts/perf*.sh",
+  "scripts/interpreter-{performance,footprint,delivery-footprint}.sh",
+  "scripts/interpreter-delivery-footprint.init.gradle",
+  "scripts/{mutant,test-evidence,obligations,contract-consumers,prepare-dmtool-source,check-handback}.sh",
+  "scripts/typescript/{verify-demos,test-evidence,mutant,gate-mutant-sweep,check-infographic-freshness,probe-verdicts,handback-check,commit-gaps}.ts",
+  "eval/**",
+  "probe/**",
+]
+except = ["**/*.md"]
+purpose = "production"
+category = "verification-tooling"
+reason = "scripts/README.md: these run, gate or score checks; CI runs the test lanes; the hooks (and commit-gaps.ts, which the commit-msg hook runs) gate commits and pushes; eval/ and probe/ are the TESTING-SPEC tier 3/4 harnesses"
+
+[[rules]]
+id = "maintainer-tooling"
+match = ["scripts/**", "bin/**", ".envrc"]
+except = ["**/*.md"]
+purpose = "production"
+category = "tooling"
+reason = "Remaining maintainer tools (doctor, gap minting, code-owner, findings-overlap, update-code-statistics, the dev launcher); a new script lands here until it is placed"
+
+[[rules]]
+id = "agent-config"
+match = [".claude/**", ".codex/**", ".agents/**", "**/CLAUDE.md", "docs/CLAUDE.recompute.md"]
+purpose = "production"
+category = "agent-config"
+reason = "Harness settings, hooks and pointer skills, and the agent instruction files (CLAUDE.md: AGENTS.md → CLAUDE.md symlinks); the plugins' own CLAUDE.md/AGENTS.md ship with the plugin and are taken above"
+
+[[rules]]
+id = "implementation-outside-modules"
+match = ["interpreter/typescript/src/**", "interpreter/typescript/tsconfig.json", "shared-regex/src/**"]
+purpose = "production"
+category = "implementation"
+reason = "The published TypeScript facade has no package descriptor beside it; shared-regex is compiled into :interpreter and :consistency as a second commonMain srcDir"
+
+[[rules]]
 id = "documentation"
 match = ["**/*.md"]
 kind = ["documentation"]
 purpose = "production"
 category = "documentation"
-reason = "Maintained Markdown; module trees and the root carry their own READMEs and agent instructions"
+reason = "Maintained Markdown: docs/, the root and module READMEs, changelogs"
 
-# A mapping only counts a file the embedded counter does not recognize; it never assigns a purpose.
+# ─── refinements: relabel tests the conventions already decided, never their purpose ──────────────────────────
+# First match wins: support code, then repository guards, then the lane a test runs in (fuzz, perf), then its
+# oracle (conformance, differential, agreement), then the lifecycle layer it locks (laws, read-back).
+
+[[refinements]]
+id = "consumer-project-tests"
+purpose = "test"
+match = ["consistency/consumer-tests/**", "interpreter/consumer-tests/**"]
+category = "integration"
+reason = "Test-named files inside the consumer projects (*.test.mjs, *.test.ts) that builtin:js-test-file decided"
+
+[[refinements]]
+id = "script-module-tests"
+purpose = "test"
+match = ["scripts/typescript/*.test.ts", "interpreter/typescript/scripts/*.test.mjs"]
+category = "selftest"
+reason = "scripts/README.md pairs each .test.ts with the module it imports; the interpreter .test.mjs files lock their sibling build scripts"
+
+[[refinements]]
+id = "test-support"
+purpose = "test"
+match = ["**/src/*[Tt]est/**", "**/src/testFixtures/**"]
+except = ["**/*{Test,Tests}.{java,kt}"]
+category = "test-support"
+reason = "JUnit and kotlin.test discover only *Test classes, so the rest of a test source set is harness, oracle or fixture code, and its resources are fixture data"
+
+[[refinements]]
+id = "guards"
+purpose = "test"
+match = ["**/src/*[Tt]est/**/*{GuardTest,FreshnessTest,RatchetTest}.{java,kt}"]
+except = [
+  "consistency/src/commonTest/**/IterationGuardTest.kt",
+  "interpreter/src/*Test/**/{CacheLifetime,ModelLoaderPrepared}GuardTest.kt",
+  "schemakit/src/test/**/ConstKindGuardTest.java",
+]
+kind = ["source"]
+category = "guard"
+reason = "The *GuardTest / *FreshnessTest / *RatchetTest names mark repository guards (docs/CLAUDE.md lists them); the excepted classes test product features that are themselves called guards"
+
+[[refinements]]
+id = "fuzz-nets"
+purpose = "test"
+match = ["**/src/*[Tt]est/**/*Fuzz*Test.{java,kt}"]
+kind = ["source"]
+category = "fuzz"
+reason = "TESTING-SPEC \"Test tiers\": the fuzz nets run in their own heavy lane, outside the default tests"
+
+[[refinements]]
+id = "performance-lanes"
+purpose = "test"
+match = [
+  "adapter/src/test/**/adapter/perf/**",
+  "interpreter/src/*Test/**/interpreter/performance/**",
+  "**/src/*[Tt]est/**/*{Perf,Bench}*Test.{java,kt}",
+]
+kind = ["source"]
+category = "performance"
+reason = "TESTING-SPEC \"Test tiers\": the perf gate, bench and their harness tests are excluded from the default lanes"
+
+[[refinements]]
+id = "property-pack"
+purpose = "test"
+match = ["interpreter/src/commonTest/**/interpreter/property/**"]
+kind = ["source"]
+category = "property"
+reason = "TESTING-SPEC \"The property pack\": seeded for-all laws, the third kind beside the two law tiers"
+
+[[refinements]]
+id = "conformance-replays"
+purpose = "test"
+match = [
+  "adapter/src/test/**/adapter/laws/{Corpus,ConformanceFrontier}*Test.kt",
+  "interpreter/src/*Test/**/interpreter/conformance/**",
+]
+kind = ["source"]
+category = "conformance"
+reason = "TESTING-SPEC \"Conformance corpus replay\": CorpusReplayTest is the 3-engine JVM leg, interpreter conformance/ the JVM+JS legs"
+
+[[refinements]]
+id = "interpreter-differentials"
+purpose = "test"
+match = ["**/src/*[Tt]est/**/*DiffTest.{java,kt}"]
+kind = ["source"]
+category = "differential"
+reason = "TESTING-SPEC \"Interpreter differential\": the kernel runtime as the differential oracle"
+
+[[refinements]]
+id = "checker-agreements"
+purpose = "test"
+match = ["**/src/*[Tt]est/**/*AgreementTest.{java,kt}"]
+kind = ["source"]
+category = "agreement"
+reason = "The :consistency checker's verdicts compared against the kernel, one mechanism per class"
+
+[[refinements]]
+id = "accept-laws"
+purpose = "test"
+match = ["src/test/**/rulekit/validate/laws/**"]
+kind = ["source"]
+category = "accept-law"
+reason = "TESTING-SPEC \"The two law tiers\": tier 1, real-kernel parse + checkConsistency via KernelLaws"
+
+[[refinements]]
+id = "runtime-laws"
+purpose = "test"
+match = ["adapter/src/test/**/adapter/laws/*LawsTest.{java,kt}"]
+kind = ["source"]
+category = "runtime-law"
+reason = "TESTING-SPEC \"The two law tiers\": tier 2, fires / does-not-fire via the RuntimeLaws oracle"
+
+[[refinements]]
+id = "read-back"
+purpose = "test"
+match = ["adapter/src/test/**/*Read*Test.{java,kt}"]
+except = ["**/*Reader*Test.{java,kt}"]
+kind = ["source"]
+category = "read-back"
+reason = "TESTING-SPEC lifecycle layer \"read back\": ReadRoundTripTest and the per-construct ...ReadTest classes"
+
+# ─── language mappings: count files the counter does not recognize; they never assign a purpose ──────────────
 
 [[languages.mappings]]
 id = "direnv"
@@ -269,7 +358,7 @@ language = "Shell"
 
 [[languages.mappings]]
 id = "kotlin-api-dumps"
-match = ["**/api/*.api"]
+match = ["**/api/*.api", "api/*.api"]
 language = "Plain Text"
 
 [[languages.mappings]]
