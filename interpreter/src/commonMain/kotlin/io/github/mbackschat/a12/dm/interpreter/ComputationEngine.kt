@@ -86,6 +86,35 @@ internal class ComputationEngine(
     private val programmeOperands: OperandSelection by lazy { operandSelection(plans.allComputationOrder()) }
 
     /**
+     * How each declaration takes part in its target's first-match table when some declaration of that target
+     * JOINS another keyed group (a12-kernel-lean SPEC-2026-10-24-09). Measured on the dynamic Kernel by
+     * `adapter.laws.JoinedTargetDeclarationTableDiffTest`: a partnerless declaration LEADING such a table clears
+     * the target at every row whatever any guard says, while one behind a joined lead stores nothing only where
+     * it is selected. Derived from the whole model in document order, because [computeField]'s closure must not
+     * change which table a declaration sits in or where.
+     */
+    private val tableRoles: Map<ComputationDef, TableRole> by lazy {
+        buildMap {
+            for ((target, declarations) in model.computations.groupBy { it.targetPath }) {
+                val joined = declarations.map {
+                    joinedSidesOf(preparedModel.computation(it), targetScopeOf(target)).isNotEmpty()
+                }
+                if (joined.none { it }) continue
+                // A ComputationDef compares by value, so a byte-identical repeat shares its first occurrence's
+                // role; behind a clearing lead it is never reached, and otherwise the two roles coincide.
+                declarations.forEachIndexed { i, declaration ->
+                    if (!joined[i] && declaration !in this) {
+                        put(declaration, if (i == 0) TableRole.CLEARS else TableRole.STORES_NOTHING_WHEN_SELECTED)
+                    }
+                }
+            }
+        }
+    }
+
+    /** A declaration's part in a joined target's table; a declaration absent from [tableRoles] is ordinary. */
+    private enum class TableRole { ORDINARY, STORES_NOTHING_WHEN_SELECTED, CLEARS }
+
+    /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
      * ([Computed.indices]) — the runtime twin of the kernel's whole-document `compute()`, and the core behind
      * both [compute] (which returns it as the public report) and [applyComputations] (which needs the indices to
@@ -287,6 +316,10 @@ internal class ComputationEngine(
 
                 // Evaluate the computation in one instance context and record its outcome (shared by the plain and
                 // the parallel iteration arms).
+                val targetScope = targetScopeOf(comp.targetPath)
+                val parallelGroups = joinedSidesOf(parsed, targetScope)
+                val role = tableRoles[comp] ?: TableRole.ORDINARY
+
                 fun computeAt(ctx: EvalContext) {
                     val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                     if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
@@ -311,7 +344,7 @@ internal class ComputationEngine(
                     // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
                     // normally — there is no static dependency pre-skip.
                     val computed = try {
-                        val selection = evalComputation(parsed, interp, comp.targetPath)
+                        val selection = evalComputation(parsed, interp, comp.targetPath, role)
                         val v = selection.value
                         // Ordinary target errors poison; the exact reserved custom result retains its readable
                         // attempted value (SPEC-2026-10-10-12). Both decide the target for this call.
@@ -381,9 +414,6 @@ internal class ComputationEngine(
                 // referenced out-of-scope groups are the joined SIDES, never the iteration anchor ([scope], derived
                 // from ALL refs, may resolve to a referenced side — which would collapse every join row onto one
                 // target key).
-                val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
-                val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
-                    .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
                 if (parallelGroups.isNotEmpty()) {
                     // A target below a joined group joins through that group (KERNEL-FINDINGS KF603), so the sides whose
                     // invalid index marks the target are the plan's, not the target's own level.
@@ -416,6 +446,11 @@ internal class ComputationEngine(
                         val reps = pctx.repsOf(comp.targetPath)
                         if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
                         computeAt(pctx)
+                    }
+                    // The join pairs no row past capacity, yet A12 clears that target row in a joined table too
+                    // (`adapter.laws.JoinedTargetDeclarationTableDiffTest`); computeAt's capacity check does it.
+                    for (ctx in doc.computeContexts(targetScope)) {
+                        if (plans.paths.exceededBound(comp.targetPath, ctx.repsOf(comp.targetPath)) != null) computeAt(ctx)
                     }
                     continue
                 }
@@ -526,6 +561,9 @@ internal class ComputationEngine(
             /** The instance hit a [RuntimeEvaluationFailure]: it ends here with the domain failure's outcome — no
              *  value, `berechnungsWertFehler` on the target, a poisoned target for readers (SPEC-2026-10-03-06). */
             val RUNTIME_FAILURE = Selection(true, Val.DomainFailure)
+
+            /** Selected, so the target's scan ends, but no operation runs and nothing is stored. */
+            val STORES_NOTHING = Selection(true, Val.Unknown)
         }
     }
 
@@ -537,17 +575,33 @@ internal class ComputationEngine(
      * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
      * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
      */
-    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection =
+    private fun evalComputation(
+        parsed: ParsedComputation,
+        interp: Interpreter,
+        targetPath: String,
+        role: TableRole,
+    ): Selection =
         try {
-            selectAlternative(parsed, interp, targetPath)
+            selectAlternative(parsed, interp, targetPath, role)
         } catch (_: RuntimeEvaluationFailure) {
             Selection.RUNTIME_FAILURE
         }
 
-    private fun selectAlternative(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection {
+    private fun selectAlternative(
+        parsed: ParsedComputation,
+        interp: Interpreter,
+        targetPath: String,
+        role: TableRole,
+    ): Selection {
+        when (role) {
+            // Nothing is read, so nothing it would read can poison the target or its readers.
+            TableRole.CLEARS -> return Selection.STORES_NOTHING
+            TableRole.ORDINARY, TableRole.STORES_NOTHING_WHEN_SELECTED -> Unit
+        }
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
+                if (role == TableRole.STORES_NOTHING_WHEN_SELECTED) return Selection.STORES_NOTHING
                 // The target's declared kind types a bare literal operand: a date CONSTANT is written German and
                 // has to reach the store canonicalized, or the target's own format cannot render it. The format
                 // rides along because a YEARLESS literal needs a reference year only when the target renders one.
@@ -750,18 +804,20 @@ internal class ComputationEngine(
                 semanticTargets.flatMap(::ancestorGroups).filter { it in model.repeatable },
             )
 
-            val scopeRefs = computationScopeRefs(parsed)
-            val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
-            val parallelGroups = scopeRefs
-                .flatMap { ancestorGroups(it).filter { group -> group in model.repeatable } }
-                .distinct()
-                .filter { it != targetScope && !targetScope.startsWith("$it/") }
-            selectIndexesBelow(parallelGroups)
+            selectIndexesBelow(joinedSidesOf(parsed, targetScopeOf(comp.targetPath)))
         }
         fields += indexes
         fields.flatMapTo(ancestors, ::ancestorGroups)
         return OperandSelection(fields, indexes, ancestors)
     }
+
+    private fun targetScopeOf(targetPath: String): String = scopes.scopeFromRefs(listOf(targetPath), parentGroup(targetPath))
+
+    /** The repeatable groups [parsed] joins to [targetScope] by key (IF96): each repeatable group above a non-starred
+     *  reference that is neither that scope nor one of its ancestors. A guard's reference counts like an operation's. */
+    private fun joinedSidesOf(parsed: ParsedComputation, targetScope: String): List<String> =
+        computationScopeRefs(parsed).flatMap { ancestorGroups(it).filter { group -> group in model.repeatable } }
+            .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
 
     /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred
      *  expr refs plus each precondition's + the common precondition's refs (a starred aggregate is evaluated

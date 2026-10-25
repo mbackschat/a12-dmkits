@@ -6716,7 +6716,7 @@
       }
     },
     "kf20": {
-      "sha256": "3e4f3c06772f00603719edb3c796550cebd0cf3b85a2db1d51df64db0b14b22c",
+      "sha256": "def625efa2cb1b21c788e01d721766f7c87530859c5311404905ec5f2419fb57",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -6724,7 +6724,8 @@
           "unchanged historical claims outside this amendment",
           "parent-scoped index column",
           "numeric parallel validation token multiplicity",
-          "parallel validation lexical visit order"
+          "parallel validation lexical visit order",
+          "several declarations for one field in one flat group"
         ],
         "dmkits": [],
         "interpreter": [
@@ -6732,7 +6733,8 @@
           "unchanged historical claims outside this amendment",
           "parent-scoped index column",
           "numeric parallel validation token multiplicity",
-          "parallel validation lexical visit order"
+          "parallel validation lexical visit order",
+          "several declarations for one field in one flat group"
         ],
         "checker": [],
         "dmtool-cli": [
@@ -6767,6 +6769,10 @@
             "parallel validation lexical visit order": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
               "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
+            },
+            "several declarations for one field in one flat group": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedTargetDeclarationTableDiffTest.kt#a12AndTheCheckerAdmitTheCarrier",
+              "witness": "A12 reports no error on a flat carrier declaring several computations per field, and the checker none (corrected 2026-10-25)."
             }
           }
         },
@@ -6794,6 +6800,10 @@
             "parallel validation lexical visit order": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt#validationVisitsRenderedTokensInLexicalOrder",
               "witness": "Callback row order 3,2,1 for stored keys 5,2,10; differing-minimum integers revisit twice, fractional and String controls once, on all three engines."
+            },
+            "several declarations for one field in one flat group": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/JoinedTargetDeclarationTableTest.kt#aSelectedPartnerlessDeclarationBehindAJoinedLeadStoresNothing",
+              "witness": "Declarations of one field in one group form one table on JVM and JS."
             }
           }
         },
@@ -6822,7 +6832,28 @@
           "basis": "These DSL/runtime facts do not change JSON Schema export.",
           "evidence": {}
         },
-        "a12-kernel-lean": {"state": "APPLIED", "basis": "The empty-guard boundary and the parent-scoped column were receipted earlier (SPEC-2026-10-03-01, -10-07-01). The numeric-token amendment, SPEC-2026-10-10-04, was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"empty Number computation guard boundary": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03", "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."}, "parent-scoped index column": {"reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-01", "witness": "Parent-local duplicate poison corroborated on both strategies and the peer interpreter (ParentScopedIndexColumnDiffTest; KF20)."}, "numeric parallel validation token multiplicity": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest."}, "parallel validation lexical visit order": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04", "witness": "Accepted against NumericIndexKeyDiffTest with the amended visit order."}}}
+        "a12-kernel-lean": {
+          "state": "APPLIED",
+          "basis": "The empty-guard boundary and the parent-scoped column were receipted earlier (SPEC-2026-10-03-01, -10-07-01). The numeric-token amendment, SPEC-2026-10-10-04, was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.",
+          "evidence": {
+            "empty Number computation guard boundary": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/sources/inbound-handbacks.md#inbound-2026-10-03",
+              "witness": "KF509 / NumericComputationGuardDiffTest cover 128 producer/dependent results."
+            },
+            "parent-scoped index column": {
+              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-01",
+              "witness": "Parent-local duplicate poison corroborated on both strategies and the peer interpreter (ParentScopedIndexColumnDiffTest; KF20)."
+            },
+            "numeric parallel validation token multiplicity": {
+              "reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04",
+              "witness": "Accepted against NumericIndexKeyDiffTest."
+            },
+            "parallel validation lexical visit order": {
+              "reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-10-04",
+              "witness": "Accepted against NumericIndexKeyDiffTest with the amended visit order."
+            }
+          }
+        }
       }
     },
     "kf109": {
@@ -14210,6 +14241,78 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf619": {
+      "sha256": "583b06667791705a6a3b629dbbb9266b95132a6a2606701a2b5342eac36fcf03",
+      "task": "SS19",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the joined target's declaration table on both kernel strategies"
+        ],
+        "interpreter": [
+          "the table roles on JVM and JS"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "a partnerless declaration behind a joined lead, its guard false"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime table of computed outcomes is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and A12 admits every model here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are pinned on every row, the carrier's admission asserted.",
+          "evidence": {
+            "the joined target's declaration table on both kernel strategies": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedTargetDeclarationTableDiffTest.kt#aPartnerlessDeclarationActsByItsPositionInTheJoinedTargetsTable",
+              "witness": "The dynamic Kernel's table is pinned and both strategies agree with the interpreter on both documents."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The engine gives each partnerless declaration of a joined target its table role and clears a row past capacity in a joined table.",
+          "evidence": {
+            "the table roles on JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/JoinedTargetDeclarationTableTest.kt#aPartnerlessLeadClearsEveryRowWhateverItsGuard",
+              "witness": "Each role and the capacity row compute as A12 does on both platforms."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
           "evidence": {}
         },
         "a12-kernel-lean": {
