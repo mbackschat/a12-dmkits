@@ -11,9 +11,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Multiplatform (JVM + JS) lock for IF440: a custom condition's data view lists every field instance the
- * Document holds, empty ones included, and its stored value reads a String stored as `""` as `""` while JSON
- * `null` and a typed `""` hold no value. The Kernel answers are `adapter.laws.CustomConditionEmptyCellDiffTest`'s.
+ * Multiplatform (JVM + JS) lock for IF440 and IF441: a custom condition's data view lists every field and group
+ * instance the Document holds, empty ones included, its stored value reads a String stored as `""` as `""` while
+ * JSON `null` and a typed `""` hold no value, and a present repeatable group instance reads A12's placeholder. The Kernel answers are `adapter.laws.CustomConditionEmptyCellDiffTest`'s.
  */
 class CustomConditionEmptyCellTest {
 
@@ -22,9 +22,12 @@ class CustomConditionEmptyCellTest {
             FieldDef("/Order/Ref", Kind.STRING),
             FieldDef("/Order/Note", Kind.STRING),
             FieldDef("/Order/Qty", Kind.NUMBER, scale = 0),
+            FieldDef("/Order/Lines/Sku", Kind.STRING),
         ),
         rules = listOf(RuleDef("/Order/ObserveRule", "/Order", "FieldFilled(Ref) And CustomCondition Observe", "OBSERVE", "../Ref")),
-        groupPaths = setOf("/Order"),
+        groupPaths = setOf("/Order", "/Order/Lines"),
+        declaredReps = mapOf("/Order/Lines" to 3),
+        repeatableGroups = setOf("/Order/Lines"),
     )
 
     /** Each field instance the condition sees, with its stored value. */
@@ -45,6 +48,24 @@ class CustomConditionEmptyCellTest {
     @Test fun jsonNullAndATypedEmptyAreFieldsHoldingNoValue() =
         assertEquals(mapOf("/Order/Ref" to "r", "/Order/Note" to null, "/Order/Qty" to null),
             seen("""{"Order":{"Ref":"r","Note":null,"Qty":""}}"""))
+
+    /** A bare `{}` row is an instance too, and only a group declared with more than one repetition reads the
+     *  placeholder; the root group and an absent row read null, A12's `""`. */
+    @Test fun groupInstancesAreListedAndARepeatableOneReadsThePlaceholder() {
+        var groups: List<String>? = null
+        var reads: List<String?>? = null
+        val observe = CustomCondition { data, _, _, _ ->
+            groups = data.groups().map { it.path + it.indices }.sorted()
+            reads = listOf(listOf(1), listOf(1, 1), listOf(1, 2), listOf(1, 3)).map { reps ->
+                data.getValue(CustomConditionFieldPointer(if (reps.size == 1) "/Order" else "/Order/Lines", reps))
+            }
+            false
+        }
+        DmInterpreter(model, customConditions = mapOf("Observe" to observe))
+            .validate(model.readDocumentJson("""{"Order":{"Ref":"r","Lines":[{},{"Sku":"s"}]}}"""))
+        assertEquals(listOf("/Order/Lines[1, 1]", "/Order/Lines[1, 2]", "/Order[1]"), groups)
+        assertEquals(listOf(null, "NonEmptyString", "NonEmptyString", null), reads)
+    }
 
     @Test fun theIDataReadStillAnswersAnEmptyStringWithNull() {
         var read: String? = "unread"

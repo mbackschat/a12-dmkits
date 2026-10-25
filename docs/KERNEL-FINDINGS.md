@@ -15071,9 +15071,11 @@ An order model holds `Ref`, `Note` (String), `Qty` (Number) and repeatable `Line
 | `"Note": null` | holds no value | `""` | yes |
 | `"Qty": ""` | holds no value | `""` | yes |
 | `"Lines": [{"Sku": ""}]` | holds `""` | `""` | yes |
+| `"Lines": [{}, {"Sku": "s"}]` | the second line's `Sku` holds `"s"` | first `Sku` `""` | the second line's `Sku` |
 | `"Note": "n"` | holds `"n"` | `"n"` | yes |
 
 - **A String stored as `""` is present in the md view**, so a condition testing `fieldValue(pointer) != null` fires on it. JSON `null` and a typed `""` (ingestion converts it to no value, [KF52](#kf52)'s level aside) do not. This is what a12-kernel-lean's `rB` and `s6` captures show (`e9c7259f`).
-- **The core view never answers null.** `ValidationData.getValue` returns `VALUE_FOR_ABSENT_AND_EMPTY` (`""`) for an absent field, an empty one and a valueless one alike, so it cannot tell them apart. Its iterator lists every field instance the Document holds, empty or valueless ones included, and also every non-root group instance (`/Order[1]`, `/Order/Lines[1, 1]`).
+- **The core view never answers null.** `ValidationData.getValue` returns `VALUE_FOR_ABSENT_AND_EMPTY` (`""`) for an absent field, an empty one and a valueless one alike, so it cannot tell them apart. Its iterator lists every field instance the Document holds, empty or valueless ones included.
+- **The core view lists group instances too, and answers a present repeatable one with a placeholder.** The iterator also lists the model's root group (`/Order[1]`) and every line instance, a bare `{}` row included (`"Lines": [{}, {"Sku": "s"}]` lists `/Order/Lines[1, 1]` and `[1, 2]`); `"Lines": []` lists none. `getValue` of a present line instance is `NonEmptyString` (`REPEATABLE_GROUPINSTANCE_PLACEHOLDER`), of an absent one `""`, and of the non-repeatable `/Order[1]` `""`.
 
-*Locked by:* `adapter.laws.CustomConditionEmptyCellDiffTest` (the md view pinned per input; the core view through `CustomTestRangeOracle.validateWithCoreConditions`; the interpreter's public view and the `KernelCustomConditions` bridge compared with each).
+*Locked by:* `adapter.laws.CustomConditionEmptyCellDiffTest` (the md and core views pinned per input, the core view through `CustomTestRangeOracle.validateWithCoreConditions`; the interpreter's public view and the `KernelCustomConditions` bridge compared with each).

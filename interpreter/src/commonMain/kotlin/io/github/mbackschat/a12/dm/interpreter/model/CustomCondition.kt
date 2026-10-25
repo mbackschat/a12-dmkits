@@ -39,7 +39,8 @@ fun interface CustomCondition {
  */
 interface CustomConditionData {
     /** The value at [field] (path + 1-based repetition indices), or null if empty/absent — the kernel's
-     *  `IData.getValue(IIdentifier)`, which answers both with `""`. */
+     *  `IData.getValue(IIdentifier)`, which answers both with `""`. A present instance of a group declared with
+     *  more than one repetition reads [REPEATABLE_GROUP_INSTANCE_VALUE], any other group null. */
     fun getValue(field: CustomConditionFieldPointer): String?
 
     /**
@@ -52,10 +53,20 @@ interface CustomConditionData {
     /** Every field instance the document holds, empty ones included — the field entries of the kernel's
      *  `IData.iterator()`. */
     fun fields(): List<CustomConditionFieldPointer>
+
+    /** Every group instance the document holds, the root group included — the group entries of the kernel's
+     *  `IData.iterator()`. */
+    fun groups(): List<CustomConditionFieldPointer> = emptyList()
+
+    companion object {
+        /** What A12's `IData` answers for a present repeatable group instance
+         *  (`ValidationData.REPEATABLE_GROUPINSTANCE_PLACEHOLDER`, `adapter.laws.CustomConditionEmptyCellDiffTest`). */
+        const val REPEATABLE_GROUP_INSTANCE_VALUE: String = "NonEmptyString"
+    }
 }
 
 /**
- * A field-instance pointer — the kernel's `IIdentifier`: a [path] (e.g. `/Order/Items/Count`) and its 1-based
+ * A field- or group-instance pointer — the kernel's `IIdentifier`: a [path] (e.g. `/Order/Items/Count`) and its 1-based
  * repetition [indices], one per path part (a group and field both carry indices). Equality is structural so it
  * works as a set element (the kernel's relevant / formally-incorrect sets).
  */

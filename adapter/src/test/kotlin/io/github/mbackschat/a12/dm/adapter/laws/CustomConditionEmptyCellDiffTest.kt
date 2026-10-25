@@ -52,6 +52,8 @@ class CustomConditionEmptyCellDiffTest {
         "text" to """{"Order":{"Ref":"r","Note":"n"}}""",
         "numberEmpty" to """{"Order":{"Ref":"r","Qty":""}}""",
         "lineEmpty" to """{"Order":{"Ref":"r","Lines":[{"Sku":""}]}}""",
+        "lineBare" to """{"Order":{"Ref":"r","Lines":[{},{"Sku":"s"}]}}""",
+        "linesNone" to """{"Order":{"Ref":"r","Lines":[]}}""",
     )
 
     private class Id(private val name: String, private val indices: LongArray) : IIdentifier {
@@ -62,16 +64,16 @@ class CustomConditionEmptyCellDiffTest {
         override fun hashCode() = name.hashCode() * 31 + indices.contentHashCode()
     }
 
-    /** A12's md view of the Document: each field instance it holds, by md pointer, with its value as text. */
+    /** A12's md view of the Document: each field instance it holds, by path and repetitions, with its value as text. */
     private fun mdFields(document: DocumentV2): Map<String, String?> = buildMap {
         document.traverse(object : IDocumentV2Visitor {
             override fun visitField(pointer: DocumentPointer, field: FieldInstanceV2) {
-                put(pointer.toString().replace("[1]", ""), field.value()?.toString())
+                put(pointer.fullName() + pointer.repetitionIndexes(), field.value()?.toString())
             }
         })
     }
 
-    private val note = "Order/Note"
+    private val note = "/Order/Note[1, 1]"
 
     /** The md-API condition a project writes, and its port to the interpreter's public view, both firing iff
      *  the Note field holds a value. Firing is compared too, so a view that is never reached cannot pass. */
@@ -95,7 +97,7 @@ class CustomConditionEmptyCellDiffTest {
             var publicSaw: Map<String, String?>? = null
             val conditions = CustomConditionRegistry.builder().register("Observe", PublicCustomCondition { invocation ->
                 val view = invocation.document
-                val fields = view.fields().associate { it.path.drop(1) to view.value(it) }.also { publicSaw = it }
+                val fields = view.fields().associate { it.path + it.coordinates to view.value(it) }.also { publicSaw = it }
                 fields[note] != null
             }).build()
             val interpreter = prepared.createInterpreter(InterpreterConfiguration.builder().customConditions(conditions).build())
@@ -106,42 +108,67 @@ class CustomConditionEmptyCellDiffTest {
     }
 
     /** A core condition a project ships, run on A12's core route and through [KernelCustomConditions] on the
-     *  interpreter: `getValue` answers `""` for an absent or empty field, and the iterator lists every field
-     *  instance the Document holds, empty ones included. Group instances in the iterator are a separate gap. */
+     *  interpreter: `getValue` answers `""` for an absent or empty field and the placeholder for a present
+     *  repeatable group instance, and the iterator lists every group and field instance the Document holds. */
     @Test
     fun aShippedCoreConditionSeesA12sCoreView() {
         val engine = RuntimeLaws.kernelEngine(model)
         val def = ModelLoader.load(model)
         val probes = listOf(Id("/Order/Note", longArrayOf(1, 1)), Id("/Order/Qty", longArrayOf(1, 1)),
-            Id("/Order/Lines/Sku", longArrayOf(1, 1, 1)))
-        val fieldPaths = setOf("/Order/Ref", "/Order/Note", "/Order/Qty", "/Order/Lines/Sku")
+            Id("/Order/Lines/Sku", longArrayOf(1, 1, 1)), Id("/Order", longArrayOf(1)),
+            Id("/Order/Lines", longArrayOf(1, 1)), Id("/Order/Lines", longArrayOf(1, 2)))
+        val mismatches = mutableListOf<String>()
         for ((label, json) in documents) {
             val seen = mutableListOf<List<String?>>()
             val observer = com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition { data, _, _, _ ->
-                seen += data.filter { it.name in fieldPaths }.map { it.name + it.indices.toList() }.sorted() +
-                    probes.map { data.getValue(it) }
+                seen += data.map { it.name + it.indices.toList() }.sorted() + probes.map { data.getValue(it) }
                 false
             }
             engine.coreModeOracle().validateWithCoreConditions(engine.instance(json), mapOf("Observe" to observer))
             val kernel = seen.single()
+            assertEquals(CORE_VIEW[label], kernel, "$label kernel")
             seen.clear()
             val report = DmInterpreter(def, customConditions = KernelCustomConditions.fromCore(mapOf("Observe" to observer)))
                 .validate(def.readDocumentJson(json))
             assertEquals(emptyList<Any>(), report.unsupported, label)
-            assertEquals(kernel, seen.single(), label)
+            if (kernel != seen.single()) mismatches += "$label kernel=$kernel interpreter=${seen.single()}"
         }
+        assertEquals(emptyList<String>(), mismatches)
     }
 
     private companion object {
+        const val REF = "/Order/Ref[1, 1]"
+
         /** A12's md view, measured: a String stored as `""` is a field holding `""`; JSON `null` and a number
          *  stored as `""` are fields holding no value; an absent field is not there at all. */
         val MD_VIEW = mapOf(
-            "absent" to mapOf("Order/Ref" to "r"),
-            "empty" to mapOf("Order/Ref" to "r", "Order/Note" to ""),
-            "null" to mapOf("Order/Ref" to "r", "Order/Note" to null),
-            "text" to mapOf("Order/Ref" to "r", "Order/Note" to "n"),
-            "numberEmpty" to mapOf("Order/Ref" to "r", "Order/Qty" to null),
-            "lineEmpty" to mapOf("Order/Ref" to "r", "Order/Lines/Sku" to ""),
+            "absent" to mapOf(REF to "r"),
+            "empty" to mapOf(REF to "r", "/Order/Note[1, 1]" to ""),
+            "null" to mapOf(REF to "r", "/Order/Note[1, 1]" to null),
+            "text" to mapOf(REF to "r", "/Order/Note[1, 1]" to "n"),
+            "numberEmpty" to mapOf(REF to "r", "/Order/Qty[1, 1]" to null),
+            "lineEmpty" to mapOf(REF to "r", "/Order/Lines/Sku[1, 1, 1]" to ""),
+            "lineBare" to mapOf(REF to "r", "/Order/Lines/Sku[1, 2, 1]" to "s"),
+            "linesNone" to mapOf(REF to "r"),
         )
+
+        /** A12's core view, measured: the sorted iterator, then `getValue` of Note, Qty, the first line's Sku,
+         *  the root group and the first two line instances. */
+        val CORE_VIEW: Map<String, List<String?>> = run {
+            val base = listOf("/Order/Ref[1, 1]", "/Order[1]")
+            val empty = List(6) { "" }
+            mapOf(
+                "absent" to base + empty,
+                "empty" to listOf("/Order/Note[1, 1]") + base + empty,
+                "null" to listOf("/Order/Note[1, 1]") + base + empty,
+                "text" to listOf("/Order/Note[1, 1]") + base + listOf("n", "", "", "", "", ""),
+                "numberEmpty" to listOf("/Order/Qty[1, 1]") + base + empty,
+                "lineEmpty" to listOf("/Order/Lines/Sku[1, 1, 1]", "/Order/Lines[1, 1]") + base +
+                    listOf("", "", "", "", "NonEmptyString", ""),
+                "lineBare" to listOf("/Order/Lines/Sku[1, 2, 1]", "/Order/Lines[1, 1]", "/Order/Lines[1, 2]") + base +
+                    listOf("", "", "", "", "NonEmptyString", "NonEmptyString"),
+                "linesNone" to base + empty,
+            )
+        }
     }
 }

@@ -1299,11 +1299,16 @@ class Document(internal val config: DocumentConfig) {
     // CustomConditionInvocationDiffTest locks the document-wide view independently of ordinary or joined rows.
     // The callback's separate error pointer carries the current row, including an unmatched join coordinate.
     private fun callbackData(): CustomConditionData = object : CustomConditionData {
-        override fun getValue(field: CustomConditionFieldPointer): String? = valueAt(field.path, field.indices)?.value
+        override fun getValue(field: CustomConditionFieldPointer): String? =
+            valueAt(field.path, field.indices)?.value ?: CustomConditionData.REPEATABLE_GROUP_INSTANCE_VALUE.takeIf {
+                (declaredReps[field.path] ?: 0) > 1 && (field.path to field.indices) in instantiatedGroups
+            }
         override fun storedValue(field: CustomConditionFieldPointer): String? =
             valueAt(field.path, field.indices)?.let { it.value ?: it.raw?.takeIf(String::isEmpty) }
         override fun fields(): List<CustomConditionFieldPointer> =
             index().valueByKey.flatMap { (path, cells) -> cells.keys.map { CustomConditionFieldPointer(path, it) } }
+        override fun groups(): List<CustomConditionFieldPointer> =
+            instantiatedGroups.map { (path, reps) -> CustomConditionFieldPointer(path, reps) }
     }
 
     private inner class RowContext(

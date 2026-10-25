@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition;
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.IData;
@@ -76,7 +77,8 @@ public final class KernelCustomConditions {
             }
 
             @Override public Iterator<IIdentifier> iterator() {
-                return data.fields().stream().map(KernelCustomConditions::toId).iterator();
+                return Stream.concat(data.groups().stream(), data.fields().stream())
+                        .map(KernelCustomConditions::toId).iterator();
             }
 
             @Override public String identifierToString(IIdentifier id) {
