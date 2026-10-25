@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.adapter.laws.TypedRules
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.edit.GroupEditor
+import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
@@ -1083,6 +1084,97 @@ object PerfCatalog {
         return PerfScenario("PF framed", kernelModel, interpModel) { sink, n, _ ->
             gen.populate(sink, rowsOf = { g, _, _ -> when (g) { FX -> n; FB -> FRAMED_KEYS; FXA -> 1; else -> 0 } }, value = values)
         }
+    }
+
+    private const val NJ_ORDERS = "/Ship/Orders"
+    private const val NJ_LINES = "$NJ_ORDERS/Lines"
+    private const val NJ_STOCK = "/Ship/Stock"
+    private const val NJ_LINES_PER_ORDER = 4   // the nested level's stored rows below each joined order
+    private const val NJ_ON_HAND = 2           // every SKU's stock, so lines 3 and 4 of each order exceed it
+
+    private val nestedJoinJson: String by lazy {
+        DocumentModelDraft.named("shipment").locale("en_US")
+            .rootGroup("Ship", Consumer { root ->
+                root.group("Orders", Consumer { o ->
+                    o.repeatable(DECLARED_MAX).indexField("Sku")
+                    o.field("Sku", FieldKind.STRING)
+                    o.group("Lines", Consumer { l ->
+                        l.repeatable(DECLARED_MAX)
+                        l.numberField("Units", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                        l.numberField("Shortfall", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                    })
+                })
+                root.group("Stock", Consumer { s ->
+                    s.repeatable(DECLARED_MAX).indexField("Sku")
+                    s.field("Sku", FieldKind.STRING)
+                    s.numberField("OnHand", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            })
+            .build().toJson()
+    }
+    private val nestedJoinSession: EditSession by lazy { EditSession.read(nestedJoinJson) }
+    private val nestedJoinFields = listOf(
+        FieldDef("$NJ_ORDERS/Sku", Kind.STRING),
+        FieldDef("$NJ_LINES/Units", Kind.NUMBER, scale = 0), FieldDef("$NJ_LINES/Shortfall", Kind.NUMBER, scale = 0),
+        FieldDef("$NJ_STOCK/Sku", Kind.STRING), FieldDef("$NJ_STOCK/OnHand", Kind.NUMBER, scale = 0),
+    )
+
+    /** Every order's SKU has its stock row, so each of the N joined rows carries [NJ_LINES_PER_ORDER] nested lines;
+     *  [variant] rotates which lines exceed the stock, keeping two of the four firing per order. */
+    private fun nestedJoinValues(variant: Int): ValueStrategy = ValueStrategy { f, reps, _ ->
+        when (f.path) {
+            "$NJ_ORDERS/Sku" -> "S" + reps[reps.size - 2]
+            "$NJ_STOCK/Sku" -> "S" + reps[reps.size - 2]
+            "$NJ_LINES/Units" -> ((reps[reps.size - 2] - 1 + variant) % NJ_LINES_PER_ORDER + 1).toString()
+            "$NJ_STOCK/OnHand" -> NJ_ON_HAND.toString()
+            else -> null
+        }
+    }
+
+    private fun nestedJoinModel(rules: List<RuleDef>, computations: List<Computation>) = ModelDef(
+        nestedJoinFields, rules,
+        computations = computations.map(::def),
+        repeatableGroups = setOf(NJ_ORDERS, NJ_LINES, NJ_STOCK),
+        declaredReps = mapOf(NJ_ORDERS to DECLARED_MAX, NJ_LINES to DECLARED_MAX, NJ_STOCK to DECLARED_MAX),
+        indexFields = setOf("$NJ_ORDERS/Sku", "$NJ_STOCK/Sku"),
+    )
+
+    private fun nestedJoinInstance(model: ModelDef): (PlacementSink, Int, Int) -> Unit {
+        val gen = SeedGenerator(model)
+        return { sink, n, variant ->
+            gen.populate(sink, rowsOf = { g, _, _ ->
+                when (g) { NJ_ORDERS, NJ_STOCK -> n; NJ_LINES -> NJ_LINES_PER_ORDER; else -> 0 }
+            }, value = nestedJoinValues(variant))
+        }
+    }
+
+    /**
+     * **A level iterated below a joined group** (`Orders ⋈ Stock` by `Sku`, the rule declared in `Orders/Lines`;
+     * KERNEL-FINDINGS KF603). N is the SKU count on both sides, each order holding [NJ_LINES_PER_ORDER] lines, so
+     * the join does N matched pairings and visits 4N nested rows. It is the timed row IG182 asked for before the
+     * per-call nested-row map and depth table are touched; [NestedJoinScenarioShapeTest] proves it fires.
+     */
+    fun nestedJoin(): PerfScenario {
+        val lines = nestedJoinSession.group(NJ_LINES)
+        val units = lines.num("Units")
+        val onHand = nestedJoinSession.group(NJ_STOCK).num("OnHand")
+        val rule = lines.errorRule("NJ", units.field(), units.filled().and(onHand.filled()).and(units.gt(onHand)))
+        val model = nestedJoinModel(listOf(def(rule)), emptyList())
+        return PerfScenario("NJ nested join", inject(nestedJoinJson, rule), model, instance = nestedJoinInstance(model))
+    }
+
+    /** The same nested level computed: each line's shortfall against its SKU's stock, the per-run
+     *  `prepareParallel` IG182 names on the compute path. */
+    fun nestedJoinComputation(): PerfScenario {
+        val lines = nestedJoinSession.group(NJ_LINES)
+        val units = lines.num("Units")
+        val onHand = nestedJoinSession.group(NJ_STOCK).num("OnHand")
+        val shortfall = lines.computation(lines.num("Shortfall")) {
+            it.name("ShortfallComp").`when`(units.gt(onHand)).calc(units.minus(onHand)).message(Dsl.en("x")).build()
+        }
+        val model = nestedJoinModel(emptyList(), listOf(shortfall))
+        return PerfScenario("NJ nested join compute", inject(nestedJoinJson, shortfall), model, PerfOp.COMPUTE,
+            instance = nestedJoinInstance(model))
     }
 
     // ---- Europe/Berlin DATE_TIME (IF132): exercises the `berlinOffsetSeconds` hot path at scale. Every DATE_TIME

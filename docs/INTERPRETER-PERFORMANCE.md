@@ -590,6 +590,8 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 **Specialist Berlin wall-day guard (IF166).** `PerfCatalog.berlinAddDays()` is deliberately outside the closed B1–B9 comparison inventory: it is a focused regression scenario for the `AddDays(DATE_TIME, …)` landing path. Rows cycle ordinary, gap, and overlap landings in both directions, including the 1945 CEST↔CEMT transitions; exact interpreter/dynamic-Groovy/generated-Java signatures are checked at N and 4N before timing. On the same Apple Silicon runner, the pre-fix collection path measured 12.3 ms at 1,000 rows and 50.4 ms at 4,000 (4.14×); the scalar-loop path measured 12.6/49.4 ms (3.93×). These are dated implementation evidence under IF137's paired estimator and existing `<9×` catastrophe floor, not a promoted release number.
 
+**Specialist nested-join pair (IG182, KF603).** `PerfCatalog.nestedJoin()` and `nestedJoinComputation()` sit outside the closed B1–B9 inventory: `Orders ⋈ Stock` by `Sku`, with the rule or the computation declared in the unindexed `Orders/Lines` level below one joined side, so every joined row visits its nested lines (the nested-level arm of `Document.parallelContexts`). N is the SKU count on both sides and each order holds four lines. `NestedJoinScenarioShapeTest` pins that lines 3 and 4 of every order fire, and compute, on the interpreter and on A12 alike, so the two `KernelParityGateTest` lanes cannot time an empty result.
+
 ## The regression gate (mechanics)
 
 - **Home:** `adapter/src/test/.../perf/` (has the kernel; mirrors the `laws/` differential layout). Not in `:interpreter` (kernel-free) and not in the cold-agent surfaces.

@@ -111,6 +111,14 @@ class KernelParityGateTest {
         assertBeatsBothKernelStrategies(PerfCatalog.parallelFramed(), small = 250)
 
     @Test
+    fun nestedJoinBeatsBothKernelStrategies() =
+        assertBeatsBothKernelStrategies(PerfCatalog.nestedJoin(), small = 250)
+
+    @Test
+    fun nestedJoinComputationBeatsBothKernelStrategies() =
+        assertBeatsBothKernelStrategies(PerfCatalog.nestedJoinComputation(), small = 250)
+
+    @Test
     fun berlinAddDaysBeatsBothKernelStrategies() =
         assertBeatsBothKernelStrategies(PerfCatalog.berlinAddDays(), small = 250)
 
