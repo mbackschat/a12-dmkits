@@ -1882,7 +1882,9 @@ final class ConditionConverter {
             if (category.isPresent()) {
                 return Dsl.fieldValueAsNumber(category.get());
             }
-            return Dsl.fieldValueAsNumber(markedField(entity));
+            return hasSemanticIndex(entity)
+                    ? Dsl.fieldValueAsNumber(semanticIndex(entity, fvn))
+                    : Dsl.fieldValueAsNumber(markedField(entity));
         }
         // field-level rounding/abs: RoundDownValue(f)/RoundUpValue(f)/RoundAccountingValue(f)/AbsValue(f)
         if (operand instanceof IFieldIdOperation fieldOp) {

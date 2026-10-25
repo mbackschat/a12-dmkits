@@ -1409,6 +1409,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
@@ -2080,7 +2081,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue im
   public java.lang.String indexValue()
   public final java.lang.String toString()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand.Cell, io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate.Source
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand.Cell, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate.Source
+  public default boolean correlated()
   public default java.lang.String duplicateIdentity()
   public default java.util.Optional<java.lang.String> exactIdentity()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()

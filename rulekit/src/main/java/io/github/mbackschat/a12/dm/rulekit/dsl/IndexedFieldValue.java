@@ -18,7 +18,7 @@ import java.util.Optional;
  * check is added for this: the two identity switches that already exist for {@link FieldRef} are where
  * that gate lives, widened to this type via {@link #duplicateIdentity()}.
  */
-public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell, ValueAsDate.Source
+public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell, ValueAsDate.Source, NumericTextSource
         permits SemanticIndexValue, SemanticIndexFieldValue {
 
     /** Literal membership of this selected cell; the kernel settles the declared-kind domain (DG71). */
@@ -42,7 +42,14 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand.Cell
     }
 
     /** The field whose indexed cell this reads. */
+    @Override
     FieldRef field();
+
+    /** Whether the indexed field carries the {@code $} correlation; the key's own is not this source's. */
+    @Override
+    default boolean correlated() {
+        return field().correlated();
+    }
 
     /** The catalog operator-id — {@code SemanticIndex} for both key forms. */
     String operatorId();

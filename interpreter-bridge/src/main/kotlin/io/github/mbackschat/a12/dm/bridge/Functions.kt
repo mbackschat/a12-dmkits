@@ -685,6 +685,10 @@ internal class Functions(private val mapping: Mapping) {
         if (args.size != 1) {
             throw UnmappedConstructException("FieldValueAsString with " + args.size + " operands")
         }
+        // A key-selected cell maps to rulekit's indexed form, which leaves the cell's kind to A12 rather than gating it
+        if (args[0] is Expr.SemanticIndex) {
+            return Dsl.fieldValueAsString(mapping.semanticIndex(args[0])).expression()
+        }
         return Dsl.fieldValueAsString(numberRef(args[0], "FieldValueAsString").field()).expression()
     }
 
@@ -699,7 +703,11 @@ internal class Functions(private val mapping: Mapping) {
             throw UnmappedConstructException("FieldValueAsNumber with " + args.size + " operands")
         }
         val category = mapping.categoryRef(args[0])
-        val number = if (category != null) Dsl.fieldValueAsNumber(category) else Dsl.fieldValueAsNumber(mapping.fieldRef(args[0]))
+        val number = when {
+            category != null -> Dsl.fieldValueAsNumber(category)
+            args[0] is Expr.SemanticIndex -> Dsl.fieldValueAsNumber(mapping.semanticIndex(args[0]))
+            else -> Dsl.fieldValueAsNumber(mapping.fieldRef(args[0]))
+        }
         return number.expression()
     }
 

@@ -41,6 +41,7 @@ class KeyedCategoryRoleDiffTest {
             "ConcatenationRule" to order.str("Pick").asString().eq(tier.plus("-x")),
             "AsNumberRule" to Dsl.fieldValueAsNumber(rank).gt(1),
             "AsNumberZeroRule" to Dsl.fieldValueAsNumber(rank).lt(1),
+            "DirectAsNumberRule" to Dsl.fieldValueAsNumber(order.field("Lines/Level").semanticIndex("a")).gt(1),
         )
         var json = session.toJson()
         for ((name, condition) in rules) {
@@ -49,9 +50,7 @@ class KeyedCategoryRoleDiffTest {
                     .message(Dsl.en("Check line a.")).build()
             })
         }
-        // A keyed direct read has no typed form yet (DEV-API-GAPS DG158), so it is written as text.
-        RuntimeLaws.withRule(json, "/Order", "DirectAsNumberRule", "../Total", "DirectAsNumberRule",
-            "FieldFilled(Total) And FieldValueAsNumber(Lines/Level For \"a\") > 1")
+        json
     }
 
     private fun order(pick: String, vararg lines: String) =

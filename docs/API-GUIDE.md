@@ -905,6 +905,15 @@ Condition c = m.str("/Order/CustomerName").eq(
         Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").semanticIndex("SKU-1"))));
 ```
 
+`Dsl.fieldValueAsNumber` takes the handle too, the kernel's `FieldValueAsNumber(Field For key)`; both read back keyed on both backends:
+
+<!-- snippet: indexed-number-coercion -->
+```java
+// fieldValueAsNumber takes the same semanticIndex(key) handle: the keyed cell's stored value as a
+// number, rendered bare as A12 requires inside a function (KERNEL-FINDINGS KF568).
+NumberExpr keyedQuantity = Dsl.fieldValueAsNumber(M.field("/Order/Lines/Qty").semanticIndex("a"));
+```
+
 **A key-selected cell is also a temporal operand that reads one field.** `valueAsDateFirstDay`/`valueAsDateLastDay` take the `semanticIndex(key)` handle of a partially known date, and `Dsl.date(…)` takes it as a component, because `SemanticIndex` is a `TemporalComponent`. A12 admits both from outside the repetition, where the unkeyed read is `MVK_NO_WILDCARD`, and resolves each as the row the key selects ([KF531](KERNEL-FINDINGS.md#kf531)):
 
 <!-- snippet: keyed-temporal-operand -->

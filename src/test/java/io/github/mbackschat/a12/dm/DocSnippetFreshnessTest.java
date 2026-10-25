@@ -136,6 +136,8 @@ class DocSnippetFreshnessTest {
             new Lock("indexed-range", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("indexed-number-coercion", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/KeyedCategoryReadTest.java"),
             new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-scope-value-list", "docs/API-GUIDE.md", NEW_SHAPES),

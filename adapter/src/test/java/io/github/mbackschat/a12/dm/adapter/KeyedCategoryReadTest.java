@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack;
@@ -39,7 +40,9 @@ class KeyedCategoryReadTest {
                     .group("Lines", l -> l.repeatable(5).indexField("Sku")
                             .stringField("Sku", f -> { })
                             .enumField("Grade", e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low"))
-                            .enumField("Band", e -> e.value("B1").value("B2").category("Rank", "1", "2"))))
+                            .enumField("Band", e -> e.value("B1").value("B2").category("Rank", "1", "2"))
+                            .enumField("Qty", e -> e.value("1").value("2"))
+                            .numberField("Units", n -> n.fractionDigits(0))))
             .build().toJson());
     private static final DslRenderer RENDER = new DslRenderer();
     private static final NumberRef TOTAL = M.num("/Order/Total");
@@ -96,6 +99,28 @@ class KeyedCategoryReadTest {
         authored.put("AsNumber", guarded(Dsl.fieldValueAsNumber(M.enumOf("/Order/Lines/Band").category("Rank").forIndex("a"))
                 .gt(1)));
         authored.put("AsNumberUnkeyed", guarded(Dsl.fieldValueAsNumber(M.enumOf("/Order/Level").category("Rank")).gt(1)));
+        assertReadsBackOnBothBackends(authored);
+    }
+
+    /**
+     * A keyed FIELD in either coercion reads back keyed too: A12 admits {@code FieldValueAsNumber(Lines/Qty For "a")}
+     * (KF568), which had no typed form, and the interpreter bridge read an indexed
+     * {@code FieldValueAsString} operand as no shape at all. The unkeyed rows are the controls.
+     */
+    @Test
+    void aKeyedFieldInACoercionReadsBackKeyedOnBothBackends() {
+        // tag::indexed-number-coercion[]
+        // fieldValueAsNumber takes the same semanticIndex(key) handle: the keyed cell's stored value as a
+        // number, rendered bare as A12 requires inside a function (KERNEL-FINDINGS KF568).
+        NumberExpr keyedQuantity = Dsl.fieldValueAsNumber(M.field("/Order/Lines/Qty").semanticIndex("a"));
+        // end::indexed-number-coercion[]
+        Map<String, Condition> authored = new java.util.LinkedHashMap<>();
+        authored.put("AsNumberKeyed", guarded(keyedQuantity.gt(1)));
+        authored.put("AsNumberFieldKeyed", guarded(Dsl.fieldValueAsNumber(
+                M.field("/Order/Lines/Qty").semanticIndex(M.field("/Order/Pick"))).gt(1)));
+        authored.put("AsStringKeyed", guarded(Dsl.fieldValueAsString(M.field("/Order/Lines/Units").semanticIndex("a"))
+                .eq(Dsl.text("2"))));
+        authored.put("AsStringUnkeyed", guarded(Dsl.fieldValueAsString(M.field("/Order/Total")).eq(Dsl.text("2"))));
         assertReadsBackOnBothBackends(authored);
     }
 

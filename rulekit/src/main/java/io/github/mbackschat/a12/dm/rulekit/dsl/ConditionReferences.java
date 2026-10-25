@@ -287,10 +287,11 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case IndexedFieldValueAsString c -> collect(c.index(), refs);
             case RangeAsString c -> refs.field(c.field());
             case FieldValueAsNumber c -> {
-                if (c.source() instanceof CategoryRef category) {
-                    collectCategory(category.access(), refs);
-                } else {
-                    refs.field(c.field());
+                switch (c.source()) {
+                    case CategoryRef category -> collectCategory(category.access(), refs);
+                    case IndexedFieldValue index -> collect(index, refs);
+                    case FieldRef field -> refs.field(field);
+                    case EnumRef enumeration -> refs.field(enumeration.field());
                 }
             }
             case RangeAsNumber c -> refs.field(c.field());

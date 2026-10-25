@@ -34,7 +34,8 @@ class KeyedCategoryRoleTest {
                             .stringField("Sku", f -> { })
                             .enumField("Grade", e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low"))
                             .enumField("Band", e -> e.value("B1").value("B2")
-                                    .category("Rank", "1", "2").category("For", "3", "4"))))
+                                    .category("Rank", "1", "2").category("For", "3", "4"))
+                            .enumField("Qty", e -> e.value("1").value("2"))))
             .build().toJson();
 
     private final GroupEditor order = EditSession.read(ORDER).group("/Order");
@@ -60,6 +61,7 @@ class KeyedCategoryRoleTest {
         rules.put("concatenation", rule(order.str("Pick").asString().eq(tier.forIndex("a").plus("-x"))));
         rules.put("as number", rule(Dsl.fieldValueAsNumber(rank.forIndex("a")).gt(1)));
         rules.put("as number, field key", rule(Dsl.fieldValueAsNumber(rank.forIndex(order.field("Pick"))).gt(1)));
+        rules.put("as number, keyed field", rule(Dsl.fieldValueAsNumber(order.field("Lines/Qty").semanticIndex("a")).gt(1)));
         rules.put("as number, keyword category", rule(Dsl.fieldValueAsNumber(
                 order.enumOf("Lines/Band").category("For").forIndex("a")).gt(3)));
 
@@ -74,11 +76,13 @@ class KeyedCategoryRoleTest {
         expected.put("concatenation", "FieldFilled(Total) And [Pick] == [Lines/Grade -> Tier For \"a\"] + \"-x\"");
         expected.put("as number", "FieldFilled(Total) And FieldValueAsNumber(Lines/Band -> Rank For \"a\") > 1");
         expected.put("as number, field key", "FieldFilled(Total) And FieldValueAsNumber(Lines/Band -> Rank For Pick) > 1");
+        expected.put("as number, keyed field", "FieldFilled(Total) And FieldValueAsNumber(Lines/Qty For \"a\") > 1");
         expected.put("as number, keyword category",
                 "FieldFilled(Total) And FieldValueAsNumber(Lines/Band -> 'For' For \"a\") > 3");
         assertEquals(expected, rendered);
         assertEquals(Map.of("value list", "admitted", "concatenation", "admitted", "as number", "admitted",
-                "as number, field key", "admitted", "as number, keyword category", "admitted"), verdicts);
+                "as number, field key", "admitted", "as number, keyed field", "admitted",
+                "as number, keyword category", "admitted"), verdicts);
     }
 
     /** The bare projection is what the key drop used to render: A12 asks a repeating read for its star. */
@@ -94,6 +98,19 @@ class KeyedCategoryRoleTest {
         Rule keyedOnly = order.rule(r -> r.name("PickRank").code("PICK_RANK").errorField(pick)
                 .when(Dsl.fieldValueAsNumber(rank.forIndex(pick.field())).gt(1))
                 .message(Dsl.en("Check the picked rank.")).build());
+        boolean advises = keyedOnly.deferredChecks().stream()
+                .anyMatch(d -> d.code().filter("MVK_ERROR_FIELD_NOT_REFERENCED"::equals).isPresent());
+        assertEquals(Map.of("kernel", "admitted", "advisory", false),
+                Map.of("kernel", verdict(keyedOnly), "advisory", advises));
+    }
+
+    /** The same for a keyed field, whose key the source-switch folds as an index rather than as a plain field. */
+    @Test
+    void aFieldKeyOfAKeyedFieldReferencesTheErrorField() {
+        StringRef pick = order.str("Pick");
+        Rule keyedOnly = order.rule(r -> r.name("PickQty").code("PICK_QTY").errorField(pick)
+                .when(Dsl.fieldValueAsNumber(order.field("Lines/Qty").semanticIndex(pick.field())).gt(1))
+                .message(Dsl.en("Check the picked quantity.")).build());
         boolean advises = keyedOnly.deferredChecks().stream()
                 .anyMatch(d -> d.code().filter("MVK_ERROR_FIELD_NOT_REFERENCED"::equals).isPresent());
         assertEquals(Map.of("kernel", "admitted", "advisory", false),

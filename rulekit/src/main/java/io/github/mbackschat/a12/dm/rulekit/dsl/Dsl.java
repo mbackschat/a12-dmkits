@@ -1671,6 +1671,15 @@ public final class Dsl {
         return new NumberExpr(new FieldValueAsNumber(category));
     }
 
+    /**
+     * {@code FieldValueAsNumber(Field For key)} — the key-selected cell's stored value coerced to a number; the peer
+     * of {@link #fieldValueAsString(SemanticIndex)}. A key no row carries, or an empty cell, reads {@code 0} (KF568).
+     * catalog:FieldValueAsNumber
+     */
+    public static NumberExpr fieldValueAsNumber(SemanticIndex cell) {
+        return new NumberExpr(new FieldValueAsNumber(cell.index()));
+    }
+
     /** {@code RangeAsNumber(field, start, end)} — a substring of a string field read as a number (non-numeric → 0). catalog:RangeAsNumber */
     public static NumberExpr rangeAsNumber(FieldRef field, int start, int end) {
         return new NumberExpr(new RangeAsNumber(field, start, end));

@@ -599,6 +599,8 @@ public final class DslRenderer {
             case FieldRef field -> canonicalOperandPath(field);
             case EnumRef field -> operandPath(field.field());
             case CategoryRef category -> categoryBody(category.access());
+            // bare, as in FieldValueAsString: A12 refuses the bracketed value form inside a function (KF568)
+            case IndexedFieldValue index -> indexBody(index);
         };
     }
 
