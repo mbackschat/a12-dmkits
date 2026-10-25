@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
@@ -66,7 +67,7 @@ final class KernelModelPreparation {
                 // has an exhaustive switch over the kernel's Severity, which yields a MatchException if the
                 // kernel ever adds a constant) would be published as a model rejection with a KERNEL_CONFIRMED
                 // receipt. That is the inverse of the defect this guard exists to fix.
-                service.checkConsistency(model, raw::add);
+                underJudgingZone(() -> service.checkConsistency(model, raw::add));
             } catch (RuntimeException kernelCouldNotBuildTheModel) {
                 String why = kernelCouldNotBuildTheModel.getMessage() != null
                         ? kernelCouldNotBuildTheModel.getMessage()
@@ -106,6 +107,31 @@ final class KernelModelPreparation {
 
         String variant() {
             return service.extractUsedVariants(model).stream().findFirst().orElse("");
+        }
+    }
+
+    /** The JVM default zone the consistency verdict is judged under, the kernel probe's too. */
+    private static final TimeZone JUDGING_ZONE = TimeZone.getTimeZone("UTC");
+
+    private static final Object JUDGING_ZONE_LOCK = new Object();
+
+    /**
+     * Runs {@code check} with the JVM default zone set to {@link #JUDGING_ZONE}, then gives the caller's back.
+     *
+     * <p>A12 judges a DateTime constant against the JVM default rather than the model's declared zone (KERNEL-FINDINGS
+     * kf231), so without this one model's verdict followed the machine: a spring-forward gap label under a
+     * Europe/Berlin model was refused on a Berlin default and admitted on a UTC one, which the portable checker and
+     * the probe also admit. The default is process-global, so concurrent checks are serialized while it is swapped.
+     */
+    private static void underJudgingZone(Runnable check) {
+        synchronized (JUDGING_ZONE_LOCK) {
+            TimeZone previous = TimeZone.getDefault();
+            TimeZone.setDefault(JUDGING_ZONE);
+            try {
+                check.run();
+            } finally {
+                TimeZone.setDefault(previous);
+            }
         }
     }
 }
