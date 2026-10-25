@@ -156,7 +156,10 @@ class ComputationSelfReadTest {
             "[Distance] + [Units]" to listOf(selfRead),
             "[Distance] * 1.5" to listOf(SUPPRESSIBLE),
             "[Distance] + [Rate]" to listOf(SUPPRESSIBLE),
-        ), listOf("[Distance] * 2", "[Distance] + [Units]", "[Distance] * 1.5", "[Distance] + [Rate]")
+            // Deliberately silent: this checker does not type `YearFromDate`, so it cannot know the gate stands aside.
+            "[Distance] + YearFromDate(Departure)" to emptyList(),
+        ), listOf("[Distance] * 2", "[Distance] + [Units]", "[Distance] * 1.5", "[Distance] + [Rate]",
+            "[Distance] + YearFromDate(Departure)")
             .associateWith { verdict(it) })
     }
 
@@ -217,7 +220,9 @@ class ComputationSelfReadTest {
                 {"type":"Field","id":"f4","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f5","name":"Units","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Field","id":"f6","name":"Rate","Field":{"fieldType":{"type":"NumberType",
-                  "NumberType":{"maxFractionalDigits":2}}}}
+                  "NumberType":{"maxFractionalDigits":2}}}},
+                {"type":"Field","id":"f7","name":"Departure","Field":{"fieldType":{"type":"DateType",
+                  "DateType":{"format":"yyyy-MM-dd"}}}}
                 $inLegs
             ]}}
             $inRouting

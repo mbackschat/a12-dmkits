@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 /**
  * The checker's half of what an enum-valued computation may compute from.
@@ -106,6 +107,22 @@ class EnumComputationSourceTest {
             "a custom-typed field" to computing("[Loose]"),
             "a custom-typed operand among enumerations" to computing("FirstFilledValue(Mirror, Loose)"),
         ))
+    }
+
+    /**
+     * The sole labelled read is the comparison walk's to refuse, and that refusal ends selection before this
+     * gate's stage, so only the family's own contribution shows the gate leaves it alone rather than piling on.
+     */
+    @Test
+    fun theGateLeavesTheSoleLabelledReadToTheComparisonWalk() {
+        fun contributed(operation: String): List<String> {
+            val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(ModelSource(model(operation, "../Status"))))),
+                ReadTranscript())
+            return facts.enumComputationSourceContributions(facts.declarations().single { it.path == "/Policy/DerivedStatus" })
+                .map { it.finding.code }
+        }
+        assertEquals(mapOf("[Labelled]" to emptyList(), "FirstFilledValue(Mirror, Labelled)" to OWNED.toList()),
+            listOf("[Labelled]", "FirstFilledValue(Mirror, Labelled)").associateWith(::contributed))
     }
 
     /** The finding names the uncovered value, since widening the target or projecting the source is the fix. */
