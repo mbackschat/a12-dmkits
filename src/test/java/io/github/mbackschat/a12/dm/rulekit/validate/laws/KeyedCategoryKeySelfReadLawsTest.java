@@ -57,15 +57,16 @@ class KeyedCategoryKeySelfReadLawsTest {
         assertEquals(List.of(), kernel("[/Order/Lines/Grade -> Tier For /Order/Other] + \"-x\""));
     }
 
-    /** Through a concatenation, so the builder's kind gate passes and the reference fold decides (DG159 tracks
-     *  that gate refusing the bare category into a text field, which A12 admits above). */
-
+    /** Bare and inside a concatenation, as A12 refuses both above; the other field's key is the admitted control. */
     @Test
     void theTypedBuilderNamesTheSameClass() {
-        PrecheckException refused = assertThrows(PrecheckException.class, () -> order.computation(order.str("Pick"),
-                b -> b.name("PickComp").calc(tier.forIndex(order.field("Pick")).plus("-x"))
-                        .message(Dsl.en("The picked tier.")).build()));
-        assertEquals(Optional.of(PROJECTED), refused.diagnostic().code(), refused::getMessage);
+        for (var operation : List.of(tier.forIndex(order.field("Pick")).value(),
+                tier.forIndex(order.field("Pick")).plus("-x").expression())) {
+            PrecheckException refused = assertThrows(PrecheckException.class, () -> order.computation(
+                    order.str("Pick"), b -> b.name("PickComp").calc(operation)
+                            .message(Dsl.en("The picked tier.")).build()));
+            assertEquals(Optional.of(PROJECTED), refused.diagnostic().code(), refused::getMessage);
+        }
 
         Computation otherKeyed = order.computation(order.str("Pick"), b -> b.name("PickComp")
                 .calc(tier.forIndex(order.field("Other")).plus("-x")).message(Dsl.en("The picked tier.")).build());

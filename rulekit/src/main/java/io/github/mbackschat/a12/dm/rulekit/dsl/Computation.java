@@ -463,7 +463,10 @@ public record Computation(
                 return wanted == target;
             }
             return switch (computedField.kind()) {
-                case STRING, CUSTOM -> operation.kind() == ValueKind.STRING || operation.kind() == ValueKind.CUSTOM;
+                // A12 admits an enumeration value into text unless the enumeration carries display labels, which
+                // a ref cannot see, so that refusal stays the kernel's (validate.laws.EnumIntoTextComputationLawsTest)
+                case STRING, CUSTOM -> operation.kind() == ValueKind.STRING || operation.kind() == ValueKind.CUSTOM
+                        || operation.kind() == ValueKind.ENUMERATION;
                 default -> operation.kind() == computedField.kind();
             };
         }
