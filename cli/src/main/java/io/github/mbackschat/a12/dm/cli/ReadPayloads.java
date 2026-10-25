@@ -172,7 +172,8 @@ public final class ReadPayloads {
     }
 
     /**
-     * The read outcome as output keys — one place, written as an exhaustive switch.
+     * The read outcome as output keys — one place for {@code rule read} and {@code model read}, written as an
+     * exhaustive switch.
      *
      * <p>It was an {@code if}/{@code else if} chain over two states, which is the shape that silently emits
      * NOTHING when a third arrives: {@code converted} would have gone missing altogether rather than
@@ -185,11 +186,16 @@ public final class ReadPayloads {
      * if the CLI ever surfaces a bridge read — but until it does, that key stays out of the published
      * schema, because advertising a field no run can produce is the defect this estate calls out by name.
      */
-    private static void putRuleRead(ObjectNode data, ReadResult read) {
+    public static void putRuleRead(ObjectNode data, ReadResult read) {
         switch (read) {
             case ReadResult.Converted converted -> {
                 data.put("converted", true);
                 data.put("condition", EN.render(converted.condition()));
+                // The waiver lives on the condition's root, not in the rendered text, so it rides as the flag
+                // `rule add` takes; without it the returned text is the cross-scale equality A12 refuses (KF75).
+                if (converted.allowsDifferingDecimals()) {
+                    data.put("allowDifferingDecimals", true);
+                }
             }
             case ReadResult.Opaque opaque -> {
                 data.put("converted", false);

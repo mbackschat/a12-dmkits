@@ -163,7 +163,7 @@ final class RuleModifyCommand extends BaseCommand {
                 RenderedDiff diff;
                 if (original.read(rule) instanceof ReadResult.Converted
                         && modified.read(rule) instanceof ReadResult.Converted modConverted) {
-                    diff = original.diff(rule, modConverted.condition());
+                    diff = original.diff(rule, modConverted);
                 } else {
                     diff = RenderedDiff.between(original.canonicalConditionText(rule), modified.canonicalConditionText(rule),
                             List.of("the rule's condition isn't fully modeled by rulekit (Opaque) — this is a textual diff"));

@@ -32,6 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
@@ -1033,12 +1034,14 @@ public final class KernelAdapter {
      * cosmetics), each carrying the source's <b>leading comment</b> verbatim because write-back
      * preserves it ({@link Comments#preserveLeading}, F8 #3). The lossiness then notes only what
      * re-rendering genuinely drops — <em>inline/trailing</em> comments beyond the leading one. The
-     * caller reviews this before writing back.
+     * caller reviews this before writing back. Each side opens with the scale-gate waiver when it carries
+     * one (KF75): A12 holds the waiver on the condition's root rather than in the AST, so a bare rendering
+     * would diff adding or dropping it as unchanged.
      *
      * @throws IllegalStateException if the rule's current condition didn't read cleanly (it is
      *         {@code Opaque}) — you can't re-express an AST you don't have.
      */
-    public RenderedDiff diff(String ruleFullName, Condition modified) {
+    public RenderedDiff diff(String ruleFullName, ReadResult.Converted modified) {
         if (!(read(ruleFullName) instanceof ReadResult.Converted current)) {
             throw new IllegalStateException("cannot diff a rule whose condition did not read cleanly: "
                     + ruleFullName);
@@ -1046,7 +1049,7 @@ public final class KernelAdapter {
         IRule rule = rule(ruleFullName);
         List<String> lossiness = new java.util.ArrayList<>();
         String raw = rule.getErrorConditionText();
-        String before = render(current.condition());
+        String before = render(current);
         String after = render(modified);
         if (raw != null) {
             // the leading comment survives write-back, so show it on both sides (context, not a change);
@@ -1089,6 +1092,11 @@ public final class KernelAdapter {
 
     private static String render(Condition condition) {
         return new DslRenderer(ConditionLanguage.EN).render(condition);
+    }
+
+    private static String render(ReadResult.Converted read) {
+        String text = render(read.condition());
+        return read.allowsDifferingDecimals() ? ConditionDirectives.allowDifferingDecimals(ConditionLanguage.EN, text) : text;
     }
 
     /** A canonical multi-line rendering of a whole computation — the before/after unit for {@link #diffComputation}. */

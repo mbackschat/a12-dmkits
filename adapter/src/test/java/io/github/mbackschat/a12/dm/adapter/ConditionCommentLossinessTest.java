@@ -47,7 +47,7 @@ class ConditionCommentLossinessTest {
         assertTrue(read instanceof ReadResult.Converted, "a commented condition still converts to a typed AST");
 
         // diff carries the leading comment on both sides (write-back preserves it), so it is NOT lossy
-        RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCap", ((ReadResult.Converted) read).condition());
+        RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCap", (ReadResult.Converted) read);
         assertTrue(diff.after().contains(";; cap the monthly fee"),
                 "the leading comment is carried over, not dropped: " + diff.after());
         assertTrue(diff.lossiness().isEmpty(),
@@ -64,7 +64,7 @@ class ConditionCommentLossinessTest {
         ReadResult read = adapter.read("/Subscription/Addons/FeeCap");
         assertTrue(read instanceof ReadResult.Converted, "the condition still converts to a typed AST");
 
-        RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCap", ((ReadResult.Converted) read).condition());
+        RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCap", (ReadResult.Converted) read);
         assertTrue(diff.lossiness().stream().anyMatch(note -> note.contains("inline/trailing comments")),
                 "the dropped inline/trailing comment must be disclosed: " + diff.lossiness());
         assertFalse(diff.after().contains(";; legacy threshold"),

@@ -16,6 +16,7 @@
     "errorField": { "type": "string", "description": "(one rule) the error entity's full path — the field/group the rule attaches to (its iteration anchor); omitted when the rule carries none" },
     "converted": { "type": "boolean", "description": "(one rule) true = Converted (full rulekit AST); false = Opaque (verbatim passthrough)" },
     "condition": { "type": "string", "description": "(one rule, Converted) the rendered DSL of the condition" },
+    "allowDifferingDecimals": { "type": "boolean", "const": true, "description": "(one rule, Converted) present when the stored condition carries the scale-gate waiver, which is not part of `condition`; pass it to `rule add` with the condition, which A12 otherwise refuses as MVK_INVALID_COMPARE_DEC_PLACES" },
     "canonicalText": { "type": "string", "description": "(one rule, Opaque) the raw kernel condition text, preserved verbatim" },
     "reason": { "type": "string", "description": "(one rule, Opaque) the not-yet-modeled construct" },
     "messages": {

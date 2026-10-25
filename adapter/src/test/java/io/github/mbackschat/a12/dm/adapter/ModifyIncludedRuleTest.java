@@ -84,7 +84,7 @@ class ModifyIncludedRuleTest {
         Condition modified = current.and(base.str(TYPEDEF_FIELD).filled());
 
         // diff for review (F8 #2)
-        RenderedDiff diff = adapter.diff(RULE, modified);
+        RenderedDiff diff = adapter.diff(RULE, new ReadResult.Converted(modified, false));
         assertTrue(diff.changed(), () -> diff.unified());
         assertTrue(diff.before().contains("[/Storefront/Prices/ListPrice] > 100000"),
                 () -> "before is the original cap on the included field: " + diff.before());

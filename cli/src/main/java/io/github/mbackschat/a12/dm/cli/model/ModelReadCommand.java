@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -15,8 +16,6 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ModelRead;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
@@ -31,7 +30,6 @@ import picocli.CommandLine.Mixin;
 final class ModelReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
 
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
@@ -49,7 +47,7 @@ final class ModelReadCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode rules = data.putObject("rules");
             for (Map.Entry<String, ReadResult> e : m.rules().entrySet()) {
-                putRuleOutcome(rules.putObject(e.getKey()), e.getValue());
+                ReadPayloads.putRuleRead(rules.putObject(e.getKey()), e.getValue());
             }
             ObjectNode comps = data.putObject("computations");
             for (Map.Entry<String, ReadComputation> e : m.computations().entrySet()) {
@@ -74,33 +72,7 @@ final class ModelReadCommand extends BaseCommand {
         }
     }
 
-    /**
-     * An exhaustive switch rather than an {@code if}/{@code else if} chain, for the reason
-     * {@code ReadPayloads.putRuleRead} states: a chain over a SEALED type emits nothing at all for a state
-     * it does not name, so a reader would see no {@code converted} key rather than {@code false}. A refused
-     * rule keeps the opaque keys and adds {@code refusedCode} (DEV-API-GAPS DG1001).
-     */
-    private static void putRuleOutcome(ObjectNode node, ReadResult read) {
-        switch (read) {
-            case ReadResult.Converted converted -> {
-                node.put("converted", true);
-                node.put("condition", EN.render(converted.condition()));
-            }
-            case ReadResult.Opaque opaque -> {
-                node.put("converted", false);
-                node.put("canonicalText", opaque.canonicalText());
-                node.put("reason", opaque.reason());
-            }
-            case ReadResult.Refused refused -> {
-                node.put("converted", false);
-                node.put("canonicalText", refused.canonicalText());
-                node.put("reason", refused.reason());
-                node.put("refusedCode", refused.code().name());
-            }
-        }
-    }
-
-    /** Exhaustive for the reason {@link #putRuleOutcome} states; a computation has no refused state. */
+    /** Exhaustive for the reason {@code ReadPayloads.putRuleRead} states; a computation has no refused state. */
     private static void putComputationOutcome(ObjectNode node, ReadComputation read) {
         switch (read) {
             case ReadComputation.Converted converted -> {

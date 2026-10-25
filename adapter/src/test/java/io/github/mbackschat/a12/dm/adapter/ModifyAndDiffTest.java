@@ -45,7 +45,7 @@ class ModifyAndDiffTest {
         Condition modified = current.and(base.num(FEE).filled());
 
         // diff for review — discloses lossiness up front
-        RenderedDiff diff = adapter.diff(RULE, modified);
+        RenderedDiff diff = adapter.diff(RULE, new ReadResult.Converted(modified, false));
         assertTrue(diff.changed(), () -> diff.unified());
         assertTrue(diff.before().contains("1000") && !diff.before().contains("FieldFilled"),
                 () -> "before should be the original comparison: " + diff.before());
