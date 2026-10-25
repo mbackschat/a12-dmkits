@@ -12,7 +12,7 @@ What you actually ship, per target:
 
 | | Browser / Node.js | Kotlin / JVM |
 |---|---|---|
-| Inside a bundled app | **280 kB gzip** entry, tree-shaken and minified | — |
+| Inside a bundled app | **290 kB gzip** entry, tree-shaken and minified | — |
 | Third-party runtime dependencies | `big.js` (≈7 kB, bundled in) | Kotlin stdlib, kotlinx-serialization |
 | Published artifact | 2.5 MB npm package — Kotlin runtime vendored in | 1.6 MB jar — Kotlin runtime resolved separately |
 
