@@ -21,6 +21,22 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-10-26-cold-start"></a>
+### Checkpoint 2026-10-26 — the cold-start lane breached on machine state, not on the join-planning decline
+
+One routine gate run at `b70ac3fbb`, record `perf-results/darwin-aarch64/2026-10-25T231905Z.jsonl`, the record's 1-minute load 4.4 on the breaching lane. 72 of its 73 tests passed. `coldStartStaysSubQuadratic` read 118.01 ms at N=20000 against a 117.69 ms budget (anchor 70.72 ms × 1.65 + 1 ms); the previous record read 57.49 ms there. That window also shows 29% foreign CPU and 38 GC cycles, where the previous one shows 27% and 1.
+
+The only interpreter change since the previous record is a parallel-planning decline (`217ce5a4b`) that `B1-per-row` never reaches, plus comment edits. To separate code from machine, the lane ran four more times, alternating that change's three files between `95b57fb4a` and HEAD, at a 1-minute load of 3.4 to 4.1:
+
+| source | N=5000 | N=20000 |
+|---|---|---|
+| `95b57fb4a` | 24.7 ms | 116.5 ms |
+| HEAD | 20.2 ms | 126.3 ms |
+| `95b57fb4a` | 28.3 ms | 106.1 ms |
+| HEAD | 23.7 ms | 110.7 ms |
+
+**Conclusion.** The two sources overlap, and both sit about twice the previous record's reading, so the breach belongs to the machine's state at the time and the anchor stays. A first standalone re-run at HEAD read 109.4 ms and passed. These five runs' figures live only in this table: their records were left uncommitted, since the full run's record is the one the measurement-currency guard needs.
+
 <a id="checkpoint-2026-10-25-nested-join"></a>
 ### Checkpoint 2026-10-25 — the nested join wins by an order of magnitude, so IG182's three recomputations stay as they are
 
@@ -193,7 +209,7 @@ The finite storage experiment reads fifteen immutable properties from the existi
 
 <a id="checkpoint-2026-09-27--numeric-token-correction-routine-gate-and-isolated-charset-controls"></a>
 
-The M3-N numeric-reader candidate passed 57 of 58 routine performance tests; its BMP charset row breached the existing anchor at N=8000 (retry median 12.89 ms, limit 12.20 ms). The complete run, `darwin-aarch64` `2026-09-27T213726Z`, retained that failure until it was retired from `perf-results/` by hand on 2026-10-21. The discriminator restored only Parser.kt from `a28d06d1e`, ran the failed method, then restored the reviewed candidate and ran the identical method. Both isolated runs passed: original parser `darwin-aarch64/2026-09-27T214521Z` (retired from the record), [candidate parser](../perf-results/darwin-aarch64/2026-09-27T214551Z.jsonl). These dirty-tree records identify the base revision; the only production difference between the controls is the numeric-reader change documented by [IF344](INTERPRETER-FINDINGS.md#if344).
+The M3-N numeric-reader candidate passed 57 of 58 routine performance tests; its BMP charset row breached the existing anchor at N=8000 (retry median 12.89 ms, limit 12.20 ms). The complete run, `darwin-aarch64` `2026-09-27T213726Z`, retained that failure until it was retired from `perf-results/` by hand on 2026-10-21. The discriminator restored only Parser.kt from `a28d06d1e`, ran the failed method, then restored the reviewed candidate and ran the identical method. Both isolated runs passed: original parser `darwin-aarch64/2026-09-27T214521Z` and candidate parser `darwin-aarch64/2026-09-27T214551Z`, both since retired from the record. These dirty-tree records identify the base revision; the only production difference between the controls is the numeric-reader change documented by [IF344](INTERPRETER-FINDINGS.md#if344).
 
 The fixture constructs a ModelDef with no rules and times string-field validation, so it does not exercise numeric parsing. The controls do not establish a cause for the initial breach or a 5% timing guarantee: their N=8000 medians are 9.067/9.690 ms and N=32000 medians 44.745/45.938 ms, with recorded foreign CPU demand at the latter endpoints of 0.734/0.565. No anchor or threshold changed, and the failed run is not relabelled green. The restored candidate passes the isolated existing gate; finer timing qualification remains inconclusive. The JVM/JS WorkLedger controls passed separately. The footprint outcome and owner disposition are recorded below. The first clean-commit footprint attempt at `2d29b728b` stopped at Node launch because its configured heap argument was a Groovy GString; direct conversion of all eight configured task arrays reproduced it. Three String-concatenation corrections restore argument conversion and an actual Node worker. That diagnostic worker used Node 24, while the anchor requires Node 22; it supplies launch evidence only. The subsequent full capture used the anchor’s runtime identity.
 
