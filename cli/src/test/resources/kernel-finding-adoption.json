@@ -14321,6 +14321,162 @@
           "evidence": {}
         }
       }
+    },
+    "kf35": {
+      "sha256": "10fc32fdae9c72449abaf407f8664ad8336fc026f965714d8069793ef1442858",
+      "task": "F-USE-BACKLOG",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the FirstFilledValue window",
+          "unchanged historical claims outside this amendment"
+        ],
+        "interpreter": [
+          "the FirstFilledValue window",
+          "unchanged historical claims outside this amendment"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The amendment only points at KF620, which changes no authoring shape.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The amendment narrows a runtime claim; admission is KF620's and is assessed there.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "OPEN",
+          "basis": "The dated amendment has executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "the FirstFilledValue window": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RawFirstFilledMemberDiffTest.kt#aFilledRawMemberReadsAsTheTokenX",
+              "witness": "A raw member of a FirstFilledValue list is read, as X, on the dynamic Kernel."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The dated amendment has executable evidence; unchanged historical claims remain unassessed under F-USE-BACKLOG.",
+          "evidence": {
+            "the FirstFilledValue window": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/RawFirstFilledMemberTest.kt#aFilledRawMemberIsStoredAsTheToken",
+              "witness": "The interpreter stores X for a filled raw member on both platforms."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Their spec already carries the open window; the amendment corrects only our own text.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf620": {
+      "sha256": "f1655bdcd76088684c5ab101fbd0d6b8d0b8bcd2536d1f39681b6f1c555e67cb",
+      "task": "SS20",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "admission of a raw FirstFilledValue member"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a raw FirstFilledValue member on both kernel strategies"
+        ],
+        "interpreter": [
+          "the raw member's token on JVM and JS"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "a filled raw member reads as X"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The typed surface already authors a raw field as a FirstFilledValue member, and this entry changes no authoring shape.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The checker already admits a raw member in every position the carrier uses.",
+          "evidence": {
+            "admission of a raw FirstFilledValue member": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RawFirstFilledMemberDiffTest.kt#a12AndTheCheckerAdmitTheCarrier",
+              "witness": "A12 and the checker both admit the carrier with no rejection."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime outcomes do not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are pinned on every document, the carrier's admission asserted.",
+          "evidence": {
+            "a raw FirstFilledValue member on both kernel strategies": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RawFirstFilledMemberDiffTest.kt#aFilledRawMemberReadsAsTheTokenX",
+              "witness": "The dynamic Kernel's outcomes are pinned and both strategies agree with the interpreter on seven documents."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The first-filled selection answers X for a raw path on every arm.",
+          "evidence": {
+            "the raw member's token on JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/RawFirstFilledMemberTest.kt#aRawMemberOfOneSpaceIsFilledAndStillTheToken",
+              "witness": "Filled, one-space and empty raw members store and compare as A12 does on both platforms."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter assessed here; the FirstFilledValue catalog entry carries the reading as a gotcha.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Their spec states the same reading, and their raw-members captures reproduce here.",
+          "evidence": {
+            "a filled raw member reads as X": {
+              "reference": "a12-kernel-lean@e9c7259f2f1e286a8b5d9e9e4f272613e1fffba6:spec/06-strings-and-enumerations.md#a1-raw-type-strings-novaluevalidation",
+              "witness": "A.1's second bullet: a filled raw value reads as the token X whatever its text, an empty one is skipped."
+            }
+          }
+        }
+      }
     }
   }
 }

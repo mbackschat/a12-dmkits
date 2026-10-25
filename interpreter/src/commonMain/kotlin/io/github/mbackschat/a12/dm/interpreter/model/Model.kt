@@ -727,6 +727,10 @@ data class ModelDef(
         .filter { it.customType != null }
         .associate { it.path to it.customType!! }
 
+    /** Each raw String's path ([FieldConstraints.noValueValidation]): its value is never read for evaluation,
+     *  and a `FirstFilledValue` member reads it as the token `X` (KF620). */
+    val rawStringFields: Set<String> = fieldConstraints.filterValues { it.noValueValidation }.keys
+
     /** The field's declared custom type, or null when it is not a custom-typed field. */
     fun customTypeOf(path: String): CustomFieldTypeDeclaration? = customTypes[path]
 

@@ -2437,9 +2437,16 @@ private fun Interpreter.firstFilledEmpty(c: EvalContext, path: String, walk: Fir
 private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
 
 /** The value `FirstFilledValue` takes from the filled cell it stops at: a partial Date a value read leaves
- *  unknown is selected as its earliest day ([EvalContext.partialDateBoundaryAt]). */
-private fun firstFilledSelection(c: EvalContext, path: String, repetitions: List<Int>, resolved: Val): Val =
-    if (resolved is Val.Unknown) c.partialDateBoundaryAt(path, repetitions) ?: resolved else resolved
+ *  unknown is selected as its earliest day ([EvalContext.partialDateBoundaryAt]), and a raw String as `X`. */
+private fun Interpreter.firstFilledSelection(c: EvalContext, path: String, repetitions: List<Int>, resolved: Val): Val = when {
+    // A filled raw String is never interned for evaluation, so the list reads its presence alone as `X`,
+    // whatever the text, on both Kernel strategies (KF620, `RawFirstFilledMemberDiffTest`).
+    path in rawStringFields -> RAW_MEMBER_TOKEN
+    resolved is Val.Unknown -> c.partialDateBoundaryAt(path, repetitions) ?: resolved
+    else -> resolved
+}
+
+private val RAW_MEMBER_TOKEN = Val.Txt("X")
 
 /** The empty-selection identity of a `FirstFilledValue` by its operand kind (the kernel's per-kind
  *  `FirstValueCombiner`): NUMBER → the fillable `0`; every other kind → NOT-GIVEN ([Val.Unknown], the

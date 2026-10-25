@@ -110,6 +110,7 @@ class Interpreter(
     internal val baseYear get() = config.baseYear
     internal val timeZone get() = config.timeZone
     internal val indexFields get() = config.indexFields
+    internal val rawStringFields get() = config.rawStringFields
     private val predefinedTypes get() = config.predefinedTypes
     private val customConditions get() = config.customConditions
     private val customFieldTypes get() = config.customFieldTypes

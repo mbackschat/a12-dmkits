@@ -6952,6 +6952,10 @@
         {
           "text": "in a COMPUTATION a filtered starred operand's scan prefetches ONE kept successor before consuming the current target: a filled current value can still be poisoned by the next kept candidate's invalid filter (met directly or through false candidates) and the computation CLEARS, while filters beyond that one successor stay unread; in validation an invalid filter just drops its row (known-true keep)",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "a raw String member (one declaring noValueValidation), in a rule or a computation and in any position, is read as the token \"X\" when filled, whatever its text, a single space included; an empty one is skipped",
+          "kind": "SURPRISE"
         }
       ],
       "constraints": [

@@ -1074,7 +1074,7 @@ class DmInterpreter private constructor(
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
             groupCountGate: GroupCountGate?,
             groupPresence: (String, List<Int>) -> GroupPresenceState): EvalConfig =
-        EvalConfig(clock(), model.baseYear, model.indexFields, timeZone = model.timeZone,
+        EvalConfig(clock(), model.baseYear, model.indexFields, rawStringFields = model.rawStringFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             indexIdentityAdmitted = indexIdentityAdmitted,

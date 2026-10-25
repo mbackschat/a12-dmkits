@@ -270,6 +270,7 @@ internal class ComputationEngine(
             clock(),
             model.baseYear,
             model.indexFields,
+            rawStringFields = model.rawStringFields,
             timeZone = model.timeZone,
             predefinedTypes = predefinedTypes,
             customFieldTypes = customFieldTypes,

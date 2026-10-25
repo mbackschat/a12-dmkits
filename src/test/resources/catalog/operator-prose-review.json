@@ -8345,6 +8345,22 @@
       ]
     },
     {
+      "operator": "FirstFilledValue",
+      "lane": "GOTCHA",
+      "ordinal": 4,
+      "digest": "sha256:15f2e9471c20678f833b4faea7dfc69f5f786d7055691a5154eb602bd3ee939e",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.RawFirstFilledMemberDiffTest"
+        }
+      ]
+    },
+    {
       "operator": "DateRange",
       "lane": "MEANING",
       "ordinal": 0,

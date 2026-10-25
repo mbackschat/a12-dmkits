@@ -25,6 +25,9 @@ class EvalConfig(
     /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
      *  (`[field For "value"]`) lookup resolves a group's index field from this. */
     val indexFields: Set<String> = emptySet(),
+    /** Raw String paths ([io.github.mbackschat.a12.dm.interpreter.model.ModelDef.rawStringFields]) — a filled
+     *  one selected by `FirstFilledValue` reads as the token `X`, never its text (KF620). */
+    val rawStringFields: Set<String> = emptySet(),
     /** Complete call-local formal-admission gate for stored index identities. A semantic-index row is selected
      *  only after this predicate admits its index cell, so built-in constraints, registered custom types,
      *  over-limit coordinates, and partial-call unavailability all precede key projection. Null retains the
