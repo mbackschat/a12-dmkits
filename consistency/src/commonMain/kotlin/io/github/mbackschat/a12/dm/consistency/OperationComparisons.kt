@@ -152,7 +152,10 @@ private fun OperationAnalysis.comparisonFinding(
     if (suppressed) return null
     val x = number.scale
     val y = partner.scale
-    if (x != null && y != null && (x == y || (if (x < y) number else partner).expandable)) return null
+    if (x != null && y != null && (x == y || (if (x < y) number else partner).expandable)) {
+        admitScale(comparison)
+        return null
+    }
     return problem(SUPPRESSIBLE,
         "`${comparison.left}` carries ${x ?: "an undetermined number of"} fractional digits and `${comparison.right}` carries ${y ?: "an undetermined number of"}; round one side to the other's scale, or compare with `<` / `>`")
 }
@@ -197,6 +200,17 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
 
 internal fun TrackedFactBase.operationFindings(element: TrackedDeclaration): List<Finding> =
     operationContributions(element).map { it.finding }
+
+/**
+ * The operation members whose lowered comparison passes A12's scale gate, as this analysis types them. An
+ * operation it cannot type is absent, so a caller reads absence as "unknown", never as "refused".
+ */
+internal fun TrackedFactBase.operationsPassingTheScaleGate(element: TrackedDeclaration): Set<String> {
+    val execution = conditionExecution(element) ?: return emptySet()
+    val analysis = OperationAnalysis(this, element, execution.carrier, execution.recognition)
+    analysis.analyze()
+    return analysis.scaleAdmittedOperations
+}
 
 internal fun TrackedFactBase.operationContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()

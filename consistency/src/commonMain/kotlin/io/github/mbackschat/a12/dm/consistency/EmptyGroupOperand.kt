@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
@@ -22,13 +23,22 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * the empty one for its emptiness instead. That is what lets this family judge any reference resolving to a
  * group without knowing which operand position it sits in — the one thing a checker reading condition text
  * cannot recover.
+ *
+ * **`RuleGroup` is the declaring group here too** ([KERNEL-FINDINGS KF611], [KERNEL-FINDINGS KF618]), so a rule
+ * declared in an empty group draws the class through the keyword. At a root group the keyword meets the
+ * root-reference class first ([KERNEL-FINDINGS KF611]), which this family leaves to that one.
  */
 internal fun TrackedFactBase.emptyGroupContributions(element: TrackedDeclaration): List<ConditionFinding> =
     entityContributions(element, EntityCheck.EMPTY_GROUP) { entity, span ->
         val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
-        val resolved = resolveEntity(element.path.substringBeforeLast('/'), written, element.origin)
-            as? Reference.Resolved ?: return@entityContributions null
-        val group = declarationAt(resolved.path, DeclaredKind.GROUP) ?: return@entityContributions null
+        val declaringGroup = element.path.substringBeforeLast('/')
+        val path = if (isRuleContext(written, conditionLanguage)) {
+            declaringGroup.takeUnless { it.isRootGroup() } ?: return@entityContributions null
+        } else {
+            (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)?.path
+                ?: return@entityContributions null
+        }
+        val group = declarationAt(path, DeclaredKind.GROUP) ?: return@entityContributions null
         if (carriesAField(group.path)) return@entityContributions null
         Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR,
             if (group.path.isRootGroup()) "MVK_ROOT_GROUP_IS_EMPTY" else "MVK_GROUP_IS_EMPTY",

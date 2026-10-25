@@ -3548,7 +3548,7 @@
           ],
           "modelMiddle": "\n            ]}},\n            {\"type\":\"Group\",\"id\":\"g2\",\"name\":\"Parcels\",\"Group\":{\"repeatability\":3,\"indexFieldName\":\"Kind\",\"elements\":[\n              {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Kind\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n                \"EnumerationType\":{\"values\":[{\"value\":\"BOX\"},{\"value\":\"ENVELOPE\"}]}}}}\n            ]}},\n{\"type\":\"Computation\",\"id\":\"cTotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"roundingMode\":\"RoundUp\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Total)\",\"operation\":\"[Subtotal]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}",
           "modelSha256": "c19067e8ebea86bd270c5285604abbd54d723c2e7fb225869480c88ca92127dc",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK", "replacement": {"expected": ["MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"]}
         },
         {
           "id": "CalculationMemberWithholdingTest.theCalculationModuleAsksItsStagesInOrder#13",

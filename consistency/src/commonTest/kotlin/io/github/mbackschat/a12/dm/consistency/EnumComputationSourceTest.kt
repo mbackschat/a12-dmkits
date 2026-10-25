@@ -81,6 +81,33 @@ class EnumComputationSourceTest {
         assertEquals(expected, actual, "a keyed text source")
     }
 
+    /**
+     * What a `FirstFilledValue` operand owes this gate that a sole read does not, mirroring
+     * `EnumComputationSourceLawsTest.aFirstFilledValueOperandOwesThisGateTheDisplayCheck`: inside the call A12
+     * asks the display check here rather than in the comparison walk, and a custom-typed source is no
+     * enumeration at all.
+     */
+    @Test
+    fun aFirstFilledValueOperandOwesThisGateTheDisplayCheck() {
+        val refused = listOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
+        assertEquals(mapOf(
+            "an unlabelled and a labelled operand into an unlabelled target" to refused,
+            // The comparison walk's class, so this gate stays silent on the sole read.
+            "the labelled read alone" to emptyList(),
+            "two unlabelled operands into a labelled target" to refused,
+            "a custom-typed field" to refused,
+            "a custom-typed operand among enumerations" to refused,
+        ), mapOf(
+            "an unlabelled and a labelled operand into an unlabelled target" to
+                computing("FirstFilledValue(Mirror, Labelled)"),
+            "the labelled read alone" to computing("[Labelled]"),
+            "two unlabelled operands into a labelled target" to
+                computing("FirstFilledValue(Status, Mirror)", target = "../Labelled"),
+            "a custom-typed field" to computing("[Loose]"),
+            "a custom-typed operand among enumerations" to computing("FirstFilledValue(Mirror, Loose)"),
+        ))
+    }
+
     /** The finding names the uncovered value, since widening the target or projecting the source is the fix. */
     @Test
     fun theFindingNamesTheUncoveredValue() {
@@ -158,6 +185,8 @@ class EnumComputationSourceTest {
                 {"name":"Band","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"OPEN"}]},
                 {"name":"Wide","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"VOID"}]}]}}}},
             {"type":"Field","id":"f9","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f12","name":"Loose","Field":{"fieldType":{"type":"CustomFieldType",
+              "CustomFieldType":{"name":"Loose"}}}},
             {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"indexFieldName":"ClaimRef",
               "elements":[
               {"type":"Field","id":"f10","name":"ClaimRef","Field":{"fieldType":{"type":"StringType"}}},

@@ -69,6 +69,33 @@ class EmptyGroupOperandLawsTest {
     }
 
     /**
+     * {@code RuleGroup} is the declaring group to this gate as it is to the list gates (KF611): a rule declared
+     * in the empty group draws the class through the keyword, while the shell and the populated group admit
+     * the same condition. The replay of a12-kernel-lean's rule-group rows (SPEC-2026-10-24-16, {@code rg2} to
+     * {@code rg10}) found the checker silent here.
+     */
+    @Test
+    void theRuleGroupKeywordNamesTheDeclaringGroupToThisGate() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String group : new String[] {"Empty", "Shell", "Filled"}) {
+            for (String condition : new String[] {"NumberOfFilledFields(RuleGroup) > 0", "GroupFilled(RuleGroup)"}) {
+                ValidationResult r = KernelLaws.checkModel(STORE, "/Store/" + group, "../../Reference",
+                        REFERENCED + condition);
+                actual.put(group + " — " + condition, r.ok() ? ADMITTED : r.diagnostics().stream()
+                        .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(",")));
+            }
+        }
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Empty — NumberOfFilledFields(RuleGroup) > 0", GROUP_IS_EMPTY);
+        expected.put("Empty — GroupFilled(RuleGroup)", GROUP_IS_EMPTY);
+        expected.put("Shell — NumberOfFilledFields(RuleGroup) > 0", ADMITTED);
+        expected.put("Shell — GroupFilled(RuleGroup)", ADMITTED);
+        expected.put("Filled — NumberOfFilledFields(RuleGroup) > 0", ADMITTED);
+        expected.put("Filled — GroupFilled(RuleGroup)", ADMITTED);
+        assertEquals(expected, actual, "the RuleGroup keyword names the declaring group");
+    }
+
+    /**
      * Four carriers, three group shapes each. The empty group is refused on every carrier; the shell — no
      * direct field, one populated descendant — is admitted on every carrier, beside the populated control.
      */

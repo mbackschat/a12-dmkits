@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
  * Every row mirrors one measured against the real Kernel by
  * `rulekit.validate.laws.ComputationDependencyCycleLawsTest`, including the two that keep the family honest:
  * a PRECONDITION read builds an edge exactly like an operation read, and a one-node circle is A12's other
- * law, so this family stays silent there.
+ * law, so this family stays silent there and the self-read family answers.
  */
 class ComputationCycleTest {
 
@@ -53,9 +53,9 @@ class ComputationCycleTest {
         expected["two computations reading each other"] = listOf(cycle)
         // ONE finding for one circle, not one per member: three computations, one cause.
         expected["a three-step circle"] = listOf(cycle)
-        // A12 answers a one-node circle with `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`, which this checker
-        // does not implement — so silence here is a disclosed under-report, never a different verdict.
-        expected["one computation reading its own target"] = emptyList()
+        // A one-node circle is A12's self-read class, never this family's; the self-read family reports it
+        // here because both scales are 0, so the scale gate admits (KF181).
+        expected["one computation reading its own target"] = listOf("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD")
         expected["the back edge carried by a PRECONDITION"] = listOf(cycle)
         expected["the back edge through a field nothing computes — the control"] = emptyList()
         expected["a circle whose two ends sit in different groups"] = listOf(cycle)

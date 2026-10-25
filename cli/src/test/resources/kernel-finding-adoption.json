@@ -14002,6 +14002,222 @@
           "evidence": {}
         }
       }
+    },
+    "kf411": {
+      "sha256": "4fe87ba9a9bef97c59786d7e050bebb78ba1dbf393d2f7b448947cb1b4d7b18d",
+      "task": "SS18",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the enum source gate's display check inside FirstFilledValue"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's enum source gate"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the enum source gate's display check"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave this class to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The enum source family keeps the sole read's display mismatch for the comparison walk and refuses it inside FirstFilledValue.",
+          "evidence": {
+            "the enum source gate's display check inside FirstFilledValue": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EnumComputationSourceTest.kt#aFirstFilledValueOperandOwesThisGateTheDisplayCheck",
+              "witness": "The checker reports A12's class on every row and stays silent on the sole read."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's enum source gate": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EnumComputationSourceLawsTest.java#aFirstFilledValueOperandOwesThisGateTheDisplayCheck",
+              "witness": "A12 answers every row as pinned, the controls included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf617": {
+      "sha256": "cf1cd42808bd8fefccd7a2b9ba2441e1f42756c03a20a2ba477db9000e852c16",
+      "task": "SS18",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a FirstFilledValue operand's display check and a custom-typed source"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's FirstFilledValue display check and custom-typed sources"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "a FirstFilledValue operand's display check and a custom-typed source"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave this class to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The enum source family refuses a bearing mismatch inside FirstFilledValue in either direction, and a custom-typed source alone or as an operand.",
+          "evidence": {
+            "a FirstFilledValue operand's display check and a custom-typed source": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EnumComputationSourceTest.kt#aFirstFilledValueOperandOwesThisGateTheDisplayCheck",
+              "witness": "The checker reports A12's class on all five rows."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's FirstFilledValue display check and custom-typed sources": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EnumComputationSourceLawsTest.java#aFirstFilledValueOperandOwesThisGateTheDisplayCheck",
+              "witness": "A12 answers every row as pinned, the controls included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf618": {
+      "sha256": "dd4c9c34d16f41f518b7f698822b2dfa5cc662fc444edbfbef8e6b9a2f003ba5",
+      "task": "SS18",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "RuleGroup in an empty group"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's empty-group gate through RuleGroup"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "RuleGroup in an empty group"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave this class to A12; the enricher's existing corrective applies.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The empty-group family resolves RuleGroup to the declaring non-root group and judges its subtree.",
+          "evidence": {
+            "RuleGroup in an empty group": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EmptyGroupOperandTest.kt#theRuleGroupKeywordNamesTheDeclaringGroupToThisGate",
+              "witness": "The checker reports A12's class in the empty group and nothing in the shell or the populated group."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's empty-group gate through RuleGroup": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EmptyGroupOperandLawsTest.java#theRuleGroupKeywordNamesTheDeclaringGroupToThisGate",
+              "witness": "A12 answers every row as pinned, the controls included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

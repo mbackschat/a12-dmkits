@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
@@ -84,6 +85,9 @@ internal class OperationAnalysis(
     val contributions = mutableListOf<ConditionFinding>()
     val findings: List<Finding> get() = contributions.map { it.finding }
 
+    /** The operation members whose lowered comparison passed A12's scale gate with both scales known. */
+    val scaleAdmittedOperations = mutableSetOf<String>()
+
     fun value(shape: OperationShape?): OperationValue = values[shape] ?: UNKNOWN
     fun written(shape: OperationShape): String = text.substring(shape.at, shape.end)
 
@@ -125,6 +129,13 @@ internal class OperationAnalysis(
         val field = declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return UNKNOWN
         val domain = enumerationBodyOf(field)?.lookupDomain(category) ?: return UNKNOWN
         OperationValue(OperationType.Enumeration, categoryDomain = domain.toSet())
+    }
+
+    /** Record [comparison] in [scaleAdmittedOperations] when it is the comparison an operation is lowered to. */
+    fun admitScale(comparison: ConditionComparison) {
+        val origin = carrier.at(comparison.start) ?: return
+        val member = origin.member ?: return
+        if (!origin.authored && member.endsWith(".operation")) scaleAdmittedOperations += member
     }
 
     fun finding(code: String, at: Int, end: Int, because: (String) -> String): Finding? {

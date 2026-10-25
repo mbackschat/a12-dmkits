@@ -88,6 +88,55 @@ class EmptyGroupOperandTest {
         assertEquals(expected, actual, "naming an empty group, and naming a shell")
     }
 
+    /**
+     * `RuleGroup` names the declaring group to this gate (`EmptyGroupOperandLawsTest
+     * .theRuleGroupKeywordNamesTheDeclaringGroupToThisGate`): the empty group draws the class through the
+     * keyword, and the shell and the populated group are the controls.
+     */
+    @Test
+    fun theRuleGroupKeywordNamesTheDeclaringGroupToThisGate() {
+        fun declaredIn(group: String, condition: String): List<String> {
+            fun rule(at: String) = if (at != group) "" else """
+                {"type":"Rule","id":"r0","name":"Probe","Rule":{
+                  "errorCondition":"FieldFilled(/Store/Reference) And $condition",
+                  "errorEntityRelPath":"../../Reference",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
+            fun afterASibling(at: String) = rule(at).let { if (it.isEmpty()) it else ",$it" }
+            return checkRead(ModelSource("""
+                {"header":{"id":"store","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Store","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Group","id":"g1","name":"Empty","Group":{"elements":[
+                      ${rule("Empty")}
+                    ]}},
+                    {"type":"Group","id":"g2","name":"Shell","Group":{"elements":[
+                      {"type":"Group","id":"g3","name":"Inner","Group":{"elements":[
+                        {"type":"Field","id":"f1","name":"InnerNote","Field":{"fieldType":{"type":"StringType"}}}
+                      ]}}${afterASibling("Shell")}
+                    ]}},
+                    {"type":"Group","id":"g4","name":"Filled","Group":{"elements":[
+                      {"type":"Field","id":"f2","name":"FilledNote","Field":{"fieldType":{"type":"StringType"}}}${afterASibling("Filled")}
+                    ]}}
+                  ]}}
+                 ]}}}
+            """.trimIndent())).findings.map { it.code }
+        }
+        val actual = listOf("Empty", "Shell", "Filled").flatMap { group ->
+            listOf("NumberOfFilledFields(RuleGroup) > 0", "GroupFilled(RuleGroup)").map { condition ->
+                "$group — $condition" to declaredIn(group, condition)
+            }
+        }.toMap()
+        assertEquals(mapOf(
+            "Empty — NumberOfFilledFields(RuleGroup) > 0" to listOf(groupIsEmpty),
+            "Empty — GroupFilled(RuleGroup)" to listOf(groupIsEmpty),
+            "Shell — NumberOfFilledFields(RuleGroup) > 0" to emptyList(),
+            "Shell — GroupFilled(RuleGroup)" to emptyList(),
+            "Filled — NumberOfFilledFields(RuleGroup) > 0" to emptyList(),
+            "Filled — GroupFilled(RuleGroup)" to emptyList(),
+        ), actual)
+    }
+
     /** The finding names the group, since a condition can name several. */
     @Test
     fun theFindingNamesTheGroupAndWhereItWasWritten() {

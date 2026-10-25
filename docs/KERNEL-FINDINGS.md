@@ -7847,7 +7847,7 @@ A12 resolves an error-message parameter against the rule's own CONDITION, not ag
 
 **Every row is ADMITTED into a TEXT target**, which is the control that makes the table a law about the target's declared kind rather than about the operations.
 
-Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with. *Amended 2026-09-26:* the three pre-empted shapes are the comparison the computation is lowered to, which the comparison families now judge ([KF483](#kf483)).
+Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with. *Amended 2026-09-26:* the three pre-empted shapes are the comparison the computation is lowered to, which the comparison families now judge ([KF483](#kf483)). *Amended 2026-10-25:* the display pre-emption holds for a sole read; inside `FirstFilledValue` the display check is this gate's, and a custom-typed source is refused here ([KF617](#kf617)).
 
 **Extended 2026-09-25 — a climbing source is judged like a local one.** From a rule declared in `Claims/Review`, computing `Outcome` (`OPEN`, `CLOSED`) from `Claims/Banded` (`OPEN`, `CLOSED`, `VOID`, with categories `Band` of `OPEN`, `CLOSED` and `Wide` of all three): `[../Banded]` and `[../Banded -> Wide]` draw `MVK_ERROR_INVALID_ENUM_CALCULATION`, and `[../Banded -> Band]` is admitted. A starred source never reaches this gate, because its bracket refuses it first ([KF473](#kf473)). The checker had been silent on `[../Banded]`, because its bare-spec reader refuses the `..` token. It now reads a source through the bracket's own reader (`adapter.laws.CheckerKeyedOperandAgreementTest.theCheckerReadsAnEnumComputationSourceAsA12Does`). The same refusal had left other families silent on a climbing operand ([KF480](#kf480)).
 
@@ -14928,3 +14928,39 @@ The [KF411](#kf411) policy fixture, the enumeration `Status` computed from `Wide
 **Mechanism (source-read, kernel 30.8.1; the rows above are its discriminating cases).** `NormalisierteBerechnungsFormHelper.checkBerechnungsFunktion` (kernel-core-calc runtime class) judges the operation's reference to the computed field first and returns on it, so the enum gate below it never runs for that operation. `checkTeilBerechnung` judges the operation through `checkBerechnungsVergleich` before it calls `checkVorbedingungen`, and `checkNormalisierteForm` evaluates every alternative.
 
 *Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest.aSelfReadStandsDownTheGateForItsOwnOperationOnly` (A12), and on the portable checker by `consistency.EnumComputationSourceTest` of the same name (SPEC-2026-10-24-15).
+
+## §11 supplement — a `FirstFilledValue` operand owes the enum source gate the display check a sole read owes the parser, and a custom type is no enumeration (measured, 2026-10-25) <a id="kf617"></a>
+
+> Fold: not-foldable — a diagnostic-class law about a computation's source, beside [KF411](#kf411).
+
+A policy whose `Status` and `Mirror` are unlabelled two-value enumerations, `Labelled` declares the same values with labels, and `Loose` is a custom-typed field:
+
+| computation | A12 reports |
+|---|---|
+| `FirstFilledValue(Mirror, Labelled)` into `Status` | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| `[Labelled]` into `Status` (the control) | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| `FirstFilledValue(Status, Mirror)` into `Labelled` | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| `[Loose]` into `Status` | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| `FirstFilledValue(Mirror, Loose)` into `Status` | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+
+**What the rows separate.** The control keeps [KF411](#kf411)'s claim for a sole read: the comparison walk refuses a display mismatch first. Inside `FirstFilledValue` the walk is silent, and the calculation gate refuses the mismatch in either direction. A custom-typed source is refused alone and as an operand.
+
+**Mechanism (source-read, kernel 30.8.1).** `NormalisierteBerechnungsFormHelper.isEntityIdCompatibleWithEnumValues` (kernel-core-calc runtime class) refuses an operand that is no enumeration, then calls `checkDisplayValues` for an uncategorized one. That method's own note says the parser does this check for a field read, and that for `FirstFilledValue` it is done "only for calculations". Two operands that both bear labels are compared label by label there, which is not measured here.
+
+*Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest.aFirstFilledValueOperandOwesThisGateTheDisplayCheck` (A12), and on the portable checker by `consistency.EnumComputationSourceTest` of the same name (SPEC-2026-10-24-16, s4 `va12`, `vb14`).
+
+## §9 supplement — `RuleGroup` names the declaring group to the empty-group gate (measured, 2026-10-25) <a id="kf618"></a>
+
+> Fold: not-foldable — a diagnostic-class law beside [KF215](#kf215) and [KF611](#kf611).
+
+A store whose `Empty` group holds nothing, `Shell` holds only a populated subgroup, and `Filled` holds a field. A rule declared in each group carries `NumberOfFilledFields(RuleGroup) > 0` or `GroupFilled(RuleGroup)`, beside a read of its error field:
+
+| declared in | A12 reports, both conditions |
+|---|---|
+| `Empty` | `MVK_GROUP_IS_EMPTY` |
+| `Shell` | admitted |
+| `Filled` | admitted |
+
+So the keyword meets [KF215](#kf215)'s gate as the group it names, emptiness judged over the subtree as for a spelled path. a12-kernel-lean's rule-group rows (`rg2` to `rg10`, nine operators in one empty group) agree, and the replay here reproduced each through A12. At a root group the keyword draws the root-reference class ([KF611](#kf611)), so the root case is not measured here.
+
+*Locked by:* `rulekit.validate.laws.EmptyGroupOperandLawsTest.theRuleGroupKeywordNamesTheDeclaringGroupToThisGate` (A12), and on the portable checker by `consistency.EmptyGroupOperandTest` of the same name (SPEC-2026-10-24-16).

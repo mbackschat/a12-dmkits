@@ -12,9 +12,9 @@ import kotlin.test.assertEquals
  * group are exempt. A family keyed on path equality admits the first pair; one keyed on containment alone
  * refuses the second.
  *
- * The second grid is this checker's own silences, which the laws twin has no reason to carry: a NUMBER
- * target is left to the scale gate that answers ahead of this class, and a PROJECTED self-read is left to
- * the class that pre-empts it.
+ * The second grid is where the scale gate meets this class: a NUMBER target is reported only where the
+ * operation's derived scale is known to pass the gate that answers ahead of it, and a PROJECTED self-read is
+ * left to the class that pre-empts it.
  */
 class ComputationSelfReadTest {
 
@@ -88,9 +88,9 @@ class ComputationSelfReadTest {
     /**
      * The scale gate's bound, and the PROJECTED half that shares it.
      *
-     * The gate is measured ahead of both classes, so a NUMBER target is left alone; the suppression rows are
-     * the two cases A12 settles the other way, each measured on its own class rather than transferred from
-     * the other. The projected rows are the pre-emption: a projection of the computed field is A12's other
+     * The gate is measured ahead of both classes, so a NUMBER target's plain read is reported only where the
+     * operation's derived scale matches the target's, which is the first row; the suppression rows settle the
+     * gate the other way, each measured on its own class rather than transferred from the other. The projected rows are the pre-emption: a projection of the computed field is A12's other
      * class, and it answers wherever it appears in the computation.
      */
     @Test
@@ -112,11 +112,14 @@ class ComputationSelfReadTest {
                 "FieldFilled(/Routing/Legs/LegRef For /Routing/PlannedLeg)"))
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["a NUMBER target reading itself"] = emptyList()
+        // Scale 0 on both sides of the lowered comparison, so the gate admits (s3 `ua15`, KF181).
+        expected["a NUMBER target reading itself"] = listOf(selfRead)
         expected["the same PLAIN read with the scale gate suppressed"] = listOf(selfRead)
         expected["a STRING target read through a semantic index keyed by itself"] = listOf(projected)
         expected["the same index keyed by a PEER — the control"] = emptyList()
-        expected["a NUMBER target read through a semantic index"] = emptyList()
+        // Matched scales again, so the projected class surfaces (`ComputedTargetProjectedReadLawsTest
+        // .aSemanticIndexReadOfTheComputedFieldReportsTheSameProjectedClass`).
+        expected["a NUMBER target read through a semantic index"] = listOf(projected)
         expected["the same PROJECTED read with the scale gate suppressed"] = listOf(projected)
         expected["a projected read in the GUARD of a plain self-read"] = listOf(projected)
         assertEquals(expected, actual, "the scale gate's bound and the projected half")
@@ -137,6 +140,24 @@ class ComputationSelfReadTest {
                 .map { it.code }
         assertEquals(listOf("MVK_NO_NUMBER"), declared("RoundUpValue(/Routing/PreferredLeg, 2) > 0"))
         assertEquals(listOf("MVK_INVALID_ENTITY"), declared("FieldFilled(NoSuchField)"))
+    }
+
+    /**
+     * KF181's scale-0 cells on this carrier: the self-read is reported exactly where the derived scale matches
+     * the target's, and the scale gate answers alone where it does not (`rulekit.validate.laws.ComputedTargetScaleLawsTest`).
+     * A row whose operation this checker cannot type stays silent, since the gate's answer is then unknown.
+     */
+    @Test
+    fun aNumberTargetsSelfReadIsReportedWhereTheScaleGateAdmits() {
+        fun verdict(operation: String) = checkRead(ModelSource(inLegs("../Distance", operation, null))).findings
+            .filter { it.code == selfRead || it.code == SUPPRESSIBLE }.map { it.code }
+        assertEquals(mapOf(
+            "[Distance] * 2" to listOf(selfRead),
+            "[Distance] + [Units]" to listOf(selfRead),
+            "[Distance] * 1.5" to listOf(SUPPRESSIBLE),
+            "[Distance] + [Rate]" to listOf(SUPPRESSIBLE),
+        ), listOf("[Distance] * 2", "[Distance] + [Units]", "[Distance] * 1.5", "[Distance] + [Rate]")
+            .associateWith { verdict(it) })
     }
 
     private fun codes(source: String): List<String> =
@@ -193,7 +214,10 @@ class ComputationSelfReadTest {
               "indexFieldName":"LegRef","elements":[
                 {"type":"Field","id":"f2","name":"LegRef","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f3","name":"Distance","Field":{"fieldType":{"type":"NumberType"}}},
-                {"type":"Field","id":"f4","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
+                {"type":"Field","id":"f4","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f5","name":"Units","Field":{"fieldType":{"type":"NumberType"}}},
+                {"type":"Field","id":"f6","name":"Rate","Field":{"fieldType":{"type":"NumberType",
+                  "NumberType":{"maxFractionalDigits":2}}}}
                 $inLegs
             ]}}
             $inRouting

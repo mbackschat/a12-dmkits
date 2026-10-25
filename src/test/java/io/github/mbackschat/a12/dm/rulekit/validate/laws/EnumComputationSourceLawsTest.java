@@ -159,9 +159,56 @@ class EnumComputationSourceLawsTest {
         assertEquals(expected, actual, "where a self-read stands the enum gate down");
     }
 
+    /** A display bearing and a custom type, on their own carrier so the shared grid above stays as measured. */
+    private static final String LABELS = DocumentModelDraft.named("policy-enum-labels").locale("en_US")
+            .rootGroup("Policy", p -> p
+                    .enumField("Status", e -> e.value("OPEN").value("CLOSED"))
+                    .enumField("Mirror", e -> e.value("OPEN").value("CLOSED"))
+                    .enumField("Labelled", e -> e
+                            .value("OPEN", l -> l.label("en_US", "Open case"))
+                            .value("CLOSED", l -> l.label("en_US", "Closed case")))
+                    .customField("Loose", c -> c.type("Loose")))
+            .build().toJson();
+
+    /**
+     * What a {@code FirstFilledValue} operand owes the gate that a sole read does not. A sole read meets the
+     * display check in the comparison walk; inside {@code FirstFilledValue} A12 asks it only here, as
+     * {@code checkDisplayValues}' own note says, so a bearing mismatch there draws this class in either
+     * direction. Any operand that is not an enumeration fails {@code isEntityIdCompatibleWithEnumValues},
+     * a custom type included (replay of SPEC-2026-10-24-16, s4 {@code va12} and {@code vb14}).
+     */
+    @Test
+    void aFirstFilledValueOperandOwesThisGateTheDisplayCheck() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an unlabelled and a labelled operand into an unlabelled target",
+                computedOn(LABELS, "../Status", "FirstFilledValue(Mirror, Labelled)"));
+        actual.put("the labelled read alone — the parser's control", computedOn(LABELS, "../Status", "[Labelled]"));
+        actual.put("two unlabelled operands into a labelled target",
+                computedOn(LABELS, "../Labelled", "FirstFilledValue(Status, Mirror)"));
+        actual.put("a custom-typed field", computedOn(LABELS, "../Status", "[Loose]"));
+        actual.put("a custom-typed operand among enumerations",
+                computedOn(LABELS, "../Status", "FirstFilledValue(Mirror, Loose)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an unlabelled and a labelled operand into an unlabelled target", REFUSED);
+        expected.put("the labelled read alone — the parser's control", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
+        expected.put("two unlabelled operands into a labelled target", REFUSED);
+        expected.put("a custom-typed field", REFUSED);
+        expected.put("a custom-typed operand among enumerations", REFUSED);
+        assertEquals(expected, actual, "what a FirstFilledValue operand owes this gate");
+    }
+
     private static String drafted(DraftComputation.Alternative... alternatives) {
-        return KernelLaws.computationVerdict(POLICY, DraftComputation.builder().groupPath("/Policy")
-                .name("DerivedStatus").computedFieldRelPath("../Status").alternatives(List.of(alternatives))
+        return draftedOn(POLICY, "../Status", alternatives);
+    }
+
+    private static String computedOn(String model, String target, String operation) {
+        return draftedOn(model, target, new DraftComputation.Alternative(null, operation));
+    }
+
+    private static String draftedOn(String model, String target, DraftComputation.Alternative... alternatives) {
+        return KernelLaws.computationVerdict(model, DraftComputation.builder().groupPath("/Policy")
+                .name("DerivedStatus").computedFieldRelPath(target).alternatives(List.of(alternatives))
                 .messages(List.of(new LocalizedText("en_US", "the derived status"))).build());
     }
 

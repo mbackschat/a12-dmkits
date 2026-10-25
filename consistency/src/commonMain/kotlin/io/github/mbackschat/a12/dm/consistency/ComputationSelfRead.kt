@@ -34,13 +34,12 @@ import kotlinx.serialization.json.JsonPrimitive
  * read anywhere decides the class everywhere in it, which is why the search runs over every member before
  * the plain one does.
  *
- * **Silent on a NUMBER target unless the model suppresses the scale gate.** The implicit target-scale
- * comparison is decided AHEAD of both classes ([KERNEL-FINDINGS KF181], [KERNEL-FINDINGS KF182]), so on a
- * number target the first rejection depends on the operation's DERIVED scale, which no family here infers.
- * The safe number case is the model's own escape hatch: with `MVK_INVALID_COMPARE_DEC_PLACES` suppressed the
- * gate cannot answer and A12 reports the self-read class whatever the scale — measured separately for each
- * of the two classes rather than transferred from one to the other. Every other number target is
- * under-reported, deliberately.
+ * **On a NUMBER target, only where the scale gate is known to stand aside.** The implicit target-scale
+ * comparison is decided AHEAD of both classes ([KERNEL-FINDINGS KF181], [KERNEL-FINDINGS KF182]), so the first
+ * rejection depends on the operation's DERIVED scale. Two cases settle it: the model suppresses
+ * `MVK_INVALID_COMPARE_DEC_PLACES`, measured separately for each class; or the operation reader types every
+ * operation's lowered comparison and it passes the gate, which is the comparison family's own judgement read
+ * back. A number target whose operations the reader cannot type is under-reported, deliberately.
  *
  * **An unguarded alternative's own reads go unjudged once there are several alternatives.** From two
  * alternatives on, A12 answers an alternative without a precondition with `MVK_ERROR_EMPTY_PRECONDITION` and
@@ -136,7 +135,10 @@ private const val AT_LEAST_ONE_GROUP_FILLED = "AtLeastOneGroupFilled"
  * Whether the implicit target-scale comparison cannot answer ahead of this class on [target].
  *
  * The declared type is read rather than inferred: a target this reader cannot type is left to the gate, the
- * same direction every other silence here takes.
+ * same direction every other silence here takes. On a NUMBER target the gate is out of the way when the model
+ * suppresses it, or when every operation's lowered comparison is typed and passes it — A12 parses every
+ * alternative before its calculation module walks any, so one undecided operation leaves the whole
+ * computation to the gate ([KERNEL-FINDINGS KF181]).
  */
 private fun TrackedFactBase.scaleGateStandsAside(target: String, element: TrackedDeclaration): Boolean {
     val field = declarationAt(target, DeclaredKind.FIELD)
@@ -145,8 +147,11 @@ private fun TrackedFactBase.scaleGateStandsAside(target: String, element: Tracke
     if (declaredType != FieldType.NUMBER) {
         return true
     }
-    val suppressed = element.body?.get("errorCodesToSuppress") as? JsonArray ?: return false
-    return suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }
+    val suppressed = element.body?.get("errorCodesToSuppress") as? JsonArray
+    if (suppressed != null && suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }) return true
+    val body = element.body ?: return false
+    val operations = conditionTexts(element.kind, body).map { it.first }.filter { it.endsWith(".operation") }
+    return operations.isNotEmpty() && operationsPassingTheScaleGate(element).containsAll(operations)
 }
 
 /** Whether [written] names the computed field or a group that contains it. */

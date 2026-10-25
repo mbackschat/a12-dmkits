@@ -184,6 +184,9 @@ class ReportHarvestContractTest {
             "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#15",
             "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#16",
             "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle#17",
+            // A matched-scale self-read of a NUMBER target is reached before the rounding stage, as A12's own
+            // `CalculationMemberWithholdingLawsTest` row pins; the original froze the checker's silence (KF181).
+            "CalculationMemberWithholdingTest.theCalculationModuleAsksItsStagesInOrder#12",
             "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1",
             "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2",
             "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1",

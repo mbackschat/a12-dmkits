@@ -127,7 +127,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
         fix = "remove the line break from the value, label or category token.",
-        meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break (KERNEL-FINDINGS KF418), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return inside its Java-trimmed text, a break at either end being admitted. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break (KERNEL-FINDINGS KF418), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CODE_ALPHABET" to Corrective(
         fix = "write the error code, or the computation's name, in letters, digits, spaces and underscores only.",
@@ -138,11 +138,11 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is absent or empty, drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence before any variant filter (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
     ),
     "RK_FIELD_NAME_ALPHABET" to Corrective(
-        fix = "rename the field to letters, digits, underscores and colons, separating parts with a dot and starting each later part with a letter.",
-        meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with a letter. Despite the sentence, a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        fix = "rename the field to ASCII letters, digits, underscores and colons, separating parts with a dot and starting each later part with an ASCII letter.",
+        meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not ASCII letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with an ASCII letter. Despite the sentence, a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
     ),
     "RK_GROUP_PATH_INVALID" to Corrective(
-        fix = "rename the group: a nested group name begins with an ASCII letter or `_` and continues in letters, digits, `_`, the German umlauts and `ß`, at most 60 characters.",
+        fix = "rename the group: a nested group name begins with an ASCII letter or `_` and continues in ASCII letters, digits, `_`, the German umlauts and `ß`, at most 60 characters.",
         meaning = "A12's sentence \"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …\": a part of the trimmed group path an element lives in is over 60 characters or outside the group alphabet, so A12 states it at that group and at every element beneath (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
@@ -166,7 +166,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "A12's sentence \"Only values greater than 0 are allowed.\": a length, an integer count or a group's repeatability is 0, where A12 admits 1 and above (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_SIGNED" to Corrective(
-        fix = "write a count of 0 or more, or -1 to declare no bound where the member admits it; a Number length admits no -1.",
+        fix = "write a count of 1 or more (a fractional count may be 0), or -1 to declare no bound where the member admits it; a Number length admits no -1.",
         meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
     ),
     "RK_NUMBER_MAX_VALUE_EXCEEDED" to Corrective(
@@ -174,12 +174,12 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "A12's sentence \"The maximum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `maxValue`, signed and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
     ),
     "RK_NUMBER_MIN_VALUE_EXCEEDED" to Corrective(
-        fix = "raise the minimum until its absolute value is within 10^(15 - k) - 10^(-k), or declare fewer fractional digits to widen that limit.",
+        fix = "bring the minimum's absolute value within 10^(15 - k) - 10^(-k), raising a negative minimum or lowering a positive one, or declare fewer fractional digits to widen that limit.",
         meaning = "A12's sentence \"The minimum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `minValue`, by its absolute value and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
     ),
     "RK_ROOT_GROUP_NAME_ALPHABET" to Corrective(
-        fix = "rename the root group to letters, digits, underscores, the German umlauts and `ß`.",
-        meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        fix = "rename the root group to ASCII letters, digits, underscores, the German umlauts and `ß`.",
+        meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside ASCII letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
     ),
     "RK_RULE_NAME_ALPHABET" to Corrective(
         fix = "rename it to an ASCII letter followed by ASCII letters, digits and underscores.",

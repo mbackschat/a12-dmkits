@@ -82,10 +82,10 @@ private fun TrackedFactBase.sourceDefect(
 ): String? {
     firstFilledOperands(operation, element)?.let { operands ->
         return operands.firstNotNullOfOrNull { operand ->
-            readDefect(operand, admitted, target, declaringGroup, element)
+            readDefect(operand, admitted, target, declaringGroup, element, aFirstFilledValueOperand = true)
         }
     }
-    return readDefect(operation, admitted, target, declaringGroup, element)
+    return readDefect(operation, admitted, target, declaringGroup, element, aFirstFilledValueOperand = false)
 }
 
 /** The operand texts of a sole `FirstFilledValue` call, or null when the operation is not one. */
@@ -101,9 +101,11 @@ private fun TrackedFactBase.firstFilledOperands(operation: String, element: Trac
 /**
  * What one SOURCE read is to this gate, or null where the parser answers first and where it cannot be read.
  *
- * The display check is the parser's, not this gate's — it draws its own class and pre-empts this one — so a
- * bearing mismatch is silence here rather than a refusal. That is the half a reader would most naturally
- * fold in, having the labels in hand already.
+ * For a sole read the display check is the parser's, not this gate's — it draws its own class and pre-empts
+ * this one — so a bearing mismatch is silence there. A `FirstFilledValue` operand is the opposite: A12 asks
+ * the display check of it only in this gate (`checkDisplayValues`' own note), so a bearing mismatch there is
+ * this class in either direction ([KERNEL-FINDINGS KF617]). Two operands that both bear labels are compared
+ * label by label, which this reader does not do, so that case stays silent.
  */
 private fun TrackedFactBase.readDefect(
     text: String,
@@ -111,6 +113,7 @@ private fun TrackedFactBase.readDefect(
     target: TrackedDeclaration,
     declaringGroup: String,
     element: TrackedDeclaration,
+    aFirstFilledValueOperand: Boolean,
 ): String? {
     // The bracket's own reader spells a climbing `..`, which the bare-spec reader refuses as a token.
     // The source is the whole operation, so no filter body can hold it.
@@ -127,6 +130,10 @@ private fun TrackedFactBase.readDefect(
         return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +
             "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
     }
+    if (sourceType == FieldType.CUSTOM_FIELD) {
+        return "reads `${source.path}`, which is a custom-typed field — A12 assigns an enumeration only from " +
+            "a constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
+    }
     if (sourceType != FieldType.ENUMERATION) {
         return null
     }
@@ -136,7 +143,11 @@ private fun TrackedFactBase.readDefect(
     }
     val values = sourceValues(body, category) ?: return null
     if (category == null && bearsDisplayValues(source) != bearsDisplayValues(target)) {
-        return null
+        if (!aFirstFilledValueOperand) return null
+        val (bearing, plain) = if (bearsDisplayValues(source)) source.path to target.path else target.path to source.path
+        return "reads `${source.path}` inside `$FIRST_FILLED_VALUE`, and `$bearing` carries display labels while " +
+            "`$plain` carries none — A12 checks that agreement for a `$FIRST_FILLED_VALUE` operand here. Give " +
+            "both the same labels, or neither"
     }
     val uncovered = values - admitted
     if (uncovered.isEmpty()) {

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  *   <li><b>forward (no-rot):</b> every {@code "RK_*"} string literal the code emits resolves to an
  *       {@link RkCode} constant — so an un-catalogued code cannot ship;</li>
  *   <li><b>reverse (no dead rows):</b> every {@link RkCode} constant is actually referenced from the source
- *       (as a literal or an enum reference) — so the catalog can't accrete codes nothing emits.</li>
+ *       (as a literal or a whole-word {@code RkCode.X}) — so the catalog can't accrete codes nothing emits.</li>
  * </ul>
  *
  * Scans every tree that mints {@code RK_*}: the Java kits and {@code cli/src/main}, and the portable checker's
@@ -67,11 +67,15 @@ class RkCodeParityTest {
         assertTrue(uncatalogued.isEmpty(),
                 () -> "emitted RK_* codes missing from the RkCode registry (un-catalogued — add them): " + uncatalogued);
 
-        // reverse: every catalogued code is referenced somewhere (a literal "RK_X" or an enum ref RkCode.X)
+        // reverse: every catalogued code is referenced somewhere — a literal "RK_X" or a whole-word RkCode.X. A
+        // plain substring test passed whatever merely CONTAINED the name, such as a checker constant's identifier
+        // or a javadoc mention, so a code nothing emitted any more still read as referenced (found by the
+        // 2026-10-25 cold review of the F1–F7 batches).
         String src = allSource.toString();
         List<String> dead = new ArrayList<>();
         for (RkCode c : RkCode.values()) {
-            if (!emitted.contains(c.code()) && !src.contains(c.name())) {
+            boolean referenced = Pattern.compile("\\bRkCode\\." + c.name() + "\\b").matcher(src).find();
+            if (!emitted.contains(c.code()) && !referenced) {
                 dead.add(c.code());
             }
         }
