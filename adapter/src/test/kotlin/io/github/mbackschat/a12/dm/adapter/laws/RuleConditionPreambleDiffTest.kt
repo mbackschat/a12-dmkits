@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test
  * policy model). The interpreter had no reading of the preamble and refused the model at its first rule.
  *
  * The plain, filter and German rows are typed rules carrying the waiver (`Rule.Builder.allowDifferingDecimals`,
- * DEV-API-GAPS DG140), checked to render the spellings they stand for; the padded and commented rows stay text,
+ * API-FINDINGS AF192, DG140), checked to render the spellings they stand for; the padded and commented rows stay text,
  * because they are spellings A12 admits and the renderer never emits.
  */
 class RuleConditionPreambleDiffTest {

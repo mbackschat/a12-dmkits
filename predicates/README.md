@@ -13,7 +13,7 @@ Before this module existed, those two could share a law **only by each restating
 |---|---|
 | the reserved-namespace refusal | **three** copies existed, and they had already drifted apart |
 | A12's pattern-admission blacklist | **two** copies, disagreeing in *both* directions — `:core`'s `KernelPatternPolicy` against the checker's pattern family |
-| whether a reference reaches the error entity | **two** spellings, rulekit's `covers`/`coversGroup` pair against the checker's `reaches` (DEV-API-GAPS DG153) |
+| whether a reference reaches the error entity | **two** spellings, rulekit's `covers`/`coversGroup` pair against the checker's `reaches` ([AF191](../docs/API-FINDINGS.md#af191), DG153) |
 
 Drift here is the expensive kind: each copy is individually plausible, every test passes, and the two products quietly disagree about what A12 accepts.
 

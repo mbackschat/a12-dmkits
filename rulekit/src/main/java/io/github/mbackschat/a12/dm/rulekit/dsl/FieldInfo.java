@@ -49,10 +49,10 @@ public final class FieldInfo {
      * compares against a DATE and constructs a DATE_RANGE endpoint, while its own kind's clock operators refuse
      * it (KERNEL-FINDINGS KF211, measured on both codegen strategies).
      *
-     * <p><b>For DISPATCH, never for refusal.</b> Choosing which typed handle to build is exactly what this
-     * answers; refusing a field because its class disagrees with its kind would be a client-side refusal with
-     * no measured kernel basis — which is why {@link BoundModel#date} still admits a kind-matching field whose
-     * declared format disagrees, and why the kernel's own gate remains the arbiter of anything below.
+     * <p>Choosing which typed handle to build is what this answers, and {@link BoundModel#date}, {@code time} and
+     * {@code dateTime} admit by it alone: A12 refuses a kind-matching field as its kind's operand whenever the
+     * declaration names another class (KERNEL-FINDINGS KF211's 2026-10-24 extension, DG132). The read path never
+     * refuses on it, and the kernel's own gate remains the arbiter of anything below.
      *
      * <p>One definition, both directions: the adapter's read path decides which handle a kernel operand becomes
      * and had kept this keyed on the kind at four sites, each of which turned a kernel-admitted condition into

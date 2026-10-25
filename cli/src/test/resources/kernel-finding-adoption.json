@@ -5047,7 +5047,7 @@
       }
     },
     "kf271": {
-      "sha256": "9c51f1578842c4f320582c0832cf5451fb453fe0a0ed3aaa4b39ccae22704063",
+      "sha256": "41f20c9611e68ea0edb7b5b7caf02014574e5b328cfc0ae7e157553c4a54e74d",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [
@@ -13008,7 +13008,7 @@
       }
     },
     "kf568": {
-      "sha256": "f0c3669fe048fc5a88ba877623a8be77fe4e8fd6b7e3f150946cb9bce8f2533a",
+      "sha256": "904d920cbd6e652db9fdf8fada281b9a4dff07449eecacedf653b019d2bb5181",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the order and gates of an entity spec's modifiers", "every role of a keyed category"],

@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * A typed rule can carry A12's scale-gate waiver, the condition's leading {@code @SuppressWarning} directive the
- * editor calls "Allow Differing Decimal Places" (KERNEL-FINDINGS KF75; DEV-API-GAPS DG140).
+ * editor calls "Allow Differing Decimal Places" (KERNEL-FINDINGS KF75; API-FINDINGS AF192, DG140).
  *
  * <p>The kernel decides every row. The unwaived twin is the control that the directive is what admits the rule,
  * and the German row that it is spelled in the model's condition language, which refuses the other language's

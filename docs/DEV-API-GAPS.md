@@ -40,6 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
+- **DG159 — `Computation.build()` refuses an enumeration or category value into a text field by kind alone** (found 2026-10-25, cold review R14). `operationMatchesComputedKind` lets a STRING or CUSTOM target take only a STRING or CUSTOM operation. A12 admits `[/Order/Lines/Grade -> Tier For "a"]` into a text `Pick` (`validate.laws.KeyedCategoryKeySelfReadLawsTest`), which is consistent with a textless enumeration being comparable to a text field ([KF610](KERNEL-FINDINGS.md#kf610)), so the refusal has no measured basis. It settles by a grid covering a plain and a categorized source, keyed and unkeyed, with and without display labels, into a text target. That grid either narrows the gate to what A12 refuses or writes the deliberate over-strictness down.
 - **DG158 — a keyed direct `FieldValueAsNumber` has no typed form** (found 2026-10-25, cold review R10). A12 admits `FieldValueAsNumber(Lines/Level For "a")` ([KF568](KERNEL-FINDINGS.md#kf568)) and the interpreter evaluates it ([IF442](INTERPRETER-FINDINGS.md#if442)). `Dsl.fieldValueAsNumber` takes a field, an enumeration or a category, none of them keyed, so `KeyedCategoryRoleDiffTest` writes that rule as text. Its sibling has the form, `Dsl.fieldValueAsString(SemanticIndex)`. Settles by a `Dsl.fieldValueAsNumber(SemanticIndex)` factory, rendered bare as A12 requires, with a read-back arm on both backends.
 
 ## 3. Adjacent but out of scope

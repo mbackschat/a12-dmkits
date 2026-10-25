@@ -74,17 +74,22 @@ class GroupTargetLintParityTest {
         return result.diagnostics().stream().anyMatch(d -> d.code().filter("MVK_NEG_CONDITION_IN_ITERATION"::equals).isPresent());
     }
 
+    /** Each row's kernel verdict is pinned, so a kernel admitting all four could not pass the parity vacuously. */
     @Test
     void bothOverloadsAdviseAlikeOnAGroupTarget() {
-        for (Condition condition : List.of(
-                PARTS.notFilled(),
-                PARTS.filled().and(PART_NO.notFilled()),
-                PARTS.notFilled().or(NOTE.notFilled()),
-                PARTS.filled().and(SKU.notFilled()))) {
-            boolean refused = kernelRefusesTheNegative(rule(PARTS, condition));
-            assertEquals(refused, typed(condition).contains("RK_NEG_CONDITION_IN_ITERATION"), "typed: " + condition);
-            assertEquals(typed(condition), text("/Order/Items/Parts", condition), "text: " + condition);
-        }
+        Map<String, Condition> rows = new LinkedHashMap<>();
+        rows.put("bare negative", PARTS.notFilled());
+        rows.put("guarded at its level", PARTS.filled().and(PART_NO.notFilled()));
+        rows.put("negative in an Or", PARTS.notFilled().or(NOTE.notFilled()));
+        rows.put("guard below the negative", PARTS.filled().and(SKU.notFilled()));
+        Map<String, Boolean> kernel = new LinkedHashMap<>();
+        rows.forEach((name, condition) -> {
+            kernel.put(name, kernelRefusesTheNegative(rule(PARTS, condition)));
+            assertEquals(kernel.get(name), typed(condition).contains("RK_NEG_CONDITION_IN_ITERATION"), "typed: " + name);
+            assertEquals(typed(condition), text("/Order/Items/Parts", condition), "text: " + name);
+        });
+        assertEquals(Map.of("bare negative", true, "guarded at its level", false, "negative in an Or", true,
+                "guard below the negative", false), kernel, "the kernel's verdicts");
     }
 
     /** KF601's group-target topologies: an unkeyed twice-repeating group, the keyed licence, and the repeating target itself. */
@@ -113,6 +118,33 @@ class GroupTargetLintParityTest {
         assertEquals(Map.of("/Order/Wraps/Ribbon", true, "/Order/Gifts/Card", false, "/Order/Lines", true), kernel,
                 "KF601's pinned verdicts");
         assertEquals(kernel, lint);
+    }
+
+    /**
+     * A repeating target is guarded at its own level, so the fix names the target and not the rule's group: A12
+     * admits the suggested guard and refuses the rule-group one (KF601; 2026-10-25 cold review, R5).
+     */
+    @Test
+    void theFixGuardsARepeatingTargetAtItsOwnLevel() {
+        GroupRef lines = GIFTS.group("/Order/Lines");
+        Rule bare = GIFTS.rule(GIFTS.group("/Order")).name("GroupCheck").errorEntity(lines).when(lines.notFilled())
+                .code("GROUP_CHECK").message(Dsl.en("Review the lines.")).build();
+        String fix = new Linter().lint(GIFTS, bare).stream()
+                .filter(d -> d.code().filter("RK_NEG_CONDITION_IN_ITERATION"::equals).isPresent())
+                .findFirst().orElseThrow().fix().orElseThrow();
+        assertTrue(fix.contains("GroupFilled(/Order/Lines)"), fix);
+
+        Map<String, List<String>> kernel = new LinkedHashMap<>();
+        kernel.put("suggested guard", kernelCodes(lines, lines.filled().and(lines.notFilled())));
+        kernel.put("rule-group guard", kernelCodes(lines, GIFTS.group("/Order").filled().and(lines.notFilled())));
+        assertEquals(Map.of("suggested guard", List.of(), "rule-group guard", List.of("MVK_NEG_CONDITION_IN_ITERATION")),
+                kernel);
+    }
+
+    private static List<String> kernelCodes(GroupRef target, Condition condition) {
+        Rule rule = GIFTS.rule(GIFTS.group("/Order")).name("GroupCheck").errorEntity(target).when(condition)
+                .code("GROUP_CHECK").message(Dsl.en("Review the lines.")).build();
+        return codes(new RuleValidator().check(GIFTS.toJson(), rule.draft()).diagnostics());
     }
 
     @Test

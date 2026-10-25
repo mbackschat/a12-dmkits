@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  *
  * Scans every tree that mints {@code RK_*}: the Java kits and {@code cli/src/main}, and the portable checker's
  * {@code consistency/src/commonMain}, which cannot reference {@link RkCode} and so spells its codes as text with
- * nothing else joining them to the registry (CLI-CONFORMANCE-GAPS CG25 found fifteen unregistered there).
+ * nothing else joining them to the registry (CG25 found fifteen unregistered there; CLI-CONFORMANCE-SPEC "registry parity").
  * {@code RkCode.java} is excluded because it defines rather than emits, and the checker's generated
  * {@code KernelCorrectives.kt} because it spells every registered code it projects, which would make the reverse
  * direction vacuous. {@code MVK_*} codes are the kernel's — covered by the MVK ledger, not here.
