@@ -429,7 +429,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     condition(CheckFamily.BASE_YEAR_REQUIREMENT) { base, at -> base.baseYearContributions(at) },
     condition(CheckFamily.RANGE_OPERAND_GATES) { base, at -> base.rangeOperandContributions(at) },
     condition(CheckFamily.VALUE_AS_DATE_OPERAND) { base, at -> base.valueAsDateContributions(at) },
-    perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE, DeclarationStage.CALCULATION_ALTERNATIVES) { it.enumComputationSourceFindings() },
+    CheckProducer.Declaration(setOf(CheckFamily.ENUM_COMPUTATION_SOURCE)) { base, at -> base.enumComputationSourceContributions(at) },
     condition(CheckFamily.ERROR_TARGET_ITERATION) { base, at -> base.errorTargetIterationContributions(at) },
     condition(CheckFamily.ERROR_FIELD_ITERATION_BINDING) { base, at -> base.errorFieldIterationBindingContributions(at) },
     CheckProducer.Condition(

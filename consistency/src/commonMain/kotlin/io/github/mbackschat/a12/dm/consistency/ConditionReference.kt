@@ -156,14 +156,27 @@ private fun conditionText(body: JsonObject, member: String): String? {
 }
 
 /**
- * Authored alternative position, with zero for declaration-level members. A family's semantic walk can
- * relocate a common-precondition finding (the self-read walk does so at its first judged alternative, KF181).
+ * Where A12's walk over a computation reaches this member, with zero for declaration-level members.
+ *
+ * The walk goes alternative by alternative, and inside one `checkTeilBerechnung` judges the OPERATION before
+ * the precondition, so an operation's class precedes a precondition's class in the same alternative
+ * ([KERNEL-FINDINGS KF616]). A family's semantic walk can relocate a common-precondition finding (the self-read walk does so at its first
+ * judged alternative, KF181).
  */
 internal fun walkPositionOf(member: String): Int =
-    alternativeMemberOf(member)?.let { (index, _) -> alternativeWalkPosition(index) } ?: 0
+    alternativeMemberOf(member)?.let { (index, key) ->
+        alternativeWalkPosition(index, if (key == "operation") AlternativeStep.OPERATION else AlternativeStep.PRECONDITION)
+    } ?: 0
 
-/** The [walkPositionOf] every member of the alternative at [index] shares. */
-internal fun alternativeWalkPosition(index: Int): Int = index + 1
+/** The steps A12's walk takes inside one alternative, in its order: the alternative's own gate first. */
+internal enum class AlternativeStep { GATE, OPERATION, PRECONDITION }
+
+/** The [walkPositionOf] of [step] in the alternative at [index]. */
+internal fun alternativeWalkPosition(index: Int, step: AlternativeStep): Int =
+    1 + index * AlternativeStep.entries.size + step.ordinal
+
+/** The index of the alternative this member of [draftableMembers] belongs to, or null for a declaration-level one. */
+internal fun alternativeIndexOf(member: String): Int? = alternativeMemberOf(member)?.first
 
 /** The computation alternative an alternative's member of [draftableMembers] belongs to, or null for any other. */
 internal fun alternativeOf(body: JsonObject, member: String): JsonObject? {

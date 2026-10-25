@@ -33,28 +33,37 @@ import kotlinx.serialization.json.contentOrNull
  * pre-empted shapes are the comparison families' to report, which read the lowered comparison
  * ([loweredComparisonOf], [KERNEL-FINDINGS KF483]).
  *
+ * **Two operations are never judged here, because A12 never reaches this gate on them.** An operation that
+ * reads the computed field draws the self-read class, and `checkBerechnungsFunktion` returns on it before this
+ * gate; an unguarded alternative among several draws `MVK_ERROR_EMPTY_PRECONDITION` before its operation is
+ * walked. Each stands down only its own operation: every other alternative is still judged, and a self-read in
+ * a PRECONDITION is a separate walk that leaves the operation's gate standing
+ * ([KERNEL-FINDINGS KF616]).
+ *
  * **Silent on every operation shape this reader will not reduce**, which is a disclosed under-report: A12
  * refuses anything outside its three kinds, measured on a concatenation of the target's own declared value,
  * but the shapes between that and an aggregate were not measured and the comparison walk owns a class for
  * some of them. Silent too on a table-backed enumeration, on an unresolvable type definition or an `UnspecifiedType`, and
  * wherever the target or a source does not resolve; a resolvable definition is read as the type it defines.
  */
-internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = declarations()
-    .filter { it.declaredKind == DeclaredKind.COMPUTATION }
-    .flatMap { element ->
-        val declared = element.declaredReference() ?: return@flatMap emptyList()
-        val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
-        val target = declarationAt(targetPath) ?: return@flatMap emptyList()
-        val admitted = enumerationBodyOf(target)?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
-        val body = element.body ?: return@flatMap emptyList()
-        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-        conditionTexts(element.kind, body)
-            .filter { (member, _) -> member.endsWith(".operation") }
-            .mapNotNull { (member, text) ->
-                sourceDefect(text, admitted, target, group, element)
-                    ?.let { finding(it, member, element) }
+internal fun TrackedFactBase.enumComputationSourceContributions(element: TrackedDeclaration): List<DeclarationFinding> {
+    if (element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
+    val declared = element.declaredReference() ?: return emptyList()
+    val targetPath = (declared.target as? Reference.Resolved)?.path ?: return emptyList()
+    val target = declarationAt(targetPath) ?: return emptyList()
+    val admitted = enumerationBodyOf(target)?.declaredEnumValues()?.toSet() ?: return emptyList()
+    val body = element.body ?: return emptyList()
+    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+    val unjudged = unguardedAmongSeveralAlternatives(body) + operationsReadingTheirTarget(element)
+    return conditionTexts(element.kind, body)
+        .filter { (member, _) -> member.endsWith(".operation") && member !in unjudged }
+        .mapNotNull { (member, text) ->
+            sourceDefect(text, admitted, target, group, element)?.let {
+                DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, finding(it, member, element),
+                    walkPositionOf(member))
             }
-    }
+        }
+}
 
 private const val FIRST_FILLED_VALUE = "FirstFilledValue"
 

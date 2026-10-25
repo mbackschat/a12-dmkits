@@ -57,37 +57,68 @@ import kotlinx.serialization.json.JsonPrimitive
 internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> =
     declarations().flatMap { computationSelfReadContributions(it).map { contribution -> contribution.finding } }
 
-internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDeclaration): List<DeclarationFinding> {
-    if (element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
-    val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val target = computedTargetOf(element) ?: return emptyList()
-    if (!scaleGateStandsAside(target, element)) return emptyList()
-    val body = element.body ?: return emptyList()
+internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDeclaration): List<DeclarationFinding> =
+    when (val reads = selfReadsOf(element)) {
+        null -> emptyList()
+        is SelfReads.Projected -> listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE,
+            projectedFinding(element, reads.member, reads.projection)))
+        is SelfReads.Plain -> reads.reads.map {
+            DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
+                selfReadFinding(element, reads.target, it.member, it.written), it.walkPosition)
+        }
+    }
+
+/**
+ * The operations whose own reads draw the plain self-read class. A12 returns on that class before any other
+ * gate of the same operation, so a family judging an operation stands down on these ([KERNEL-FINDINGS KF616]).
+ */
+internal fun TrackedFactBase.operationsReadingTheirTarget(element: TrackedDeclaration): Set<String> =
+    (selfReadsOf(element) as? SelfReads.Plain)?.reads.orEmpty()
+        .map { it.member }.filter { it.endsWith(".operation") }.toSet()
+
+/** What the self-read walk finds in one computation, or null where it does not judge the computation. */
+private sealed interface SelfReads {
+    /** A projected read, which answers for the whole computation (KF182). */
+    data class Projected(val member: String, val projection: String) : SelfReads
+
+    /** The plain reads A12 judges, in the members it walks. */
+    data class Plain(val target: String, val reads: List<PlainSelfRead>) : SelfReads
+}
+
+private data class PlainSelfRead(val member: String, val written: String, val walkPosition: Int)
+
+private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads? {
+    if (element.declaredKind != DeclaredKind.COMPUTATION) return null
+    val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val target = computedTargetOf(element) ?: return null
+    if (!scaleGateStandsAside(target, element)) return null
+    val body = element.body ?: return null
     val texts = conditionTexts(element.kind, body)
     val group = element.path.substringBeforeLast('/')
-    val projected = texts.firstNotNullOfOrNull { (member, text) ->
+    texts.firstNotNullOfOrNull { (member, text) ->
         projectedSelfReadIn(text, target, group, element, operators[SEMANTIC_INDEX])
-            ?.let { projectedFinding(element, member, it) }
-    }
-    if (projected != null) return listOf(DeclarationFinding(element.key, DeclarationStage.CALCULATION_STRUCTURE, projected))
+            ?.let { SelfReads.Projected(member, it) }
+    }?.let { return it }
     val unwalked = unguardedAmongSeveralAlternatives(body)
     val walked = texts.filter { (member, _) -> member !in unwalked }
-    val commonPosition = walked.firstNotNullOfOrNull { (member, _) -> walkPositionOf(member).takeIf { it > 0 } }
-    return walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }.flatMap { (member, text) ->
-        val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
-            operators[AT_LEAST_ONE_GROUP_FILLED])
-        referenceSpansIn(text, conditionLanguage)
-            .filter { span -> exempt.none { it.at <= span.start && span.end <= it.end } }
-            .map { it.written }
-            .filter { readsTheTarget(it, target, group, element) }
-            .map { DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES,
-                selfReadFinding(element, target, member, it),
-                if (member == "commonPrecondition") checkNotNull(commonPosition) else walkPositionOf(member)) }
-    }
+    // A12 appends the common precondition to the first judged alternative's own precondition parts.
+    val commonPosition = walked.firstNotNullOfOrNull { (member, _) -> alternativeIndexOf(member) }
+        ?.let { alternativeWalkPosition(it, AlternativeStep.PRECONDITION) }
+    return SelfReads.Plain(target, walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }
+        .flatMap { (member, text) ->
+            val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
+                operators[AT_LEAST_ONE_GROUP_FILLED])
+            referenceSpansIn(text, conditionLanguage)
+                .filter { span -> exempt.none { it.at <= span.start && span.end <= it.end } }
+                .map { it.written }
+                .filter { readsTheTarget(it, target, group, element) }
+                .map { PlainSelfRead(member, it,
+                    if (member == "commonPrecondition") checkNotNull(commonPosition) else walkPositionOf(member)) }
+        })
 }
 
 /** The operation members of the unguarded alternatives, when the computation has more than one alternative. */
-private fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
+internal fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
     val alternatives = (body["computationAlternatives"] as? JsonArray).orEmpty()
     if (alternatives.size < 2) return emptySet()
     return alternatives.withIndex()

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * KERNEL-FINDINGS §11 — what a computation whose TARGET is an enumeration may compute from.
@@ -117,6 +120,49 @@ class EnumComputationSourceLawsTest {
         expected.put("an enumeration declaring MORE than the target ever could", KernelLaws.ADMITTED);
         expected.put("a string operation", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the same sources into a text target");
+    }
+
+    /**
+     * Where a self-read stands this gate down. {@code checkBerechnungsFunktion} judges an operation's reference
+     * to the computed field first and returns on it, so the enum gate never sees THAT operation; every other
+     * alternative is still judged, and a precondition's self-read is a separate walk that does not stand the
+     * operation's gate down; an unguarded alternative among several is never walked at all. The two-alternative row is the discriminator against a computation-wide reading,
+     * which would report the self-read alone. Written as drafts because the typed builder refuses a self-read
+     * itself, which would measure our gate instead of A12's (replay of SPEC-2026-10-24-15, s3 {@code uf13}).
+     */
+    @Test
+    void aSelfReadStandsDownTheGateForItsOwnOperationOnly() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an uncovered source beside the target itself",
+                drafted(new DraftComputation.Alternative(null, "FirstFilledValue(Wider, Status)")));
+        actual.put("the same source beside another field — the control",
+                drafted(new DraftComputation.Alternative(null, "FirstFilledValue(Wider, Mirror)")));
+        actual.put("the self-read in one alternative, the uncovered source in the other",
+                drafted(new DraftComputation.Alternative("FieldFilled(Reference)", "FirstFilledValue(Wider, Status)"),
+                        new DraftComputation.Alternative("FieldFilled(Note)", "[Wider]")));
+        actual.put("the self-read in the precondition, the uncovered source in the operation",
+                drafted(new DraftComputation.Alternative("FieldFilled(Status)", "[Wider]")));
+        actual.put("the uncovered source in an UNGUARDED alternative among several",
+                drafted(new DraftComputation.Alternative(null, "[Wider]"),
+                        new DraftComputation.Alternative("FieldFilled(Note)", "[Mirror]")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an uncovered source beside the target itself", "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD");
+        expected.put("the same source beside another field — the control", REFUSED);
+        expected.put("the self-read in one alternative, the uncovered source in the other",
+                "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD," + REFUSED);
+        expected.put("the self-read in the precondition, the uncovered source in the operation",
+                REFUSED + ",MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD");
+        // The sibling stand-down: an unguarded alternative among several is refused before its operation is
+        // walked at all, so neither operation class reaches it (KF181).
+        expected.put("the uncovered source in an UNGUARDED alternative among several", "MVK_ERROR_EMPTY_PRECONDITION");
+        assertEquals(expected, actual, "where a self-read stands the enum gate down");
+    }
+
+    private static String drafted(DraftComputation.Alternative... alternatives) {
+        return KernelLaws.computationVerdict(POLICY, DraftComputation.builder().groupPath("/Policy")
+                .name("DerivedStatus").computedFieldRelPath("../Status").alternatives(List.of(alternatives))
+                .messages(List.of(new LocalizedText("en_US", "the derived status"))).build());
     }
 
     private static String computing(String operation) {

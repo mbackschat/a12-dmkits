@@ -90,13 +90,50 @@ class EnumComputationSourceTest {
         assertEquals(true, finding.explain.contains("VOID"), finding.explain)
     }
 
+    /**
+     * A self-read stands this gate down for its own operation only, mirroring
+     * `EnumComputationSourceLawsTest.aSelfReadStandsDownTheGateForItsOwnOperationOnly`: A12 judges an
+     * operation's reference to the computed field first and returns on it, judges every other alternative,
+     * walks a precondition separately, and never walks an unguarded alternative among several (KF616).
+     * Reporting both classes on the first row was an over-rejection (SPEC-2026-10-24-15).
+     */
+    @Test
+    fun aSelfReadStandsDownTheGateForItsOwnOperationOnly() {
+        val selfRead = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"
+        val refused = "MVK_ERROR_INVALID_ENUM_CALCULATION"
+        fun verdict(alternatives: String) = checkRead(ModelSource(model("", "../Status", alternatives))).findings
+            .filter { it.code == selfRead || it.code == refused }.map { it.code }
+
+        val actual = mapOf(
+            "beside the target itself" to verdict("""[{"operation":"FirstFilledValue(Wider, Status)"}]"""),
+            "beside another field — the control" to verdict("""[{"operation":"FirstFilledValue(Wider, Mirror)"}]"""),
+            "self-read in one alternative, uncovered source in the other" to verdict("""[
+                {"precondition":"FieldFilled(Reference)","operation":"FirstFilledValue(Wider, Status)"},
+                {"precondition":"FieldFilled(Note)","operation":"[Wider]"}]"""),
+            "self-read in the precondition" to verdict("""[{"precondition":"FieldFilled(Status)","operation":"[Wider]"}]"""),
+            "uncovered source in an unguarded alternative among several" to verdict("""[
+                {"operation":"[Wider]"},{"precondition":"FieldFilled(Note)","operation":"[Mirror]"}]"""),
+        )
+        assertEquals(mapOf(
+            "beside the target itself" to listOf(selfRead),
+            "beside another field — the control" to listOf(refused),
+            "self-read in one alternative, uncovered source in the other" to listOf(selfRead, refused),
+            "self-read in the precondition" to listOf(refused, selfRead),
+            "uncovered source in an unguarded alternative among several" to emptyList(),
+        ), actual)
+    }
+
     private fun computing(operation: String, target: String = "../Status"): List<String> =
         checkRead(ModelSource(model(operation, target))).findings
             .filter { it.code in OWNED }
             .map { it.code }
 
     /** A policy administration desk mirroring the laws test's carrier. */
-    private fun model(operation: String, target: String): String = """
+    private fun model(
+        operation: String,
+        target: String,
+        alternatives: String = """[{"operation":"$operation"}]""",
+    ): String = """
         {"header":{"id":"policy-enum-computation","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
@@ -128,7 +165,7 @@ class EnumComputationSourceTest {
             ]}},
             {"type":"Computation","id":"c0","name":"DerivedStatus","Computation":{
               "computedFieldRelPath":"$target",
-              "computationAlternatives":[{"operation":"$operation"}],
+              "computationAlternatives":$alternatives,
               "errorMessage":[{"locale":"en_US","text":"the derived status"}]}}
           ]}}
          ]}}}

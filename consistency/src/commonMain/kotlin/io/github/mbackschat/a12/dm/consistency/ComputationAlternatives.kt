@@ -129,7 +129,7 @@ private fun TrackedFactBase.alternativeFindings(element: TrackedDeclaration, alt
             " no precondition — every one of several owes its own, and a `commonPrecondition` does not " +
             "stand in for it",
         element.path,
-    ), walkPosition = alternativeWalkPosition(unguarded.first() - 1))
+    ), walkPosition = alternativeWalkPosition(unguarded.first() - 1, AlternativeStep.GATE))
 }
 
 private fun unreadable(element: TrackedDeclaration, explain: String): Finding = Finding(

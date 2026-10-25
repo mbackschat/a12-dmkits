@@ -14908,3 +14908,23 @@ An insurance policy: root `Policy` with text `Holder`, a fixed group `Contact`, 
 Limits: full validation, one registered constant condition, the listed shapes. Partial validation reaches the same call and is not measured here.
 
 *Locked by:* `adapter.laws.CustomConditionGroupTargetDiffTest` (three documents, both kernel strategies against the interpreter, A12 pinned) and `adapter.laws.KernelProbeRuleRaiseTest` (the raise's origin and class).
+
+## §11 supplement — a self-read stands the enum source gate down for its own operation only (measured, 2026-10-25) <a id="kf616"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which gate reaches an operation, not an evaluation behaviour.
+
+The [KF411](#kf411) policy fixture, the enumeration `Status` computed from `Wider`, which declares a value `Status` does not. Each row is one computation, with its full class list in report order:
+
+| the computation | A12 reports |
+|---|---|
+| one alternative, `FirstFilledValue(Wider, Status)` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| one alternative, `FirstFilledValue(Wider, Mirror)` (the control) | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| guarded alternatives, `FirstFilledValue(Wider, Status)` then `[Wider]` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`, `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| one alternative, precondition `FieldFilled(Status)`, operation `[Wider]` | `MVK_ERROR_INVALID_ENUM_CALCULATION`, `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| an unguarded `[Wider]` beside a guarded `[Mirror]` | `MVK_ERROR_EMPTY_PRECONDITION` |
+
+**What the rows separate.** The first two show that the self-read takes the enum class away. The third rules out a computation-wide reading: the other alternative's operation is still judged. The fourth shows that a precondition's self-read leaves the operation's gate standing, and that A12 reports the operation's class first. The fifth is the stand-down's sibling: an unguarded alternative among several is never walked ([KF181](#kf181)).
+
+**Mechanism (source-read, kernel 30.8.1; the rows above are its discriminating cases).** `NormalisierteBerechnungsFormHelper.checkBerechnungsFunktion` (kernel-core-calc runtime class) judges the operation's reference to the computed field first and returns on it, so the enum gate below it never runs for that operation. `checkTeilBerechnung` judges the operation through `checkBerechnungsVergleich` before it calls `checkVorbedingungen`, and `checkNormalisierteForm` evaluates every alternative.
+
+*Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest.aSelfReadStandsDownTheGateForItsOwnOperationOnly` (A12), and on the portable checker by `consistency.EnumComputationSourceTest` of the same name (SPEC-2026-10-24-15).

@@ -13930,6 +13930,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf616": {
+      "sha256": "d3a786fe2f62f9179c1b99a4c6f5bea6a762675ac69d23a6b43296724ef280ec",
+      "task": "SS18",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the enum source gate standing down where A12 never reaches it"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "A12's stand-down of the enum source gate"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the enum source gate behind a self-read"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits leave both classes to A12; the enricher's existing correctives apply.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The enum source family judges only the operations A12 walks to it: not one that reads the computed field, not an unguarded alternative among several; findings carry A12's walk order, the operation before the precondition.",
+          "evidence": {
+            "the enum source gate standing down where A12 never reaches it": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EnumComputationSourceTest.kt#aSelfReadStandsDownTheGateForItsOwnOperationOnly",
+              "witness": "The checker reports A12's classes, in A12's order, on all five rows."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A computation's admission does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A computation's admission does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12 is pinned on every row.",
+          "evidence": {
+            "A12's stand-down of the enum source gate": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/EnumComputationSourceLawsTest.java#aSelfReadStandsDownTheGateForItsOwnOperationOnly",
+              "witness": "A12 answers all five rows as pinned, the control included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A static admission refusal never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool checks through the kernel or the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
