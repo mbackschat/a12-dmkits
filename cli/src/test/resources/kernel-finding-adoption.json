@@ -14559,6 +14559,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf622": {
+      "sha256": "aa14507844b40f4a9812ce37a4331d16c0daf7cb494151bbac3e61c91d359d2a",
+      "task": "SS22",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the md and core views against the public view and the bridge"
+        ],
+        "interpreter": [
+          "the stored-empty read on JVM and JS"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the callback's view of an empty String"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Custom-condition data views are no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and A12 admits every model here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime callback view does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime callback view does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The md view is pinned per input, and the core view is read on A12's core validator route.",
+          "evidence": {
+            "the md and core views against the public view and the bridge": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomConditionEmptyCellDiffTest.kt#aShippedCoreConditionSeesA12sCoreView",
+              "witness": "Six stored inputs, each read by a core condition on A12 and through the bridge, values and listed fields compared."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The public view reads the Document's stored text, which keeps a String stored as empty.",
+          "evidence": {
+            "the stored-empty read on JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/CustomConditionEmptyCellTest.kt#aStringStoredAsEmptyIsAFieldHoldingTheEmptyString",
+              "witness": "A String stored as empty reads as the empty String, while JSON null and a typed empty hold no value, on both platforms."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's custom-condition evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

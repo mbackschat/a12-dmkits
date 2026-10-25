@@ -1300,8 +1300,10 @@ class Document(internal val config: DocumentConfig) {
     // The callback's separate error pointer carries the current row, including an unmatched join coordinate.
     private fun callbackData(): CustomConditionData = object : CustomConditionData {
         override fun getValue(field: CustomConditionFieldPointer): String? = valueAt(field.path, field.indices)?.value
+        override fun storedValue(field: CustomConditionFieldPointer): String? =
+            valueAt(field.path, field.indices)?.let { it.value ?: it.raw?.takeIf(String::isEmpty) }
         override fun fields(): List<CustomConditionFieldPointer> =
-            index().valued.map { CustomConditionFieldPointer(it.path, it.reps) }
+            index().valueByKey.flatMap { (path, cells) -> cells.keys.map { CustomConditionFieldPointer(path, it) } }
     }
 
     private inner class RowContext(

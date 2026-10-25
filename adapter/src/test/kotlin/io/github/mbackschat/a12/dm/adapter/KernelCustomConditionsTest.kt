@@ -48,9 +48,11 @@ class KernelCustomConditionsTest {
         assertFalse(check(cond, data(mapOf(total to "1"))), "different value → false")
     }
 
-    @Test fun missingFieldIsNull() {
-        val cond = ICustomCondition { d, _, _, errorField -> d.getValue(errorField) == null }
-        assertTrue(check(cond, data(emptyMap())), "an absent field reads back null through the bridge")
+    /** A12's IData answers an absent field with `""`, never null; the kernel side is
+     *  `adapter.laws.CustomConditionEmptyCellDiffTest`. */
+    @Test fun missingFieldIsEmptyAsInA12() {
+        val cond = ICustomCondition { d, _, _, errorField -> d.getValue(errorField) == "" && d.getValueForDisplay(errorField) == "" }
+        assertTrue(check(cond, data(emptyMap())), "an absent field reads back \"\" through the bridge")
     }
 
     @Test fun dataIsReadOnly() {

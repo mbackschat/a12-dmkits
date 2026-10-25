@@ -542,7 +542,12 @@ fun interface CustomConditionFactory {
     fun create(customConditionName: String): CustomCondition?
 }
 
-/** Read-only, model-owned document view supplied only while a custom condition is executing. */
+/**
+ * Read-only, model-owned document view supplied only while a custom condition is executing — the interpreter's
+ * counterpart of the `DocumentV2` an A12 md-API condition receives. [value] is null for an absent field and for
+ * one holding no value, and `""` for a String stored as `""`; [fields] lists every field instance the document
+ * holds, empty ones included.
+ */
 class CustomConditionDocumentView private constructor(
     val snapshot: DocumentSnapshot,
     val model: ModelMetadata,
@@ -550,7 +555,7 @@ class CustomConditionDocumentView private constructor(
 ) : ModelOwned by snapshot {
     fun value(pointer: FieldPointer): String? {
         model.requireOwned(pointer)
-        return data.getValue(CustomConditionFieldPointer(pointer.path, pointer.coordinates))
+        return data.storedValue(CustomConditionFieldPointer(pointer.path, pointer.coordinates))
     }
 
     fun fields(): List<FieldPointer> =

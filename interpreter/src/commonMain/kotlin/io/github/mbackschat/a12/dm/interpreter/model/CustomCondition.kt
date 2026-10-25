@@ -39,10 +39,18 @@ fun interface CustomCondition {
  */
 interface CustomConditionData {
     /** The value at [field] (path + 1-based repetition indices), or null if empty/absent — the kernel's
-     *  `IData.getValue(IIdentifier)`. */
+     *  `IData.getValue(IIdentifier)`, which answers both with `""`. */
     fun getValue(field: CustomConditionFieldPointer): String?
 
-    /** Every present (valued) field instance in the document — the kernel's `IData.iterator()`. */
+    /**
+     * The value at [field] as A12's md-API `DocumentV2` holds it: like [getValue], except that a cell stored as
+     * the empty String reads `""` rather than null. A12 keeps a String `""` as a field holding `""` but reads JSON
+     * `null` and a typed `""` as a field holding no value (`adapter.laws.CustomConditionEmptyCellDiffTest`).
+     */
+    fun storedValue(field: CustomConditionFieldPointer): String? = getValue(field)
+
+    /** Every field instance the document holds, empty ones included — the field entries of the kernel's
+     *  `IData.iterator()`. */
     fun fields(): List<CustomConditionFieldPointer>
 }
 

@@ -15057,3 +15057,23 @@ Source-verified chain, every link consistent with the rows: `ValidationCommand.c
 
 *Locked by:* `adapter.laws.PartialDispatchSelectorDiffTest` (both kernel strategies against the interpreter, the discriminating rows pinned, the mandatory check's positive controls).
 
+
+## §14 supplement — a custom condition sees a String stored as `""` as a field holding `""`, and the core view answers every empty read with `""` (measured, 2026-10-25) <a id="kf622"></a>
+
+> Fold: pending — extends [KF52](#kf52)'s two API levels with what each shows of an empty field.
+
+An order model holds `Ref`, `Note` (String), `Qty` (Number) and repeatable `Lines/Sku`, with one rule on `Ref` that calls a custom condition. Each document sets `Ref` and one of the inputs below. The md-API condition receives `DocumentV2`; the core condition, bound on the core validator route, receives `IData`:
+
+| stored input | md `DocumentV2` field | core `getValue` | core iterator lists it |
+|---|---|---|---|
+| `Note` absent | none | `""` | no |
+| `"Note": ""` | holds `""` (a String) | `""` | yes |
+| `"Note": null` | holds no value | `""` | yes |
+| `"Qty": ""` | holds no value | `""` | yes |
+| `"Lines": [{"Sku": ""}]` | holds `""` | `""` | yes |
+| `"Note": "n"` | holds `"n"` | `"n"` | yes |
+
+- **A String stored as `""` is present in the md view**, so a condition testing `fieldValue(pointer) != null` fires on it. JSON `null` and a typed `""` (ingestion converts it to no value, [KF52](#kf52)'s level aside) do not. This is what a12-kernel-lean's `rB` and `s6` captures show (`e9c7259f`).
+- **The core view never answers null.** `ValidationData.getValue` returns `VALUE_FOR_ABSENT_AND_EMPTY` (`""`) for an absent field, an empty one and a valueless one alike, so it cannot tell them apart. Its iterator lists every field instance the Document holds, empty or valueless ones included, and also every non-root group instance (`/Order[1]`, `/Order/Lines[1, 1]`).
+
+*Locked by:* `adapter.laws.CustomConditionEmptyCellDiffTest` (the md view pinned per input; the core view through `CustomTestRangeOracle.validateWithCoreConditions`; the interpreter's public view and the `KernelCustomConditions` bridge compared with each).

@@ -51,6 +51,24 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
         return mapOf("messages" to messages(result.messages), "membership" to observations)
     }
 
+    /** Full examination with CORE conditions bound, so a law can observe the core `IData` view that the md-API
+     *  wrapper (`CustomConditionWrapper`) hides behind its `DocumentV2` argument. */
+    fun validateWithCoreConditions(
+        document: DocumentV2,
+        conditions: Map<String, com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition>,
+    ): List<List<Any>> {
+        val result = DocumentValidationResultImpl()
+        val data = LowKernelApiUtils.createData(document, service.getMetaModel(model), Locale.US, result,
+            IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id))
+        val config = ValidationMode().apply {
+            language = Locale.US
+            validationType = ValidationMode.ValidationType.fullExamination
+            ruleType = ValidationMode.RuleType.ALL
+        }
+        service.getValidator(model).validateAll(data, conditions, result, config)
+        return messages(result.messages)
+    }
+
     companion object {
         fun messages(messages: List<com.mgmtp.a12.kernel.md.rt.api.IMessage>, sorted: Boolean = true) =
             (if (sorted) messages.sortedBy { "${it.errorCode}|${it.messageType}|${it.errorFieldPointer.fullName()}|${it.errorFieldPointer.repetitionIndexes()}" } else messages)

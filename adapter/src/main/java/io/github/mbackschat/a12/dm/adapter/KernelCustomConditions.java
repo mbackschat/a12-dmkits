@@ -60,12 +60,19 @@ public final class KernelCustomConditions {
     /** A read-only kernel {@link IData} backed by the interpreter's document-wide {@link CustomConditionData}. */
     private static IData dataView(CustomConditionData data) {
         return new IData() {
+            // A12's IData never answers null: an absent or empty field reads ValidationData.VALUE_FOR_ABSENT_AND_EMPTY,
+            // so a shipped condition may call isEmpty() on it (CustomConditionEmptyCellDiffTest).
             @Override public String getValue(IIdentifier entity) {
-                return data.getValue(toPointer(entity));
+                return valueOrEmpty(entity);
             }
 
             @Override public String getValueForDisplay(IIdentifier entity) {
-                return data.getValue(toPointer(entity));
+                return valueOrEmpty(entity);
+            }
+
+            private String valueOrEmpty(IIdentifier entity) {
+                String value = data.getValue(toPointer(entity));
+                return value == null ? "" : value;
             }
 
             @Override public Iterator<IIdentifier> iterator() {

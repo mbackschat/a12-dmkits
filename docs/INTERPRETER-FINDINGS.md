@@ -5056,3 +5056,11 @@ A reached custom leaf now throws `GroupErrorEntityCustomFailure`, a `RuntimeEval
 
 *Locked:* `adapter.laws.PartialDispatchSelectorDiffTest` (both kernel strategies against the interpreter) and multiplatform `interpreter … PartialDispatchSelectorTest` (JVM + JS); the 180-case `perf/PartialValidationFuzzDiffTest` still agrees.
 
+
+### IF440: a custom condition's view keeps a String stored as `""`, and the core bridge answers empty reads with `""` (2026-10-25) <a id="if440"></a>
+
+[KF622](KERNEL-FINDINGS.md#kf622): the interpreter collapsed a present-but-empty field into an absent one on every custom-condition surface. The public `CustomConditionDocumentView.value`, the counterpart of the md-API `DocumentV2`, returned null for a String stored as `""`, so a ported `fieldValue != null` condition stayed silent where A12 fires. The low-level `CustomConditionData.fields()` listed only valued fields, and the `KernelCustomConditions` bridge handed a shipped core condition null where A12's `IData` never does, so `getValue(x).isEmpty()` would throw.
+
+The Document already kept the distinction: a String `""` is stored as `""`, while JSON `null` and a typed `""` are stored as no value. `CustomConditionData` gained `storedValue`, which reads a stored `""` as `""` and otherwise equals `getValue`. Its default keeps any other implementation compiling. The public view reads through it, `fields()` lists every placed field instance, and the bridge maps null to `""` in both `getValue` and `getValueForDisplay`. `getValue` itself still answers null for an empty field, the documented spelling of A12's indistinguishable `""`. The core iterator's group instances are [IG183](INTERPRETER-GAPS.md#ig183).
+
+*Locked:* `adapter.laws.CustomConditionEmptyCellDiffTest` (the md and core views against the public view and the bridge, with firing compared) and multiplatform `interpreter … CustomConditionEmptyCellTest` (JVM + JS); `KernelCustomConditionsTest.missingFieldIsEmptyAsInA12` replaced an expectation of null that no oracle supported.
