@@ -4967,13 +4967,13 @@ Closes IG181, which the batch R cold review opened on four join-planning branche
 | branch | oracle | outcome |
 |---|---|---|
 | `bindsRepeatableGroup`'s `group == plan.nested` | mutant over `:interpreter:jvmTest` and the adapter group-target differentials: survived; by source, a selection names a keyed group and the nested level has none | deleted |
-| the parallel row's nested arm of `boundLevelsOf` | the same mutant net: survived; by source, parallel partial dispatch goes through `ParallelRuleSelection`, and a parallel computation refuses a group read below the joined groups | deleted |
+| the parallel row's nested arm of `boundLevelsOf` | the same mutant net: survived; by source, parallel partial dispatch goes through `PartialRuleDispatch` (then named `ParallelRuleSelection`). *Corrected 2026-10-25:* this row first added that nothing asks about a nested path there. `OverlayContext.groupFilled` can, on a non-repeatable group above the join, but only after the stored document answered, and every joined row stores its index cell under the common parent, so the arm's answer is never consulted | deleted |
 | the star anchor dropped after the deepest was chosen | `JoinPlanningShapeTest`: a group target tied with another star's binding level fired once or twice depending on which star came first | the target's own level now leaves before the choice, as in the tier-1 anchor |
-| a joined group inside another joined group | `JoinPlanningShapeTest`: evaluated, unrefused | declined as unsupported |
+| a joined group inside another joined group | `JoinPlanningShapeTest`: evaluated, unrefused | declined as unsupported. *Extended 2026-10-25 (cold review):* written the other way round, or with the inner keyed group simply the deepest, the planner started from the inner group, its keyed parent left the join and became a frame, and the rule was evaluated. Any joined group with a keyed repeatable ancestor below the common parent is now declined, whichever order the condition is written in |
 
 A12 refuses both shapes that reach the last two rows (measured 2026-10-24 with `rule check`): the tie with `MVK_ERROR_FIELD_NO_INDEX` for a keyed sibling and `MVK_NO_WILDCARD` for an unkeyed one, and a reference chain crossing two keyed levels beside a join with `MVK_MULTIPLE_INDEX_FIELDS` (KERNEL-FINDINGS [KF602](KERNEL-FINDINGS.md#kf602)). So neither has a runtime answer to match. They are held deterministic and loud because the interpreter also reads models nobody checked.
 
-*Locked:* `JoinPlanningShapeTest`.
+*Locked:* `JoinPlanningShapeTest`, and A12's refusal of every declined shape, in either written order, by `adapter.laws.JoinPlanningRefusalLawsTest`.
 
 
 ### IF433: a group operand bound at every level of a field's path reads that row's cell, not a starred tail (2026-10-24) <a id="if433"></a>

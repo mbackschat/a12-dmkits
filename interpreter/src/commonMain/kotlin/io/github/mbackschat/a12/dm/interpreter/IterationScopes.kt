@@ -218,12 +218,19 @@ internal class IterationScopes(private val model: ModelDef) {
         } ?: scope
         val joined = (listOf(side) + parallelGroups).distinct()
         // A12 refuses a reference chain crossing two keyed levels beside a join (`MVK_MULTIPLE_INDEX_FIELDS`,
-        // KERNEL-FINDINGS KF602), so a joined group inside another has no runtime behaviour to match.
+        // KERNEL-FINDINGS KF602), so a joined group below another keyed group has no runtime behaviour to match.
+        // The outer keyed group may itself be joined, or may have left the join because the planner started from
+        // the inner group, which would otherwise make it a frame: both are declined, whichever was written first.
         joined.firstOrNull { inner -> joined.any { inner.startsWith("$it/") } }?.let { inner ->
             throw UnsupportedConstructException("parallel iteration joining $inner inside another joined group is not modeled")
         }
         val commonParent = commonAncestor(joined)
         val parentDepth = pathParts(commonParent).size
+        joined.firstOrNull { g ->
+            ancestorGroups(g).any { pathParts(it).size > parentDepth && it in model.repeatable && hasIndexField(it) }
+        }?.let { inner ->
+            throw UnsupportedConstructException("parallel iteration joining $inner below another keyed group is not modeled")
+        }
         val indexNames = joined.map { g ->
             val indexField = indexFieldOf(g)
                 ?: throw UnsupportedConstructException("parallel iteration group $g has no index field")

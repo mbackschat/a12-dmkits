@@ -2020,9 +2020,11 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
-        // Matched joins bind their group; unmatched joins retain only their ordinary parent prefix. No nested arm:
-        // parallel partial dispatch uses its own compressed selector (PartialRuleDispatch, SPEC10), and a parallel
-        // computation refuses a group read below the joined groups, so nothing asks about a nested path here.
+        // Matched joins bind their group; unmatched joins retain only their ordinary parent prefix. No nested arm.
+        // Parallel partial dispatch uses its own compressed selector (PartialRuleDispatch, SPEC10). The one caller
+        // that can pass a nested path is OverlayContext.groupFilled on a non-repeatable group above the join, whose
+        // cascade scan reads this; it asks only after the stored document answered false, and every joined row
+        // stores its index cell under the common parent, so that answer is already true (cold review 2026-10-25).
         override fun boundLevelsOf(path: String): Int {
             val g = groupOf(path) ?: return commonPrefixLen(partsOf(path), partsOf(commonParent))
             val bound = when {

@@ -55,7 +55,11 @@ class JoinPlanningShapeTest {
             val result = DmInterpreter(m).validate(m.readDocumentJson(document))
             return result.messages.filter { it.code == "Tie" }.map { it.errorPath } to result.unsupported.map { it.rulePath }
         }
-        assertEquals(outcome("$lines And $picks"), outcome("$picks And $lines"))
+        val written = outcome("$lines And $picks")
+        // Equal and EMPTY would also pass the equality, so the outcome must be an evaluated firing.
+        assertTrue(written.first.isNotEmpty(), "the tie is evaluated, not silently empty")
+        assertEquals(emptyList<String>(), written.second, "the tie is evaluated, not declined")
+        assertEquals(written, outcome("$picks And $lines"))
     }
 
     /**
@@ -65,11 +69,25 @@ class JoinPlanningShapeTest {
      */
     @Test
     fun aJoinedGroupInsideAnotherJoinedGroupIsDeclined() {
-        val rule = RuleDef("/Order/Desk/Nested", "/Order/Desk",
-            "FieldFilled(/Order/Desk/Calls/Topic) And FieldFilled(/Order/Lines/Subs/Note)", "Nested", "../Calls/Topic")
+        assertDeclined("FieldFilled(/Order/Desk/Calls/Topic) And FieldFilled(/Order/Lines/Subs/Note)")
+    }
+
+    /**
+     * The same join written the other way round, and the no-tie shape where the inner keyed group is simply the
+     * deepest. Both make the inner group the scope, so its keyed parent leaves the join and would be iterated as a
+     * frame: the decline must not depend on which group the planner happens to start from.
+     */
+    @Test
+    fun theDeclineDoesNotDependOnWhichJoinedGroupThePlannerStartsFrom() {
+        assertDeclined("FieldFilled(/Order/Lines/Subs/Note) And FieldFilled(/Order/Desk/Calls/Topic)")
+        assertDeclined("FieldFilled(/Order/Picks/LineNo) And FieldFilled(/Order/Lines/Subs/Note)")
+    }
+
+    private fun assertDeclined(condition: String) {
+        val rule = RuleDef("/Order/Desk/Nested", "/Order/Desk", condition, "Nested", "../Calls/Topic")
         val m = model(rule)
         val result = DmInterpreter(m).validate(m.readDocumentJson(document))
-        assertEquals(listOf("/Order/Desk/Nested"), result.unsupported.map { it.rulePath })
-        assertTrue(result.messages.none { it.code == "Nested" })
+        assertEquals(listOf("/Order/Desk/Nested"), result.unsupported.map { it.rulePath }, condition)
+        assertTrue(result.messages.none { it.code == "Nested" }, condition)
     }
 }
