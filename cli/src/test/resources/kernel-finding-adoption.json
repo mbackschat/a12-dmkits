@@ -11643,20 +11643,22 @@
       }
     },
     "kf544": {
-      "sha256": "ec11cb26677d0596ae15c50bf002da6272c5834b7920d669e28f6135b1f0e243",
+      "sha256": "69bdfe551299f63f343976d5a77f2db6a8ee58cbff71298f71fa25dc1799f64a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "parallel validation matrix",
           "joined availability",
-          "ordinary frames"
+          "ordinary frames",
+          "a repeatable level below the join"
         ],
         "dmkits": [
           "typed parallel conditions"
         ],
         "interpreter": [
           "parallel dispatch",
-          "ordinary frames"
+          "ordinary frames",
+          "a repeatable level below the join"
         ],
         "checker": [],
         "dmtool-cli": [
@@ -11684,6 +11686,10 @@
             "ordinary frames": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelValidationDispatchDiffTest.kt#ordinaryFrameDomainIsSharedByFullAndPartialValidation",
               "witness": "Capacity3/6, reset-first and frame1 selection distinguish declared from physical traversal."
+            },
+            "a repeatable level below the join": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDispatchSelectorDiffTest.kt#a12AndTheInterpreterDispatchTheMergedSelector",
+              "witness": "A joined rule iterating parts below its joined lines is silent under a concrete line and fires under a wildcard one, on both strategies."
             }
           }
         },
@@ -11708,6 +11714,10 @@
             "parallel dispatch": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ParallelValidationDispatchTest.kt#dispatchCompressesErrorSelectorsWithoutRestrictingFixedRootKeys",
               "witness": "Public validation uses separate method selection and original operand relevance."
+            },
+            "a repeatable level below the join": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialDispatchSelectorTest.kt#twoCellsInOneLineWidenThatLinesPartsAndKeepTheJoinedRuleSilent",
+              "witness": "The joined rule stays silent under one concrete line on both platforms."
             }
           }
         },
@@ -14475,6 +14485,78 @@
               "witness": "A.1's second bullet: a filled raw value reads as the token X whatever its text, an empty one is skipped."
             }
           }
+        }
+      }
+    },
+    "kf621": {
+      "sha256": "9db4bee2e33dcac64965362e9c332406936f754d29a2247d5c3d2d878bc53196",
+      "task": "SS21",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "merged dispatch on both kernel strategies"
+        ],
+        "interpreter": [
+          "merged dispatch on JVM and JS"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the ordinary-rule merge and the level below a join"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Partial dispatch is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and A12 admits every model here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime dispatch does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime dispatch does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies agree with the interpreter on every row, the discriminating rows pinned.",
+          "evidence": {
+            "merged dispatch on both kernel strategies": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDispatchSelectorDiffTest.kt#a12AndTheInterpreterDispatchTheMergedSelector",
+              "witness": "Seven relevant sets over four rules, including the shared-part row that refutes a common prefix."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "One dispatch owner serves ordinary and parallel rules.",
+          "evidence": {
+            "merged dispatch on JVM and JS": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/PartialDispatchSelectorTest.kt#twoCellsSharingAPartWidenOnlyTheLineCoordinate",
+              "witness": "The shared-part merge and the joined rule's silence compute as A12 does on both platforms."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's partial evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
         }
       }
     }

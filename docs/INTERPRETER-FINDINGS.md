@@ -5048,3 +5048,11 @@ A reached custom leaf now throws `GroupErrorEntityCustomFailure`, a `RuntimeEval
 
 *Locked:* `adapter.laws.RawFirstFilledMemberDiffTest` (both kernel strategies against the interpreter) and multiplatform `interpreter … RawFirstFilledMemberTest` (JVM + JS).
 
+### IF439: a partial call dispatches ordinary rules through the merged selector, and a level below a join counts as iteration (2026-10-25) <a id="if439"></a>
+
+[KF621](KERNEL-FINDINGS.md#kf621): A12 merges every relevant pointer of a rule's error field into one selector before dispatching any rule. The interpreter gated an ordinary rule by each row's own error-cell relevance, so two relevant cells in different rows never ran the rows between them. It also missed the parallel half of the rule: [IF387](#if387)'s selector treated a joined rule as ordinarily iterated only through a frame or a repeatable common parent. A rule iterating `Parts` below its joined `Lines` therefore ran under a concrete line and fired where A12 stays silent.
+
+`ParallelRuleSelection` became `PartialRuleDispatch`, the one owner of the merged selector for both routes. `ValidationPass.runsForRow` asks it at the levels the iteration bound, keeping [IF268](#if268)'s unbound-level wildcard. The parallel route now counts `IterationPlan.Parallel.nested` as ordinary iteration and restricts rows down to it. The selector derives a path's ancestors from the path itself, so a low-level model need not declare every group. The bound-level relevance query the ordinary gate used is no longer wired into the pass.
+
+*Locked:* `adapter.laws.PartialDispatchSelectorDiffTest` (both kernel strategies against the interpreter) and multiplatform `interpreter … PartialDispatchSelectorTest` (JVM + JS); the 180-case `perf/PartialValidationFuzzDiffTest` still agrees.
+

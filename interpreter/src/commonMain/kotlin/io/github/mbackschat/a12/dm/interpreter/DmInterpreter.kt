@@ -317,11 +317,13 @@ class DmInterpreter private constructor(
 
     /**
      * Tolerant **partial** validation — the runtime twin of the kernel's `validatePart(DocumentV2,
-     * relevantEntities, config)`. Only the rules whose **error field** is relevant **at the repetition levels the rule's ITERATION bound** run — a level the iteration never bound (rule iteration is reference-driven, so the declared group does not decide this) counts as a wildcard, and the message reports at the default first repetition (IF268) — measured against
-     * [relevant]; a rule whose error field is in a repeatable group the rule does not iterate therefore
-     * runs when ANY of that group's rows is relevant. Parallel rules instead compress error selectors for
-     * dispatch: a concrete joined coordinate suppresses a rule with ordinary outer/frame iteration, while
-     * differing selectors can restore dispatch without widening operand relevance (SPEC-2026-10-10-10). Those rules are
+     * relevantEntities, config)`. A rule runs through ONE selector per **error field**, merged from every relevant
+     * pointer of that field and its ancestor groups, a coordinate the pointers disagree on becoming a wildcard
+     * ([PartialRuleDispatch], KF621): two relevant cells in different rows therefore run every row between and
+     * beside them. A level the iteration never bound counts as a wildcard (iteration is reference-driven, so the
+     * declared group does not decide this), and the message reports at the default first repetition (IF268).
+     * A parallel rule that also iterates an ordinary level is suppressed by a concrete joined coordinate; one that
+     * does not ignores the coordinates (KF544, KF621). Dispatch never widens operand relevance. Those rules are
      * evaluated; of those, any reference to a field/group instance **not** in [relevant] resolves to
      * `Val.Unknown`, so the existing 3VL produces the kernel's exact suppression — `true And Unknown`
      * suppresses, `true Or Unknown` still fires (the "no possible value could prevent the error" clause is
@@ -345,9 +347,8 @@ class DmInterpreter private constructor(
             starExtentKnown = starExtentKnownOf(relevant),
             starFullyEnumerated = starFullyEnumeratedOf(relevant),
             groupRelevance = groupRelevanceOf(relevant),
-            relevantWithin = queries::isRelevantWithin,
             groupExtents = PartialGroupExtents(relevant),
-            parallelSelection = ParallelRuleSelection(model, relevant, paths),
+            dispatch = PartialRuleDispatch(model, relevant, paths),
         ))
     }
 
@@ -368,11 +369,9 @@ class DmInterpreter private constructor(
         val starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
         val starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
         val groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
-        /** [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
-        val relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null,
         /** Missing-position coverage for group predicates and the stricter count gate ([IF193], [IF339]). */
         val groupExtents: PartialGroupExtents? = null,
-        val parallelSelection: ParallelRuleSelection? = null,
+        val dispatch: PartialRuleDispatch? = null,
     ) {
         companion object {
             val FULL = CallRelevance(ALL_RELEVANT)
@@ -839,13 +838,13 @@ class DmInterpreter private constructor(
             val indexIdentityAdmitted: (String, List<Int>, String) -> Boolean = { path, reps, raw ->
                 isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
             }
-            val pass = ValidationPass(call, doc, locale, isRelevant, relevance.relevantWithin, dup,
+            val pass = ValidationPass(call, doc, locale, isRelevant, dup,
                 validationConfig(
                     relevance,
                     indexIdentityAdmitted,
                     relevance.groupExtents?.gate { path, reps -> groupPresence.state(path, reps) },
                 ) { path, reps -> groupPresence.state(path, reps) },
-                formalResults, { formallyIncorrect }, relevance.parallelSelection,
+                formalResults, { formallyIncorrect }, relevance.dispatch,
                 { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) }, groupPaths = model.groupPaths)
             for (rule in model.rules) {
                 try {
@@ -1022,7 +1021,6 @@ class DmInterpreter private constructor(
             doc,
             locale,
             relevance.isRelevant,
-            relevance.relevantWithin,
             dup,
             validationConfig(relevance, formalResults::admitsIdentityAt, null) { path, reps -> groupPresence.state(path, reps) },
             formalResults,
@@ -1138,7 +1136,7 @@ class DmInterpreter private constructor(
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
         val parallel = prepared.iteration as? IterationPlan.Parallel
-        if (parallel != null && pass.parallelSelection?.admits(errorPath, parallel) == false) return emptyList()
+        if (parallel != null && pass.dispatch?.admits(errorPath, parallel) == false) return emptyList()
         // A rule whose condition contains a RepetitionNotUnique leaf gets its duplicate cache built ONCE (IF149),
         // guard-independent, keyed by error-path reps; the per-row seam looks the current row up in O(1). Null for
         // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
@@ -1203,10 +1201,9 @@ class DmInterpreter private constructor(
         // partial-skipped rule contributes the zero rows it actually evaluates (WorkLedger).
         pass.config.work?.rowsEvaluated(iterationContexts.size)
         fun rowOutcome(ctx: EvalContext): RowOutcome {
-            // Relevance controls whether a rule executes, not just message emission. Ordinary rules use
-            // bound levels (IF268); parallel dispatch owns its compressed selector (SPEC10).
-            val runs = if (parallel != null && pass.parallelSelection != null)
-                pass.parallelSelection.includes(errorPath, parallel, ctx)
+            // Relevance controls whether a rule executes, not just message emission; both routes dispatch through
+            // the error field's merged selector (KF621).
+            val runs = if (parallel != null && pass.dispatch != null) pass.dispatch.includes(errorPath, parallel, ctx)
             else pass.runsForRow(errorPath, ctx)
             if (!runs) return RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL

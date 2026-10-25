@@ -34,10 +34,6 @@ internal class ValidationPass(
     val callerDoc: Document,
     val locale: String,
     val isRelevant: Relevance,
-    /** Partial only: [isRelevant] with every level from the given bound on treated as a wildcard — the
-     *  rule-run gate's query, since a level BELOW the rule's iteration element was never bound and the kernel
-     *  does not require the relevant set to name it ([IF268]). Null in full validation. */
-    private val relevantWithin: ((String, List<Int>, Int) -> Boolean)?,
     val dup: Set<Pair<String, List<Int>>>,
     /** The call-invariant [Interpreter] config — built ONCE per pass (formerly once per rule; identical
      *  content, strictly fewer allocations) and shared by every per-row interpreter of the call. */
@@ -45,7 +41,8 @@ internal class ValidationPass(
     private val formalResults: FormalResultCache,
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
     private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
-    val parallelSelection: ParallelRuleSelection? = null,
+    /** Partial only: the error fields' merged dispatch selectors ([PartialRuleDispatch]). Null in full validation. */
+    val dispatch: PartialRuleDispatch? = null,
     messageIndexDefaults: () -> Map<Triple<String, List<Int>, String>, List<Int>> = { emptyMap() },
     /** The model's group paths, so a rule's per-row interpreter knows whether its error entity is a group. */
     private val groupPaths: Set<String>,
@@ -101,19 +98,15 @@ internal class ValidationPass(
         isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
 
     /**
-     * Whether the rule whose error field is [errorPath] runs for the row [ctx] — the kernel executes it only
-     * when the error field is relevant, but the levels the iteration never BOUND count as wildcards: a rule
-     * that does not iterate `Items` yet reports on `/Order/Items/Tag` runs when ANY `Items` row's Tag is
-     * relevant, and reports at the default first repetition. A rule that DOES iterate `Items` keeps exact
-     * per-row gating. The bound count comes from [EvalContext.boundLevelsOf] — from the context, never from
-     * the rule's declared group, because iteration is reference-driven ([IF268];
-     * `PartialRuleGateScopeDiffTest`). Full validation: always.
+     * Whether the rule whose error field is [errorPath] runs for the row [ctx]. A partial call follows the
+     * error field's merged selector ([PartialRuleDispatch.runsForRow]), in which a level the iteration never
+     * BOUND counts as a wildcard: a rule that does not iterate `Items` yet reports on `/Order/Items/Tag` runs
+     * when ANY `Items` row's Tag is relevant, and reports at the default first repetition. The bound count comes
+     * from [EvalContext.boundLevelsOf] — from the context, never from the rule's declared group, because
+     * iteration is reference-driven ([IF268]; `PartialRuleGateScopeDiffTest`). Full validation: always.
      */
-    fun runsForRow(errorPath: String, ctx: EvalContext): Boolean {
-        val reps = ctx.repsOf(errorPath)
-        val within = relevantWithin ?: return isRelevant(errorPath, reps)
-        return within(errorPath, reps, ctx.boundLevelsOf(errorPath))
-    }
+    fun runsForRow(errorPath: String, ctx: EvalContext): Boolean =
+        dispatch?.runsForRow(errorPath, ctx) ?: isRelevant(errorPath, ctx.repsOf(errorPath))
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
     fun firstSuppressor(refs: List<String>, ctx: EvalContext): Suppression? =

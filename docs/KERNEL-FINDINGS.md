@@ -13251,7 +13251,7 @@ An empty declaration-owned pattern is inactive and needs no pattern message. `St
 
 `ParallelValidationDispatchDiffTest` uses typed Warehouse/Orders/Stock models with Number index fields. Both kernel strategies agree on full message signatures, including references and fill-to-fix addresses. Matched joined groups count as filled even with empty payload fields; keys remain local to each common parent. Clean unmatched groups are absent, but invalid indices make unmatched reads unavailable. In partial validation, selecting every held index row is insufficient to establish unmatched absence: wildcard index coverage is required. An admitted direct common-parent `GroupFilled` conjunct executes alongside the joined operands. `groupContentAndIndexAvailabilityPrecedeGroupAbsence` and `compressedDispatchDoesNotWidenOperandRelevance` lock these distinctions.
 
-Partial dispatch compresses relevant error-field selectors coordinate by coordinate: differing coordinates become wildcards. With an ordinary repeatable ancestor or frame, a concrete joined error coordinate suppresses the method; differing joined selectors restore it. Outer selectors still restrict ordinary iterations. With a fixed root and no ordinary frame, a relevant error selector admits all join keys. Operand reads retain the original relevant set: the group/field disjunction fires on three keys where the field/field disjunction fires on two. Root-versus-left rule declaration and same-inner-versus-different-inner selectors across two parents distinguish dispatch from per-row relevance.
+Partial dispatch compresses relevant error-field selectors coordinate by coordinate: differing coordinates become wildcards. *Extended 2026-10-25 ([KF621](#kf621)):* the merge governs ordinary rules too, and a repeatable level the rule iterates below the joined group counts as ordinary iteration. With an ordinary repeatable ancestor or frame, a concrete joined error coordinate suppresses the method; differing joined selectors restore it. Outer selectors still restrict ordinary iterations. With a fixed root and no ordinary frame, a relevant error selector admits all join keys. Operand reads retain the original relevant set: the group/field disjunction fires on three keys where the field/field disjunction fires on two. Root-versus-left rule declaration and same-inner-versus-different-inner selectors across two parents distinguish dispatch from per-row relevance.
 
 Ordinary validation frames use the declared-domain threshold independently of joined capacities: the measured frame capacity 3 visits its absent third slot, while capacity 6 visits occupied prefixes and the reset-first slot. Full and whole-root partial validation agree; a frame-1 selector restricts dispatch. `ordinaryFrameDomainIsSharedByFullAndPartialValidation` pins the comparison and positive conjunction controls. These measurements cover one ordinary frame and Number keys; they do not establish aggregate, multi-frame, other-key-type or duplicate-index message-cache ownership. The kernel BA's Parallel Iteration section supplies the outer-join contract; the differentials supply these dispatch and availability refinements.
 
@@ -15023,4 +15023,37 @@ A claim intake carries a raw `Attachment` (`noValueValidation`, line breaks perm
 Source-verified: the formal check stores `ValidationCache.PSEUDO_VALUE` for a raw cell rather than its value, and that constant is the string `"X"` (`ValidationCache.java`). The list reads the cached entry, while every other read is refused at the model tier. a12-kernel-lean's `spec/06` A.1 (`e9c7259f`) states the same rule, and their `raw-members` runtime captures reproduce through the interpreter here.
 
 *Locked by:* `adapter.laws.RawFirstFilledMemberDiffTest` (both kernel strategies against the interpreter, the dynamic Kernel's outcomes pinned, the carrier's admission asserted).
+
+## §12 supplement — a partial call dispatches every rule through one merged selector per error field (measured, 2026-10-25) <a id="kf621"></a>
+
+> Fold: pending — widens [KF544](#kf544) from parallel rules to every rule, and §12's "runs only when its error field is relevant".
+
+An order-picking model holds `Lines` (keyed by `LineNo`) with `Parts`, and `Picks` keyed by the same line number. Every line part carries a `Tag`, and every relevant set below also names `Email`, `Tag`, `Code`, `PartNo`, `Ref` and both `LineNo` fields for all rows. Four rules report on `Count` unless noted:
+
+- `WIDE`: `Tag` filled and (`Email` filled or `Count` filled).
+- `EXACT`: `Tag` filled and (`CurrentRepetition(Lines) > 2` or `Count` filled).
+- `NESTED`: `Count` filled and no field filled of `PartNo`, `Picks/Ref`. It joins `Lines` to `Picks` and iterates `Parts` below the join.
+- `FLAT` reports on `Lines/Sku`: `Sku` filled, or `Code` filled and `Picks/Ref` not filled. It joins without iterating any ordinary level.
+
+On both Kernel strategies, cells written line.part:
+
+| relevant `Count` cells | `WIDE` | `EXACT` | `NESTED` |
+|---|---|---|---|
+| 1.1 | 1.1 | 1.1 | — |
+| 1.1 and 1.2 | 1.1, 1.2, 1.3 | 1.1, 1.2 | — |
+| 1.2 and 3.2 | 1.2, 2.2, 3.2 | 1.2, 3.2 | 1.2, 3.2 |
+| 1.1 and 3.2 | all seven parts | 1.1, 3.1, 3.2 | 1.1, 3.2 |
+| 1.1 and 3.2, with 3.2 holding `x` | all seven parts | 1.1, 3.1, 3.2 | 1.1 |
+
+With only `Sku` of line 3 relevant, `FLAT` fires on lines 1 and 3.
+
+- **The relevant pointers of one error field merge into one selector, coordinate by coordinate**, and a coordinate they disagree on becomes every row. Cells 1.2 and 3.2 run every line's second part, never its first, so a common prefix is not the rule.
+- **The merge decides which rows run, never what they read.** `EXACT` fires on a merged row only where `CurrentRepetition` alone decides it, because `Count` there is not relevant and reads unknown.
+- **A formally invalid relevant cell still takes part in the merge.** The invalid 3.2 widens exactly as a valid one does, while `NESTED` reads it unknown there.
+- **A joined rule that iterates a level below its join runs only when the joined coordinate is a wildcard**, so any concrete line silences `NESTED`. **A joined rule without an ordinary level ignores the coordinates**, which is why `FLAT` runs line 1.
+- The generated mandatory check reads only its own cell, so a row reached only through the merge reads that cell unknown, and widening cannot surface through it. Lines 1 and 3 relevant around an empty line 2 stay silent, while line 2 relevant, or full validation, fires.
+
+Source-verified chain, every link consistent with the rows: `ValidationCommand.compressRelevantFieldsForValidationCall` builds one identifier per field name and sets each disagreeing index to 0. The rule template (`CodeGenRuleDefinition.st`, all three dialects) narrows its iterator with `checkAndSetWiederholungen` only when `IterationLimitCreatorBase.isIteration()` finds a non-USB level whose end exceeds its start. `EbenenIterator.setzeIndices` refuses a concrete index outside that level's bounds, and a joined level's bounds are both `-6`, so only 0 passes it. The step-3 comment in `ValidationCommand` says formally incorrect fields leave the relevant set before compression, and the invalid-cell row shows that this does not reach the dispatch selector; where the removal does apply is not established. a12-kernel-lean's `nested-join-partial` and `ordinary-partial-dispatch` captures (SPEC-2026-10-24-12, -13, `e9c7259f`) reproduce through the interpreter here.
+
+*Locked by:* `adapter.laws.PartialDispatchSelectorDiffTest` (both kernel strategies against the interpreter, the discriminating rows pinned, the mandatory check's positive controls).
 

@@ -6,10 +6,10 @@ package io.github.mbackschat.a12.dm.interpreter.model
  * group/field included). An index of [ALL] (the kernel's `ALL_SEMANTIC` wildcard) matches **every** repetition
  * of that path element. A relevant **group** makes all its descendants relevant (the kernel rule).
  *
- * For ordinary rules, partial validation runs only those whose **error field** is in the relevant set at the repetition levels
- * the rule's ITERATION bound — a deeper level the iteration never bound counts as a wildcard, and iteration is
- * reference-driven rather than decided by the rule's declared group (IF268). Parallel rules instead use
- * compressed error selectors for dispatch, independently of input relevance (IF387). Both routes treat any
+ * Partial validation runs a rule through its **error field**'s merged selector: every relevant pointer of that
+ * field and its ancestor groups, a coordinate they disagree on becoming a wildcard, and a deeper level the
+ * iteration never bound counting as a wildcard too (IF268, KF621). That selector decides dispatch only, never
+ * operand relevance (IF387). Every route treats any
  * referenced field instance that is **not** relevant as UNKNOWN (3VL) — so the existing Kleene logic produces
  * the kernel's suppression (`true And Unknown` suppresses; `true Or Unknown` still fires). KERNEL-SEMANTICS §12.
  */
