@@ -74,6 +74,21 @@ jobs:
         working-directory: a12-dmkits
         run: ./scripts/check-infographic-freshness.sh
 
+      # SourceFileSizeLimitGuardTest counts code lines with locmetry and refuses any version but the one the policy
+      # pins, so the version and the Linux asset's checksum are read from that file. It downloads, so it runs after
+      # the offline preflights above and before the Gradle step whose root `test` needs it.
+      - name: Install the pinned locmetry
+        working-directory: a12-dmkits
+        run: |
+          policy=scripts/source-size-limits.json
+          version="$(jq -r .locmetry.version "$policy")"
+          asset="locmetry-v$version-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$asset" \
+            "https://github.com/$(jq -r .locmetry.repository "$policy")/releases/download/v$version/$asset"
+          echo "$(jq -r .locmetry.linuxSha256 "$policy")  $RUNNER_TEMP/$asset" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/${asset%.tar.gz}" >> "$GITHUB_PATH"
+
       # The bootstrap clones the kernel sources as siblings under its parent dir, so checking it out
       # next to rulekit makes A12_ROOT = the workspace (the layout the script expects locally).
       - name: Checkout the kernel bootstrap kit

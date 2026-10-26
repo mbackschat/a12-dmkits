@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,7 +22,8 @@ import org.junit.jupiter.api.io.TempDir;
  * exercised: it FAILED the exact configuration this project makes correct, and it PASSED a Kotlin-DSL init
  * script that was injecting. Both are cases below.
  *
- * <p>{@code HOME}, {@code ACTIONLINT} and {@code core.hooksPath} are faked. The repository root is the real
+ * <p>{@code HOME}, {@code ACTIONLINT}, {@code LOCMETRY} and {@code core.hooksPath} are faked; a fabricated machine
+ * has the pinned locmetry unless a case says otherwise, so no verdict depends on the host. The repository root is the real
  * one, because the script derives it from its own location, so the marker-missing branch is deliberately not
  * covered here — {@code BuildPerformancePolicyTest} asserts the marker's presence directly instead.
  *
@@ -154,6 +156,28 @@ class DoctorScriptTest {
         assertEquals(0, run.exitCode(), "an unwired clone is a warning, not a failure:\n" + run.output());
     }
 
+    /** The source-size guard cannot run without the pinned locmetry, so a missing or other version fails the doctor. */
+    @Test
+    void aMissingOrUnpinnedLocmetryFailsTheDoctor(@TempDir Path home) throws Exception {
+        Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
+        var missing = runDoctor(home, null, WIRED, null, home.resolve("missing-locmetry").toString());
+        assertTrue(missing.output().contains("locmetry is unavailable, so leakGuardTest's source-size guard fails"),
+                missing.output());
+        assertTrue(missing.output().contains("brew install mbackschat/tap/locmetry"), missing.output());
+        assertEquals(1, missing.exitCode(), missing.output());
+
+        Path other = executable(home.resolve("other-locmetry"), "#!/bin/sh\necho \"locmetry 0.0.1\"\n");
+        var unpinned = runDoctor(home, null, WIRED, null, other.toString());
+        assertTrue(unpinned.output().contains("locmetry 0.0.1 is installed, but leakGuardTest's source-size guard pins "
+                + pinnedLocmetry()), unpinned.output());
+        assertEquals(1, unpinned.exitCode(), unpinned.output());
+    }
+
+    private static String pinnedLocmetry() throws IOException {
+        return new ObjectMapper().readTree(Files.readString(CHECKOUT.resolve("scripts/source-size-limits.json")))
+                .required("locmetry").required("version").asText();
+    }
+
     private record Run(String output, int exitCode) {}
 
     /** Fabricates an otherwise healthy machine: the kernel is published, nothing else is assumed. */
@@ -165,20 +189,20 @@ class DoctorScriptTest {
     private static Run runDoctorWith(Path home, String actionlint, String hooksPath)
             throws IOException, InterruptedException {
         Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
-        return runDoctor(home, actionlint, hooksPath, null);
+        return runDoctor(home, actionlint, hooksPath, null, null);
     }
 
     private static Run runDoctorWith(Path home, String actionlint, String hooksPath, String node)
             throws IOException, InterruptedException {
         Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
-        return runDoctor(home, actionlint, hooksPath, node);
+        return runDoctor(home, actionlint, hooksPath, node, null);
     }
 
     private static Run runDoctor(Path home) throws IOException, InterruptedException {
-        return runDoctor(home, null, WIRED, null);
+        return runDoctor(home, null, WIRED, null, null);
     }
 
-    private static Run runDoctor(Path home, String actionlint, String hooksPath, String node)
+    private static Run runDoctor(Path home, String actionlint, String hooksPath, String node, String locmetry)
             throws IOException, InterruptedException {
         var builder = CHECKOUT.command(List.of("/bin/dash", CHECKOUT.resolve("scripts/doctor.sh").toString()));
         builder.redirectErrorStream(true);
@@ -195,6 +219,8 @@ class DoctorScriptTest {
         if (node != null) {
             builder.environment().put("A12_NODE", node);
         }
+        builder.environment().put("LOCMETRY", locmetry != null ? locmetry
+                : executable(home.resolve("locmetry"), "#!/bin/sh\necho \"locmetry " + pinnedLocmetry() + "\"\n").toString());
 
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
@@ -210,7 +236,7 @@ class DoctorScriptTest {
 
     private static Path executable(Path path, String body) throws IOException {
         Files.writeString(path, body);
-        assertTrue(path.toFile().setExecutable(true), "could not make fake Node executable: " + path);
+        assertTrue(path.toFile().setExecutable(true), "could not make the fake executable: " + path);
         return path;
     }
 

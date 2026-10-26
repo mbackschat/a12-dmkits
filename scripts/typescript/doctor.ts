@@ -145,6 +145,19 @@ function main(): number {
   }
   if ((process.env.JAVA_HOME ?? "") !== "") report.note(`current JAVA_HOME: ${process.env.JAVA_HOME}`);
 
+  const pinnedLocmetry: string = JSON.parse(fs.readFileSync(path.join(root, "scripts/source-size-limits.json"), "utf8")).locmetry.version;
+  const locmetry = spawnSync(process.env.LOCMETRY ?? "locmetry", ["--version"], { encoding: "utf8" });
+  const installedLocmetry = locmetry.status === 0 ? locmetry.stdout.trim().replace(/^locmetry /, "") : undefined;
+  if (installedLocmetry === pinnedLocmetry) {
+    report.pass(`locmetry ${pinnedLocmetry} available for the source-size guard`);
+  } else {
+    report.fail(installedLocmetry === undefined
+      ? `locmetry is unavailable, so leakGuardTest's source-size guard fails (it pins ${pinnedLocmetry})`
+      : `locmetry ${installedLocmetry} is installed, but leakGuardTest's source-size guard pins ${pinnedLocmetry}`);
+    report.note("install it with: brew install mbackschat/tap/locmetry, then brew pin locmetry so an upgrade cannot outrun the pin");
+    report.note("the pin moves only with scripts/source-size-limits.json, whose ceilings are re-derived in that commit");
+  }
+
   console.log("\nGradle home");
   const gradleHome = process.env.A12_DOCTOR_GRADLE_HOME;
   if (gradleHome === undefined || gradleHome === "") {

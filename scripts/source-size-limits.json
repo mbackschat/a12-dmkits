@@ -1,40 +1,51 @@
 {
-  "testPathPattern": "(^|/)src/[A-Za-z]*[Tt]est[A-Za-z]*/|\\.test\\.ts$",
+  "locmetry": {
+    "version": "0.11.2",
+    "repository": "mbackschat/locmetry",
+    "linuxSha256": "64c374c25bf77a15ea2c87358e55cfce22150534d8834aaa69238fc8a0d3f4fe"
+  },
   "limits": {
     "production": {
-      "soft": 800,
-      "hard": 1200
+      "soft": 500,
+      "hard": 800
     },
     "test": {
-      "soft": 600,
-      "hard": 1000
+      "soft": 500,
+      "hard": 800
     }
   },
   "legacyCeilings": {
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 3318,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/KernelAdapter.java": 1492,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 1243,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 1367,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java": 1132,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/KernelRuntimeProbe.java": 1108,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 2292,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/preparation/WorkspacePreparationFixtures.java": 1442,
-    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt": 1024,
-    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfAnchors.kt": 1148,
-    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfCatalog.kt": 1507,
-    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt": 1800,
-    "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/Check.kt": 1216,
-    "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/CheckFamilyWiringTest.kt": 1074,
-    "interpreter-bridge/src/test/kotlin/io/github/mbackschat/a12/dm/bridge/FunctionsTest.kt": 1026,
-    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/DmInterpreter.kt": 1517,
-    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Document.kt": 2601,
-    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt": 2674,
-    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 1632,
-    "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1268,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1541,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 2174,
-    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/BoundModel.java": 1287,
-    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 2672,
-    "schemakit/src/main/java/io/github/mbackschat/a12/dm/schemakit/JsonSchemaImporter.java": 1774
+    "adapter/build.gradle": 1093,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2551,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/RuleModelSynthesizer.java": 830,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
+    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java": 924,
+    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 1355,
+    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/preparation/WorkspacePreparationFixtures.java": 1339,
+    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt": 930,
+    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfCatalog.kt": 1095,
+    "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt": 1099,
+    "cli/src/main/java/io/github/mbackschat/a12/dm/cli/ApplyCommand.java": 844,
+    "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 907,
+    "consistency/build.gradle": 889,
+    "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/CheckFamilyWiringTest.kt": 833,
+    "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/WorkspaceMountTest.kt": 956,
+    "eval/benchmark.workflow.js": 1039,
+    "interpreter/build.gradle": 2113,
+    "interpreter/consumer-tests/browser/scripts/smoke.ts": 931,
+    "interpreter/consumer-tests/browser/src/showcase.ts": 968,
+    "interpreter/consumer-tests/typescript/src/index.ts": 835,
+    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/DmInterpreter.kt": 920,
+    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/InterpreterApi.kt": 828,
+    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Document.kt": 1543,
+    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt": 1597,
+    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 913,
+    "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1141,
+    "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 935,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1134,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1482,
+    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1530,
+    "schemakit/src/main/java/io/github/mbackschat/a12/dm/schemakit/JsonSchemaImporter.java": 1420
   }
 }
