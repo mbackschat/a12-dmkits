@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -83,6 +84,38 @@ class KeyedCategoryTest {
                 .anyMatch(d -> d.code().filter("MVK_ERROR_FIELD_NOT_REFERENCED"::equals).isPresent());
         assertEquals(Map.of("kernel", "admitted", "advisory", false),
                 Map.of("kernel", verdict(keyedOnly), "advisory", advises));
+    }
+
+    /**
+     * A correlated key, {@code For $Pick}, is refused wherever a keyed category can stand, so it never meets its
+     * uncorrelated twin in one operand list. That is the measured reason folding the key's {@code $} into the
+     * duplicate identity changes no verdict. The fold is kept anyway, in the one spelling
+     * {@link FirstFilledOperand} shares, because leaving it out would be broader than the kernel if the shape ever
+     * became authorable. The literal key inside the filter is the control: A12 refuses any key there, not only
+     * the correlated one.
+     */
+    @Test
+    void aCorrelatedKeyIsRefusedWhereverAKeyedCategoryStands() {
+        FieldRef pick = order.field("Pick");
+        String inFilter = "NumberOfFilledFields(Lines*/Sku Having [Lines/Sku] == [$Pick] And %s) > 0";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("plain locus", verdict(rule(tier.forIndex(pick.outer()).is("High"))));
+        actual.put("plain value list beside its twin", verdict("AtLeastOneFieldValueIncludedInValueList("
+                + "Lines/Grade -> Tier For $Pick, Lines/Grade -> Tier For Pick In \"High\")"));
+        actual.put("filter", verdict(inFilter.formatted("[Lines/Grade -> Tier For $Pick] == \"High\"")));
+        actual.put("filter, literal key", verdict(inFilter.formatted("[Lines/Grade -> Tier For \"a\"] == \"High\"")));
+        actual.put("filter value list beside its twin", verdict(inFilter.formatted(
+                "AtLeastOneFieldValueIncludedInValueList(Lines/Grade -> Tier For $Pick, Lines/Grade -> Tier For Pick In \"High\")")));
+        assertEquals(Map.of("plain locus", "MVK_INVALID_OUTER_ITERATION",
+                "plain value list beside its twin", "MVK_INVALID_OUTER_ITERATION",
+                "filter", "MVK_SEMANTIC_INDEX_NOT_ALLOWED", "filter, literal key", "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
+                "filter value list beside its twin", "MVK_SEMANTIC_INDEX_NOT_ALLOWED"), actual);
+
+        EnumCategoryAccess correlated = tier.forIndex(pick.outer()).access();
+        EnumCategoryAccess plain = tier.forIndex(pick).access();
+        assertEquals(List.of(false, false), List.of(correlated.exactIdentity().equals(plain.exactIdentity()),
+                correlated.overlapModifier().equals(plain.overlapModifier())),
+                "the key's $ is part of both identities, as on a first-filled operand");
     }
 
     @Test

@@ -63,18 +63,24 @@ class ModelConfigCoercionLawsTest {
      * at this layer: a gate ahead of it refuses the model with "Die im ValidierungsModus übergebene Sprache
      * fr_FR wird nicht unterstützt", uncoded, so neither language's keywords are ever tried. Both spellings
      * are measured, because a single row could not tell a refusal from a German reading.
+     *
+     * <p>The match is exact, not by language: {@code de_AT} and a bare {@code de} are refused like {@code fr_FR}, and
+     * so are {@code en_GB} and {@code en}, so a reader that takes any {@code de…} code for German differs from A12
+     * only on models A12 never builds ({@code ConditionLanguage.ofModelCode}).
      */
     @Test
     void anUnrecognizedConditionLanguageMakesTheModelUnusable() {
-        String exotic = ModelDocument.read(ORDERS).setConditionLanguage("fr_FR").toJson();
-
-        for (String condition : List.of("FeldAngegeben(Code)", "FieldFilled(Code)")) {
-            ValidationResult result = KernelLaws.checkModel(exotic, "/Order/Head", "../Code", condition);
-            assertFalse(result.ok(), () -> "an unsupported condition language must not be accepted: " + condition);
-            assertTrue(
-                    result.diagnostics().stream().anyMatch(d -> d.code().isEmpty()
-                            && d.summary().contains("fr_FR")),
-                    () -> "the refusal must name the unsupported language, got: " + result.diagnostics());
+        for (String code : List.of("fr_FR", "de_AT", "de", "en_GB", "en")) {
+            String exotic = ModelDocument.read(ORDERS).setConditionLanguage(code).toJson();
+            for (String condition : List.of("FeldAngegeben(Code)", "FieldFilled(Code)")) {
+                ValidationResult result = KernelLaws.checkModel(exotic, "/Order/Head", "../Code", condition);
+                assertFalse(result.ok(), () -> "an unsupported condition language must not be accepted: " + code
+                        + " / " + condition);
+                assertTrue(
+                        result.diagnostics().stream().anyMatch(d -> d.code().isEmpty()
+                                && d.summary().contains("Sprache " + code + " ")),
+                        () -> "the refusal must name the unsupported language, got: " + result.diagnostics());
+            }
         }
         // The control: the same model with a supported language accepts that language's spelling.
         KernelLaws.acceptsModel(ModelDocument.read(ORDERS).setConditionLanguage("de_DE").toJson(),

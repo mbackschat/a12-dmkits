@@ -287,19 +287,11 @@ public final class ModelIndex {
 
     /**
      * The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable), bound as A12's reader
-     * binds it ({@link A12IntBinding}): {@code "\u0663"} is 3, and the text {@code null} 0. An absent member, and a
-     * value A12 cannot bind and so builds no model from, read as the default 1.
+     * binds it ({@link A12Ints#repetitionCount(String)}).
      */
     public int maxRepetitions(String groupPath) {
-        JsonNode member = groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY);
-        if (member.isMissingNode()) {
-            return 1;
-        }
-        return switch (A12IntBinding.of(member)) {
-            case A12IntBinding.Bound(int count) -> count;
-            case A12IntBinding.NoValue noValue -> 0;
-            case A12IntBinding.Unbindable unbindable -> 1;
-        };
+        return A12Ints.repetitionCount(
+                groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY));
     }
 
     /**

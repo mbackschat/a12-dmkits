@@ -646,14 +646,17 @@ public final class ModelDocument {
 
     /** Whether the group at {@code groupPath} is repeatable (repeatability &gt; 1). */
     public boolean isRepeating(String groupPath) {
-        JsonNode group = locate(groupPath, true);
-        return group != null && group.path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1) > 1;
+        return maxRepetitions(groupPath) > 1;
     }
 
-    /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
+    /**
+     * The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable), bound as A12 binds it
+     * ({@link io.github.mbackschat.a12.dm.core.A12Ints#repetitionCount(String)}).
+     */
     public int maxRepetitions(String groupPath) {
         JsonNode group = locate(groupPath, true);
-        return group == null ? 1 : group.path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);
+        return group == null ? 1
+                : A12IntMembers.repetitionCount(group.path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY));
     }
 
     // --- structure edits (M8) — surgical mutations of the source tree; validate() is the kernel gate -
@@ -1239,7 +1242,7 @@ public final class ModelDocument {
      */
     public ModelDocument setSortFields(String groupPath, List<ElementDraft.SortField> fields) {
         ObjectNode body = groupBody(groupPath);
-        if (body.path(DmKeys.REPEATABILITY).asInt(1) <= 1) {
+        if (A12IntMembers.repetitionCount(body.path(DmKeys.REPEATABILITY)) <= 1) {
             throw new IllegalArgumentException("sort fields need a repeatable group; " + groupPath
                     + " is not repeatable");
         }
@@ -1346,21 +1349,11 @@ public final class ModelDocument {
         return this;
     }
 
-    /** The model's base year ({@code modelInfo.baseYear}), if set — the read peer of {@link #setBaseYear}
-     *  (the kernel stores it as a string, so tolerate both textual and numeric). */
+    /** The model's base year ({@code modelInfo.baseYear}), if set — the read peer of {@link #setBaseYear}, bound as
+     *  A12 binds it ({@link io.github.mbackschat.a12.dm.core.A12Ints}): A12's writer stores a string, and
+     *  {@code 2024.7} is 2024. */
     public Optional<Integer> baseYear() {
-        JsonNode by = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR);
-        if (by.isInt()) {
-            return Optional.of(by.asInt());
-        }
-        if (by.isTextual() && !by.asText().isBlank()) {
-            try {
-                return Optional.of(Integer.parseInt(by.asText().trim()));
-            } catch (NumberFormatException e) {
-                return Optional.empty();
-            }
-        }
-        return Optional.empty();
+        return A12IntMembers.value(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR));
     }
 
     private ObjectNode modelConfig() {

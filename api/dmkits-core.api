@@ -1,3 +1,7 @@
+public final class io.github.mbackschat.a12.dm.core.A12Ints
+  public static int repetitionCount(java.lang.String)
+  public static java.util.Optional<java.lang.Integer> value(java.lang.String)
+
 public record io.github.mbackschat.a12.dm.core.Annotation
   public Annotation(java.lang.String, java.lang.String)
   public final boolean equals(java.lang.Object)

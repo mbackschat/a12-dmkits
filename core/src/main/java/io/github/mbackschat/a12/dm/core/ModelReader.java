@@ -837,7 +837,7 @@ public final class ModelReader {
      */
     private static Integer readBaseYear(ObjectNode root) {
         return A12IntBinding.of(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR))
-                instanceof A12IntBinding.Bound(int year) ? year : null;
+                .bound().orElse(null);
     }
 
     private static List<String> readLocales(ObjectNode root) {

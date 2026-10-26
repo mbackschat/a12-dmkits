@@ -313,11 +313,19 @@ public final class FirstFilledOperand implements DuplicateOperand {
     @Override
     public String overlapModifier() {
         return category().map(c -> "Cat:" + c).orElse("")
-                + semanticIndex().map(key -> switch (key) {
-                    case LiteralIndex literal -> "For:\"" + literal.value() + "\"";
-                    case FieldIndex fieldKey -> "For:" + (fieldKey.field().correlated() ? "$" : "")
-                            + fieldKey.field().renderedPath();
-                }).orElse("");
+                + semanticIndex().map(FirstFilledOperand::keyModifier).orElse("");
+    }
+
+    /**
+     * A key as the containment arm compares it, {@code $} included: a correlated key reads another repetition than an
+     * uncorrelated one. Shared with {@link EnumCategoryAccess}, the other carrier a key can select a row on.
+     */
+    static String keyModifier(SemanticIndexKey key) {
+        return switch (key) {
+            case LiteralIndex literal -> "For:\"" + literal.value() + "\"";
+            case FieldIndex fieldKey -> "For:" + (fieldKey.field().correlated() ? "$" : "")
+                    + fieldKey.field().renderedPath();
+        };
     }
 
     private static FieldOperand withoutOuter(FieldOperand field) {

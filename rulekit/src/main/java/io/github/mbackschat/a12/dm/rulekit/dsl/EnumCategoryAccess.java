@@ -63,17 +63,19 @@ public record EnumCategoryAccess(FieldRef field, String category, boolean outer,
 
     @Override
     public String overlapModifier() {
-        return "Cat:" + category + key.map(k -> switch (k) {
-            case FirstFilledOperand.LiteralIndex literal -> "For:\"" + literal.value() + "\"";
-            case FirstFilledOperand.FieldIndex fieldKey -> "For:" + fieldKey.field().renderedPath();
-        }).orElse("");
+        return "Cat:" + category + key.map(FirstFilledOperand::keyModifier).orElse("");
     }
 
-    /** The key in the diagnostic form, which the identity keys on as A12 keys a read on its index. */
+    /**
+     * The key in the diagnostic form, which the identity keys on as A12 keys a read on its index. A correlated key
+     * keeps its {@code $}, as the condition spells it; A12 refuses one wherever a keyed category can stand
+     * ({@code dsl.KeyedCategoryTest}), so the mark separates operands no list can yet hold together.
+     */
     private String keySuffix() {
         return key.map(k -> switch (k) {
             case FirstFilledOperand.LiteralIndex literal -> " For \"" + literal.value() + "\"";
-            case FirstFilledOperand.FieldIndex fieldKey -> " For " + fieldKey.field().path();
+            case FirstFilledOperand.FieldIndex fieldKey -> " For " + (fieldKey.field().correlated() ? "$" : "")
+                    + fieldKey.field().path();
         }).orElse("");
     }
 

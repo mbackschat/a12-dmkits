@@ -74,7 +74,7 @@ final class AuthoredStateReader {
             sortFields.add(new ElementDraft.SortField(sort.path(DmKeys.NAME).asText(),
                     SortOrder.valueOf(sort.path(DmKeys.ORDER).asText(SortOrder.ASC.name()))));
         }
-        int repeatability = body.path(DmKeys.REPEATABILITY).asInt(1);
+        int repeatability = A12IntMembers.repetitionCount(body.path(DmKeys.REPEATABILITY));
         String alias = body.path(DmKeys.MODEL_ALIAS).asText(null);
         Optional<ModelDocument.MountState> mount = alias == null || alias.isBlank() ? Optional.empty()
                 : Optional.of(new ModelDocument.MountState(alias, new MountOptions(

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
+import java.util.Optional;
 
 /**
  * How A12's reader binds one model member to a Java {@code int} or {@code Integer} (KERNEL-FINDINGS KF590, KF591,
@@ -43,5 +44,10 @@ sealed interface A12IntBinding {
             return fits ? new Bound(value.intValue()) : new Unbindable();
         }
         return new Unbindable();
+    }
+
+    /** The bound value; none when the member binds no value or cannot be bound. */
+    default Optional<Integer> bound() {
+        return this instanceof Bound(int bound) ? Optional.of(bound) : Optional.empty();
     }
 }

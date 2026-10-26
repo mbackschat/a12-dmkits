@@ -27,6 +27,11 @@ final class RuleModelSynthesizer {
             "GROUP_FILL", "AGGREGATE", "FILTER", "CURRENT_REPETITION", "ARITHMETIC", "DATE_MATH",
             "UNIQUENESS");
     private static final List<String> UBIQUITOUS_CONSTRUCTS = List.of("CUSTOM", "QUANTIFIER", "VALUE_LIST");
+    /**
+     * The declared classes {@link #dateMathCondition} builds on, which {@code BoundModel.date/dateTime} admit by
+     * (DEV-API-GAPS DG132), so a scope never offers DATE_MATH where it cannot build it.
+     */
+    private static final Set<ValueKind> DATE_MATH_CLASSES = Set.of(ValueKind.DATE, ValueKind.DATE_TIME);
 
     private RuleModelSynthesizer() {
     }
@@ -324,7 +329,7 @@ final class RuleModelSynthesizer {
         return best;
     }
 
-    private static boolean scopeSupports(
+    static boolean scopeSupports(
             String construct,
             String scope,
             Map<String, List<FieldInfo>> byGroup,
@@ -337,8 +342,7 @@ final class RuleModelSynthesizer {
             case "CURRENT_REPETITION" -> repeatable.contains(scope);
             case "UNIQUENESS" -> uniquenessKeyField(scope, childrenOf, repeatable, byGroup) != null;
             case "ARITHMETIC" -> local.stream().anyMatch(field -> field.kind() == ValueKind.NUMBER);
-            case "DATE_MATH" -> local.stream()
-                    .anyMatch(field -> field.kind() == ValueKind.DATE || field.kind() == ValueKind.DATE_TIME);
+            case "DATE_MATH" -> local.stream().anyMatch(field -> DATE_MATH_CLASSES.contains(field.temporalClass()));
             case "VALUE_LIST" -> local.stream()
                     .anyMatch(field -> field.kind() == ValueKind.STRING || field.kind() == ValueKind.ENUMERATION);
             case "QUANTIFIER" -> local.size() >= 2
@@ -517,10 +521,9 @@ final class RuleModelSynthesizer {
                 : null;
     }
 
-    private static Condition dateMathCondition(
+    static Condition dateMathCondition(
             BoundModel model, String scope, Map<String, List<FieldInfo>> byGroup) {
         for (FieldInfo candidate : byGroup.getOrDefault(scope, List.of())) {
-            // Selected by declared class, the test BoundModel.date/dateTime admit by (DEV-API-GAPS DG132).
             if (candidate.temporalClass() == ValueKind.DATE) {
                 return Dsl.yearFromDate(model.date(candidate.path())).gt(2000);
             }

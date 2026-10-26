@@ -135,11 +135,15 @@ public class InterpreterConditionReadBack : ConditionReadBack {
             false
         }
 
-        /** The expanded model's authoring language, which decides which keyword vocabulary the parser accepts. */
+        /**
+         * The expanded model's authoring language, which decides which keyword vocabulary the parser accepts. The
+         * code matches exactly, as the interpreter's own loader matches it: A12 builds no model from any code but
+         * `de_DE` and `en_US` (`validate.laws.ModelConfigCoercionLawsTest`).
+         */
         private fun languageOf(modelJson: String): ConditionLanguage = try {
             val code = MAPPER.readTree(modelJson).path("content").path("modelConfig")
-                .path("conditionLanguage").path("code").asText("en_US")
-            if (code.startsWith("de")) ConditionLanguage.DE else ConditionLanguage.EN
+                .path("conditionLanguage").path("code").asText(null)
+            ConditionLanguage.entries.firstOrNull { it.code == code } ?: ConditionLanguage.EN
         } catch (e: Exception) {
             ConditionLanguage.EN
         }

@@ -27,6 +27,7 @@ class CheckerEntitySpecModifierAgreementTest {
     private val order = DocumentModelDraft.named("order-modifiers").locale("en_US")
         .rootGroup("Order") { o -> o
             .numberField("Total") { it.fractionDigits(0) }
+            .stringField("Pick") { }
             .enumField("Status") { e -> e.value("OPEN").value("SHIPPED").category("Tier", "High", "Low") }
             .group("Lines") { l -> l.repeatable(5).indexField("Sku")
                 .stringField("Sku") { }
@@ -91,7 +92,23 @@ class CheckerEntitySpecModifierAgreementTest {
         "a field — the control" to ("[Lines/Qty For \"a\"] > 1" to admitted),
     ))
 
+    /**
+     * A correlated key never meets its uncorrelated twin: refused at a plain locus, and inside a filter refused as
+     * every key is there, the literal key being the control that separates the two accounts.
+     */
+    @Test
+    fun aCorrelatedKeyIsRefusedWhereverAKeyedCategoryStands() = assertAgreement(linkedMapOf(
+        "at a plain locus" to ("[Lines/Grade -> Tier For \$Pick] == \"High\"" to outerIteration),
+        "as a value-list member beside its twin" to ("AtLeastOneFieldValueIncludedInValueList(" +
+            "Lines/Grade -> Tier For \$Pick, Lines/Grade -> Tier For Pick In \"High\")" to outerIteration),
+        "inside a filter" to ("NumberOfFilledFields(Lines*/Sku Having [Lines/Sku] == [\$Pick] And " +
+            "[Lines/Grade -> Tier For \$Pick] == \"High\") > 0" to notAllowed),
+        "a literal key inside a filter — the control" to ("NumberOfFilledFields(Lines*/Sku Having " +
+            "[Lines/Sku] == [\$Pick] And [Lines/Grade -> Tier For \"a\"] == \"High\") > 0" to notAllowed),
+    ))
+
     private val admitted = emptySet<String>()
+    private val outerIteration = setOf("MVK_INVALID_OUTER_ITERATION")
     private val unexpected = setOf("MVK_UNEXPECTED_TOKEN")
     private val notAllowed = setOf("MVK_SEMANTIC_INDEX_NOT_ALLOWED")
 
