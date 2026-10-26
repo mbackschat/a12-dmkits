@@ -46,14 +46,13 @@ internal class ComputationEngineRun(
             val byPointer = HashMap<A12PartiallyKnownMultiPointer, Message>()
             for (diagnostic in formalErrorsInOperands.asSequence() + computedErrors.values.asSequence()) {
                 val previous = byPointer.put(diagnostic.errorPointer, diagnostic)
-                if (previous != null) throw ComputationDiagnosticAssemblyFailure(previous, diagnostic)
+                check(previous == null) {
+                    "Duplicate computation diagnostic at ${diagnostic.errorPointer}: ${previous?.code} and ${diagnostic.code}"
+                }
             }
         }
     }
 }
-
-private class ComputationDiagnosticAssemblyFailure(first: Message, second: Message) :
-    IllegalStateException("Duplicate computation diagnostic at ${second.errorPointer}: ${first.code} and ${second.code}")
 
 /**
  * The computation engine — the cascade (overlay / poison / cleared), the parallel join-by-key iteration,
@@ -97,8 +96,9 @@ internal class ComputationEngine(
     private val tableRoles: Map<ComputationDef, TableRole> by lazy {
         buildMap {
             for ((target, declarations) in model.computations.groupBy { it.targetPath }) {
+                val scope = targetScopeOf(target)
                 val joined = declarations.map {
-                    joinedSidesOf(preparedModel.computation(it), targetScopeOf(target)).isNotEmpty()
+                    joinedSidesOf(computationScopeRefs(preparedModel.computation(it)), scope).isNotEmpty()
                 }
                 if (joined.none { it }) continue
                 // A ComputationDef compares by value, so a byte-identical repeat shares its first occurrence's
@@ -318,12 +318,12 @@ internal class ComputationEngine(
                 val scopeRefs = computationScopeRefs(parsed)
                 val scope = scopes.scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
 
-                // Evaluate the computation in one instance context and record its outcome (shared by the plain and
-                // the parallel iteration arms).
                 val targetScope = targetScopeOf(comp.targetPath)
-                val parallelGroups = joinedSidesOf(parsed, targetScope)
+                val parallelGroups = joinedSidesOf(scopeRefs, targetScope)
                 val role = tableRoles[comp] ?: TableRole.ORDINARY
 
+                // Evaluate the computation in one instance context and record its outcome (shared by the plain and
+                // the parallel iteration arms).
                 fun computeAt(ctx: EvalContext) {
                     val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                     if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
@@ -348,7 +348,13 @@ internal class ComputationEngine(
                     // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
                     // normally — there is no static dependency pre-skip.
                     val computed = try {
-                        val selection = evalComputation(parsed, interp, comp.targetPath, role)
+                        val selection = when (role) {
+                            // Nothing is read in either role, so nothing it would read can poison the target or
+                            // its readers.
+                            TableRole.CLEARS -> Selection.STORES_NOTHING
+                            TableRole.PASSED_OVER -> Selection.NONE
+                            TableRole.ORDINARY -> evalComputation(parsed, interp, comp.targetPath)
+                        }
                         val v = selection.value
                         // Ordinary target errors poison; the exact reserved custom result retains its readable
                         // attempted value (SPEC-2026-10-10-12). Both decide the target for this call.
@@ -446,7 +452,7 @@ internal class ComputationEngine(
                             }
                         ) continue
                     }
-                    for (pctx in scopes.parallelIterationContexts(plan, doc, formalResults::admitsIdentityAt)) {
+                    for (pctx in scopes.iterationContexts(plan, doc, indexIdentityAdmitted = formalResults::admitsIdentityAt)) {
                         val reps = pctx.repsOf(comp.targetPath)
                         if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
                         computeAt(pctx)
@@ -583,10 +589,9 @@ internal class ComputationEngine(
         parsed: ParsedComputation,
         interp: Interpreter,
         targetPath: String,
-        role: TableRole,
     ): Selection =
         try {
-            selectAlternative(parsed, interp, targetPath, role)
+            selectAlternative(parsed, interp, targetPath)
         } catch (_: RuntimeEvaluationFailure) {
             Selection.RUNTIME_FAILURE
         }
@@ -595,14 +600,7 @@ internal class ComputationEngine(
         parsed: ParsedComputation,
         interp: Interpreter,
         targetPath: String,
-        role: TableRole,
     ): Selection {
-        when (role) {
-            // Nothing is read in either role, so nothing it would read can poison the target or its readers.
-            TableRole.CLEARS -> return Selection.STORES_NOTHING
-            TableRole.PASSED_OVER -> return Selection.NONE
-            TableRole.ORDINARY -> Unit
-        }
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
@@ -636,6 +634,7 @@ internal class ComputationEngine(
         doc: Document,
         locale: String,
     ): ComputedAttempt {
+        fun cleared() = ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
         // Render the computed value to the TARGET field's stored form: a Num → canonical decimal; a DATE Txt →
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
         // field's (format, separator). An Unknown computes nothing → CLEARED.
@@ -667,23 +666,18 @@ internal class ComputationEngine(
             // (`CalculationController.handleBerechnetenWert(VkString…)`: `!hasValue()` → "do like no calculation
             // was done"), taken BEFORE the format check (an empty result is never checked, so never ERRORED).
             // Same decision as a bare empty copy; a poisoned/ERRORED result never reaches this arm.
-            is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
-                .ifEmpty {
-                    return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
-                }
+            is Val.Txt -> renderScalarValue(v.v, comp.targetPath).ifEmpty { return cleared() }
             // A Confirm has no false, and A12 leaves a Confirm target EMPTY for the one computation that can hand it
             // one: a copy of an empty Confirm, which a computation reads as `False` exactly as a condition does.
             // Every other route to `False` is refused statically (`MVK_INVALID_COMPARE_TO_YES`), so whether A12
             // reads the empty source as empty or stores `False` as empty is undecidable on an admitted model;
             // deciding it here keeps the condition reading intact (`adapter.laws.ConfirmComputationOperandDiffTest`).
-            is Val.Bool -> if (!v.v && model.kinds[comp.targetPath] == Kind.CONFIRM) {
-                return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
-            } else {
+            is Val.Bool -> {
+                if (!v.v && model.kinds[comp.targetPath] == Kind.CONFIRM) return cleared()
                 v.v.toString()
             }
             is Val.Range -> renderRange(v, comp.targetPath)
-            is Val.Unknown ->
-                return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
+            is Val.Unknown -> return cleared()
             is Val.DomainFailure -> {
                 val result = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
                 return ComputedAttempt(
@@ -808,7 +802,7 @@ internal class ComputationEngine(
                 semanticTargets.flatMap(::ancestorGroups).filter { it in model.repeatable },
             )
 
-            selectIndexesBelow(joinedSidesOf(parsed, targetScopeOf(comp.targetPath)))
+            selectIndexesBelow(joinedSidesOf(computationScopeRefs(parsed), targetScopeOf(comp.targetPath)))
         }
         fields += indexes
         fields.flatMapTo(ancestors, ::ancestorGroups)
@@ -817,10 +811,11 @@ internal class ComputationEngine(
 
     private fun targetScopeOf(targetPath: String): String = scopes.scopeFromRefs(listOf(targetPath), parentGroup(targetPath))
 
-    /** The repeatable groups [parsed] joins to [targetScope] by key (IF96): each repeatable group above a non-starred
-     *  reference that is neither that scope nor one of its ancestors. A guard's reference counts like an operation's. */
-    private fun joinedSidesOf(parsed: ParsedComputation, targetScope: String): List<String> =
-        computationScopeRefs(parsed).flatMap { ancestorGroups(it).filter { group -> group in model.repeatable } }
+    /** The repeatable groups a computation joins to [targetScope] by key (IF96): each repeatable group above one of
+     *  its non-starred [scopeRefs] that is neither that scope nor one of its ancestors. A guard's reference counts
+     *  like an operation's. */
+    private fun joinedSidesOf(scopeRefs: List<String>, targetScope: String): List<String> =
+        scopeRefs.flatMap { ancestorGroups(it).filter { group -> group in model.repeatable } }
             .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
 
     /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred

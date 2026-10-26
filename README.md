@@ -10,7 +10,7 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **modelkit** — the model's **structure**, the same way: fields, groups, type definitions, includes, document config
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
-- **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 290 kB gzip
+- **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 280 kB gzip
 - **the portable checker** (`a12-consistency`) — kernel-free *consistency* checking: would A12 reject this model? One Kotlin Multiplatform implementation for the JVM, Node and the browser, answering `INVALID` or `INCONCLUSIVE` — and, deliberately, never `VALID`
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
@@ -946,7 +946,7 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 
 The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
 
-Small enough to ship to a browser — the production JavaScript entry is **290 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
+Small enough to ship to a browser — the production JavaScript entry is **280 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
 
 <p align="center">
   <a href="assets/infographics/interpreter-vs-kernel.avif">

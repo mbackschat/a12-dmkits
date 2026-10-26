@@ -153,7 +153,8 @@ class Document(internal val config: DocumentConfig) {
         fun formalInput(): FormalInput? = value?.let { FormalInput(it, authored ?: it, unchecked) }
     }
 
-    /** The evaluation text of a stored value, the authored text the input gates measure, and whether they run. */
+    /** The evaluation text of a stored value, the authored text the input gates measure, and whether they are
+     *  skipped (a staged index default, KF574). */
     private data class FormalInput(val value: String, val authored: String, val unchecked: Boolean = false)
 
     /** One declared-tail decision for a starred field in a bound row scope (IF194). */
@@ -254,7 +255,7 @@ class Document(internal val config: DocumentConfig) {
         val valued: List<Placement>,                               // valued (value != null) non-group placements
         // The kernel's "content" notion: a valued field OR an instantiated REPEATABLE-group row (creating a
         // repeatable row is content in itself — KERNEL-FINDINGS §4/§9). Feeds the `evaluated` row gate
-        // ([attachByDepth]) AND `GroupFilled` for a non-repeatable group ([nonRepGroupFilledDepths]) — so both
+        // ([attachGate]) AND `GroupFilled` for a non-repeatable group ([nonRepGroupFilledDepths]) — so both
         // see an all-field-empty-but-instantiated repeatable row as content (IF53). A non-repeatable group's
         // structural presence is NOT content (excluded here). Distinct from [valued], which the formal-error walk
         // ([valuedFields]) needs to stay valued-only.
@@ -495,19 +496,14 @@ class Document(internal val config: DocumentConfig) {
         val copy = emptyCopy()
         val applied = HashSet<Pair<String, List<Int>>>()
         for (p in placements) {
-            if (p.isGroup) {
-                copy.group(p.path, *p.reps.toIntArray())
+            val key = p.path to p.reps
+            if (p.isGroup || key !in overrides) {
+                copy.copyPlacement(p)
                 continue
             }
-            val key = p.path to p.reps
-            when {
-                key in overrides -> {
-                    applied += key
-                    overrides[key]?.let { copy.add(p.path, p.reps.toIntArray(), it, false, unchecked = key in unchecked) }
-                        ?: copy.emptyField(p.path, *p.reps.toIntArray())
-                }
-                else -> copy.copyField(p)
-            }
+            applied += key
+            overrides[key]?.let { copy.add(p.path, p.reps.toIntArray(), it, false, unchecked = key in unchecked) }
+                ?: copy.emptyField(p.path, *p.reps.toIntArray())
         }
         // A value computed into a cell with no prior placement (an empty computed field never present as a
         // placement): add it. A null override (clear) for an absent cell is a no-op.
@@ -529,23 +525,15 @@ class Document(internal val config: DocumentConfig) {
         val copy = emptyCopy()
         val applied = HashSet<Pair<String, List<Int>>>()
         for (placement in placements) {
-            if (placement.isGroup) {
-                copy.group(placement.path, *placement.reps.toIntArray())
-                continue
-            }
             val key = placement.path to placement.reps
             val action = byCell[key]
-            when {
-                action == null -> copy.copyField(placement)
-                key in applied -> copy.copyField(placement)
-                else -> {
-                    applied += key
-                    when (action.outcome) {
-                        ComputeOutcome.VALUE -> copy.computedField(action)
-                        ComputeOutcome.CLEARED, ComputeOutcome.ERRORED ->
-                            copy.emptyField(action.path, *action.reps.toIntArray())
-                    }
-                }
+            if (placement.isGroup || action == null || !applied.add(key)) {
+                copy.copyPlacement(placement)
+                continue
+            }
+            when (action.outcome) {
+                ComputeOutcome.VALUE -> copy.computedField(action)
+                ComputeOutcome.CLEARED, ComputeOutcome.ERRORED -> copy.emptyField(action.path, *action.reps.toIntArray())
             }
         }
         for (action in actions) {
@@ -583,6 +571,10 @@ class Document(internal val config: DocumentConfig) {
             Kind.NUMBER -> placement.numberIdentity == DecimalObjectIdentity.parse(computed)
             else -> placement.raw == computed
         }
+    }
+
+    private fun Document.copyPlacement(placement: Placement) {
+        if (placement.isGroup) group(placement.path, *placement.reps.toIntArray()) else copyField(placement)
     }
 
     private fun Document.copyField(placement: Placement) {
@@ -627,7 +619,7 @@ class Document(internal val config: DocumentConfig) {
         // charset (`CharsetPerfTest`, 2026-10-13). Each caller only reads the copy, so it is never stale.
         charsetView?.takeIf { it.config.legalCharset == charset }?.let { return it }
         val copy = Document(config.copy(legalCharset = charset))
-        for (p in placements) if (p.isGroup) copy.group(p.path, *p.reps.toIntArray()) else copy.copyField(p)
+        for (p in placements) copy.copyPlacement(p)
         charsetView = copy
         return copy
     }
@@ -688,9 +680,7 @@ class Document(internal val config: DocumentConfig) {
         val capacities = levels.map(capacityOf)
         val roots = if (blankRoot) listOf(1) else rootInstances(levels[0]).filter { it <= capacities[0] }
         var frontier = roots.map { listOf(it) }
-        val dense = capacities.fold(1L) { product, capacity ->
-            if (product > DENSE_PRODUCT_LIMIT) product else product * capacity
-        } <= DENSE_PRODUCT_LIMIT
+        val dense = withinDenseLimit(capacities.asSequence())
         val occupied = if (dense) emptyMap() else occupiedChildren()
         for (depth in 2..segs.size) {
             val capacity = capacities[depth - 1]
@@ -702,6 +692,16 @@ class Document(internal val config: DocumentConfig) {
         }
         val storedRows = rowsOf(groupPath).associateBy { it }
         return frontier.map { storedRows[it] ?: it }
+    }
+
+    /** Whether [capacities] multiply to at most [DENSE_PRODUCT_LIMIT], read only until the product passes it. */
+    private fun withinDenseLimit(capacities: Sequence<Int>): Boolean {
+        var product = 1L
+        for (capacity in capacities) {
+            product *= capacity
+            if (product > DENSE_PRODUCT_LIMIT) return false
+        }
+        return true
     }
 
     /**
@@ -945,18 +945,20 @@ class Document(internal val config: DocumentConfig) {
             cellRelevant: ((String, List<Int>) -> Boolean)? = null,
             /** Complete formal-admission gate supplied by the validation/compute pass. */
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> =
-        parallelContexts(join, cellRelevant, indexIdentityAdmitted, validation = false)
+        parallelContexts(join, cellRelevant, indexIdentityAdmitted, capacityOf = null)
 
     internal fun validationParallelContexts(join: JoinShape,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
             capacityOf: (String) -> Int): List<EvalContext> =
-        parallelContexts(join, cellRelevant, indexIdentityAdmitted, validation = true, capacityOf)
+        parallelContexts(join, cellRelevant, indexIdentityAdmitted, capacityOf)
 
     private fun parallelContexts(join: JoinShape,
             cellRelevant: ((String, List<Int>) -> Boolean)?,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
-            validation: Boolean, capacityOf: ((String) -> Int)? = null): List<EvalContext> {
+            /** The model's declared capacities on a validation call; null on a computation call. */
+            capacityOf: ((String) -> Int)?): List<EvalContext> {
+        val validation = capacityOf != null
         val (groups, indexFieldName, commonParent, frameGroup, deepestFrame, nested) = join
         val out = ArrayList<EvalContext>()
         val parentDepth = parts(commonParent).size
@@ -990,15 +992,8 @@ class Document(internal val config: DocumentConfig) {
                 val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
                 val invalid = HashSet(cleanInvalid)
                 val perGroup = if (frameGroup == null) cleanMaps
-                    else cleanMaps + (frameGroup to indexMap(
-                        frameGroup,
-                        indexFieldName,
-                        fr,
-                        invalid,
-                        cellRelevant,
-                        indexIdentityAdmitted,
-                        validation,
-                    ))
+                    else cleanMaps + (frameGroup to
+                        indexMap(frameGroup, indexFieldName, fr, invalid, cellRelevant, indexIdentityAdmitted, validation))
                 // Validation enumerates rendered tokens but resolves each by numeric identity (SPEC-2026-10-10-04).
                 val values = LinkedHashSet<String>().apply {
                     for (group in groups) {
@@ -1052,10 +1047,8 @@ class Document(internal val config: DocumentConfig) {
         val above = joinedRow.take(joinedDepth - 1)
         val rows = indices.getOrPut(above) {
             val capacity = capacityOf(level)
-            val dense = (1..segs.size).filter { it != joinedDepth }.fold(1L) { product, depth ->
-                if (product > DENSE_PRODUCT_LIMIT) product
-                else product * capacityOf("/" + segs.take(depth).joinToString("/"))
-            } <= DENSE_PRODUCT_LIMIT
+            val dense = withinDenseLimit((1..segs.size).asSequence().filter { it != joinedDepth }
+                .map { depth -> capacityOf("/" + segs.take(depth).joinToString("/")) })
             if (dense) (1..capacity).toList()
             else (sequenceOf(1) + occupiedChildren()[segs.size].orEmpty().asSequence()
                 .filter { (parent, _) -> parent.size == joinedDepth && parent.take(joinedDepth - 1) == above }

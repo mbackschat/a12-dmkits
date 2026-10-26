@@ -37,7 +37,7 @@ internal sealed interface IterationPlan {
  * The iteration-scope machinery — a call-invariant collaborator of the I2 eval-state seam (IF117): which
  * repeatable group a rule/computation iterates ([scopeFromRefs]), the per-row contexts of that scope incl.
  * the error-entity re-anchor ([iterationContexts], IF103), and the parallel-iteration outer join
- * ([parallelIterationContexts], KERNEL-SEMANTICS §9). Shared by the rule path, the `RepetitionNotUnique`
+ * ([prepareParallel], KERNEL-SEMANTICS §9). Shared by the rule path, the `RepetitionNotUnique`
  * guard-scope check, and the computation engine. Allocated once per MODEL (see [ModelStaticPlans]), shared by its evaluators.
  */
 internal class IterationScopes(private val model: ModelDef) {
@@ -61,7 +61,7 @@ internal class IterationScopes(private val model: ModelDef) {
      *
      * **Parallel iteration** — when the condition references TWO (or more) NON-nested repeatable groups per-row
      * (siblings, neither an ancestor of the other), the kernel iterates them JOINTLY as an outer join keyed by a
-     * shared index field (KERNEL-SEMANTICS §9). [parallelIterationContexts] builds that join; an unsupported
+     * shared index field (KERNEL-SEMANTICS §9). [prepareParallel] shapes that join; an unsupported
      * parallel shape (non-sibling depth, missing / mismatched index field) fails loud (reported unsupported),
      * never silently wrong.
      */
@@ -186,26 +186,17 @@ internal class IterationScopes(private val model: ModelDef) {
     }
 
     /**
-     * Build the parallel-iteration outer-join contexts: the joined groups (the [scope] group + the
-     * [parallelGroups]) iterated jointly over the union of their shared index field's values (delegated to
-     * [Document.parallelContexts]). Each joined group must carry the **same-named** index field. Non-repeatable
+     * Prepare and validate the document-independent shape of one parallel join of [scope] with [parallelGroups]:
+     * the joined groups, iterated jointly over the union of their shared index field's values by
+     * [Document.parallelContexts]. Each joined group must carry the **same-named** index field. Non-repeatable
      * intermediates between the common ancestor and a joined group are transparent — sibling, wrapped, and
      * asymmetric-depth groups all qualify (the kernel renders the wrappers `[1]`). A *repeatable* non-indexed
      * intermediate above ONE joined group is a **frame**: the kernel iterates it normally and joins inside each
-     * frame row (the `/Plan/X/A ⋈ B` case), supported via the `frameGroup` argument. The one **unsupported
-     * shape** is a repeatable frame above MORE THAN ONE joined group (an exotic multi-frame cross-product),
-     * which throws [UnsupportedConstructException] (→ rule reported unsupported, loud-not-wrong). An **invalid**
-     * index (duplicate/empty) is NOT declined — modeled exactly: the compromised group's unmatched references
-     * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
-     */
-    fun parallelIterationContexts(
-        plan: IterationPlan.Parallel,
-        doc: Document,
-        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
-    ): List<EvalContext> = iterationContexts(plan, doc, indexIdentityAdmitted = indexIdentityAdmitted)
-
-    /**
-     * Prepare and validate the document-independent shape of one parallel join of [scope] with [parallelGroups].
+     * frame row (the `/Plan/X/A ⋈ B` case). A repeatable frame above MORE THAN ONE joined group (an exotic
+     * multi-frame cross-product) throws [UnsupportedConstructException] (→ rule reported unsupported,
+     * loud-not-wrong). An **invalid** index (duplicate/empty) is NOT declined — modeled exactly: the compromised
+     * group's unmatched references read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit
+     * `uniqueIndex`/`mandatoryField`.
      *
      * A [scope] without an index field joins through its repeatable parent when that parent carries one: A12 then
      * iterates [scope] inside each joined row, an unmatched partner included (KERNEL-FINDINGS KF603,
@@ -213,9 +204,8 @@ internal class IterationScopes(private val model: ModelDef) {
      * or wrapped level keeps [scope] as the join side and is refused below for its missing index.
      */
     fun prepareParallel(scope: String, parallelGroups: List<String>): IterationPlan.Parallel {
-        val side = parentGroup(scope).takeIf { parent ->
-            !hasIndexField(scope) && parent in model.repeatable && hasIndexField(parent)
-        } ?: scope
+        val parent = parentGroup(scope)
+        val side = if (!hasIndexField(scope) && parent in model.repeatable && hasIndexField(parent)) parent else scope
         val joined = (listOf(side) + parallelGroups).distinct()
         // A12 refuses a reference chain crossing two keyed levels beside a join (`MVK_MULTIPLE_INDEX_FIELDS`,
         // KERNEL-FINDINGS KF602), so a joined group below another keyed group has no runtime behaviour to match.
@@ -226,9 +216,12 @@ internal class IterationScopes(private val model: ModelDef) {
         }
         val commonParent = commonAncestor(joined)
         val parentDepth = pathParts(commonParent).size
-        joined.firstOrNull { g ->
-            ancestorGroups(g).any { pathParts(it).size > parentDepth && it in model.repeatable && hasIndexField(it) }
-        }?.let { inner ->
+        // A "framed" joined group sits under a repeatable non-indexed ancestor (strictly between the common
+        // ancestor and it) — the kernel iterates that frame normally and joins inside each frame row (the
+        // `/Plan/X/A ⋈ B` case). At most ONE joined group may be framed; a frame above two joined groups is an
+        // exotic cross-product, not modeled → loud decline. A keyed one is the second keyed level declined here.
+        fun frameAncestors(g: String) = ancestorGroups(g).filter { pathParts(it).size > parentDepth && it in model.repeatable }
+        joined.firstOrNull { g -> frameAncestors(g).any(::hasIndexField) }?.let { inner ->
             throw UnsupportedConstructException("parallel iteration joining $inner below another keyed group is not modeled")
         }
         val indexNames = joined.map { g ->
@@ -240,11 +233,6 @@ internal class IterationScopes(private val model: ModelDef) {
             throw UnsupportedConstructException(
                 "parallel-iterated groups must share one index field name, found $indexNames")
         }
-        // A "framed" joined group sits under a repeatable non-indexed ancestor (strictly between the common
-        // ancestor and it) — the kernel iterates that frame normally and joins inside each frame row (the
-        // `/Plan/X/A ⋈ B` case). At most ONE joined group may be framed; a frame above two joined groups is an
-        // exotic cross-product, not modeled → loud decline.
-        fun frameAncestors(g: String) = ancestorGroups(g).filter { pathParts(it).size > parentDepth && it in model.repeatable }
         val framed = joined.filter { frameAncestors(it).isNotEmpty() }
         if (framed.size > 1) {
             throw UnsupportedConstructException(
@@ -274,12 +262,11 @@ internal class IterationScopes(private val model: ModelDef) {
         // A joined row reads a starred domain from its common-parent row (KERNEL-FINDINGS KF567), or, below a joined
         // group, from that group's joined row (KF573); the runtime twin is the parallel row's `domainFor`. So a star
         // may bind no repeatable level below the common parent other than a joined group; a framed join's frame is
-        // not measured, so it stays declined. A
-        // keyed read needs no twin here: A12 refuses one below a joined group (`MVK_MULTIPLE_INDEX_FIELDS`) and one
-        // under an unstarred repeatable ancestor (`MVK_NO_WILDCARD`), `adapter.laws.JoinedRowAggregateDiffTest`.
+        // not measured, so it stays declined. A keyed read needs no twin here: A12 refuses one below a joined group
+        // (`MVK_MULTIPLE_INDEX_FIELDS`) and one under an unstarred repeatable ancestor (`MVK_NO_WILDCARD`),
+        // `adapter.laws.JoinedRowAggregateDiffTest`.
         val commonDepth = pathParts(commonParent).size
-        fun boundByJoin(star: Expr.Star, level: String) =
-            joined.any { side -> star.path.startsWith("$side/") && side == level }
+        fun boundByJoin(star: Expr.Star, level: String) = level in joined && star.path.startsWith("$level/")
         starRefs(ast).firstOrNull { star ->
             bindingLevels(star).drop(commonDepth).any { it in model.repeatable && !boundByJoin(star, it) }
         }
