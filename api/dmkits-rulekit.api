@@ -3150,6 +3150,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, io.github.mbackschat.a12.dm.core.ModelResolver)
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult checkTogether(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftRule>, io.github.mbackschat.a12.dm.core.ModelResolver)
   public java.util.List<java.lang.String> declaredLocales(java.lang.String)
   public java.lang.String inject(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation)
   public java.lang.String inject(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)

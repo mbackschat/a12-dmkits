@@ -72,6 +72,36 @@ public final class RuleValidator {
         return RawLengthDiagnostic.enrich(result, modelJson, rule, resolver);
     }
 
+    /**
+     * Check several rule drafts in ONE kernel pass, each finding attributed to the draft the kernel names in it
+     * ({@code Where.rule}). A caller that needs one verdict per draft reads them off this result instead of paying
+     * one full consistency check per draft, which is what made the error-field suggestion cost a kernel pass per
+     * candidate field. Drafts must have distinct paths, since an attribution names a path; the add-time prechecks
+     * of {@link #check} apply to each draft, and the raw-length message enrichment does not run here.
+     */
+    public ValidationResult checkTogether(String modelJson, List<DraftRule> rules, ModelResolver resolver) {
+        if (rules.stream().map(rule -> rule.groupPath() + "/" + rule.name()).distinct().count() != rules.size()) {
+            throw new IllegalArgumentException("drafts checked together need distinct paths, so each finding "
+                    + "names exactly one of them");
+        }
+        List<Diagnostic> prechecks = rules.stream()
+                .flatMap(rule -> addPrecheck(modelJson, rule.groupPath(), rule.name(), "rule").stream())
+                .toList();
+        if (!prechecks.isEmpty()) {
+            return ValidationResult.beforeTheGate(prechecks);
+        }
+        String scope = rules.isEmpty() ? "" : rules.get(0).groupPath();
+        try {
+            String injected = modelJson;
+            for (DraftRule rule : rules) {
+                injected = inject(injected, rule);
+            }
+            return checkInjected(injected, scope, null, resolver);
+        } catch (RuntimeException e) {
+            return conversionFailure("rules", scope, e);
+        }
+    }
+
     /** Check {@code computation} against a model whose references are resolved by {@code resolver} (F-RES). */
     public ValidationResult check(String modelJson, DraftComputation computation,
             ModelResolver resolver) {
@@ -99,17 +129,21 @@ public final class RuleValidator {
             return ValidationResult.beforeTheGate(List.of(precheck.get()));
         }
         try {
-            return checkInjected(injector.get(), fullName, resolver);
+            return checkInjected(injector.get(), fullName, fullName, resolver);
         } catch (RuntimeException e) {
-            String why = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            // The kernel threw during conversion, so it reached no verdict — again no receipt.
-            return ValidationResult.beforeTheGate(List.of(Diagnostic.precheck(Optional.empty(),
-                    "the kernel could not process the candidate " + kind + " '" + fullName + "': " + why,
-                    Diagnostic.Where.path(fullName),
-                    Optional.of("review the " + kind + " against the model's structure"
-                            + " (the kernel rejected it during conversion)"),
-                    Optional.empty())));
+            return conversionFailure(kind, fullName, e);
         }
+    }
+
+    /** The kernel threw during conversion, so it reached no verdict — again no receipt. */
+    private static ValidationResult conversionFailure(String kind, String path, RuntimeException e) {
+        String why = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        return ValidationResult.beforeTheGate(List.of(Diagnostic.precheck(Optional.empty(),
+                "the kernel could not process the candidate " + kind + " '" + path + "': " + why,
+                Diagnostic.Where.path(path),
+                Optional.of("review the " + kind + " against the model's structure"
+                        + " (the kernel rejected it during conversion)"),
+                Optional.empty())));
     }
 
     /**
@@ -165,7 +199,11 @@ public final class RuleValidator {
         return Optional.empty();
     }
 
-    private ValidationResult checkInjected(String injected, String rulePath,
+    /**
+     * Run the oracle over {@code injected}. {@code attribution} is the rule every kernel finding is attributed to,
+     * or null to attribute each to the rule its message names; {@code rulePath} locates the no-backend advisory.
+     */
+    private ValidationResult checkInjected(String injected, String rulePath, String attribution,
             ModelResolver resolver) {
         Optional<ConsistencyOracle> oracle = Backends.consistencyOracle();
         List<Diagnostic> diagnostics = new ArrayList<>();
@@ -178,7 +216,7 @@ public final class RuleValidator {
             return ValidationResult.of(diagnostics, Verification.STRUCTURAL_ONLY);
         }
         for (Notification n : oracle.get().checkConsistency(injected, resolver)) {
-            diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, rulePath)));
+            diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, attribution)));
         }
         return ValidationResult.of(diagnostics, Verification.KERNEL_CONFIRMED);
     }

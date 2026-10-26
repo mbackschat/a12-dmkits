@@ -19,7 +19,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -249,22 +252,38 @@ final class RuleCheckCommand extends BaseCommand {
     }
 
     /**
-     * Whether A12 refuses {@code candidate} as this rule's error field for not being referenced. The kernel's
+     * The candidates A12 refuses as this rule's error field for not being referenced. The kernel's
      * directly-referenced set includes a read made only inside an unmarked {@code Having} body, which A12 does not
-     * count as the rule's own (KERNEL-FINDINGS KF488), and the sets it does judge by are internal to its parser,
-     * so each candidate is asked of the kernel rather than re-derived here.
+     * count as the rule's own (KERNEL-FINDINGS KF488), and the sets it does judge by are internal to its parser, so
+     * each candidate is asked of the kernel rather than re-derived here. All of them are asked in one pass, each
+     * as a copy of this rule under its own name, because a group operand makes every field inside the group a
+     * candidate and one pass per candidate grew with them (41 candidates measured at 6 s against 2 s, 2026-10-26).
      */
-    private boolean referenceRefused(RuleValidator validator, String json, String effectiveGroup, String candidate,
-            ModelResolver resolver) {
-        DraftRule draft = candidate(effectiveGroup, EntityPath.of(effectiveGroup).elementReference(EntityPath.of(candidate)));
-        return validator.check(json, draft, resolver).diagnostics().stream()
-                .anyMatch(d -> d.code().filter(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()::equals).isPresent());
+    private Set<String> refusedAsUnreferenced(RuleValidator validator, String json, String effectiveGroup,
+            List<String> candidates, ModelResolver resolver) {
+        Map<String, String> candidateByRule = new LinkedHashMap<>();
+        List<DraftRule> drafts = new ArrayList<>();
+        for (int i = 0; i < candidates.size(); i++) {
+            String candidate = candidates.get(i);
+            DraftRule draft = candidate(effectiveGroup, name + "Suggest" + i,
+                    EntityPath.of(effectiveGroup).elementReference(EntityPath.of(candidate)));
+            candidateByRule.put(effectiveGroup + "/" + draft.name(), candidate);
+            drafts.add(draft);
+        }
+        return validator.checkTogether(json, drafts, resolver).diagnostics().stream()
+                .filter(d -> d.code().filter(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()::equals).isPresent())
+                .map(d -> candidateByRule.get(d.where().rule()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
-    /** This invocation's candidate rule, messages included — built once so both routes check the same thing. */
     private DraftRule candidate(String effectiveGroup, String errorEntityRelPath) {
+        return candidate(effectiveGroup, name, errorEntityRelPath);
+    }
+
+    private DraftRule candidate(String effectiveGroup, String ruleName, String errorEntityRelPath) {
         return DraftRule.builder()
-                .groupPath(effectiveGroup).name(name).errorEntityRelPath(errorEntityRelPath)
+                .groupPath(effectiveGroup).name(ruleName).errorEntityRelPath(errorEntityRelPath)
                 .errorCondition(condition).errorCode(code).severity(severity)
                 .messages(messages.entrySet().stream()
                         .map(e -> new LocalizedText(e.getKey(), e.getValue())).toList())
@@ -311,9 +330,10 @@ final class RuleCheckCommand extends BaseCommand {
             // The kernel's own getDirectlyReferencedEntities (via referencedFields) — robust where the
             // rulekit converter NPEs on an inconsistent candidate; it returns the condition's references
             // regardless of error-field validity, which is exactly what we filter into candidates.
-            java.util.Set<String> references = KernelAdapter.of(lenient).referencedFields(candidateFullName);
-            java.util.List<String> candidates = new ModelContext(lenient).errorFieldCandidates(references).stream()
-                    .filter(candidate -> !referenceRefused(validator, json, effectiveGroup, candidate, resolver)).toList();
+            Set<String> references = KernelAdapter.of(lenient).referencedFields(candidateFullName);
+            List<String> referenced = new ModelContext(lenient).errorFieldCandidates(references);
+            Set<String> refused = refusedAsUnreferenced(validator, json, effectiveGroup, referenced, resolver);
+            List<String> candidates = referenced.stream().filter(candidate -> !refused.contains(candidate)).toList();
             ArrayNode arr = data.putArray("candidates");
             candidates.forEach(arr::add);
             data.put("fieldIsCandidate", candidates.contains(field));

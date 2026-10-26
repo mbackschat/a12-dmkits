@@ -1085,6 +1085,8 @@ Both `rule.draft()` and `computation.draft()` preserve their authored localized 
 
 To vary one part of a draft, as a near-miss sweep does, use `draft.withErrorCondition(text)` or `draft.withMessages(texts)`. Each returns a copy with that component replaced and every other one kept. `withMessages` replaces the list, where the builder's `messages(…)` appends to it. `DraftRuleWitherTest` locks both.
 
+To check many drafts, use `new RuleValidator().checkTogether(modelJson, drafts, resolver)`. It runs one kernel pass instead of one per draft and attributes each finding to the draft the kernel names, so `d.where().rule()` tells you which draft drew it. The drafts need distinct paths. `rule check --suggest-error-field` asks about all of its error-field candidates this way. `RuleValidatorCheckTogetherTest` locks the per-draft attribution against the one-draft `check`.
+
 Ancestor group operands end on the parent-navigation segment: from `/Shipment/Parcels/Labels`, its parent renders as `..` and its root as `../..`. Neither carries a trailing slash. `AncestorGroupRenderingTest` checks both rendered forms against the kernel ([AF145](API-FINDINGS.md#af145)).
 
 Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.
