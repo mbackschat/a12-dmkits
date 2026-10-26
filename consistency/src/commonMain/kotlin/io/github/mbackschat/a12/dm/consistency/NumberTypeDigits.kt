@@ -1,10 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.predicates.NumberBound
-import io.github.mbackschat.a12.dm.predicates.PrintedBoundDefect
-import io.github.mbackschat.a12.dm.predicates.numberBoundExceedsDigitLimit
 import io.github.mbackschat.a12.dm.predicates.numberBoundsInverted
-import io.github.mbackschat.a12.dm.predicates.printedNumberBoundDefects
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull

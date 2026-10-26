@@ -2011,7 +2011,7 @@
       }
     },
     "kf582": {
-      "sha256": "bd88b1db88fac57f305a0432533357187b79fe7fd3cff033f22d755bf56fcf38",
+      "sha256": "3e1cc94318a7d563a8478d1725befacb2dbd6f8efd052b85d81d2c20d6c429e0",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -13052,7 +13052,7 @@
       }
     },
     "kf569": {
-      "sha256": "69514eb101c3eb730179b9ae13b3c9236f4918c6bdda358824a3e0b37887a7f1",
+      "sha256": "506196e5cfcb2bc3a727887e6cc1c5ce61e5b00d6a95657e558ed187b8e8c9c6",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the Number bound comparison", "the boolean-member binding", "the trimmed sValue"],
