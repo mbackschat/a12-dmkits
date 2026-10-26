@@ -659,7 +659,7 @@ private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(n
     ConstantOp.TODAY -> Val.Txt(clockToday())
     // A stored value compares against the proleptic label, but a reading the model's zone has no instant for is
     // refused here as on every temporal read (`ClockReadingZoneTest`).
-    ConstantOp.NOW -> Val.Txt(clockNow().first.also { nowTemporalValue() })
+    ConstantOp.NOW -> clockNow().let { now -> nowTemporalValue(now); Val.Txt(now.first) }
     // The kernel parse tree defaults BaseYear to NUMBER; date-only positions convert it explicitly. Comparisons
     // resolve it from the other operand in [evalCmpOperand], while [evalTemporal] supplies the date form.
     ConstantOp.BASE_YEAR -> baseYearNumber()
@@ -1821,8 +1821,8 @@ private fun Interpreter.clockNow(): Pair<String, Long> {
     return match.groupValues[1] to match.groupValues[2].ifEmpty { "0" }.toLong()
 }
 
-private fun Interpreter.nowTemporalValue(): TemporalValue {
-    val (text, millis) = clockNow()
+private fun Interpreter.nowTemporalValue(now: Pair<String, Long> = clockNow()): TemporalValue {
+    val (text, millis) = now
     return clockReading(text, millis)
         ?: throw UnsupportedConstructException("EvalClock.now is not a real date-time in the model time zone: ${clock?.now}")
 }

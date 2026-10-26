@@ -310,9 +310,9 @@ internal fun partialDateParts(raw: String, format: String, precision: DatePrecis
 }
 
 private fun partialDateRawParts(raw: String, format: String): Triple<Int, Int, Int>? {
-    val (frag, comps) = dateFragment(format) ?: return null
-    val m = Regex("^$frag$").matchEntire(raw) ?: return null
-    val g = m.groupValues.drop(1)
+    val pattern = dateFragment(format) ?: return null
+    val g = pattern.capture(raw) ?: return null
+    val comps = pattern.components
     var y = -1; var mo = -1; var d = -1
     comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
     if (y < 0 || mo < 0 || d < 0) return null
@@ -347,9 +347,9 @@ fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? =
  * interpreter never re-enforces the authoring-time comparability/granularity gates (KERNEL-FINDINGS §6).
  */
 fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
-    val (frag, comps) = dateFragment(format) ?: return null
-    val m = Regex("^$frag$").matchEntire(raw) ?: return null
-    val g = m.groupValues.drop(1)
+    val pattern = dateFragment(format) ?: return null
+    val g = pattern.capture(raw) ?: return null
+    val comps = pattern.components
     var y = baseYear; var mo = 1; var d = 1
     comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
     if (!isParsedRealDate(y, mo, d)) return null
@@ -378,7 +378,7 @@ fun intervalEndOfDeclaredFormat(startIso: String, format: String): String? {
     // The common case — a format carrying both sub-year components has nothing to widen — costs one scan and
     // no component list, so the ordinary full-format construction pays nothing for the fragment rule.
     if ('M' in format && 'd' in format) return startIso
-    val comps = dateFragment(format)?.second ?: return null
+    val comps = dateFragment(format)?.components ?: return null
     val (y, m, d) = dateParts(startIso) ?: return null
     val month = if ('M' in comps) m else 12
     return iso(y, month, if ('d' in comps) d else legacyDaysInMonth(y, month))
@@ -444,9 +444,9 @@ fun parseRangeToIso(
     yearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     completeEndToLastDay: Boolean = true,
 ): Pair<String, String>? {
-    val (frag, comps) = dateFragment(format) ?: return null
-    val m = Regex("^$frag${Regex.escape(sep)}$frag$").matchEntire(raw) ?: return null
-    val g = m.groupValues.drop(1)
+    val pattern = dateFragment(format) ?: return null
+    val comps = pattern.components
+    val g = pattern.around(sep).capture(raw) ?: return null
     val startValues = g.take(comps.size)
     val endValues = g.drop(comps.size)
     var startYear = baseYear
@@ -509,7 +509,7 @@ private const val LEAP_PROBE_YEAR = 2000
  * read the year the KERNEL uses for them rather than the one evaluation builds the value with.
  */
 internal fun formalCompletionYear(format: String, baseYear: Int): Int? {
-    val comps = dateFragment(format)?.second ?: return null
+    val comps = dateFragment(format)?.components ?: return null
     if ('y' in comps) return null
     return if ('d' in comps && 'M' in comps) baseYear else RANGE_PARSE_DEFAULT_YEAR
 }
@@ -544,9 +544,8 @@ private fun buildRangeEndpoint(values: List<String>, comps: List<Char>, baseYear
  * field's rendered value is brought to that canonical form (locale-variant by reading the declared format).
  */
 fun parseDateToIso(raw: String, format: String): String? {
-    val (frag, comps) = dateFragment(format) ?: return null
-    val m = Regex("^$frag$").matchEntire(raw) ?: return null
-    return buildIso(m.groupValues.drop(1), comps)
+    val pattern = dateFragment(format) ?: return null
+    return buildIso(pattern.capture(raw) ?: return null, pattern.components)
 }
 
 /**
@@ -574,10 +573,10 @@ fun renderDateToFormat(iso: String, format: String): String? {
     return sb.toString()
 }
 
-/** A regex fragment with one capture group per `y`/`M`/`d` run (exact width = run length) plus the component
- *  order; literals are escaped. Null if [format] carries no date component. */
-private fun dateFragment(format: String): Pair<String, List<Char>>? {
-    val sb = StringBuilder()
+/** [format] as one digit run per `y`/`M`/`d` run (exact width = run length) plus the component order; every
+ *  other character is literal. Null if [format] carries no date component. */
+internal fun dateFragment(format: String): FormatPattern? {
+    val slots = mutableListOf<FormatSlot>()
     val comps = mutableListOf<Char>()
     var i = 0
     while (i < format.length) {
@@ -585,15 +584,57 @@ private fun dateFragment(format: String): Pair<String, List<Char>>? {
         if (c == 'y' || c == 'M' || c == 'd') {
             var j = i
             while (j < format.length && format[j] == c) j++
-            sb.append("(\\d{").append(j - i).append("})")
+            slots += FormatSlot.Digits(j - i)
             comps.add(c)
             i = j
         } else {
-            sb.append(Regex.escape(c.toString()))
+            slots += FormatSlot.Literal(c)
             i++
         }
     }
-    return if (comps.isEmpty()) null else sb.toString() to comps
+    return if (comps.isEmpty()) null else FormatPattern(slots, comps)
+}
+
+/** One position of a [FormatPattern]: exactly [Digits.width] ASCII digits, or one literal character. */
+internal sealed interface FormatSlot {
+    data class Digits(val width: Int) : FormatSlot
+    data class Literal(val char: Char) : FormatSlot
+}
+
+/**
+ * A temporal format read as fixed-width digit runs and literal characters, matched by walking the value.
+ *
+ * It replaces compiling the format into a regex on every parsed value — measured 2026-10-26 on the JVM at
+ * ~530 ns per `dd.MM.yyyy` parse against ~100 ns for the match alone. Every slot has a fixed width, so the
+ * regex had exactly one alignment and this walk reads the same one; `FormatPatternRegexEquivalenceTest`
+ * holds it to that regex on both JVM and JS, including non-ASCII digits and a trailing line terminator.
+ */
+internal class FormatPattern(private val slots: List<FormatSlot>, val components: List<Char>) {
+    /** The digit runs of [raw] in slot order, or null unless [raw] is exactly this pattern. */
+    fun capture(raw: String): List<String>? {
+        val runs = ArrayList<String>(components.size)
+        var at = 0
+        for (slot in slots) {
+            when (slot) {
+                is FormatSlot.Digits -> {
+                    val end = at + slot.width
+                    if (end > raw.length) return null
+                    for (i in at until end) if (raw[i] !in '0'..'9') return null
+                    runs += raw.substring(at, end)
+                    at = end
+                }
+                is FormatSlot.Literal -> {
+                    if (at >= raw.length || raw[at] != slot.char) return null
+                    at++
+                }
+            }
+        }
+        return if (at == raw.length) runs else null
+    }
+
+    /** Two values of this pattern around the literal [separator], as a range is written. */
+    fun around(separator: String): FormatPattern =
+        FormatPattern(slots + separator.map { FormatSlot.Literal(it) } + slots, components + components)
 }
 
 /**
@@ -605,9 +646,8 @@ private fun dateFragment(format: String): Pair<String, List<Char>>? {
  * declared format. The time components default to 0 when the format omits them (a date-only datetime).
  */
 fun parseDateTimeToIso(raw: String, format: String): String? {
-    val (frag, comps) = dateTimeFragment(format) ?: return null
-    val m = Regex("^$frag$").matchEntire(raw) ?: return null
-    return buildIsoDateTime(m.groupValues.drop(1), comps)
+    val pattern = dateTimeFragment(format) ?: return null
+    return buildIsoDateTime(pattern.capture(raw) ?: return null, pattern.components)
 }
 
 /**
@@ -633,11 +673,12 @@ fun parseDeclaredDateTime(raw: String, format: String): String? =
  * formal check (a malformed TIME resolves to `Val.Unknown` and emits the kernel's `datumFormatFalsch`).
  */
 fun parseTimeToIso(raw: String, format: String): String? {
-    val (frag, comps) = dateTimeFragment(format) ?: return null
+    val pattern = dateTimeFragment(format) ?: return null
+    val comps = pattern.components
     if (comps.any { it == 'y' || it == 'M' || it == 'd' }) return null
-    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    val g = pattern.capture(raw) ?: return null
     var h = 0; var mi = 0; var s = 0
-    comps.forEachIndexed { i, c -> val v = m.groupValues[i + 1].toInt(); when (c) { 'H' -> h = v; 'm' -> mi = v; 's' -> s = v } }
+    comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'H' -> h = v; 'm' -> mi = v; 's' -> s = v } }
     if (h > 23 || mi > 59 || s > 59) return null
     return two(h) + ":" + two(mi) + ":" + two(s)
 }
@@ -648,8 +689,8 @@ fun parseTimeToIso(raw: String, format: String): String? {
  * `yyyy-MM-dd'T'HH:mm:ss` format matches a rendered `2024-06-01T12:30:00` (no quotes in the value). Null
  * if [format] carries no date/time component.
  */
-private fun dateTimeFragment(format: String): Pair<String, List<Char>>? {
-    val sb = StringBuilder()
+internal fun dateTimeFragment(format: String): FormatPattern? {
+    val slots = mutableListOf<FormatSlot>()
     val comps = mutableListOf<Char>()
     var i = 0
     while (i < format.length) {
@@ -658,19 +699,19 @@ private fun dateTimeFragment(format: String): Pair<String, List<Char>>? {
             c == 'y' || c == 'M' || c == 'd' || c == 'H' || c == 'm' || c == 's' -> {
                 var j = i
                 while (j < format.length && format[j] == c) j++
-                sb.append("(\\d{").append(j - i).append("})")
+                slots += FormatSlot.Digits(j - i)
                 comps.add(c)
                 i = j
             }
             c == '\'' -> {                                   // a quoted literal section: 'T' → literal T, '' → '
                 i++
-                while (i < format.length && format[i] != '\'') { sb.append(Regex.escape(format[i].toString())); i++ }
+                while (i < format.length && format[i] != '\'') { slots += FormatSlot.Literal(format[i]); i++ }
                 if (i < format.length) i++                   // consume the closing quote
             }
-            else -> { sb.append(Regex.escape(c.toString())); i++ }
+            else -> { slots += FormatSlot.Literal(c); i++ }
         }
     }
-    return if (comps.isEmpty()) null else sb.toString() to comps
+    return if (comps.isEmpty()) null else FormatPattern(slots, comps)
 }
 
 /** Which classifier a DECLARED temporal format selects. */
@@ -689,9 +730,18 @@ internal enum class TemporalFormatShape { DATE, TIME, DATE_TIME }
  * already routed: it fails every parse, so each of its values is the format error either way.
  */
 internal fun temporalFormatShape(format: String): TemporalFormatShape {
-    val comps = dateTimeFragment(format)?.second ?: return TemporalFormatShape.DATE
-    val date = comps.any { it == 'y' || it == 'M' || it == 'd' }
-    val time = comps.any { it == 'H' || it == 'm' || it == 's' }
+    // The components [dateTimeFragment] reads, without building its pattern: this runs on every cell resolve.
+    var date = false
+    var time = false
+    var quoted = false
+    for (c in format) {
+        when {
+            c == '\'' -> quoted = !quoted
+            quoted -> Unit
+            c == 'y' || c == 'M' || c == 'd' -> date = true
+            c == 'H' || c == 'm' || c == 's' -> time = true
+        }
+    }
     return when {
         date && time -> TemporalFormatShape.DATE_TIME
         time -> TemporalFormatShape.TIME

@@ -51,6 +51,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 shift amount phase and provenance | — | `ShiftAmountPhaseDiffTest` | — |
 | §6 a first-filled Date stored in its target's format, whichever kind declares it | — | `FirstFilledDateTargetRenderingDiffTest`, `FirstFilledDateCrossKindTargetDiffTest` | `CrossKindTemporalStoreTest` |
 | §6 a dotted literal beside a first-filled Date compares as a date | — | `FirstFilledDateLiteralComparisonDiffTest` | `FirstFilledDateLiteralTest` |
+| §6 a declared temporal format matched as the regex it once compiled to | — | — | `FormatPatternRegexEquivalenceTest` |
 | §9 a keyed fill quantifier over a duplicated key decides nothing | — | `KeyedNotAllFieldsFilledDiffTest` | — |
 | §9 parallel validation availability, dispatch and frames | — | `ParallelValidationDispatchDiffTest` | `ParallelValidationDispatchTest` |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |
