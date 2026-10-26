@@ -685,9 +685,11 @@ fun parseTimeToIso(raw: String, format: String): String? {
 
 /**
  * Like [dateFragment] but also recognizes the time runs `H`/`m`/`s`, and treats a single-quoted section
- * `'…'` as a SimpleDateFormat-style literal (the quotes are delimiters, `''` is a literal quote) — so a
- * `yyyy-MM-dd'T'HH:mm:ss` format matches a rendered `2024-06-01T12:30:00` (no quotes in the value). Null
- * if [format] carries no date/time component.
+ * `'…'` as a literal whose quotes are delimiters — so a `yyyy-MM-dd'T'HH:mm:ss` format matches a rendered
+ * `2024-06-01T12:30:00` (no quotes in the value). A doubled `''` contributes nothing, where SimpleDateFormat
+ * would read a literal quote; that difference is unreachable, because A12 admits no format carrying `''` and
+ * its only quoted literal is ISO's `'T'` ([TEMPORAL-FORMAT-VOCABULARY](../../../../../../../../../../../docs/TEMPORAL-FORMAT-VOCABULARY.md)).
+ * Null if [format] carries no date/time component.
  */
 internal fun dateTimeFragment(format: String): FormatPattern? {
     val slots = mutableListOf<FormatSlot>()
@@ -703,7 +705,7 @@ internal fun dateTimeFragment(format: String): FormatPattern? {
                 comps.add(c)
                 i = j
             }
-            c == '\'' -> {                                   // a quoted literal section: 'T' → literal T, '' → '
+            c == '\'' -> {                                   // a quoted literal section: 'T' → literal T, '' → nothing
                 i++
                 while (i < format.length && format[i] != '\'') { slots += FormatSlot.Literal(format[i]); i++ }
                 if (i < format.length) i++                   // consume the closing quote

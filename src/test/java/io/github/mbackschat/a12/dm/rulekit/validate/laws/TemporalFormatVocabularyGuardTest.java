@@ -90,7 +90,13 @@ class TemporalFormatVocabularyGuardTest {
             "yy", "yyMM", "MMyy", "ddMMyy", "dd.MM.yy", "M", "d", "MMM", "MMMM",
             "yyyyMMddHHmmss", "yyyy-MM-ddHH:mm:ss", "yyyyMMdd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSS",
             "yyyyMMdd'T'HHmmss", "yyyyMMdd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss'Z'",
-            "yyyy/MM/dd HH:mm:ss", "MM/dd/yyyy HH:mm:ss");
+            "yyyy/MM/dd HH:mm:ss", "MM/dd/yyyy HH:mm:ss",
+            // The quoted-literal axis, which only the `'T'` and `'Z'` spellings above reach: a doubled `''` in
+            // every position, and a quoted literal other than the ISO `'T'`. Added 2026-10-26 because the
+            // interpreter's format reader treats `''` as empty text where SimpleDateFormat reads a quote, and
+            // that is harmless only while no admitted format carries one.
+            "yyyy-MM-dd''HH:mm:ss", "''yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss''", "yyyy''MM''dd", "HH''mm''ss",
+            "yyyy-MM-dd'T''HH:mm:ss", "yyyy-MM-dd'X'HH:mm:ss", "yyyy-MM-dd' 'HH:mm:ss", "'T'HH:mm:ss");
 
     private static final List<String> DATE_COMPONENTS = List.of("yyyy", "MM", "dd");
     private static final List<String> TIME_COMPONENTS = List.of("HH", "mm", "ss");

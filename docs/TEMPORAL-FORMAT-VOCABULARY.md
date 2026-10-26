@@ -28,7 +28,7 @@
 - `yyyyMM`
 - `yyyyMMdd`
 
-## Refused — 1210
+## Refused — 1237
 
 Refused on all three kinds. Listed because without them, "the gate reads the string" and
 "there is no gate" are the same observation.
@@ -68,6 +68,15 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 - `yyyy-MM-dd'T'HH:mm:ss'Z'`
 - `yyyy/MM/dd HH:mm:ss`
 - `MM/dd/yyyy HH:mm:ss`
+- `yyyy-MM-dd''HH:mm:ss`
+- `''yyyy-MM-dd`
+- `yyyy-MM-dd'T'HH:mm:ss''`
+- `yyyy''MM''dd`
+- `HH''mm''ss`
+- `yyyy-MM-dd'T''HH:mm:ss`
+- `yyyy-MM-dd'X'HH:mm:ss`
+- `yyyy-MM-dd' 'HH:mm:ss`
+- `'T'HH:mm:ss`
 - `yyyy.MM`
 - `yyyy.MM.dd`
 - `yyyy/MM/dd`
@@ -540,6 +549,24 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 - `YYYY/MM/DD HH:MM:SS`
 - `mm/dd/yyyy hh:mm:ss`
 - `MM/DD/YYYY HH:MM:SS`
+- `yyyy-mm-dd''hh:mm:ss`
+- `YYYY-MM-DD''HH:MM:SS`
+- `''yyyy-mm-dd`
+- `''YYYY-MM-DD`
+- `yyyy-mm-dd't'hh:mm:ss''`
+- `YYYY-MM-DD'T'HH:MM:SS''`
+- `yyyy''mm''dd`
+- `YYYY''MM''DD`
+- `hh''mm''ss`
+- `HH''MM''SS`
+- `yyyy-mm-dd't''hh:mm:ss`
+- `YYYY-MM-DD'T''HH:MM:SS`
+- `yyyy-mm-dd'x'hh:mm:ss`
+- `YYYY-MM-DD'X'HH:MM:SS`
+- `yyyy-mm-dd' 'hh:mm:ss`
+- `YYYY-MM-DD' 'HH:MM:SS`
+- `'t'hh:mm:ss`
+- `'T'HH:MM:SS`
 - `yyyy.mm`
 - `YYYY.MM`
 - `yyyymmdd`
@@ -1287,7 +1314,7 @@ makes it the kind where a narrower set is plausible. Probed over the same candid
 - `yyyyMM`
 - `yyyyMMdd`
 
-## Candidate universe — 1223
+## Candidate universe — 1250
 
 Every format string put to the kernel, and **the denominator of every count above.** It is the
 union of the estate's existing probes with a generated set: each ordered selection of the date
@@ -1344,6 +1371,15 @@ width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.
 - `yyyy-MM-dd'T'HH:mm:ss'Z'`
 - `yyyy/MM/dd HH:mm:ss`
 - `MM/dd/yyyy HH:mm:ss`
+- `yyyy-MM-dd''HH:mm:ss`
+- `''yyyy-MM-dd`
+- `yyyy-MM-dd'T'HH:mm:ss''`
+- `yyyy''MM''dd`
+- `HH''mm''ss`
+- `yyyy-MM-dd'T''HH:mm:ss`
+- `yyyy-MM-dd'X'HH:mm:ss`
+- `yyyy-MM-dd' 'HH:mm:ss`
+- `'T'HH:mm:ss`
 - `yyyy.MM`
 - `yyyyMMdd`
 - `yyyy.MM.dd`
@@ -1820,6 +1856,24 @@ width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.
 - `YYYY/MM/DD HH:MM:SS`
 - `mm/dd/yyyy hh:mm:ss`
 - `MM/DD/YYYY HH:MM:SS`
+- `yyyy-mm-dd''hh:mm:ss`
+- `YYYY-MM-DD''HH:MM:SS`
+- `''yyyy-mm-dd`
+- `''YYYY-MM-DD`
+- `yyyy-mm-dd't'hh:mm:ss''`
+- `YYYY-MM-DD'T'HH:MM:SS''`
+- `yyyy''mm''dd`
+- `YYYY''MM''DD`
+- `hh''mm''ss`
+- `HH''MM''SS`
+- `yyyy-mm-dd't''hh:mm:ss`
+- `YYYY-MM-DD'T''HH:MM:SS`
+- `yyyy-mm-dd'x'hh:mm:ss`
+- `YYYY-MM-DD'X'HH:MM:SS`
+- `yyyy-mm-dd' 'hh:mm:ss`
+- `YYYY-MM-DD' 'HH:MM:SS`
+- `'t'hh:mm:ss`
+- `'T'HH:MM:SS`
 - `yyyy.mm`
 - `YYYY.MM`
 - `yyyymmdd`
