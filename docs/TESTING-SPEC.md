@@ -471,6 +471,7 @@ These read the **real** model corpora to measure coverage; they skip when their 
 
 - **One file per operator family**; a new increment adds a *new* small file, it does not pile onto a monolith. `dsl/` keeps only the renderer/handle core; each family lives under `dsl/operators/`.
 - **`validate/` keeps only F4 mechanics**; the kernel-law locks live under `validate/laws/` (tier 1) and `adapter/…/laws/` (tier 2).
+- **Every source file has a line limit, soft and hard, and test code is held tighter than production code** (owner decision, 2026-10-26). The values and the shrink-only list of files already past the hard limit live in [`scripts/source-size-limits.json`](../scripts/source-size-limits.json), the one copy of them. `SourceFileSizeLimitGuardTest` (in `leakGuardTest`) fails a file past its hard limit and a listed file that grows, and makes each listed entry shrink with its file; the pre-commit hook names a staged file past its soft limit as a warning. Test code is tighter because a test file past the soft limit is almost always several families piled into one; split it rather than raise its entry.
 - **Fixtures load once** via the shared `Fixtures` util (`subscription()`/`order()`/…) — `BoundModel` is an immutable snapshot (F0), safe to share, so a new file costs a few lines.
 
 ## Test tiers — the fast default vs. the heavy perf/fuzz lanes

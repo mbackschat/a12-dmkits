@@ -5,6 +5,7 @@
 #   - one that leaves a derived doc regenerated but unstaged;
 #   - ANY commit, unless the repository-wide leak lane has run green since the newest staged change;
 #   - ANY commit, when any test run written since the newest staged change recorded a failure.
+# It also WARNS, without refusing, about a staged source file past its soft line limit (SOURCE SIZE below).
 #
 # BUILD OUTPUT. .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks
 # straight past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
@@ -315,6 +316,18 @@ If you are certain, `git commit --no-verify` bypasses this hook — TrackedOutpu
 the build, which is deliberate: a local bypass must not be able to make the repository wrong.
 MESSAGE
   refused=1
+fi
+
+# ---------------------------------------------------------------------------------------------------------
+# SOURCE SIZE. A warning, never a refusal: it names each staged source past its SOFT line limit while splitting
+# it is still a choice. The hard limit is SourceFileSizeLimitGuardTest's, in the leak lane this hook already
+# requires, and both read scripts/source-size-limits.json. Skipped where the launcher is absent (the hook's
+# selftests run it in fabricated repositories) or Node cannot start, since a warning must not block a commit.
+sources="$(printf '%s\n' "$staged" | grep -E '\.(java|kt|ts)$' || true)"
+if [ -n "$sources" ] && [ -x scripts/run-typescript.sh ]; then
+  # shellcheck disable=SC2086 # one staged path per word; tracked source paths carry no whitespace
+  scripts/run-typescript.sh source-size-warning scripts/typescript/source-size-warning.ts $sources \
+    || printf 'pre-commit: the source-size warning could not run; the hard limit is still enforced by leakGuardTest\n' >&2
 fi
 
 if [ -n "$refused" ]; then exit 1; fi

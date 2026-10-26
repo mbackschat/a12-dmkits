@@ -292,6 +292,9 @@ tasks.register('leakGuardTest', Test) {
     // task stores an entry on every build and "always runs" rests on undocumented restore behaviour.
     outputs.cacheIf { false }
     filter {
+        // Derived denominator: the subject is every tracked source, so a file created tomorrow is held to its
+        // line limit without anyone declaring it; the limits themselves live in scripts/source-size-limits.json.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.SourceFileSizeLimitGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
         // Derived denominator again: the accepted spelling is read off the EMITTER and the scan covers every
         // tracked checker source, so neither half is a list someone remembered. It rides here rather than in
