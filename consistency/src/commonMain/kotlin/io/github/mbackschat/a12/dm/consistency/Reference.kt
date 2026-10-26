@@ -437,8 +437,7 @@ internal fun TrackedFactBase.unstarredRepeatableLevels(
 internal fun TrackedFactBase.iteratesJointly(level: String, element: TrackedDeclaration): Boolean {
     val anchor = iterationAnchorOf(element) ?: return false
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val parallel = !anchor.scope.isAtOrBelow(level) && !level.isAtOrBelow(anchor.scope)
-    if (!parallel || !anchor.scope.isAtOrBelow(declaringGroup)) {
+    if (anchor.relationTo(level) != LevelRelation.PARALLEL || !anchor.scope.isAtOrBelow(declaringGroup)) {
         return false
     }
     val declared = declarationAt(level) ?: return false

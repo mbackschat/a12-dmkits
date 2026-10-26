@@ -202,7 +202,17 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
  * kind). The two coincide for a field and part company for a group, whose own index field never joins a
  * parallel level ([KERNEL-FINDINGS KF609], `adapter.laws.CheckerGroupErrorTargetAgreementTest`).
  */
-internal data class TargetAnchor(val scope: String, val indexChainFrom: String)
+internal data class TargetAnchor(val scope: String, val indexChainFrom: String) {
+    /** Where a repeatable [level] sits against [scope]: inside it, binding it (the scope or above it), or beside it. */
+    fun relationTo(level: String): LevelRelation = when {
+        level.startsWith("$scope/") -> LevelRelation.BELOW
+        scope.isAtOrBelow(level) -> LevelRelation.BOUND
+        else -> LevelRelation.PARALLEL
+    }
+}
+
+/** The three places a repeatable level can sit against a [TargetAnchor]'s scope. */
+internal enum class LevelRelation { BELOW, BOUND, PARALLEL }
 
 /** The [TargetAnchor] of [target], or null when it is neither a field nor a group. */
 internal fun TrackedFactBase.anchorOf(target: String): TargetAnchor? {
@@ -264,11 +274,13 @@ internal fun TrackedFactBase.levelClassOf(
             // A keyed level below a starred one was never measured, so the walk says nothing past it.
             level.path == pinned -> if (wildcardSeen) return null
             wildcardSeen -> return NO_WILDCARD
-            level.path.startsWith("${anchor.scope}/") -> return NO_WILDCARD
-            anchor.scope.isAtOrBelow(level.path) -> Unit
-            else -> when (val verdict = parallelVerdictOf(level, anchor)) {
-                is ParallelVerdict.Refused -> return verdict.code.takeUnless { isGroup && it !in GROUP_PARALLEL_CLASSES }
-                ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
+            else -> when (anchor.relationTo(level.path)) {
+                LevelRelation.BELOW -> return NO_WILDCARD
+                LevelRelation.BOUND -> Unit
+                LevelRelation.PARALLEL -> when (val verdict = parallelVerdictOf(level, anchor)) {
+                    is ParallelVerdict.Refused -> return verdict.code.takeUnless { isGroup && it !in GROUP_PARALLEL_CLASSES }
+                    ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
+                }
             }
         }
     }
@@ -284,8 +296,11 @@ internal fun TrackedFactBase.levelClassOf(
  */
 internal fun TrackedFactBase.readsOneRow(path: String, anchor: TargetAnchor): Boolean =
     repetitionsReachedBy(path).all { level ->
-        anchor.scope.isAtOrBelow(level.path) ||
-            !level.path.startsWith("${anchor.scope}/") && parallelVerdictOf(level, anchor) == ParallelVerdict.Joint
+        when (anchor.relationTo(level.path)) {
+            LevelRelation.BOUND -> true
+            LevelRelation.BELOW -> false
+            LevelRelation.PARALLEL -> parallelVerdictOf(level, anchor) == ParallelVerdict.Joint
+        }
     }
 
 private const val NO_WILDCARD = "MVK_NO_WILDCARD"

@@ -248,13 +248,12 @@ internal fun TrackedFactBase.markedLevelsOf(
             wildcardSeen = true
             return@forEach
         }
-        when {
-            wildcardSeen -> return null
-            level.path.startsWith("${anchor.scope}/") -> return null
-            anchor.scope.isAtOrBelow(level.path) ->
-                indexFieldNameOf(level)?.let { onTargetPath += level.path }
-            parallelVerdictOf(level, anchor) == ParallelVerdict.Joint -> joint += level.path
-            else -> return null
+        if (wildcardSeen) return null
+        when (anchor.relationTo(level.path)) {
+            LevelRelation.BELOW -> return null
+            LevelRelation.BOUND -> indexFieldNameOf(level)?.let { onTargetPath += level.path }
+            LevelRelation.PARALLEL ->
+                if (parallelVerdictOf(level, anchor) == ParallelVerdict.Joint) joint += level.path else return null
         }
     }
     return MarkedLevels(joint, joint + onTargetPath)
