@@ -75,31 +75,21 @@ private fun TrackedFactBase.rangeDefect(
     if (call.operands.size != RANGE_ARITY) {
         return null
     }
-    val read = operandSpec(call.operands[0], declaringGroup, element, call.inAFilterBody) ?: return null
-    val (written, _, category) = read
-    val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
-    val declared = declarationAt(target) ?: return null
-    val starred = '*' in written
-    if (declared.declaredKind == DeclaredKind.GROUP) {
-        // A repeatable group, starred or not: one nothing addresses is the reference reader's `MVK_NO_WILDCARD`,
-        // which [addressedTargetOf] has already stood down for (KERNEL-FINDINGS KF599).
-        return SubstringDefect("MVK_NO_GROUPS_ALLOWED", "cuts `$target`, which is a group — cut one field of it")
-    }
-    if (declared.declaredKind != DeclaredKind.FIELD) {
-        return null
-    }
-    if (starred) {
-        return SubstringDefect(
+    val read = soleFieldReadOf(call.operands[0], declaringGroup, element, call.inAFilterBody) ?: return null
+    val target = read.target
+    val declared = when (read) {
+        is SoleFieldRead.Group ->
+            return SubstringDefect("MVK_NO_GROUPS_ALLOWED", "cuts `$target`, which is a group — cut one field of it")
+        is SoleFieldRead.Starred -> return SubstringDefect(
             "MVK_NO_WILDCARDS_ALLOWED",
             "cuts `$target` through a repetition star, and it cuts a single value — let the rule iterate " +
                 "the repeating group instead",
         )
-    }
-    if (category != null) {
-        return SubstringDefect(
+        is SoleFieldRead.Categorized -> return SubstringDefect(
             "MVK_CATEGORY_NOT_ALLOWED",
-            "cuts the category `$category` of `$target`, and it cuts the field's own value",
+            "cuts the category `${read.category}` of `$target`, and it cuts the field's own value",
         )
+        is SoleFieldRead.Field -> read.declared
     }
     intervalDefect(call)?.let { return it }
     val type = effectiveFieldType(declared) ?: return null

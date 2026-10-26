@@ -79,36 +79,24 @@ private fun TrackedFactBase.valueAsDateDefect(
     if (call.operands.size != VALUE_AS_DATE_ARITY) {
         return null
     }
-    val read = operandSpec(call.operands[0], declaringGroup, element, call.inAFilterBody) ?: return null
-    val (written, _, category) = read
-    val target = addressedTargetOf(read, declaringGroup, element, call.inAFilterBody) ?: return null
-    val declared = declarationAt(target) ?: return null
-    val starred = '*' in written
-    if (declared.declaredKind == DeclaredKind.GROUP) {
-        // A repeatable group, starred or not: one nothing addresses is the reference reader's `MVK_NO_WILDCARD`,
-        // which [addressedTargetOf] has already stood down for (KERNEL-FINDINGS KF599).
-        return PartialDateDefect(
+    val read = soleFieldReadOf(call.operands[0], declaringGroup, element, call.inAFilterBody) ?: return null
+    val target = read.target
+    return when (read) {
+        is SoleFieldRead.Group -> PartialDateDefect(
             "MVK_NO_GROUPS_ALLOWED",
             "resolves `$target`, which is a group — name the partially known date field inside it",
         )
-    }
-    if (declared.declaredKind != DeclaredKind.FIELD) {
-        return null
-    }
-    if (starred) {
-        return PartialDateDefect(
+        is SoleFieldRead.Starred -> PartialDateDefect(
             "MVK_NO_WILDCARDS_ALLOWED",
             "resolves `$target` through a repetition star, and it resolves a single value — let the rule " +
                 "iterate the repeating group instead",
         )
-    }
-    if (category != null) {
-        return PartialDateDefect(
+        is SoleFieldRead.Categorized -> PartialDateDefect(
             "MVK_CATEGORY_NOT_ALLOWED",
-            "resolves the category `$category` of `$target`, and it resolves the field's own value",
+            "resolves the category `${read.category}` of `$target`, and it resolves the field's own value",
         )
+        is SoleFieldRead.Field -> partialDateDefect(read.declared, target)
     }
-    return partialDateDefect(declared, target)
 }
 
 /** The kind gate's own verdict: A12's `isDatePartialKnown`, read off the type the field is declared by. */

@@ -142,10 +142,7 @@ private fun TrackedFactBase.operandDefect(
             (operand.path ?: operand.base?.takeIf { operand.clauses.all { it.keyword == filter } })?.let { OperandReference(it) }
         } ?: return null
     }
-    val targets = reads.map { read ->
-        addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
-            ?: return null
-    }
+    val targets = addressedTargetsOf(reads, declaringGroup, element, call.inAFilterBody) ?: return null
     if (preEmptedBeforeTheSwitch(reads, targets)) {
         return null
     }

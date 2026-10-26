@@ -820,6 +820,14 @@ internal fun TrackedFactBase.addressedTargetOf(
 ): String? = addressedTargetOf(read.reference, declaringGroup, element, read.indexSelected,
     everyLevelAddressed = bodyAddresses(inAFilterBody, read.outerMarked))
 
+/** [addressedTargetOf] for each of [reads], in order, or null where any one is not addressed. */
+internal fun TrackedFactBase.addressedTargetsOf(
+    reads: List<OperandReference>,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+    inAFilterBody: Boolean,
+): List<String>? = reads.map { addressedTargetOf(it, declaringGroup, element, inAFilterBody) ?: return null }
+
 /**
  * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.
  *

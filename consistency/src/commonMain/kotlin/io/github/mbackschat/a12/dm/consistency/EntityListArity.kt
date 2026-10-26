@@ -164,10 +164,7 @@ private fun TrackedFactBase.arityFinding(
         } ?: return null
     }
     val written = reads.map { it.reference }
-    val targets = reads.map { read ->
-        addressedTargetOf(read, declaringGroup, element, call.inAFilterBody)
-            ?: return null
-    }
+    val targets = addressedTargetsOf(reads, declaringGroup, element, call.inAFilterBody) ?: return null
     if (entityListPreGateAnswers(reads, targets) || listGateAheadOfTheArmAnswers(call, declaringGroup, element)) {
         return null
     }
