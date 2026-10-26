@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.parse.A12Lexis
+import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
@@ -323,8 +324,8 @@ class DmInterpreter private constructor(
      * beside them. A level the iteration never bound counts as a wildcard (iteration is reference-driven, so the
      * declared group does not decide this), and the message reports at the default first repetition (IF268).
      * A parallel rule that also iterates an ordinary level is suppressed by a concrete joined coordinate; one that
-     * does not ignores the coordinates (KF544, KF621). Dispatch never widens operand relevance. Those rules are
-     * evaluated; of those, any reference to a field/group instance **not** in [relevant] resolves to
+     * does not ignores the coordinates (KF544, KF621). Dispatch never widens operand relevance. In the rules it
+     * selects, any reference to a field/group instance **not** in [relevant] resolves to
      * `Val.Unknown`, so the existing 3VL produces the kernel's exact suppression — `true And Unknown`
      * suppresses, `true Or Unknown` still fires (the "no possible value could prevent the error" clause is
      * just Kleene logic). The auto-generated checks (formal/mandatory/unique) are likewise gated by their
@@ -789,63 +790,21 @@ class DmInterpreter private constructor(
      * referencing it sees Val.Unknown (the 3VL propagates it). Every emitted message is gated by its error
      * field's relevance.
      */
-    private fun validateWith(stored: Document, locale: String, relevance: CallRelevance): ValidationOutcome {
-        val doc = callDocument(stored)
-        return observeCaches(doc) {
+    private fun validateWith(stored: Document, locale: String, relevance: CallRelevance): ValidationOutcome =
+        inCall(stored) { doc ->
+            val state = CallState(doc, locale, relevance)
+            val call = state.call
             val isRelevant = relevance.isRelevant
-            // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
-            // clean-empty index cell's S-value into a call-local view — before the generated checks and
-            // authored rules, never mutating the caller's document (the kernel's transient evaluation
-            // cache); a PARTIAL call does NOT stage and instead silently marks those cells unavailable
-            // (the `unavailable` seam of the formal-status cache below).
-            val indexDefaults = checks.eligibleIndexDefaults(doc)
-            val full = isRelevant === ALL_RELEVANT
-            val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults, indexDefaults.keys) else doc
-            val unavailable = if (full) emptySet() else indexDefaults.keys
-            // Computed on the STAGED document (the one every gate below consults), once per call (IG127.1).
-            val gateNeeded = checks.overRepetitionGateNeeded(call)
-            val valueAdmissions = ValueAdmissionCache(checks, locale, call, gateNeeded)
-            val dup = checks.duplicateIndexCells(call, valueAdmissions, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
-            lateinit var formalResults: FormalResultCache
-            val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-                AdmittedGroupContentIndex.build(model, call, isRelevant, relevance.groupRelevance, formalResults, paths)
-            }
-            formalResults = FormalResultCache(
-                checks,
-                locale,
-                dup,
-                unavailable,
-                { ctx, path -> admittedGroupContent.isFilled(ctx, path) },
-                valueAdmissions,
-            )
             // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
             // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
             // that degrades to unsupported per cell rather than crashing the whole validation.
             val unsupported = checks.customTypeUnsupported(call, isRelevant).toMutableList()
-            val messages = (checks.formalErrors(call, locale, isRelevant, formalResults, unsupported) +
-                    checks.mandatoryErrors(call, locale, isRelevant, formalResults, unsupported)
-                    + checks.uniquenessMessages(call, dup, locale, isRelevant)
+            val messages = (checks.formalErrors(call, locale, isRelevant, state.formalResults, unsupported) +
+                    checks.mandatoryErrors(call, locale, isRelevant, state.formalResults, unsupported)
+                    + checks.uniquenessMessages(call, state.dup, locale, isRelevant)
                     + checks.overRepetitionMessages(call, locale, ALL_RELEVANT,
-                        gateNeeded && relevance.structuralChecksEnabled)).toMutableList()
-            // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
-            // immutable here), and the EvalConfig is built once for the whole call.
-            val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
-                formalResults.invalidPointers()
-            }
-            val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
-                GroupPresenceIndex(admittedGroupContent, formallyIncorrect, relevance.groupRelevance)
-            }
-            val indexIdentityAdmitted: (String, List<Int>, String) -> Boolean = { path, reps, raw ->
-                isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
-            }
-            val pass = ValidationPass(call, doc, locale, isRelevant, dup,
-                validationConfig(
-                    relevance,
-                    indexIdentityAdmitted,
-                    relevance.groupExtents?.gate { path, reps -> groupPresence.state(path, reps) },
-                ) { path, reps -> groupPresence.state(path, reps) },
-                formalResults, { formallyIncorrect }, relevance.dispatch,
-                { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) }, groupPaths = model.groupPaths)
+                        state.gateNeeded && relevance.structuralChecksEnabled)).toMutableList()
+            val pass = state.pass()
             for (rule in model.rules) {
                 try {
                     // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -872,7 +831,6 @@ class DmInterpreter private constructor(
             }
             ValidationOutcome(messages, unsupported)
         }
-    }
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule eval` shape. [Verdict.FIRED] (a
@@ -883,12 +841,12 @@ class DmInterpreter private constructor(
     fun testRule(rulePath: String, doc: Document, locale: String = "en_US"): RuleResult {
         val rule = model.rules.firstOrNull { it.path == rulePath }
             ?: throw IllegalArgumentException("no such rule: $rulePath")
-        return evalRule(rule, callDocument(doc), locale)
+        return evalRule(rule, doc, locale)
     }
 
     /** Evaluate an injected, NON-stored candidate rule (the `model eval --condition/--field` shape). */
     fun evalCandidate(rule: RuleDef, doc: Document, locale: String = "en_US"): RuleResult =
-        evalRule(rule, callDocument(doc), locale)
+        evalRule(rule, doc, locale)
 
     /**
      * Run every computation over each row of its iteration scope and return each computed-field outcome
@@ -911,8 +869,7 @@ class DmInterpreter private constructor(
 
     /** Retain support observations without rerunning custom callbacks for a separate support audit. */
     fun computeWithSupport(stored: Document, locale: String = "en_US"): ComputationEvaluation = try {
-        val doc = callDocument(stored)
-        observeCaches(doc) {
+        inCall(stored) { doc ->
             val run = engine.computeRunWithSupport(doc, locale)
             ComputationEvaluation(run.results, run.unsupported)
         }
@@ -924,7 +881,7 @@ class DmInterpreter private constructor(
 
     /** One compute pass retaining the source-relative actions consumed by both application surfaces. */
     internal fun retainedComputations(stored: Document, locale: String = "en_US"): RetainedComputationRun =
-        callDocument(stored).let { doc -> observeCaches(doc) {
+        inCall(stored) { doc ->
             val run = engine.computeRun(doc, locale)
             val applications = run.results.mapNotNull { computed ->
                 val retain = when (computed.outcome) {
@@ -955,7 +912,7 @@ class DmInterpreter private constructor(
                 computedErrors = run.computedErrors,
                 unsupported = run.unsupported,
             )
-        } }
+        }
 
     /**
      * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
@@ -970,8 +927,7 @@ class DmInterpreter private constructor(
      */
     fun computeField(fieldPath: String, doc: Document, locale: String = "en_US"): List<Computed> {
         require(model.computations.any { it.targetPath == fieldPath }) { "no computation targets field: $fieldPath" }
-        val call = callDocument(doc)
-        return observeCaches(call) { engine.computeField(fieldPath, call, locale) }
+        return inCall(doc) { call -> engine.computeField(fieldPath, call, locale) }
     }
 
     /**
@@ -990,47 +946,12 @@ class DmInterpreter private constructor(
     fun applyComputations(doc: Document, locale: String = "en_US"): Document =
         retainedComputations(doc, locale).applyTo(doc)
 
-    private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
+    private fun evalRule(rule: RuleDef, stored: Document, locale: String): RuleResult = inCall(stored) { doc ->
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
-        // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
-        val indexDefaults = checks.eligibleIndexDefaults(doc)
-        val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults, indexDefaults.keys)
-        val valueAdmissions = ValueAdmissionCache(checks, locale, call, checks.overRepetitionGateNeeded(call))
-        val dup = checks.duplicateIndexCells(call, valueAdmissions)
-        val relevance = CallRelevance.FULL
-        lateinit var formalResults: FormalResultCache
-        val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-            AdmittedGroupContentIndex.build(model, call, relevance.isRelevant, relevance.groupRelevance, formalResults,
-                paths)
-        }
-        formalResults = FormalResultCache(
-            checks,
-            locale,
-            dup,
-            groupFilled = { ctx, path -> admittedGroupContent.isFilled(ctx, path) },
-            valueAdmissions = valueAdmissions,
-        )
-        val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
-            formalResults.invalidPointers()
-        }
-        val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
-            GroupPresenceIndex(admittedGroupContent, formallyIncorrect, relevance.groupRelevance)
-        }
-        val pass = ValidationPass(
-            call,
-            doc,
-            locale,
-            relevance.isRelevant,
-            dup,
-            validationConfig(relevance, formalResults::admitsIdentityAt, null) { path, reps -> groupPresence.state(path, reps) },
-            formalResults,
-            { formallyIncorrect },
-            messageIndexDefaults = { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) },
-            groupPaths = model.groupPaths,
-        )
+        val pass = CallState(doc, locale, CallRelevance.FULL).pass()
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
-            return@observeCaches RuleResult(rule.path, Verdict.FIRED, it.message)
+            return@inCall RuleResult(rule.path, Verdict.FIRED, it.message)
         }
         // No firing: a referenced field being formally invalid means the rule was NOT evaluated (the
         // kernel skips it) → SUPPRESSED, not PASSED. PASSED only when every row was cleanly evaluated.
@@ -1040,19 +961,70 @@ class DmInterpreter private constructor(
     }
 
     /**
-     * [stored] read under this interpreter's effective charset. A consumer may supply a charset the model does not
-     * declare, and every read of a stored value, a computation's star read included, must judge it by the same set
-     * the formal checks use (KERNEL-FINDINGS KF555).
+     * Run one call's [action] on [stored] read under this interpreter's effective charset, observing the caches it
+     * filled. A consumer may supply a charset the model does not declare, and every read of a stored value, a
+     * computation's star read included, must judge it by the same set the formal checks use (KERNEL-FINDINGS
+     * KF555), so every entry point reads the document through here.
      */
-    private fun callDocument(stored: Document): Document = stored.withLegalCharset(effectiveLegalCharset)
-
-    private inline fun <T> observeCaches(doc: Document, action: () -> T): T {
-        val observer = cacheObserver ?: return action()
+    private inline fun <T> inCall(stored: Document, action: (Document) -> T): T {
+        val doc = stored.withLegalCharset(effectiveLegalCharset)
+        val observer = cacheObserver ?: return action(doc)
         return try {
-            action()
+            action(doc)
         } finally {
             doc.observeCacheEntries(observer)
             parsedModel.observeCacheEntries(observer)
+        }
+    }
+
+    /**
+     * The per-call state a validation builds before its first check, shared by [validateWith] and the single-rule
+     * [evalRule]. The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible clean-empty
+     * index cell's S-value into a call-local view — before the generated checks and authored rules, never mutating
+     * the caller's document (the kernel's transient evaluation cache); a PARTIAL call does NOT stage and instead
+     * silently marks those cells unavailable (the `unavailable` seam of the formal-status cache).
+     *
+     * The [ValidationPass] is built by [pass], not here: its config asks the consumer's clock, which [validateWith]
+     * keeps after the generated checks.
+     */
+    private inner class CallState(private val doc: Document, private val locale: String,
+            private val relevance: CallRelevance) {
+        private val indexDefaults = checks.eligibleIndexDefaults(doc)
+        private val full = relevance.isRelevant === ALL_RELEVANT
+        val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults, indexDefaults.keys) else doc
+        // Computed on the STAGED document (the one every gate below consults), once per call (IG127.1).
+        val gateNeeded = checks.overRepetitionGateNeeded(call)
+        private val valueAdmissions = ValueAdmissionCache(checks, locale, call, gateNeeded)
+        // Computed ONCE: feeds both the uniqueIndex messages and the suppression.
+        val dup = checks.duplicateIndexCells(call, valueAdmissions, relevance.isRelevant)
+        val formalResults: FormalResultCache = FormalResultCache(
+            checks,
+            locale,
+            dup,
+            if (full) emptySet() else indexDefaults.keys,
+            { ctx, path -> admittedGroupContent.isFilled(ctx, path) },
+            valueAdmissions,
+        )
+        private val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
+            AdmittedGroupContentIndex.build(model, call, relevance.isRelevant, relevance.groupRelevance, formalResults,
+                paths)
+        }
+        // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
+        // immutable here), and the EvalConfig is built once for the whole call.
+        private val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) { formalResults.invalidPointers() }
+        private val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
+            GroupPresenceIndex(admittedGroupContent, formallyIncorrect, relevance.groupRelevance)
+        }
+
+        fun pass(): ValidationPass {
+            val presence: (String, List<Int>) -> GroupPresenceState = { path, reps -> groupPresence.state(path, reps) }
+            val indexIdentityAdmitted: (String, List<Int>, String) -> Boolean = { path, reps, raw ->
+                relevance.isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
+            }
+            return ValidationPass(call, doc, locale, relevance.isRelevant, dup,
+                validationConfig(relevance, indexIdentityAdmitted, relevance.groupExtents?.gate(presence), presence),
+                formalResults, { formallyIncorrect }, relevance.dispatch,
+                { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) }, groupPaths = model.groupPaths)
         }
     }
 
@@ -1143,9 +1115,9 @@ class DmInterpreter private constructor(
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
         val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
         val directMessageRefs = prepared.messageReferences
-        val selectedErrorReference = prepared.semanticErrorIndex?.let {
-            directMessageRefs.filterIsInstance<MessageReference.Selected>().first { it.path == errorPath }
-        }
+        val semanticErrorIndex = prepared.semanticErrorIndex
+        val selectedErrorReference = if (semanticErrorIndex == null) null
+            else directMessageRefs.filterIsInstance<MessageReference.Selected>().first { it.path == errorPath }
         fun errorPointer(ctx: EvalContext): A12PartiallyKnownMultiPointer {
             val repetitions = pass.doc.messageRepetitions(errorPath, ctx)
             val reference = selectedErrorReference ?: return pass.doc.messagePointer(errorPath, repetitions)
@@ -1169,8 +1141,10 @@ class DmInterpreter private constructor(
             pass.config.cellRelevant,
             pass::admitsIndexIdentity,
             validation = true,
-        ).map { iterationContext ->
-            prepared.semanticErrorIndex?.let { semanticIndex ->
+        ).let { contexts ->
+            if (semanticErrorIndex == null) contexts
+            else contexts.map { iterationContext ->
+                val semanticIndex = semanticErrorIndex
                 val selector = pass.interpreterFor(iterationContext, errorPath, rnuSeam)
                 val selectedGroup = nearestIndexFieldOf(model.indexFields, semanticIndex.path)
                     ?.let(::parentGroup)
@@ -1192,10 +1166,7 @@ class DmInterpreter private constructor(
                     }
                 }
                 pass.doc.contextFor(errorGroup, errorGroupReps)
-            } ?: iterationContext
-        }.let { contexts ->
-            if (prepared.semanticErrorIndex == null) contexts
-            else contexts.distinctBy { context -> context.repsOf(errorPath) }
+            }.distinctBy { context -> context.repsOf(errorPath) }
         }
         // The iteration half of the work tally, counted after the early returns above so an eliminated or
         // partial-skipped rule contributes the zero rows it actually evaluates (WorkLedger).
@@ -1355,7 +1326,7 @@ class DmInterpreter private constructor(
 
     /** A `Target For key` message argument as the selected reference its condition twin reads. */
     private fun selectedMessageReference(written: String, ruleGroup: String): MessageReference.Selected? {
-        val selected = io.github.mbackschat.a12.dm.interpreter.parse.parseExpression(written, ruleGroup, model.conditionLanguage)
+        val selected = parseExpression(written, ruleGroup, model.conditionLanguage)
             as? Expr.SemanticIndex ?: return null
         val indexField = nearestIndexFieldOf(model.indexFields, selected.path) ?: return null
         val key = selected.indexValue?.let(SelectedKey::Literal)
@@ -1471,7 +1442,7 @@ class DmInterpreter private constructor(
         }
     }
 
-    /** One shared production index for concrete-cell and bound-level rule-gate relevance. */
+    /** The production index answering a partial call's concrete-cell relevance. */
     private fun relevanceQueriesOf(relevant: Set<RelevantEntity>): EffectiveRelevanceIndex =
         EffectiveRelevanceIndex.build(model.globalFields, relevant)
 
@@ -1495,10 +1466,7 @@ class DmInterpreter private constructor(
         val fieldsByAncestor by lazy {
             val fields = HashMap<String, MutableList<String>>()
             for (field in model.fields) {
-                val parts = pathParts(field.path)
-                for (depth in 1 until parts.size) {
-                    fields.getOrPut("/" + parts.take(depth).joinToString("/")) { ArrayList() } += field.path
-                }
+                for (group in ancestorGroups(field.path)) fields.getOrPut(group) { ArrayList() } += field.path
             }
             fields
         }

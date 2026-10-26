@@ -177,7 +177,7 @@ class Interpreter(
 
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
-        if (c.presenceUnknown(path)) GroupPresenceState(false, false, GroupRelevance.NONE)
+        if (c.presenceUnknown(path)) GroupPresenceState(filled = false, erroneous = false, GroupRelevance.NONE)
         else config.groupPresence?.invoke(path, c.repsOf(path)) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
 
     /** The presence of a keyed group no row carries, asked at its unbound coordinate [repetitions]: empty, and
@@ -191,7 +191,7 @@ class Interpreter(
      *  reads as UNKNOWN (IF331). A keyed FIELD is not a group operand: the quantifiers read it as a cell before
      *  asking here, and the leaves, which A12 refuses it in (`MVK_NO_FIELDS_ALLOWED`), meet [pathOf]'s refusal. */
     private fun groupOperandPresence(arg: Expr): GroupPresenceState? =
-        if (arg is Expr.SemanticIndex && ctxOf(arg).declaredKind(arg.path) == null) when (val selection = keyedGroupSelection(arg)) {
+        if (isKeyedGroup(arg)) when (val selection = keyedGroupSelection(arg as Expr.SemanticIndex)) {
             is KeyedGroupSelection.Row -> groupPresence(selection.ctx, arg.path)
             is KeyedGroupSelection.Absent -> absentGroupPresence(arg.path, selection.repetitions)
             KeyedGroupSelection.Unavailable -> null
@@ -202,7 +202,7 @@ class Interpreter(
     internal fun ctxOf(node: Expr): EvalContext = when {
         node is Expr.Field && node.outer -> outerOrThrow()
         node is Expr.Star && node.outer -> outerOrThrow()
-        node is Expr.EntitySpec && entitySourceOuter(node.source) -> outerOrThrow()
+        node is Expr.EntitySpec && node.source.outer -> outerOrThrow()
         node is Expr.EnumCategory && node.outer -> outerOrThrow()
         node is Expr.SemanticIndex && node.outer -> outerOrThrow()
         else -> ctx
@@ -223,11 +223,6 @@ class Interpreter(
     private fun outerOrThrow(): EvalContext =
         outer ?: throw UnsupportedConstructException("a \$ outer-correlation reference is only valid inside a Having filter")
 
-    private fun entitySourceOuter(source: Expr.EntitySource): Boolean = when (source) {
-        is Expr.Field -> source.outer
-        is Expr.Star -> source.outer
-    }
-
     /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
     internal fun havingInterp(rc: EvalContext): Interpreter =
@@ -237,7 +232,7 @@ class Interpreter(
         }
 
     /** A sub-interpreter rooted at the row [rc] a keyed group operand selects, carrying the SAME config, gates and
-     *  `$` environment, so a bare-group consumer arm asked of it reads that row (IF340). It leaves the aggregate
+     *  `$` environment, so a bare-group consumer arm asked of it reads that row (IF340). It leaves the scope
      *  memo unset, which only costs a recomputation. */
     internal fun selectedRowInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer).also {
@@ -447,17 +442,9 @@ class Interpreter(
             // Two overloads share the Valid/Invalid keyword, disambiguated by arity: the date-construct form
             // `Valid(Date(...))` (1 arg) and the predefined-type form `Valid(field, "TypeName")` (2 args).
             PredicateOp.VALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = true)
-                else when (dateStatusOf(p.args.single())) {
-                    DateStatus.REAL -> Tri.TRUE
-                    DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.FALSE
-                    DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
-                }
+                else dateValidity(p.args.single(), expectValid = true)
             PredicateOp.INVALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = false)
-                else when (dateStatusOf(p.args.single())) {
-                    DateStatus.REAL -> Tri.FALSE
-                    DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
-                    DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
-                }
+                else dateValidity(p.args.single(), expectValid = false)
             // List quantifiers retain the row-evaluated gate upstream. Arbitrary full-validation filters use
             // deciding-prefix scans (KF512); ordinary and optimized correlations retain their operand tallies.
             // COMPUTE mode replaces the tally with the kernel's ordered SCAN so a read is order-observable and a
@@ -543,20 +530,25 @@ class Interpreter(
         // A filter or an outer read varies per row, so its tally is never shared; [invariantAggregateMemoKey] refuses the same.
         require(a.having == null && !a.outer) { "a filtered or outer star has no row-invariant fill scope: ${a.path}" }
         val memo = scopeMemo?.fillScopes ?: return plainFillScope(c, a, a.path)
-        val isGroup = c.declaredKind(a.path) == null
-        val groupPath = if (isGroup) a.path else a.path.substringBeforeLast('/')
-        val key = FillScopeMemoKey(a.path, a.bindDepth, c.scopePrefixOf(groupPath, a.bindDepth).toList())
-        return memo.getOrPut(key) { plainFillScope(c, a, a.path) }
+        return memo.getOrPut(FillScopeMemoKey(a.path, a.bindDepth, starScopePrefix(c, a))) { plainFillScope(c, a, a.path) }
+    }
+
+    /** The coordinates every row of [star]'s scope shares in [c], which key a row-invariant read of it. */
+    internal fun starScopePrefix(c: EvalContext, star: Expr.Star): List<Int> {
+        val groupPath = if (c.declaredKind(star.path) == null) star.path else star.path.substringBeforeLast('/')
+        return c.scopePrefixOf(groupPath, star.bindDepth).toList()
     }
 
     /** The tally's cell source in [c]: an [unavailableEmpty] cell, a required-empty one above all, is undecided
      *  rather than empty, so it lands in neither bucket (KERNEL-FINDINGS KF552). A missing declared slot is
      *  never required and stays an ordinary empty. */
     private fun availableCells(c: EvalContext): CellValueSource = CellValueSource { path, reps, stored ->
-        if (stored == null && unavailableEmpty(c.absentGroupRow(path.substringBeforeLast('/'), reps.dropLast(1)), path))
-            Val.Unknown
-        else stored
+        if (stored == null && unavailableEmptyAt(c, path, reps)) Val.Unknown else stored
     }
+
+    /** [unavailableEmpty] for the cell at [path] and [reps] in [c]'s document, its row present or not. */
+    private fun unavailableEmptyAt(c: EvalContext, path: String, reps: List<Int>): Boolean =
+        unavailableEmpty(c.absentGroupRow(path.substringBeforeLast('/'), reps.dropLast(1)), path)
 
     /**
      * A starred field list's fill tally under partial validation. A12 visits every DECLARED slot of the list, a
@@ -625,8 +617,7 @@ class Interpreter(
             for (rc in c.declaredStarRows(star.path, star.bindDepth)) {
                 if (!havingInterp(rc).keeps(having)) continue
                 when {
-                    rc.presenceUnknown(star.path) -> allFilled = false
-                    unavailableEmpty(rc, star.path) -> allFilled = false
+                    rc.presenceUnknown(star.path) || unavailableEmpty(rc, star.path) -> allFilled = false
                     !rc.filled(star.path) -> { allFilled = false; anyEmpty = true }
                     rc.field(star.path) is Val.Unknown -> allFilled = false
                 }
@@ -663,11 +654,8 @@ class Interpreter(
         else -> quantifierFires(op, fs.tInst, fs.fInst, fs.nInst)
     }
 
-    private fun scopePathOf(e: Expr): String = when (e) {
-        is Expr.Field -> e.path
-        is Expr.Star -> e.path
-        else -> throw UnsupportedConstructException("not a fill-scope operand: $e")
-    }
+    private fun scopePathOf(e: Expr): String =
+        (e as? Expr.EntitySource)?.path ?: throw UnsupportedConstructException("not a fill-scope operand: $e")
 
     /** SPEC-2026-10-10-02: arbitrary filters can fail after a deciding prefix; safe correlation
      * plans retain their indexed tally and partial validation retains its relevance-owned gates. */
@@ -723,8 +711,7 @@ class Interpreter(
                 else filteredRows(c, arg, pass.traversal)
                 for (row in rows) {
                     val state = when {
-                        row.presenceUnknown(arg.path) -> Tri.UNKNOWN
-                        unavailableEmpty(row, arg.path) -> Tri.UNKNOWN
+                        row.presenceUnknown(arg.path) || unavailableEmpty(row, arg.path) -> Tri.UNKNOWN
                         !row.filled(arg.path) -> Tri.FALSE
                         row.field(arg.path) is Val.Unknown -> Tri.UNKNOWN
                         else -> Tri.TRUE
@@ -761,24 +748,24 @@ class Interpreter(
         PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> Tri.of(scanFilled(args, FillPass.ANY).any { it })
         PredicateOp.NO_FIELD_FILLED -> Tri.of(scanFilled(args, FillPass.NONE).none { it })
         PredicateOp.ALL_FIELDS_FILLED -> Tri.of(scanFilled(args, FillPass.ALL).all { it })
-        PredicateOp.NOT_ALL_FIELDS_FILLED -> Tri.of(!scanFilled(args, FillPass.ALL).all { it })
-        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> {
-            var seen = 0
-            Tri.of(scanFilled(args, FillPass.SECOND).any { it && ++seen > 1 })
-        }
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> Tri.of(notAllFilled(args))
+        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> Tri.of(moreThanOneFilled(args))
         // The kernel's two-pass composition: TRUE when NONE is filled, else the more-than-one scan decides.
         PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED ->
-            if (scanFilled(args, FillPass.NONE).none { it }) Tri.TRUE
-            else {
-                var seen = 0
-                Tri.of(scanFilled(args, FillPass.SECOND).any { it && ++seen > 1 })
-            }
+            if (scanFilled(args, FillPass.NONE).none { it }) Tri.TRUE else Tri.of(moreThanOneFilled(args))
         // at-least-one filled AND not-all filled (kernel `entitiesNichtGemeinsamAngegeben`, two passes).
         PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED ->
-            if (scanFilled(args, FillPass.ANY).none { it }) Tri.FALSE
-            else Tri.of(!scanFilled(args, FillPass.ALL).all { it })
+            if (scanFilled(args, FillPass.ANY).none { it }) Tri.FALSE else Tri.of(notAllFilled(args))
         else -> throw UnsupportedConstructException("not a field-fill quantifier: $op")
     }
+
+    /** The second-filled scan, which stops at the second filled cell. */
+    private fun moreThanOneFilled(args: List<Expr>): Boolean {
+        var seen = 0
+        return scanFilled(args, FillPass.SECOND).any { it && ++seen > 1 }
+    }
+
+    private fun notAllFilled(args: List<Expr>): Boolean = !scanFilled(args, FillPass.ALL).all { it }
 
     /**
      * The lazy filled/empty cell stream of a fill quantifier's operands, in the kernel's read order — operands
@@ -860,8 +847,7 @@ class Interpreter(
      * (KERNEL-FINDINGS KF552), so only an index cell is asked. A missing declared slot is never unavailable.
      */
     private fun availableFilledOrPoison(c: EvalContext, cell: ScanCell): Boolean {
-        if (cell.baseState == CellState.EMPTY && cell.path in indexFields &&
-            unavailableEmpty(c.absentGroupRow(cell.path.substringBeforeLast('/'), cell.reps.dropLast(1)), cell.path))
+        if (cell.baseState == CellState.EMPTY && cell.path in indexFields && unavailableEmptyAt(c, cell.path, cell.reps))
             throw PoisonedReadException(cell.path)
         return filledOrPoison(cell)
     }
@@ -872,6 +858,13 @@ class Interpreter(
         CellState.INVALID -> throw PoisonedReadException(cell.path)
         CellState.FILLED -> true
         CellState.EMPTY -> false
+    }
+
+    /** `Valid(Date(...))` when [expectValid], else `Invalid(Date(...))`: complements, but a non-evaluable date is UNKNOWN to both. */
+    private fun dateValidity(arg: Expr, expectValid: Boolean): Tri = when (dateStatusOf(arg)) {
+        DateStatus.REAL -> Tri.of(expectValid)
+        DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.of(!expectValid)
+        DateStatus.NON_RELEVANT, DateStatus.MALFORMED -> Tri.UNKNOWN
     }
 
     /**
@@ -1075,11 +1068,13 @@ class Interpreter(
         // missing coordinate is an empty cell, adding to `f` and `n` alike. A filtered list reaches this tally only
         // for the operators that read `t` or `f == n`; the ones reading `t == n` or `f >= 1` take the declared fill
         // scope ([DECLARED_FILL_OPERATORS]). So the verdicts agree.
-        return when (val plan = correlationPlan(star)) {
-            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan, unavailableRows(star, plan))
-            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan, unavailableRows(star, plan))
-            null -> naiveStarQuantTally(star, group)
-        }
+        return correlationPlan(star)?.let { indexedTally(star, group, it) } ?: naiveStarQuantTally(star, group)
+    }
+
+    /** The indexed `(t, f, n)` of [star] under its keyed or ordered [plan]. */
+    private fun indexedTally(star: Expr.Star, group: String, plan: CorrelationPlan): Triple<Int, Int, Int> = when (plan) {
+        is KeyedCorrelationPlan -> hashJoinTally(star, group, plan, unavailableRows(star, plan))
+        is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan, unavailableRows(star, plan))
     }
 
     /**
@@ -1107,7 +1102,7 @@ class Interpreter(
      */
     private fun unavailableRows(star: Expr.Star, plan: CorrelationPlan): UnavailableRows {
         if (computeMode) return UnavailableRows.NONE
-        val fields = (listOf(star.path) + plan.innerFields).filter(emptyMayBeUnavailable)
+        val fields = columnsOf(star, plan).filter(emptyMayBeUnavailable)
         if (fields.isEmpty()) return UnavailableRows.NONE
         val group = star.path.substringBeforeLast('/')
         val scan = { UnavailableRows(filterCandidates(ctx, group, star.bindDepth).filter { row -> fields.any { unavailableEmpty(row, it) } }) }
@@ -1118,7 +1113,10 @@ class Interpreter(
 
     /** Whether the iterated row is itself one of [unavailableRows]: the cells are its own under a self-exclusion. */
     private fun ownRowUnavailable(star: Expr.Star, plan: CorrelationPlan): Boolean =
-        (listOf(star.path) + plan.innerFields).any { emptyMayBeUnavailable(it) && unavailableEmpty(ctx, it) }
+        columnsOf(star, plan).any { emptyMayBeUnavailable(it) && unavailableEmpty(ctx, it) }
+
+    /** The cells an indexed tally reads in each row: the starred column and the plan's join fields. */
+    private fun columnsOf(star: Expr.Star, plan: CorrelationPlan): List<String> = listOf(star.path) + plan.innerFields
 
     private fun orderedCorrelationSupported(plan: OrderedCorrelationPlan): Boolean {
         val innerKind = ctx.declaredKind(plan.innerField)
@@ -1147,7 +1145,12 @@ class Interpreter(
      * accepts, and 3-state-counts each kept row's star cell (present / empty / not-check-relevant).
      */
     private fun naiveStarQuantTally(star: Expr.Star, group: String): Triple<Int, Int, Int> =
-        keptTally(star, if (star.having == null) ctx.rowContexts(group, star.bindDepth) else filterCandidates(ctx, group, star.bindDepth))
+        keptTally(star, starCandidateRows(ctx, star, group))
+
+    /** The rows [star]'s filter judges in [c]: every row without a `Having`, else the filter's candidates. */
+    internal fun starCandidateRows(c: EvalContext, star: Expr.Star,
+            group: String = star.path.substringBeforeLast('/')): List<EvalContext> =
+        if (star.having == null) c.rowContexts(group, star.bindDepth) else filterCandidates(c, group, star.bindDepth)
 
     /** The `(t, f, n)` of the [rows] the star's filter keeps, each kept cell judged in three states. */
     private fun keptTally(star: Expr.Star, rows: List<EvalContext>): Triple<Int, Int, Int> {
@@ -1158,8 +1161,7 @@ class Interpreter(
             if (star.having != null && !havingInterp(rc).keeps(star.having)) continue
             n++
             when {
-                rc.presenceUnknown(star.path) -> {}
-                unavailableEmpty(rc, star.path) -> {}
+                rc.presenceUnknown(star.path) || unavailableEmpty(rc, star.path) -> {}
                 !rc.filled(star.path) -> f++
                 // filled-but-invalid, ROW-correct: the KEPT row's own cell (rc.field → resolveValue → Unknown,
                 // IF84) — the old `invalid(star.path)` resolved at the ENCLOSING rule row's reps, so a per-row
@@ -1195,11 +1197,7 @@ class Interpreter(
      */
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
         val group = star.path.substringBeforeLast('/')
-        val fast = when (val plan = correlationPlan(star)) {
-            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan, unavailableRows(star, plan))
-            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan, unavailableRows(star, plan))
-            null -> return null
-        }
+        val fast = indexedTally(star, group, correlationPlan(star) ?: return null)
         return fast to naiveStarQuantTally(star, group)
     }
 
@@ -1217,7 +1215,7 @@ class Interpreter(
         join: KeyedCorrelationPlan,
         unavailable: UnavailableRows,
     ): Triple<Int, Int, Int> {
-        val outerKey = join.outerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
+        val outerKey = join.outerFields.map { p -> gatedField(ctx, p) }
         if (outerKey.any { it is Val.Unknown }) return Triple(0, 0, 0)   // an Unknown outer value never matches
         var tally = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)[outerKey].toTally()
         if (unavailable.rows.isNotEmpty()) {
@@ -1225,7 +1223,7 @@ class Interpreter(
                 keptTally(star, unavailable.rows)
         }
         if (join.selfExcluded && ctx.evaluated && !(unavailable.rows.isNotEmpty() && ownRowUnavailable(star, join))) {
-            val outerInnerKey = join.innerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
+            val outerInnerKey = join.innerFields.map { p -> gatedField(ctx, p) }
             if (outerInnerKey == outerKey) {           // the outer row is in its own bucket → drop it
                 tally = subtractOwnContribution(star, tally)
             }
@@ -1240,7 +1238,7 @@ class Interpreter(
         plan: OrderedCorrelationPlan,
         unavailable: UnavailableRows,
     ): Triple<Int, Int, Int> {
-        val outer = if (invalid(ctx, plan.outerField)) Val.Unknown else ctx.field(plan.outerField)
+        val outer = gatedField(ctx, plan.outerField)
         if (outer is Val.Unknown) return Triple(0, 0, 0)
         var tally = ctx.orderedCorrelation(group, plan.innerField, star.path, star.bindDepth).tally(plan.op, outer)
         if (unavailable.rows.isNotEmpty()) {
@@ -1248,13 +1246,16 @@ class Interpreter(
                 keptTally(star, unavailable.rows)
         }
         if (plan.selfExcluded && ctx.evaluated && !(unavailable.rows.isNotEmpty() && ownRowUnavailable(star, plan))) {
-            val inner = if (invalid(ctx, plan.innerField)) Val.Unknown else ctx.field(plan.innerField)
+            val inner = gatedField(ctx, plan.innerField)
             if (inner !is Val.Unknown && orderedComparisonMatches(plan.op, inner, outer)) {
                 tally = subtractOwnContribution(star, tally)
             }
         }
         return tally
     }
+
+    /** The value at [path] in [c], `Unknown` when the cell is not check-relevant ([invalid]). */
+    internal fun gatedField(c: EvalContext, path: String): Val = if (invalid(c, path)) Val.Unknown else c.field(path)
 
     private fun subtractOwnContribution(star: Expr.Star, tally: Triple<Int, Int, Int>): Triple<Int, Int, Int> {
         var (trueCount, falseCount, rows) = tally
@@ -1609,9 +1610,8 @@ class Interpreter(
 
     /** The rows a starred operand keeps — every row when it carries no `Having`, else the rows its filter keeps. */
     private fun keptRowContexts(star: Expr.Star): List<EvalContext> {
-        val group = star.path.substringBeforeLast('/')
-        return if (star.having == null) ctxOf(star).rowContexts(group, star.bindDepth)
-            else filterCandidates(ctxOf(star), group, star.bindDepth).filter { rc -> havingInterp(rc).keeps(star.having) }
+        val rows = starCandidateRows(ctxOf(star), star)
+        return if (star.having == null) rows else rows.filter { rc -> havingInterp(rc).keeps(star.having) }
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct

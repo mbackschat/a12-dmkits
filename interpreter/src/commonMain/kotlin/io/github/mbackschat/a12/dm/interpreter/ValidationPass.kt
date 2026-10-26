@@ -23,7 +23,7 @@ internal val ALL_RELEVANT: Relevance = { _, _ -> true }
  * duplicate-index cells (computed once per call), the once-per-call [EvalConfig], and the per-call
  * formal-status memo — plus the per-row services derived from them ([interpreterFor], [formalErrorAt],
  * [firstSuppressor]). The rule loop, the `RepetitionNotUnique` emitter, and the row-outcome machinery all
- * hold the pass. It holds the call-invariant [AutoChecks] oracle; nothing calls back into [DmInterpreter].
+ * hold the pass. Nothing calls back into [DmInterpreter].
  */
 internal class ValidationPass(
     val doc: Document,
@@ -40,10 +40,10 @@ internal class ValidationPass(
     val config: EvalConfig,
     private val formalResults: FormalResultCache,
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
-    private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
+    private val formallyIncorrect: () -> Set<CustomConditionFieldPointer>,
     /** Partial only: the error fields' merged dispatch selectors ([PartialRuleDispatch]). Null in full validation. */
-    val dispatch: PartialRuleDispatch? = null,
-    messageIndexDefaults: () -> Map<Triple<String, List<Int>, String>, List<Int>> = { emptyMap() },
+    val dispatch: PartialRuleDispatch?,
+    messageIndexDefaults: () -> Map<Triple<String, List<Int>, String>, List<Int>>,
     /** The model's group paths, so a rule's per-row interpreter knows whether its error entity is a group. */
     private val groupPaths: Set<String>,
 ) {

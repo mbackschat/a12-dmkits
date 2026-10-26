@@ -52,11 +52,11 @@ private val DATE_TIME_PRODUCING_FUNCS = setOf(
     FunctionOp.DATE_TIME, FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS,
 )
 
-/** The min/max family — temporal when its operands are ([dateAggregate]/[producesTemporal]). */
-private val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE)
-
-/** The operators whose result is one of their operands' values, so their operands type it ([producesTemporal]). */
-private val OPERAND_TYPED_FUNCS = MIN_MAX_FUNCS + FunctionOp.FIRST_FILLED_VALUE
+/** The operators whose result is one of their operands' values, so their operands type it ([producesTemporal]):
+ *  the min/max family and `FirstFilledValue`, temporal when their operands are ([dateAggregate]). */
+private val OPERAND_TYPED_FUNCS = setOf(
+    FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE, FunctionOp.FIRST_FILLED_VALUE,
+)
 
 /** Starred readers whose result can be memoized by expression + aggregate-scope prefixes: each reads only the
  *  cells of its star scopes, and a cell's availability is the cell's own, never the evaluating row's. */
@@ -111,6 +111,11 @@ private fun Interpreter.starHasUnavailableEmpty(c: EvalContext, operand: Expr.St
  */
 private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, bindDepth: Int = -1): Boolean =
     path in indexFields && indexColumnOf(c, path, bindDepth).anyEmptyOrDuplicated
+
+/** Whether an unfiltered star's column makes its reader non-evaluable: an index column holding an empty or
+ *  duplicated cell ([indexOperandNonEvaluable]), or an [unavailableEmpty] cell ([starHasUnavailableEmpty]). */
+private fun Interpreter.starColumnNonEvaluable(c: EvalContext, star: Expr.Star): Boolean =
+    indexOperandNonEvaluable(c, star.path, star.bindDepth) || starHasUnavailableEmpty(c, star)
 
 /**
  * `NumberOfFilledGroups(...)`'s count over its group list, whatever mix of shapes it holds. Every operand
@@ -254,8 +259,7 @@ private fun Interpreter.filledFieldsCount(args: List<Expr>): Int? {
                 }
                 // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
                 // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
-                if (indexOperandNonEvaluable(ctx, arg.path, arg.bindDepth)) return null
-                if (starHasUnavailableEmpty(ctx, arg)) return null
+                if (starColumnNonEvaluable(ctx, arg)) return null
                 count += cells.size
             }
         }
@@ -312,10 +316,7 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     // A value read of a cell that is not check-relevant is unavailable in validation, and in a computation the
     // gate throws, which IS the poisoning read (IF85). It is judged in the reading context, so a `Having` filter
     // row judges ITS row's cell (IF319).
-    is Expr.Field -> when {
-        invalid(ctxOf(e), e.path) -> Val.Unknown
-        else -> ctxOf(e).field(e.path)
-    }
+    is Expr.Field -> gatedField(ctxOf(e), e.path)
     is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
     is Expr.Func -> evalFunc(e)
     is Expr.Arith -> evalArith(e)
@@ -463,7 +464,7 @@ private fun Interpreter.unmatchedKeyedCell(e: Expr.SemanticIndex): Val? =
 private fun Interpreter.unmatchedCoordinate(e: Expr.SemanticIndex): List<Int> {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    val keyedLevel = idx.trim('/').split('/').size - 2
+    val keyedLevel = pathParts(idx).size - 2
     return ctxOf(e).repsOf(e.path).toMutableList().also { it[keyedLevel] = UNKNOWN_REP }
 }
 
@@ -655,8 +656,7 @@ private fun Interpreter.indexFieldOf(fieldPath: String): String? = nearestIndexF
  * (tolerated by `validate`), not crashed.
  */
 private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(name)) {
-    ConstantOp.TODAY -> Val.Txt(clock?.today
-        ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
+    ConstantOp.TODAY -> Val.Txt(clockToday())
     ConstantOp.NOW -> Val.Txt(clockNow().first)
     // The kernel parse tree defaults BaseYear to NUMBER; date-only positions convert it explicitly. Comparisons
     // resolve it from the other operand in [evalCmpOperand], while [evalTemporal] supplies the date form.
@@ -683,10 +683,12 @@ internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
 
 /** The declared date format of a plain field operand, for typing a literal against it; null for anything else.
  *  A TIME field declared `dd.MM.yyyy` is a date operand too, so the format is read whatever the kind (KF211). */
-private fun Interpreter.declaredDateFormat(e: Expr): String? =
-    if (e is Expr.Field && ctxOf(e).temporalClassOf(e.path) == Kind.DATE) ctxOf(e).declaredTemporalFormatOf(e.path)
-        ?: ctxOf(e).dateFormatOf(e.path)
-    else null
+private fun Interpreter.declaredDateFormat(e: Expr): String? {
+    if (e !is Expr.Field) return null
+    val c = ctxOf(e)
+    return if (c.temporalClassOf(e.path) == Kind.DATE) c.declaredTemporalFormatOf(e.path) ?: c.dateFormatOf(e.path)
+        else null
+}
 
 /** The class a field's declared FORMAT selects, never its kind alone ([temporalClassifier], KF211). */
 private fun EvalContext.temporalClassOf(path: String): Kind? =
@@ -751,16 +753,19 @@ private const val DATE_TIME_LITERAL_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
  *  `FirstFilledValue` by their operands, so a literal beside a temporal one is a temporal literal; KF568,
  *  `adapter.laws.FirstFilledDateLiteralComparisonDiffTest`). */
 private fun Interpreter.producesTemporal(e: Expr): Boolean = when (e) {
-    is Expr.Field -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
+    is Expr.Field -> ctx.holdsTemporal(e.path)
     is Expr.Const -> ConstantOp.byName(e.name).let {
         it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR || it == ConstantOp.NOW
     }
     is Expr.Func -> FunctionOp.byName(e.name).let { op ->
         op in DATE_PRODUCING_FUNCS || op in DATE_TIME_PRODUCING_FUNCS || (op in OPERAND_TYPED_FUNCS && dateAggregate(e))
     }
-    is Expr.SemanticIndex -> ctx.temporalClassOf(e.path).let { it == Kind.DATE || it == Kind.DATE_TIME }
+    is Expr.SemanticIndex -> ctx.holdsTemporal(e.path)
     else -> false
 }
+
+private fun EvalContext.holdsTemporal(path: String): Boolean =
+    temporalClassOf(path).let { it == Kind.DATE || it == Kind.DATE_TIME }
 
 /**
  * Canonicalize a German temporal literal to ISO — the date-time spelling `dd.MM.yyyy'T'HH:mm:ss` through
@@ -1137,11 +1142,7 @@ private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?)
     if (op == FunctionOp.NUMBER_OF_FILLED_GROUPS && groupCountGate != null) return null
     val stars = f.args.map { it as? Expr.Star ?: return null }
     if (stars.any { it.having != null || it.outer }) return null
-    val scopes = stars.map { star ->
-        val context = ctxOf(star)
-        val groupPath = if (context.declaredKind(star.path) == null) star.path else star.path.substringBeforeLast('/')
-        context.scopePrefixOf(groupPath, star.bindDepth).toList()
-    }
+    val scopes = stars.map { star -> starScopePrefix(ctxOf(star), star) }
     return AggregateMemoKey(f, scopes)
 }
 
@@ -1237,10 +1238,8 @@ private fun Interpreter.countValueInFields(target: Val, operands: List<Expr>): I
         }
         when (arg) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
-                val group = arg.path.substringBeforeLast('/')
                 val having = arg.having
-                val rows = if (having == null) ctxOf(arg).rowContexts(group, arg.bindDepth)
-                    else filterCandidates(ctxOf(arg), group, arg.bindDepth)
+                val rows = starCandidateRows(ctxOf(arg), arg)
                 // A filtered list rides the SHARED one-kept-successor traversal — the sole filtered
                 // field-list owner (SPEC-2026-07-23-12 follow-up); the filter still drops the row first.
                 val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
@@ -1502,9 +1501,13 @@ private fun Interpreter.timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Va
         is Evaluated.Present -> evaluated.value
         is Evaluated.NoValue -> return evaluated.numericDefault()
     }
-    val m = TIME.matchEntire(value) ?: return Val.Unknown
-    return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
+    val (hours, minutes, seconds) = timeParts(value) ?: return Val.Unknown
+    return Val.Num(dec(pick(hours, minutes, seconds)))
 }
+
+/** The hours, minutes and seconds of a `HH:mm:ss` time-of-day, or null for any other text. */
+private fun timeParts(text: String): Triple<Int, Int, Int>? = TIME.matchEntire(text)?.groupValues
+    ?.let { Triple(it[1].toInt(), it[2].toInt(), it[3].toInt()) }
 
 /**
  * Whether a temporal constructor stops reading its arguments at the first formally invalid one. A computation does:
@@ -1609,16 +1612,8 @@ private fun Interpreter.extractedTimeComponent(
     extraction: Expr.Func,
     pick: (Int, Int, Int) -> Int,
 ): Evaluated<Int> = when (val source = evalTimeKeepingProvenance(extraction.args.single())) {
-    is Evaluated.Present -> TIME.matchEntire(source.value)
-        ?.let { match ->
-            Evaluated.Present(
-                pick(
-                    match.groupValues[1].toInt(),
-                    match.groupValues[2].toInt(),
-                    match.groupValues[3].toInt(),
-                ),
-            )
-        }
+    is Evaluated.Present -> timeParts(source.value)
+        ?.let { (hours, minutes, seconds) -> Evaluated.Present(pick(hours, minutes, seconds)) }
         ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     is Evaluated.NoValue -> source.asConstructionComponent()
 }
@@ -1786,8 +1781,7 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
         when (ConstantOp.byName(e.name)) {
             ConstantOp.NOW -> return Evaluated.Present(nowTemporalValue())
             ConstantOp.TODAY -> {
-                val today = clock?.today
-                    ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock")
+                val today = clockToday()
                 return clockReading(today, 0L)?.let { Evaluated.Present(it) }
                     ?: throw UnsupportedConstructException("EvalClock.today is not a real date in the model time zone: $today")
             }
@@ -1809,6 +1803,10 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
         else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
 }
+
+/** [EvalClock.today]'s proleptic date. */
+private fun Interpreter.clockToday(): String = clock?.today
+    ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock")
 
 /** [EvalClock.now]'s proleptic date-time and its millisecond remainder. */
 private fun Interpreter.clockNow(): Pair<String, Long> {
@@ -1834,10 +1832,11 @@ private fun Interpreter.nowTemporalValue(): TemporalValue {
  * temporal reading re-labels the same instant under the hybrid calendar; after the cutover the two labels agree.
  */
 private fun Interpreter.clockReading(prolepticText: String, millis: Long): TemporalValue? {
-    val local = if ('T' in prolepticText) epochSecond(prolepticText) else epochDay(prolepticText)?.times(86_400L)
+    val dateTime = 'T' in prolepticText
+    val local = if (dateTime) epochSecond(prolepticText) else epochDay(prolepticText)?.times(86_400L)
     val instant = local?.let { localToInstant(it, timeZone) } ?: return null
     val hybrid = isoFromCalendarInstant(instant, timeZone)
-    val text = if ('T' in prolepticText) hybrid else hybrid.substringBefore('T')
+    val text = if (dateTime) hybrid else dateOnly(hybrid)
     return TemporalValue(text, instant * 1_000L + millis)
 }
 
@@ -1877,8 +1876,7 @@ private fun Interpreter.evalTime(e: Expr): Evaluated<String> {
         return when (FunctionOp.byName(e.name)) {
             FunctionOp.TIME -> evaluateTimeConstruction(e.args)
             FunctionOp.TIME_FROM_DATE_TIME -> timePart(evalTemporal(e.args.single()))
-            FunctionOp.DATE_TIME, FunctionOp.ADD_DAYS, FunctionOp.ADD_HOURS,
-            FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> timePart(evalTemporal(e))
+            in TIME_CARRYING_SHIFTS -> timePart(evalTemporal(e))
             else -> timeLeaf(e)
         }
     }
@@ -2008,10 +2006,14 @@ private val TEMPORAL_EXTRACTORS = setOf(
     FunctionOp.HOURS_FROM_TIME, FunctionOp.MINUTES_FROM_TIME, FunctionOp.SECONDS_FROM_TIME,
 )
 
+/** The date-time producers whose time-of-day [evalTime] reads off their temporal value. */
+private val TIME_CARRYING_SHIFTS = setOf(
+    FunctionOp.DATE_TIME, FunctionOp.ADD_DAYS, FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS,
+)
+
 /** [evalTime] for a construction component, where a payload carrying missing provenance reads as empty. */
 private fun Interpreter.evalTimeKeepingProvenance(e: Expr): Evaluated<String> {
-    val shifted = e is Expr.Func && FunctionOp.byName(e.name) in setOf(FunctionOp.DATE_TIME, FunctionOp.ADD_DAYS,
-        FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS)
+    val shifted = e is Expr.Func && FunctionOp.byName(e.name) in TIME_CARRYING_SHIFTS
     if (!shifted) return evalTime(e)
     val value = evalTemporal(e)
     return if (value is Evaluated.Present && value.value.missing) Evaluated.NoValue(NoValueReason.NOT_GIVEN)
@@ -2263,12 +2265,11 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     is Expr.Field -> {
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
-            firstFilledContainedCells(c, if (cellRelevant == null) c.firstFilledContainedCells(operand.path)
-                else c.containedFieldCells(operand.path, declaredRange = false), walk)
+            firstFilledContainedCells(c, containedCellsOf(c, operand.path), walk)
         } else if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
-            firstFilledEmpty(c, operand.path, walk)
+            passOverEmptyCell(c, operand.path, walk)
         } else {
             FirstFilledStep.Stop(firstFilledSelection(c, operand.path, c.repsOf(operand.path), evalExpr(operand)))
         }
@@ -2288,7 +2289,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         if (outsideCoverage(operand.path, c.repsOf(operand.path))) {
             FirstFilledStep.Stop(Val.Unknown)
         } else if (!c.filled(operand.path)) {
-            firstFilledEmpty(c, operand.path, walk)
+            passOverEmptyCell(c, operand.path, walk)
         } else {
             FirstFilledStep.Stop(evalExpr(operand))
         }
@@ -2297,12 +2298,8 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
             when (val selection = keyedGroupSelection(operand)) {
-                is KeyedGroupSelection.Row -> firstFilledContainedCells(
-                    selection.ctx,
-                    if (cellRelevant == null) selection.ctx.firstFilledContainedCells(operand.path)
-                    else selection.ctx.containedFieldCells(operand.path, declaredRange = false),
-                    walk,
-                )
+                is KeyedGroupSelection.Row ->
+                    firstFilledContainedCells(selection.ctx, containedCellsOf(selection.ctx, operand.path), walk)
                 // every cell of a row no key selects is empty, so the walk passes it only if the coverage
                 // reaches all of them
                 is KeyedGroupSelection.Absent ->
@@ -2438,7 +2435,7 @@ private fun Interpreter.firstFilledStar(
                 continue
             }
         } else if (!row.filled(operand.path)) {
-            val step = firstFilledEmpty(row, operand.path, walk)
+            val step = passOverEmptyCell(row, operand.path, walk)
             if (step is FirstFilledStep.Stop) return step
             continue
         }
@@ -2451,9 +2448,14 @@ private fun Interpreter.firstFilledStar(
     return FirstFilledStep.Continue
 }
 
+/** The cells of the group at [path] a `FirstFilledValue` walk visits in [c]; a partial call lists them through
+ *  [EvalContext.containedFieldCells], whose every cell the coverage gate then judges. */
+private fun Interpreter.containedCellsOf(c: EvalContext, path: String) =
+    if (cellRelevant == null) c.firstFilledContainedCells(path) else c.containedFieldCells(path, declaredRange = false)
+
 /** An empty cell the walk passes over, unless it is not check-relevant (a required-empty field): A12 decides the
  *  walk there as unavailable rather than reading past it (KERNEL-FINDINGS KF552). */
-private fun Interpreter.firstFilledEmpty(c: EvalContext, path: String, walk: FirstFilledWalk): FirstFilledStep =
+private fun Interpreter.passOverEmptyCell(c: EvalContext, path: String, walk: FirstFilledWalk): FirstFilledStep =
     if (invalid(c, path)) FirstFilledStep.Stop(Val.Unknown)
     else {
         walk.fillable = true
@@ -2483,8 +2485,7 @@ private fun Interpreter.firstFilledEmpty(f: Expr.Func): Val =
 /** The declared kind of a `FirstFilledValue` entity, including expanded groups and projections. */
 private fun Interpreter.firstFilledKind(f: Expr.Func): Kind? = f.args.firstNotNullOfOrNull { a ->
     when (a) {
-        is Expr.Star -> firstFilledEntityKind(ctxOf(a), a.path)
-        is Expr.Field -> firstFilledEntityKind(ctxOf(a), a.path)
+        is Expr.EntitySource -> firstFilledEntityKind(ctxOf(a), a.path)
         is Expr.SemanticIndex -> firstFilledEntityKind(ctxOf(a), a.path)
         is Expr.EnumCategory -> Kind.STRING
         is Expr.EntitySpec -> if (a.category != null) Kind.STRING
@@ -2519,8 +2520,7 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
         // (`MinValue(<date group>) < "01.07.2026"` fired on both kernel strategies and returned false here).
         // Measured against both kernel strategies in `DateGroupExtremaDiffTest`; the kernel admits the shape
         // ([KF187]). IF287's class, and the fifth time the site disagreed with a sibling that was already right.
-        is Expr.Field -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
-        is Expr.Star -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
+        is Expr.EntitySource -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
         is Expr.SemanticIndex -> dateLike(ctx.declaredKind(a.path))
         else -> producesTemporal(a)
     }
@@ -2529,22 +2529,8 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
 /** The min/max empty-fold identity by operand kind: dates → no value; numbers → `0` (see [dateAggregate]). */
 private fun Interpreter.minMaxEmpty(f: Expr.Func): Val = if (dateAggregate(f)) Val.Unknown else Val.Num(DEC_ZERO)
 
-/**
- * Numeric operand-list Min/Max values. Date Min/Max use [aggregateTemporal], which preserves reason and basis.
- *
- * **A GROUP operand is REFUSED here rather than expanded, and the refusal has a measured kernel basis:** the
- * operand-list `Min`/`Max` draw `MVK_NO_GROUPS_ALLOWED` for a group operand in both repetition shapes, while their
- * `MinValue`/`MaxValue` siblings accept one ([KF187]). So there is no correct expansion semantics to implement —
- * the shape has no meaning to match — and widening this site "on symmetry" with `aggOperandVals` would invent one.
- *
- * It is refused **as a DEGRADE** rather than left to fail on its own, because a kernel refusal only bounds what a
- * *stored, validated* model can contain: `Expr` is public API, this module's parser accepts the shape in both the
- * bracketed and the bare spelling, and `dmtool rule eval --condition` evaluates an arbitrary condition with no MVK
- * pre-flight at all (the native binary has no kernel to pre-flight with). Measured before this guard existed, both
- * spellings escaped as `IllegalStateException: no kind declared`, which the degrade net does NOT catch — so one
- * refused shape typed into `rule eval` took the WHOLE evaluation down instead of failing its own rule.
- * `UnsupportedConstructException` is the one type that net catches. (`KernelRefusedShapeReachabilityTest`.)
- */
+/** Numeric operand-list Min/Max values. Date Min/Max use [aggregateTemporal], which preserves reason and basis; a
+ *  group operand never reaches here, refused at the dispatch by [refuseGroupOperandUnderMinMax]. */
 private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map(::evalExpr)
 
 /**
@@ -2650,8 +2636,7 @@ private fun Interpreter.starOperandVals(star: Expr.Star, traversal: FilterTraver
         // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the whole
         // aggregate non-evaluable — the kernel's `combineFeldListe` returns NICHT_PRUEF_REL on the first such
         // cell, so the referencing rule is suppressed (IF15/IF60 generalized to aggregates).
-        if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return listOf(Val.Unknown)
-        if (starHasUnavailableEmpty(ctx, star)) return listOf(Val.Unknown)
+        if (starColumnNonEvaluable(ctx, star)) return listOf(Val.Unknown)
         return ctx.star(star.path, star.bindDepth)
     }
     val vals = mutableListOf<Val>()
