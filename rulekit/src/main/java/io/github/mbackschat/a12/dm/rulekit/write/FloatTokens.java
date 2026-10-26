@@ -1,8 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.write;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,24 +33,41 @@ final class FloatTokens {
                 && value.decimalValue().scale() == 0 ? new Marked(value.decimalValue()) : null);
     }
 
-    /** A copy of [root] to serialize, each marked decimal written as a floating-point token. */
+    /**
+     * The tree to serialize: a copy of [root] with each marked decimal written as a floating-point token, or [root]
+     * itself when it holds none, which is the usual model and spares the copy.
+     */
     static JsonNode forWrite(JsonNode root) {
+        if (!holdsMarked(root)) {
+            return root;
+        }
         return replace(root.deepCopy(), value -> value instanceof Marked
                 ? JsonNodeFactory.instance.rawValueNode(new RawValue(value.decimalValue().toPlainString() + "E+0"))
                 : null);
     }
 
+    private static boolean holdsMarked(JsonNode node) {
+        if (node instanceof Marked) {
+            return true;
+        }
+        for (JsonNode child : node) {
+            if (holdsMarked(child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Replaces, in place, each descendant [replacement] maps to a node; a {@code null} result descends instead. */
     private static JsonNode replace(JsonNode root, Function<JsonNode, JsonNode> replacement) {
         if (root instanceof ObjectNode object) {
-            List<String> names = new ArrayList<>();
-            object.fieldNames().forEachRemaining(names::add);
-            for (String name : names) {
-                JsonNode replaced = replacement.apply(object.get(name));
+            // Replacing a member's value leaves the member set unchanged, so the live entries can be written.
+            for (Map.Entry<String, JsonNode> member : object.properties()) {
+                JsonNode replaced = replacement.apply(member.getValue());
                 if (replaced != null) {
-                    object.set(name, replaced);
+                    member.setValue(replaced);
                 } else {
-                    replace(object.get(name), replacement);
+                    replace(member.getValue(), replacement);
                 }
             }
         } else if (root instanceof ArrayNode array) {
