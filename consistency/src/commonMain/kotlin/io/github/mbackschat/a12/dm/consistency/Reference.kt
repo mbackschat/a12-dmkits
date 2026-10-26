@@ -914,7 +914,7 @@ internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
  */
 internal fun TrackedFactBase.waivesValueValidation(field: TrackedDeclaration): Boolean {
     val resolved = resolvedFieldTypeOf(field)?.takeIf { it.type == FieldType.STRING } ?: return false
-    val string = FieldType.STRING.bodyIn(resolved.declared) ?: return false
+    val string = resolved.body ?: return false
     return string.flag("noValueValidation") == true
 }
 
@@ -932,7 +932,7 @@ internal fun TrackedFactBase.effectiveFieldType(field: TrackedDeclaration): Fiel
  * (KERNEL-FINDINGS KF602, `adapter.laws.CheckerTypeDefinedSettingAgreementTest`).
  */
 internal fun TrackedFactBase.typeBodyOf(field: TrackedDeclaration, type: FieldType): JsonObject? =
-    resolvedFieldTypeOf(field)?.takeIf { it.type == type }?.let { type.bodyIn(it.declared) }
+    resolvedFieldTypeOf(field)?.takeIf { it.type == type }?.body
 
 /** The [BaseTypeClass] of [effectiveFieldType]. */
 internal fun TrackedFactBase.effectiveBaseTypeClass(field: TrackedDeclaration): BaseTypeClass? =

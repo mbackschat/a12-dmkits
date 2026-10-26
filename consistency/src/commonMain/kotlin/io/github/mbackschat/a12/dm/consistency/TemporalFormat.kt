@@ -96,7 +96,7 @@ private val DATE_RANGE_YEAR_INTERPRETATION = mapOf(FieldType.DATE_RANGE to "inte
 
 private fun ResolvedFieldType.member(members: Map<FieldType, String>): String? {
     val member = members[type] ?: return null
-    val carrier = type.bodyIn(declared) ?: return null
+    val carrier = body ?: return null
     return (carrier[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 

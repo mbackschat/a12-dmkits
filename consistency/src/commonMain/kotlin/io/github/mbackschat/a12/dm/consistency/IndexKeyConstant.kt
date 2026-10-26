@@ -25,7 +25,7 @@ import kotlinx.serialization.json.intOrNull
 internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, constant: String): Boolean? {
     val resolved = resolvedFieldTypeOf(field) ?: return null
     val type = resolved.type
-    val typeBody = type.bodyIn(resolved.declared)
+    val typeBody = resolved.body
     if (type == FieldType.STRING && typeBody.constrainsNoString()) {
         return true
     }

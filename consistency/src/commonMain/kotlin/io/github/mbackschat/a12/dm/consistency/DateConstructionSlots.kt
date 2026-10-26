@@ -458,12 +458,12 @@ private fun Slot.entityDefect(
     val target = model.addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed) ?: return null
     val field = model.declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     val resolved = model.resolvedFieldTypeOf(field) ?: return null
-    val declared = resolved.declared ?: return null
+    if (resolved.declared == null) return null
     return when (resolved.type) {
         // A string declaring no body declares no pattern, which the pattern gate refuses like any non-digit one.
-        FieldType.STRING -> stringDefect(FieldType.STRING.bodyIn(declared) ?: JsonObject(emptyMap()), written)
-        FieldType.NUMBER -> numberDefect(FieldType.NUMBER.bodyIn(declared) ?: return null, written)
-        FieldType.DATE -> dateDefect(FieldType.DATE.bodyIn(declared) ?: return null, written)
+        FieldType.STRING -> stringDefect(resolved.body ?: JsonObject(emptyMap()), written)
+        FieldType.NUMBER -> numberDefect(resolved.body ?: return null, written)
+        FieldType.DATE -> dateDefect(resolved.body ?: return null, written)
         else -> null
     }
 }

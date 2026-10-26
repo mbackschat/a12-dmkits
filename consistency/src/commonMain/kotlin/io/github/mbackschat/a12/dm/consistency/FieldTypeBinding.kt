@@ -348,7 +348,10 @@ internal fun DeclaredElement.boundTypeDefinitionId(): String? = boundTypeDefinit
  * `adapter.laws.CheckerOuterMarkedResidueAgreementTest`). Null where the definition does not resolve, or
  * defines another definition.
  */
-internal class ResolvedFieldType(val type: FieldType, val declared: JsonObject?)
+internal class ResolvedFieldType(val type: FieldType, val declared: JsonObject?) {
+    /** The body of [type] inside [declared]: where this type's own settings are read from. */
+    val body: JsonObject? get() = type.bodyIn(declared)
+}
 
 internal fun TrackedFactBase.resolvedFieldTypeOf(field: TrackedDeclaration): ResolvedFieldType? {
     val fieldType = field.declaredFieldType() ?: return null
