@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -323,6 +324,19 @@ class GroupEditorTest {
                 .message(Dsl.en(name + " must not be negative."), Dsl.de(name + " darf nicht negativ sein."))
                 .build());
         return f;
+    }
+
+    @Test
+    void aKeyedGroupOperandIsReachedRelativelyOffAnEditor() {
+        // The editor's relative firstFilledGroup had no keyed sibling, so a consumer selecting one row by its key
+        // had to drop to an absolute path on the bound model.
+        EditSession s = EditSession.read(DocumentModelDraft.named("policy-contacts").locale("en_US")
+                .rootGroup("Policy", p -> p.group("Contacts", c -> c.repeatable(3)
+                        .stringField("Phone", f -> { }).stringField("Kind", f -> { }).indexField("Kind")))
+                .build().toJson());
+
+        assertEquals(s.boundModel().firstFilledGroupFor("/Policy/Contacts", "HOME"),
+                s.group("/Policy").firstFilledGroupFor("Contacts", "HOME"));
     }
 
     /** A reusable address substructure built under {@code name}; returns the group ref. */

@@ -166,6 +166,14 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
         return session.boundModel().firstFilledGroup(child(relativeGroupPath));
     }
 
+    /**
+     * The row of a keyed group relative to this group that the literal semantic-index {@code indexValue} selects, as
+     * a {@code FirstFilledValue} operand (mirrors {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel#firstFilledGroupFor(String, String)}).
+     */
+    public FirstFilledOperand firstFilledGroupFor(String relativeGroupPath, String indexValue) {
+        return session.boundModel().firstFilledGroupFor(child(relativeGroupPath), indexValue);
+    }
+
     // --- fluent structure edits (forward to the session; chain) --------------------------------------
 
     /** Add a field to this group, then return this editor so edits chain. */
