@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
+import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
@@ -656,6 +657,10 @@ private fun TrackedFactBase.keyedReferenceIn(
     // operand unjudged, while a family reading through `referencesIn` got the path without its marker, so as an
     // unmarked operand addressed by the body (KERNEL-FINDINGS KF599).
     outerMarkedPathIn(text, conditionLanguage)?.let { return OperandReference(it, outerMarked = true) }
+    // `RuleGroup` reads as the declaring group spelled out, in every operand gate measured (KERNEL-FINDINGS KF611,
+    // `adapter.laws.CheckerRuleGroupOperandAgreementTest`). Matched on the authored text, because a quoted
+    // `'RuleGroup'` is a field of that name and reduces to the same path string.
+    if (isRuleContext(text.javaTrimmed(), conditionLanguage)) return OperandReference(declaringGroup)
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
     // A use is a NAME token spelling the keyword, and a token's text is a substring of its source.
     if (keyword !in text) return plain()

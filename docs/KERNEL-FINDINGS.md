@@ -14838,7 +14838,15 @@ A policy with repeatable `Claims` (`Amount`, `Note`, `Status`), a single `Holder
 | `Claims` | `NumberOfFilledFields(RuleGroup, Amount)` → `MVK_DUPLICATE_PARAM2`; `(RuleGroup, RuleGroup)` and `(RuleGroup, /Policy/Claims)` → `MVK_DUPLICATE_PARAM1` | the keyword and the spelled path are one entity |
 | `Policy` | `NumberOfFilledFields(RuleGroup)`, `NoFieldFilled(RuleGroup)` → `MVK_ROOT_GROUP_REFERENCED` | at the root it is the root group |
 
-*Locked by:* `adapter.laws.CheckerRuleGroupOperandAgreementTest` (every row, A12 pinned and the checker naming the same classes).
+*Added 2026-10-26: every other operand gate measured meets the keyword as its spelled group too.* Each row below draws exactly the class of the same condition with `RuleGroup` replaced by the declaring group's path. The second column is the separator: a type gate that sees the group's fields, or a single-field carrier that refuses a group.
+
+| rule at | condition → A12 | separates |
+|---|---|---|
+| `Claims` (a number beside two strings) | `FieldValuesNotUnique(RuleGroup)`, `FirstFilledValue(RuleGroup) == 'a'` → `MVK_VARYING_TYPES_NOT_ALLOWED`; `MaxValue(RuleGroup) > 0` → `MVK_NOT_SORTABLE`; `Sum(RuleGroup) > 0` → `MVK_NO_NUMBER`; `NumberOfDifferentValues(RuleGroup) > 0` → `MVK_NUMBER_AND_NON_NUMBER`; `AbsValue(RuleGroup) > 0` → `MVK_NO_GROUPS_ALLOWED` | the type gates read the group's fields |
+| `Holder` (two strings) | `MaxValue(RuleGroup)`, `MinValue(RuleGroup)` → `MVK_NOT_SORTABLE`; `Sum(RuleGroup)` → `MVK_NO_NUMBER`; `Length(RuleGroup)`, `FieldValueAsNumber(RuleGroup)`, `FieldFilled(RuleGroup)` → `MVK_NO_GROUPS_ALLOWED` | a single-field carrier refuses the group |
+| `Holder`, beside a field named `RuleGroup` | `FieldFilled(Name) And FieldFilled('RuleGroup')` → admitted; unquoted → `MVK_NO_GROUPS_ALLOWED` | only the unquoted keyword is the group; quoted, it names the field |
+
+*Locked by:* `adapter.laws.CheckerRuleGroupOperandAgreementTest` (every row, A12 pinned and the checker naming the same classes; `a12ReadsTheKeywordAsTheSpelledGroup` holds each operand-gate row to its spelled twin).
 
 ## §9 supplement — operand gates on seven shapes a12-kernel-lean's K22 checkpoint reached: a filtered operand's kind, a product sum's text twin, a rounded marked read in a filter, a `@From` scope its key is not in, a root beside its own category, a keyed group list, and a boolean in a value list (kernel `checkConsistency`, 2026-10-24) <a id="kf612"></a>
 

@@ -13613,17 +13613,19 @@
       }
     },
     "kf611": {
-      "sha256": "e78a3f57135312ba53bc3608cc0f7de0b1183dcc2a5fcb844ab27b50df15e9de",
+      "sha256": "788bc394d14f7a8a54e9d5ccc43765d5fed02bb7031560f122cbd5737afe872e",
       "task": "SS15",
       "scope": {
         "dmkits": [],
         "checker": [
-          "RuleGroup as a field-list operand in the iteration guard and the entity-list pre-gates"
+          "RuleGroup as a field-list operand in the iteration guard and the entity-list pre-gates",
+          "RuleGroup as any carrier's operand"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "A12's reading of RuleGroup in a field list"
+          "A12's reading of RuleGroup in a field list",
+          "A12's reading of RuleGroup as its spelled group"
         ],
         "interpreter": [],
         "dmtool-cli": [],
@@ -13639,11 +13641,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The iteration guard reads RuleGroup as the declaring group's path, and the entity-list pre-gates resolve a RuleGroup operand to that group for the root and duplicate tests.",
+          "basis": "The iteration guard reads RuleGroup as the declaring group's path, the entity-list pre-gates resolve a RuleGroup operand to that group for the root and duplicate tests, and the shared operand reduction gives every other operand gate that path.",
           "evidence": {
             "RuleGroup as a field-list operand in the iteration guard and the entity-list pre-gates": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#theCheckerNamesWhatA12Names",
               "witness": "The checker names A12's classes on every RuleGroup row."
+            },
+            "RuleGroup as any carrier's operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#aQuotedKeywordNamesTheFieldOfThatName",
+              "witness": "The shared operand reduction reads an unquoted RuleGroup as the declaring group's path, and a quoted one as the field."
             }
           }
         },
@@ -13664,6 +13670,10 @@
             "A12's reading of RuleGroup in a field list": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#a12AnswersEveryRowAsPinned",
               "witness": "A12 answers every row as the finding's table states."
+            },
+            "A12's reading of RuleGroup as its spelled group": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRuleGroupOperandAgreementTest.kt#a12ReadsTheKeywordAsTheSpelledGroup",
+              "witness": "Each operand-gate row draws the class of its spelled twin."
             }
           }
         },
