@@ -2351,7 +2351,10 @@ private fun Interpreter.firstFilledEntitySpec(
 
 /** Consume the identity-preserving descendant-cell stream supplied by [EvalContext]. This is the shared
  * implicit-wildcard mechanism used by every bare-group scan: repeatable levels below the authored group are
- * enumerated by the document context, rather than reconstructed as scalar AST paths. */
+ * enumerated by the document context, rather than reconstructed as scalar AST paths. In validation an empty cell
+ * that is not check-relevant, a required-empty field above all, decides the walk as unavailable, as it does on
+ * the field arm; a computation reads it as an ordinary empty (KERNEL-FINDINGS KF552,
+ * `RequiredEmptyFirstFilledGroupDiffTest`). */
 private fun Interpreter.firstFilledContainedCells(
     source: EvalContext,
     cells: Sequence<ScanCell>,
@@ -2361,20 +2364,16 @@ private fun Interpreter.firstFilledContainedCells(
     for (cell in cells) {
         visited = true
         if (outsideCoverage(cell.path, cell.reps)) return FirstFilledStep.Stop(Val.Unknown)
-        if (computeMode) {
-            if (!filledOrPoison(cell)) {
-                walk.fillable = true
-                continue
-            }
-        } else {
-            when (cell.baseState) {
-                CellState.EMPTY -> {
-                    walk.fillable = true
-                    continue
-                }
-                CellState.INVALID -> return FirstFilledStep.Stop(Val.Unknown)
-                CellState.FILLED -> Unit
-            }
+        val filled = if (computeMode) filledOrPoison(cell) else when (cell.baseState) {
+            CellState.EMPTY ->
+                if (emptyMayBeUnavailable(cell.path) && unavailableEmptyAt(source, cell.path, cell.reps)) return FirstFilledStep.Stop(Val.Unknown)
+                else false
+            CellState.INVALID -> return FirstFilledStep.Stop(Val.Unknown)
+            CellState.FILLED -> true
+        }
+        if (!filled) {
+            walk.fillable = true
+            continue
         }
         return FirstFilledStep.Stop(firstFilledSelection(source, cell.path, cell.reps, cell.value ?: Val.Unknown))
     }

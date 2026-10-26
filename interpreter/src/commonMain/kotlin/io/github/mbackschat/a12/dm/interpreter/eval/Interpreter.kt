@@ -547,7 +547,7 @@ class Interpreter(
     }
 
     /** [unavailableEmpty] for the cell at [path] and [reps] in [c]'s document, its row present or not. */
-    private fun unavailableEmptyAt(c: EvalContext, path: String, reps: List<Int>): Boolean =
+    internal fun unavailableEmptyAt(c: EvalContext, path: String, reps: List<Int>): Boolean =
         unavailableEmpty(c.absentGroupRow(path.substringBeforeLast('/'), reps.dropLast(1)), path)
 
     /**
