@@ -13,6 +13,10 @@ import java.util.Optional;
  * exponent does not. A JSON number binds when its value lies within {@code int}'s range, and then truncated toward
  * zero, so {@code 2024.7} is 2024. A Boolean, an object and an array never bind. This reader never refuses: a value
  * A12 cannot bind leaves A12 with no model, and the caller decides what that reads as.
+ *
+ * <p>It calls the JDK's own {@code Integer.parseInt} and {@code BigDecimal}, which is what A12 runs, so it does not
+ * take the Kotlin copy in {@code :consistency}: that one reimplements those calls for Node and would make this JVM
+ * reader a reimplementation of its own oracle.
  */
 sealed interface A12IntBinding {
 
