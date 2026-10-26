@@ -1705,6 +1705,29 @@ tasks.register('kernelProbe', JavaExec) {
     }
 }
 
+// The interpreter against the dynamic Kernel over the same request the probe reads (ProbeRequestDifferential);
+// its JVM is the probe's for the probe's reasons, so a request reconciles under one setting on both tools.
+def probeDifferentialUsage = 'usage: ./build.sh :adapter:probeDifferential -Prequest=<request.json>'
+tasks.register('probeDifferential', JavaExec) {
+    description = 'Compare the interpreter with the dynamic Kernel over one kernel-probe request; fail on any difference.'
+    group = 'measurement'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.mbackschat.a12.dm.adapter.laws.ProbeRequestDifferential'
+    // As kernelProbe: under -ea A12 cannot read back a message carrying -6 (KERNEL-FINDINGS kf607), and its
+    // consistency gate reads the JVM default zone (kf231).
+    enableAssertions = false
+    jvmArgs '-Duser.timezone=UTC'
+    args probeRequest.getOrElse('')
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    doFirst {
+        if (!probeRequest.isPresent()) {
+            throw new GradleException(probeDifferentialUsage)
+        }
+    }
+}
+
 // The conformance-corpus guards read the committed corpus tree (cases/** + shared models/**) at runtime — a
 // dedicated Test task with those files as ITS declared inputs (the docGuardTest pattern, docs/TESTING-SPEC) so a
 // case OR model edit re-runs ONLY them. Replays each case three ways (interpreter, groovy-dynamic, java-static) +

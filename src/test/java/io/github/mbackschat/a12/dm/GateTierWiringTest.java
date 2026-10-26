@@ -445,7 +445,7 @@ class GateTierWiringTest {
     @Test
     void theKernelProbeAndItsLockShareTheAssertionFreeSetting() throws IOException {
         String build = Files.readString(locate("adapter/build.gradle"));
-        for (String task : List.of("kernelProbe", "kernelProbeProductionAssertionsTest")) {
+        for (String task : List.of("kernelProbe", "kernelProbeProductionAssertionsTest", "probeDifferential")) {
             String block = taskBlock(build, "tasks.register('" + task + "'");
             assertTrue(block.contains("enableAssertions = false") && !block.contains("enableAssertions = true"),
                     task + " must declare enableAssertions = false, and only that");
@@ -598,17 +598,21 @@ class GateTierWiringTest {
     @Test
     void theKernelRuntimeProbeIsAMeasurementAndNotAGate() throws IOException {
         String adapterBuild = Files.readString(locate("adapter/build.gradle"));
-        String probe = taskBlock(adapterBuild, "tasks.register('kernelProbe', JavaExec)");
+        for (String task : List.of("kernelProbe", "probeDifferential")) {
+            String probe = taskBlock(adapterBuild, "tasks.register('" + task + "', JavaExec)");
 
-        assertFalse(probe.isEmpty(), "adapter must provide the kernel-runtime observation probe");
-        assertTrue(probe.contains("classpath = sourceSets.test.runtimeClasspath"),
-                "the probe must run off TEST source, so it cannot enter a published artifact or the native image");
-        assertTrue(probe.contains("group = 'measurement'"),
-                "the probe reports an observation; it asserts nothing and belongs in the measurement group");
-        assertTrue(probe.contains("outputs.upToDateWhen { false }") && probe.contains("outputs.cacheIf { false }"),
-                "an observation of the live kernel must never be restored from a previous run");
-        assertFalse(adapterBuild.contains("dependsOn 'kernelProbe'") || adapterBuild.contains("dependsOn kernelProbe"),
-                "no gate may depend on the probe: `check` would then run kernel Groovy codegen on every build");
+            assertFalse(probe.isEmpty(), "adapter must provide " + task);
+            assertTrue(probe.contains("classpath = sourceSets.test.runtimeClasspath"),
+                    task + " must run off TEST source, so it cannot enter a published artifact or the native image");
+            assertTrue(probe.contains("group = 'measurement'"),
+                    task + " reports an observation; it belongs in the measurement group");
+            assertTrue(probe.contains("outputs.upToDateWhen { false }") && probe.contains("outputs.cacheIf { false }"),
+                    task + ": an observation of the live kernel must never be restored from a previous run");
+            assertTrue(probe.contains("jvmArgs '-Duser.timezone=UTC'"),
+                    task + " must pin the zone A12's consistency gate reads (KERNEL-FINDINGS kf231)");
+            assertFalse(adapterBuild.contains("dependsOn '" + task + "'") || adapterBuild.contains("dependsOn " + task),
+                    "no gate may depend on " + task + ": `check` would then run kernel Groovy codegen on every build");
+        }
     }
 
     @Test

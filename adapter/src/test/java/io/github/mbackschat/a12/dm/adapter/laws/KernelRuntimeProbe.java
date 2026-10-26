@@ -846,8 +846,11 @@ public final class KernelRuntimeProbe {
         return KernelAdapter.ofJson(modelJson).dynamicEnumerations();
     }
 
-    /** The consistency gate — the same oracle {@code rule check} reports {@code KERNEL_CONFIRMED} from. */
-    private static void refuseInconsistentModel(Request request) {
+    /**
+     * The consistency gate — the same oracle {@code rule check} reports {@code KERNEL_CONFIRMED} from. Package
+     * visible because {@code ProbeRequestDifferential} evaluates the same requests and must refuse the same models.
+     */
+    static void refuseInconsistentModel(Request request) {
         List<String> errors = new KernelConsistencyOracle()
                 .checkConsistency(request.modelJson(), modelId -> null).stream()
                 .filter(notification -> notification.severity() == Severity.ERROR)

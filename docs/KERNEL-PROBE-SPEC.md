@@ -328,3 +328,13 @@ a12-dmkits owns kernel invocation, engine identity, and the artifact schema and 
 - **Not an authoring surface.** No inline rule or computation injection: that would be a second way to spell a rule beside the typed builder and `rule-add.schema.json`, and the probe's input is a finished model. A computation reaches the probe by being *in* the model, added with `dmtool computation add`, exactly as a rule does.
 - **Not a gate.** It asserts nothing, is absent from `check`, and its outputs are never cached.
 - **Not new semantics.** It reports what the kernel reports.
+
+## 8. Comparing the interpreter over a request
+
+`./build.sh :adapter:probeDifferential -Prequest=<request.json>` evaluates the same request on the interpreter and on the dynamic Kernel, and prints one verdict per row and call: `ok` with the counts compared, `DIFF` with each side's own lines per channel (`K>` A12, `I>` the interpreter), or `UNSUPPORTED` with the rules the interpreter declines. It fails on anything but `ok`. This is the check behind every "reconciled" in an a12-kernel-lean letter; the probe re-run (`kernelProbe`) is the other half, comparing their artifact with ours.
+
+- **One reading of a request.** It uses the probe's parser and the probe's consistency refusal, and runs under the probe's JVM setting (assertions off, `UTC`), so the two tools cannot read one request two ways. `GateTierWiringTest` locks the setting on both.
+- **What it compares.** `validateFull` on messages, computed outcomes, operand errors and authored message texts, and `validatePart` on messages for a row carrying `relevant`, through the same `DocumentDifferential` the differential tests use. Messages are compared in `en_US`, whatever the request's `locale`.
+- **What it refuses or names.** A request binding `customConditions` or `customFieldTypes` is refused before anything runs, since `DocumentDifferential` binds neither on the kernel side; compare such a request with the probe's artifact instead. An observed channel it does not compare (`computeResults`, `mandatoryInformation`, `dynamicEnumerations`, `repetitionIndexes`) is named on a `not compared:` line, never dropped silently.
+
+*(Locked by `adapter.laws.ProbeRequestDifferentialTest`: a clocked request agreeing on both calls, a disagreement's per-channel lines with an agreeing positive control, the binding refusal, and the named channel.)*
