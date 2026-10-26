@@ -892,7 +892,7 @@
       },
       "a12-kernel-lean": {
        "state": "OPEN",
-       "basis": "Not yet handed over.",
+       "basis": "Handed over in the 2026-10-26a letter (SHA-256 39d6489c), not yet receipted.",
        "evidence": {}
       }
      }
@@ -13709,7 +13709,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
+          "basis": "Handed over in the 2026-10-26a letter (SHA-256 39d6489c), not yet receipted.",
           "evidence": {}
         }
       }
