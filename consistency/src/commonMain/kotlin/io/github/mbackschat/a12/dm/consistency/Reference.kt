@@ -484,12 +484,7 @@ private fun indexFieldNameIn(body: JsonObject?): String? =
     (body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
 
 /** The type a field declares, or null where it declares none A12 does. */
-internal fun DeclaredElement.declaredFieldType(): FieldType? = declaredFieldTypeIn(body)
-
-/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
-internal fun TrackedDeclaration.declaredFieldType(): FieldType? = declaredFieldTypeIn(body)
-
-private fun declaredFieldTypeIn(body: JsonObject?): FieldType? =
+internal fun TrackedDeclaration.declaredFieldType(): FieldType? =
     (body?.get("fieldType") as? JsonObject)?.namedFieldType()
 
 /**
@@ -499,9 +494,6 @@ private fun declaredFieldTypeIn(body: JsonObject?): FieldType? =
  * declares as a coverage gap rather than reads — so a law over base types leaves such a field unjudged
  * rather than guessing at it.
  */
-internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = declaredFieldType()?.baseTypeClass
-
-/** The same reading through the read barrier — it rides [declaredFieldType], which already has both arms. */
 internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = declaredFieldType()?.baseTypeClass
 
 /**
@@ -635,7 +627,7 @@ internal data class OperandReference(
  * only where the whole text, brackets aside, is ONE index whose value is a bare spec, whose key is a bare spec
  * or a string, and which the semantic-index chain admits ([admitsSemanticIndex]); every other index-carrying
  * text yields. A family that dropped the key instead read the bare value, and on a level the rule iterates
- * named its own class where A12 names the key's. [anchoring] says which repetitions bind the level the key is
+ * named its own class where A12 names the key's. [inAFilterBody] says which repetitions bind the level the key is
  * read in; it has no default, because the declaring group's alone under-judges a key the error target binds.
  */
 internal fun TrackedFactBase.operandReferenceIn(
@@ -665,6 +657,8 @@ private fun TrackedFactBase.keyedReferenceIn(
     // unmarked operand addressed by the body (KERNEL-FINDINGS KF599).
     outerMarkedPathIn(text, conditionLanguage)?.let { return OperandReference(it, outerMarked = true) }
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
+    // A use is a NAME token spelling the keyword, and a token's text is a substring of its source.
+    if (keyword !in text) return plain()
     val inner = text.withoutEnclosingBrackets()
     val uses = semanticIndexUsesIn(inner, conditionLanguage, keyword)
     if (uses.isEmpty()) {

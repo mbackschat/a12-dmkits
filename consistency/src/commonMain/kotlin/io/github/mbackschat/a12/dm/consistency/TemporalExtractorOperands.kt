@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
-import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 
 /**
@@ -134,8 +133,9 @@ private class ExtractorOperandReader(
 
     /** The format A12 registers for a nested operation it admits, or null where this reader cannot say. */
     private fun operation(shape: CallShape): ExtractedFrom? = with(facts) {
-        val operands = shape.operands.map { operandOf(it, conditionLanguage, shape.source) }
         val inBody = shape.inAFilterBody(conditionLanguage)
+        val call = shape.asCall(conditionLanguage, inBody)
+        val operands = call.operands
         val format = when (identities[shape.operator]) {
             "DateFromDateTime", "TimeFromDateTime" -> {
                 // Where this family judges the inner stamp, a refusal is already reported at the inner call. The
@@ -156,7 +156,7 @@ private class ExtractorOperandReader(
                 STAMP_FORMAT.takeIf { operands.size == 2 && !(date is ExtractedFrom.Field && date.precision != null) }
             }
             "StartOfDateRange", "EndOfDateRange" -> endpointFormat(operands.singleOrNull() ?: return null, inBody)
-            else -> admittedShiftField(shape.asCall(conditionLanguage, inBody), group, element)
+            else -> admittedShiftField(call, group, element)
                 ?.let { temporalFormatOf(it) }
         } ?: return null
         ExtractedFrom.Computed(componentsOf(format))

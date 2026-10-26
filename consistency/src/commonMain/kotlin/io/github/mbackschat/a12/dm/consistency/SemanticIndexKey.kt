@@ -40,7 +40,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
-    val uses = semanticIndexUsesIn(execution.carrier.text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    val text = execution.carrier.text
+    val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.keywordAt }
     val group = element.path.substringBeforeLast('/')
     val anchor = (element.declaredReference()?.target as? Reference.Resolved)?.path?.let { anchorOf(it) }
     val iteration = entityContributions(element, EntityCheck.ADDRESS, execution) { entity, span ->
@@ -48,7 +49,7 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
         keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, anchor,
             element, span.member, entity.inFilter, span)
     }
-    val bodies = filterBodiesIn(execution.carrier.text, conditionLanguage)
+    val bodies by lazy { filterBodiesIn(text, conditionLanguage) }
     val fields = execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null
         val use = uses[site.start] ?: return@mapNotNull null

@@ -4,6 +4,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORD
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
+import io.github.mbackschat.a12.dm.consistency.syntax.PATTERN_COMPARISONS
+import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
 import kotlinx.serialization.json.JsonArray
@@ -62,16 +64,16 @@ private fun OperationAnalysis.comparisonFinding(
     val b = right.constant
     if (a != null && b != null && !constantGateAdmits(a, b)) return problem("MVK_INVALID_COMPARE_TO_CONST",
         "`${comparison.left}` and `${comparison.right}` are both written-out values, so the comparison decides nothing about the document — put a field on one side")
-    val customField = listOfNotNull(left.field, right.field).any { facts.effectiveFieldType(it) == FieldType.CUSTOM_FIELD }
+    val customField = left.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD ||
+        right.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD
     val words = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
-    val tolerance = listOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10")
-        .mapNotNull { words[it] }
+    val tolerance = TOLERANCE_COMPARISONS.mapNotNull { words[it] }
     if (operator in tolerance) {
         if (left.type == OperationType.Unknown || right.type == OperationType.Unknown) return null
         return if (left.numeric != null && right.numeric != null) null else problem("MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
             "`$operator` compares two numbers within a tolerance, and `${comparison.left}` / `${comparison.right}` are not both numbers — compare them with `==` or `!=` instead")
     }
-    if (operator == words["PatternMatched"] || operator == words["PatternViolated"]) {
+    if (PATTERN_COMPARISONS.any { operator == words[it] }) {
         if (customField) return null
         if (leftShape !is OperationShape.Read) return problem("MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON",
             "`$operator` reads one declaration's value against a pattern; put the field on the left and the pattern on the right")

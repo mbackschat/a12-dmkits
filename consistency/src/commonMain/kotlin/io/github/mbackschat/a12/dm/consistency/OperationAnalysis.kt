@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTIT
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.FieldValueRead
-import io.github.mbackschat.a12.dm.consistency.syntax.OperandClause
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
@@ -15,7 +14,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.inAFilterBody
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 
@@ -79,8 +77,8 @@ internal class OperationAnalysis(
     val text = carrier.text
     private val group = element.path.substringBeforeLast('/')
     private val identities = CONDITION_OPERATOR_IDENTITIES.getValue(facts.conditionLanguage)
-    /** Each text's `Having` bodies, read once however many shifts it holds. */
-    private val filterBodies = mutableMapOf<String, List<OperandClause>>()
+    /** The text's `Having` bodies, read once however many calls it holds: every shape here comes from [text]. */
+    private val filterBodies by lazy { filterBodiesIn(text, facts.conditionLanguage) }
     private val values = mutableMapOf<OperationShape, OperationValue>()
     val contributions = mutableListOf<ConditionFinding>()
     val findings: List<Finding> get() = contributions.map { it.finding }
@@ -135,7 +133,7 @@ internal class OperationAnalysis(
     fun admitScale(comparison: ConditionComparison) {
         val origin = carrier.at(comparison.start) ?: return
         val member = origin.member ?: return
-        if (!origin.authored && member.endsWith(".operation")) scaleAdmittedOperations += member
+        if (!origin.authored && isOperationMember(member)) scaleAdmittedOperations += member
     }
 
     fun finding(code: String, at: Int, end: Int, because: (String) -> String): Finding? {
@@ -271,7 +269,7 @@ internal class OperationAnalysis(
         fun fields(): List<OperationValue>? = with(facts) {
             shape.call.operands.flatMap { tokens ->
                 val written = shape.call.textOf(tokens)
-                val reference = operandReferenceIn(written, group, element, shape.call.inAFilterBody(conditionLanguage)) {
+                val reference = operandReferenceIn(written, group, element, inAFilterBody(shape.call)) {
                     operandOf(tokens, conditionLanguage, text).base
                         ?.let { OperandReference(it) }
                 } ?: return null
@@ -345,8 +343,7 @@ internal class OperationAnalysis(
      */
     private fun constructedRange(shape: OperationShape.Call): OperationValue = with(facts) {
         val endpoints = shape.call.operands.map { tokens ->
-            val reference = operandReferenceIn(shape.call.textOf(tokens), group, element,
-                shape.call.inAFilterBody(conditionLanguage)) {
+            val reference = operandReferenceIn(shape.call.textOf(tokens), group, element, inAFilterBody(shape.call)) {
                 operandOf(tokens, conditionLanguage, text).path?.let { OperandReference(it) }
             } ?: return UNKNOWN
             if (reference.indexSelected || reference.category != null) return UNKNOWN
@@ -381,10 +378,12 @@ internal class OperationAnalysis(
 
     /** The date [call] shifts, typed as its declared field, where A12 admits the shift and this reader judges it. */
     private fun shifted(call: CallShape): OperationValue = with(facts) {
-        val bodies = filterBodies.getOrPut(call.source) { filterBodiesIn(call.source, conditionLanguage) }
-        admittedShiftField(call.asCall(conditionLanguage, bodies.any { it.encloses(call.at, call.end) }), group, element)
+        admittedShiftField(call.asCall(conditionLanguage, inAFilterBody(call)), group, element)
             ?.let { field(it).derived() } ?: UNKNOWN
     }
+
+    /** Whether a `Having` body of [text] holds [call], over the bodies this analysis has already read. */
+    private fun inAFilterBody(call: CallShape): Boolean = filterBodies.any { it.encloses(call.at, call.end) }
 
     private fun numericAggregate(values: List<OperationValue>, product: Boolean = false): OperationValue {
         val numbers = values.map { it.numeric ?: return UNKNOWN }

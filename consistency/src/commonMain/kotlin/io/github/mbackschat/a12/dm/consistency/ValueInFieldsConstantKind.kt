@@ -286,16 +286,6 @@ private fun TrackedFactBase.typeWalkVerdict(
     return ListVerdict.Clean
 }
 
-/**
- * Whether one of the three gates ahead of the constant switch answers this list instead.
- *
- * Two of them are the shared pre-gates every entity list meets ([entityListPreGateAnswers]); the third is
- * this operator's own arity gate, which takes more than one field or one group.
- */
-private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
-    return entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
-}
-
 /** Which arm of the switch this constant takes, or null for a shape none of the four covers. */
 private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantArm? {
     val tokens = tokenize(constantText)

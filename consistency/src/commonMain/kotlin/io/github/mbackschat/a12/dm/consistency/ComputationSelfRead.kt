@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -73,7 +72,7 @@ internal fun TrackedFactBase.computationSelfReadContributions(element: TrackedDe
  */
 internal fun TrackedFactBase.operationsReadingTheirTarget(element: TrackedDeclaration): Set<String> =
     (selfReadsOf(element) as? SelfReads.Plain)?.reads.orEmpty()
-        .map { it.member }.filter { it.endsWith(".operation") }.toSet()
+        .map { it.member }.filter(::isOperationMember).toSet()
 
 /** What the self-read walk finds in one computation, or null where it does not judge the computation. */
 private sealed interface SelfReads {
@@ -90,20 +89,21 @@ private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads?
     if (element.declaredKind != DeclaredKind.COMPUTATION) return null
     val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
     val target = computedTargetOf(element) ?: return null
-    if (!scaleGateStandsAside(target, element)) return null
     val body = element.body ?: return null
     val texts = conditionTexts(element.kind, body)
     val group = element.path.substringBeforeLast('/')
+    // The scale gate answers ahead of both classes, but it can only take a verdict away, so it is asked once a
+    // read is found rather than of every computation: its probe is a whole operation analysis.
     texts.firstNotNullOfOrNull { (member, text) ->
         projectedSelfReadIn(text, target, group, element, operators[SEMANTIC_INDEX])
             ?.let { SelfReads.Projected(member, it) }
-    }?.let { return it }
+    }?.let { return it.takeIf { scaleGateStandsAside(target, element, body, texts) } }
     val unwalked = unguardedAmongSeveralAlternatives(body)
     val walked = texts.filter { (member, _) -> member !in unwalked }
     // A12 appends the common precondition to the first judged alternative's own precondition parts.
     val commonPosition = walked.firstNotNullOfOrNull { (member, _) -> alternativeIndexOf(member) }
         ?.let { alternativeWalkPosition(it, AlternativeStep.PRECONDITION) }
-    return SelfReads.Plain(target, walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }
+    val reads = walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }
         .flatMap { (member, text) ->
             val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
                 operators[AT_LEAST_ONE_GROUP_FILLED])
@@ -113,7 +113,8 @@ private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads?
                 .filter { readsTheTarget(it, target, group, element) }
                 .map { PlainSelfRead(member, it,
                     if (member == "commonPrecondition") checkNotNull(commonPosition) else walkPositionOf(member)) }
-        })
+        }
+    return if (reads.isNotEmpty() && scaleGateStandsAside(target, element, body, texts)) SelfReads.Plain(target, reads) else null
 }
 
 /** The operation members of the unguarded alternatives, when the computation has more than one alternative. */
@@ -121,7 +122,7 @@ internal fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
     val alternatives = (body["computationAlternatives"] as? JsonArray).orEmpty()
     if (alternatives.size < 2) return emptySet()
     return alternatives.withIndex()
-        .filter { (_, alternative) -> (alternative as? JsonObject)?.get("precondition").let { it == null || it is JsonNull } }
+        .filter { (_, alternative) -> (alternative as? JsonObject).lacksAPrecondition() }
         .map { "computationAlternatives[${it.index}].operation" }.toSet()
 }
 
@@ -140,17 +141,21 @@ private const val AT_LEAST_ONE_GROUP_FILLED = "AtLeastOneGroupFilled"
  * alternative before its calculation module walks any, so one undecided operation leaves the whole
  * computation to the gate ([KERNEL-FINDINGS KF181]).
  */
-private fun TrackedFactBase.scaleGateStandsAside(target: String, element: TrackedDeclaration): Boolean {
+private fun TrackedFactBase.scaleGateStandsAside(
+    target: String,
+    element: TrackedDeclaration,
+    body: JsonObject,
+    texts: List<Pair<String, String>>,
+): Boolean {
     val field = declarationAt(target, DeclaredKind.FIELD)
         ?: return false
     val declaredType = effectiveFieldType(field) ?: return false
     if (declaredType != FieldType.NUMBER) {
         return true
     }
-    val suppressed = element.body?.get("errorCodesToSuppress") as? JsonArray
-    if (suppressed != null && suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }) return true
-    val body = element.body ?: return false
-    val operations = conditionTexts(element.kind, body).map { it.first }.filter { it.endsWith(".operation") }
+    val suppressed = (body["errorCodesToSuppress"] as? JsonArray).orEmpty()
+    if (suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }) return true
+    val operations = texts.map { it.first }.filter(::isOperationMember)
     return operations.isNotEmpty() && operationsPassingTheScaleGate(element).containsAll(operations)
 }
 

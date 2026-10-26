@@ -88,6 +88,13 @@ internal fun TrackedFactBase.isALoneUnstarredField(reads: List<OperandReference>
     targets.size == 1 && '*' !in reads.first().reference &&
         declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
 
+/**
+ * Whether a gate ahead of an operator switch answers this list instead: the shared pre-gates every entity list
+ * meets ([entityListPreGateAnswers]), or the arity gate of an operator that takes more than one field or one group.
+ */
+internal fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean =
+    entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
+
 /** One entity-list arity law: what the operator's list must contain, and what it draws when it does not. */
 private enum class ArityLaw(val code: String, val wants: String, val kindFirst: DeclaredKind? = null) {
     EXACTLY_ONE("MVK_PARAMSIZE_INVALID1", "exactly one entity"),

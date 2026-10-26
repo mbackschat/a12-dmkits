@@ -165,8 +165,9 @@ private fun TrackedFactBase.markedBodyField(
 ): TrackedDeclaration? {
     if (!inAFilterBody) return null
     val marked = outerMarkedPathIn(rounded.text.withoutEnclosingBrackets(), conditionLanguage) ?: return null
+    // A marked read in a body is addressed by the rule's iteration, never by the filter chain's.
     val target = addressedTargetOf(marked, declaringGroup, element, indexSelected = false,
-        everyLevelAddressed = bodyAddresses(inAFilterBody, outerMarked = true)) ?: return null
+        everyLevelAddressed = false) ?: return null
     return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
 }
 

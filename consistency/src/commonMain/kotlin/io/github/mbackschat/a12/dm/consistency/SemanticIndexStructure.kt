@@ -55,6 +55,7 @@ internal fun TrackedFactBase.semanticIndexStructureContributions(element: Tracke
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
     val text = execution.carrier.text
     val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.keywordAt }
+    if (uses.isEmpty()) return emptyList()
     val bodies = filterBodiesIn(text, conditionLanguage)
     return execution.recognition.sites.filterIsInstance<SyntaxSite.Completion>().mapNotNull { site ->
         if (site.kind != SyntaxSite.Kind.INDEX) return@mapNotNull null

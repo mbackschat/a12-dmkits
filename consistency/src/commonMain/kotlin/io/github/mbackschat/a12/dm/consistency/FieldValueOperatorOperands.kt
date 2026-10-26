@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -188,7 +186,7 @@ private fun TrackedFactBase.conversionDefect(
             }
         }
         FieldType.ENUMERATION -> {
-            val values = convertibleValues(declared, category) ?: return null
+            val values = enumerationBodyOf(declared)?.lookupDomain(category) ?: return null
             val offending = values.firstOrNull { !it.readsAsANumber() } ?: return null
             refuse("declares the value `$offending`, which is not a number this conversion can read")
         }
@@ -196,24 +194,6 @@ private fun TrackedFactBase.conversionDefect(
             refuse("is declared `$type`, and the conversion takes a string or an enumeration only")
         else -> null
     }
-}
-
-/**
- * The values this conversion reads — the named category's own, or the enumeration's, as A12 chooses them.
- *
- * Null where the declaration is not the shape this reader knows, which leaves the call unjudged rather than
- * refusing on a reading.
- */
-private fun TrackedFactBase.convertibleValues(declared: TrackedDeclaration, category: String?): List<String>? {
-    val body = enumerationBodyOf(declared) ?: return null
-    if (category == null) {
-        return body.declaredEnumValues()
-    }
-    val entries = body["categories"] as? JsonArray ?: return null
-    val named = entries.filterIsInstance<JsonObject>()
-        .firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull == category } ?: return null
-    val values = named["values"] as? JsonArray ?: return null
-    return values.map { (it as? JsonPrimitive)?.takeIf { token -> token.isString }?.content ?: return null }
 }
 
 /**

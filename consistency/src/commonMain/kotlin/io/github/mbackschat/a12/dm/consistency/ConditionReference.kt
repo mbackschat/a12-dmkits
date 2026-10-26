@@ -168,6 +168,9 @@ internal fun walkPositionOf(member: String): Int =
         alternativeWalkPosition(index, if (key == "operation") AlternativeStep.OPERATION else AlternativeStep.PRECONDITION)
     } ?: 0
 
+/** Whether [member] is an alternative's `operation`, as [draftableMembers] names it. */
+internal fun isOperationMember(member: String): Boolean = member.endsWith(".operation")
+
 /** The steps A12's walk takes inside one alternative, in its order: the alternative's own gate first. */
 internal enum class AlternativeStep { GATE, OPERATION, PRECONDITION }
 

@@ -342,7 +342,7 @@ private fun TrackedFactBase.armIn(
 
 private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {
     val head = operand.firstOrNull() ?: return SlotArm.Unjudged
-    if (head.text == "$") {
+    if (head.text == OUTER_MARKER) {
         return when (val marked = armOf(operand.drop(1), emptyMap())) {
             is SlotArm.Entity -> marked.copy(outerMarked = true)
             is SlotArm.Starred -> marked.copy(outerMarked = true)

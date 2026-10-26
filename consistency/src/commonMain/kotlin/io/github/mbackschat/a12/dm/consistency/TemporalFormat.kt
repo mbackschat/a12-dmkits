@@ -79,7 +79,7 @@ internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
 
 /** The format this field's `DateRangeType` declares, or null when its type is not one. */
 internal fun TrackedFactBase.dateRangeFormatOf(field: TrackedDeclaration): String? =
-    resolvedFieldTypeOf(field)?.member(mapOf(FieldType.DATE_RANGE to "format"))
+    resolvedFieldTypeOf(field)?.member(DATE_RANGE_FORMAT)
 
 /**
  * The `interpretationOfYear` this field's `DateRangeType` declares, or null where it declares none.
@@ -88,7 +88,11 @@ internal fun TrackedFactBase.dateRangeFormatOf(field: TrackedDeclaration): Strin
  * the declaration expresses the default by omitting the property.
  */
 internal fun TrackedFactBase.rangeYearInterpretationOf(field: TrackedDeclaration): String? =
-    resolvedFieldTypeOf(field)?.member(mapOf(FieldType.DATE_RANGE to "interpretationOfYear"))
+    resolvedFieldTypeOf(field)?.member(DATE_RANGE_YEAR_INTERPRETATION)
+
+private val DATE_RANGE_FORMAT = mapOf(FieldType.DATE_RANGE to "format")
+
+private val DATE_RANGE_YEAR_INTERPRETATION = mapOf(FieldType.DATE_RANGE to "interpretationOfYear")
 
 private fun ResolvedFieldType.member(members: Map<FieldType, String>): String? {
     val member = members[type] ?: return null

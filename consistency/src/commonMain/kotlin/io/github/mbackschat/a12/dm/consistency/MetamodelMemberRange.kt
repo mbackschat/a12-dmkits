@@ -88,7 +88,13 @@ internal fun JsonObject.lengthMembers(admitsUndefined: Boolean): List<RangedMemb
         intMember(member)?.let { RangedMember("`$member` $it", it, MemberRange.length(admitsUndefined)) }
     }
 
-/** The length this member declares when A12 reads it as a bound at all, or null. */
+/**
+ * The length this member declares when A12 reads it as a bound at all, or null.
+ *
+ * `-1` is A12's `IFieldType.UNDEFINED`, so a model may spell "no bound" either by omitting the member or by
+ * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused. A member
+ * outside A12's metamodel range is no bound either: A12 refuses it on its own and judges nothing else with it.
+ */
 internal fun JsonObject.lengthInRange(member: String): Int? = intMember(member)?.takeIf { it in 1..TECHNICAL_LENGTH_LIMIT }
 
 private fun JsonObject.intMember(member: String): Int? = (this[member] as? JsonPrimitive)?.intOrNull

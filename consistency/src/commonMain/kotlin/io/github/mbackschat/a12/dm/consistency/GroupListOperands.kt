@@ -91,6 +91,9 @@ internal fun TrackedFactBase.groupListContributions(
     }
 }
 
+/** The one group-list carrier that refuses a keyed operand. */
+private const val GROUP_COUNT = "NumberOfFilledGroups"
+
 /** The six operators whose argument list is a list of GROUPS, named by their catalog ids. */
 private val GROUP_LIST_OPERATORS = setOf(
     "AllGroupsFilled",
@@ -98,17 +101,14 @@ private val GROUP_LIST_OPERATORS = setOf(
     "GroupsNotCollectivelyFilled",
     "AtLeastOneGroupFilled",
     "NoGroupFilled",
-    "NumberOfFilledGroups",
+    GROUP_COUNT,
 )
 
 /** …and the three that refuse a FIELD operand, which is not the same set and not a subset of one law's. */
-private val FIELD_REFUSING_OPERATORS = setOf("NumberOfFilledGroups", "GroupFilled", "GroupNotFilled")
-
-/** The one group-list carrier that refuses a keyed operand. */
-private const val GROUP_COUNT = "NumberOfFilledGroups"
+private val FIELD_REFUSING_OPERATORS = setOf(GROUP_COUNT, "GroupFilled", "GroupNotFilled")
 
 /** The three carriers that admit a root as the list's SOLE operand. */
-private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
+private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", GROUP_COUNT)
 
 /** How this model's language spells each of [ids]; an id the catalog does not carry contributes nothing. */
 private fun TrackedFactBase.spelled(ids: Set<String>): Set<String> =

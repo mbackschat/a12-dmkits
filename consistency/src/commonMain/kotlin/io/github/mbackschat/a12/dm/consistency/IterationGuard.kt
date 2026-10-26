@@ -6,9 +6,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionNode
 import io.github.mbackschat.a12.dm.consistency.syntax.ConnectiveKind
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
+import io.github.mbackschat.a12.dm.consistency.syntax.PATTERN_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
+import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
@@ -111,8 +113,6 @@ private class GuardReference(
     val isField: Boolean,
     val levels: List<GuardLevel>,
     val fields: Long,
-    /** Whether this reference carries a selection, which a field key may then join. */
-    val selected: Boolean,
     /**
      * The field a selection is keyed by. A12 counts the selection as iterating wherever its key does, as one
      * reference rather than two (`IterationNotValidVisitor.isIteration`, kernel 30.8.1, read 2026-10-23; rows
@@ -429,13 +429,12 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
             continue
         }
         if (inBody) continue
-        val levels = markedLevelsOf(written, group, anchor, element)
         // A field key is recognized ahead of the selection it keys, and joins that selection rather than
         // standing as a reference of its own.
         if (entity.indexKey) {
             if (pendingKey != null) return null
             pendingKey = guardReferenceOf(entity, written, group, element, key = null) ?: return null
-            marking += pendingKey.levels to (levels ?: return null)
+            marking += pendingKey.levels to (markedLevelsOf(written, group, anchor, element) ?: return null)
             continue
         }
         if (pendingKey != null && !entity.indexed) return null
@@ -443,7 +442,7 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
         pendingKey = null
         references += reference
         // A selected level is never marked parallel: A12's pass marks only an iterated one.
-        if (!entity.indexed) marking += reference.levels to (levels ?: return null)
+        if (!entity.indexed) marking += reference.levels to (markedLevelsOf(written, group, anchor, element) ?: return null)
     }
     if (pendingKey != null) return null
     // A12's two passes (KF376), read where the filtered-entity family reads them: only once some reference
@@ -500,7 +499,7 @@ private fun TrackedFactBase.guardReferenceOf(
             .fold(1L) { n, inner -> n * repetitionCountIn(declarationAt("${resolved.path}/$inner")?.body) }
     }
     return GuardReference(entity.site.start, resolved.path, declaration.declaredKind == DeclaredKind.FIELD, levels, fields,
-        selected = entity.indexed, key = key)
+        key = key)
 }
 
 private val JUDGED = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
@@ -523,18 +522,13 @@ private val DATE_DIFFERENCES = setOf("DifferenceInSeconds", "DifferenceInMinutes
 private val DATE_EXTRACTIONS = setOf("DayFromDate", "MonthFromDate", "YearFromDate", "QuarterFromDate", "HoursFromTime",
     "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime")
 /**
- * A12's tolerance comparisons, which take part in the arms where `!=` does (`ComparisonOperation` `NE1`…`NE10`,
- * read by `IterationNotValidVisitor.checkIfVergleichMitKleiner`, kernel 30.8.1).
+ * Every comparison operator, as read from the right-hand side. The tolerance comparisons take part in the arms
+ * where `!=` does (`IterationNotValidVisitor.checkIfVergleichMitKleiner`, kernel 30.8.1); the pattern ones in none.
  */
-private val TOLERANCES = setOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5",
-    "DiffersWithToleranceRange10")
-/** A12's pattern comparisons, which no arm reads (`NM`, `WM`). */
-private val PATTERNS = setOf("PatternMatched", "PatternViolated")
-/** Every comparison operator, as read from the right-hand side. */
 private val FACING = mapOf("==" to "==", "!=" to "!=", "<" to ">", ">" to "<", "<=" to ">=", ">=" to "<=") +
-    (TOLERANCES + PATTERNS).associateWith { it }
+    (TOLERANCE_COMPARISONS + PATTERN_COMPARISONS).associateWith { it }
 /** Comparisons below a bound, which an operation counting filled rows cannot meet without one. */
-private val BELOW = setOf("<", "<=", "!=") + TOLERANCES
+private val BELOW = setOf("<", "<=", "!=") + TOLERANCE_COMPARISONS
 /** Comparisons an amount meets at zero. */
 private val AT_ZERO = setOf("==", "<=", ">=")
 private val IN_WORDS = setOf("In", "IN", "in")

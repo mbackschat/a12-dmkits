@@ -5,8 +5,8 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  *
  * An id is the catalog's name for an operator, not its spelling in either language: `SemanticIndex` is written
  * `For` and `Fuer`, `Having` is written `Having` and `Mit`. Families read the model's own spelling through the
- * table, which is generated from the catalog; these are only its keys, and they live here because that file is
- * never hand-edited.
+ * table, which is generated from the catalog; these are its keys and the inverse of the table, and they live here
+ * because that file is never hand-edited.
  */
 
 /**
@@ -17,6 +17,13 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  */
 internal val CONDITION_OPERATOR_IDENTITIES: Map<ConditionLanguage, Map<String, String>> =
     CONDITION_OPERATOR_KEYWORDS.mapValues { (_, spellings) -> spellings.entries.associate { (id, spelling) -> spelling to id } }
+
+/** A12's tolerance comparisons (`ComparisonOperation` `NE1`…`NE10`). */
+internal val TOLERANCE_COMPARISONS = setOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2",
+    "DiffersWithToleranceRange5", "DiffersWithToleranceRange10")
+
+/** A12's pattern comparisons (`NM`, `WM`). */
+internal val PATTERN_COMPARISONS = setOf("PatternMatched", "PatternViolated")
 
 internal const val SEMANTIC_INDEX = "SemanticIndex"
 

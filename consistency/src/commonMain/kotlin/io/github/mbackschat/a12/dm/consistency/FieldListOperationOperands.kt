@@ -263,16 +263,6 @@ private fun TrackedFactBase.distinctDefect(fields: List<TrackedDeclaration>): Fi
     }
 }
 
-/**
- * Whether a gate ahead of the operator switch answers this list instead.
- *
- * The shared pre-gates every entity list meets, plus the arity gate all four carriers here take, which
- * demands more than one field or one group.
- */
-private fun TrackedFactBase.preEmptedBeforeTheSwitch(reads: List<OperandReference>, targets: List<String>): Boolean {
-    return entityListPreGateAnswers(reads, targets) || isALoneUnstarredField(reads, targets)
-}
-
 private fun TrackedFactBase.finding(
     defect: FieldListDefect,
     call: ConditionCall,

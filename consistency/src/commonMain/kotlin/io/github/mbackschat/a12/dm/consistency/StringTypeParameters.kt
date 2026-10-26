@@ -146,14 +146,6 @@ private fun JsonObject.declares(member: String): Boolean = when (member) {
     else -> this[member] != null
 }
 
-/**
- * The length this member declares, or null when it declares none.
- *
- * `-1` is A12's `IFieldType.UNDEFINED`, so a model may spell "no bound" either by omitting the member or by
- * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused. A member
- * outside A12's metamodel range is no bound either: A12 refuses it on its own and judges nothing else with it.
- */
-
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()
 
 private fun finding(field: TrackedDeclaration, code: String, explain: String) =

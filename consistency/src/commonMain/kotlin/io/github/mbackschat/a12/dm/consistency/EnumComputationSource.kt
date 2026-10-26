@@ -54,11 +54,12 @@ internal fun TrackedFactBase.enumComputationSourceContributions(element: Tracked
     val admitted = enumerationBodyOf(target)?.declaredEnumValues()?.toSet() ?: return emptyList()
     val body = element.body ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val unjudged = unguardedAmongSeveralAlternatives(body) + operationsReadingTheirTarget(element)
+    // Asked only on a defect: the self-read walk behind it reads every member again.
+    val unjudged by lazy { unguardedAmongSeveralAlternatives(body) + operationsReadingTheirTarget(element) }
     return conditionTexts(element.kind, body)
-        .filter { (member, _) -> member.endsWith(".operation") && member !in unjudged }
+        .filter { (member, _) -> isOperationMember(member) }
         .mapNotNull { (member, text) ->
-            sourceDefect(text, admitted, target, group, element)?.let {
+            sourceDefect(text, admitted, target, group, element)?.takeIf { member !in unjudged }?.let {
                 DeclarationFinding(element.key, DeclarationStage.CALCULATION_ALTERNATIVES, finding(it, member, element),
                     walkPositionOf(member))
             }
@@ -125,17 +126,15 @@ private fun TrackedFactBase.readDefect(
     val addressed = addressedTargetOf(written, declaringGroup, element, keyed, everyLevelAddressed = false)
         ?: return null
     val source = declarationAt(addressed)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
-    val sourceType = effectiveFieldType(source)
-    if (sourceType == FieldType.STRING) {
-        return "reads `${source.path}`, which is a text field — A12 assigns an enumeration only from a " +
+    val unassignable = when (effectiveFieldType(source)) {
+        FieldType.STRING -> "a text field"
+        FieldType.CUSTOM_FIELD -> "a custom-typed field"
+        FieldType.ENUMERATION -> null
+        else -> return null
+    }
+    if (unassignable != null) {
+        return "reads `${source.path}`, which is $unassignable — A12 assigns an enumeration only from a " +
             "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
-    }
-    if (sourceType == FieldType.CUSTOM_FIELD) {
-        return "reads `${source.path}`, which is a custom-typed field — A12 assigns an enumeration only from " +
-            "a constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
-    }
-    if (sourceType != FieldType.ENUMERATION) {
-        return null
     }
     val body = enumerationBodyOf(source) ?: return null
     if (body["tableName"] != null) {

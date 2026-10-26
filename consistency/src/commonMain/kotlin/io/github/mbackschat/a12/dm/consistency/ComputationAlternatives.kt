@@ -104,10 +104,8 @@ private fun TrackedFactBase.alternativeFindings(element: TrackedDeclaration, alt
     if (declared.size < 2) {
         return missingWork
     }
-    // Only an ABSENT or `null` member is an empty precondition. A present one is a condition, and whether it
-    // parses is the syntax family's question.
     val unguarded = declared.withIndex()
-        .filter { (_, alternative) -> alternative["precondition"].let { it == null || it is JsonNull } }
+        .filter { (_, alternative) -> alternative.lacksAPrecondition() }
         .map { (index, _) -> index + 1 }
     if (unguarded.isEmpty()) {
         return missingWork
@@ -164,3 +162,9 @@ private fun blankOperationFindings(element: TrackedDeclaration): List<Finding> {
             element.path, endOfBlankText(member, text))
     }
 }
+
+/**
+ * Whether this alternative's precondition is empty. Only an ABSENT or `null` member is: a present one is a
+ * condition, and whether it parses is the syntax family's question.
+ */
+internal fun JsonObject?.lacksAPrecondition(): Boolean = this?.get("precondition").let { it == null || it is JsonNull }

@@ -97,7 +97,7 @@ internal fun ConditionExecution.syntaxContribution(family: CheckFamily): Conditi
     val generated = at?.authored != true
     val ownerFamily = when {
         failure.kind == SyntaxFailureKind.LEXICAL -> CheckFamily.CONDITION_LEXICALITY
-        member.endsWith(".operation") && text.isLexerBlank() -> CheckFamily.COMPUTATION_ALTERNATIVES
+        isOperationMember(member) && text.isLexerBlank() -> CheckFamily.COMPUTATION_ALTERNATIVES
         failure.kind == SyntaxFailureKind.MATCH -> CheckFamily.CONDITION_GRAMMAR
         failure.found.isEmpty() || generated -> CheckFamily.CONDITION_COMPLETENESS
         else -> CheckFamily.CONDITION_GRAMMAR
