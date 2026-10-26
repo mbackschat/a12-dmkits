@@ -95,6 +95,11 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
         return on == correlated ? this : new FieldRef(path, kind, styleHint, on, repeatingAncestors);
     }
 
+    /** This reference typed as [as], the class a declaration or a handle proves the field to read as. */
+    FieldRef asKind(ValueKind as) {
+        return as == kind ? this : new FieldRef(path, as, styleHint, correlated, repeatingAncestors);
+    }
+
     /**
      * This reference spelled ABSOLUTE, whatever group the surrounding rule renders against — the one
      * per-operand escape from the renderer's path policy (API-FINDINGS AF159).

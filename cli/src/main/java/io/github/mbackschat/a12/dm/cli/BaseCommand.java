@@ -234,6 +234,11 @@ public abstract class BaseCommand implements Callable<Integer> {
         return refuse(resultIdentity(), new Refusal(summary, null, diagnostic));
     }
 
+    /** The refusal a malformed {@code --clock} earns, worded once for every verb that mixes the option in. */
+    protected int refuseMalformedClock(EvalClockOption clock) {
+        return refuseOptionValue(RkCode.INVALID_VALUE, clock.refusalSummary(), "--clock", null, EvalClockOption.FIX);
+    }
+
     /**
      * Refuse a JSON input that could not be READ — a coded envelope on stdout, not a bare stderr line.
      *

@@ -912,77 +912,61 @@ public final class DocumentModelDraft {
         private FieldTypeSpec spec;
 
         public TypeDefBuilder string(Consumer<StringFieldBuilder> body) {
-            StringFieldBuilder b = new StringFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new StringFieldBuilder(), body);
         }
 
         public TypeDefBuilder number(Consumer<NumberFieldBuilder> body) {
-            NumberFieldBuilder b = new NumberFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new NumberFieldBuilder(), body);
         }
 
         public TypeDefBuilder enumeration(Consumer<EnumFieldBuilder> body) {
-            EnumFieldBuilder b = new EnumFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new EnumFieldBuilder(), body);
         }
 
         /** A three-state Boolean, the type {@code booleanField} declares inline. */
         public TypeDefBuilder bool(Consumer<BooleanFieldBuilder> body) {
-            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.BOOLEAN);
-            body.accept(b);
-            return set(b.spec());
+            return declare(new BooleanFieldBuilder(FieldKind.BOOLEAN), body);
         }
 
         /** A Confirm, the type {@code confirmField} declares inline. */
         public TypeDefBuilder confirm(Consumer<BooleanFieldBuilder> body) {
-            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.CONFIRM);
-            body.accept(b);
-            return set(b.spec());
+            return declare(new BooleanFieldBuilder(FieldKind.CONFIRM), body);
         }
 
         /** The type {@code dateField} declares inline. */
         public TypeDefBuilder date(Consumer<DateFieldBuilder> body) {
-            DateFieldBuilder b = new DateFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new DateFieldBuilder(), body);
         }
 
         /** The type {@code timeField} declares inline. */
         public TypeDefBuilder time(Consumer<TimeFieldBuilder> body) {
-            TimeFieldBuilder b = new TimeFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new TimeFieldBuilder(), body);
         }
 
         /** The type {@code dateTimeField} declares inline. */
         public TypeDefBuilder dateTime(Consumer<DateTimeFieldBuilder> body) {
-            DateTimeFieldBuilder b = new DateTimeFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new DateTimeFieldBuilder(), body);
         }
 
         /** The type {@code dateRangeField} declares inline. */
         public TypeDefBuilder dateRange(Consumer<DateRangeFieldBuilder> body) {
-            DateRangeFieldBuilder b = new DateRangeFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new DateRangeFieldBuilder(), body);
         }
 
         /** The type {@code dateFragmentField} declares inline. */
         public TypeDefBuilder dateFragment(Consumer<DateFragmentFieldBuilder> body) {
-            DateFragmentFieldBuilder b = new DateFragmentFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new DateFragmentFieldBuilder(), body);
         }
 
         /** The type {@code customField} declares inline. */
         public TypeDefBuilder custom(Consumer<CustomFieldBuilder> body) {
-            CustomFieldBuilder b = new CustomFieldBuilder();
-            body.accept(b);
-            return set(b.spec());
+            return declare(new CustomFieldBuilder(), body);
+        }
+
+        /** Declares the underlying type [builder] builds once [body] has configured it. */
+        private <B extends FieldAttrs<B>> TypeDefBuilder declare(B builder, Consumer<B> body) {
+            body.accept(builder);
+            return set(builder.spec());
         }
 
         private TypeDefBuilder set(FieldTypeSpec s) {

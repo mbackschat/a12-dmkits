@@ -22,11 +22,14 @@ import kotlin.math.ulp
  * refuses it while authoring.
  */
 fun numberBoundsInverted(minValue: Double, maxValue: Double, maxFractionalDigits: Int?): Boolean =
-    if ((maxFractionalDigits ?: 0) == 0) {
+    if (boundsReadAsIntegers(maxFractionalDigits)) {
         roundedHalfAwayFromZero(minValue) > roundedHalfAwayFromZero(maxValue)
     } else {
         minValue > maxValue
     }
+
+/** Whether A12 rounds both bounds to integers before reading them: no fractional digit is allowed. */
+private fun boundsReadAsIntegers(maxFractionalDigits: Int?): Boolean = (maxFractionalDigits ?: 0) == 0
 
 // `a - floor(a)` is exact for every double, so the half test reads the stored value rather than a sum.
 private fun roundedHalfAwayFromZero(value: Double): Double {
@@ -59,7 +62,7 @@ enum class PrintedBoundDefect {
  * A12 reads it as `0`, so only a value strictly below zero can be one.
  */
 fun printedNumberBoundDefects(value: Double, maxFractionalDigits: Int?): Set<PrintedBoundDefect> {
-    val digits = if ((maxFractionalDigits ?: 0) == 0) {
+    val digits = if (boundsReadAsIntegers(maxFractionalDigits)) {
         val rounded = roundedHalfAwayFromZero(value)
         if (value < 0 && rounded == 0.0) return setOf(PrintedBoundDefect.SIGNED_ZERO)
         plainDigitCount(rounded)

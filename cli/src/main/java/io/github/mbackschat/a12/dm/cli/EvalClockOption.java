@@ -18,7 +18,7 @@ import picocli.CommandLine.Option;
 public final class EvalClockOption {
 
     /** The corrective for a malformed {@code --clock}. */
-    public static final String FIX = "pass an ISO-8601 instant with a zone offset, e.g. --clock 2026-10-14T10:00:00Z "
+    static final String FIX = "pass an ISO-8601 instant with a zone offset, e.g. --clock 2026-10-14T10:00:00Z "
             + "or --clock 2026-10-14T12:00:00+02:00; the model's timeZone then decides which day it is";
 
     @Option(names = "--clock", paramLabel = "<instant>",
@@ -46,7 +46,7 @@ public final class EvalClockOption {
     }
 
     /** The summary of the refusal a malformed {@code --clock} earns. */
-    public String refusalSummary() {
+    String refusalSummary() {
         return "--clock must be an ISO-8601 instant with a zone offset, got: " + clock;
     }
 }

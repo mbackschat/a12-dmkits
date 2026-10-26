@@ -254,9 +254,10 @@ final class RuleCheckCommand extends BaseCommand {
      * count as the rule's own (KERNEL-FINDINGS KF488), and the sets it does judge by are internal to its parser,
      * so each candidate is asked of the kernel rather than re-derived here.
      */
-    private boolean referenceRefused(String json, String effectiveGroup, String candidate, ModelResolver resolver) {
+    private boolean referenceRefused(RuleValidator validator, String json, String effectiveGroup, String candidate,
+            ModelResolver resolver) {
         DraftRule draft = candidate(effectiveGroup, EntityPath.of(effectiveGroup).elementReference(EntityPath.of(candidate)));
-        return new RuleValidator().check(json, draft, resolver).diagnostics().stream()
+        return validator.check(json, draft, resolver).diagnostics().stream()
                 .anyMatch(d -> d.code().filter(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()::equals).isPresent());
     }
 
@@ -304,14 +305,15 @@ final class RuleCheckCommand extends BaseCommand {
         data.put("field", field);
         String candidateFullName = effectiveGroup + "/" + name;
         try {
-            String injected = new RuleValidator().inject(json, candidate(effectiveGroup, errorEntityRelPath));
+            RuleValidator validator = new RuleValidator();
+            String injected = validator.inject(json, candidate(effectiveGroup, errorEntityRelPath));
             BoundModel lenient = BoundModel.ofJsonLenient(injected, resolver);   // tolerates the inconsistent candidate
             // The kernel's own getDirectlyReferencedEntities (via referencedFields) — robust where the
             // rulekit converter NPEs on an inconsistent candidate; it returns the condition's references
             // regardless of error-field validity, which is exactly what we filter into candidates.
             java.util.Set<String> references = KernelAdapter.of(lenient).referencedFields(candidateFullName);
             java.util.List<String> candidates = new ModelContext(lenient).errorFieldCandidates(references).stream()
-                    .filter(candidate -> !referenceRefused(json, effectiveGroup, candidate, resolver)).toList();
+                    .filter(candidate -> !referenceRefused(validator, json, effectiveGroup, candidate, resolver)).toList();
             ArrayNode arr = data.putArray("candidates");
             candidates.forEach(arr::add);
             data.put("fieldIsCandidate", candidates.contains(field));

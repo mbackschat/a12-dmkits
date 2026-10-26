@@ -98,8 +98,7 @@ final class RuleEvalCommand extends BaseCommand {
     public Integer call() {
         Optional<Instant> clock = evalClock.instant();
         if (clock.isEmpty()) {
-            return refuseOptionValue(RkCode.INVALID_VALUE, evalClock.refusalSummary(), "--clock", null,
-                    EvalClockOption.FIX);
+            return refuseMalformedClock(evalClock);
         }
         boolean candidate = condition != null || field != null;
         if (candidate && rule != null) {

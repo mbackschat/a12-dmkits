@@ -223,10 +223,7 @@ final class ConditionConverter {
      * because a category rides a computation's {@link IOperation} exactly as it rides a rule's condition.
      */
     int countCategoryRefs(IParseTreeEntity root) {
-        return countEntities(root, id -> {
-            String category = id.getCategoryName();
-            return category != null && !category.isEmpty();
-        });
+        return countEntities(root, ConditionConverter::hasCategory);
     }
 
     /**
@@ -867,7 +864,7 @@ final class ConditionConverter {
                 case STRING -> scalarLiteralValueList(node, entities, values);
                 case ENUMERATION -> {
                     if (entities.stream().anyMatch(ConditionConverter::hasSemanticIndex)
-                            && entities.stream().allMatch(e -> e.getCategoryName() == null || e.getCategoryName().isEmpty())) {
+                            && entities.stream().noneMatch(ConditionConverter::hasCategory)) {
                         yield scalarLiteralValueList(node, entities, values);
                     }
                     // preserve each member's exact projection: a direct enum reference vs a category
@@ -1044,7 +1041,7 @@ final class ConditionConverter {
             String path = reconstructStarPath(entity);
             return hasSemanticIndex(entity) ? indexedGroup(entity, path, entity) : groupScopeOf(entity, path);
         }
-        Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), entity);
+        Optional<CategoryRef> category = categoryOf(entity, entity);
         if (category.isPresent()) {
             return category.get().listOperand();
         }
@@ -1062,18 +1059,18 @@ final class ConditionConverter {
      * converted (field report 2026-08-10). {@link #verifyCategoryPreserved} is the backstop for any site this
      * helper does not reach.
      *
-     * @param outer the caller's {@code $}-correlation decision (D13) — the sites differ in whether they thread
-     *              it, and a dropped {@code $} has its own backstop in {@link #verifyOuterPreserved}
+     * <p>The {@code $} correlation (D13) is the entity's own; a dropped one has its backstop in
+     * {@link #verifyOuterPreserved}.
      */
-    private Calculation fieldValueCalculation(IEntityId entity, boolean outer) {
-        Optional<CategoryRef> category = categoryOf(entity, outer, entity);
+    private Calculation fieldValueCalculation(IEntityId entity) {
+        Optional<CategoryRef> category = categoryOf(entity, entity);
         if (category.isPresent()) {
             return category.get().value();
         }
         if (hasSemanticIndex(entity)) {
             return semanticIndex(entity, entity).index();
         }
-        return new FieldValue(model.field(entity.getFullName()), outer);
+        return new FieldValue(model.field(entity.getFullName()), entity.isOuter());
     }
 
     /**
@@ -1081,13 +1078,12 @@ final class ConditionConverter {
      * ({@code [field -> Cat For key]}, KERNEL-FINDINGS KF568). Every site that builds a {@link CategoryRef} reads it
      * here, so none can keep the category and drop the key, or take the key branch and drop the category.
      */
-    private Optional<CategoryRef> categoryOf(IEntityId entity, boolean outer, Object origin) {
-        String name = entity.getCategoryName();
-        if (name == null || name.isEmpty()) {
+    private Optional<CategoryRef> categoryOf(IEntityId entity, Object origin) {
+        if (!hasCategory(entity)) {
             return Optional.empty();
         }
-        CategoryRef category = model.enumOf(entity.getFullName()).category(name);
-        if (outer) {
+        CategoryRef category = model.enumOf(entity.getFullName()).category(entity.getCategoryName());
+        if (entity.isOuter()) {
             category = category.outer();
         }
         if (!hasSemanticIndex(entity)) {
@@ -1109,7 +1105,7 @@ final class ConditionConverter {
      *  entity carries {@code getCategoryName()}, a {@link CategoryRef} projection; the union of their
      *  domains admits the literals. */
     private EnumListRef enumListRef(IEntityId entity) {
-        Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), entity);
+        Optional<CategoryRef> category = categoryOf(entity, entity);
         if (category.isPresent()) {
             return category.get();
         }
@@ -1202,7 +1198,7 @@ final class ConditionConverter {
      *  matching the field's kind. */
     private Calculation valueListEntry(IOperation op, ValueKind fieldKind, ICondition origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return fieldValueCalculation(field.getField(), field.getField().isOuter());
+            return fieldValueCalculation(field.getField());
         }
         if (op instanceof IConstantOperation constant) {
             return fieldKind == ValueKind.NUMBER ? NumberLiteral.of(constant.getValue())
@@ -1393,7 +1389,7 @@ final class ConditionConverter {
         boolean leftOuter = field.getField().isOuter();
         // an enum field navigated to one of its categories ([field -> Cat], keyed or not) rides on getCategoryName()
         if (kind == ValueKind.ENUMERATION) {
-            Optional<CategoryRef> category = categoryOf(field.getField(), leftOuter, origin);
+            Optional<CategoryRef> category = categoryOf(field.getField(), origin);
             if (category.isPresent()) {
                 return categoryComparison(category.get(), op, other, origin);
             }
@@ -1657,12 +1653,11 @@ final class ConditionConverter {
             operand = model.firstFilledGroup(reconstructStarPath(entity));
         }
 
-        String category = entity.getCategoryName();
-        if (category != null && !category.isEmpty()) {
+        if (hasCategory(entity)) {
             if (!entity.isField()) {
                 throw unsupported("FirstFilledValue category projection on a group", origin);
             }
-            CategoryRef ref = model.enumOf(entity.getFullName()).category(category);
+            CategoryRef ref = model.enumOf(entity.getFullName()).category(entity.getCategoryName());
             operand = operand.withCategory(ref);
         }
         if (hasSemanticIndex(entity)) {
@@ -1878,7 +1873,7 @@ final class ConditionConverter {
         if (operand instanceof IFieldIdOperation fvn
                 && fvn.getOperatorName() == FieldIdOperationName.FieldValueAsNumber) {
             var entity = fvn.getField();
-            Optional<CategoryRef> category = categoryOf(entity, entity.isOuter(), fvn);
+            Optional<CategoryRef> category = categoryOf(entity, fvn);
             if (category.isPresent()) {
                 return Dsl.fieldValueAsNumber(category.get());
             }
@@ -2154,7 +2149,7 @@ final class ConditionConverter {
      */
     private StringExpr concatenationPart(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            Optional<CategoryRef> category = categoryOf(field.getField(), field.getField().isOuter(), origin);
+            Optional<CategoryRef> category = categoryOf(field.getField(), origin);
             if (category.isPresent()) {
                 return new StringExpr(category.get().value());
             }
@@ -2186,7 +2181,7 @@ final class ConditionConverter {
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             return indexedCell(field, origin).map(StringExpr::new).orElseGet(() ->
-                    new StringExpr(fieldValueCalculation(field.getField(), field.getField().isOuter())));
+                    new StringExpr(fieldValueCalculation(field.getField())));
         }
         if (isStringCoercion(op)) {
             return stringCoercion((IFieldIdOperation) op);
@@ -2270,6 +2265,11 @@ final class ConditionConverter {
     }
 
     /** Whether this entity carries the kernel's {@code [Field For key]} semantic-index payload. */
+    private static boolean hasCategory(IEntityId entity) {
+        String name = entity.getCategoryName();
+        return name != null && !name.isEmpty();
+    }
+
     private static boolean hasSemanticIndex(IEntityId entity) {
         List<Object> key = entity.getSemanticIndex();
         return key != null && !key.isEmpty();
@@ -2336,7 +2336,7 @@ final class ConditionConverter {
             if (kind != ValueKind.STRING && kind != ValueKind.CUSTOM && kind != ValueKind.ENUMERATION) {
                 throw unsupported("string-family expression compared against a " + kind + " field", origin);
             }
-            return new StringExpr(fieldValueCalculation(rf.getField(), rf.getField().isOuter()));
+            return new StringExpr(fieldValueCalculation(rf.getField()));
         }
         if (isStringCoercion(right)) {
             return stringCoercion((IFieldIdOperation) right);
@@ -2365,7 +2365,7 @@ final class ConditionConverter {
         // $ correlation on the right operand (D13) is threaded through categoryOf
         Optional<CategoryRef> other = right instanceof IFieldIdOperation rf
                 && rf.getOperatorName() == FieldIdOperationName.FieldValue
-                ? categoryOf(rf.getField(), rf.getField().isOuter(), origin) : Optional.empty();
+                ? categoryOf(rf.getField(), origin) : Optional.empty();
         if (other.isPresent()) {
             return switch (op) {
                 case EQ -> category.is(other.get());
@@ -3197,7 +3197,7 @@ final class ConditionConverter {
         // A plain field value of any kind ([OtherField]) → the field's value as a Calculation, including an
         // enum category projection ([OtherField -> Cat]), which is a different operation and must not be erased.
         if (op instanceof IFieldIdOperation fv && fv.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return fieldValueCalculation(fv.getField(), fv.getField().isOuter());
+            return fieldValueCalculation(fv.getField());
         }
         if (op instanceof IEntityListOperation aggregate
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {

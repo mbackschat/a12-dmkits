@@ -609,10 +609,7 @@ public final class BoundModel {
      * (DEV-API-GAPS DG129).
      */
     private FieldRef operandField(String path) {
-        FieldRef field = field(path);
-        ValueKind declared = fieldInfo(path).temporalClass();
-        return declared == field.kind() ? field
-                : new FieldRef(field.path(), declared, field.styleHint(), field.correlated(), field.repeatingAncestors());
+        return field(path).asKind(fieldInfo(path).temporalClass());
     }
 
     /**

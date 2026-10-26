@@ -322,11 +322,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     private static FieldOperand withoutOuter(FieldOperand field) {
         return switch (field) {
-            case FieldRef ref -> new FieldRef(ref.path(), ref.kind(), ref.styleHint(), false, ref.repeatingAncestors());
-            case FieldListRef list -> new FieldListRef(
-                    new FieldRef(list.field().path(), list.field().kind(), list.field().styleHint(), false,
-                            list.field().repeatingAncestors()),
-                    list.flattened(), list.filter(), false);
+            case FieldRef ref -> ref.marked(false);
+            case FieldListRef list -> new FieldListRef(list.field().marked(false), list.flattened(), list.filter(), false);
             // Provably unreachable: of(FieldOperand)'s switch routes an IndexedFieldValue to
             // of(IndexedFieldValue) before this method is ever called, and withoutOuter has no other
             // caller. Exhaustive anyway because the parameter type is the whole sealed FieldOperand.

@@ -62,10 +62,9 @@ public enum ConfigFlag {
             binding = A12BooleanBinding.TRUE;
         } else if ("false".equals(jsonText)) {
             binding = A12BooleanBinding.FALSE;
-        } else if (jsonText.startsWith("{") || jsonText.startsWith("[")) {
-            binding = A12BooleanBinding.UNREADABLE;
         } else {
-            // The literal, not a conversion: an integer wider than any machine type still answers.
+            // The literal, not a conversion: an integer wider than any machine type still answers, and an object or
+            // array fails the number's digit test as the reader refuses it.
             binding = BooleanBindingPredicatesKt.a12BooleanOfNumber(jsonText);
         }
         return switch (binding) {
@@ -91,6 +90,11 @@ public enum ConfigFlag {
     /** {@link #ofParsedMember} for a member as this package holds it; a missing node is the absent member. */
     static ConfigFlag ofMember(JsonNode member) {
         return ofParsedMember(member.isMissingNode() ? null : member.toString(), member.isFloatingPointNumber());
+    }
+
+    /** Whether the member as this package holds it sets the flag. */
+    static boolean isSet(JsonNode member) {
+        return ofMember(member) == ON;
     }
 
     private static String decodedString(String jsonText) {

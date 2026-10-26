@@ -138,7 +138,7 @@ public final class ModelIndex {
      */
     public boolean numberPositivesOnly(String fieldPath) {
         JsonNode number = numberTypeOf(fieldPath);
-        return number != null && ConfigFlag.ofMember(number.path("positivesOnly")) == ConfigFlag.ON;
+        return number != null && ConfigFlag.isSet(number.path("positivesOnly"));
     }
 
     /** The declared {@code maxLength} of the number field, or empty when not a number / unset. */
@@ -216,7 +216,7 @@ public final class ModelIndex {
     /** Whether the string field declares {@code noValueValidation}; false for other kinds and an ordinary string. */
     public boolean stringNoValueValidation(String fieldPath) {
         JsonNode string = stringTypeOf(fieldPath);
-        return string != null && ConfigFlag.ofMember(string.path("noValueValidation")) == ConfigFlag.ON;
+        return string != null && ConfigFlag.isSet(string.path("noValueValidation"));
     }
 
     /**

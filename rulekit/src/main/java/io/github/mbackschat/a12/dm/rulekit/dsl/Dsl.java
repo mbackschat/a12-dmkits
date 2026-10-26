@@ -536,9 +536,7 @@ public final class Dsl {
 
     /** The handle's field typed as the Date its handle proves it to be. */
     private static FieldRef readAsDate(DateRef date) {
-        FieldRef field = date.field();
-        return field.kind() == ValueKind.DATE ? field : new FieldRef(field.path(), ValueKind.DATE, field.styleHint(),
-                field.correlated(), field.repeatingAncestors());
+        return date.field().asKind(ValueKind.DATE);
     }
 
     /** Owner-entity form, including semantic-index fields and groups. */

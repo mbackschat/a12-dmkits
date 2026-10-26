@@ -59,8 +59,7 @@ final class ModelComputeCommand extends BaseCommand {
     public Integer call() {
         Optional<Instant> clock = evalClock.instant();
         if (clock.isEmpty()) {
-            return refuseOptionValue(RkCode.INVALID_VALUE, evalClock.refusalSummary(), "--clock", null,
-                    EvalClockOption.FIX);
+            return refuseMalformedClock(evalClock);
         }
         String model = model();
         String modelJson = readModelJson(model);

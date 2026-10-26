@@ -16,7 +16,7 @@
   },
   "legacyCeilings": {
     "adapter/build.gradle": 1093,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2551,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2550,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/RuleModelSynthesizer.java": 830,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
@@ -43,9 +43,9 @@
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 913,
     "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1141,
     "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 935,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1134,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1116,
     "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1482,
-    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1530,
+    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1528,
     "schemakit/src/main/java/io/github/mbackschat/a12/dm/schemakit/JsonSchemaImporter.java": 1420
   }
 }

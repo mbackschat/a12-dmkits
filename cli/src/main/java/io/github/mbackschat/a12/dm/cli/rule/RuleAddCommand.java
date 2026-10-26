@@ -26,10 +26,8 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
-import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -115,8 +113,8 @@ final class RuleAddCommand extends BaseCommand {
         // G7b: "Allow Differing Decimal Places" — the kernel's one suppressible-warning directive, which must lead
         // and is spelled in the model's condition language (ConditionDirectives)
         if (spec.path("allowDifferingDecimals").asBoolean(false)) {
-            condition = ConditionDirectives.allowDifferingDecimals(ConditionLanguage.ofModelCode(
-                    ModelDocument.read(modelJson).config().conditionLanguage()), condition);
+            condition = ConditionDirectives.allowDifferingDecimals(
+                    EditSession.read(modelJson).conditionLanguage(), condition);
         }
         List<LocalizedText> messages = messages(spec);
         if (messages.isEmpty()) {
