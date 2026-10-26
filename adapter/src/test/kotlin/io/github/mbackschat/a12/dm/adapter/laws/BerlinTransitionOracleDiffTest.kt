@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * (OpenJDK 21.0.11, tzdb 2026a). For immediately before, at, and after all 62 pinned transitions, one
  * prepared dynamic-Groovy engine and one prepared generated-Java engine extract every local clock component
  * from the injected instant. The interpreter primitive is checked against the same independent offset. The
- * vector is not read from DateMath, so an epoch/offset/ordering mutation cannot make expected and actual move
+ * vector is not read from ZonedInstants, so an epoch/offset/ordering mutation cannot make expected and actual move
  * together. The common BerlinHistoricalTzTest separately locks every gap/overlap resolution choice.
  */
 class BerlinTransitionOracleDiffTest {
