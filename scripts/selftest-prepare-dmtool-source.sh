@@ -334,6 +334,9 @@ set -e
 #    advertised and untested. The pin is removed by stubbing the shared helper — one variable moved, and no
 #    test-only hook in the production script. Last, because the stub has to be committed to keep the
 #    clean-worktree gate satisfied and that moves HEAD.
+# The pin also takes Homebrew's openjdk@21 formula before asking java_home, so every case from here on hides
+# that formula too; an installed one would otherwise carry the check and re-test the pinned path.
+export HOMEBREW_PREFIX="$WORK/no-homebrew"
 sed 's|/usr/libexec/java_home|/nonexistent/java_home|g' \
   "$ROOT/scripts/gradle-environment.sh" > "$REPO/scripts/gradle-environment.sh"
 ! grep -q '/usr/libexec/java_home' "$REPO/scripts/gradle-environment.sh" \

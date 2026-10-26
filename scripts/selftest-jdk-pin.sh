@@ -42,7 +42,9 @@ check "does not flag stock OpenJDK" "no" "$(a12_is_graalvm_home "$openjdk" && ec
 check "a home with no release file is not GraalVM" "no" "$(a12_is_graalvm_home "$bare" && echo yes || echo no)"
 
 # Substitute the platform premise and enumeration together so these cases execute identically on Linux and macOS.
+# The Homebrew formula is absent until its own cases below, or this machine's install would answer every case.
 a12_has_java_home_tool() { return 0; }
+HOMEBREW_PREFIX="$TMP/no-homebrew"
 
 echo "a12_pinned_jdk21_home — the selection policy"
 a12_jdk21_homes() { printf '%s\n%s\n' "$graal" "$openjdk"; }
@@ -56,6 +58,25 @@ check "REFUSES when GraalVM is the only JDK 21" "<refused>" "$(a12_pinned_jdk21_
 
 a12_jdk21_homes() { return 0; }
 check "REFUSES when no JDK 21 is registered" "<refused>" "$(a12_pinned_jdk21_home 2>/dev/null || echo '<refused>')"
+
+echo "a12_pinned_jdk21_home — Homebrew's openjdk@21 wins, whichever 21.x it currently is"
+# java_home reports a versioned Cellar directory, which `brew upgrade` deletes; an exported pin naming it goes
+# stale in every shell that outlives the upgrade. The formula's opt alias is moved by the upgrade instead.
+brew_home="$TMP/brew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+mkdir -p "$brew_home/bin"
+: > "$brew_home/bin/java"
+chmod +x "$brew_home/bin/java"
+HOMEBREW_PREFIX="$TMP/brew"
+a12_jdk21_homes() { printf '%s\n' "$openjdk"; }
+check "takes the formula over the home java_home lists" "$brew_home" "$(a12_pinned_jdk21_home || echo '<refused>')"
+a12_jdk21_homes() { return 0; }
+check "takes the formula when java_home lists nothing" "$brew_home" "$(a12_pinned_jdk21_home || echo '<refused>')"
+
+echo "a12_jdk21_export_hint — a recovery hint names the pin rather than a path the next upgrade deletes"
+check "exports the pinned formula home" "export JAVA_HOME=\"$brew_home\"" "$(a12_jdk21_export_hint)"
+HOMEBREW_PREFIX="$TMP/no-homebrew"
+case "$(a12_jdk21_export_hint)" in *"java_home -v 21"*) falls_back=yes ;; *) falls_back=no ;; esac
+check "falls back to the java_home lookup without a pin" "yes" "$falls_back"
 
 echo "a12_pinned_jdk21_home — a refusal explains itself"
 a12_jdk21_homes() { printf '%s\n' "$graal"; }

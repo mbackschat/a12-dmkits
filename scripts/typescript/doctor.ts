@@ -135,7 +135,7 @@ function main(): number {
     if (process.env.A12_DOCTOR_PINNED_JDK21_AVAILABLE === "1" && jdk21 !== "") {
       report.pass(`JDK 21 available — ${jdk21}`);
     } else {
-      report.fail("no JDK 21 registered; build.sh pins the toolchain with java_home -v 21");
+      report.fail("no JDK 21 found; build.sh pins Homebrew's openjdk@21, else the first JDK 21 java_home -v 21 lists");
       report.note("install one, e.g. brew install openjdk@21, then link it so java_home sees it");
     }
   } else if ((process.env.JAVA_HOME ?? "") !== "") {

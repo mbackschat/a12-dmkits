@@ -41,7 +41,7 @@ fi
 
 require_supported_java() {
   hint="set JAVA_HOME to a JDK 21 installation, or unset it to use the system default.
-  On macOS:  export JAVA_HOME=\$(/usr/libexec/java_home -v 21)"
+  On macOS:  $(a12_jdk21_export_hint)"
   a12_classify_java "${JAVA_HOME:-}"
   # Every branch REFUSES rather than guessing. Two of them were once silent successes: a FAILING
   # `java -version` left the version empty and the gate returned 0 (the launcher then died with the child's

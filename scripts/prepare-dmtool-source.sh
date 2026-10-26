@@ -133,7 +133,7 @@ fail_unstartable() {
       echo "  a rebuild has already been attempted; inspect $LAUNCHER and the :cli:installDist output"
     else
       echo "  that JDK is unusable ($a12_java_kind${a12_java_major:+, Java $a12_java_major})"
-      echo "  fix: export a working JDK 21, e.g. macOS: export JAVA_HOME=\"\$(/usr/libexec/java_home -v 21)\""
+      echo "  fix: export a working JDK 21, e.g. macOS: $(a12_jdk21_export_hint)"
     fi
   } >&2
   exit 2
