@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
  * A rule or computation that ITERATES must write into a field at or below its own declaring group.
@@ -49,9 +48,9 @@ internal fun TrackedFactBase.errorContainmentContributions(element: TrackedDecla
     val group = element.path.substringBeforeLast('/')
     if (target == group || target.startsWith("$group/")) return emptyList()
     return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
-        if (entity.inFilter && entity.path.first().text != "$")
+        if (entity.inFilter && !entity.outerMarked)
             return@entityContributions null
-        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        val written = entity.writtenPath
         val reference = ConditionReference(element.path, span.member, written,
             resolveEntity(group, written, element.origin), span)
         if (!readsOneRowAtATime(reference, group, element, entity.indexed)) return@entityContributions null

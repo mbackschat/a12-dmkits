@@ -64,10 +64,10 @@ private fun TrackedFactBase.errorTargetIterationFindings(element: TrackedDeclara
     // KF372: a target outside the declaring group is refused before the iteration pass.
     if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) return emptyList()
     val reaching = rulesOwn.filter { it.reaches(target) }
-    if (reaching.isEmpty() || reaching.any { !(it.target as Reference.Resolved).path.isRootPath() }) return emptyList()
+    if (reaching.isEmpty() || reaching.any { !(it.target as Reference.Resolved).path.isRootGroup() }) return emptyList()
     val ordinaryLevels = rulesOwnIterationLevels(element) ?: return emptyList()
     val read = rulesOwn.mapNotNull { reference ->
-        val levels = ordinaryLevels[reference.written].orEmpty().filterNot { it.isRootPath() }.toSet()
+        val levels = ordinaryLevels[reference.written].orEmpty().filterNot { it.isRootGroup() }.toSet()
         (reference.target as? Reference.Resolved)?.path?.takeIf { levels.isNotEmpty() }?.let { it to levels }
     }
     val errorFieldGroup = target.substringBeforeLast('/', missingDelimiterValue = "")

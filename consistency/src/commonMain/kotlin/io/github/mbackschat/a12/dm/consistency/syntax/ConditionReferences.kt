@@ -142,11 +142,19 @@ internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 internal fun markedReferenceSpansIn(text: String): List<ReferenceSpan> {
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
     return tokens.indices
-        .filter { tokens[it].text == OUTER_MARKER_TOKEN }
+        .filter { tokens[it].text == OUTER_MARKER }
         .mapNotNull { at -> pathRunAt(tokens, at + 1)?.let { (path, end) -> ReferenceSpan(path, tokens[at].start, end) } }
 }
 
-private const val OUTER_MARKER_TOKEN = "$"
+/**
+ * The `$` that marks a reference as reaching OUT of a filter into the enclosing rule.
+ *
+ * A marked reference is checked with the rule's own error field restored (`CheckEntitySpecImpl.checkCommon`),
+ * the one every read outside a filter is checked against, so the families that judge the rule's reads take it
+ * as one ([rulesOwnReadsIn]). A family that still sets a marked
+ * text aside says why where it does.
+ */
+internal const val OUTER_MARKER = "$"
 
 private const val WILDCARD_TOKEN = "*"
 
@@ -322,7 +330,7 @@ private class ReferenceScan(
     }
 
     private fun referenceStart(index: Int): Int =
-        if (tokens.getOrNull(index - 1)?.text == OUTER_MARKER_TOKEN) tokens[index - 1].start
+        if (tokens.getOrNull(index - 1)?.text == OUTER_MARKER) tokens[index - 1].start
         else tokens[index].start
 
     private fun completedBoundary(index: Int): Int? {

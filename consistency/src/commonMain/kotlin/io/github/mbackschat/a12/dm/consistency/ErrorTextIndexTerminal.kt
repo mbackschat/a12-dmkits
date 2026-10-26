@@ -96,7 +96,7 @@ private fun TrackedFactBase.conditionRidesItWithoutIterating(
     val declaring = element.path.substringBeforeLast('/')
     val owner = fieldPath.substringBeforeLast('/')
     fun resolve(written: String): String? =
-        (resolveEntity(declaring, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+        resolvedPathOf(written, declaring, element)
     if (messageConditionReferences(element).any { written ->
         val path = resolve(written) ?: return@any false
         declarationAt(path)?.declaredKind == DeclaredKind.GROUP && owner.startsWith("$path/")

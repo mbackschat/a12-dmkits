@@ -79,7 +79,7 @@ private fun TrackedFactBase.operandKindFinding(
         } ?: return null
     }
     val targets = reads.map { read ->
-        (resolveEntity(declaringGroup, read.reference.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+        resolvedPathOf(read.reference, declaringGroup, element)
             ?: return null
     }
     if (isALoneUnstarredField(reads, targets)) {

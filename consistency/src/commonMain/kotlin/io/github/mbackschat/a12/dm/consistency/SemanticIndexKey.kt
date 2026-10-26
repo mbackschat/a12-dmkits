@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
@@ -46,7 +45,7 @@ internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDecla
     val anchor = (element.declaredReference()?.target as? Reference.Resolved)?.path?.let { anchorOf(it) }
     val iteration = entityContributions(element, EntityCheck.ADDRESS, execution) { entity, span ->
         if (!entity.indexKey) return@entityContributions null
-        keyIterationFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), group, anchor,
+        keyIterationFinding(entity.writtenPath, group, anchor,
             element, span.member, entity.inFilter, span)
     }
     val bodies by lazy { filterBodiesIn(text, conditionLanguage) }

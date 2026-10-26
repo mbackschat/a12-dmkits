@@ -83,7 +83,7 @@ internal fun TrackedFactBase.completedGroupDefect(
     }
     val references = ordinaryMessageGroupReferences(element) ?: return MessageCompletion.Declined
     val paths = references.mapNotNull { written ->
-        (resolveEntity(ruleGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+        resolvedPathOf(written, ruleGroup, element)
     }
 
     val available = ruleGroup == named || ruleGroup.startsWith("$named/") || paths.flatMap { messageReferenceFootprint(it) }.any { it == named || it.startsWith("$named/") }

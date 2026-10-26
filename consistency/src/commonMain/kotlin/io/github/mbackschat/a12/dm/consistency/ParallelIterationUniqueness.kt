@@ -58,8 +58,7 @@ private fun TrackedFactBase.parallelIterationUniquenessFindings(element: Tracked
     // iterates nothing jointly (`adapter.laws.CheckerPostParseOrderAgreementTest`).
     val reads = rulesOwnIterationLevels(element) ?: return emptyList()
     val keyed = reads.mapNotNull { (written, levels) ->
-        val resolved = (resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)
-            ?.path ?: return@mapNotNull null
+        val resolved = resolvedPathOf(written, declaringGroup, element) ?: return@mapNotNull null
         keyedGroupOver(resolved)?.takeIf { it.path in levels }
     }.distinct()
     val pair = jointlyIteratingPair(keyed) ?: return emptyList()

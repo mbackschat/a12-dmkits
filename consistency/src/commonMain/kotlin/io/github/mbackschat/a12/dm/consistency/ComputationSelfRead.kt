@@ -170,10 +170,6 @@ private fun TrackedFactBase.readsTheTarget(
     return target == path || target.startsWith("$path/")
 }
 
-/** The model path [written] resolves to from [declaringGroup], or null where it resolves to nothing. */
-private fun TrackedFactBase.resolvedPathOf(written: String, declaringGroup: String, element: TrackedDeclaration): String? =
-    (resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
-
 /**
  * The PROJECTED read of the computed field [text] carries, as authored, or null when it carries none.
  *

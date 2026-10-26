@@ -114,7 +114,7 @@ internal fun CallOperand.capturedPath(language: ConditionLanguage): String? {
 internal fun outerMarkedPathIn(text: String, language: ConditionLanguage): String? {
     if ('$' !in text) return null
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
-    return tokens.takeIf { it.firstOrNull()?.text == "$" }?.drop(1)?.asPath(CONDITION_KEYWORDS.getValue(language))
+    return tokens.takeIf { it.firstOrNull()?.text == OUTER_MARKER }?.drop(1)?.asPath(CONDITION_KEYWORDS.getValue(language))
 }
 
 /**
@@ -529,7 +529,7 @@ internal fun fieldValueRead(
     val valueEnd = spec.indexOfFirst { it.text == "->" || it.kind == TokenKind.NAME && it.text in keywords }
     val arrow = valueEnd.takeIf { it > 0 && spec[it].text == "->" && spec.getOrNull(it + 1)?.isName() == true }
     val category = arrow?.let { spec[it + 1].text }
-    val outerMarked = spec.firstOrNull()?.text == "$"
+    val outerMarked = spec.firstOrNull()?.text == OUTER_MARKER
     fun reduced(run: List<Token>) = run.let { if (outerMarked && filterActive) it.drop(1) else it }.asPath(keywords)
     val path = reduced(if (arrow == null) spec else spec.take(arrow) + spec.drop(arrow + 2))
     val keyedPath = if (keyedByLiteral && valueEnd > 0) reduced(spec.take(valueEnd)) else null

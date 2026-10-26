@@ -85,8 +85,7 @@ private fun TrackedFactBase.subjectDefect(
 ): Finding? {
     val written = call.splitAtInfix(infix)?.first?.singleOrNull() ?: return null
     val reference = singleReferenceOf(written, declaringGroup, element, call.inAFilterBody) ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val path = (resolved as? Reference.Resolved)?.path ?: return null
+    val path = resolvedPathOf(reference, declaringGroup, element) ?: return null
     val target = declarationAt(path) ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
         return finding(

@@ -33,7 +33,13 @@ internal data class RecognizedEntity(
     val indexed: Boolean,
     val filtered: Boolean,
     val category: Token?,
-)
+) {
+    /** Whether the `$` outer marker opens the path. */
+    val outerMarked: Boolean get() = path.first().text == OUTER_MARKER
+
+    /** The path as written, without its outer marker. */
+    val writtenPath: String get() = normalizedPath(path.dropWhile { it.text == OUTER_MARKER })
+}
 
 internal interface ConditionSite
 

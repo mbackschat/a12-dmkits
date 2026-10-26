@@ -95,7 +95,7 @@ private fun TrackedFactBase.groupOperandFinding(
         declarationAt(target) ?: return null
     }
     val group = targets.firstOrNull { it.declaredKind == DeclaredKind.GROUP } ?: return null
-    if (targets.any { it.declaredKind == DeclaredKind.GROUP && it.path.isRootPath() }) return null
+    if (targets.any { it.declaredKind == DeclaredKind.GROUP && it.path.isRootGroup() }) return null
     val fields = targets.flatMap { target ->
         if (target.declaredKind == DeclaredKind.GROUP) fieldsUnder(target).orEmpty().map { it.path } else listOf(target.path)
     }

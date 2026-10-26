@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 import kotlin.math.floor
 
@@ -420,9 +419,9 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
         if (inBody != entity.inFilter) return null
         // `RuleGroup` is the declaring group, iterating where it repeats (KERNEL-FINDINGS KF611); a starred one is
         // refused earlier (`MVK_INVALID_WILDCARD_FOR_RULEGROUP`) and stays unresolved here.
-        val written = normalizedPath(entity.path.dropWhile { it.text == OUTER_MARKER })
+        val written = entity.writtenPath
             .let { if (isRuleContext(it, conditionLanguage)) group else it }
-        if (entity.path.first().text == OUTER_MARKER) {
+        if (entity.outerMarked) {
             // Outside a filter the marker is refused earlier (`MVK_INVALID_OUTER_ITERATION`).
             if (!inBody) return null
             outer += guardReferenceOf(entity, written, group, element, key = null) ?: return null

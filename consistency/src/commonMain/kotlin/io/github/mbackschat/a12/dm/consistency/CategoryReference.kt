@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -35,7 +34,7 @@ import kotlinx.serialization.json.contentOrNull
 internal fun TrackedFactBase.categoryContributions(element: TrackedDeclaration): List<ConditionFinding> =
     entityContributions(element, EntityCheck.CATEGORY) { entity, span ->
         val category = entity.category ?: return@entityContributions null
-        categoryFinding(normalizedPath(entity.path.dropWhile { it.text == "$" }), category.text.trim('`'),
+        categoryFinding(entity.writtenPath, category.text.trim('`'),
             element.path.substringBeforeLast('/'), element, span.member, span, entity.indexed)
     }
 

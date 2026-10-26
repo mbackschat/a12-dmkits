@@ -465,16 +465,6 @@ private inline fun starredLevelsIn(
     return starred
 }
 
-/**
- * The `$` that marks a reference as reaching OUT of a filter into the enclosing rule.
- *
- * A marked reference is checked with the rule's own error field restored (`CheckEntitySpecImpl.checkCommon`),
- * the one every read outside a filter is checked against, so the families that judge the rule's reads take it
- * as one ([io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn]). A family that still sets a marked
- * text aside says why where it does.
- */
-internal const val OUTER_MARKER = "$"
-
 /** The index field [group] declares, or null when it declares none — A12 reads an empty name as none. */
 internal fun indexFieldNameOf(group: DeclaredElement): String? = indexFieldNameIn(group.body)
 
@@ -712,8 +702,7 @@ internal fun TrackedFactBase.declaredTargetOf(
     inAFilterBody: Boolean,
 ): TrackedDeclaration? {
     val reference = singleReferenceOf(operand, declaringGroup, element, inAFilterBody) ?: return null
-    val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-    val target = (resolved as? Reference.Resolved)?.path ?: return null
+    val target = resolvedPathOf(reference, declaringGroup, element) ?: return null
     return declarationAt(target)
 }
 
@@ -791,8 +780,7 @@ internal fun TrackedFactBase.addressedTargetOf(
     indexSelected: Boolean,
     everyLevelAddressed: Boolean,
 ): String? {
-    val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-        as? Reference.Resolved)?.path ?: return null
+    val target = resolvedPathOf(reference, declaringGroup, element) ?: return null
     if (everyLevelAddressed) {
         return target
     }
@@ -810,6 +798,10 @@ internal fun TrackedFactBase.addressedTargetOf(
     }
     return if (unaddressed) null else target
 }
+
+/** The model path [written] resolves to from [declaringGroup], stars aside, or null where it resolves to nothing. */
+internal fun TrackedFactBase.resolvedPathOf(written: String, declaringGroup: String, element: TrackedDeclaration): String? =
+    (resolveEntity(declaringGroup, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
 
 /**
  * Whether a `Having` body addresses every level a read crosses: only an unmarked read in a body. A `$`-marked one

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 /**
  * A group named in a condition that carries no field anywhere beneath it.
@@ -30,7 +29,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  */
 internal fun TrackedFactBase.emptyGroupContributions(element: TrackedDeclaration): List<ConditionFinding> =
     entityContributions(element, EntityCheck.EMPTY_GROUP) { entity, span ->
-        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        val written = entity.writtenPath
         val declaringGroup = element.path.substringBeforeLast('/')
         val path = if (isRuleContext(written, conditionLanguage)) {
             declaringGroup.takeUnless { it.isRootGroup() } ?: return@entityContributions null

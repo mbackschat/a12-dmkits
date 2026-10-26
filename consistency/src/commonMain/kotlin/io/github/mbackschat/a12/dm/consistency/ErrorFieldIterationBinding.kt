@@ -52,8 +52,8 @@ internal fun TrackedFactBase.errorFieldIterationBindingFindings(element: Tracked
     if (iterating.values.flatten().any { it !in levels }) {
         return parallelBindingFindings(element, target, iterating, naming, levels) ?: emptyList()
     }
-    val asked = if (naming.all { (it.target as Reference.Resolved).path.isRootPath() }) {
-        val root = levels.firstOrNull()?.takeIf { it.isRootPath() } ?: return emptyList()
+    val asked = if (naming.all { (it.target as Reference.Resolved).path.isRootGroup() }) {
+        val root = levels.firstOrNull()?.takeIf { it.isRootGroup() } ?: return emptyList()
         if (iterating.values.flatten().any { it != root }) return emptyList()
         listOf(root)
     } else {
@@ -83,7 +83,7 @@ private fun TrackedFactBase.parallelBindingFindings(
     naming: List<ConditionReference>,
     levels: List<String>,
 ): List<Finding>? {
-    if (naming.all { (it.target as Reference.Resolved).path.isRootPath() }) return null
+    if (naming.all { (it.target as Reference.Resolved).path.isRootGroup() }) return null
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val anchor = anchorOf(target) ?: return null
     val marks = iterating.keys.associateWith { reference ->
@@ -111,9 +111,6 @@ private fun bindingFinding(element: TrackedDeclaration, level: String, by: Strin
         "saying which row; read the error field itself, unstarred, in the condition",
     element.path,
 )
-
-/** Whether [this] names a root group: one segment below the model root. */
-internal fun String.isRootPath(): Boolean = lastIndexOf('/') == 0
 
 internal fun TrackedFactBase.errorFieldIterationBindingContributions(
     element: TrackedDeclaration,

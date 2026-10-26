@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
 import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
 import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
@@ -205,8 +206,7 @@ private fun TrackedFactBase.filterVerdictOf(
         return null
     }
     val starred = starredLevelsOf(written, group, element)?.takeIf { it.isNotEmpty() } ?: return null
-    val filtered = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
-        ?.path ?: return null
+    val filtered = resolvedPathOf(written, group, element) ?: return null
     // The OPERAND is read before its filter, so a repetition it crosses that neither its own star nor the
     // DECLARATION'S ITERATION addresses is `MVK_NO_WILDCARD` there and the filter is never reached —
     // measured with the unfiltered operand as the control that locates the refusal.
@@ -246,8 +246,7 @@ private fun TrackedFactBase.filterVerdictOf(
         .filterNot { it in callable }
         .forEach { reference ->
             val wildcards = starredLevelsOf(reference, group, element) ?: return null
-            val resolved = (resolveEntity(group, reference.replace("*", ""), element.origin) as? Reference.Resolved)
-                ?.path ?: return null
+            val resolved = resolvedPathOf(reference, group, element) ?: return null
             // The index replaces ITERATION at the level it addresses, so this reference is never asked the
             // scope question — and the walk reads references in authored order, which is what decides
             // between the two classes when the body carries one of each.

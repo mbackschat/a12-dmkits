@@ -74,7 +74,6 @@ private fun segmentEnd(tokens: List<Token>, at: Int): Int {
 private fun Token.isSegmentName(): Boolean =
     kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME || kind == TokenKind.NUMBER
 
-private const val OUTER_MARKER = "$"
 private const val SEPARATOR = "/"
 private const val NAME_SEPARATOR = "."
 private const val UP = ".."

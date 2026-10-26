@@ -45,7 +45,7 @@ internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Fi
 internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Membership {
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val read = messageConditionReferences(element).mapNotNull { written ->
-        (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)?.path
+        resolvedPathOf(written, group, element)
     }.toMutableList()
     keyedReadPaths(element, group).forEach { read.remove(it) }
     val paths = read.flatMap { messageReferenceFootprint(it) }.toSet() +
@@ -59,7 +59,7 @@ private fun TrackedFactBase.keyedReadPaths(element: TrackedDeclaration, group: S
     val body = element.body ?: return emptyList()
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
     return conditionTexts(element.kind, body).flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
-        .mapNotNull { use -> use.valuePath?.let { (resolveEntity(group, it.replace("*", ""), element.origin) as? Reference.Resolved)?.path } }
+        .mapNotNull { use -> use.valuePath?.let { resolvedPathOf(it, group, element) } }
 }
 
 /** The rule-context token is a read too; the syntax reader deliberately returns only ordinary paths. */

@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
-import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
@@ -80,8 +79,8 @@ internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclarati
     val group = element.path.substringBeforeLast('/')
     if (!(target == group || target.startsWith("$group/"))) return emptyList()
     return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
-        if (entity.indexKey || entity.inFilter && entity.path.first().text != "$") return@entityContributions null
-        val written = normalizedPath(entity.path.dropWhile { it.text == "$" })
+        if (entity.indexKey || entity.inFilter && !entity.outerMarked) return@entityContributions null
+        val written = entity.writtenPath
         if (isRuleContext(written, conditionLanguage)) return@entityContributions null
         levelClassOf(written, group, anchor, element, entity.filtered, entity.indexed)
             ?.let { scopeFinding(it, written, target, element, span) }
@@ -117,8 +116,7 @@ internal fun TrackedFactBase.rulesOwnIterationLevels(element: TrackedDeclaration
     for ((_, text) in conditionTexts(element.kind, declared)) {
         val indexes = keyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
         for (read in referenceSpansIn(rulesOwnReadsIn(text, conditionLanguage), conditionLanguage)) {
-            val path = (resolveEntity(group, read.written.replace("*", ""), element.origin) as? Reference.Resolved)
-                ?.path ?: return null
+            val path = resolvedPathOf(read.written, group, element) ?: return null
             val levels = ordinaryRepeatableLevels(read.written, path, group, element,
                 indexed = indexes.any { it.indexes(read.end, text) }) ?: return null
             levelsByReference.getOrPut(read.written) { mutableSetOf() }.addAll(levels)
@@ -189,8 +187,7 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
         if (isKeyed) {
             return@any false
         }
-        val resolved = resolveEntity(declaringGroup, base.replace("*", ""), element.origin)
-        val path = (resolved as? Reference.Resolved)?.path ?: return@any false
+        val path = resolvedPathOf(base, declaringGroup, element) ?: return@any false
         unstarredRepeatableLevels(base, path, declaringGroup, element)?.isNotEmpty() == true
     }
 }

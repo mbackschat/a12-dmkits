@@ -1,11 +1,12 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
 import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
 
 internal fun TrackedFactBase.outerMarkerContributions(element: TrackedDeclaration): List<ConditionFinding> {
     if (element.declaredKind != DeclaredKind.RULE && element.declaredKind != DeclaredKind.COMPUTATION) return emptyList()
     return entityContributions(element, EntityCheck.OUTER_MARKER) { entity, span ->
-        if (entity.path.first().text != "$" || entity.inFilter) return@entityContributions null
+        if (!entity.outerMarked || entity.inFilter) return@entityContributions null
         val written = normalizedPath(entity.path.drop(1))
         if (resolveEntity(element.path.substringBeforeLast('/'), written, element.origin) !is Reference.Resolved)
             return@entityContributions null

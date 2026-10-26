@@ -22,8 +22,7 @@ private fun TrackedFactBase.pathsReadThroughAStarAlone(element: TrackedDeclarati
     val starred = mutableSetOf<String>()
     val plain = mutableSetOf<String>()
     messageConditionReferences(element).forEach { written ->
-        val resolved = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
-            ?.path ?: return@forEach
+        val resolved = resolvedPathOf(written, group, element) ?: return@forEach
         val footprint = messageReferenceFootprint(resolved)
         if ('*' in written) starred += footprint
         else footprint.forEach { path -> if (crossesUnboundRepetition(resolved, path, group)) starred += path else plain += path }

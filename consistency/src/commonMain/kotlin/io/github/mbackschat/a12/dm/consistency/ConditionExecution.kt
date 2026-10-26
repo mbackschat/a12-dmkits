@@ -1,15 +1,16 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionSite
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionSite
+import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
 import io.github.mbackschat.a12.dm.consistency.syntax.Recognition
+import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
+import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 
 /** R5 keeps the producing occurrence and reached site separate from the public editor projection. */
 internal data class ConditionFinding(override val owner: DeclarationKey, val site: ConditionSite, override val finding: Finding) : OwnedFinding {
