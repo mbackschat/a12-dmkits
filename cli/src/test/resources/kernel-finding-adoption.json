@@ -892,7 +892,7 @@
       },
       "a12-kernel-lean": {
        "state": "OPEN",
-       "basis": "Handed over in the 2026-10-26a letter (SHA-256 39d6489c), not yet receipted.",
+       "basis": "The 2026-10-26a extension, the date-range value-list mixes, was adopted into spec/01 at b7f11327 (docs/sources/inbound-handbacks.md#src-inbound-2026-10-26a). The original type-defined index rows are not yet handed over.",
        "evidence": {}
       }
      }
@@ -13709,7 +13709,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Handed over in the 2026-10-26a letter (SHA-256 39d6489c), not yet receipted.",
+          "basis": "The 2026-10-26a extension, RuleGroup in every operand gate and the quoted keyword, was adopted into spec/08 at b7f11327 (docs/sources/inbound-handbacks.md#src-inbound-2026-10-26a). The original field-list rows of 2026-10-24 are not yet handed over.",
           "evidence": {}
         }
       }
