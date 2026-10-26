@@ -535,7 +535,7 @@ class Interpreter(
 
     /** The coordinates every row of [star]'s scope shares in [c], which key a row-invariant read of it. */
     internal fun starScopePrefix(c: EvalContext, star: Expr.Star): List<Int> {
-        val groupPath = if (c.declaredKind(star.path) == null) star.path else star.path.substringBeforeLast('/')
+        val groupPath = if (c.declaredKind(star.path) == null) star.path else star.groupPath
         return c.scopePrefixOf(groupPath, star.bindDepth).toList()
     }
 
@@ -600,7 +600,7 @@ class Interpreter(
         var f = 0
         var n = 0
         var unknown = false
-        for (rc in filterCandidates(c, star.path.substringBeforeLast('/'), star.bindDepth)) {
+        for (rc in filterCandidates(c, star.groupPath, star.bindDepth)) {
             if (!havingInterp(rc).keeps(having)) continue
             n++
             when {
@@ -1063,7 +1063,7 @@ class Interpreter(
      * general scan. Returns `(t, f, n = kept rows)`.
      */
     private fun starQuantTally(star: Expr.Star): Triple<Int, Int, Int> {
-        val group = star.path.substringBeforeLast('/')
+        val group = star.groupPath
         // The indexed plans read only stored rows, while the reference scan also walks missing coordinates. A kept
         // missing coordinate is an empty cell, adding to `f` and `n` alike. A filtered list reaches this tally only
         // for the operators that read `t` or `f == n`; the ones reading `t == n` or `f >= 1` take the declared fill
@@ -1104,7 +1104,7 @@ class Interpreter(
         if (computeMode) return UnavailableRows.NONE
         val fields = columnsOf(star, plan).filter(emptyMayBeUnavailable)
         if (fields.isEmpty()) return UnavailableRows.NONE
-        val group = star.path.substringBeforeLast('/')
+        val group = star.groupPath
         val scan = { UnavailableRows(filterCandidates(ctx, group, star.bindDepth).filter { row -> fields.any { unavailableEmpty(row, it) } }) }
         // Only a validation call owns a memo; a low-level interpreter rescans, since its config may meet another document.
         val memo = scopeMemo ?: return scan()
@@ -1149,7 +1149,7 @@ class Interpreter(
 
     /** The rows [star]'s filter judges in [c]: every row without a `Having`, else the filter's candidates. */
     internal fun starCandidateRows(c: EvalContext, star: Expr.Star,
-            group: String = star.path.substringBeforeLast('/')): List<EvalContext> =
+            group: String = star.groupPath): List<EvalContext> =
         if (star.having == null) c.rowContexts(group, star.bindDepth) else filterCandidates(c, group, star.bindDepth)
 
     /** The `(t, f, n)` of the [rows] the star's filter keeps, each kept cell judged in three states. */
@@ -1196,7 +1196,7 @@ class Interpreter(
      * equality. Returns null for the documented fallback boundary.
      */
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
-        val group = star.path.substringBeforeLast('/')
+        val group = star.groupPath
         val fast = indexedTally(star, group, correlationPlan(star) ?: return null)
         return fast to naiveStarQuantTally(star, group)
     }

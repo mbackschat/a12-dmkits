@@ -96,7 +96,7 @@ internal fun Interpreter.unavailableEmpty(c: EvalContext, path: String): Boolean
  *  value on the first such cell, as on a malformed one. [Expr.Star.bindDepth] scopes the rows. */
 private fun Interpreter.starHasUnavailableEmpty(c: EvalContext, operand: Expr.Star): Boolean =
     emptyMayBeUnavailable(operand.path) &&
-        c.firstFilledRows(operand.path.substringBeforeLast('/'), operand.bindDepth)
+        c.firstFilledRows(operand.groupPath, operand.bindDepth)
             .any { row -> unavailableEmpty(row, operand.path) }
 
 /**
@@ -2199,7 +2199,7 @@ internal fun Interpreter.filteredRows(
     traversal: FilterTraversal,
     keeps: ((EvalContext) -> Boolean)? = null,
 ): Sequence<EvalContext> {
-    val group = star.path.substringBeforeLast('/')
+    val group = star.groupPath
     val rows = filterCandidates(context, group, star.bindDepth)
     val occupied = when (traversal) {
         FilterTraversal.DENSE -> null
@@ -2414,7 +2414,7 @@ private fun Interpreter.firstFilledStar(
         return FirstFilledStep.Stop(Val.Unknown)
     }
 
-    val group = operand.path.substringBeforeLast('/')
+    val group = operand.groupPath
     // Partial validation visits every DECLARED slot in order, a missing one reading empty, so a slot outside the
     // relevant set stops the walk even where no row is stored (SPEC-2026-10-06-03,
     // `adapter.laws.PartialFillWalkRelevanceDiffTest`). Whether a filtered walk reaches missing slots is IG165.

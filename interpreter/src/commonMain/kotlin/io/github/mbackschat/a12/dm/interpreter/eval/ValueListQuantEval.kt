@@ -118,7 +118,7 @@ private fun Interpreter.vlqOperand(e: Expr, traversal: FilterTraversal): VlqOper
                 val cells = indexColumn?.cells ?: c.starCells(e.path, e.bindDepth)
                 // An empty cell that is not check-relevant (a required-empty field) is unavailable, not empty (KF552).
                 val unavailable = if (indexColumn != null) emptySet()
-                    else c.rowContexts(e.path.substringBeforeLast('/'), e.bindDepth)
+                    else c.rowContexts(e.groupPath, e.bindDepth)
                         .filter { unavailableEmpty(it, e.path) }.mapTo(HashSet()) { it.repsOf(e.path) }
                 for ((reps, v) in cells) {
                     if (cellRelevant?.invoke(e.path, reps) == false) continue   // [IF267]
@@ -133,7 +133,7 @@ private fun Interpreter.vlqOperand(e: Expr, traversal: FilterTraversal): VlqOper
                 // IF72 keep-law; a malformed filter operand → UNKNOWN → drop), the same per-cell classes over
                 // the kept subset. A dropped row contributes nothing; the un-instantiated tail is unreachable
                 // (no data to filter). The operand's polarity effect is the consuming pass's call ([filtered]).
-                val group = e.path.substringBeforeLast('/')
+                val group = e.groupPath
                 val indexValuesByRepetitions = indexColumn?.cells?.toMap()
                 val rows = if (cellRelevant == null) filteredRows(c, e, traversal)
                     else filterCandidates(c, group, e.bindDepth).asSequence().filter { rc ->

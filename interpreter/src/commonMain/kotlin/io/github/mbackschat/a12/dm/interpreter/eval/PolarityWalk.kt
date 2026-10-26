@@ -345,7 +345,7 @@ private fun Interpreter.countFill(
     for (a in operands) {
         val st = a as? Expr.Star ?: continue
         val having = st.having ?: continue
-        val group = st.path.substringBeforeLast('/')
+        val group = st.groupPath
         val candidates = filterCandidates(ctxOf(st), group, st.bindDepth)
         total += candidates.size
         val kept = when (traversal) {

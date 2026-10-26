@@ -167,7 +167,10 @@ sealed interface Expr {
      *  above `A`). −1 (a hand-built node) means "the leaf group's parent" — the single-star default, where
      *  the two coincide. */
     data class Star(override val path: String, val having: Cond? = null, override val outer: Boolean = false,
-                    val bindDepth: Int = -1) : EntitySource
+                    val bindDepth: Int = -1) : EntitySource {
+        /** The repeatable group whose rows the star walks: [path] without its field segment. */
+        val groupPath: String get() = path.substringBeforeLast('/')
+    }
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr

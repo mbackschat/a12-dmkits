@@ -148,7 +148,7 @@ class EvalConfig(
             .also { correlationShapes = it }
         return shapes.getOrPut(star) {
             PreparedCorrelationShape(
-                star.having?.let { CorrelationJoin.parse(it, star.path.substringBeforeLast('/')) },
+                star.having?.let { CorrelationJoin.parse(it, star.groupPath) },
                 star.bindDepth >= 0 && star.bindDepth < star.path.trim('/').split('/').size - 2,
             )
         }
