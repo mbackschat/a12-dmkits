@@ -657,7 +657,9 @@ private fun Interpreter.indexFieldOf(fieldPath: String): String? = nearestIndexF
  */
 private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(name)) {
     ConstantOp.TODAY -> Val.Txt(clockToday())
-    ConstantOp.NOW -> Val.Txt(clockNow().first)
+    // A stored value compares against the proleptic label, but a reading the model's zone has no instant for is
+    // refused here as on every temporal read (`ClockReadingZoneTest`).
+    ConstantOp.NOW -> Val.Txt(clockNow().first.also { nowTemporalValue() })
     // The kernel parse tree defaults BaseYear to NUMBER; date-only positions convert it explicitly. Comparisons
     // resolve it from the other operand in [evalCmpOperand], while [evalTemporal] supplies the date form.
     ConstantOp.BASE_YEAR -> baseYearNumber()

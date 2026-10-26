@@ -18,6 +18,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **`FirstFilledValue` over a group or a keyed group's row stops at an empty required field**, which A12 leaves undecided, as it already did over a field; it read past the field and took a later value.
 - **A `$` correlation no longer keeps a row on a required field's empty join value**, which A12 leaves undecided: an empty outer key matched it and an ordered comparison ranked it below every value. Such a scope also keeps its indexed evaluation, re-reading only the rows that hold the empty cell, where one empty cell used to make the whole scope quadratic.
 - **A Number's exponent is read to A12's bound**: a zero at any scale A12 holds, such as `"0e2147483648"`, is `0`, and an unquoted number whose scale has no 32-bit form refuses the Document as `MALFORMED_JSON` wherever it stands, as A12 cannot read it. The first was reported as invalid characters and the second was accepted.
 - **A joined rule's unstarred fill quantifiers and group first-filled reads now evaluate**, reading the key's own rows, empty for a side without one, as in the Kernel; they were reported unsupported.
