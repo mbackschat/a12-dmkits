@@ -359,9 +359,10 @@ internal object JavaPatternToJs {
                     "\\$e{$property}"
                 }
                 // `Pattern` reads a backslash before a non-ASCII character as that character, where JavaScript's
-                // unicode mode refuses the escape (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`).
+                // unicode mode refuses the escape (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`). Case
+                // folds it as it folds the bare character, so the literal needs no flag of its own
+                // (`consistency.KeyPatternTest`, 2026-10-26).
                 else -> if (e.code >= 0x80) {
-                    if (flags.caseInsensitive) hasUnverifiedMapping = true
                     e.toString()
                 } else {
                     hasUnverifiedMapping = true
@@ -555,7 +556,6 @@ internal object JavaPatternToJs {
                 val width = classLiteralWidth(raw, i)
                 if (width > 0) {
                     if (width > 2) hasUnverifiedMapping = true
-                    if (width == 2 && flags.caseInsensitive && raw[i + 1].code >= 0x80) hasUnverifiedMapping = true
                     val next = i + width
                     if (followedBySet && next + 1 == raw.length && raw[next] == '-') {
                         throw UnsupportedJavaPattern("range with a set-valued endpoint")

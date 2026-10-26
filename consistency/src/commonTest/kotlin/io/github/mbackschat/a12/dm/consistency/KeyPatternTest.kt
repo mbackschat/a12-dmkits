@@ -82,6 +82,29 @@ class KeyPatternTest {
         assertEquals(null, matches("(?iu)(a|(b))\\2c|ac", "ac"))
     }
 
+    /**
+     * A backslash before a non-ASCII letter is that letter to `Pattern`, so case-insensitivity treats it as it treats
+     * the bare letter: ASCII case folds nothing outside ASCII, and unicode case folds it within Latin-1. Each value is
+     * `Pattern`'s own answer on the JVM target, which the translation must reproduce on Node. Measured beside the
+     * bare, nested and range forms over nine letters and ten flag scopes (2026-10-26); every disagreement in that
+     * grid sat outside the certified value domain or behind a guard these rows keep: mixed flag groups, an escaped
+     * surrogate half, a source letter past Latin-1.
+     */
+    @Test
+    fun anEscapedNonAsciiLetterFoldsAsTheBareLetterDoes() {
+        val judged = listOf(
+            Triple("(?i)\\é", "é", true), Triple("(?i)\\é", "É", false), Triple("(?i)\\é", "e", false),
+            Triple("(?i)[\\é]", "é", true), Triple("(?i)[\\é]", "É", false),
+            Triple("(?i)[x\\é]", "É", false), Triple("(?i)[^\\é]", "É", true), Triple("(?i)[^\\é]", "é", false),
+            Triple("(?i:[\\é])", "É", false), Triple("a|(?i)\\é", "É", false),
+            Triple("(?i)[\\µ]", "µ", true), Triple("(?i)[\\µ]", "Μ", false),
+            Triple("(?iu)\\é", "É", true), Triple("(?iu)[\\é]", "É", true), Triple("(?iu)[\\ÿ]", "ÿ", true),
+        )
+        judged.forEach { (pattern, value, expected) -> assertEquals(expected, matches(pattern, value), "$pattern / $value") }
+        val unjudged = listOf("(?iu)[\\ÿ]" to "Ÿ", "(?i)(?u)\\é" to "É", "[\\😀]" to "😀")
+        unjudged.forEach { (pattern, value) -> assertEquals(null, matches(pattern, value), "$pattern / $value") }
+    }
+
     @Test
     fun unicodeCaseAgreesOnTheCompleteLatin1LiteralAlphabet() {
         // The JVM actual executes the original Pattern; Node independently checks the same finite relation.
