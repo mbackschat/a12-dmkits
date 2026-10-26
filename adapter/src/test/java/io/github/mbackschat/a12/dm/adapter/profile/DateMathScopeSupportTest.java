@@ -5,13 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 
 /**
  * A scope offers the DATE_MATH construct exactly when the construct can then be built in it. Both answers read the
@@ -30,14 +28,11 @@ class DateMathScopeSupportTest {
 
     @Test
     void aScopeOffersDateMathExactlyWhereItCanBuildIt() {
-        Map<String, List<FieldInfo>> byGroup = new LinkedHashMap<>();
-        CLAIM.fields().forEach(field -> byGroup.computeIfAbsent(field.groupPath(), ignored -> new java.util.ArrayList<>())
-                .add(field));
+        ScopeShape shape = ScopeShape.of(CLAIM, CLAIM.fields().toList());
         Map<String, List<Boolean>> observed = new LinkedHashMap<>();
         for (String scope : List.of("/Claim/Delay", "/Claim/Stay")) {
-            observed.put(scope, List.of(
-                    RuleModelSynthesizer.scopeSupports("DATE_MATH", scope, byGroup, Map.of(), Set.of()),
-                    RuleModelSynthesizer.dateMathCondition(CLAIM, scope, byGroup) != null));
+            observed.put(scope, List.of(RuleConstruct.DATE_MATH.supportedIn(scope, shape),
+                    RuleConstruct.DATE_MATH.clause(CLAIM, scope, shape) != null));
         }
         assertEquals(Map.of("/Claim/Delay", List.of(false, false), "/Claim/Stay", List.of(true, true)), observed);
     }

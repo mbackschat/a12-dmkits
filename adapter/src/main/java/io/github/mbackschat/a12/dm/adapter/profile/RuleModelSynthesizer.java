@@ -2,36 +2,24 @@ package io.github.mbackschat.a12.dm.adapter.profile;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
-import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /** Rule-family planning and rendering extracted mechanically from the donor synthesizer. */
 final class RuleModelSynthesizer {
-
-    private static final List<String> STRUCTURAL_CONSTRUCTS = List.of(
-            "GROUP_FILL", "AGGREGATE", "FILTER", "CURRENT_REPETITION", "ARITHMETIC", "DATE_MATH",
-            "UNIQUENESS");
-    private static final List<String> UBIQUITOUS_CONSTRUCTS = List.of("CUSTOM", "QUANTIFIER", "VALUE_LIST");
-    /**
-     * The declared classes {@link #dateMathCondition} builds on, which {@code BoundModel.date/dateTime} admit by
-     * (DEV-API-GAPS DG132), so a scope never offers DATE_MATH where it cannot build it.
-     */
-    private static final Set<ValueKind> DATE_MATH_CLASSES = Set.of(ValueKind.DATE, ValueKind.DATE_TIME);
 
     private RuleModelSynthesizer() {
     }
@@ -46,10 +34,8 @@ final class RuleModelSynthesizer {
 
     record Plan(
             List<FieldInfo> ruleFields,
-            String[] constructPlan,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
+            RuleConstruct[] constructPlan,
+            ScopeShape shape,
             Distribution arityDist,
             Distribution walkUpDist,
             int[] walkUpBudget,
@@ -63,24 +49,18 @@ final class RuleModelSynthesizer {
         int count = target.count();
         List<FieldInfo> fields = model.fields().filter(field -> !exclude.contains(field.path())).toList();
         if (count == 0 || fields.isEmpty()) {
-            return new Plan(List.of(), new String[0], Map.of(), Map.of(), Set.of(), target.booleanArity(),
+            return new Plan(List.of(), new RuleConstruct[0], ScopeShape.EMPTY, target.booleanArity(),
                     target.walkUpDistance(), new int[] {0}, new int[] {0}, new int[] {0});
         }
 
-        Set<String> repeatable = model.groups().filter(GroupInfo::repeating)
-                .map(GroupInfo::path).collect(Collectors.toSet());
-        Map<String, List<FieldInfo>> byGroup = new LinkedHashMap<>();
-        for (FieldInfo field : fields) {
-            byGroup.computeIfAbsent(field.groupPath(), ignored -> new ArrayList<>()).add(field);
-        }
-        Map<String, List<GroupInfo>> childrenOf = childrenOf(model);
+        ScopeShape shape = ScopeShape.of(model, fields);
 
         List<List<FieldInfo>> byClass = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         for (FieldInfo field : fields) {
-            byClass.get(scopeClass(field.groupPath(), repeatable)).add(field);
+            byClass.get(shape.scopeClass(field.groupPath())).add(field);
         }
         Comparator<FieldInfo> capableFirst = Comparator.comparingInt(
-                (FieldInfo field) -> structuralCapabilityScore(field.groupPath(), byGroup, childrenOf, repeatable))
+                (FieldInfo field) -> structuralCapabilityScore(field.groupPath(), shape))
                 .reversed();
         byClass.get(0).sort(capableFirst);
         byClass.get(1).sort(capableFirst);
@@ -96,7 +76,7 @@ final class RuleModelSynthesizer {
         for (var iterator = perRowPool.iterator();
                 iterator.hasNext() && twinReservedRules.size() < Math.min(parallelTarget, want[2]); ) {
             FieldInfo field = iterator.next();
-            if (siblingAggregatePair(field.groupPath(), childrenOf, repeatable, byGroup) != null) {
+            if (shape.siblingAggregatePair(field.groupPath()) != null) {
                 twinReservedRules.add(field);
                 iterator.remove();
             }
@@ -108,7 +88,7 @@ final class RuleModelSynthesizer {
         for (var iterator = perGroupPool.iterator();
                 iterator.hasNext() && twinReservedFromGroup.size() < stillWantedFromGroup; ) {
             FieldInfo field = iterator.next();
-            if (siblingAggregatePair(field.groupPath(), childrenOf, repeatable, byGroup) != null) {
+            if (shape.siblingAggregatePair(field.groupPath()) != null) {
                 twinReservedFromGroup.add(field);
                 iterator.remove();
             }
@@ -121,7 +101,7 @@ final class RuleModelSynthesizer {
         for (var iterator = modelLevelPool.iterator();
                 iterator.hasNext() && twinReservedFromModelLevel.size() < stillWantedFromModelLevel; ) {
             FieldInfo field = iterator.next();
-            if (siblingAggregatePair(field.groupPath(), childrenOf, repeatable, byGroup) != null) {
+            if (shape.siblingAggregatePair(field.groupPath()) != null) {
                 twinReservedFromModelLevel.add(field);
                 iterator.remove();
             }
@@ -136,7 +116,7 @@ final class RuleModelSynthesizer {
         List<FieldInfo> perRow = new ArrayList<>(twinReservedRules);
         perRow.addAll(quantileMatchByScopeCapacity(perRowPool,
                 Math.max(0, want[2] - twinReservedRules.size()), target.rulesPerErrorField().mean(),
-                ruleScopeCapacity, repeatable, maxRepsByPath, byGroup, childrenOf, random));
+                ruleScopeCapacity, shape, maxRepsByPath, random));
         List<List<FieldInfo>> matchedByClass = List.of(modelLevelWithTwinHubFirst, perGroupWithTwinHubFirst, perRow);
 
         int spill = 0;
@@ -152,12 +132,12 @@ final class RuleModelSynthesizer {
                     ruleFields);
         }
         assignClustered(fields, spill, target.rulesPerErrorField(), random, ruleFields);
-        String[] constructPlan = assignConstructs(ruleFields, target, byGroup, childrenOf, repeatable);
+        RuleConstruct[] constructPlan = assignConstructs(ruleFields, target, shape);
 
         int[] walkUpBudget = {target.walkUpDistance().n()};
         int[] outerBudget = {target.iteration() == null ? 0 : target.iteration().outerCorrelation()};
         int[] parallelBudget = {target.iteration() == null ? 0 : target.iteration().parallelIteration()};
-        return new Plan(ruleFields, constructPlan, byGroup, childrenOf, repeatable, target.booleanArity(),
+        return new Plan(ruleFields, constructPlan, shape, target.booleanArity(),
                 target.walkUpDistance(), walkUpBudget, outerBudget, parallelBudget);
     }
 
@@ -166,8 +146,8 @@ final class RuleModelSynthesizer {
         for (int i = 0; i < plan.ruleFields().size(); i++) {
             int index = i + 1;
             rules.add(buildRule(model, plan.ruleFields().get(i), index, plan.constructPlan()[i], plan.arityDist(),
-                    plan.walkUpDist(), plan.walkUpBudget(), plan.outerBudget(), plan.parallelBudget(), plan.byGroup(),
-                    plan.childrenOf(), plan.repeatable(), SynthesisRandom.forPurpose(seed, "rule.build:" + index)));
+                    plan.walkUpDist(), plan.walkUpBudget(), plan.outerBudget(), plan.parallelBudget(), plan.shape(),
+                    SynthesisRandom.forPurpose(seed, "rule.build:" + index)));
         }
         return rules;
     }
@@ -176,35 +156,33 @@ final class RuleModelSynthesizer {
             BoundModel model,
             FieldInfo field,
             int index,
-            String construct,
+            RuleConstruct construct,
             Distribution arityDistribution,
             Distribution walkUpDistribution,
             int[] walkUpBudget,
             int[] outerBudget,
             int[] parallelBudget,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
+            ScopeShape shape,
             Random random) {
         Condition guard = simpleClause(model, field);
         List<Condition> rest = new ArrayList<>();
-        Condition constructCondition = "FILTER".equals(construct) && outerBudget[0] > 0
-                && outerCorrelationClause(model, field, byGroup, repeatable) instanceof Condition selfJoin
+        Condition constructCondition = construct == RuleConstruct.FILTER && outerBudget[0] > 0
+                && outerCorrelationClause(model, field, shape) instanceof Condition selfJoin
                         ? decrementAnd(outerBudget, selfJoin)
-                        : constructClause(model, construct, field, byGroup, childrenOf, repeatable);
-        boolean constructMustAlwaysHold = "UNIQUENESS".equals(construct);
+                        : construct == null ? null : construct.clause(model, field.groupPath(), shape);
+        boolean constructMustAlwaysHold = construct == RuleConstruct.UNIQUENESS;
         if (constructCondition != null && !constructMustAlwaysHold) {
             rest.add(constructCondition);
         }
         if (walkUpBudget[0] > 0) {
-            String ancestor = ancestorField(field.groupPath(), sampleInt(walkUpDistribution, random), byGroup);
+            String ancestor = ancestorField(field.groupPath(), sampleInt(walkUpDistribution, random), shape);
             if (ancestor != null) {
                 rest.add(model.field(ancestor).filled());
                 walkUpBudget[0]--;
             }
         }
         if (parallelBudget[0] > 0) {
-            List<String> pair = siblingAggregatePair(field.groupPath(), childrenOf, repeatable, byGroup);
+            List<String> pair = shape.siblingAggregatePair(field.groupPath());
             if (pair != null) {
                 rest.add(Dsl.sum(model.flatten(pair.get(0))).gt(0)
                         .and(Dsl.sum(model.flatten(pair.get(1))).gt(0)));
@@ -212,7 +190,7 @@ final class RuleModelSynthesizer {
             }
         }
         int arity = sampleInt(arityDistribution, random);
-        List<FieldInfo> siblings = byGroup.getOrDefault(field.groupPath(), List.of()).stream()
+        List<FieldInfo> siblings = shape.fieldsOf(field.groupPath()).stream()
                 .filter(sibling -> !sibling.path().equals(field.path())).toList();
         for (int siblingIndex = 0; !siblings.isEmpty() && rest.size() + 1 < arity; siblingIndex++) {
             rest.add(variedClause(model, siblings.get(siblingIndex % siblings.size()), random));
@@ -228,9 +206,7 @@ final class RuleModelSynthesizer {
         if (constructMustAlwaysHold && constructCondition != null) {
             when = when.and(constructCondition);
         }
-        String errorFieldPath = "UNIQUENESS".equals(construct)
-                ? uniquenessKeyField(field.groupPath(), childrenOf, repeatable, byGroup)
-                : null;
+        String errorFieldPath = constructMustAlwaysHold ? shape.uniquenessKeyField(field.groupPath()) : null;
         return model.rule(model.group(field.groupPath()))
                 .name("R" + index)
                 .errorField(model.field(errorFieldPath != null ? errorFieldPath : field.path()))
@@ -241,59 +217,48 @@ final class RuleModelSynthesizer {
                 .build();
     }
 
-    private static String[] assignConstructs(
-            List<FieldInfo> ruleFields,
-            SynthesisProfile.Rules target,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        String[] plan = new String[ruleFields.size()];
+    private static RuleConstruct[] assignConstructs(
+            List<FieldInfo> ruleFields, SynthesisProfile.Rules target, ScopeShape shape) {
+        RuleConstruct[] plan = new RuleConstruct[ruleFields.size()];
         Map<String, Map<String, Integer>> byScope = target.constructsByScope();
         List<List<Integer>> slotsByClass = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         for (int i = 0; i < ruleFields.size(); i++) {
-            slotsByClass.get(scopeClass(ruleFields.get(i).groupPath(), repeatable)).add(i);
+            slotsByClass.get(shape.scopeClass(ruleFields.get(i).groupPath())).add(i);
         }
         if (byScope != null && !byScope.isEmpty()) {
             String[] classNames = {"modelLevel", "perGroup", "perRepeatableRow"};
             for (int scopeClass = 0; scopeClass < 3; scopeClass++) {
                 assignWithinSlots(plan, slotsByClass.get(scopeClass),
-                        byScope.getOrDefault(classNames[scopeClass], Map.of()), ruleFields, byGroup, childrenOf,
-                        repeatable);
+                        byScope.getOrDefault(classNames[scopeClass], Map.of()), ruleFields, shape);
             }
         } else {
             List<Integer> all = new ArrayList<>();
             for (int i = 0; i < plan.length; i++) {
                 all.add(i);
             }
-            assignWithinSlots(plan, all, target.constructs(), ruleFields, byGroup, childrenOf, repeatable);
+            assignWithinSlots(plan, all, target.constructs(), ruleFields, shape);
         }
         return plan;
     }
 
     private static void assignWithinSlots(
-            String[] plan,
+            RuleConstruct[] plan,
             List<Integer> slots,
             Map<String, Integer> target,
             List<FieldInfo> ruleFields,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        Map<String, Integer> remaining = new LinkedHashMap<>();
-        for (String construct : STRUCTURAL_CONSTRUCTS) {
-            remaining.put(construct, target.getOrDefault(construct, 0));
-        }
-        for (String construct : UBIQUITOUS_CONSTRUCTS) {
-            remaining.put(construct, target.getOrDefault(construct, 0));
+            ScopeShape shape) {
+        Map<RuleConstruct, Integer> remaining = new EnumMap<>(RuleConstruct.class);
+        for (RuleConstruct construct : RuleConstruct.values()) {
+            remaining.put(construct, target.getOrDefault(construct.name(), 0));
         }
         for (int index : slots) {
             if (plan[index] != null) {
                 continue;
             }
             String scope = ruleFields.get(index).groupPath();
-            String best = mostStarved(STRUCTURAL_CONSTRUCTS, remaining, target, scope, byGroup, childrenOf,
-                    repeatable);
+            RuleConstruct best = mostStarved(RuleConstruct.STRUCTURAL, remaining, target, scope, shape);
             if (best == null) {
-                best = mostStarved(UBIQUITOUS_CONSTRUCTS, remaining, target, scope, byGroup, childrenOf, repeatable);
+                best = mostStarved(RuleConstruct.UBIQUITOUS, remaining, target, scope, shape);
             }
             if (best != null) {
                 plan[index] = best;
@@ -302,21 +267,19 @@ final class RuleModelSynthesizer {
         }
     }
 
-    private static String mostStarved(
-            List<String> candidates,
-            Map<String, Integer> remaining,
+    private static RuleConstruct mostStarved(
+            List<RuleConstruct> candidates,
+            Map<RuleConstruct, Integer> remaining,
             Map<String, Integer> target,
             String scope,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        String best = null;
+            ScopeShape shape) {
+        RuleConstruct best = null;
         double bestFraction = 0;
         int bestTarget = Integer.MAX_VALUE;
-        for (String candidate : candidates) {
+        for (RuleConstruct candidate : candidates) {
             int remainder = remaining.get(candidate);
-            int targetCount = target.getOrDefault(candidate, 0);
-            if (remainder <= 0 || !scopeSupports(candidate, scope, byGroup, childrenOf, repeatable)) {
+            int targetCount = target.getOrDefault(candidate.name(), 0);
+            if (remainder <= 0 || !candidate.supportedIn(scope, shape)) {
                 continue;
             }
             double fraction = (double) remainder / targetCount;
@@ -329,41 +292,8 @@ final class RuleModelSynthesizer {
         return best;
     }
 
-    static boolean scopeSupports(
-            String construct,
-            String scope,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        List<FieldInfo> local = byGroup.getOrDefault(scope, List.of());
-        return switch (construct) {
-            case "GROUP_FILL" -> groupFillTarget(scope, childrenOf, repeatable) != null;
-            case "AGGREGATE", "FILTER" -> aggregateOperand(scope, childrenOf, repeatable, byGroup) != null;
-            case "CURRENT_REPETITION" -> repeatable.contains(scope);
-            case "UNIQUENESS" -> uniquenessKeyField(scope, childrenOf, repeatable, byGroup) != null;
-            case "ARITHMETIC" -> local.stream().anyMatch(field -> field.kind() == ValueKind.NUMBER);
-            case "DATE_MATH" -> local.stream().anyMatch(field -> DATE_MATH_CLASSES.contains(field.temporalClass()));
-            case "VALUE_LIST" -> local.stream()
-                    .anyMatch(field -> field.kind() == ValueKind.STRING || field.kind() == ValueKind.ENUMERATION);
-            case "QUANTIFIER" -> local.size() >= 2
-                    || aggregateOperand(scope, childrenOf, repeatable, byGroup) != null;
-            case "CUSTOM" -> true;
-            default -> false;
-        };
-    }
-
-    private static int structuralCapabilityScore(
-            String scope,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        int score = 0;
-        for (String construct : STRUCTURAL_CONSTRUCTS) {
-            if (scopeSupports(construct, scope, byGroup, childrenOf, repeatable)) {
-                score++;
-            }
-        }
-        return score;
+    private static int structuralCapabilityScore(String scope, ScopeShape shape) {
+        return (int) RuleConstruct.STRUCTURAL.stream().filter(construct -> construct.supportedIn(scope, shape)).count();
     }
 
     private static Condition simpleClause(BoundModel model, FieldInfo field) {
@@ -394,12 +324,11 @@ final class RuleModelSynthesizer {
         };
     }
 
-    private static String ancestorField(
-            String scope, int targetDistance, Map<String, List<FieldInfo>> byGroup) {
+    private static String ancestorField(String scope, int targetDistance, ScopeShape shape) {
         List<String> ancestors = new ArrayList<>();
-        for (String group = parentOf(scope); ; ) {
+        for (String group = ScopeShape.parentOf(scope); ; ) {
             ancestors.add(group);
-            String parent = parentOf(group);
+            String parent = ScopeShape.parentOf(group);
             if (parent.equals(group)) {
                 break;
             }
@@ -410,30 +339,26 @@ final class RuleModelSynthesizer {
         }
         int start = Math.min(Math.max(0, targetDistance - 1), ancestors.size() - 1);
         for (int index = start; index < ancestors.size(); index++) {
-            List<FieldInfo> fields = byGroup.get(ancestors.get(index));
-            if (fields != null && !fields.isEmpty()) {
+            List<FieldInfo> fields = shape.fieldsOf(ancestors.get(index));
+            if (!fields.isEmpty()) {
                 return fields.get(0).path();
             }
         }
         for (int index = start - 1; index >= 0; index--) {
-            List<FieldInfo> fields = byGroup.get(ancestors.get(index));
-            if (fields != null && !fields.isEmpty()) {
+            List<FieldInfo> fields = shape.fieldsOf(ancestors.get(index));
+            if (!fields.isEmpty()) {
                 return fields.get(0).path();
             }
         }
         return null;
     }
 
-    private static Condition outerCorrelationClause(
-            BoundModel model,
-            FieldInfo field,
-            Map<String, List<FieldInfo>> byGroup,
-            Set<String> repeatable) {
+    private static Condition outerCorrelationClause(BoundModel model, FieldInfo field, ScopeShape shape) {
         String scope = field.groupPath();
-        if (!repeatable.contains(scope)) {
+        if (!shape.repeatable().contains(scope)) {
             return null;
         }
-        FieldInfo number = byGroup.getOrDefault(scope, List.of()).stream()
+        FieldInfo number = shape.fieldsOf(scope).stream()
                 .filter(candidate -> candidate.kind() == ValueKind.NUMBER).findFirst().orElse(null);
         if (number == null) {
             return null;
@@ -447,242 +372,6 @@ final class RuleModelSynthesizer {
     private static Condition decrementAnd(int[] budget, Condition condition) {
         budget[0]--;
         return condition;
-    }
-
-    private static Condition constructClause(
-            BoundModel model,
-            String construct,
-            FieldInfo field,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        if (construct == null) {
-            return null;
-        }
-        String scope = field.groupPath();
-        return switch (construct) {
-            case "VALUE_LIST" -> valueListCondition(model, scope, byGroup);
-            case "QUANTIFIER" -> quantifierCondition(model, scope, byGroup, childrenOf, repeatable);
-            case "GROUP_FILL" -> {
-                String group = groupFillTarget(scope, childrenOf, repeatable);
-                yield group == null ? null : model.group(group).filled();
-            }
-            case "AGGREGATE" -> {
-                String flattened = aggregateOperand(scope, childrenOf, repeatable, byGroup);
-                yield flattened == null ? null : Dsl.sum(model.flatten(flattened)).gt(0);
-            }
-            case "FILTER" -> {
-                String flattened = aggregateOperand(scope, childrenOf, repeatable, byGroup);
-                if (flattened == null) {
-                    yield null;
-                }
-                String cell = flattened.replace("*", "");
-                yield Dsl.allFieldsFilled(model.flatten(flattened).having(model.num(cell).gt(0)));
-            }
-            case "DATE_MATH" -> dateMathCondition(model, scope, byGroup);
-            case "CUSTOM" -> Dsl.customCondition("SynthCustomCheck");
-            case "CURRENT_REPETITION" -> repeatable.contains(scope)
-                    ? Dsl.currentRepetition(model.group(scope)).gt(0)
-                    : null;
-            case "UNIQUENESS" -> {
-                String key = uniquenessKeyField(scope, childrenOf, repeatable, byGroup);
-                yield key == null
-                        ? null
-                        : model.group(parentOf(key)).filled().and(Dsl.repetitionNotUnique(model.field(key)));
-            }
-            case "ARITHMETIC" -> arithmeticCondition(model, scope, byGroup);
-            default -> null;
-        };
-    }
-
-    private static Condition valueListCondition(
-            BoundModel model, String scope, Map<String, List<FieldInfo>> byGroup) {
-        for (FieldInfo candidate : byGroup.getOrDefault(scope, List.of())) {
-            if (candidate.kind() == ValueKind.STRING || candidate.kind() == ValueKind.ENUMERATION) {
-                return valueListClause(model, candidate.path(), candidate.kind());
-            }
-        }
-        return null;
-    }
-
-    private static Condition quantifierCondition(
-            BoundModel model,
-            String scope,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable) {
-        String flattened = aggregateOperand(scope, childrenOf, repeatable, byGroup);
-        if (flattened != null) {
-            return Dsl.allFieldsFilled(model.flatten(flattened));
-        }
-        List<FieldInfo> siblings = byGroup.getOrDefault(scope, List.of());
-        return siblings.size() >= 2
-                ? Dsl.allFieldsFilled(model.field(siblings.get(0).path()), model.field(siblings.get(1).path()))
-                : null;
-    }
-
-    static Condition dateMathCondition(
-            BoundModel model, String scope, Map<String, List<FieldInfo>> byGroup) {
-        for (FieldInfo candidate : byGroup.getOrDefault(scope, List.of())) {
-            if (candidate.temporalClass() == ValueKind.DATE) {
-                return Dsl.yearFromDate(model.date(candidate.path())).gt(2000);
-            }
-            if (candidate.temporalClass() == ValueKind.DATE_TIME) {
-                return Dsl.yearFromDate(model.dateTime(candidate.path())).gt(2000);
-            }
-        }
-        return null;
-    }
-
-    private static Condition arithmeticCondition(
-            BoundModel model, String scope, Map<String, List<FieldInfo>> byGroup) {
-        for (FieldInfo candidate : byGroup.getOrDefault(scope, List.of())) {
-            if (candidate.kind() == ValueKind.NUMBER) {
-                return Dsl.abs(new NumberExpr(model.num(candidate.path()).value())).gt(0);
-            }
-        }
-        return null;
-    }
-
-    private static String groupFillTarget(
-            String scope, Map<String, List<GroupInfo>> childrenOf, Set<String> repeatable) {
-        for (GroupInfo child : childrenOf.getOrDefault(scope, List.of())) {
-            if (!repeatable.contains(child.path())) {
-                return child.path();
-            }
-        }
-        return null;
-    }
-
-    private static Map<String, List<GroupInfo>> childrenOf(BoundModel model) {
-        Map<String, List<GroupInfo>> childrenOf = new LinkedHashMap<>();
-        model.groups().forEach(group -> {
-            String parent = parentOf(group.path());
-            if (!parent.equals(group.path())) {
-                childrenOf.computeIfAbsent(parent, ignored -> new ArrayList<>()).add(group);
-            }
-        });
-        return childrenOf;
-    }
-
-    private static String aggregateOperand(
-            String group,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> byGroup) {
-        return aggregateOperand(group, childrenOf, repeatable, byGroup, null);
-    }
-
-    private static String aggregateOperand(
-            String group,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> byGroup,
-            Integer preferredScale) {
-        if (preferredScale != null) {
-            String matched = aggregateOperandOfScale(group, childrenOf, repeatable, byGroup, preferredScale);
-            if (matched != null) {
-                return matched;
-            }
-        }
-        return aggregateOperandOfScale(group, childrenOf, repeatable, byGroup, null);
-    }
-
-    private static String aggregateOperandOfScale(
-            String group,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> byGroup,
-            Integer requiredScale) {
-        for (GroupInfo child : childrenOf.getOrDefault(group, List.of())) {
-            if (repeatable.contains(child.path())) {
-                for (FieldInfo field : byGroup.getOrDefault(child.path(), List.of())) {
-                    if (field.kind() == ValueKind.NUMBER
-                            && (requiredScale == null || field.scale() == requiredScale)) {
-                        return child.path() + "*/" + field.name();
-                    }
-                }
-            } else {
-                String deeper = aggregateOperandOfScale(child.path(), childrenOf, repeatable, byGroup,
-                        requiredScale);
-                if (deeper != null) {
-                    return deeper;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static String uniquenessKeyField(
-            String group,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> byGroup) {
-        for (GroupInfo child : childrenOf.getOrDefault(group, List.of())) {
-            if (repeatable.contains(child.path())) {
-                List<FieldInfo> local = byGroup.getOrDefault(child.path(), List.of());
-                if (!local.isEmpty()) {
-                    return local.get(0).path();
-                }
-            } else {
-                String deeper = uniquenessKeyField(child.path(), childrenOf, repeatable, byGroup);
-                if (deeper != null) {
-                    return deeper;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static List<String> siblingAggregatePair(
-            String scope,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> numberFields) {
-        List<String> cells = new ArrayList<>();
-        List<String> repetitions = new ArrayList<>();
-        collectRepeatableCells(scope, childrenOf, repeatable, numberFields, cells, repetitions);
-        for (int first = 0; first < repetitions.size(); first++) {
-            for (int second = first + 1; second < repetitions.size(); second++) {
-                String left = repetitions.get(first);
-                String right = repetitions.get(second);
-                if (!EntityPaths.isStrictlyInside(left, right)
-                        && !EntityPaths.isStrictlyInside(right, left)) {
-                    return List.of(cells.get(first), cells.get(second));
-                }
-            }
-        }
-        return null;
-    }
-
-    private static void collectRepeatableCells(
-            String group,
-            Map<String, List<GroupInfo>> childrenOf,
-            Set<String> repeatable,
-            Map<String, List<FieldInfo>> numberFields,
-            List<String> cells,
-            List<String> repetitions) {
-        for (GroupInfo child : childrenOf.getOrDefault(group, List.of())) {
-            if (repeatable.contains(child.path())) {
-                for (FieldInfo field : numberFields.getOrDefault(child.path(), List.of())) {
-                    if (field.kind() == ValueKind.NUMBER) {
-                        cells.add(child.path() + "*/" + field.name());
-                        repetitions.add(child.path());
-                        break;
-                    }
-                }
-            } else {
-                collectRepeatableCells(child.path(), childrenOf, repeatable, numberFields, cells, repetitions);
-            }
-        }
-    }
-
-    private static Condition valueListClause(BoundModel model, String path, ValueKind kind) {
-        return switch (kind) {
-            case NUMBER -> model.num(path).in(0, 1);
-            case ENUMERATION -> model.enumOf(path).in("V1", "V2");
-            default -> model.str(path).in("V1", "V2");
-        };
     }
 
     private static void assignClustered(
@@ -741,10 +430,8 @@ final class RuleModelSynthesizer {
             int count,
             double meanClusterSize,
             Distribution targetScopeCapacity,
-            Set<String> repeatable,
+            ScopeShape shape,
             Map<String, Integer> maxRepetitionsByPath,
-            Map<String, List<FieldInfo>> byGroup,
-            Map<String, List<GroupInfo>> childrenOf,
             Random random) {
         if (candidates.isEmpty() || targetScopeCapacity == null || targetScopeCapacity.n() == 0 || count <= 0) {
             return candidates;
@@ -760,8 +447,9 @@ final class RuleModelSynthesizer {
             double bestScore = Double.MAX_VALUE;
             for (int index = 0; index < pool.size(); index++) {
                 String scope = pool.get(index).groupPath();
-                double difference = Math.abs(chainProductOf(scope, repeatable, maxRepetitionsByPath) - (long) target);
-                boolean capable = aggregateOperand(scope, childrenOf, repeatable, byGroup) != null;
+                double difference =
+                        Math.abs(chainProductOf(scope, shape.repeatable(), maxRepetitionsByPath) - (long) target);
+                boolean capable = shape.aggregateOperand(scope) != null;
                 double score = capable ? difference * 0.8 : difference;
                 if (score < bestScore) {
                     bestScore = score;
@@ -852,41 +540,11 @@ final class RuleModelSynthesizer {
             if (repeatable.contains(path)) {
                 product = Math.min(product * maxRepetitionsByPath.getOrDefault(path, 1), Integer.MAX_VALUE);
             }
-            String parent = parentOf(path);
+            String parent = ScopeShape.parentOf(path);
             if (parent.equals(path)) {
                 return product;
             }
             path = parent;
         }
     }
-
-    private static int scopeClass(String groupPath, Set<String> repeatable) {
-        for (String path = groupPath; ; ) {
-            if (repeatable.contains(path)) {
-                return 2;
-            }
-            String parent = parentOf(path);
-            if (parent.equals(path)) {
-                break;
-            }
-            path = parent;
-        }
-        return depthOf(groupPath) <= 1 ? 0 : 1;
-    }
-
-    private static int depthOf(String path) {
-        int depth = 0;
-        for (int index = 0; index < path.length(); index++) {
-            if (path.charAt(index) == '/') {
-                depth++;
-            }
-        }
-        return depth;
-    }
-
-    private static String parentOf(String path) {
-        int slash = path.lastIndexOf('/');
-        return slash > 0 ? path.substring(0, slash) : path;
-    }
-
 }

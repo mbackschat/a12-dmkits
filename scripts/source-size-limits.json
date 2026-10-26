@@ -18,7 +18,6 @@
     "adapter/build.gradle": 1093,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2550,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/RuleModelSynthesizer.java": 830,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java": 924,
     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 1355,
