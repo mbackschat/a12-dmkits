@@ -22,14 +22,11 @@ import kotlin.math.ulp
  * refuses it while authoring.
  */
 fun numberBoundsInverted(minValue: Double, maxValue: Double, maxFractionalDigits: Int?): Boolean =
-    if (boundsReadAsIntegers(maxFractionalDigits)) {
-        roundedHalfAwayFromZero(minValue) > roundedHalfAwayFromZero(maxValue)
-    } else {
-        minValue > maxValue
-    }
+    boundAsRead(minValue, maxFractionalDigits) > boundAsRead(maxValue, maxFractionalDigits)
 
-/** Whether A12 rounds both bounds to integers before reading them: no fractional digit is allowed. */
-private fun boundsReadAsIntegers(maxFractionalDigits: Int?): Boolean = (maxFractionalDigits ?: 0) == 0
+/** A bound as A12 reads it: rounded to an integer when no fractional digit is allowed, otherwise as written. */
+private fun boundAsRead(value: Double, maxFractionalDigits: Int?): Double =
+    if ((maxFractionalDigits ?: 0) == 0) roundedHalfAwayFromZero(value) else value
 
 // `a - floor(a)` is exact for every double, so the half test reads the stored value rather than a sum.
 private fun roundedHalfAwayFromZero(value: Double): Double {
@@ -62,14 +59,10 @@ enum class PrintedBoundDefect {
  * A12 reads it as `0`, so only a value strictly below zero can be one.
  */
 fun printedNumberBoundDefects(value: Double, maxFractionalDigits: Int?): Set<PrintedBoundDefect> {
-    val digits = if (boundsReadAsIntegers(maxFractionalDigits)) {
-        val rounded = roundedHalfAwayFromZero(value)
-        if (value < 0 && rounded == 0.0) return setOf(PrintedBoundDefect.SIGNED_ZERO)
-        plainDigitCount(rounded)
-    } else {
-        plainDigitCount(value)
-    }
-    return if (digits > MAX_PRINTED_DIGITS) setOf(PrintedBoundDefect.TOO_MANY_DIGITS) else emptySet()
+    val printed = boundAsRead(value, maxFractionalDigits)
+    // Only rounding can bring a value below zero to zero: a raw negative bound is never 0.0.
+    if (value < 0 && printed == 0.0) return setOf(PrintedBoundDefect.SIGNED_ZERO)
+    return if (plainDigitCount(printed) > MAX_PRINTED_DIGITS) setOf(PrintedBoundDefect.TOO_MANY_DIGITS) else emptySet()
 }
 
 /** A12's model-wide digit budget, which a printed bound meets as a value of a Number field. */

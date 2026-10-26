@@ -23,7 +23,8 @@ private const val RESERVED_NAME_PREFIX = "vk_vk"
  * law. That miss is the argument for this function existing rather than for a fourth copy of the comparison.
  */
 fun isReservedElementName(name: String): Boolean =
-    name.length <= 100 && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' } &&
-        name.length >= RESERVED_NAME_PREFIX.length &&
-        // The conjunct above confines the name to ASCII, so the fold is a fixed offset.
-        RESERVED_NAME_PREFIX.indices.all { (if (name[it] in 'A'..'Z') name[it] + ('a' - 'A') else name[it]) == RESERVED_NAME_PREFIX[it] }
+    name.length in RESERVED_NAME_PREFIX.length..100 &&
+        // Folding A-Z alone suffices: the prefix is ASCII, so no other character can match it. Tested first
+        // because almost no name carries it, which spares the whole-name scan.
+        RESERVED_NAME_PREFIX.indices.all { (if (name[it] in 'A'..'Z') name[it] + ('a' - 'A') else name[it]) == RESERVED_NAME_PREFIX[it] } &&
+        name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' }

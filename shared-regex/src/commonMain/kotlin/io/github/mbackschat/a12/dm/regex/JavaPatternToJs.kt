@@ -194,8 +194,7 @@ internal object JavaPatternToJs {
             index++
             val bounds = raw.toString().split(',')
             if (bounds.size !in 1..2 || bounds[0].isEmpty() ||
-                bounds.any { bound -> bound.any { it !in '0'..'9' } ||
-                    (bound.isNotEmpty() && bound.asciiRadixIntOrNull(10) == null) }) {
+                bounds.any { bound -> bound.isNotEmpty() && bound.asciiRadixIntOrNull(10) == null }) {
                 throw UnsupportedJavaPattern("malformed repetition")
             }
             return "{$raw}"
@@ -363,7 +362,7 @@ internal object JavaPatternToJs {
                 // unicode mode refuses the escape (JDK 21.0.12, 2026-10-21; `PatternCommentModeParityTest`).
                 else -> if (e.code >= 0x80) {
                     if (flags.caseInsensitive) hasUnverifiedMapping = true
-                    buildString { appendLiteral(this, e, flags) }
+                    e.toString()
                 } else {
                     hasUnverifiedMapping = true
                     "\\$e"
@@ -663,7 +662,8 @@ internal object JavaPatternToJs {
 
         private fun classLiteralValue(raw: String, at: Int, width: Int): Char {
             if (width == 1) return raw[at]
-            if (width > 2) return raw.substring(at + 2, at + width).toInt(16).toChar()
+            // classLiteralWidth admitted only ASCII hex digits here, at most four of them.
+            if (width > 2) return raw.substring(at + 2, at + width).asciiRadixIntOrNull(16)!!.toChar()
             return when (val escaped = raw[at + 1]) {
                 't' -> '\t'; 'n' -> '\n'; 'r' -> '\r'; 'f' -> '\u000c'
                 'b' -> '\u0008'; 'a' -> '\u0007'; 'e' -> '\u001b'
