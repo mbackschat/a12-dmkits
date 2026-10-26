@@ -489,15 +489,6 @@ internal fun TrackedDeclaration.declaredFieldType(): FieldType? =
     (body?.get("fieldType") as? JsonObject)?.namedFieldType()
 
 /**
- * Which [BaseTypeClass] this field's declaration falls into, or null where this reader cannot say.
- *
- * Null covers `TypeDefType` and `UnspecifiedType`, whose effective type is a definition body this checker
- * declares as a coverage gap rather than reads — so a law over base types leaves such a field unjudged
- * rather than guessing at it.
- */
-internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = declaredFieldType()?.baseTypeClass
-
-/**
  * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
  *
  * An allow-list rather than the complement of `NumberType`, for the same reason [PLAINLY_NON_TEMPORAL_TYPES]

@@ -218,7 +218,8 @@ private fun TrackedFactBase.valueList(
     val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element, call.inAFilterBody)
         ?: return null
     val values = opposite.map { operand -> expandedReference(operand, declaringGroup, element, call.inAFilterBody) ?: return null }
-    if (values.any { reference -> reference.fields.any { it.baseTypeClass() != subject.baseTypeClass() } }) {
+    val subjectClass = effectiveBaseTypeClass(subject)
+    if (values.any { reference -> reference.fields.any { effectiveBaseTypeClass(it) != subjectClass } }) {
         return null
     }
     return listOf(ListedReference(subject.path, listOf(subject))) + values

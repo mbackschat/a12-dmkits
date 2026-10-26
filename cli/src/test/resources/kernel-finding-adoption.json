@@ -796,21 +796,23 @@
      }
     },
     "kf602": {
-     "sha256": "7028c6b5491e94ece4de4ed4ff2aaf68125060134935f1f69f243c7e388d3da2",
+     "sha256": "9f78a953a61bac8454df08d4c717e2b0559d5fc27428ad67db8aafbb994361ca",
      "task": "SS13",
      "scope": {
       "dmkits": [],
       "checker": [
        "the parallel walk on a type-defined index and a doubly keyed group operand",
        "every operand-kind gate and ordering key on a type-defined field",
-       "every setting gate on a type-defined field"
+       "every setting gate on a type-defined field",
+       "a date-range value list mixing plain and type-defined fields"
       ],
       "json-schema-import": [],
       "json-schema-export": [],
       "adapter": [
        "A12's parallel-level classes on type-defined and nested keys",
        "A12's classes on type-defined twins and ordering keys",
-       "A12's classes on setting twins"
+       "A12's classes on setting twins",
+       "A12's classes on mixed date-range value lists"
       ],
       "interpreter": [],
       "dmtool-cli": [],
@@ -839,6 +841,10 @@
         "every setting gate on a type-defined field": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedSettingAgreementTest.kt#theCheckerNamesA12sClassOnTheTypeDefinedTwin",
          "witness": "The checker names A12's class on every setting twin."
+        },
+        "a date-range value list mixing plain and type-defined fields": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedValueListAgreementTest.kt#theCheckerNamesWhatA12Names",
+         "witness": "The checker names A12's class on every mix."
         }
        }
       },
@@ -867,6 +873,10 @@
         "A12's classes on setting twins": {
          "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedSettingAgreementTest.kt#a12AnswersEachTwinAsItsPlainField",
          "witness": "A12 draws the plain field's class on every setting twin."
+        },
+        "A12's classes on mixed date-range value lists": {
+         "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTypeDefinedValueListAgreementTest.kt#a12AnswersEveryMixAsPinned",
+         "witness": "A12 answers every mix as the finding states."
         }
        }
       },
