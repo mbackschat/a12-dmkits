@@ -9807,6 +9807,8 @@ The ITERATION4 loop also starts at level 1. On a repeatable root whose only per-
 
 **The root's own repeatability is NOT the variable.** It was repeatable throughout the first grid, so "the reaching reference is the root" and "the reaching reference is itself an unpinned repetition" were indistinguishable; re-measured on a non-repeatable root, both classes fire exactly as before.
 
+*Added 2026-10-26:* a GROUP error target is judged by the group that holds it, as a field target is. A rule in a repeatable `Received`, with the condition `GroupFilled(/Shipment) And [Quantity] > 0`, draws `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` on the field `Note`, on the fixed group `Check` and on the repeatable group `Parts` alike; `GroupFilled(/Shipment)` alone is admitted on `Parts`. So the target's own repeatability does not move the class. Locked: `adapter.laws.CheckerGroupTargetIterationAgreementTest`, A12 pinned and the checker agreeing.
+
 Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across four carriers (repeatable root, fixed root, flat, and the region grid above). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed. Every read in these grids was unstarred, unkeyed and outside any filter, a fourth constant: which reads count is [KF488](#kf488)'s.
 
 ## §9 supplement — what pre-empts `MVK_REPEATABLE_GROUP_MISSING` is a key OUTSIDE the rule group, and its carrier picks the class (measured, 2026-09-14) <a id="kf347"></a>

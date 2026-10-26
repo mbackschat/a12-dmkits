@@ -9262,16 +9262,18 @@
       }
     },
     "kf348": {
-      "sha256": "221c26de5d052319aaba4ea8f85c6f18168d72bfe794a5fdd5d32e8018eca40f",
+      "sha256": "7488f2dff9fbe18251193c7ff6a87733cd0c729e4067229f0756d439fbfaa5d4",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "only a root-group reference leaves the error field unpinned"
+          "only a root-group reference leaves the error field unpinned",
+          "A12's class on a group error target"
         ],
         "dmkits": [],
         "interpreter": [],
         "checker": [
-          "only a root-group reference leaves the error field unpinned"
+          "only a root-group reference leaves the error field unpinned",
+          "a group error target judged by the group that holds it"
         ],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -9288,6 +9290,10 @@
             "only a root-group reference leaves the error field unpinned": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerIterationBindingAgreementTest.kt#theCheckerNamesA12sBindingClassOnEveryRow",
               "witness": "A root rule group draws ITERATION4; a non-root group draws the binding class."
+            },
+            "A12's class on a group error target": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupTargetIterationAgreementTest.kt#a12AnswersEveryRowAsPinned",
+              "witness": "A12 answers every group target as the finding states."
             }
           }
         },
@@ -9308,6 +9314,10 @@
             "only a root-group reference leaves the error field unpinned": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ErrorFieldIterationBindingTest.kt#theContainingGroupThatNamesTheErrorFieldPicksTheClass",
               "witness": "The root-named rule now reports ITERATION4, the branch-named ones the binding class, on both checker targets."
+            },
+            "a group error target judged by the group that holds it": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerGroupTargetIterationAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's class on every group target."
             }
           }
         },
