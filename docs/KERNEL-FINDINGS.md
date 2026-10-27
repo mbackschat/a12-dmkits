@@ -15214,7 +15214,7 @@ The checker published only the empty-code sentence until this measurement. It no
 
 > Fold: pending — the construction carrier beside [KF529](#kf529)'s extractors and [KF392](#kf392)'s shifts; a12-kernel-lean SPEC-2026-10-26-21.
 
-`CheckDateTimeKonstruktImpl.check` (source-read) asks the Date operand two format questions and the partial-precision one, then the Time operand one format question, and stops at the first that fails. Every operand form a temporal slot takes was placed once in each slot beside a valid partner, with and without a Base Year (34 forms × 2 slots × 2 models); the discriminating rows:
+`CheckDateTimeKonstruktImpl.check` (source-read) asks the Date operand two format questions and the partial-precision one, then the Time operand one format question, and stops at the first that fails. Every operand form a temporal slot takes was placed once in each slot beside a valid partner, with and without a Base Year (36 forms × 2 slots × 2 models, two of them a nested construction A12 refuses); the discriminating rows:
 
 | row | A12 |
 |---|---|
@@ -15233,6 +15233,6 @@ The checker published only the empty-code sentence until this measurement. It no
 - **No gate asks for a complete date.** `yyyy-MM` passes; only a partial PRECISION is refused, and only on a field — a constant or a nested operation never draws `MVK_INVALID_DATE_TYPE`.
 - **The format gates come before the precision gate in source**; no row here has both fail, so that order rests on the source read alone.
 
-The checker was silent on 86 of the 136 rows, each refused by this check; it now names A12's class on all 136. It reports them through `DATE_TIME_CONSTRUCTION_OPERANDS`, silent on the Time operand while it cannot type the Date and on the `ValueAsDate` placement A12 exempts from the Date gates.
+The checker was silent on 86 of the grid's first 136 rows, each refused by this check; it now names A12's class on all 144. It reports them through `DATE_TIME_CONSTRUCTION_OPERANDS`, silent on the Time operand while it cannot type the Date and on the `ValueAsDate` placement A12 exempts from the Date gates.
 
 *Locked by:* `adapter.laws.CheckerDateTimeConstructionAgreementTest` (whole grid, A12 against the checker, and the discriminating rows pinned).

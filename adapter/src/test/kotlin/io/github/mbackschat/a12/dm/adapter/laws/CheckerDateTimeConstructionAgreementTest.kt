@@ -55,6 +55,8 @@ class CheckerDateTimeConstructionAgreementTest {
         "Date(\"01\", \"01\")", "StartOfDateRange(CoverPeriod)", "StartOfDateRange(RenewalWindow)",
         "EndOfDateRange(SeasonWindow)", "Claims/FiledOn For \"C1\"", "Claims/NotedOn For \"C1\"",
         "Claims/FiledAt For \"C1\"",
+        // A nested construction A12 refuses, which answers once, before the slot it stands in is asked.
+        "DateTime(StartOn, StartOn)", "DateTime(NotedMonth, RenewalClock)",
     )
 
     /** Each slot, with the valid partner the other one holds. */

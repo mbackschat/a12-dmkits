@@ -14958,7 +14958,7 @@
       }
     },
     "kf627": {
-      "sha256": "ae74abafc5f9ef9626cb70c12d97c96de40f583aab2348652a00cc9c9807045f",
+      "sha256": "d87ac822a2a2c9d6e141e434926b7352ab35698573c8bb24401fb320b9966a91",
       "task": "SS30",
       "scope": {
         "dmkits": [],
@@ -14968,7 +14968,7 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "rule check on the 136 rows"
+          "rule check on the 144 rows"
         ],
         "interpreter": [],
         "dmtool-cli": [],
@@ -14988,7 +14988,7 @@
           "evidence": {
             "the operands of a DateTime construction": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateTimeConstructionAgreementTest.kt#theCheckerNamesA12sClassOnEveryOperandOfEitherSlot",
-              "witness": "136 rows, each asserting the checker's codes equal A12's."
+              "witness": "144 rows, each asserting the checker's codes equal A12's."
             }
           }
         },
@@ -15006,7 +15006,7 @@
           "state": "APPLIED",
           "basis": "A12's own verdicts are the expected column of the lock, and the discriminating rows are pinned.",
           "evidence": {
-            "rule check on the 136 rows": {
+            "rule check on the 144 rows": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateTimeConstructionAgreementTest.kt#aSlotAnswersInA12sOrder",
               "witness": "The A12 column is asserted from RuleValidator, not copied."
             }
