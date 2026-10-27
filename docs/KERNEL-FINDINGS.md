@@ -15199,6 +15199,7 @@ a12-kernel-lean SPEC-2026-10-27-01. One policy model is broken in one way per ro
 | an empty `computedFieldRelPath` | unbuilt | "The computed field is not set properly." |
 | a type definition's empty `id` / `name` | "The id is empty." / "The name is empty." | the same |
 | a name, condition, error target or type-definition id of ONE SPACE | unbuilt or the `MVK_*` classes | admitted |
+| a field `id` of ONE SPACE | admitted | admitted |
 
 - **The sentences come from one rule, A12's last.** They are `BasicConsistencyCheck`'s categories, run as `BasicConsistencyCheckFromSerializerRule` after `CodeGenerationRule` (source-read, `DocumentModelConsistencyRulesProvider`), over the model as read. That is why they follow every class and survive the filter, as [KF579](#kf579) found for the error code.
 - **"Empty" is `StringUtils.isEmpty`, not "blank".** The one-space rows are the discriminator: under `ONLY` they draw nothing. Absence is empty too where the reader lets it through: [KF498](#kf498)'s codeless refusal of a deleted `TypeDefType` without its id is this same sentence (`FieldVariantStageLawsTest`).
@@ -15207,4 +15208,4 @@ a12-kernel-lean SPEC-2026-10-27-01. One policy model is broken in one way per ro
 
 The checker published only the empty-code sentence until this measurement. It now publishes the twelve reachable categories under ten `RK_*` codes, an element and a type definition sharing the id and name ones, reports the three unbuilt shapes it missed, and no longer reports a suppressed computation's computed target as unbuilt.
 
-*Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker, 40 rows); `consistency.BasicSentenceTest` replays the checker's half on both platforms.
+*Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker, 42 rows); `consistency.BasicSentenceTest` replays the checker's half on both platforms.
