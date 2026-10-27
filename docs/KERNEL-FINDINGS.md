@@ -12763,6 +12763,7 @@ Three rules follow:
 - **A presence check drops out.** The operands of `FieldFilled`, `GroupFilled`, `AllFieldsFilled`, `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled`, `AllGroupsFilled` and `AtLeastOneGroupFilled` are referenced but never fill-to-fix. Their negative forms keep their operands.
 - **An upward count drops the whole comparison.** When exactly one side counts filled fields, groups or distinct values and the comparison asks it to be larger, both sides drop out, including the plain field on the other side. A downward or equality comparison keeps both sides.
 - **A filter always stays.** The operands of a filter are fill-to-fix even when the filtered list sits under a presence check.
+- **A connective takes the union of its branches.** *Extended 2026-10-27:* `[Quantity] > 5 Or [BackorderQuantity] >= 0`, both empty, fires through its second branch and holds both fields, the false branch's `Quantity` included; both strategies agree (`RichMessageDiffTest.orOmissionResponsibleSetMatchesKernel`, a12-kernel-lean SPEC-2026-10-26-29).
 
 A root group is never expanded into its fields, and the reference inventory keeps no group pointer, so a root-group operand names nothing in either list. The computation-check message follows the same rule. Two computations guarded by `AtLeastOneGroupFilled` over their root reference only their own target (`RootGroupGuardDependencyDiffTest`).
 
@@ -15533,3 +15534,20 @@ The [KF626](#kf626) policy model, its `Code` field, its rule, a computation and 
 The checker reported nothing on the six refused shapes. It now reads an entry element's object or array name as empty, which yields A12's rows through its existing empty-name families, and refuses an absent element name and a non-text type-definition name as a source A12's reader does not load. A mounted provider's declarations are not measured and keep the not-well-formed diagnostic.
 
 *Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker); `consistency.BasicSentenceTest` replays the checker's half on both platforms.
+
+## §10 supplement — a no-match over an index column with one empty cell is unknown in its own branch only: an `Or` beside a true branch still fires (differential, kernel 30.8.1, 2026-10-27) <a id="kf645"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-28's branch-scoped clause.
+
+Repeatable `Lines`, indexed by `Code`, and four rules at `/Order` reading `Lines/Amount For "Z"`, a key no row carries, with the filled `Ref` as error field:
+
+| rule | clean column (`A`, `B`) | one empty index cell (`A`, empty) |
+|---|---|---|
+| `FieldNotFilled(Amount For "Z") And FieldFilled(Ref)` | fires | silent |
+| `FieldNotFilled(Amount For "Z") Or FieldFilled(Ref)` | fires | **fires** |
+| `FieldNotFilled(Amount For "Z") Or FieldNotFilled(Ref)` | fires | silent |
+| `FieldFilled(Ref)`, the control | fires | fires |
+
+The empty cell also draws the generated `mandatoryField`. All three engines agree on every row. The second row is the discriminator: a compromised column that silenced the whole rule would leave it silent, and it fires, so the unknown read stays inside its branch and a true branch beside it decides the `Or`.
+
+*Locked by:* `adapter.laws.CompromisedColumnNoMatchBranchDiffTest`.

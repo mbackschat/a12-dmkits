@@ -2678,7 +2678,7 @@
       }
     },
     "kf522": {
-      "sha256": "fc5df5619262ec131de8ced0d15d3befbb3b2a5f1fea362a390c1d6aace067eb",
+      "sha256": "01c3a68a8b18a9ce296b2a645f76854b1af3f1d1018581018167419a9bcf06d1",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -16611,6 +16611,78 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf645": {
+      "sha256": "97e4510f9c778836eda74cacce6d14c2fc512f73b3df7073ab67b484ef5d6b6a",
+      "task": "SS33",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a no-match over an index column with one empty cell"
+        ],
+        "interpreter": [
+          "a no-match over an index column with one empty cell"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the branch-scoped no-match clause of SPEC-2026-10-26-28"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author keyed reads; evaluation is the interpreter's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A document's evaluation is a runtime fact; the checker judges models.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are compared on a clean and a compromised column, alone and beside an independent branch.",
+          "evidence": {
+            "a no-match over an index column with one empty cell": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CompromisedColumnNoMatchBranchDiffTest.kt#anEmptyIndexCellMakesTheNoMatchUnknownInItsOwnBranchOnly",
+              "witness": "Two documents, every fired code pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter keeps the unknown read inside its branch, so a true branch beside it decides the Or.",
+          "evidence": {
+            "a no-match over an index column with one empty cell": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CompromisedColumnNoMatchBranchDiffTest.kt#anEmptyIndexCellMakesTheNoMatchUnknownInItsOwnBranchOnly",
+              "witness": "The interpreter's fired codes equal both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI reports the interpreter's messages unchanged.",
           "evidence": {}
         },
         "a12-kernel-lean": {

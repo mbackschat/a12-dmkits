@@ -63,6 +63,10 @@ class RichMessageDiffTest {
 
         assertEquals(kernel.referenced().toSet(), msg.referenced.toSet(), "referenced operands")
         assertEquals(kernel.omissionResponsible().toSet(), msg.fillToFix.toSet(), "Or fill-to-fix set matches the kernel")
+        // Pinned, so the agreement above cannot follow a drift on both sides: both leaves' fields, the false one's
+        // included (KERNEL-FINDINGS KF522, a12-kernel-lean SPEC-2026-10-26-29).
+        assertEquals(setOf("/Order[1]/BackorderQuantity", "/Order[1]/Quantity"), kernel.omissionResponsible().toSet(),
+            "the Or's fill-to-fix content")
     }
 
     @Test
