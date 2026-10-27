@@ -15028,6 +15028,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf628": {
+      "sha256": "673ddc7c41da597e312b23f43a152b907d6ffc53771a1857c5bad0088ef10342",
+      "task": "SS29",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the seventeen acceptance cells"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check on the seventeen cells"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the literal, power, division and raw-String cells of SPEC-2026-10-26-15 and -26"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author these conditions unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker already names A12's class on every cell; the lock holds it there.",
+          "evidence": {
+            "the seventeen acceptance cells": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerArithmeticShapeAgreementTest.kt#theCheckerNamesA12sClassOnEveryAcceptanceCell",
+              "witness": "Seventeen rows, each asserting the checker's codes equal A12's measured codes."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "rule check on the seventeen cells": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerArithmeticShapeAgreementTest.kt#theCheckerNamesA12sClassOnEveryAcceptanceCell",
+              "witness": "The A12 column is asserted from RuleValidator against the pinned map."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

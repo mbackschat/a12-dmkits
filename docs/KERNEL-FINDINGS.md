@@ -15238,3 +15238,24 @@ The checker published only the empty-code sentence until this measurement. It no
 The checker was silent on 86 of the grid's first 136 rows, each refused by this check; it now names A12's class on all 144. It reports them through `DATE_TIME_CONSTRUCTION_OPERANDS`, silent on the Time operand while it cannot type the Date and on the `ValueAsDate` placement A12 exempts from the Date gates.
 
 *Locked by:* `adapter.laws.CheckerDateTimeConstructionAgreementTest` (whole grid, A12 against the checker, and the discriminating rows pinned).
+
+## §5 supplement — a 19-digit literal is admitted, only an ungrouped power chain and two divisions in one region are refused, and a raw String takes a per-operator class under `<`, `-` and `Sum` (rule check, kernel 30.8.1, 2026-10-27) <a id="kf628"></a>
+
+> Fold: pending — measured confirmations of a12-kernel-lean SPEC-2026-10-26-15 and -26, beside [KF503](#kf503)'s division walk.
+
+The cells a12-kernel-lean named as the acceptance of those two entries, each with its control:
+
+| row | A12 |
+|---|---|
+| a 15-, 16- and 19-digit number literal | admitted |
+| `[Qty] ^ [Exp1] ^ [Exp2]` | `MVK_TOO_MANY_POW_FOR_CALC` |
+| `{[Qty] ^ [Exp1]} ^ [Exp2]`, `[Qty] ^ {2 ^ 2}` | admitted |
+| `[Qty] ^ {[Exp1] ^ [Exp2]}` over scale-0 fields | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[Qty] / [Exp1] + [Exp2] / [Qty]` | admitted |
+| `[Qty] / [Exp1] / [Exp2]`, `[Qty] / [Exp1] * [Exp2] / [Qty]` | `MVK_TOO_MANY_DIV_FOR_CALC` |
+| a raw String under `<` / under `-` | `MVK_INVALID_RAW_TYPE`, where a plain String draws `MVK_INVALID_TYPE_FOR_COMPARISON` / `MVK_NO_NUMBER_FOR_CALC` |
+| a raw String list under `Sum` | `MVK_NO_NUMBER`, as a plain String list does |
+
+So a raw String's refusal is the operator's: the comparison and the arithmetic name the raw class ahead of their own, while `Sum` asks for a number and never reaches it. The checker agreed on every row before this measurement; nothing changed in it.
+
+*Locked by:* `adapter.laws.CheckerArithmeticShapeAgreementTest` (A12 against the checker, 17 rows).
