@@ -925,11 +925,11 @@ internal fun Interpreter.producesString(e: Expr): Boolean = when (e) {
     else -> false
 }
 
-/** Whether the partial extent [gate] leaves [star]'s extent unestablished in this row. A starred GROUP is asked
- *  field by field: a field-expanding aggregate expands it into its contained fields before any extent gate reads
- *  it, so field coverage settles an extent no identifier names on the group path (KF464). */
-private fun Interpreter.extentUnknown(star: Expr.Star, gate: (String, Int, List<Int>) -> Boolean): Boolean {
-    val gated = if (namesAGroup(star)) expandOneGroupOperand(star) else listOf(star)
+/** Whether the partial extent [gate] leaves [operand]'s extent unestablished in this row. A GROUP, starred or
+ *  not, is asked field by field: a field-expanding aggregate expands it into its contained fields before any
+ *  extent gate reads it, so field coverage settles an extent no identifier names on the group path (KF464, KF623). */
+private fun Interpreter.extentUnknown(operand: Expr, gate: (String, Int, List<Int>) -> Boolean): Boolean {
+    val gated = if (namesAGroup(operand)) expandOneGroupOperand(operand) else listOf(operand)
     return gated.filterIsInstance<Expr.Star>().any { !gate.invoke(it.path, it.bindDepth, ctx.repsOf(it.path)) }
 }
 
@@ -972,9 +972,11 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
         // A keyed list is asked in the row its key selects, or in the empty row a key no row carries names, so
         // the same gate decides its extent; an undecidable key leaves the read itself unknown
         // (SPEC-2026-10-06-03, `adapter.laws.PartialProductCapacityDiffTest`).
+        // An unstarred GROUP operand of a field-expanding aggregate is asked as its starred form is: it expands to
+        // the same contained fields, so the extent is the same field-by-field question (KERNEL-FINDINGS KF623).
         if (gate != null && f.args.any { arg ->
                 when {
-                    arg is Expr.Star -> extentUnknown(arg, gate)
+                    arg is Expr.Star || op?.expandsGroups == true && arg is Expr.Field && namesAGroup(arg) -> extentUnknown(arg, gate)
                     arg.isIndexedStar() -> withIndexedStar(arg as Expr.EntitySpec, false) { extentUnknown(it, gate) }
                     else -> false
                 }

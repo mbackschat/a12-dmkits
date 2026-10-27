@@ -508,9 +508,10 @@ class Interpreter(
             // no `having` parameter at all, so before this branch the filter was silently dropped for every
             // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
             a is Expr.Star && a.having != null -> filteredFillScope(c, a, a.having)
-            // Under partial validation a starred GROUP is tallied field by field, as every field-expanding consumer
-            // reads it, so each contained field's slots meet the relevant set.
-            a is Expr.Star && cellRelevant != null -> if (c.declaredKind(path) != null) relevantStarFillScope(c, a)
+            // Under partial validation a GROUP, starred or not, is tallied field by field, as every field-expanding
+            // consumer reads it, so each contained field's slots meet the relevant set (KF623 for the unstarred one).
+            cellRelevant != null && (a is Expr.Star || a is Expr.Field && namesAGroup(a)) ->
+                if (c.declaredKind(path) != null) relevantStarFillScope(c, a as Expr.Star)
                 else combined(expandOneGroupOperand(a).map { operandFillScope(it) })
             // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
             // means "cap at the operand's own path depth".
@@ -1573,19 +1574,24 @@ class Interpreter(
             // A duplicate hides later filters, after one kept successor (DenseUniquenessPrefixDiffTest).
             // Partial validation retains its separately measured row selection.
             if (!computeMode && a.having != null && cellRelevant == null) {
-                return filteredRows(c, a, FilterTraversal.DENSE, listFilter(a)).mapNotNull { rc ->
-                    if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null
-                }
+                return filteredRows(c, a, FilterTraversal.DENSE, listFilter(a)).mapNotNull { comparedRowValue(it, a.path) }
             }
-            if (c.datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
+            if (cellRelevant == null && c.datePrecisionOf(a.path) !in PARTIAL_PRECISIONS) return filteredStarCells(a)
             if (computeMode) return computeStarReads(a, listFilter(a)).mapNotNull { cell ->
                 cell?.value?.let { resolved -> if (resolved is Val.Unknown) wellFormedPartialText(c, a.path, cell.raw) ?: resolved else resolved }
             }
+            // Partial validation judges no extent here: a cell outside the coverage is skipped wherever it sits, so
+            // the operator fires on a duplicate among the relevant cells alone (KERNEL-FINDINGS KF623).
             return keptRowContexts(a).asSequence()
-                .mapNotNull { rc -> if (rc.filled(a.path)) comparedValue(rc, a.path, rc.field(a.path)) else null }
+                .filter { rc -> cellRelevant?.invoke(a.path, rc.repsOf(a.path)) != false }
+                .mapNotNull { comparedRowValue(it, a.path) }
         }
         return sequence { if (ctxOf(a).filled(pathOf(a))) yield(comparedValue(ctxOf(a), pathOf(a), evalExpr(a))) }
     }
+
+    /** The compared value of row [rc]'s cell at [path], or null when it is empty. */
+    private fun comparedRowValue(rc: EvalContext, path: String): Val? =
+        if (rc.filled(path)) comparedValue(rc, path, rc.field(path)) else null
 
     /**
      * The value `FieldValuesNotUnique` compares for one filled cell, given its [resolved] read. A partially known
@@ -1623,10 +1629,3 @@ class Interpreter(
 
 /** The `DateType` precisions whose well-formed value may be partially known (a zero component). */
 internal val PARTIAL_PRECISIONS = setOf(DatePrecision.DAY_OPTIONAL, DatePrecision.MONTH_OPTIONAL, DatePrecision.YEAR_OPTIONAL)
-
-private val DECLARED_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
-    PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)
-
-private val FIELD_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED,
-    PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
-    PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)

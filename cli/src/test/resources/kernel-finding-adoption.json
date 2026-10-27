@@ -11107,7 +11107,7 @@
       }
     },
     "kf461": {
-      "sha256": "6d7ada5159103ffbb3801a1aca2fa167b0a68e2e1249f8d64425761f93d9f381",
+      "sha256": "cb556cd8cb3ac50f2328b1ce71991154400690f0fb7e9da9d386665e5936cac9",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -14653,6 +14653,78 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "dmtool's custom-condition evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf623": {
+      "sha256": "92612bbea0f88128776b1b4b2502f88710b5db7426efca0ebd283367d88eca49",
+      "task": "SS23",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "both kernel strategies under each coverage"
+        ],
+        "interpreter": [
+          "the relevant-cell uniqueness walk and the field-by-field group operand"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the uniqueness and group-operand clauses of SPEC-2026-10-26-06"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Partial-validation relevance is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and A12 admits every model here.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime relevance rule does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime relevance rule does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted per coverage beside the interpreter.",
+          "evidence": {
+            "both kernel strategies under each coverage": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialUniqueAndGroupExtremumDiffTest.kt#aDuplicateIsDecidedAmongTheRelevantCellsAlone",
+              "witness": "Three documents under six coverages, and eight coverages over the group-operand rules, each code set asserted on dynamic Groovy and static Java."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The uniqueness walk skips a cell outside the coverage, and an unstarred group operand meets the same gates as its starred form.",
+          "evidence": {
+            "the relevant-cell uniqueness walk and the field-by-field group operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialUniqueAndGroupExtremumDiffTest.kt#anUnstarredGroupOperandIsReadFieldByField",
+              "witness": "The interpreter's partial result equals both kernel strategies on every coverage of both tests."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's partial evaluation goes through the interpreter assessed here.",
           "evidence": {}
         },
         "a12-kernel-lean": {

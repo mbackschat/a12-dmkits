@@ -124,6 +124,10 @@ class PartialKeyedSelectionRelevanceDiffTest {
             "returnReason" to listOf(REFERENCE, returns("Reason")),
             "returnRows" to listOf(REFERENCE, returns("Code"), "/Order/Returns" to listOf(0, 1),
                 "/Order/Returns" to listOf(0, 2)),
+            "keyOtherRow" to listOf(REFERENCE, "/Order/Packages/No" to listOf(0, 2, 0),
+                "/Order/Packages/Carrier" to listOf(0, 1, 0), "/Order/Packages/Dims/Height" to listOf(0, 1, 0, 0)),
+            "keyOwnRow" to listOf(REFERENCE, "/Order/Packages/No" to listOf(0, 1, 0),
+                "/Order/Packages/Carrier" to listOf(0, 1, 0), "/Order/Packages/Dims/Height" to listOf(0, 1, 0, 0)),
         )
 
         val model = DocumentModelDraft.named("parcel-relevance").locale("en_US")
@@ -311,6 +315,16 @@ class PartialKeyedSelectionRelevanceDiffTest {
             "returnReason" to emptySet(),
             "none" to emptySet(),
             "root" to STRING_KEYED,
+        ))
+    }
+
+    /** A matched key is decided only when ITS row's index cell is relevant: the key cell of another row does not
+     *  stand in, though the selected row's targets are covered in both coverages (SPEC-2026-10-26-06). */
+    @Test
+    fun aMatchedKeyNeedsTheIndexCellOfTheRowItSelects() {
+        assertFires(SELECTED, mapOf(
+            "keyOtherRow" to emptySet(),
+            "keyOwnRow" to setOf("SG", "SF", "SV", "SX"),
         ))
     }
 }

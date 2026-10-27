@@ -10928,6 +10928,8 @@ The computation rows carry a second alternative that a merely false precondition
 | `FirstFilledValue(B, A)` | `B` alone covered | — |
 | `FirstFilledValue(S1 -> Speed, S2 -> Speed)` · `[S2 -> Speed] == "FAST"` | `S1` and `S2` · `S2` | `S2` alone · neither |
 
+*Extended 2026-10-27 (a12-kernel-lean SPEC-2026-10-26-06):* **a selected row needs its OWN index cell covered.** With package 1's `Carrier` and `Height` covered, the selected-row consumers keyed `For "1"` fire when package 1's `No` is covered too and are all silent when only package 2's `No` is, on both strategies (`aMatchedKeyNeedsTheIndexCellOfTheRowItSelects`).
+
 **What the discriminating rows rule out.** The concrete-rows coverage reaches both existing rows and every field in them, and a no-match stays silent under it. So a no-match is not decided by covering the rows that exist. `FirstFilledValue(A, B)` stays silent when only the filled `B` is covered, so the walk does not skip an empty cell before asking the coverage. `FirstFilledValue(B, A)` under that same coverage fires, so a cell after the first filled one is never asked.
 
 **Extended 2026-09-25: a keyed GROUP's walk and a String index** (a12-kernel-lean's `SPEC-2026-09-24-05` limit, which named separately written operands and a Number index keyed by a text literal). `Packages` gains `Sizes` {`Width`, `Depth`}: package 1 holds `Width = 7` alone, package 2 `Depth = 8` alone. A repeatable `Returns` gains a String index `Code`, with row `A` holding `Reason` and row `B` its key alone. Both strategies agree:
@@ -15104,3 +15106,33 @@ An order model holds `Ref`, `Note` (String), `Qty` (Number) and repeatable `Line
 - **The core view lists group instances too, and answers a present repeatable one with a placeholder.** The iterator also lists the model's root group (`/Order[1]`) and every line instance, a bare `{}` row included (`"Lines": [{}, {"Sku": "s"}]` lists `/Order/Lines[1, 1]` and `[1, 2]`); `"Lines": []` lists none. `getValue` of a present line instance is `NonEmptyString` (`REPEATABLE_GROUPINSTANCE_PLACEHOLDER`), of an absent one `""`, and of the non-repeatable `/Order[1]` `""`.
 
 *Locked by:* `adapter.laws.CustomConditionEmptyCellDiffTest` (the md and core views pinned per input, the core view through `CustomTestRangeOracle.validateWithCoreConditions`; the interpreter's public view and the `KernelCustomConditions` bridge compared with each).
+
+
+## §12 supplement — partial validation decides `FieldValuesNotUnique` among the relevant cells, and reads an unstarred group operand field by field (measured, 2026-10-27) <a id="kf623"></a>
+
+> Fold: pending — narrows §12's per-operator extent account for uniqueness and names the unstarred group operand.
+
+An order model holds a non-repeatable `Totals` group (`Net = 1`, `Tax = 5`), a non-repeatable `Codes` group (`X = Y = 7`) and `Lines` (capacity 4) with a Number `Qty`. Every rule reports on `Ref`, which every coverage names, and full validation fires every rule. On both Kernel strategies:
+
+| `Qty` values | relevant `Qty` rows | `FieldValuesNotUnique(/Order/Lines*/Qty)` |
+|---|---|---|
+| 4, 4, 5 | any (wildcard), 1–2, 1–2–3 | fires |
+| 4, 4, 5 | 1 and 3; 1 alone | silent |
+| 4, 5, 4 | any (wildcard), 1 and 3, 1–2–3 | fires |
+| 4, 5, 4 | 1 and 2; 1 alone | silent |
+| 4, empty, 4 | as `4, 5, 4` | as `4, 5, 4` |
+
+| relevant cells | group-operand rules that fire |
+|---|---|
+| `Totals/Net` alone, or `Totals/Tax` alone | `AtLeastOneFieldFilled(/Order/Totals)` |
+| `Net` and `Tax`, or the `Totals` group | `MinValue`, `MaxValue`, `Sum`, `NumberOfDifferentValues`, `NumberOfFilledFields`, `NumberOfValueInFields` and `AllFieldsFilled` over `/Order/Totals`, and `MinValue(Net, Tax)` |
+| `Codes/X` alone | none |
+| `Codes/X` and `Codes/Y` | `FieldValuesNotUnique(/Order/Codes)` and `FieldValuesNotUnique(X, Y)` |
+
+- **`FieldValuesNotUnique` judges no extent.** A cell outside the coverage is skipped wherever it sits, filled or empty, and the operator fires on a duplicate among the relevant cells alone. So listing the held rows concretely decides it exactly as a wildcard does, unlike the all-rows aggregates of §12, which need the wildcard.
+- **An unstarred group operand is read field by field**, as the field list it expands to is read, and each consumer then asks its own question: `MinValue` over `Net = 1` alone stays silent because `Tax` is undecided, while `AtLeastOneFieldFilled` fires on the one relevant filled cell. The explicit field-list forms answer as their group forms do.
+- Whether a non-firing uniqueness leaf over an incomplete coverage is false or unknown is not observable here: A12 has no negation that would separate them.
+
+a12-kernel-lean's SPEC-2026-10-26-06 states both clauses; these rows measure them.
+
+*Locked by:* `adapter.laws.PartialUniqueAndGroupExtremumDiffTest` (both kernel strategies against the interpreter). The interpreter's side is [IF443](INTERPRETER-FINDINGS.md#if443).

@@ -5080,3 +5080,12 @@ The Document already held every group instance, densely materialized as A12 does
 The second defect was in message class, not in value. `PolarityWalk.leafOmission` answered `false` for every keyed scalar `EntitySpec`, so a fired `FieldValueAsNumber(… For "a") < 1` on a missed key was a `VALUE_ERROR` where both strategies answer `OMISSION_ERROR`. The arm now asks the keyed cell's fill, as its `SemanticIndex` sibling already did. A first design selected the keyed row and re-read in it; it got the value right and the class wrong, which is what made the second locus visible.
 
 *Locked:* `adapter.laws.KeyedCategoryRoleDiffTest` (seven documents, message class and fill reads included).
+
+### IF443: partial validation reads an unstarred group operand, and `FieldValuesNotUnique`'s cells, through the coverage (2026-10-27) <a id="if443"></a>
+
+[KF623](KERNEL-FINDINGS.md#kf623) measured both. The interpreter answered both as full validation would, so every rule of its lock fired under every coverage. There were two mechanisms, at three sites.
+
+- **An unstarred group operand bypassed the partial gates.** The extent gate in `evalFunc` and the fill tally in `operandFillScope` each handled a GROUP only in its starred shape, and the unstarred one, the only legal spelling for a non-repeatable group, fell through to the full-validation reads. Both now expand it as they expand the starred one. In `evalFunc` that is limited to the aggregates `FunctionOp.expandsGroups` marks, because `CurrentRepetition` also takes a group and reads its coordinate, never a cell: the first version gated every function and silenced `PartialRelevanceRepetitionCoordinateDiffTest` and `PartialDispatchSelectorDiffTest`.
+- **`FieldValuesNotUnique`'s starred cell walk never consulted the coverage.** It now skips a cell outside it, as A12 does, rather than gating the extent.
+
+*Locked:* `adapter.laws.PartialUniqueAndGroupExtremumDiffTest`.

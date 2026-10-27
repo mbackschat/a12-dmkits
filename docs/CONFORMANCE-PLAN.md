@@ -242,6 +242,18 @@ The queue is the six `handed-off` entries of a12-kernel-lean's spec-sync ledger 
 | **SS22** | SPEC-2026-10-24-18, -19 (the 2026-10-25 replay's custom-condition-bound requests) | every row of the five custom-condition-bound requests agrees with A12 through the interpreter, except rules calling an unregistered condition, which the interpreter reports unsupported by policy: a condition sees a String stored as `""` as a field holding `""`, and the core bridge answers every empty read with `""` | **done** | `CustomConditionEmptyCellDiffTest`, `CustomConditionEmptyCellTest`; the replay's five requests, 57 rows agreeing; [KF622](KERNEL-FINDINGS.md#kf622), [IF440](INTERPRETER-FINDINGS.md#if440) | — |
 
 
+### Spec-sync round of 2026-10-27 <a id="spec-sync-2026-10-27"></a>
+
+The queue is the 33 `handed-off` entries of a12-kernel-lean's ledger at its commit `5192f2bb3b9b796208534ba5a9a6d6ef8a5fdb83` (SPEC-2026-10-26-01 to -30, SPEC-2026-10-27-01 to -03). Each batch groups entries by mechanism; one committed revision and a disposition per entry go back at the end.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS23** | SPEC-2026-10-26-06 (partial-validation coverage) | a matched key needs its own row's index cell covered; `FieldValuesNotUnique` decides among the relevant cells; an unstarred group operand is read field by field; the interpreter equal to both kernel strategies on every coverage | **done** | `PartialUniqueAndGroupExtremumDiffTest`, `PartialKeyedSelectionRelevanceDiffTest.aMatchedKeyNeedsTheIndexCellOfTheRowItSelects`; [KF623](KERNEL-FINDINGS.md#kf623), [KF461](KERNEL-FINDINGS.md#kf461) extended, [IF443](INTERPRETER-FINDINGS.md#if443) | whether a non-firing uniqueness leaf is false or unknown is unobservable without a negation |
+| **SS24** | SPEC-2026-10-26-14 | `FieldValuesNotUnique` over the rule's own repeatable group, unstarred or `RuleGroup`, binds the rule's row in the interpreter as on both kernel strategies | open | — | — |
+| **SS25** | the checker rows of SPEC-2026-10-26-15, -21, -25, -26 and SPEC-2026-10-27-01 | every row where the checker and `rule check` differ settled by mechanism: the `DateTime` operand gates, an unknown maximum scale, an invalid time format, the build failures a variant filter does not hide | open | — | — |
+| **SS26** | the remaining entries whose rows already agree | each measured row locked with its oracle, the findings written, stale claims corrected in place | open | — | — |
+| **SS27** | handback | one revision and a disposition per entry | open | — | — |
+
 ### DG102 — constant index-key pattern and declared-type evidence gate (acceptance matrix before runs, 2026-09-28)
 
 Each row uses a typed `DocumentModelDraft` insurance-policy host with repeatable indexed groups and `FieldFilled(Reference) And Sum(<group>/Amount For "<constant>") > 0`. `RuleValidator.check` is the acceptance oracle; the portable `check` is the comparison oracle. A matched key should reach `MVK_PARAMSIZE_INVALIDN` on this probe, while a rejected key should stop at `MVK_INDEX_VALUE_INVALID`. The two classes intentionally distinguish value admission from simply skipping semantic-index analysis. The current `CheckerIndexKeyConstantAgreementTest` retains its independent KF481 kernel-law claim until an equivalent class assertion is in the sweep.

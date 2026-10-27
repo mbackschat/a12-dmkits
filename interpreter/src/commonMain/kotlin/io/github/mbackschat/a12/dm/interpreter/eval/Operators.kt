@@ -78,6 +78,16 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     }
 }
 
+
+/** The field-fill quantifiers whose verdict reads `t == n` or `f >= 1`, so a filtered list takes the declared fill scope. */
+internal val DECLARED_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
+    PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)
+
+/** Every field-fill quantifier. */
+internal val FIELD_FILL_OPERATORS = setOf(PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED,
+    PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
+    PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED)
+
 /**
  * A no-operand constant construct (an `Expr.Const`), resolved against the evaluation clock/model config to
  * a [Val]. `Today` is the current date; `Now` is the current date-time (orderable with dates and date-times);
@@ -97,16 +107,22 @@ enum class ConstantOp(val kernelName: String) {
     }
 }
 
-/** A value-producing function/aggregate construct (an `Expr.Func`), evaluated to a [Val]. */
-enum class FunctionOp(val kernelName: String) {
+/**
+ * A value-producing function/aggregate construct (an `Expr.Func`), evaluated to a [Val].
+ *
+ * [expandsGroups] marks the aggregates that read a GROUP operand as the fields it contains, so partial validation
+ * asks a group operand's extent field by field (KERNEL-FINDINGS KF623). `CurrentRepetition` also takes a group and
+ * reads its coordinate, never a cell, which is why the flag is per operator rather than per operand shape.
+ */
+enum class FunctionOp(val kernelName: String, val expandsGroups: Boolean = false) {
     MIN("Min"),
     MAX("Max"),
-    SUM("Sum"),
-    MAX_VALUE("MaxValue"),
-    MIN_VALUE("MinValue"),
-    NUMBER_OF_DIFFERENT_VALUES("NumberOfDifferentValues"),
+    SUM("Sum", expandsGroups = true),
+    MAX_VALUE("MaxValue", expandsGroups = true),
+    MIN_VALUE("MinValue", expandsGroups = true),
+    NUMBER_OF_DIFFERENT_VALUES("NumberOfDifferentValues", expandsGroups = true),
     DIFFERENCE_IN_DAYS("DifferenceInDays"),
-    NUMBER_OF_FILLED_FIELDS("NumberOfFilledFields"),
+    NUMBER_OF_FILLED_FIELDS("NumberOfFilledFields", expandsGroups = true),
     NUMBER_OF_FILLED_GROUPS("NumberOfFilledGroups"),
     YEAR_FROM_DATE("YearFromDate"),
     MONTH_FROM_DATE("MonthFromDate"),
@@ -155,7 +171,7 @@ enum class FunctionOp(val kernelName: String) {
     FIRST_FILLED_VALUE("FirstFilledValue"),
     // `NumberOfValueInFields(value In f1, f2, …)` — the count of the listed fields whose FILLED value equals the
     // constant. An empty field is NOT counted (kernel: only `b == TRUE` counts); a formal error → non-evaluable.
-    NUMBER_OF_VALUE_IN_FIELDS("NumberOfValueInFields"),
+    NUMBER_OF_VALUE_IN_FIELDS("NumberOfValueInFields", expandsGroups = true),
     // `RangeAsString(field, s, e)` / `RangeAsNumber(field, s, e)` — a substring of a STRING field's value by
     // 1-based inclusive char range. Out-of-range (e > length) or empty → `""` (RangeAsString) / `0` (RangeAsNumber,
     // which parses ONLY `\d+`, else 0). KERNEL-FINDINGS — `getSubstring`/`bereichAlsZahl`.
