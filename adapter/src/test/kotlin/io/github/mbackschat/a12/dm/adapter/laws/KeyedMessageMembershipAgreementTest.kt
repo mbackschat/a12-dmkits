@@ -26,6 +26,7 @@ class KeyedMessageMembershipAgreementTest {
             .stringField("Holder") { }.stringField("Pick") { }
             .group("Claims") { c -> c.repeatable(5).indexField("Ref")
                 .stringField("Ref") { }.stringField("Note") { }.stringField("Gate") { }
+                .group("Detail") { x -> x.stringField("Remark") { } }
                 .group("Items") { i -> i.repeatable(3).stringField("Item") { } } }
             .group("Tiers") { t -> t.repeatable(3).indexField("Num")
                 .numberField("Num") { it.fractionDigits(0) }.stringField("Label") { } }
@@ -33,7 +34,7 @@ class KeyedMessageMembershipAgreementTest {
                 .group("Desks") { d -> d.repeatable(2).stringField("Seats") { } } } }
         .build().toJson()
 
-    private enum class Reads { KEYED_FIELD, KEYED_GROUP, KEYED_NUMBER, STARRED, KEYED_AND_STARRED, OFFICE }
+    private enum class Reads { KEYED_FIELD, KEYED_GROUP, KEYED_DEEP, KEYED_NUMBER, STARRED, KEYED_AND_STARRED, OFFICE }
 
     private fun condition(edit: EditSession, reads: Reads): Condition {
         val root = edit.group("/Policy")
@@ -43,6 +44,7 @@ class KeyedMessageMembershipAgreementTest {
         return when (reads) {
             Reads.KEYED_FIELD -> holder.and(keyed)
             Reads.KEYED_GROUP -> holder.and(root.flattenGroup("Claims").forIndex("c1").filled())
+            Reads.KEYED_DEEP -> holder.and(root.str("Claims/Detail/Remark").semanticIndex("c1").filled())
             Reads.KEYED_NUMBER -> holder.and(root.str("Tiers/Label").semanticIndex("1").filled())
             Reads.STARRED -> holder.and(starred)
             Reads.KEYED_AND_STARRED -> holder.and(keyed).and(starred)
@@ -69,6 +71,8 @@ class KeyedMessageMembershipAgreementTest {
         "keyed group: the group named" to (Reads.KEYED_GROUP to "\$/Policy/Claims For \"c1\"\$"),
         "keyed group: a deeper repeatable field's name" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Items/Item For \"c1\"\$"),
         "keyed group: a deeper repeatable field's value" to (Reads.KEYED_GROUP to "\$/Policy/Claims/Items/Item.value For \"c1\"\$"),
+        "keyed deeper field: the index group's field" to (Reads.KEYED_DEEP to "\$/Policy/Claims/Note.value For \"c1\"\$"),
+        "keyed deeper field: its name" to (Reads.KEYED_DEEP to "\$/Policy/Claims/Detail/Remark For \"c1\"\$"),
         "number key: as written" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"1\"\$"),
         "number key: a leading zero" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"01\"\$"),
         "number key: a fraction" to (Reads.KEYED_NUMBER to "\$/Policy/Tiers/Label.value For \"1.0\"\$"),
@@ -102,6 +106,8 @@ class KeyedMessageMembershipAgreementTest {
             "keyed group: unkeyed" to listOf(FIELD), "keyed group: the group named" to listOf(INDEX),
             "keyed group: a deeper repeatable field's name" to emptyList(),
             "keyed group: a deeper repeatable field's value" to listOf(STAR),
+            // Past the unindexed `Detail`, the key still binds `Claims`, so the guard behaves as a keyed field's.
+            "keyed deeper field: the index group's field" to listOf(INDEX), "keyed deeper field: its name" to emptyList(),
             "number key: as written" to emptyList(), "number key: a leading zero" to listOf(INDEX),
             "number key: a fraction" to listOf(INDEX),
             "starred: unkeyed value" to listOf(STAR), "starred: keyed value" to listOf(INDEX),

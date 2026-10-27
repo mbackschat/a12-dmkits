@@ -59,9 +59,11 @@ class CheckerFirstFilledDateTargetAgreementTest {
             "yearless into yearless" to (("DayTarget" to "FirstFilledValue(ReportedDay, ConfirmedDay)") to ADMITTED),
             "dotted into ISO" to (("IsoTarget" to "FirstFilledValue(ReportedDot, ConfirmedDot)") to ADMITTED),
             "a direct yearless copy into ISO" to (("IsoTarget" to "[ReportedDay]") to DATE_COMPARE),
+            "a direct full-Date copy into yearless" to (("DayTarget" to "[ReportedIso]") to DATE_COMPARE),
         ))
         assertAgrees(withBaseYear, linkedMapOf(
             "a direct yearless copy into ISO with a Base Year" to (("IsoTarget" to "[ReportedDay]") to ADMITTED),
+            "a direct full-Date copy into yearless with a Base Year" to (("DayTarget" to "[ReportedIso]") to ADMITTED),
         ))
     }
 

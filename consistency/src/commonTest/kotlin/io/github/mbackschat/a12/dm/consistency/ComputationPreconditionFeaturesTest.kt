@@ -40,6 +40,8 @@ class ComputationPreconditionFeaturesTest {
             computing(precondition = "FieldFilled(Lines/Sku) And RepetitionNotUnique(Lines/Sku)")
         actual["CustomCondition as the COMMON precondition"] =
             computing(commonPrecondition = "FieldFilled(Lines/Sku) And CustomCondition NotReverse")
+        actual["RepetitionNotUnique as the COMMON precondition"] =
+            computing(commonPrecondition = "FieldFilled(Lines/Sku) And RepetitionNotUnique(Lines/Sku)")
         actual["CustomCondition in a RULE — the control"] =
             ruleSaying("FieldFilled(Lines/Sku) And CustomCondition NotReverse")
         actual["RepetitionNotUnique in a RULE — the control"] =
@@ -52,6 +54,7 @@ class ComputationPreconditionFeaturesTest {
         expected["CustomCondition"] = listOf(prohibited)
         expected["RepetitionNotUnique"] = listOf(prohibited)
         expected["CustomCondition as the COMMON precondition"] = listOf(prohibited)
+        expected["RepetitionNotUnique as the COMMON precondition"] = listOf(prohibited)
         // The rows that keep the family on the computation. A12 admits both in a rule condition.
         expected["CustomCondition in a RULE — the control"] = emptyList()
         expected["RepetitionNotUnique in a RULE — the control"] = emptyList()

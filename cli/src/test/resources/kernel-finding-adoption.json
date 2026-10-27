@@ -12332,7 +12332,7 @@
       }
     },
     "kf483": {
-      "sha256": "4394b8b449b892775e2925607c934ceb2c09521495c3993bb41b0d3c6c2bc2d1",
+      "sha256": "d21dfd4888e9cfb9bb6a6c8078e0a6a8a9a1278ab540d6059911637af66e9c4e",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -12356,7 +12356,7 @@
       }
     },
     "kf550": {
-      "sha256": "620d0094926e79a332a09a897462be383a5b5fee80bf8fb3b5584a99d46f0bce",
+      "sha256": "1c5975cb54111b5921b8964ad1b76d0b74e0e8c4f8aee638a53011296deecae3",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["crossed Date target", "cross-kind Date target"],
@@ -15030,7 +15030,7 @@
       }
     },
     "kf628": {
-      "sha256": "673ddc7c41da597e312b23f43a152b907d6ffc53771a1857c5bad0088ef10342",
+      "sha256": "f7c0233d3a56da80adc1a452d4301cf42ae4acab046a844931b3bf223cc2fe66",
       "task": "SS29",
       "scope": {
         "dmkits": [],
@@ -15092,6 +15092,1093 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf629": {
+      "sha256": "6881aea243b6a9d237257f88dbd40497fd77367f5af4678d2b3936a9dc4f47f1",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a count over a malformed cell beside a connective"
+        ],
+        "interpreter": [
+          "a count over a malformed cell beside a connective"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the consumer classes of SPEC-2026-10-26-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "a count over a malformed cell beside a connective": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnavailableCountConnectiveDiffTest.kt#aMalformedCellLeavesItsCountUnknownAndTheConnectiveDecides",
+              "witness": "Four documents, the fired codes pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A count over a malformed cell is unknown as an operand, and the connective decides.",
+          "evidence": {
+            "a count over a malformed cell beside a connective": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnavailableCountConnectiveDiffTest.kt#aMalformedCellLeavesItsCountUnknownAndTheConnectiveDecides",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf630": {
+      "sha256": "7af8c8076a69f32619d27a6a4e3278f078191da621a21b99eaecf21fe6a09afd",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "computation presence reads, starred counts and empty aggregates"
+        ],
+        "interpreter": [
+          "computation presence reads, starred counts and empty aggregates"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the computation clauses of SPEC-2026-10-26-02, -05 and -12"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "computation presence reads, starred counts and empty aggregates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationOpenClausesDiffTest.kt#eachOpenClauseComputesAsAllThreeEnginesAgree",
+              "witness": "Seven documents, every computed outcome pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Field presence poisons on a malformed cell, group presence never does, and a starred count counts rows.",
+          "evidence": {
+            "computation presence reads, starred counts and empty aggregates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationOpenClausesDiffTest.kt#eachOpenClauseComputesAsAllThreeEnginesAgree",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf631": {
+      "sha256": "506a167970c2df6476dff339de5c4641f945e01781fa1dc73edbee2041eac053",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the classification pass over fifteen leaves"
+        ],
+        "interpreter": [
+          "the classification pass over fifteen leaves"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the classification enablement of SPEC-2026-10-26-07 and -10"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the classification pass over fifteen leaves": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ClassificationEnablementGridDiffTest.kt#eachLeafDecidesHowManyRowsTheRuleVisits",
+              "witness": "Fifteen rules, the firing rows pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Each leaf's enablement decides whether the classification pass reaches the runtime failure.",
+          "evidence": {
+            "the classification pass over fifteen leaves": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ClassificationEnablementGridDiffTest.kt#eachLeafDecidesHowManyRowsTheRuleVisits",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf632": {
+      "sha256": "addc1443f0c93663fa88374731a899303065dd8c78efa0ff8e941328b84ec970",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the content gate of And and of a tolerance comparison"
+        ],
+        "interpreter": [
+          "the content gate of And and of a tolerance comparison"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the content-gate compositions of SPEC-2026-10-26-23"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the content gate of And and of a tolerance comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContentGateCompositionDiffTest.kt#anEmptyDocumentOpensTheGatesA12Opens",
+              "witness": "Three documents, the fired codes pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The content gate composes by connective and lifts a tolerance comparison over a count on either side.",
+          "evidence": {
+            "the content gate of And and of a tolerance comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ContentGateCompositionDiffTest.kt#anEmptyDocumentOpensTheGatesA12Opens",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf633": {
+      "sha256": "ccf0b61e1528e193ce5a2a75012e9f04446ce57f1999be0dadaa1a503b0f5385",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the formal check of an empty-separator DateRange"
+        ],
+        "interpreter": [
+          "the formal check of an empty-separator DateRange"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the odd-length range token of SPEC-2026-10-26-21"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the formal check of an empty-separator DateRange": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeOddTokenFormalDiffTest.kt#anOddLengthTokenIsAFormalErrorOnAllThreeEngines",
+              "witness": "Four values, the formal codes pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "An odd-length token cannot split into two months and is a formal error.",
+          "evidence": {
+            "the formal check of an empty-separator DateRange": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeOddTokenFormalDiffTest.kt#anOddLengthTokenIsAFormalErrorOnAllThreeEngines",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf634": {
+      "sha256": "bba62ba74d8f637cf084bd2f34095347c55468d6cb0ce37ee065efe6ad0e3afb",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a declared pattern containing a backslash before p"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a declared pattern containing a backslash before p"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the pattern cell of SPEC-2026-10-26-27"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author these shapes unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker names A12's class on every row.",
+          "evidence": {
+            "a declared pattern containing a backslash before p": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeOddTokenFormalDiffTest.kt#aBackslashBeforePIsRefusedEvenWhenTheBackslashIsEscaped",
+              "witness": "Three patterns, A12's messages pinned and the checker's classes asserted equal."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are asserted live as the expected column.",
+          "evidence": {
+            "a declared pattern containing a backslash before p": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateRangeOddTokenFormalDiffTest.kt#aBackslashBeforePIsRefusedEvenWhenTheBackslashIsEscaped",
+              "witness": "The A12 column is read from the kernel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which decides every row.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf635": {
+      "sha256": "ac38e2cd60c8b6e95cdcc3318c106c05b1e465a45562c6c643ad64da1e582f66",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a comparison over an empty DateFragment, DateRange or Custom side"
+        ],
+        "interpreter": [
+          "a comparison over an empty DateFragment, DateRange or Custom side"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the empty reads of SPEC-2026-10-26-30"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "a comparison over an empty DateFragment, DateRange or Custom side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyFragmentRangeCustomComparisonDiffTest.kt#aComparisonWithAnEmptySideIsNotEvaluated",
+              "witness": "Three documents, the fired codes pinned, with a live control."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A comparison with an empty side of these kinds is not evaluated.",
+          "evidence": {
+            "a comparison over an empty DateFragment, DateRange or Custom side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyFragmentRangeCustomComparisonDiffTest.kt#aComparisonWithAnEmptySideIsNotEvaluated",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf636": {
+      "sha256": "0b291896d02ee6a841255c91d89a7aec706d943f4d7a4ce50eee6fcd2c86503f",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a join across two diverging frames"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a join under a common frame"
+        ],
+        "interpreter": [
+          "a join under a common frame"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the join frames of SPEC-2026-10-26-13"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker refuses it with A12's class.",
+          "evidence": {
+            "a join across two diverging frames": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinFrameClassesDiffTest.kt#aJoinAcrossTwoFramesIsRefused",
+              "witness": "Both models, A12's and the checker's classes asserted equal."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "a join under a common frame": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinFrameClassesDiffTest.kt#aCommonFrameJoinsInsideEachOfItsRows",
+              "witness": "Three documents, every message signature pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A common frame binds both join sides inside each frame row, within capacity.",
+          "evidence": {
+            "a join under a common frame": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinFrameClassesDiffTest.kt#aCommonFrameJoinsInsideEachOfItsRows",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf637": {
+      "sha256": "aecc579b107dda0aa55f48afa2025393345ebe55cc7d837c37c75497f35e19f9",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a keyed group message parameter beside a value-list leaf"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a keyed group message parameter beside a value-list leaf"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the value-list and deeper-field stages of SPEC-2026-10-26-18"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author these shapes unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker names A12's class on every row.",
+          "evidence": {
+            "a keyed group message parameter beside a value-list leaf": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedMessageValueListGuardAgreementTest.kt#aValueListLeafSuppliesNoKeyedGuard",
+              "witness": "Three conditions, A12's and the checker's classes pinned."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are asserted live as the expected column.",
+          "evidence": {
+            "a keyed group message parameter beside a value-list leaf": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedMessageValueListGuardAgreementTest.kt#aValueListLeafSuppliesNoKeyedGuard",
+              "witness": "The A12 column is read from the kernel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which decides every row.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf638": {
+      "sha256": "c7e47ddaa38b7edba2737aee29fe8f823efda951efd4a40323c40655388d447e",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the generated checks of an index field in a non-repeatable group"
+        ],
+        "interpreter": [
+          "the generated checks of an index field in a non-repeatable group"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the non-repeatable index field of SPEC-2026-10-26-24"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the generated checks of an index field in a non-repeatable group": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NonRepeatableIndexFieldGeneratedChecksDiffTest.kt#theMandatoryArmChecksANonRepeatableIndexField",
+              "witness": "Four documents, every message signature pinned, and an unnominated control."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A nominated index field in a non-repeatable group arms the mandatory check.",
+          "evidence": {
+            "the generated checks of an index field in a non-repeatable group": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NonRepeatableIndexFieldGeneratedChecksDiffTest.kt#theMandatoryArmChecksANonRepeatableIndexField",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf639": {
+      "sha256": "ebeed48d9d68a3e9a76d1a35ad0cd7563efa0c58a4f2fa1ef05d87904f1cbce4",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the message type of nine polarity carriers"
+        ],
+        "interpreter": [
+          "the message type of nine polarity carriers"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the polarity cells of SPEC-2026-10-26-08, -10 and SPEC-2026-10-27-02"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the message type of nine polarity carriers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "Six documents, every message signature pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Each carrier types its fired comparison by the fills that could still falsify it.",
+          "evidence": {
+            "the message type of nine polarity carriers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf640": {
+      "sha256": "1b35dec088cf4ad05f07ef796510fd90832a6dbcf4a3c60f81247a1b998e768f",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the formal check of a year-optional Date"
+        ],
+        "interpreter": [
+          "the formal check of a year-optional Date"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "row d5-3 of SPEC-2026-10-26-20"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "the formal check of a year-optional Date": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearOptionalOmissionOrderDiffTest.kt#theOmissionCheckAnswersBeforeTheMonthIsTested",
+              "witness": "Five values, A12's codes and texts pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "A `0000` year meets the omission check before the month is tested.",
+          "evidence": {
+            "the formal check of a year-optional Date": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearOptionalOmissionOrderDiffTest.kt#theOmissionCheckAnswersBeforeTheMonthIsTested",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf641": {
+      "sha256": "f0d08fe9d6856073bce64bf2a1c11060b85958deffe9d711fc3f0fb61fe8bdf4",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "an unstarred fixed group count operand"
+        ],
+        "interpreter": [
+          "an unstarred fixed group count operand"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the nested-subgroup count of SPEC-2026-10-26-03"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime result is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every row's model is admitted by A12 and by the checker.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are asserted equal and pinned to the expected column.",
+          "evidence": {
+            "an unstarred fixed group count operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FixedGroupNestedSubgroupCountDiffTest.kt#aFieldOnlyInTheNestedSubgroupIsCounted",
+              "witness": "Three documents, the fired codes pinned."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "An unstarred fixed group operand expands to every field of its subtree.",
+          "evidence": {
+            "an unstarred fixed group count operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FixedGroupNestedSubgroupCountDiffTest.kt#aFieldOnlyInTheNestedSubgroupIsCounted",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf642": {
+      "sha256": "466bf2d01b5c486b70ca3fc3be68b43de96e6766535b07fa256121043c6d29fa",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the index terminal of a non-repeating Enumeration index"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the index terminal of a non-repeating Enumeration index"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the blank S-value of SPEC-2026-10-26-19"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits' builder refuses a blank S-value on purpose; a read model may still carry one.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker names A12's class on every row.",
+          "evidence": {
+            "the index terminal of a non-repeating Enumeration index": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNonRepeatingIndexBlankSValueAgreementTest.kt#bothReadingsOfTheIndexTerminalAgreeOnABlankSValue",
+              "witness": "Six rows, A12's and the checker's classes pinned."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A kernel behaviour measured here does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are asserted live as the expected column.",
+          "evidence": {
+            "the index terminal of a non-repeating Enumeration index": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerNonRepeatingIndexBlankSValueAgreementTest.kt#bothReadingsOfTheIndexTerminalAgreeOnABlankSValue",
+              "witness": "The A12 column is read from the kernel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which decides every row.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf333": {
+      "sha256": "424cb4d48d1b1301a8368ff84ba3a5c647ec8c10d28567ae246af1e60231bc9e",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the predicates a computation precondition may not use"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check on each precondition placement"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the common-precondition cell of SPEC-2026-10-26-11"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author a precondition unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "COMPUTATION_PRECONDITION_FEATURES names MVK_ERROR_INVALID_LANGUAGE_FEATURE in an alternative's and in the common precondition alike.",
+          "evidence": {
+            "the predicates a computation precondition may not use": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ComputationPreconditionFeaturesTest.kt#aPreconditionMayNotUseAnApplicationConditionOrRepetitionNotUnique",
+              "witness": "Each precondition placement asserted against the class rule check pins."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "rule check on each precondition placement": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ComputationPreconditionLanguageFeatureLawsTest.java#whichPredicatesAComputationPreconditionMayNotUse",
+              "witness": "Every row asserted through RuleValidator, the rule and operation controls included."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which refuses these rows.",
           "evidence": {}
         },
         "a12-kernel-lean": {

@@ -47,6 +47,8 @@ class ComputationPreconditionLanguageFeatureLawsTest {
                 computation("FieldFilled(Items/Sku) And RepetitionNotUnique(Items/Sku)"));
         actual.put("CustomCondition as the COMMON precondition",
                 commonPrecondition("FieldFilled(Items/Sku) And CustomCondition NotReverse"));
+        actual.put("RepetitionNotUnique as the COMMON precondition",
+                commonPrecondition("FieldFilled(Items/Sku) And RepetitionNotUnique(Items/Sku)"));
         actual.put("CustomCondition in a RULE — the control",
                 rule("FieldFilled(Items/Sku) And CustomCondition NotReverse"));
         actual.put("RepetitionNotUnique in a RULE — the control",
@@ -59,6 +61,7 @@ class ComputationPreconditionLanguageFeatureLawsTest {
         expected.put("CustomCondition", PROHIBITED);
         expected.put("RepetitionNotUnique", PROHIBITED);
         expected.put("CustomCondition as the COMMON precondition", PROHIBITED);
+        expected.put("RepetitionNotUnique as the COMMON precondition", PROHIBITED);
         expected.put("CustomCondition in a RULE — the control", KernelLaws.ADMITTED);
         expected.put("RepetitionNotUnique in a RULE — the control", KernelLaws.ADMITTED);
         // The slot, not the text, decides the class: the same predicate in the operation is a GRAMMAR error,

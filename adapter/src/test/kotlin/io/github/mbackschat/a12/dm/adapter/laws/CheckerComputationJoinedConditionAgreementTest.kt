@@ -116,6 +116,10 @@ class CheckerComputationJoinedConditionAgreementTest {
                 (Copy("../Label", "[Note]", band = ToleranceBand.TR1) to setOf("MVK_INVALID_TYPE_FOR_TOLERANCE_OP")),
             "a Number from a Number under a tolerance band, the control" to
                 (Copy("../Total", "[Billing/Net]", band = ToleranceBand.TR1) to ADMITTED),
+            "a Number from a Number of a larger scale under a tolerance band" to
+                (Copy("../Total", "[Amount]", band = ToleranceBand.TR1) to ADMITTED),
+            "a Number from a Number of a smaller scale under a tolerance band" to
+                (Copy("../Amount", "[Total]", band = ToleranceBand.TR1) to ADMITTED),
             // The target is read as `[<target>]` first, so its field-value read gates answer ahead of every
             // other class, and a source's read gates ahead of the comparison.
             "a partially known Date from a Date" to (Copy("../Promised", "[ShippedCopy]") to PARTIAL),

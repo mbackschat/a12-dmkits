@@ -7100,6 +7100,8 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 
 Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATURES`, for the two English-spellable features only; beside a filter body's predicate it names the filter's class, since the post-parse feature class is withheld behind that positioned one.
 
+*Extended 2026-10-27:* `RepetitionNotUnique` in the COMMON precondition draws the same `MVK_ERROR_INVALID_LANGUAGE_FEATURE` as `CustomCondition` there does, and the checker names it (the acceptance cell of a12-kernel-lean SPEC-2026-10-26-11).
+
 *Locked by:* `rulekit.validate.laws.ComputationPreconditionLanguageFeatureLawsTest`, mirrored by `consistency.ComputationPreconditionFeaturesTest`.
 
 ## §11 supplement — computations may not depend on each other in a CIRCLE, a precondition read builds that circle, and a one-node circle is a different code (measured, 2026-09-13) <a id="kf334"></a>
@@ -11873,6 +11875,8 @@ What the rows separate:
 
 The portable checker was silent on every refused copy row, and named both classes on the first three joined rows and the unresolved name's on the fourth. It reads a computation's lowered comparison through the same recognizer and operation analysis as an authored one; the seven comparison families share that analysis. The field-value read family reads the target. Report assembly orders a declaration's members by their place in the joined text (`joinedOrderOf`). Recognized arithmetic results also reach the comparison gates, including the sum row (DG117's replacement).
 
+*Extended 2026-10-27:* a tolerance-banded copy between Numbers of different scale is admitted in both directions, a scale-2 `Amount` into a scale-0 `Total` and back, so an alternative with a band meets no scale-agreement gate (the acceptance cell of a12-kernel-lean SPEC-2026-10-26-11). The checker agrees.
+
 *Locked by:* `adapter.laws.CheckerComputationJoinedConditionAgreementTest`, A12's class written out on every row and the checker required to name it, and `adapter.laws.CheckerFieldCopyCrossAgreementTest` for the complete cross, where the checker agrees on all 127 rows, including the arithmetic one; mirrored by `consistency.ComputationJoinedConditionTest`.
 
 ## §1 supplement — A12 types a written-out constant before the comparison walk: a date-shaped literal, `Today` and `Now` are DATES, any other literal is text, and the two-constant gate exempts a pair only where its LEFT side is a date (source-read + kernel `checkConsistency`, 2026-09-26) <a id="kf484"></a>
@@ -13322,7 +13326,7 @@ a12-kernel-lean `SPEC-2026-10-13-01`; the scalar counterpart of [KF202](#kf202)'
 
 At run time the target's format decides the stored text. `2024-03-05` from an ISO source stores `05.03.2024` in a dotted target; a dotted source stores ISO in an ISO target; a full Date and a year-month store `2024` in a `yyyy` target; a yearless `03-05` completes with Base Year 2024 to `2024-03-05`; a starred column stores its first filled row. An empty first source falls through to the next. A malformed first source is reached and clears a seeded target, although a valid source follows; with nothing filled, the seeded target clears as well. A malformed source after the first filled one is never read.
 
-Locked by `adapter.laws.FirstFilledDateTargetRenderingDiffTest` (dynamic Groovy, static Java and the interpreter on five documents, outcomes pinned) and `adapter.laws.CheckerFirstFilledDateTargetAgreementTest` (the kernel against the portable checker on thirteen rows, with and without a Base Year). The `yyyy`-into-full-Date row is admission only; its stored value is not measured.
+Locked by `adapter.laws.FirstFilledDateTargetRenderingDiffTest` (dynamic Groovy, static Java and the interpreter on five documents, outcomes pinned) and `adapter.laws.CheckerFirstFilledDateTargetAgreementTest` (the kernel against the portable checker on thirteen rows, with and without a Base Year). The `yyyy`-into-full-Date row is admission only; its stored value is not measured. *Extended 2026-10-27:* the reverse direct copy, a full ISO Date into a yearless `MM-dd` target, also draws `MVK_INVALID_COMPARE_TO_DATE` without a Base Year and is admitted with one, and the checker agrees (the acceptance cell of a12-kernel-lean SPEC-2026-10-26-11). The lock now holds fifteen rows.
 
 *Added 2026-10-13:* the target's declared FORMAT decides, not its kind, as [KF222](#kf222) has it for a constant. A TIME-kind target declared `dd.MM.yyyy` stores the selected Date as `05.03.2024` and one declared `yyyy-MM-dd` as `2024-03-05`, and a later `FirstFilledValue` over that dotted TIME cell and a dotted DATE field is admitted and reads it back as a Date. *Corrected 2026-10-13:* the read-back row paired the TIME cell with a field always holding the same date, so it could not show that the cell was read; paired with a dotted field holding `15.06.2022`, it selects the computed `05.03.2024` where the cell holds it and `15.06.2022` where the cell was cleared. A starred list `FirstFilledValue(Visits*/SeenOn)` and a group `FirstFilledValue(Review)` of TIME-kind fields declared dotted are admitted into a dotted DATE target and store `20.02.2021` and `11.11.2021`. Locked by `adapter.laws.FirstFilledDateCrossKindTargetDiffTest`, where the interpreter was ERRORED on both cross-kind rows until [IF397](INTERPRETER-FINDINGS.md#if397).
 
@@ -15258,4 +15262,215 @@ The cells a12-kernel-lean named as the acceptance of those two entries, each wit
 
 So a raw String's refusal is the operator's: the comparison and the arithmetic name the raw class ahead of their own, while `Sum` asks for a number and never reaches it. The checker agreed on every row before this measurement; nothing changed in it.
 
-*Locked by:* `adapter.laws.CheckerArithmeticShapeAgreementTest` (A12 against the checker, 17 rows).
+*Extended 2026-10-27* with the acceptance cells of SPEC-2026-10-26-25 and -16, on the same draft (`P2` and `D2` at scale 2, `P4` at scale 4, `LineQty` at scale 0):
+
+| row | A12 |
+|---|---|
+| `[Qty] ^ Sum(Lines*/D2)` / `[Qty] ^ Sum(Lines*/LineQty)` | `MVK_INVALID_NUMBER_FOR_EXP` / admitted |
+| `[P4] == [P2]`, `[P4] == RoundAccountingValue(P2, 2)`, `[P4] == RoundAccounting([P2] * 1, 2)`, `[P4] == RoundAccounting([P2] * 1.00, 2)` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[P2] == RoundAccounting([P4] * 1, 2)`, `[P4] == [P2] * 1`, `[P4] == [P2] * 1.00` | admitted |
+| `FieldValueIncludedInValueList(Note In "A", "B")` / `AtLeastOneFieldValueIncludedInValueList(Note, Memo In ("A", "B"))` | `MVK_UNEXPECTED_TOKEN` |
+| `FieldValueIncludedInValueList(Note, "A", "B")` / `AtLeastOneFieldValueIncludedInValueList(Note, Memo In "A", "B")` | admitted |
+
+So an aggregate exponent is gated by the scale of the field it sums, a rounding to the narrower scale does not make an operand comparable with a wider field while an unrounded constant product does, a singular value-list operator refuses an `In`, and a quantifier's `In` list refuses parentheses. The checker named A12's class on every row.
+
+*Locked by:* `adapter.laws.CheckerArithmeticShapeAgreementTest` (A12 against the checker, 26 rows) and `adapter.laws.CheckerValueListFormAgreementTest` (4 rows).
+
+## §3 supplement — a malformed cell leaves an all-cells count UNKNOWN as an operand, so `Or` beside a true leaf fires and `And` does not, while `FieldValuesNotUnique` skips the cell and fires on a duplicate among the rest (differential, kernel 30.8.1, 2026-10-27) <a id="kf629"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-01.
+
+A cart with a repeatable `Lines/Qty`; `Ref` = `X` makes the second leaf true. Each rule has its own code:
+
+| document | fired |
+|---|---|
+| `Qty` = `abc`, `2`; `Ref` = `X` | `NumberOfFilledFields(...) > 0 Or Ref == "X"` and the `NumberOfDifferentValues` twin; neither `... >= 0 And Ref == "X"` |
+| the same, `Ref` = `Y` | none of the four |
+| `Qty` = `1`, `2`; `Ref` = `X` | all four |
+| `Qty` = `abc`, `2`, `2` | `FieldValuesNotUnique(Lines*/Qty)` |
+
+The malformed cell's own `zahlHatUngueltigeZeichen` is reported beside every row that holds it. So the count, not the rule, is unknown: the connective decides the rest, as a known-true `Or` partner shows. `MinValue`/`MaxValue` over a malformed cell were not measured.
+
+*Locked by:* `adapter.laws.UnavailableCountConnectiveDiffTest` (dynamic Groovy, static Java and the interpreter).
+
+## §11 supplement — in a computation a field presence read poisons and group presence never does, a starred count counts a malformed-only row without multiplying by a repeatable descendant, an aggregate with no survivor is `0`, and a joined instance skipped for a defective key poisons its dependents (differential, kernel 30.8.1, 2026-10-27) <a id="kf630"></a>
+
+> Fold: pending — measured confirmations of a12-kernel-lean SPEC-2026-10-26-02 and -05, and of -12 except its dependent-read clause, which this corrects.
+
+Presence over a non-repeatable `Rider` (`Limit` stored, `Calc = [Base] * 2` computed), each target seeded with `9`:
+
+| document | `FieldFilled(Limit)` → `Ff` | `GroupFilled(Rider)` → `Gf` | `GroupNotFilled(Rider)` → `Gnf` |
+|---|---|---|---|
+| `Limit` = `abc` | cleared | `1` | `0` |
+| `Base` = `abc`, `Calc` stored `4` (its computation fails) | `0` | `0` | `1` |
+| both | cleared | `1` | `0` |
+
+A malformed stored descendant is group content, and a descendant empty only because its computation failed is not. Counts and survivors:
+
+| document | result |
+|---|---|
+| `Claims` = one row holding only `Amount` = `abc` | `NumberOfFilledGroups(Claims*)` = `1` |
+| one `Visits` row holding three `Calls` rows | `NumberOfFilledGroups(Visits*)` = `1` |
+| no `Claims` row flagged `Y` | `NumberOfFilledFields(Claims*/Amount Having [Flag] == "Y")` = `0`, and the `Sum` = `0` |
+
+A joined computation `Slots/Total = [../../Refs/Amount]`, with the dependents `Doubled = [Total] * 2` and `Grand = Sum(Lines*/Slots*/Total)`:
+
+| document | `Total` | `Doubled` | `Grand` |
+|---|---|---|---|
+| distinct `Refs` keys | `100`, `200` | `200`, `400` | `300` |
+| a duplicated `Refs` key, or a malformed one (`abc`) | cleared on both lines | cleared on both lines | cleared |
+
+The root-level `Refs` shares no repeatable level with `Slots`, so every instance is skipped. A duplicated key in the per-line `Tags` instead clears only that line's `TagTotal`. The dependents clear, so a skipped instance is read as poison, not as an empty `0`.
+
+*Locked by:* `adapter.laws.ComputationOpenClausesDiffTest` and `adapter.laws.JoinedInstanceSkipDependentDiffTest` (both three-engine).
+
+## §12 supplement — the classification grid: which condition leaves enable the second pass, measured by whether a reached runtime failure fails the rule (differential, kernel 30.8.1, 2026-10-27) <a id="kf631"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-07 and the enablement cells of -10.
+
+Each rule on a repeatable `Stops` group reads `FieldFilled(Arrival) And (FieldFilled(Signed) Or (FieldFilled(Arrival) And Now < "31.03.2024T02:30:00") Or <leaf>)`. That DateTime literal falls in the Europe/Berlin daylight-saving gap, so reaching it is a runtime failure. All three stops are signed, so the first pass is true without reaching it. A leaf that enables classification makes the second pass reach the failure, and the rule then reports once, at row 1. Without one, the rule fires on all three rows.
+
+| fires on all three rows (does not enable) | fires at row 1 only (enables) |
+|---|---|
+| no added leaf; root `GroupFilled`; root `AtLeastOneGroupFilled`; `AllFieldsFilled(Ref, Alt)`; `MoreThanOneFieldFilled(Ref, Alt)`; `FieldValuesNotUnique(Ref, Alt)` | `FieldNotFilled`; root `GroupNotFilled`; root `NoGroupFilled`; a child group's `GroupFilled`; `AtLeastOneFieldFilled(Ref, Alt)`; a Boolean comparison; a Confirm comparison; keyed `AtLeastOneGroupFilled` and `NoGroupFilled` |
+
+*Locked by:* `adapter.laws.ClassificationEnablementGridDiffTest` (three-engine).
+
+## §2 supplement — an `And` opens the content gate on an empty instance only when both parts can, and a tolerance comparison opens it when either side counts filled fields (differential, kernel 30.8.1, 2026-10-27) <a id="kf632"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-23's two unmeasured compositions.
+
+| document | `[Email] == "e" And FieldNotFilled(Note)` | `FieldNotFilled(Email) And FieldNotFilled(Note)` | `W` vs `NumberOfFilledFields(Email, Note) + 5`, count on either side | `W` vs `[Qty] + 5` |
+|---|---|---|---|---|
+| `{}` and an empty `Customer` | — | fires | fires | — |
+| `Email` = `e` | fires | — | fires | fires |
+
+The tolerance rows use `Tolerance.RANGE_1`.
+
+*Locked by:* `adapter.laws.ContentGateCompositionDiffTest` (three-engine).
+
+## §6 supplement — an odd-length token of a `MM` DateRange with no separator is `datumBereichFormatFalsch` (differential, kernel 30.8.1, 2026-10-27) <a id="kf633"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-21's odd-length range token.
+
+`061`, `06109` and `6` draw `datumBereichFormatFalsch`, and `0609` is admitted, on all three engines.
+
+*Locked by:* `adapter.laws.DateRangeOddTokenFormalDiffTest#anOddLengthTokenIsAFormalErrorOnAllThreeEngines`.
+
+## §7 supplement — a pattern holding `\p` is refused `MVK_PATTERN_INVALID` even where an escaped backslash precedes it (checkConsistency, kernel 30.8.1, 2026-10-27) <a id="kf634"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-27's pattern cell.
+
+| regex | A12 |
+|---|---|
+| `a\\p` (an escaped backslash, then `p`) | `MVK_PATTERN_INVALID` |
+| `a\p` | `MVK_PATTERN_INVALID` |
+| `a\\d` | admitted |
+
+As a Java regex `a\\p` is legal, so the refusal reads the characters, not the regex structure. The checker names A12's class on every row.
+
+*Locked by:* `adapter.laws.DateRangeOddTokenFormalDiffTest#aBackslashBeforePIsRefusedEvenWhenTheBackslashIsEscaped`.
+
+## §2 supplement — a comparison with an empty DateFragment, DateRange or Custom side is not evaluated (differential, kernel 30.8.1, 2026-10-27) <a id="kf635"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-30's three empty reads.
+
+`[DF] == [DF2]`, `[DF] != [DF2]`, the DateRange pair and `[C] == "x"` / `[C] != "x"` over a Custom field fire on none of these: every side empty, or only the left DateFragment and DateRange filled. With every DateFragment and DateRange side filled and different, both `!=` rules fire, so the rules are live. The Custom field's filled control is `EqualityKindDiffTest`'s Custom case, because this harness registers no custom validator.
+
+*Locked by:* `adapter.laws.EmptyFragmentRangeCustomComparisonDiffTest` (three-engine).
+
+## §9 supplement — a join under a common repeatable frame binds both sides inside each frame row and visits only the rows within capacity, while a join across two diverging frames is refused `MVK_NO_WILDCARD` (rule check and differential, kernel 30.8.1, 2026-10-27) <a id="kf636"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-13's two open clauses.
+
+A shop with `Weeks` (capacity 2), each holding keyed `Orders` and `Stock`, and the rule `[Orders/Qty] > [Stock/Have]` on `/Shop/Weeks/Orders`:
+
+| document | fired |
+|---|---|
+| three short weeks, over a capacity of two | `Short` on weeks 1 and 2; the third week draws only the capacity messages (`zuGrosseKontextnummer`, `zuGrosseZeile`) |
+| an order for `A` in week 1, stock for `A` in week 2 | nothing |
+| week 1 holding only stock, week 2 short | `Short` on week 2 |
+
+The same rule between `Stores/Wants` and `Depots/Holds`, two different repeatable frames, is refused `MVK_NO_WILDCARD` on `/Shop/Depots`, and the checker refuses it with the same class.
+
+*Locked by:* `adapter.laws.JoinFrameClassesDiffTest` (three-engine runtime rows; `checkConsistency` for admission).
+
+## §13 supplement — a value-list leaf supplies no keyed presence guard to a group message parameter, and a key past an unindexed intermediate group binds the nearest indexed repeatable group (checkConsistency, kernel 30.8.1, 2026-10-27) <a id="kf637"></a>
+
+> Fold: pending — measured confirmations of a12-kernel-lean SPEC-2026-10-26-18's value-list and deeper-field stages; its index-terminal stage is not measured here.
+
+A rule on `/Store/Depots` whose message names the repetition index of the `Bins` row keyed `b`, its condition `FieldFilled(Note) And …`:
+
+| condition | A12 |
+|---|---|
+| `GroupFilled(Bins For "b")` | admitted |
+| `AtLeastOneFieldValueIncludedInValueList` over `Bins/Label` keyed `b` and `Note`, against `"x"` | `INVALID_USE_OF_SEMANTIC_INDEX` |
+| both | admitted |
+
+A keyed read of `Claims/Detail/Remark For "c1"`, past the non-repeatable, unindexed `Detail`, guards as a keyed field of `Claims` does. `$/Policy/Claims/Detail/Remark For "c1"$` is admitted, and `$/Policy/Claims/Note.value For "c1"$` draws `MVK_INDEX_FOR_ERROR_TEXT_INVALID`. The checker names A12's class on every row.
+
+*Locked by:* `adapter.laws.KeyedMessageValueListGuardAgreementTest` and the `keyed deeper field` rows of `adapter.laws.KeyedMessageMembershipAgreementTest`.
+
+## §4 supplement — an index field nominated in a non-repeatable group arms the generated mandatory check (differential, kernel 30.8.1, 2026-10-27) <a id="kf638"></a>
+
+> Fold: pending — refutes a12-kernel-lean SPEC-2026-10-26-24's "neither generated arm checks it".
+
+| document | fired |
+|---|---|
+| a `Holder` group with its nominated `HolderKey` empty | `mandatoryField` OMISSION on `HolderKey` |
+| a cover's non-repeatable `Detail` with its nominated `DetailKey` empty | `mandatoryField` OMISSION on `DetailKey` |
+| two covers whose details share a key | nothing |
+| the same two empty keys, not nominated | nothing |
+
+A non-repeatable group has one row, so the unique arm has no sibling row to compare: details under different covers never meet.
+
+*Locked by:* `adapter.laws.NonRepeatableIndexFieldGeneratedChecksDiffTest` (three-engine).
+
+## §12 supplement — the polarity of a filtered count that kept nothing, a distinct count over a closed tail, a filtered `MaxValue`, `CurrentRepetition` against an empty number, and empty Boolean, Confirm and Enumeration comparisons (differential, kernel 30.8.1, 2026-10-27) <a id="kf639"></a>
+
+> Fold: pending — the added polarity cells of a12-kernel-lean SPEC-2026-10-26-08 and -10 and the two cells of SPEC-2026-10-27-02.
+
+| rule | document | type |
+|---|---|---|
+| `[Count] != NumberOfValueInFields(1 In Items*/Qty Having [Flag] == "Y")` | `Count` = `-5`, no row flagged | VALUE |
+| the same | `Count` = `1`, no row flagged | OMISSION |
+| `FieldFilled(Count) And NumberOfDifferentValues(Lines*/V) < 2` | `V` = `5` and an empty row | OMISSION |
+| the same | `V` = `5`, `5` | VALUE |
+| `[Cutoff] < MaxValue(Slots*/On Having [Mark] == "Y")` / `< MaxValue(Slots*/On)` | every slot marked | OMISSION / VALUE |
+| `FieldFilled(Qty) And CurrentRepetition(/Order/Items) > [/Order/Limit]` | `Limit` empty | OMISSION |
+| `FieldFilled(Count) And [Agreed] != True` | `Agreed` (Confirm) empty | OMISSION |
+| `[Express] == False`, `[Express] != True`, `[Tier] != "GOLD"` | Boolean and Enumeration empty | not fired |
+
+*Locked by:* `adapter.laws.PolarityCarrierGridDiffTest` (three-engine).
+
+## §6 supplement — a year-optional Date meets its omission check before its month is tested (differential, kernel 30.8.1, 2026-10-27) <a id="kf640"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-20 (row `d5-3`).
+
+On a `yyyy-MM-dd` field of `YEAR_OPTIONAL` precision, `0000-13-00` and `0000-06-15` draw `datumFalsch` with "Since the year was specified with '0000', both the day and month must be '00'." `2024-13-00` draws `datumFormatFalsch` with "'13' is not a valid month." `0000-00-00` and `2024-06-00` are admitted. The codes agree on all three engines, and the texts on both evidence strategies.
+
+*Locked by:* `adapter.laws.YearOptionalOmissionOrderDiffTest`.
+
+## §9 supplement — an unstarred fixed group operand of `NumberOfFilledFields` and `NumberOfValueInFields` counts the fields of a nested non-repeatable subgroup (differential, kernel 30.8.1, 2026-10-27) <a id="kf641"></a>
+
+> Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-03.
+
+Over `Billing` with a field `Code` and a nested `Address/Street`, a value held only in `Street` counts `1` for both operators, as one held only in `Code` does, and an empty `Billing` counts `0`.
+
+*Locked by:* `adapter.laws.FixedGroupNestedSubgroupCountDiffTest` (three-engine).
+
+## §13 supplement — both readings of a non-repeating index terminal agree on a blank S-value (checkConsistency, kernel 30.8.1, 2026-10-27) <a id="kf642"></a>
+
+> Fold: pending — settles a12-kernel-lean SPEC-2026-10-26-19's unmeasured blank S-value.
+
+The index field of a non-repeatable `Approval` group is an Enumeration with one value, `APPROVED`, whose S-value is varied:
+
+| S-value | `$index(Status).value$` | `$index(Status)->Category$` |
+|---|---|---|
+| `APPROVED` | admitted | admitted |
+| the empty string | `INVALID_INDEX_FIELD_NONREP_ENUM` | `INVALID_INDEX_FIELD_NONREP_ENUM` |
+| one space | admitted | admitted |
+
+The checker names A12's class on every row. The S-value is respelled in the JSON text, because the kits' builder refuses a blank one on purpose.
+
+*Locked by:* `adapter.laws.CheckerNonRepeatingIndexBlankSValueAgreementTest`.

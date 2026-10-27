@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * A12's answer on the literal, arithmetic-shape and raw-String cells a12-kernel-lean named as the acceptance of
- * SPEC-2026-10-26-15 and -26, and the checker's agreement on each ([KERNEL-FINDINGS KF628]). Every row is
- * judged by `rule check` and by the checker; the expected column is A12's, measured 2026-10-27.
+ * A12's answer on the literal, arithmetic-shape, static-scale and raw-String cells a12-kernel-lean named as the
+ * acceptance of SPEC-2026-10-26-15, -25 and -26, and the checker's agreement on each ([KERNEL-FINDINGS KF628]).
+ * Every row is judged by `rule check` and by the checker; the expected column is A12's, measured 2026-10-27.
  *
  * Own domain (an online order).
  */
@@ -24,7 +24,11 @@ class CheckerArithmeticShapeAgreementTest {
             .numberField("Qty") { n -> n.fractionDigits(0) }
             .numberField("Exp1") { n -> n.fractionDigits(0) }
             .numberField("Exp2") { n -> n.fractionDigits(0) }
+            .numberField("P2") { n -> n.fractionDigits(2, 2) }
+            .numberField("P4") { n -> n.fractionDigits(4, 4) }
             .group("Lines") { l -> l.repeatable(3)
+                .numberField("LineQty") { n -> n.fractionDigits(0) }
+                .numberField("D2") { n -> n.fractionDigits(2, 2) }
                 .stringField("LineNote") { }
                 .stringField("LineRaw") { it.lineBreaks().noValueValidation() } } }
         .build().toJson()
@@ -63,6 +67,15 @@ class CheckerArithmeticShapeAgreementTest {
             "divisions in separate addends" to ("Qty" to "[Qty] / [Exp1] + [Exp2] / [Qty] > 1"),
             "two divisions in one region" to ("Qty" to "[Qty] / [Exp1] / [Exp2] > 1"),
             "a division times a division" to ("Qty" to "[Qty] / [Exp1] * [Exp2] / [Qty] > 1"),
+            "a scale-2 aggregate exponent" to ("Qty" to "[Qty] ^ Sum(Lines*/D2) > 1"),
+            "a scale-0 aggregate exponent" to ("Qty" to "[Qty] ^ Sum(Lines*/LineQty) > 1"),
+            "a wider field equals a narrower one" to ("P4" to "[P4] == [P2]"),
+            "a wider field equals a rounded field" to ("P4" to "[P4] == RoundAccountingValue(P2, 2)"),
+            "a wider field equals a rounded expression" to ("P4" to "[P4] == RoundAccounting([P2] * 1, 2)"),
+            "an equal scale equals a rounded expression" to ("P2" to "[P2] == RoundAccounting([P4] * 1, 2)"),
+            "a wider field equals a constant product" to ("P4" to "[P4] == [P2] * 1"),
+            "a wider field equals a decimal constant product" to ("P4" to "[P4] == [P2] * 1.00"),
+            "a wider field equals a rounded constant product" to ("P4" to "[P4] == RoundAccounting([P2] * 1.00, 2)"),
             "a raw String under <" to ("Raw" to "FieldFilled(Raw) And [Raw] < \"x\""),
             "a String under <, the control" to ("Note" to "FieldFilled(Note) And [Note] < \"x\""),
             "a raw String under -" to ("Raw" to "FieldFilled(Raw) And {[Raw] - 1} > 0"),
@@ -84,6 +97,15 @@ class CheckerArithmeticShapeAgreementTest {
             "divisions in separate addends" to emptyList(),
             "two divisions in one region" to listOf("MVK_TOO_MANY_DIV_FOR_CALC"),
             "a division times a division" to listOf("MVK_TOO_MANY_DIV_FOR_CALC"),
+            "a scale-2 aggregate exponent" to listOf("MVK_INVALID_NUMBER_FOR_EXP"),
+            "a scale-0 aggregate exponent" to emptyList(),
+            "a wider field equals a narrower one" to listOf("MVK_INVALID_COMPARE_DEC_PLACES"),
+            "a wider field equals a rounded field" to listOf("MVK_INVALID_COMPARE_DEC_PLACES"),
+            "a wider field equals a rounded expression" to listOf("MVK_INVALID_COMPARE_DEC_PLACES"),
+            "an equal scale equals a rounded expression" to emptyList(),
+            "a wider field equals a constant product" to emptyList(),
+            "a wider field equals a decimal constant product" to emptyList(),
+            "a wider field equals a rounded constant product" to listOf("MVK_INVALID_COMPARE_DEC_PLACES"),
             "a raw String under <" to listOf("MVK_INVALID_RAW_TYPE"),
             "a String under <, the control" to listOf("MVK_INVALID_TYPE_FOR_COMPARISON"),
             "a raw String under -" to listOf("MVK_INVALID_RAW_TYPE"),
