@@ -33,6 +33,7 @@ class CheckerTemporalExtractorAgreementTest {
             .timeField("RenewalClock") { c -> c.format("HH:mm:ss") }
             .timeField("ClockAsDate") { c -> c.format("yyyy-MM-dd") }
             .dateTimeField("SignedAt") { s -> s.format("yyyy-MM-dd'T'HH:mm:ss") }
+            .dateTimeField("SignedClock") { s -> s.format("HH:mm:ss") }
             .dateField("NotedDay") { d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.DAY_OPTIONAL) }
             .dateField("NotedMonth") { d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.MONTH_OPTIONAL) }
             .dateField("NotedYear") { d -> d.format("yyyy-MM-dd").datePrecision(DatePrecision.YEAR_OPTIONAL) }
@@ -52,7 +53,8 @@ class CheckerTemporalExtractorAgreementTest {
 
     private val operands = listOf(
         "StartOn", "Anniversary", "BillingMonth", "PolicyYear", "RenewalClock", "ClockAsDate", "SignedAt",
-        "NotedDay", "NotedMonth", "NotedYear", "\"01.01.2024\"", "Time(RenewalHour)", "TimeFromDateTime(SignedAt)",
+        // A stamp declared with a clock's format alone (a12-kernel-lean SPEC-2026-10-26-21).
+        "SignedClock", "NotedDay", "NotedMonth", "NotedYear", "\"01.01.2024\"", "Time(RenewalHour)", "TimeFromDateTime(SignedAt)",
         "DateFromDateTime(SignedAt)", "\"01.01.2024T10:00:00\"", "\"10:30:00\"", "\"01.02.\"", "Today", "Now",
         "BaseYear", "AddDays(StartOn, 1)", "AddDays(Anniversary, 1)", "AddHours(SignedAt, 1)",
         "AddHours(RenewalClock, 1)", "DateTime(StartOn, RenewalClock)", "Date(\"01\", \"01\", \"2024\")",
@@ -125,6 +127,10 @@ class CheckerTemporalExtractorAgreementTest {
             Triple(null, "DateFromDateTime", "\"01.01.2024T10:00:00\"") to emptyList(),
             Triple(null, "YearFromDate", "ClockAsDate") to emptyList(),
             Triple(null, "HoursFromTime", "ClockAsDate") to wf,
+            Triple(null, "HoursFromTime", "SignedClock") to emptyList(),
+            Triple(null, "SecondsFromTime", "SignedClock") to emptyList(),
+            Triple(null, "YearFromDate", "SignedClock") to wf,
+            Triple(null, "TimeFromDateTime", "SignedClock") to wf,
             Triple(2024, "DateFromDateTime", "StartOn") to wf,
             Triple(null, "YearFromDate", "AddDays(Anniversary, 1)") to wf,
             Triple(2024, "HoursFromTime", "Date(\"01\", \"01\")") to wf,
