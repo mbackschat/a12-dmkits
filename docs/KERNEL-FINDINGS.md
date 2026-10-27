@@ -15136,3 +15136,23 @@ An order model holds a non-repeatable `Totals` group (`Net = 1`, `Tax = 5`), a n
 a12-kernel-lean's SPEC-2026-10-26-06 states both clauses; these rows measure them.
 
 *Locked by:* `adapter.laws.PartialUniqueAndGroupExtremumDiffTest` (both kernel strategies against the interpreter). The interpreter's side is [IF443](INTERPRETER-FINDINGS.md#if443).
+
+
+## §9 supplement — `FieldValuesNotUnique` over the rule's own repeatable group, unstarred or `RuleGroup`, compares that row's cells alone (differential, both strategies, 2026-10-27) <a id="kf624"></a>
+
+> Fold: pending — the unstarred own-group operand beside §9's star-scope law.
+
+An order model holds repeatable `Lines` (capacity 3) with `Sku` and `Alt`. Three rules in `Lines` report on `Sku`. `FieldValuesNotUnique(/Order/Lines)`, `FieldValuesNotUnique(RuleGroup)` and `FieldValuesNotUnique(/Order/Lines*)` are admitted; the relative `FieldValuesNotUnique(Lines)` draws `MVK_INVALID_ENTITY`. On both strategies:
+
+| document | unstarred and `RuleGroup` | `Lines*` |
+|---|---|---|
+| line 1 `A`/`A`, line 2 `B`/`C` | fire at line 1 | fires at line 1 |
+| line 1 `A`/`B`, line 2 `C`/`A` | silent | fires at line 1 |
+| no value repeated | silent | silent |
+
+- **The unstarred own group binds the rule's row.** It expands to that row's `Sku` and `Alt`, so a duplicate inside one row fires there and equal values in two rows fire nothing. The second document is the discriminator against a whole-column comparison, which the starred control makes.
+- **The absent third line never fires.** A row with no values has nothing to compare.
+
+a12-kernel-lean's SPEC-2026-10-26-14 states the binding; these rows measure it.
+
+*Locked by:* `adapter.laws.FieldValuesNotUniqueOwnRowOperandDiffTest` (both kernel strategies against the interpreter). The interpreter's side is [IF444](INTERPRETER-FINDINGS.md#if444).

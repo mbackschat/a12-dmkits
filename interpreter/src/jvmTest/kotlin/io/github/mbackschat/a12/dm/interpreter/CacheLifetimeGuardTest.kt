@@ -207,13 +207,13 @@ class CacheLifetimeGuardTest {
             ),
             rules = listOf(
                 RuleDef("$ROW/DuplicateSource", ROW,
-                    "MoreThanOneFieldFilled($SOURCE* Having [$SOURCE] == [\$$SOURCE])",
+                    "MoreThanOneFieldFilled($ROW*/Source Having [$SOURCE] == [\$$SOURCE])",
                     "DUP", "../Source"),
             ),
             computations = listOf(
                 ComputationDef(COMPUTED, ROW, listOf(ComputationAlternative(null, "[$SOURCE] + 100"))),
                 ComputationDef(CORRELATED, ROW, listOf(ComputationAlternative(
-                    "MoreThanOneFieldFilled($COMPUTED* Having [$COMPUTED] == [\$$COMPUTED])",
+                    "MoreThanOneFieldFilled($ROW*/Computed Having [$COMPUTED] == [\$$COMPUTED])",
                     "[$COMPUTED]"))),
                 ComputationDef(INDEXED, ROW, listOf(ComputationAlternative(null, "[$SOURCE For \"kb\"]"))),
             ),

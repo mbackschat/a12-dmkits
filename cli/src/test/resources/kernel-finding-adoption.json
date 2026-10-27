@@ -14733,6 +14733,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf624": {
+      "sha256": "f82b488b1b6ac3ead024be86089711ac7b20e5996201540b830c8d9c42961460",
+      "task": "SS24",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "both kernel strategies on the three documents"
+        ],
+        "interpreter": [
+          "the own-level binding of an expanded group operand"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the own-row binding of SPEC-2026-10-26-14"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An evaluation binding is no authoring surface of the kits.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges admission, and every spelling's admission is already A12's.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime binding does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime binding does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Admission and the three documents are asserted on dynamic Groovy and static Java.",
+          "evidence": {
+            "both kernel strategies on the three documents": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldValuesNotUniqueOwnRowOperandDiffTest.kt#theUnstarredOwnGroupComparesTheRulesRowAlone",
+              "witness": "Three spellings over three documents, every message signature asserted on both strategies."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "An expanded unstarred group operand binds its own level, so it reads the iterated row.",
+          "evidence": {
+            "the own-level binding of an expanded group operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/FieldValuesNotUniqueOwnRowOperandDiffTest.kt#theUnstarredOwnGroupComparesTheRulesRowAlone",
+              "witness": "The interpreter's signatures equal both kernel strategies on every document."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

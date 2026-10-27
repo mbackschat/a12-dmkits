@@ -1909,10 +1909,13 @@ class Document(internal val config: DocumentConfig) {
         // 0 rows — under-fired counts/presence, over-fired `NoGroupFilled`; the first kernel-mm divergence).
         // A bare same-group or ancestor star from an iterating row spans ALL rows — `$` (inside a Having) is
         // the ONLY outer-row correlation (KERNEL-SEMANTICS §9); a star NESTED BELOW this row keeps binding
-        // this row's indices (common < the cap) — unchanged.
+        // this row's indices (common < the cap) — unchanged. An explicit [bindDepth] that reaches the group itself
+        // binds it as well: only an UNSTARRED group operand, expanded to its fields at its own depth
+        // ([io.github.mbackschat.a12.dm.interpreter.ast.expansionBindDepth]), asks that, and A12 then reads the
+        // iterated row's cells alone (KERNEL-FINDINGS KF624).
         private fun groupScopePrefix(groupPath: String, bindDepth: Int): List<Int> {
             val parts = partsOf(groupPath)
-            val cap = if (bindDepth >= 0) minOf(parts.size - 1, bindDepth) else parts.size - 1
+            val cap = if (bindDepth >= 0) minOf(parts.size, bindDepth) else parts.size - 1
             return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), cap))
         }
 

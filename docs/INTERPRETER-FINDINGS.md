@@ -5089,3 +5089,11 @@ The second defect was in message class, not in value. `PolarityWalk.leafOmission
 - **`FieldValuesNotUnique`'s starred cell walk never consulted the coverage.** It now skips a cell outside it, as A12 does, rather than gating the extent.
 
 *Locked:* `adapter.laws.PartialUniqueAndGroupExtremumDiffTest`.
+
+### IF444: an unstarred group operand binds its own level, so it reads the iterated row (2026-10-27) <a id="if444"></a>
+
+[KF624](KERNEL-FINDINGS.md#kf624) measured `FieldValuesNotUnique(/Order/Lines)` and `FieldValuesNotUnique(RuleGroup)` from a rule in `Lines` comparing the row's own cells. The interpreter compared the whole column and fired at every declared row, the absent one included.
+
+The expansion was right and the read was not. `expandOneGroupOperand` gives each contained field the operand's own depth as its bind depth, as `expansionBindDepth` intends, but `Document.groupScopePrefix` capped every explicit bind depth at the field group's parent, a cap written for parsed stars, whose depth never reaches their starred group. So the operand's own level was always freed. The cap now admits a depth equal to the group's, which only an expansion asks for. A parsed star on a field would ask it too, and A12 refuses that spelling (`MVK_INVALID_WILDCARD`); two interpreter tests used it on hand-built models and now spell the star on the group.
+
+*Locked:* `adapter.laws.FieldValuesNotUniqueOwnRowOperandDiffTest`.

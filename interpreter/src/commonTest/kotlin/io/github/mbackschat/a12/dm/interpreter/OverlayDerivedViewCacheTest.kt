@@ -62,7 +62,7 @@ class OverlayDerivedViewCacheTest {
             computations = listOf(
                 // C declared FIRST on purpose — only the cascade's dependency order runs A before C.
                 ComputationDef(C, "/Ovl/Row", listOf(ComputationAlternative(
-                    "MoreThanOneFieldFilled($A* Having [$A] == [\$$A])", "[$A]"))),
+                    "MoreThanOneFieldFilled(/Ovl/Row*/A Having [$A] == [\$$A])", "[$A]"))),
                 ComputationDef(A, "/Ovl/Row", listOf(ComputationAlternative(null, "[$SRC] + 100"))),
             ),
             repeatableGroups = setOf("/Ovl/Row"), indexFields = setOf(KEY),
