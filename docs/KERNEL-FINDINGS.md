@@ -15156,3 +15156,25 @@ An order model holds repeatable `Lines` (capacity 3) with `Sku` and `Alt`. Three
 a12-kernel-lean's SPEC-2026-10-26-14 states the binding; these rows measure it.
 
 *Locked by:* `adapter.laws.FieldValuesNotUniqueOwnRowOperandDiffTest` (both kernel strategies against the interpreter). The interpreter's side is [IF444](INTERPRETER-FINDINGS.md#if444).
+
+## §5 supplement — a Number declaring `maxFractionalDigits: -1` carries an UNKNOWN scale into every scale-gated comparison, exponent and computation, although its stored values resolve to a fixed scale (rule check, kernel 30.8.1, 2026-10-27) <a id="kf625"></a>
+
+> Fold: pending — the declared-scale input to [KF43](#kf43)'s equality gate; folds beside it.
+
+a12-kernel-lean SPEC-2026-10-26-25. One premium form declares `Rate` and `Rate2` as `(2, -1)`, `Fee` as `(2, 2)`, `MinOpen` as `(-1, 2)` and a repeatable `LineRate` as `(2, -1)`.
+
+| written | A12 |
+|---|---|
+| `[Rate] == [Rate]`, `[Rate] == [Rate2]`, `[Rate] != [Fee]` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `Sum(Lines*/LineRate) == [Rate]`, `[Rate] * 1 == [Fee]`, `[Rate] + [Fee] == [Fee]` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| a computation `[Rate]` into `Fee`, `[Fee]` into `Rate`, `[Rate2]` into `Rate` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[Count] ^ [Rate] > 1` | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[Rate] > [Fee]`, `RoundAccountingValue(Rate, 2) == [Fee]`, `[MinOpen] == [Fee]`, `RoundAccounting([Rate], 2)` into `Fee` | admitted |
+
+- **`-1` is unknown, not a value.** A field compared with itself is refused, so no reading of `-1` as some known scale survives; a sum, a product with a constant and an aggregate all carry the unknown through.
+- **The static gate does not use the runtime's resolved pair.** At runtime `(2, -1)` stores a fixed two places ([KF564](#kf564)), and `Fee` is `(2, 2)`, yet `[Rate] != [Fee]` is refused. That row is the discriminator.
+- **Only the maximum counts.** An open minimum `(-1, 2)` compares with a scale-2 field, and ordering is not scale-gated at all.
+
+The checker read `-1` as a known scale until this measurement, so seven of these rows passed it. Two other readers of the same member already agree with A12: an index key on a `(0, -1)` Number admits `"5"` and refuses `"5.5"` with `MVK_INDEX_VALUE_INVALID`, and a `(0, -1)` hour is a valid `Time` component.
+
+*Locked by:* `adapter.laws.CheckerUnknownMaximumScaleAgreementTest` (`rule check` and `checkConsistency` against the checker).

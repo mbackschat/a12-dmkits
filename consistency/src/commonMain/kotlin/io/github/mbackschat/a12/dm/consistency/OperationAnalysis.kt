@@ -164,10 +164,14 @@ internal class OperationAnalysis(
         null -> UNKNOWN
     }
 
+    /**
+     * A declared Number's scale is its `maxFractionalDigits`, read as 0 when absent; an [UNDEFINED] maximum is an
+     * UNKNOWN scale, which every scale-gated equality and exponent refuses ([KERNEL-FINDINGS KF625]).
+     */
     private fun field(field: TrackedDeclaration): OperationValue = with(facts) {
         val type = when (effectiveFieldType(field)) {
-            FieldType.NUMBER -> OperationType.Number((typeBodyOf(field, FieldType.NUMBER)
-                ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0)
+            FieldType.NUMBER -> OperationType.Number(((typeBodyOf(field, FieldType.NUMBER)
+                ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0).takeIf { it != UNDEFINED })
             FieldType.STRING, FieldType.CUSTOM_FIELD -> OperationType.Text
             FieldType.ENUMERATION -> OperationType.Enumeration
             FieldType.BOOLEAN -> OperationType.Boolean

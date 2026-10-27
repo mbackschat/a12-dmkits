@@ -14805,6 +14805,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf625": {
+      "sha256": "e93addc1afdd369c743fa9bec908c5aaf77cfc40e2768e763c7114d69ff9fbbd",
+      "task": "SS25",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the declared scale of a Number operand"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check and checkConsistency on the twenty-one rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the unknown maximum scale of SPEC-2026-10-26-25"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author `fractionDigits(min, -1)` unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "A `maxFractionalDigits` of -1 types the operand with an unknown scale, which every scale-gated equality and exponent refuses.",
+          "evidence": {
+            "the declared scale of a Number operand": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
+              "witness": "Twenty-one rows, each asserting the checker's codes equal A12's."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "rule check and checkConsistency on the twenty-one rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
+              "witness": "The A12 column is asserted from RuleValidator and checkConsistency, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
