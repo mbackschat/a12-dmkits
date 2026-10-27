@@ -240,19 +240,40 @@ private fun unbindableFieldType(
  * default variant deletes is never converted, so it builds ([KERNEL-FINDINGS KF626]). Only the String type's hint
  * list was measured among the types that carry one.
  */
-private val KEYED_BUILD_LISTS = mapOf(
-    FieldType.ENUMERATION to ("categories" to "name"),
-    FieldType.STRING to ("hintList" to "locale"),
-)
+private enum class KeyedBuildList(val type: FieldType, val list: String, val key: String) {
+    /** The categories, keyed by name as written. */
+    CATEGORIES(FieldType.ENUMERATION, "categories", "name") {
+        override fun keyOf(entry: JsonObject): String? = entry.string(key)
+    },
 
-/** The first `(list, key, value)` whose key two entries of a [KEYED_BUILD_LISTS] list share, if any. */
-private fun JsonObject.repeatedBuildKey(type: FieldType): Triple<String, String, String>? {
-    val (list, key) = KEYED_BUILD_LISTS[type] ?: return null
-    val keys = (this[list] as? JsonArray).orEmpty().mapNotNull {
-        ((it as? JsonObject)?.get(key) as? JsonPrimitive)?.takeIf { value -> value.isString }?.content
+    /**
+     * The hint list, keyed by the parsed locale: `TypeConverter.convertString` drops an entry without values before
+     * `toMap`, so an empty entry beside a filled one builds, while `en_US` beside `en-US` is one locale twice
+     * ([KERNEL-FINDINGS KF643]). A spelling [localeKeyOrNull] cannot read is compared as written.
+     */
+    HINT_LIST(FieldType.STRING, "hintList", "locale") {
+        override fun keyOf(entry: JsonObject): String? {
+            if ((entry["values"] as? JsonArray).isNullOrEmpty()) return null
+            return entry.string(key)?.let { localeKeyOrNull(it) ?: it }
+        }
+    };
+
+    /** The key this entry is collected under, or null for one the converter never collects. */
+    abstract fun keyOf(entry: JsonObject): String?
+
+    companion object {
+        fun of(type: FieldType): KeyedBuildList? = entries.firstOrNull { it.type == type }
     }
-    val repeated = keys.groupingBy { it }.eachCount().entries.firstOrNull { it.value > 1 } ?: return null
-    return Triple(list, key, repeated.key)
+}
+
+/** The first `(list, key, value)` whose key two collected entries of a [KeyedBuildList] share, as first written. */
+private fun JsonObject.repeatedBuildKey(type: FieldType): Triple<String, String, String>? {
+    val keyed = KeyedBuildList.of(type) ?: return null
+    val collected = (this[keyed.list] as? JsonArray).orEmpty().mapNotNull { entry ->
+        (entry as? JsonObject)?.let { e -> keyed.keyOf(e)?.let { it to checkNotNull(e.string(keyed.key)) } }
+    }
+    val repeated = collected.groupBy({ it.first }, { it.second }).values.firstOrNull { it.size > 1 } ?: return null
+    return Triple(keyed.list, keyed.key, repeated.first())
 }
 
 /**

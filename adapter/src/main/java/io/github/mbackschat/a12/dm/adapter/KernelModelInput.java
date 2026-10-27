@@ -21,6 +21,8 @@ import io.github.mbackschat.a12.dm.core.ModelInputException;
 /** Classifies malformed input at the kernel deserializer boundary without relabelling unrelated failures. */
 final class KernelModelInput {
 
+    private static final String PATH_ARITHMETIC = "com.mgmtp.a12.kernel.core.base.utils.internal.ElementPathUtils";
+
     private KernelModelInput() {
     }
 
@@ -32,7 +34,30 @@ final class KernelModelInput {
         } catch (NullPointerException failure) {
             classifyMissingReference(json, failure);
             throw failure;
+        } catch (IndexOutOfBoundsException | IllegalArgumentException failure) {
+            if (thrownByPathArithmetic(failure)) {
+                throw new ModelInputException("a reference path in the model cannot be resolved: "
+                        + failure.getMessage(), failure);
+            }
+            throw failure;
         }
+    }
+
+    /**
+     * Whether the kernel's path arithmetic raised this failure while resolving references: a relative path that
+     * climbs past the root fails in {@code ElementPathUtils.absPath}, and a slash-led one in
+     * {@code splitRelPath} (KERNEL-FINDINGS KF643). The first frame outside the JDK names the thrower, so the
+     * same exception type from anywhere else keeps its identity.
+     */
+    private static boolean thrownByPathArithmetic(RuntimeException failure) {
+        for (StackTraceElement frame : failure.getStackTrace()) {
+            String owner = frame.getClassName();
+            if (owner.startsWith("java.") || owner.startsWith("jdk.")) {
+                continue;
+            }
+            return owner.equals(PATH_ARITHMETIC);
+        }
+        return false;
     }
 
     static void classifyMissingReference(String json, NullPointerException failure) {

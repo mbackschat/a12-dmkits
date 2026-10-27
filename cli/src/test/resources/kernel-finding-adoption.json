@@ -14879,7 +14879,7 @@
       }
     },
     "kf626": {
-      "sha256": "91826dd7fa425cecb6a430e6bf50f30d74860f85e43f57fda2a184601295b44e",
+      "sha256": "60e3a69eb5701a2f650663ac174edbe128c162ec4c84b21a2e875286b08b6602",
       "task": "SS28",
       "scope": {
         "dmkits": [],
@@ -16179,6 +16179,78 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "dmtool's rule check delegates admission to the kernel, which refuses these rows.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf643": {
+      "sha256": "a1574cf26007714ad16886a4d77bfa8d5084c5c9523869dc451646b92b055ea7",
+      "task": "SS32",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "what the reader refuses before a filter, missing members, hint-list keys and ValueAsDate slots"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the reader's path-arithmetic failure as unreadable input"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the review discriminators of SPEC-2026-10-27-01 and SPEC-2026-10-26-21"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits do not read a model themselves; a model the reader refuses reaches them through the adapter's input classification, recorded under adapter.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "An above-root or slash-led declared reference stays unbuilt through a deleting filter, a null or absent operation or condition states its sentence, hint-list entries are keyed by parsed locale after empty entries drop, and ValueAsDate is admitted only in a datumAngabe2 slot.",
+          "evidence": {
+            "what the reader refuses before a filter, missing members, hint-list keys and ValueAsDate slots": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceAgreementTest.kt#theCheckerStatesWhatA12StatesWithAndWithoutTheFilter",
+              "witness": "Each review row kept and filtered, with A12's classes asserted live from BoundModel and the checker compared to them; the ValueAsDate slots are compared in CheckerDateTimeConstructionAgreementTest and CheckerArgumentSlotAgreementTest."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "KernelModelInput maps an IndexOutOfBounds or IllegalArgument exception thrown by ElementPathUtils to ModelInputException, and rethrows any other.",
+          "evidence": {
+            "the reader's path-arithmetic failure as unreadable input": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/ModelInputClassificationTest.java#aReferencePathTheKernelCannotResolveIsUnreadableInput",
+              "witness": "Both refused path shapes are classified as input, and an index failure outside the path arithmetic keeps its identity."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
           "evidence": {}
         },
         "a12-kernel-lean": {

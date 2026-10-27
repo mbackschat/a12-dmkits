@@ -11,8 +11,8 @@ import kotlin.test.assertEquals
  * measures. Every row compares the checker's COMPLETE class list against A12's classes, so a second family
  * still reading the member as written, or the calculation module's guard class surfacing beside the token
  * class, is as visible as a wrong class. A12's codeless "operations is empty" line, stated once however many
- * operations are empty, is the checker's `RK_COMPUTATION_OPERATION_EMPTY` ([KERNEL-FINDINGS KF626]); a whitespace
- * or `null` operation draws no such line here.
+ * operations are empty, is the checker's `RK_COMPUTATION_OPERATION_EMPTY` ([KERNEL-FINDINGS KF626]). A `null`
+ * operation draws it too, as `StringUtils.isEmpty` reads it ([KF643]); a whitespace one does not.
  */
 class ComputationGeneratedTextTest {
 
@@ -49,7 +49,7 @@ class ComputationGeneratedTextTest {
             "one unguarded, blank" to listOf("MVK_INCOMPLETE_INPUT", emptyOperation),
             "two guarded, the second blank" to token + emptyOperation,
             "two guarded, the second whitespace" to token,
-            "two guarded, the second null" to token,
+            "two guarded, the second null" to token + emptyOperation,
             "two guarded, the FIRST blank" to token + emptyOperation,
             "three guarded, the MIDDLE blank" to token + emptyOperation,
             "two, the blank one unguarded" to token + emptyOperation,

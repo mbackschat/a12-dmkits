@@ -36,7 +36,7 @@ internal fun TrackedFactBase.temporalExtractorContributions(
     val reader = TemporalOperandReader(this, identities, execution, element)
     return callContributions(element, execution) { member, call ->
         val extractor = identities[call.operator]?.let(Extractor::of) ?: return@callContributions null
-        reader.extractorDefect(extractor, call)?.let { finding(it, call, element, member) }
+        reader.extractorDefect(extractor, call)?.findingAt(call, element, member)
     }
 }
 
@@ -59,39 +59,23 @@ internal enum class Extractor(val id: String, val component: Component?) {
 
 private val CLOCK = setOf(Component.HOUR, Component.MINUTE, Component.SECOND)
 
-private class ExtractorDefect(val code: String, val because: String)
-
 /** The first gate [call] fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun TemporalOperandReader.extractorDefect(extractor: Extractor, call: ConditionCall): ExtractorDefect? {
+private fun TemporalOperandReader.extractorDefect(extractor: Extractor, call: ConditionCall): TemporalDefect? {
     val operand = call.operands.singleOrNull() ?: return null
     val from = typed(operand, call.inAFilterBody) ?: return null
     val unit = extractor.component ?: return if (from.components.containsAll(Component.entries)) null else
-        ExtractorDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
+        TemporalDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
             "needs a stamp carrying all six date and clock components, and `${operand.text}` does not")
     if (from is ExtractedFrom.Field && from.precision != null &&
         (unit in CLOCK || unit in OPEN_UNDER_PRECISION.getValue(from.precision))) {
-        return ExtractorDefect("MVK_INVALID_DATE_TYPE",
+        return TemporalDefect("MVK_INVALID_DATE_TYPE",
             "reads `${from.path}`, declared `${from.precision}`, which leaves the component it extracts unknown")
     }
     if (from is ExtractedFrom.Literal) {
-        return ExtractorDefect("MVK_NO_CONST",
+        return TemporalDefect("MVK_NO_CONST",
             "is handed the constant `${operand.text}`, whose components are already known — extract from a field")
     }
     if (unit in from.components || unit == Component.YEAR && facts.hasBaseYear) return null
-    return ExtractorDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
+    return TemporalDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
         "reads `${operand.text}`, whose format does not carry the component it extracts")
 }
-
-private fun finding(
-    defect: ExtractorDefect,
-    call: ConditionCall,
-    element: TrackedDeclaration,
-    member: String,
-): Finding = Finding(
-    FindingCategory.A12_CONSTRAINT,
-    FindingSeverity.ERROR,
-    defect.code,
-    "in `$member`: `${call.operator}` ${defect.because}",
-    element.path,
-    call.spanIn(member),
-)

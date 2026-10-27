@@ -35,6 +35,7 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
                     else -> "INVALID_ENTITY"
                 }
                 is Reference.Resolved -> null
+                is Reference.IllegalRelPath -> error("only a declared target is resolved as a relative path")
             }
         }
 

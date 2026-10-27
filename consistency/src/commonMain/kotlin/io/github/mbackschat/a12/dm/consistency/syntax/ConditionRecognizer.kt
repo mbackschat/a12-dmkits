@@ -316,8 +316,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     }
                     Slot.ENTITY -> entity()
                     Slot.RANGE -> if (identity(peek()) == "BaseYear") constantToken() else entity()
-                    Slot.DATE -> {
-                        date()
+                    Slot.DATE, Slot.DATE_OR_VALUE_AS_DATE -> {
+                        date(valueAsDate = slot == Slot.DATE_OR_VALUE_AS_DATE)
                         peek()
                         sites += SyntaxSite.DateArgument(operator.text, tokens.subList(from, cursor), filterActive)
                     }
@@ -366,11 +366,18 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         }
     }
 
-    private fun date() {
+    /**
+     * A12's `datumAngabe`, or with [valueAsDate] its `datumAngabe2`, the date slot that also takes `ValueAsDate`:
+     * both arguments of a difference, the date of a shift, and `DateTime`'s date. In an extractor or in
+     * `DateTime`'s time it is a parse error
+     * ([KERNEL-FINDINGS KF643], `adapter.laws.CheckerDateTimeConstructionAgreementTest`).
+     */
+    private fun date(valueAsDate: Boolean) {
+        val id = identity(peek())
         when {
             name(peek()) || peek()?.text in PATH_STARTS -> entity()
-            peek()?.kind == TokenKind.STRING || identity(peek()) in setOf("Today", "Now", "BaseYear") -> constantToken()
-            identity(peek()) in DATE_FUNCTIONS -> call()
+            peek()?.kind == TokenKind.STRING || id in setOf("Today", "Now", "BaseYear") -> constantToken()
+            id in DATE_FUNCTIONS && (id != "ValueAsDate" || valueAsDate) -> call()
             else -> fail(SyntaxFailureKind.DECISION)
         }
     }
@@ -483,7 +490,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
 
     private class RecognitionStop(val failure: ShapeFailure) : RuntimeException()
     /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */
-    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, COMPONENT, STRING }
+    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, DATE_OR_VALUE_AS_DATE, COMPONENT, STRING }
 
     /** The one kind a value list holds. */
     private enum class ValueKind { TEXT, NUMBER, READ, ENTITY }
@@ -519,8 +526,9 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             // The range construct takes two field specs, not the date slot (`datumBereichKonstrukt`, KF613).
             put("DateRange", listOf(Slot.ENTITY, Slot.ENTITY))
             for (id in listOf("DifferenceInDays", "DifferenceInMonths", "DifferenceInYears", "DifferenceInHours",
-                    "DifferenceInMinutes", "DifferenceInSeconds", "DateTime"))
-                put(id, listOf(Slot.DATE, Slot.DATE))
+                    "DifferenceInMinutes", "DifferenceInSeconds"))
+                put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE_OR_VALUE_AS_DATE))
+            put("DateTime", listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE))
             for (id in listOf("YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate", "HoursFromTime",
                     "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime"))
                 put(id, listOf(Slot.DATE))
@@ -535,7 +543,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             for (id in listOf("Abs", "Max", "Min")) put(id, listOf(Slot.OPERATION))
             put("ValueAsDate", listOf(Slot.ENTITY, Slot.DAY))
             for (id in listOf("AddYears", "AddMonths", "AddDays", "AddHours", "AddMinutes", "AddSeconds"))
-                put(id, listOf(Slot.DATE, Slot.OPERATION))
+                put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.OPERATION))
         }
     }
 }

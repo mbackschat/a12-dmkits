@@ -66,6 +66,12 @@ class CheckerArgumentSlotAgreementTest {
             "ValueAsDate(Estimated, Code) > \"01.01.2020\"" to TOKEN,
             "ValueAsDate(Estimated, Today) > \"01.01.2020\"" to TOKEN,
             "ValueAsDate(Estimated) > \"01.01.2020\"" to TOKEN,
+            // A difference and a shift read their dates through `datumAngabe2`, which takes `ValueAsDate`; an
+            // extractor reads `datumAngabe`, which does not.
+            "AddDays(ValueAsDate(Estimated, FirstDay), 1) > [Placed]" to ADMITTED,
+            "DifferenceInDays(ValueAsDate(Estimated, FirstDay), Placed) > 0" to ADMITTED,
+            "DifferenceInDays(Placed, ValueAsDate(Estimated, FirstDay)) > 0" to ADMITTED,
+            "YearFromDate(ValueAsDate(Estimated, FirstDay)) > 0" to TOKEN,
             // An entity spec: a digit sequence is a name.
             "FieldFilled(5)" to ENTITY,
             "AbsValue(5) > 0" to ENTITY,

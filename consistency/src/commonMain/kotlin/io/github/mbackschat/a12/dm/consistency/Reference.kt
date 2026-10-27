@@ -54,6 +54,13 @@ sealed interface Reference {
     data class AboveRoot(val written: String) : Reference
 
     /**
+     * A declared target [written] with a leading `/`, which A12's reference resolver refuses as an "illegal
+     * relPath" while it READS the model (`ElementPathUtils.splitRelPath`), so no filter can lift it
+     * ([KERNEL-FINDINGS KF643]). Only a declared target produces it: a condition's absolute path is legal.
+     */
+    data class IllegalRelPath(val written: String) : Reference
+
+    /**
      * [written] carries an up-step outside a relative path's leading run, where A12's grammar has no place for
      * one, so it names nothing and A12 refuses it as `MVK_UNEXPECTED_TOKEN` ([KERNEL-FINDINGS KF465]).
      *

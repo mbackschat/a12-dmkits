@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
@@ -52,6 +54,48 @@ class ModelInputClassificationTest {
         };
         assertSame(defect, assertThrows(NullPointerException.class,
                 () -> KernelModelInput.deserialize(serializer, complete)));
+    }
+
+    /**
+     * A relative path that climbs past the root, or a slash-led one, fails inside the kernel's reference
+     * resolution ({@code ElementPathUtils.absPath} / {@code splitRelPath}), after the reader parsed the JSON: the
+     * model cannot be read, so the failure is input, not a tool defect (KERNEL-FINDINGS KF643).
+     */
+    @Test
+    void aReferencePathTheKernelCannotResolveIsUnreadableInput() {
+        for (String target : List.of("../../../Total", "/Root/Total")) {
+            String json = COMPUTED_FIELD.matcher(withCopyComputation())
+                    .replaceFirst("\"computedFieldRelPath\":\"" + target + "\"");
+            assertTrue(json.contains(target), "the target edit missed");
+            var failure = assertThrows(ModelInputException.class, () -> BoundModel.ofJson(json), target);
+            assertTrue(failure.getMessage().contains("cannot be resolved"), failure::getMessage);
+        }
+    }
+
+    @Test
+    void anIndexFailureOutsideThePathArithmeticKeepsItsIdentity() {
+        IndexOutOfBoundsException defect = new IndexOutOfBoundsException("unexpected serializer defect");
+        IDocumentModelSerializer serializer = new IDocumentModelSerializer() {
+            @Override
+            public IDocumentModel deserialize(Reader reader) { throw defect; }
+
+            @Override
+            public void serialize(IDocumentModel value, Writer writer, Consumer<RankedNotification> notifications) {
+                throw new AssertionError("deserialization must not write");
+            }
+        };
+        assertSame(defect, assertThrows(IndexOutOfBoundsException.class,
+                () -> KernelModelInput.deserialize(serializer, withCopyComputation())));
+    }
+
+    private static final Pattern COMPUTED_FIELD = Pattern.compile("\"computedFieldRelPath\"\\s*:\\s*\"[^\"]*\"");
+
+    private static String withCopyComputation() {
+        var model = BoundModel.ofJson(DocumentModelDraft.named("copy").locale("en_US")
+                .rootGroup("Root", root -> root.field("Amount", FieldKind.NUMBER).field("Total", FieldKind.NUMBER))
+                .build().toJson());
+        return model.add(model.computation(model.num("/Root/Total")).name("CopyAmount")
+                .calc(model.num("/Root/Amount").value()).message(Dsl.en("Copy amount.")).build()).toJson();
     }
 
     @Test

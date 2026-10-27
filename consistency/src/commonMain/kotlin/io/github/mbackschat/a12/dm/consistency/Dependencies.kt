@@ -116,7 +116,7 @@ private fun Reference.asElementDependency(): DependencyOn = when (this) {
     // The candidates are what it is torn between, and a change to any of them settles or moves it; the NAME
     // is the referent they have in common, so it is the key that covers all of them at once.
     is Reference.Ambiguous -> DependencyOn.ShortName(name)
-    is Reference.AboveRoot -> DependencyOn.Unfollowable
+    is Reference.AboveRoot, is Reference.IllegalRelPath -> DependencyOn.Unfollowable
     // Only the walked prefix can change the verdict — a declaration there turns an entity miss into the token
     // error — while an unwalked one is refused whatever the model declares.
     is Reference.MisplacedUpStep -> walkedPrefix?.asElementDependency() ?: DependencyOn.Unfollowable

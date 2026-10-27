@@ -72,11 +72,14 @@ class CheckerBasicSentenceAgreementTest {
         fun field(name: String): ObjectNode = element(name).path("Field") as ObjectNode
         fun rule(): ObjectNode = elements().single { it.path("type").asText() == "Rule" }.path("Rule") as ObjectNode
 
-        fun computation(name: String = "Calc", target: String = "../Total", operation: String = "1"): ObjectNode {
+        fun computation(name: String = "Calc", target: String = "../Total", operation: String = "1"): ObjectNode =
+            computation(name, target) { it.addObject().put("operation", operation) }
+
+        fun computation(name: String = "Calc", target: String = "../Total", alternatives: (ArrayNode) -> Unit): ObjectNode {
             val body = elements().addObject().put("type", "Computation").put("id", "/Policy/Calc").put("name", name)
                 .putObject("Computation")
             body.put("computedFieldRelPath", target)
-            body.putArray("computationAlternatives").addObject().put("operation", operation)
+            alternatives(body.putArray("computationAlternatives"))
             body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", "Check the total.")
             return body
         }
@@ -140,6 +143,41 @@ class CheckerBasicSentenceAgreementTest {
             "a computation with an empty name" to { m, f -> m.computation(name = "").deleting(f) },
             "a computation with an empty target" to { m, f -> m.computation(target = "").deleting(f) },
             "a computation with an empty operation" to { m, f -> m.computation(operation = "").deleting(f) },
+            "a computation whose second alternative has a null operation" to { m, f ->
+                m.computation { a ->
+                    a.addObject().put("precondition", "FieldFilled(Ref)").put("operation", "1")
+                    a.addObject().put("precondition", "FieldFilled(Code)").putNull("operation")
+                }.deleting(f)
+            },
+            "a computation with a null operation" to { m, f -> m.computation { it.addObject().putNull("operation") }.deleting(f) },
+            "a computation with no operation" to { m, f -> m.computation { it.addObject() }.deleting(f) },
+            "a computation whose target climbs past the root" to { m, f -> m.computation(target = "../../../Total").deleting(f) },
+            "a computation with a slash-led target" to { m, f -> m.computation(target = "/Policy/Total").deleting(f) },
+            "a computation with an unresolvable target" to { m, f -> m.computation(target = "../NoSuchField").deleting(f) },
+            "a computation with a group target" to { m, f -> m.computation(target = "../Items").deleting(f) },
+            "a rule with no condition" to { m, f -> m.rule().apply { remove("errorCondition") }.deleting(f) },
+            "a rule with a slash-led error target" to { m, f -> m.rule().put("errorEntityRelPath", "/Policy/Ref").deleting(f) },
+            "an empty hint-list entry beside a filled one for one locale" to { m, f ->
+                m.field("Code").apply {
+                    val hints = withObject("/fieldType/StringType").putArray("hintList")
+                    hints.addObject().put("locale", "en_US").putArray("values")
+                    hints.addObject().put("locale", "en_US").putArray("values").add("AB")
+                }.deleting(f)
+            },
+            "hint-list entries for one locale in two spellings" to { m, f ->
+                m.field("Code").apply {
+                    val hints = withObject("/fieldType/StringType").putArray("hintList")
+                    hints.addObject().put("locale", "en_US").putArray("values").add("AB")
+                    hints.addObject().put("locale", "en-US").putArray("values").add("CD")
+                }.deleting(f)
+            },
+            "two categories of one name, disjoint values" to { m, f ->
+                m.field("Status").apply {
+                    val categories = enumBody().path("categories") as ArrayNode
+                    categories.add(categories.get(0).deepCopy<ObjectNode>().also { (it.path("values") as ArrayNode).removeAll().add("B") })
+                    (categories.get(0).path("values") as ArrayNode).removeAll().add("A")
+                }.deleting(f)
+            },
             // A type definition carries no variant filter, so its filtered row deletes nothing and answers alike.
             "a type definition with an empty id" to { m, _ -> m.typeDefinition("", "CodeType") },
             "a type definition with a space for an id" to { m, _ -> m.typeDefinition(" ", "CodeType") },
@@ -185,6 +223,36 @@ class CheckerBasicSentenceAgreementTest {
             "a computation with an empty target/ONLY" to setOf("RK_COMPUTED_FIELD_EMPTY"),
             "a computation with an empty operation/kept" to setOf("MVK_INCOMPLETE_INPUT", "RK_COMPUTATION_OPERATION_EMPTY"),
             "a computation with an empty operation/ONLY" to setOf("RK_COMPUTATION_OPERATION_EMPTY"),
+            // `StringUtils.isEmpty` is true of a missing operation too, and the token error is the null operation's
+            // own; the sentence survives the filter as the empty one does (KF643).
+            "a computation whose second alternative has a null operation/kept" to
+                setOf("MVK_UNEXPECTED_TOKEN", "RK_COMPUTATION_OPERATION_EMPTY"),
+            "a computation whose second alternative has a null operation/ONLY" to setOf("RK_COMPUTATION_OPERATION_EMPTY"),
+            "a computation with a null operation/kept" to setOf("MVK_INCOMPLETE_INPUT", "RK_COMPUTATION_OPERATION_EMPTY"),
+            "a computation with a null operation/ONLY" to setOf("RK_COMPUTATION_OPERATION_EMPTY"),
+            "a computation with no operation/kept" to setOf("MVK_INCOMPLETE_INPUT", "RK_COMPUTATION_OPERATION_EMPTY"),
+            "a computation with no operation/ONLY" to setOf("RK_COMPUTATION_OPERATION_EMPTY"),
+            // The reader's path arithmetic refuses these before any filter applies; a target that only names
+            // nothing fails at conversion, which the filter lifts (KF643).
+            "a computation whose target climbs past the root/kept" to setOf(UNBUILT),
+            "a computation whose target climbs past the root/ONLY" to setOf(UNBUILT),
+            "a computation with a slash-led target/kept" to setOf(UNBUILT),
+            "a computation with a slash-led target/ONLY" to setOf(UNBUILT),
+            "a computation with an unresolvable target/kept" to setOf(UNBUILT),
+            "a computation with an unresolvable target/ONLY" to emptySet(),
+            "a computation with a group target/kept" to setOf(UNBUILT),
+            "a computation with a group target/ONLY" to setOf(UNBUILT),
+            "a rule with no condition/kept" to setOf(UNBUILT),
+            "a rule with no condition/ONLY" to setOf("RK_ERROR_CONDITION_EMPTY"),
+            "a rule with a slash-led error target/kept" to setOf(UNBUILT),
+            "a rule with a slash-led error target/ONLY" to setOf(UNBUILT),
+            // The converter drops an entry without values before keying the list by the PARSED locale (KF643).
+            "an empty hint-list entry beside a filled one for one locale/kept" to emptySet(),
+            "an empty hint-list entry beside a filled one for one locale/ONLY" to emptySet(),
+            "hint-list entries for one locale in two spellings/kept" to setOf(UNBUILT),
+            "hint-list entries for one locale in two spellings/ONLY" to emptySet(),
+            "two categories of one name, disjoint values/kept" to setOf(UNBUILT),
+            "two categories of one name, disjoint values/ONLY" to setOf("RK_ENUM_CATEGORY_DUPLICATE"),
             "a type definition with an empty id/kept" to setOf("RK_ID_EMPTY"),
             "a type definition with an empty id/ONLY" to setOf("RK_ID_EMPTY"),
             "a type definition with a space for an id/kept" to emptySet(),

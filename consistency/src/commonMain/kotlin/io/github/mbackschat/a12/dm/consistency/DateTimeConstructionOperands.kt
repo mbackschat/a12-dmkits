@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
-import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 
 /**
  * What `DateTime(date, time)` demands of its two operands, asked once each has passed its own slot.
@@ -21,9 +20,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
  * it. **No gate asks for a COMPLETE date**: a `yyyy-MM` or a `yyyy` field is a Date operand, and a Base Year
  * admits a year-less one, where it admits nothing in the Time slot.
  *
- * **Silent on the Time operand while the Date operand cannot be typed**, because A12 asks the Date first and a
- * defect this reader cannot see there would answer in its place — and silent on what [TemporalOperandReader]
- * cannot type, which includes the `ValueAsDate` placement A12 exempts from the Date gates.
+ * **A `ValueAsDate` Date operand skips rows 1–3**, as `CheckDateTimeKonstruktImpl` exempts that form, and the
+ * Time operand is still asked ([KERNEL-FINDINGS KF643]). **Silent on the Time operand while any other Date
+ * operand cannot be typed**, because A12 asks the Date first and a defect this reader cannot see there would
+ * answer in its place — and silent on what [TemporalOperandReader] cannot type.
  */
 internal fun TrackedFactBase.dateTimeConstructionContributions(
     element: TrackedDeclaration,
@@ -34,39 +34,6 @@ internal fun TrackedFactBase.dateTimeConstructionContributions(
     val reader = TemporalOperandReader(this, identities, execution, element)
     return callContributions(element, execution) { member, call ->
         if (identities[call.operator] != "DateTime") return@callContributions null
-        reader.dateTimeDefect(call)?.let { finding(it, call, element, member) }
+        reader.dateTimeDefect(call)?.findingAt(call, element, member)
     }
 }
-
-internal class DateTimeDefect(val code: String, val because: String)
-
-/** The first gate a `DateTime` [call] fails, in A12's own order, or null where none fails and where it may not judge. */
-internal fun TemporalOperandReader.dateTimeDefect(call: ConditionCall): DateTimeDefect? {
-    val (dateOperand, timeOperand) = call.operands.takeIf { it.size == 2 } ?: return null
-    val date = typed(dateOperand, call.inAFilterBody) ?: return null
-    val dated = namesADate(date.components) && (Component.YEAR in date.components || facts.hasBaseYear)
-    if (!dated || namesATime(date.components)) {
-        return DateTimeDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
-            "is handed `${dateOperand.text}` as its date, whose format is not a date with a year and no clock")
-    }
-    if (date is ExtractedFrom.Field && date.precision != null) {
-        return DateTimeDefect("MVK_INVALID_DATE_TYPE",
-            "is handed `${date.path}` as its date, declared `${date.precision}`, which leaves part of it unknown")
-    }
-    val time = typed(timeOperand, call.inAFilterBody) ?: return null
-    if (namesADate(time.components) || !namesATime(time.components)) {
-        return DateTimeDefect("MVK_WRONG_DATE_FORMAT_FOR_OP",
-            "is handed `${timeOperand.text}` as its time, whose format is not a clock with no date")
-    }
-    return null
-}
-
-private fun finding(defect: DateTimeDefect, call: ConditionCall, element: TrackedDeclaration, member: String) =
-    Finding(
-        FindingCategory.A12_CONSTRAINT,
-        FindingSeverity.ERROR,
-        defect.code,
-        "in `$member`: `${call.operator}` ${defect.because}",
-        element.path,
-        call.spanIn(member),
-    )

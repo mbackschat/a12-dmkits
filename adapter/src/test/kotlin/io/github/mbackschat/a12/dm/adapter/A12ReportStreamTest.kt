@@ -350,39 +350,32 @@ class A12ReportStreamTest {
             val id = row["id"].asText()
             val model = row["model"].asText()
             val outcome = originalOutcome(model)
-            var ingressFailure: IndexOutOfBoundsException? = null
-            val a12 = try {
-                kernelModelClasses(model)
-            } catch (failure: IndexOutOfBoundsException) {
-                ingressFailure = failure
-                null
-            }
+            val a12 = kernelModelClasses(model)
             val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             observations.addObject().apply {
                 put("id", id)
                 put("phase", outcome.phase.name)
                 put("failure", outcome.failure?.javaClass?.name)
                 put("message", outcome.failure?.message)
-                put("oracleFailure", ingressFailure?.javaClass?.name)
                 putArray("callbacks").apply { outcome.callbacks.forEach { add(it.message) } }
-                putArray("classes").apply { a12?.sorted()?.forEach { add(it) } }
+                putArray("classes").apply { a12.sorted().forEach { add(it) } }
             }
             val phase = OriginalPhase.valueOf(row["kernelPhase"].asText())
             val expectedFailure = when (phase) {
                 OriginalPhase.INPUT -> outcome.failure is ModelInputException &&
                     outcome.failure.message.orEmpty().contains("Illegal unquoted character ((CTRL-CHAR, code 9))")
-                OriginalPhase.PREPARATION -> outcome.failure is IndexOutOfBoundsException &&
-                    outcome.failure.message == "Index -1 out of bounds for length 0" && ingressFailure != null
+                // The reference resolver's path arithmetic refuses an above-root error target (KERNEL-FINDINGS KF643).
+                OriginalPhase.PREPARATION -> outcome.failure is ModelInputException &&
+                    outcome.failure.cause?.message == "Index -1 out of bounds for length 0"
                 OriginalPhase.CHECK -> outcome.failure is NullPointerException
                 OriginalPhase.EXPANSION -> false
             }
-            val expectedClasses = if (phase == OriginalPhase.PREPARATION) null else setOf("CK_MODEL_NOT_BUILDABLE")
-            if (outcome.phase != phase || !expectedFailure || outcome.callbacks.isNotEmpty() || a12 != expectedClasses)
+            if (outcome.phase != phase || !expectedFailure || outcome.callbacks.isNotEmpty() || a12 != setOf("CK_MODEL_NOT_BUILDABLE"))
                 misses += "$id: ${outcome.phase}, ${outcome.failure}, callbacks=${outcome.callbacks.map { code(it.message) }}, classes=$a12"
-            val verdict = if (a12 == null) "ORACLE-THREW" else checkerVerdict(a12, ours)
+            val verdict = checkerVerdict(a12, ours)
             if (verdict != null) {
                 fun Set<String>.column() = if (isEmpty()) "(none)" else sorted().joinToString(",")
-                val key = listOf(verdict, a12?.column() ?: checkNotNull(ingressFailure).javaClass.name, ours.column()).joinToString("\t")
+                val key = listOf(verdict, a12.column(), ours.column()).joinToString("\t")
                 clusters[key] = clusters.getOrDefault(key, 0) + 1
             }
         }
@@ -404,11 +397,10 @@ class A12ReportStreamTest {
         val prepared = try {
             KernelModelPreparation.expand(model, ReferenceResolvers.selfContained())
         } catch (failure: ModelInputException) {
-            return OriginalOutcome(OriginalPhase.INPUT, failure, emptyList())
+            val phase = if (failure.cause is IndexOutOfBoundsException) OriginalPhase.PREPARATION else OriginalPhase.INPUT
+            return OriginalOutcome(phase, failure, emptyList())
         } catch (failure: ModelConsistencyException) {
             return OriginalOutcome(OriginalPhase.EXPANSION, failure, emptyList())
-        } catch (failure: IndexOutOfBoundsException) {
-            return OriginalOutcome(OriginalPhase.PREPARATION, failure, emptyList())
         }
         val callbacks = mutableListOf<RankedNotification>()
         val failure = try {

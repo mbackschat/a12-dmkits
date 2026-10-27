@@ -48,6 +48,8 @@ fun Reference.asFinding(
                 "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
         is Reference.AboveRoot ->
             "`$written` climbs above the root group, so it names no position in this model"
+        is Reference.IllegalRelPath ->
+            "`$written` starts with `/`, which A12's reader refuses in a relative path, so the model cannot be read"
         is Reference.MisplacedUpStep ->
             "`$written` carries an up-step `..` after its first named segment, where a path has no place for one"
     }
@@ -92,7 +94,7 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     // An unresolvable error target is `MVK_ERROR_FIELD_MISSING` here, and [findings] adds the
     // `MVK_MISSING_ERROR_FIELD` A12 draws beside it. An above-root one never reaches a check at all.
     ReferenceRole.ERROR_TARGET ->
-        if (outcome is Reference.AboveRoot) CK_MODEL_NOT_BUILDABLE else ERROR_FIELD_MISSING
+        if (outcome is Reference.AboveRoot || outcome is Reference.IllegalRelPath) CK_MODEL_NOT_BUILDABLE else ERROR_FIELD_MISSING
     ReferenceRole.COMPUTED_TARGET -> CK_MODEL_NOT_BUILDABLE
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"

@@ -429,6 +429,19 @@ sealed interface io.github.mbackschat.a12.dm.consistency/Reference { // io.githu
         final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.Ambiguous.toString|toString(){}[0]
     }
 
+    final class IllegalRelPath : io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath|null[0]
+        constructor <init>(kotlin/String) // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.<init>|<init>(kotlin.String){}[0]
+
+        final val written // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.written|{}written[0]
+            final fun <get-written>(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.written.<get-written>|<get-written>(){}[0]
+
+        final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.component1|component1(){}[0]
+        final fun copy(kotlin/String = ...): io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.copy|copy(kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.IllegalRelPath.toString|toString(){}[0]
+    }
+
     final class MisplacedUpStep : io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep|null[0]
         constructor <init>(kotlin/String, io.github.mbackschat.a12.dm.consistency/Reference?) // io.github.mbackschat.a12.dm.consistency/Reference.MisplacedUpStep.<init>|<init>(kotlin.String;io.github.mbackschat.a12.dm.consistency.Reference?){}[0]
 
@@ -882,6 +895,8 @@ final class io.github.mbackschat.a12.dm.consistency/DeclaredReference { // io.gi
         final fun <get-declaredAt>(): kotlin/String // io.github.mbackschat.a12.dm.consistency/DeclaredReference.declaredAt.<get-declaredAt>|<get-declaredAt>(){}[0]
     final val member // io.github.mbackschat.a12.dm.consistency/DeclaredReference.member|{}member[0]
         final fun <get-member>(): kotlin/String // io.github.mbackschat.a12.dm.consistency/DeclaredReference.member.<get-member>|<get-member>(){}[0]
+    final val refusedByTheReader // io.github.mbackschat.a12.dm.consistency/DeclaredReference.refusedByTheReader|{}refusedByTheReader[0]
+        final fun <get-refusedByTheReader>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/DeclaredReference.refusedByTheReader.<get-refusedByTheReader>|<get-refusedByTheReader>(){}[0]
     final val role // io.github.mbackschat.a12.dm.consistency/DeclaredReference.role|{}role[0]
         final fun <get-role>(): io.github.mbackschat.a12.dm.consistency/ReferenceRole // io.github.mbackschat.a12.dm.consistency/DeclaredReference.role.<get-role>|<get-role>(){}[0]
     final val target // io.github.mbackschat.a12.dm.consistency/DeclaredReference.target|{}target[0]

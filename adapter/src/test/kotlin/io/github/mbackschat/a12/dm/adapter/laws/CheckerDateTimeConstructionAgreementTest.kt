@@ -57,6 +57,7 @@ class CheckerDateTimeConstructionAgreementTest {
         "Claims/FiledAt For \"C1\"",
         // A nested construction A12 refuses, which answers once, before the slot it stands in is asked.
         "DateTime(StartOn, StartOn)", "DateTime(NotedMonth, RenewalClock)",
+        "ValueAsDate(NotedMonth, FirstDay)", "ValueAsDate(StartOn, FirstDay)",
     )
 
     /** Each slot, with the valid partner the other one holds. */
@@ -117,8 +118,15 @@ class CheckerDateTimeConstructionAgreementTest {
             Pair(null, "DateTime(StartOn, SignedAt)") to wf,
             Pair(null, "DateTime(StartOn, ClockAsDate)") to wf,
             Pair(null, "DateTime(Claims/NotedOn For \"C1\", RenewalClock)") to partial,
+            // Only the Date argument is `datumAngabe2`, which takes `ValueAsDate`; the Time argument cannot parse it.
+            Pair(null, "DateTime(ValueAsDate(NotedMonth, FirstDay), RenewalClock)") to emptyList(),
+            Pair(null, "DateTime(StartOn, ValueAsDate(NotedMonth, FirstDay))") to listOf("MVK_UNEXPECTED_TOKEN"),
+            // A `ValueAsDate` Date operand is exempt from the Date gates, and the Time operand is still asked.
+            Pair(null, "DateTime(ValueAsDate(NotedMonth, FirstDay), StartOn)") to wf,
         )
         val observed = rows.keys.associateWith { (baseYear, construction) -> kernel(term(baseYear), construction) }
         assertEquals(rows, observed)
+        assertEquals(rows, rows.keys.associateWith { (baseYear, construction) -> ours(term(baseYear), construction) },
+            "the checker")
     }
 }

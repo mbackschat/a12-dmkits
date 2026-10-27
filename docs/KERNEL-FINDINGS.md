@@ -15204,12 +15204,12 @@ a12-kernel-lean SPEC-2026-10-27-01. One policy model is broken in one way per ro
 | an empty `operation` | `MVK_INCOMPLETE_INPUT` and "One of the computation operations is empty." | the sentence alone |
 | an empty `computedFieldRelPath` | unbuilt | "The computed field is not set properly." |
 | a type definition's empty `id` / `name` | "The id is empty." / "The name is empty." | the same |
-| a name, condition, error target or type-definition id of ONE SPACE | unbuilt or the `MVK_*` classes | admitted |
-| a field `id` of ONE SPACE | admitted | admitted |
+| a name, condition or error target of ONE SPACE | unbuilt or the `MVK_*` classes | admitted |
+| a field or type-definition `id` of ONE SPACE | admitted | admitted |
 
 - **The sentences come from one rule, A12's last.** They are `BasicConsistencyCheck`'s categories, run as `BasicConsistencyCheckFromSerializerRule` after `CodeGenerationRule` (source-read, `DocumentModelConsistencyRulesProvider`), over the model as read. That is why they follow every class and survive the filter, as [KF579](#kf579) found for the error code.
 - **"Empty" is `StringUtils.isEmpty`, not "blank".** The one-space rows are the discriminator: under `ONLY` they draw nothing. Absence is empty too where the reader lets it through: [KF498](#kf498)'s codeless refusal of a deleted `TypeDefType` without its id is this same sentence (`FieldVariantStageLawsTest`).
-- **A conversion failure belongs to the declaration, so the filter lifts it.** Two equal keys in a list A12 collects into a map (categories by name, a hint list by locale), a blank fragment format and an empty computed field fail only while A12 converts the declaration; the default variant removes it first. Where it is kept the build fails before any sentence is reported.
+- **A conversion failure belongs to the declaration, so the filter lifts it.** Two equal keys in a list A12 collects into a map (categories by name, a hint list by locale), a blank fragment format and an empty computed field fail only while A12 converts the declaration; the default variant removes it first. Where it is kept the build fails before any sentence is reported. *Narrowed 2026-10-27 by [KF643](#kf643):* a reference path the reader's own arithmetic refuses, and a group as the computed field, fail before the filter and are not lifted.
 - **Four of the sixteen categories are unreachable from JSON.** An empty `indexFieldName` or `sortFields[].name` leaves the model unbuilt with or without a filter, and a `null` localized text, on an element or a type definition, is refused by the reader (counted from `BasicDocumentModelConsistencyCategory`, source-read).
 
 The checker published only the empty-code sentence until this measurement. It now publishes the twelve reachable categories under ten `RK_*` codes, an element and a type definition sharing the id and name ones, reports the three unbuilt shapes it missed, and no longer reports a suppressed computation's computed target as unbuilt.
@@ -15474,3 +15474,39 @@ The index field of a non-repeatable `Approval` group is an Enumeration with one 
 The checker names A12's class on every row. The S-value is respelled in the JSON text, because the kits' builder refuses a blank one on purpose.
 
 *Locked by:* `adapter.laws.CheckerNonRepeatingIndexBlankSValueAgreementTest`.
+
+## §13 supplement — what A12's reader refuses before any variant filter, a missing operation or condition as an empty one, a hint list keyed after dropping its empty entries, and `ValueAsDate` only in a `datumAngabe2` slot (BoundModel and rule check, kernel 30.8.1, 2026-10-27) <a id="kf643"></a>
+
+> Fold: pending — narrows [KF626](#kf626)'s lift and [KF627](#kf627)'s operand set; measured to settle a cold review of the checker's KF626/KF627 slice.
+
+The same policy model as KF626, broken once per row on a declaration the default variant keeps and once under `ONLY`, which suppresses it:
+
+| defect | kept | under `ONLY` |
+|---|---|---|
+| a computed field `../../../Total`, climbing past the root | unbuilt | unbuilt |
+| a computed field or error target `/Policy/Total`, slash-led | unbuilt | unbuilt |
+| a computed field naming no element | unbuilt | admitted |
+| a computed field naming a group | unbuilt | unbuilt |
+| a computation operation `null` or absent | `MVK_INCOMPLETE_INPUT` and "One of the computation operations is empty." | the sentence alone |
+| a second alternative's operation `null` | `MVK_UNEXPECTED_TOKEN` and the sentence | the sentence alone |
+| a rule with no `errorCondition` | unbuilt | "The error condition is empty." |
+| a hint-list entry with no values beside a filled one, one locale | admitted | admitted |
+| hint-list entries for `en_US` and `en-US` | unbuilt | admitted |
+| two categories of one name with disjoint values | unbuilt | "The enumeration contains the category 'Band' multiple times." |
+
+| condition | A12 (rule check) |
+|---|---|
+| `DateTime(ValueAsDate(NotedMonth, FirstDay), RenewalClock)` | admitted |
+| `DateTime(StartOn, ValueAsDate(NotedMonth, FirstDay))` | `MVK_UNEXPECTED_TOKEN` |
+| `DateTime(ValueAsDate(NotedMonth, FirstDay), StartOn)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `AddDays(ValueAsDate(…), 1)`, `DifferenceInDays` with it in either slot | admitted |
+| `YearFromDate(ValueAsDate(…))` | `MVK_UNEXPECTED_TOKEN` |
+
+- **The reader resolves every declared reference before any filter.** `DocumentModelSerializer.deserialize` resolves parent pointers and references right after the mapper reads the model, and `EntityReferenceResolverVisitor` runs `ElementPathUtils.absPath` on a rule's error target, a computation's computed field and a group's index and sort fields (source-read). A climb past the root throws `IndexOutOfBoundsException` there, and a slash-led path makes `splitRelPath` throw `IllegalArgumentException`, so neither row reaches a filter. A path that is well formed but names nothing only leaves the reference unset, and fails at conversion, which the filter lifts. Why a group target is not lifted is not established; it is measured only.
+- **"Empty" includes missing.** `StringUtils.isEmpty` is true of `null`, so a `null` or absent operation states the sentence beside its parse class, and a rule with no condition states it once the filter lifts the build failure the missing condition causes where the rule is kept.
+- **A hint list is keyed after its empty entries are dropped, by the parsed locale.** `TypeConverter.convertString` filters out entries without values before it collects the list into a map keyed by `Locale` (source-read), so an empty entry never collides and two spellings of one locale do.
+- **`ValueAsDate` is a `datumAngabe2` form.** The grammar gives `datumAngabe2` to both arguments of a difference, the date of a shift and `DateTime`'s date, and plain `datumAngabe` to an extractor and to `DateTime`'s time (`GrammarOnly_ConditionParser.g4`). In `DateTime`'s date it skips the Date gates of KF627, and the Time operand is still asked.
+
+The checker had treated the first two rows as liftable, missed the sentence on a `null` or absent operation and condition, compared hint-list entries as written, and admitted `ValueAsDate` in every date slot. It now names A12's class on every row; `adapter.KernelModelInput` reports the reader's path-arithmetic failure as unreadable input instead of a raw exception.
+
+*Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker), `adapter.laws.CheckerDateTimeConstructionAgreementTest` and `adapter.laws.CheckerArgumentSlotAgreementTest` (rule check against the checker), `adapter.ModelInputClassificationTest`.

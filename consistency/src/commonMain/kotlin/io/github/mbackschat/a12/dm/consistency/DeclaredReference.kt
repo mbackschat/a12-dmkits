@@ -21,7 +21,14 @@ data class DeclaredReference(
     val role: ReferenceRole,
     val target: Reference,
     val written: String,
-)
+) {
+    /**
+     * Whether A12's reader refuses this path before any variant filter applies: its resolver's path arithmetic
+     * fails on a climb past the root and on a slash-led path, while a path that merely names nothing fails
+     * later, at conversion, which a filter deleting the declaration lifts ([KERNEL-FINDINGS KF643]).
+     */
+    val refusedByTheReader: Boolean get() = target is Reference.AboveRoot || target is Reference.IllegalRelPath
+}
 
 /**
  * The two DSL-carrier reference members: a rule's `errorEntityRelPath` and a computation's
@@ -88,6 +95,7 @@ private inline fun resolveRelativeIn(
     }
     val path = "/" + segments.joinToString("/")
     return when {
+        relative.startsWith("/") -> Reference.IllegalRelPath(relative)
         // Climbing past the root is a DIFFERENT outcome from naming nothing, and worse: the Kernel raises
         // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
         climbedPastRoot -> Reference.AboveRoot(relative)

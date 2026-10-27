@@ -91,12 +91,14 @@ internal fun TrackedFactBase.selectDeclarations(
 internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding> {
     val local = cells.values.flatMap { it.contributions }
     val suppressed = facts.variantFilterSuppressed()
-    // A computed target is resolved while A12 converts the computation, which it never does for one an `ONLY`
-    // filter suppresses, so even an unbuildable target is lifted there ([KERNEL-FINDINGS KF626]).
-    val targets = facts.declarations().filterNot { it.declaredKind == DeclaredKind.COMPUTATION && it.path in suppressed }.flatMap { element ->
-        element.declaredReference()?.findings().orEmpty().map {
-            DeclarationFinding(element.key, DeclarationStage.TARGET, it)
-        }
+    // A computed target that names nothing fails while A12 converts the computation, which it never does for
+    // one an `ONLY` filter suppresses, so that failure is lifted there ([KERNEL-FINDINGS KF626]). A path the
+    // reader itself refuses is not: it fails before any filter applies ([KF643]).
+    val targets = facts.declarations().flatMap { element ->
+        val reference = element.declaredReference() ?: return@flatMap emptyList()
+        val lifted = element.declaredKind == DeclaredKind.COMPUTATION && element.path in suppressed &&
+            !reference.refusedByTheReader
+        if (lifted) emptyList() else reference.findings().map { DeclarationFinding(element.key, DeclarationStage.TARGET, it) }
     }
     val conditions = selectedConditions(facts).map {
         DeclarationFinding(it.owner, DeclarationStage.CONDITION, it.finding)
