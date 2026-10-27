@@ -852,8 +852,10 @@ enum class CheckFamily {
 
     /**
      * A12's basic sentences: an empty id, name, condition, error target, computed field or operation, a repeated
-     * enumeration value or category, an empty type reference. A12 states them over the model as read, after
-     * every other check and through any variant filter ([KF626]).
+     * enumeration value or category, an empty type reference; a missing condition or operation counts as empty
+     * ([KF643]). A12 states them over the model as read, after every other check and through any variant filter
+     * ([KF626]), except where the defect also fails its build: those A12 states only once a filter removes the
+     * declaration, and beside a kept, unbuilt model the checker adds the sentence of its own accord.
      */
     BASIC_SENTENCES,
 

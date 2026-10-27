@@ -131,6 +131,8 @@ internal fun TemporalDefect.findingAt(call: ConditionCall, element: TrackedDecla
  * the family that reports it ([TrackedFactBase.dateTimeConstructionContributions]).
  */
 internal fun TemporalOperandReader.dateTimeDefect(call: ConditionCall): TemporalDefect? {
+    // Any other arity is a parse error the recognizer reports first, so declining here changes no verdict
+    // (`adapter.laws.CheckerDateTimeConstructionAgreementTest`).
     val (dateOperand, timeOperand) = call.operands.takeIf { it.size == 2 } ?: return null
     // `ValueAsDate` is exempt from the Date gates, and the Time operand is still asked (KF643).
     if (!isValueAsDate(dateOperand)) {

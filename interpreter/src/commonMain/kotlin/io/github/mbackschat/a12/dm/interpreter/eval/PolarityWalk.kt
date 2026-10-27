@@ -252,9 +252,9 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     FunctionOp.SUM -> numericAggregateFill(f) { signed -> Fill.of(canGrow = true, canShrink = signed) }
     FunctionOp.MAX_VALUE -> numericAggregateFill(f) { Fill.of(canGrow = true, canShrink = false) }
     FunctionOp.MIN_VALUE -> numericAggregateFill(f) { Fill.of(canGrow = false, canShrink = true) }
-    // CurrentRepetition is the structural ROW INDEX — no field-fill can change it, so a fired comparison
-    // against it is always a VALUE error (kernel-probed). The generic fallback would wrongly read its group
-    // argument as an "unfilled field" and type it OMISSION.
+    // CurrentRepetition is the structural ROW INDEX — no field-fill can change it, so it contributes no
+    // fillability of its own; an empty partner still can (KERNEL-FINDINGS KF71, KF639). The generic fallback
+    // would wrongly read its group argument as an "unfilled field" and type it OMISSION.
     FunctionOp.CURRENT_REPETITION -> Fill.of(false, false)
     // The value walk and polarity walk share the same positional stop: only empty/filter markers reached
     // before the terminal value can make it fillable; later operands are invisible (IF184).

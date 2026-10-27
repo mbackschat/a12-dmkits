@@ -182,6 +182,12 @@ class CheckerBasicSentenceAgreementTest {
             "a type definition with an empty id" to { m, _ -> m.typeDefinition("", "CodeType") },
             "a type definition with a space for an id" to { m, _ -> m.typeDefinition(" ", "CodeType") },
             "a type definition with an empty name" to { m, _ -> m.typeDefinition("CodeType", "") },
+            "a field whose name is a number" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.put("name", 7) },
+            "a field whose name is a boolean" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.put("name", true) },
+            "a field whose name is null" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.putNull("name") },
+            "an enumeration value that is a number" to { m, f ->
+                m.field("Status").apply { (enumBody().path("values").get(1) as ObjectNode).put("value", 7) }.deleting(f)
+            },
         )
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-27. */
@@ -259,6 +265,16 @@ class CheckerBasicSentenceAgreementTest {
             "a type definition with a space for an id/ONLY" to emptySet(),
             "a type definition with an empty name/kept" to setOf("RK_NAME_EMPTY"),
             "a type definition with an empty name/ONLY" to setOf("RK_NAME_EMPTY"),
+            // A scalar member is read as its text, so a number names an element and a value as a string does;
+            // `null` and `true` are read as admitted names too (measured 2026-10-27).
+            "a field whose name is a number/kept" to setOf("MVK_NAME_STARTS_WITH_DIGIT_A12_DV", "MVK_PATH_INVALID"),
+            "a field whose name is a number/ONLY" to emptySet(),
+            "a field whose name is a boolean/kept" to emptySet(),
+            "a field whose name is a boolean/ONLY" to emptySet(),
+            "a field whose name is null/kept" to emptySet(),
+            "a field whose name is null/ONLY" to emptySet(),
+            "an enumeration value that is a number/kept" to emptySet(),
+            "an enumeration value that is a number/ONLY" to emptySet(),
         )
     }
 }

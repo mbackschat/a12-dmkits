@@ -123,6 +123,9 @@ class CheckerDateTimeConstructionAgreementTest {
             Pair(null, "DateTime(StartOn, ValueAsDate(NotedMonth, FirstDay))") to listOf("MVK_UNEXPECTED_TOKEN"),
             // A `ValueAsDate` Date operand is exempt from the Date gates, and the Time operand is still asked.
             Pair(null, "DateTime(ValueAsDate(NotedMonth, FirstDay), StartOn)") to wf,
+            // A wrong arity is the parser's refusal, before any operand gate is asked.
+            Pair(null, "DateTime(StartOn)") to listOf("MVK_UNEXPECTED_TOKEN"),
+            Pair(null, "DateTime(StartOn, RenewalClock, RenewalClock)") to listOf("MVK_UNEXPECTED_TOKEN"),
         )
         val observed = rows.keys.associateWith { (baseYear, construction) -> kernel(term(baseYear), construction) }
         assertEquals(rows, observed)

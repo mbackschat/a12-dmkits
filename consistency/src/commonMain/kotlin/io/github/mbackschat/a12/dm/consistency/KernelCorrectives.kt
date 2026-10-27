@@ -119,11 +119,11 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_COMPUTATION_OPERATION_EMPTY" to Corrective(
         fix = "write the operation of every alternative.",
-        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, stated once however many are. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, `null` or absent (KERNEL-FINDINGS KF643), stated once however many are. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_EMPTY" to Corrective(
         fix = "name the field the computation writes.",
-        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string, which also leaves the model unbuilt where the computation is not suppressed. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
     "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
         fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
@@ -135,7 +135,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ENUM_CATEGORY_DUPLICATE" to Corrective(
         fix = "give each category its own name.",
-        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name, which also leaves the model unbuilt where the field is kept. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
     "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
         fix = "remove the line break from the value, label or category token.",
@@ -155,7 +155,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ERROR_CONDITION_EMPTY" to Corrective(
         fix = "write the rule's condition.",
-        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged; a `null` or absent condition leaves the model unbuilt where the rule is kept, and draws the sentence alone where a filter removes the rule (KERNEL-FINDINGS KF643). A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_ENTITY_EMPTY" to Corrective(
         fix = "name the field the rule attaches its error to.",
@@ -223,7 +223,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_TYPE_REFERENCE_EMPTY" to Corrective(
         fix = "name a type definition the model declares.",
-        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string, which also leaves the model unbuilt where the field is kept. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",

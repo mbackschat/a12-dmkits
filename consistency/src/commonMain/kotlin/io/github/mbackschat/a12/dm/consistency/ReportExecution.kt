@@ -14,7 +14,9 @@ internal enum class ModelStage {
 
     /**
      * A12's basic sentences: its LAST consistency rule, after code generation, so they follow every class and an
-     * earlier refusal never withholds them ([KERNEL-FINDINGS KF626]).
+     * earlier refusal never withholds them ([KERNEL-FINDINGS KF626]). A defect that also fails A12's build is
+     * stated by A12 only where a filter removes its declaration; beside a kept, unbuilt model the sentence is the
+     * checker's own addition, naming what the build failure does not.
      */
     BASIC,
 }

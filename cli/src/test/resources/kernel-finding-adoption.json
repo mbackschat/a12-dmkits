@@ -6726,7 +6726,7 @@
       }
     },
     "kf20": {
-      "sha256": "def625efa2cb1b21c788e01d721766f7c87530859c5311404905ec5f2419fb57",
+      "sha256": "76b59a3fe324a04d678fff7ac9d4e687934f321b88c55d79edb86f90a8b82908",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -8749,7 +8749,7 @@
       }
     },
     "kf529": {
-      "sha256": "84a5f2f1ae0282dbb88e3f6bff5ed562c67798953ba2629af3c1841d93383c82",
+      "sha256": "f8e5ace56429b8187bc6c9f1c6048363dd4174b11b59ed5f8b1f615dbc13a200",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -16251,6 +16251,294 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf207": {
+      "sha256": "80b195e45feff7f02560a8dd3837c9d3189ccb49797b94c8de1512455de726df",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the year-omission order"
+        ],
+        "interpreter": [
+          "the year-omission order"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the year-omission order correction measured for SPEC-2026-10-26-20"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author declarations, not stored values.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A stored value's formal cause is a runtime fact; the checker judges models.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's codes on the year-optional rows are pinned.",
+          "evidence": {
+            "the year-omission order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearOptionalOmissionOrderDiffTest.kt#theOmissionCheckAnswersBeforeTheMonthIsTested",
+              "witness": "Five values, A12's codes and texts pinned; the interpreter equals both kernel strategies."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter reports the omission before the month on every row.",
+          "evidence": {
+            "the year-omission order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearOptionalOmissionOrderDiffTest.kt#theOmissionCheckAnswersBeforeTheMonthIsTested",
+              "witness": "Five values, A12's codes and texts pinned; the interpreter equals both kernel strategies."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI reports the interpreter's codes unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf71": {
+      "sha256": "ebb540ffb8b3b07d6ea4f5d7f8b6409235cb9eab2c1bdc83c6eb95de99584398",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "CurrentRepetition beside an empty partner"
+        ],
+        "interpreter": [
+          "CurrentRepetition beside an empty partner"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the CurrentRepetition polarity row of SPEC-2026-10-27-02"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Polarity is a runtime fact the kits do not compute.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Polarity is a runtime fact; the checker judges models.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's signatures are pinned.",
+          "evidence": {
+            "CurrentRepetition beside an empty partner": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "Six documents, every message signature pinned; the interpreter equals both kernel strategies."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "CurrentRepetition contributes no fillability and the partner's is kept.",
+          "evidence": {
+            "CurrentRepetition beside an empty partner": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "Six documents, every message signature pinned; the interpreter equals both kernel strategies."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI reports the interpreter's typing unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf57": {
+      "sha256": "5d30840af1bafa5113b7d4fd23f45e43c5817902d453277b93ef7c76baf3c26d",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the value-list extent gate"
+        ],
+        "interpreter": [
+          "the value-list extent gate"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the value-list extent wording of SPEC-2026-10-26-06"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Partial validation is a runtime call the kits do not make.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Partial validation is a runtime fact; the checker judges models.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are compared on complete and incomplete declared coverage.",
+          "evidence": {
+            "the value-list extent gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredListExtentDiffTest.kt#completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates",
+              "witness": "Capacity two versus three separates declared coverage from held rows."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The extent gate accepts a wildcard or complete declared-slot coverage.",
+          "evidence": {
+            "the value-list extent gate": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredListExtentDiffTest.kt#completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates",
+              "witness": "Capacity two versus three separates declared coverage from held rows."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI's partial-validation selection is locked under KF55.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf349": {
+      "sha256": "1eabdb479122baa944b431468d8f5b4c6aacd8bc562c40ecda1f174b0f7364d4",
+      "task": "SS31",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "MVK_NOT_IN_GROUP for a key that does not repeat"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "MVK_NOT_IN_GROUP for a key that does not repeat"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the containment class of SPEC-2026-10-27-03"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits do not decide admission.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "REPETITION_KEY_CONTAINMENT reports the class for a non-repeating key as for an index-keyed pair.",
+          "evidence": {
+            "MVK_NOT_IN_GROUP for a key that does not repeat": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLedgerOperandGateAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every operand-gate row, the non-repeating key among them."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime or admission correction does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's class is asserted live beside the checker's.",
+          "evidence": {
+            "MVK_NOT_IN_GROUP for a key that does not repeat": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLedgerOperandGateAgreementTest.kt#theCheckerNamesWhatA12Names",
+              "witness": "The checker names A12's classes on every operand-gate row, the non-repeating key among them."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI reports the checker's and A12's codes unchanged.",
           "evidence": {}
         },
         "a12-kernel-lean": {
