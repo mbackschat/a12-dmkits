@@ -87,10 +87,10 @@ class GroupIndexAndSortReferenceLawsTest {
         // The same spelling read from `/Order`, where it DOES resolve — to a field one level down, outside
         // this group's own children. That is the case the two accounts disagree on, and it draws the code.
         expected.put("a descending path that DOES resolve", "MVK_INVALID_INDEX_FIELD");
-        // An absolute spelling is refused one tier out again, and UNTYPED: `ElementPathUtils.splitRelPath`
-        // raises "illegal relPath" during conversion, past every channel a caller can dispose of. The slot
-        // takes a position relative to the group, and the leading `/` is not a spelling of that.
-        expected.put("an ABSOLUTE path to the group's own field", KernelLaws.RAISED_UNTYPED);
+        // An absolute spelling is refused by the reader: `ElementPathUtils.splitRelPath` raises "illegal
+        // relPath" during conversion, which the adapter reports as unreadable input (KERNEL-FINDINGS KF643). The
+        // slot takes a position relative to the group, and the leading `/` is not a spelling of that.
+        expected.put("an ABSOLUTE path to the group's own field", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a group's indexFieldName");
     }
 
@@ -121,7 +121,7 @@ class GroupIndexAndSortReferenceLawsTest {
         expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
         // Asked on THIS member rather than carried from the index, which is the transfer that needs no new
         // branch and so prompts no question.
-        expected.put("an absolute path", KernelLaws.RAISED_UNTYPED);
+        expected.put("an absolute path", KernelLaws.UNREADABLE);
         // A non-string `name` is COERCED to the String member, as a rule's `errorCode` is — so it is a name
         // that resolves to nothing, not a shape the reader refuses. The checker reported the refusal tier
         // for it on no measured basis until this row.

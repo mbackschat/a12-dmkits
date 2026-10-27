@@ -74,6 +74,8 @@ class CheckerEntitySpecModifierAgreementTest {
         "a category beside the key" to ("FirstFilledValue(Packages/Parcels*/Kind -> Tier For \"p\" Having " +
             "[Packages/Parcels/Weight] > 1, Status -> Tier) == \"High\"" to notAllowed),
         "no filter — the control" to ("Sum(Packages/Parcels*/Weight For \"p\") > 0" to admitted),
+        "the star on the keyed level, unfiltered" to
+            ("Sum(Lines*/Qty For \"a\") > 0" to setOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")),
         "the star on the keyed level, raised at the key" to
             ("Sum(Lines*/Qty For \"a\" Having [Lines/Qty] > 1) > 0" to setOf("MVK_SEMANTIC_INDEX_AND_WILDCARD")),
         "a group, refused as `Having` is read" to ("NumberOfFilledGroups(Packages/Parcels* For \"p\" Having " +

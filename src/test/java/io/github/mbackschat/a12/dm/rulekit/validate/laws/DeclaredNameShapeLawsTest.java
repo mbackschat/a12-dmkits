@@ -214,8 +214,8 @@ class DeclaredNameShapeLawsTest {
         expected.put("a NESTED group named exactly `xml`", "MVK_NAME_STARTS_WITH_XML");
         expected.put("a NESTED group merely CONTAINING xml", KernelLaws.ADMITTED);
         expected.put("a ROOT group, ordinary name — the control", KernelLaws.ADMITTED);
-        // A bare RuntimeException past every typed channel — not a verdict and not a refusal.
-        expected.put("a ROOT group with an EMPTY name", KernelLaws.RAISED_UNTYPED);
+        // The reader's path arithmetic raises on it, which the adapter reports as unreadable input (KF643).
+        expected.put("a ROOT group with an EMPTY name", KernelLaws.UNREADABLE);
         // …and no `MVK_PATH_INVALID` beside it, where the two carriers below the root both draw one.
         expected.put("a ROOT group starting with a digit", "MVK_NAME_STARTS_WITH_DIGIT");
         // Once per group of the tree: the root and each group below it, whose paths all begin with the prefix

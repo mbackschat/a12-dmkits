@@ -36,10 +36,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * names a level that is at once off the operand's path and unbound by the operand's star, and every admitted
  * out-of-scope row names a level that is at once ON that path and bound by the enclosing rule iteration. The
  * cell that separates those two readings — an unstarred repeatable ancestor on the operand's path that nothing
- * binds — is unreachable: the operand alone is already {@code MVK_NO_WILDCARD} there, control included
- * ({@link #anUnstarredAncestorOnTheOperandsPathIsUnreachableUnbound}). So "outside the operand's path" and "not
- * bound by any enclosing iteration" are extensionally equal over all legal models, and neither is claimed as
- * the mechanism.
+ * binds — has no known witness: on the one authoring attempted the operand alone is already
+ * {@code MVK_NO_WILDCARD}, control included ({@link #anUnstarredAncestorOnTheOperandsPathIsRefusedBeforeTheFilter}).
+ * So "outside the operand's path" and "not bound by any enclosing iteration" coincide on every model measured,
+ * and neither is claimed as the mechanism (KERNEL-FINDINGS KF244).
  *
  * <p>Origin: a12-kernel-lean's {@code SPEC-2026-09-05-01} reported the conjunct column on a field-reference
  * carrier. Their rows are their report; every row below is measured here, on the carrier our catalog line
@@ -206,12 +206,12 @@ class HavingFilterIterationGateLawsTest {
 
     /**
      * The cell that would separate "off the operand's path" from "bound by no enclosing iteration" — and the
-     * reason neither is claimed as the mechanism. It cannot be authored: an unstarred repeatable ancestor that
-     * nothing binds makes the OPERAND illegal, so the filter is never reached. The unfiltered control is what
-     * proves the refusal is the operand's rather than the filter's.
+     * reason neither is claimed as the mechanism. On this authoring an unstarred repeatable ancestor that nothing
+     * binds makes the OPERAND illegal, so the filter is never reached; no other authoring of the cell is known.
+     * The unfiltered control is what proves the refusal is the operand's rather than the filter's.
      */
     @Test
-    void anUnstarredAncestorOnTheOperandsPathIsUnreachableUnbound() {
+    void anUnstarredAncestorOnTheOperandsPathIsRefusedBeforeTheFilter() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("the operand unfiltered — the control that locates the refusal", fromRootOverBoxes(null));
         actual.put("CurrentRepetition on that ancestor — sole",

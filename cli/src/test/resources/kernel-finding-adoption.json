@@ -13028,7 +13028,7 @@
       }
     },
     "kf568": {
-      "sha256": "d8615046eb80b2feb22c9ddb662d80cc798784249069ab601ca508524a74b121",
+      "sha256": "2359b1000b61f9730da4d2c39c3b1bf712d6e7551d0f818a727fcabf371e341b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": ["the order and gates of an entity spec's modifiers", "every role of a keyed category", "a correlated category key"],
@@ -16683,6 +16683,201 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "The CLI reports the interpreter's messages unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf244": {
+      "sha256": "72981fcd146e5a64b23a61d8843e60c67566a18e00952935f38d1e08c0e68754",
+      "task": "SS26",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the separating filter-gate cell"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the filter-gate reachability clause of SPEC-2026-10-27-03"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A reachability statement about an admission gate changes no builder.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker's filter-gate verdicts are unchanged; only the stated reach of one cell narrowed.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission statement does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission statement does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "The one authoring of the separating cell is asserted against A12 and stated as no known witness, not as unauthorable.",
+          "evidence": {
+            "the separating filter-gate cell": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/HavingFilterIterationGateLawsTest.java#anUnstarredAncestorOnTheOperandsPathIsRefusedBeforeTheFilter",
+              "witness": "The operand is refused MVK_NO_WILDCARD unfiltered and under both filters, so the filter question is never reached on this authoring."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The CLI reports A12's codes unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf295": {
+      "sha256": "b1b016c61c2bed1d664a2231861dca954e80da47f51516bb4653cf257d328138",
+      "task": "SS26",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "an absolute indexFieldName or sortFields path"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "none: an adapter classification of A12's own raise"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes no builder; it relabels A12's raise at the adapter.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only how the adapter labels A12's raise; the checker's verdict on these rows is unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-read classification does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-read classification does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "KernelModelInput reports the reader's path-arithmetic raise as unreadable input (KF643), so the row reads UNREADABLE where it escaped untyped.",
+          "evidence": {
+            "an absolute indexFieldName or sortFields path": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/GroupIndexAndSortReferenceLawsTest.java#theIndexFieldNameMustNameAFieldOfItsOwnGroup",
+              "witness": "The absolute index path and, in aSortFieldMustNameAFieldOfItsOwnGroup, the absolute sort path both read UNREADABLE."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An unreadable model never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes no CLI surface; the CLI lane runs on the relabelled refusal unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf322": {
+      "sha256": "b996787c4debb9e874325e754a8ff673363761cd91568626dbf63cc5fe05b5fb",
+      "task": "SS26",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a root group with an empty name"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "none: an adapter classification of A12's own raise"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes no builder; it relabels A12's raise at the adapter.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes only how the adapter labels A12's raise; the checker's verdict on this row is unchanged.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-read classification does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-read classification does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "KernelModelInput reports the reader's path-arithmetic raise as unreadable input (KF643), so the row reads UNREADABLE where it escaped untyped.",
+          "evidence": {
+            "a root group with an empty name": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DeclaredNameShapeLawsTest.java#theSameShapesOnEveryOtherCarrier",
+              "witness": "The root group with an empty name reads UNREADABLE beside the nested group's NOT BUILDABLE."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An unreadable model never reaches evaluation.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "This revision changes no CLI surface; the CLI lane runs on the relabelled refusal unchanged.",
           "evidence": {}
         },
         "a12-kernel-lean": {
