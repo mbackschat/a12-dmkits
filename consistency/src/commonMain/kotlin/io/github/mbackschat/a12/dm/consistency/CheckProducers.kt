@@ -413,6 +413,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     condition(CheckFamily.FIELD_LIST_OPERATION_OPERANDS) { base, at -> base.fieldListOperationContributions(at) },
     condition(CheckFamily.DATE_ARITHMETIC_OPERANDS) { base, at -> base.dateArithmeticContributions(at) },
     condition(CheckFamily.TEMPORAL_EXTRACTOR_OPERANDS) { base, at -> base.temporalExtractorContributions(at) },
+    condition(CheckFamily.DATE_TIME_CONSTRUCTION_OPERANDS) { base, at -> base.dateTimeConstructionContributions(at) },
     condition(CheckFamily.ROUNDING_OPERANDS) { base, at -> base.roundingContributions(at) },
     condition(CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS) { base, at -> base.fieldValueOperatorContributions(at) },
     condition(CheckFamily.FIELD_VALUE_READ_OPERAND) { base, at -> base.fieldValueReadContributions(at) },

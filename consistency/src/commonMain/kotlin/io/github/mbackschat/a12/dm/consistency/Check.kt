@@ -856,6 +856,13 @@ enum class CheckFamily {
      * every other check and through any variant filter ([KF626]).
      */
     BASIC_SENTENCES,
+
+    /**
+     * What `DateTime(date, time)` demands of its two operands: a dated Date with a year or a Base Year and no
+     * clock, fully known where it is a field, then a pure-clock Time. Its own constant because
+     * `CheckDateTimeKonstruktImpl` is a checker of its own, asking the Date operand before the Time one ([KF627]).
+     */
+    DATE_TIME_CONSTRUCTION_OPERANDS,
 }
 
 /**

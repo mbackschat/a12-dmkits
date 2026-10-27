@@ -28,7 +28,6 @@
     "cli/src/main/java/io/github/mbackschat/a12/dm/cli/ApplyCommand.java": 844,
     "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 907,
     "consistency/build.gradle": 889,
-    "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/CheckFamilyWiringTest.kt": 821,
     "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/WorkspaceMountTest.kt": 956,
     "eval/benchmark.workflow.js": 1039,
     "interpreter/build.gradle": 2113,

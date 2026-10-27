@@ -14956,6 +14956,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf627": {
+      "sha256": "ae74abafc5f9ef9626cb70c12d97c96de40f583aab2348652a00cc9c9807045f",
+      "task": "SS30",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the operands of a DateTime construction"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check on the 136 rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the DateTime operand gates of SPEC-2026-10-26-21"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author `DateTime(…)` unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "`DATE_TIME_CONSTRUCTION_OPERANDS` asks the Date operand's format and precision, then the Time operand's format, in A12's order.",
+          "evidence": {
+            "the operands of a DateTime construction": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateTimeConstructionAgreementTest.kt#theCheckerNamesA12sClassOnEveryOperandOfEitherSlot",
+              "witness": "136 rows, each asserting the checker's codes equal A12's."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock, and the discriminating rows are pinned.",
+          "evidence": {
+            "rule check on the 136 rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateTimeConstructionAgreementTest.kt#aSlotAnswersInA12sOrder",
+              "witness": "The A12 column is asserted from RuleValidator, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

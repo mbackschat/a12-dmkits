@@ -117,6 +117,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry DATE_ARITHMETIC_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.DATE_ARITHMETIC_OPERANDS|null[0]
     enum entry DATE_CONSTRUCTION_SLOT // io.github.mbackschat.a12.dm.consistency/CheckFamily.DATE_CONSTRUCTION_SLOT|null[0]
     enum entry DATE_RANGE_OPERAND_LIST // io.github.mbackschat.a12.dm.consistency/CheckFamily.DATE_RANGE_OPERAND_LIST|null[0]
+    enum entry DATE_TIME_CONSTRUCTION_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.DATE_TIME_CONSTRUCTION_OPERANDS|null[0]
     enum entry DECLARATION_SLOTS // io.github.mbackschat.a12.dm.consistency/CheckFamily.DECLARATION_SLOTS|null[0]
     enum entry DECLARED_REFERENCES // io.github.mbackschat.a12.dm.consistency/CheckFamily.DECLARED_REFERENCES|null[0]
     enum entry ELEMENT_NAME_ALPHABET // io.github.mbackschat.a12.dm.consistency/CheckFamily.ELEMENT_NAME_ALPHABET|null[0]

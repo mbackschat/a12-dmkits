@@ -15209,3 +15209,30 @@ a12-kernel-lean SPEC-2026-10-27-01. One policy model is broken in one way per ro
 The checker published only the empty-code sentence until this measurement. It now publishes the twelve reachable categories under ten `RK_*` codes, an element and a type definition sharing the id and name ones, reports the three unbuilt shapes it missed, and no longer reports a suppressed computation's computed target as unbuilt.
 
 *Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker, 42 rows); `consistency.BasicSentenceTest` replays the checker's half on both platforms.
+
+## §6 supplement — `DateTime(date, time)` asks its Date operand for a dated, clock-free format with a year, then a fully known field, and only then its Time operand for a pure clock (rule check, kernel 30.8.1, 2026-10-27) <a id="kf627"></a>
+
+> Fold: pending — the construction carrier beside [KF529](#kf529)'s extractors and [KF392](#kf392)'s shifts; a12-kernel-lean SPEC-2026-10-26-21.
+
+`CheckDateTimeKonstruktImpl.check` (source-read) asks the Date operand two format questions and the partial-precision one, then the Time operand one format question, and stops at the first that fails. Every operand form a temporal slot takes was placed once in each slot beside a valid partner, with and without a Base Year (34 forms × 2 slots × 2 models); the discriminating rows:
+
+| row | A12 |
+|---|---|
+| `DateTime(StartOn, RenewalClock)`, a date and a clock — the control | admitted |
+| `DateTime(NotedMonth, RenewalClock)`, a `MONTH_OPTIONAL` date | `MVK_INVALID_DATE_TYPE` |
+| `DateTime(NotedMonth, StartOn)`, the same beside a date in the Time slot | `MVK_INVALID_DATE_TYPE` |
+| `DateTime(StartOn, StartOn)`, a date in the Time slot | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DateTime(Anniversary, …)`, an `MM-dd` date; `"01.02."` likewise | `MVK_WRONG_DATE_FORMAT_FOR_OP`; admitted under a Base Year |
+| `DateTime(BillingMonth, …)`, a `yyyy-MM` date | admitted |
+| `DateTime(SignedAt, …)`, `Now`, a stamp literal, a nested `DateTime` as the Date | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| a stamp, a date, `Today`, `BaseYear` or a partial date in the Time slot | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DateTime(Claims/NotedOn For "C1", …)`, a key-selected partial date | `MVK_INVALID_DATE_TYPE` |
+
+- **The Date operand is asked first.** The second and third rows refuse the Date although the Time operand is wrong too.
+- **A Base Year supplies only the year.** It admits a year-less Date and nothing in the Time slot, where even `BaseYear` is refused.
+- **No gate asks for a complete date.** `yyyy-MM` passes; only a partial PRECISION is refused, and only on a field — a constant or a nested operation never draws `MVK_INVALID_DATE_TYPE`.
+- **The format gates come before the precision gate in source**; no row here has both fail, so that order rests on the source read alone.
+
+The checker was silent on 86 of the 136 rows, each refused by this check; it now names A12's class on all 136. It reports them through `DATE_TIME_CONSTRUCTION_OPERANDS`, silent on the Time operand while it cannot type the Date and on the `ValueAsDate` placement A12 exempts from the Date gates.
+
+*Locked by:* `adapter.laws.CheckerDateTimeConstructionAgreementTest` (whole grid, A12 against the checker, and the discriminating rows pinned).
