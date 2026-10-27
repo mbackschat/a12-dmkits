@@ -55,6 +55,7 @@ class CheckerFixtureReadGuardTest {
 
     /** Each call whose subject is a model the checker does not admit, or whose analysis A12 pre-empts. */
     private static final Map<String, Set<String>> ALLOWED = Map.of(
+            "BasicSentenceTest.kt", Set.of("check(ModelSource(source))"),
             "CheckReadSupport.kt", Set.of("check(source)"),
             "ConditionBindingTest.kt", Set.of("check(model(\"FieldFilled(Amount)\", language = \"fr_FR\"))",
                     "check(source)"),

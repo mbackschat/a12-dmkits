@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
  *
  * Each defect is placed once on a declaration the default variant keeps and once on one an `ONLY` filter deletes
  * or suppresses, because the filter is what separates a sentence (stated anyway) from a build failure (lifted).
+ * The non-scalar and absent names follow [KERNEL-FINDINGS KF644].
  */
 class BasicSentenceTest {
 
@@ -27,7 +28,9 @@ class BasicSentenceTest {
             "an empty type reference, deleted" to model(codeType = EMPTY_REFERENCE, codeFilter = ONLY),
             "an absent type reference" to model(codeType = ABSENT_REFERENCE),
             "an absent type reference, deleted" to model(codeType = ABSENT_REFERENCE, codeFilter = ONLY),
-            "an empty field name, deleted" to model(codeName = "", codeFilter = ONLY),
+            "an empty field name, deleted" to model(codeName = """"name":"",""", codeFilter = ONLY),
+            "a field name that is an object" to model(codeName = """"name":{},"""),
+            "a field name that is an object, deleted" to model(codeName = """"name":{},""", codeFilter = ONLY),
             "an empty field id" to model(codeId = ""),
             "a field id of one space" to model(codeId = " "),
             "an empty condition, suppressed" to model(condition = "", ruleFilter = ONLY),
@@ -39,7 +42,8 @@ class BasicSentenceTest {
             "an unresolvable computed field, suppressed" to model(computed = "../NoSuchField", computationFilter = ONLY),
             "a type definition with an empty id" to model(typeDefinition = typeDefinition(id = "")),
             "a type definition with an id of one space" to model(typeDefinition = typeDefinition(id = " ")),
-            "a type definition with an empty name" to model(typeDefinition = typeDefinition(name = "")),
+            "a type definition with an empty name" to model(typeDefinition = typeDefinition(name = "\"\"")),
+            "a type definition with no name" to model(typeDefinition = typeDefinition(name = null)),
         ).mapValues { (_, source) -> codes(source) }
         val expected: Map<String, Set<String>> = linkedMapOf(
             "the control" to emptySet(),
@@ -53,6 +57,8 @@ class BasicSentenceTest {
             "an absent type reference" to setOf(CK_MODEL_NOT_BUILDABLE, RK_TYPE_REFERENCE_EMPTY),
             "an absent type reference, deleted" to setOf(RK_TYPE_REFERENCE_EMPTY),
             "an empty field name, deleted" to setOf(RK_NAME_EMPTY),
+            "a field name that is an object" to setOf(CK_MODEL_NOT_BUILDABLE, RK_NAME_EMPTY),
+            "a field name that is an object, deleted" to setOf(RK_NAME_EMPTY),
             "an empty field id" to setOf(RK_ID_EMPTY),
             "a field id of one space" to emptySet(),
             "an empty condition, suppressed" to setOf(RK_ERROR_CONDITION_EMPTY),
@@ -65,9 +71,39 @@ class BasicSentenceTest {
             "a type definition with an empty id" to setOf(RK_ID_EMPTY),
             "a type definition with an id of one space" to emptySet(),
             "a type definition with an empty name" to setOf(RK_NAME_EMPTY),
+            "a type definition with no name" to setOf(RK_NAME_EMPTY),
         )
         assertEquals(expected, rows, "the rejecting codes of each row")
     }
+
+    /**
+     * What A12's reader refuses before any check runs, so nothing else is judged: a declaration with no `name`,
+     * through the filter as without it — which the checker also reports unread, since it cannot place it — and a
+     * type definition's `name` written as `null` or an array.
+     */
+    @Test
+    fun theReaderRefusesANamelessDeclarationAndANonTextDefinitionName() {
+        val rows = linkedMapOf(
+            "a field with no name" to model(codeName = ""),
+            "a field with no name, deleted" to model(codeName = "", codeFilter = ONLY),
+            "a type definition whose name is null" to model(typeDefinition = typeDefinition(name = "null")),
+            "a type definition whose name is an array" to model(typeDefinition = typeDefinition(name = "[]")),
+        ).mapValues { (_, source) ->
+            refusedByTheReader(source).let { report ->
+                report.findings.map { it.code }.toSet() to report.diagnostics.map { it.code }
+            }
+        }
+        val unplaced = listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED)
+        assertEquals(linkedMapOf(
+            "a field with no name" to (setOf(CK_MODEL_NOT_BUILDABLE) to unplaced),
+            "a field with no name, deleted" to (setOf(CK_MODEL_NOT_BUILDABLE) to unplaced),
+            "a type definition whose name is null" to (setOf(CK_MODEL_NOT_BUILDABLE) to emptyList()),
+            "a type definition whose name is an array" to (setOf(CK_MODEL_NOT_BUILDABLE) to emptyList()),
+        ), rows)
+    }
+
+    /** [check] itself, because a source A12's reader refuses completes no check family. */
+    private fun refusedByTheReader(source: String) = check(ModelSource(source))
 
     private fun codes(source: String) =
         checkRead(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
@@ -77,7 +113,7 @@ class BasicSentenceTest {
         categories: String = """{"name":"Band","values":["A","B"]}""",
         hints: String = """{"locale":"en_US","values":["AB"]}""",
         codeType: String = """{"type":"StringType","StringType":{"hintList":[$hints]}}""",
-        codeName: String = "Code",
+        codeName: String = """"name":"Code",""",
         codeId: String = "/Policy/Code",
         condition: String = "FieldFilled(Ref)",
         target: String = "../Ref",
@@ -93,7 +129,7 @@ class BasicSentenceTest {
          "content":{${typeDefinition}"modelRoot":{"rootGroups":[
           {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType","StringType":{}}}},
-            {"type":"Field","id":"$codeId","name":"$codeName","Field":{"fieldType":$codeType$codeFilter}},
+            {"type":"Field","id":"$codeId",$codeName"Field":{"fieldType":$codeType$codeFilter}},
             {"type":"Field","id":"/Policy/Status","name":"Status","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[$values],"categories":[$categories]}}$fieldFilter}},
             {"type":"Field","id":"/Policy/Total","name":"Total","Field":{"fieldType":{"type":"NumberType",
@@ -107,8 +143,9 @@ class BasicSentenceTest {
          ]}}}
     """.trimIndent()
 
-    private fun typeDefinition(id: String = "CodeType", name: String = "CodeType") =
-        """"typeDefinitions":[{"id":"$id","name":"$name","revision":"1","fieldType":{"type":"StringType","StringType":{}}}],"""
+    /** [name] is the member's JSON value as written, or `null` to leave the member out. */
+    private fun typeDefinition(id: String = "CodeType", name: String? = "\"CodeType\"") =
+        """"typeDefinitions":[{"id":"$id",${name?.let { "\"name\":$it," }.orEmpty()}"revision":"1","fieldType":{"type":"StringType","StringType":{}}}],"""
 
     private companion object {
         const val ONLY = ""","variantFilter":{"filterType":"ONLY","variants":["premium"]}"""

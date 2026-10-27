@@ -16547,6 +16547,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf644": {
+      "sha256": "e23afa47c4dabe1ae5986ee95e422eade76befbf095a4ae08bdece1bb4cecaae",
+      "task": "SS32",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "an element or type-definition name that is not text, or is absent"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel on the name-shape rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the non-text name shapes measured beside SPEC-2026-10-27-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits' builders write every name as text.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "An entry element's object or array name is read as empty, and an absent element name or a type definition's null, object or array name is refused as a source A12's reader does not load.",
+          "evidence": {
+            "an element or type-definition name that is not text, or is absent": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceAgreementTest.kt#theCheckerStatesWhatA12StatesWithAndWithoutTheFilter",
+              "witness": "Every name shape kept and filtered on a field, rule, computation, group and type definition, A12's classes asserted live and compared with the checker's."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's classes are read from BoundModel with codeless sentences mapped by codelessClass.",
+          "evidence": {
+            "BoundModel on the name-shape rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceAgreementTest.kt#theCheckerStatesWhatA12StatesWithAndWithoutTheFilter",
+              "witness": "The A12 column is asserted against BoundModel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -196,7 +197,8 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     included model or a type-definition library: a model-level member its reader cannot bind, a locale code it
  *     cannot parse, an entry locale it does not declare, or a library's root group; from an included model also a
  *     locale declared twice or the empty code. From the entry itself: a locale declared twice, which A12 builds but
- *     cannot check. The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
+ *     cannot check, and a declaration with no `name` or a type definition whose `name` is `null`, an object or an array,
+ *     which its reader refuses (KF644). The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
  *     [unreadableLocaleCodes].
  */
 data class PreparedModel(
@@ -464,6 +466,7 @@ fun prepare(
         origin = DeclarationOrigin(admitted.modelId),
         visiting = setOf(admitted.modelId),
         diagnosticLabel = admitted.source.diagnosticLabel,
+        isEntry = true,
     )
     val locales = entry.header.declaredLocales()
     val collector = Collector(providers, locales.keys.toSet())
@@ -484,7 +487,7 @@ fun prepare(
         hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
         unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
-        reachedModelRefusals = definitions.reachedModelRefusals,
+        reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = definitions.ids,
@@ -612,6 +615,13 @@ private fun readClosure(
         for (definition in definitions) {
             // Before the id check: A12's reader binds every entry, so an id-less or repeated one refuses too.
             unbindable += definition.unbindableTypeDefinitionBooleans()
+            // Its reader also refuses a definition's name written as `null`, an object or an array (KF644, entry
+            // measured) — unlike an element's, whose `null` name it admits.
+            val name = definition["name"]
+            if (source === entry && (name is JsonNull || name is JsonObject || name is JsonArray)) {
+                reachedRefusals += "The `content.typeDefinitions` entry ${definition["id"]} holds `$name` as its `name`, " +
+                    "which A12's reader refuses, so the model never loads"
+            }
             val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
             ids += id
             if (id in ambiguous) continue
@@ -685,7 +695,18 @@ private data class Scope(
     val diagnosticLabel: String?,
     /** The mount exclusions in force here — [MountExclusions.NONE] in the entry model, which mounts nothing. */
     val exclusions: MountExclusions = MountExclusions.NONE,
+    /** Whether these are the entry model's own declarations rather than a mounted provider's. */
+    val isEntry: Boolean = false,
 )
+
+/**
+ * An entry declaration's `name` written as an object or an array, which A12 reads as the EMPTY name: the build
+ * fails where the declaration is kept, and a filter that removes it leaves the empty-name sentence alone
+ * ([KERNEL-FINDINGS KF644], measured on fields, rules and computations). Only the entry is measured, so a mounted
+ * provider's declaration stays with the not-well-formed diagnostic.
+ */
+private fun Scope.entryNameRead(member: JsonElement?): String? =
+    "".takeIf { isEntry && (member is JsonObject || member is JsonArray) }
 
 /**
  * The executables an enclosing mount drops, as they reach the declaration being collected.
@@ -727,6 +748,9 @@ private class Collector(
     val diagnostics = mutableListOf<Diagnostic>()
     val unexpandedMounts = mutableListOf<UnexpandedMount>()
 
+    /** The entry's declarations A12's reader refuses, one sentence each ([PreparedModel.reachedModelRefusals]). */
+    val readerRefusals = mutableListOf<String>()
+
     /**
      * @param parentPath the enclosing element's canonical path, which this element's `name` extends.
      * @param enclosing the nearest path that could be derived, used to locate a declaration too broken to
@@ -736,10 +760,15 @@ private class Collector(
         val element = node as? JsonObject
             ?: return malformed(enclosing, "a declaration must be a JSON object", scope)
         val kind = element.text("type")
-        val name = element.text("name")
+        val name = element.text("name") ?: scope.entryNameRead(element["name"])
         // `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
         // descended into. `id` is not in that set: it identifies the element but no longer locates it.
         if (kind == null || name == null) {
+            // An ABSENT name is refused by A12's reader, so no model loads (KF644); a `null` one it admits.
+            if (scope.isEntry && kind != null && "name" !in element) {
+                readerRefusals += "A declaration under `${enclosing ?: "the model root"}` has no `name`, which A12's reader " +
+                    "refuses, so the model never loads"
+            }
             return malformed(enclosing, "a declaration must carry both `type` and `name`", scope)
         }
         val path = "$parentPath/$name"

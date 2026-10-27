@@ -15,8 +15,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * `StringUtils.isEmpty`, so an empty member draws it and a blank one does not: a name, condition or error target
  * of one space is measured admitted under `ONLY`. `isEmpty` is true of a missing member as well, so the members
  * the reader accepts missing draw their sentence absent as well: a rule's condition and an alternative's
- * operation, also when `null` ([KERNEL-FINDINGS KF643]), and a rule's code. The others are left to the
- * reader, which refuses them before this check is reached.
+ * operation, also when `null` ([KERNEL-FINDINGS KF643]), a rule's code, and a type definition's name
+ * ([KERNEL-FINDINGS KF644]). The others are left to the reader, which refuses them before this check is reached;
+ * an element's `name` written as an object or an array the preparation reads as empty, as A12 does.
  *
  * Two of A12's sentences are not here because no JSON source reaches them: an empty `indexFieldName` or
  * `sortFields[].name` leaves the model unbuilt first, and a localized text of `null` is refused by the reader.
@@ -106,8 +107,11 @@ private fun computationSentences(computation: TrackedDeclaration, body: JsonObje
 private fun TrackedFactBase.typeDefinitionSentences(): List<Finding> {
     val ids = declaredTypeDefinitionIds
     val emptyId = if ("" in ids) listOf(sentence(null, RK_ID_EMPTY, "a `content.typeDefinitions` entry has an empty `id`")) else emptyList()
-    val emptyName = ids.firstOrNull { typeDefinitionBody(it)?.emptyMember("name") != null }?.let {
-        sentence(null, RK_NAME_EMPTY, "the `content.typeDefinitions` entry `$it` has an empty `name`")
+    // An absent name reads as empty too (KF644); `null`, an object or an array is the reader's refusal instead.
+    val emptyName = ids.firstOrNull { id ->
+        typeDefinitionBody(id)?.let { "name" !in it || it.emptyMember("name") != null } == true
+    }?.let {
+        sentence(null, RK_NAME_EMPTY, "the `content.typeDefinitions` entry `$it` has an absent or empty `name`")
     }
     return emptyId + listOfNotNull(emptyName)
 }

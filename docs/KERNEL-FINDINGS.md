@@ -15512,3 +15512,24 @@ The same policy model as KF626, broken once per row on a declaration the default
 The checker had treated the first two rows as liftable, missed the sentence on a `null` or absent operation and condition, compared hint-list entries as written, and admitted `ValueAsDate` in every date slot. It now names A12's class on every row; `adapter.KernelModelInput` reports the reader's path-arithmetic failure as unreadable input instead of a raw exception.
 
 *Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker), `adapter.laws.CheckerDateTimeConstructionAgreementTest` and `adapter.laws.CheckerArgumentSlotAgreementTest` (rule check against the checker), `adapter.ModelInputClassificationTest`.
+
+## §13 supplement — A12 reads an element `name` written as an object or an array as the empty name, refuses an absent one, and refuses a type definition's `null`, object or array name while stating an absent one empty (BoundModel, kernel 30.8.1, 2026-10-27) <a id="kf644"></a>
+
+> Fold: pending — the member-shape tier beside [KF626](#kf626)'s sentences and [KF643](#kf643)'s reader refusals.
+
+The [KF626](#kf626) policy model, its `Code` field, its rule, a computation and one type definition, each with `name` respelled, once kept and once under an `ONLY` filter that removes the element:
+
+| `name` written as | field, rule or computation: kept | …under `ONLY` | type definition |
+|---|---|---|---|
+| an object or an array | unbuilt | "The name is empty." | unbuilt either way |
+| absent | unbuilt (field, rule, computation, group) | unbuilt | "The name is empty." |
+| `null` | admitted (field) | admitted | unbuilt either way |
+| a number or `true` | read as its text: `7` draws `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` and `MVK_PATH_INVALID` | admitted | admitted (a number) |
+
+- **An object or array name behaves as the empty name on every measured row.** Its verdicts equal [KF626](#kf626)'s empty-name rows on a field, a rule and a computation, kept and filtered. That is an equivalence of verdicts, not an account of how the reader gets there.
+- **Absence and `null` part ways, in opposite directions on the two carriers.** An element's absent name is unreadable and its `null` admitted, while a type definition's absent name draws the sentence and its `null` is unreadable. No row explains this; it is measured only.
+- **A number in an Enumeration's `value` is admitted as well**, so the scalar reading is not particular to names.
+
+The checker reported nothing on the six refused shapes. It now reads an entry element's object or array name as empty, which yields A12's rows through its existing empty-name families, and refuses an absent element name and a non-text type-definition name as a source A12's reader does not load. A mounted provider's declarations are not measured and keep the not-well-formed diagnostic.
+
+*Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker); `consistency.BasicSentenceTest` replays the checker's half on both platforms.

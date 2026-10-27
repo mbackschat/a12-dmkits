@@ -22,6 +22,10 @@ import org.junit.jupiter.api.Test
  * lifted by the filter, because a declaration the default variant removes is never converted; where the
  * declaration is kept the build fails and the sentence is never reached.
  *
+ * A `name` written as something other than text is the reader's to judge (KERNEL-FINDINGS KF644): an element's
+ * object or array name behaves as the empty one, and an absent element name or a type definition's `null`, object
+ * or array name leaves no model.
+ *
  * A12's column is asserted, not copied: every row reads `BoundModel` and maps a codeless sentence through
  * [codelessClass]. Where A12 cannot build the model, the checker only has to say so.
  *
@@ -182,6 +186,20 @@ class CheckerBasicSentenceAgreementTest {
             "a type definition with an empty id" to { m, _ -> m.typeDefinition("", "CodeType") },
             "a type definition with a space for an id" to { m, _ -> m.typeDefinition(" ", "CodeType") },
             "a type definition with an empty name" to { m, _ -> m.typeDefinition("CodeType", "") },
+            "a field whose name is an object" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.putObject("name") },
+            "a field whose name is an array" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.putArray("name") },
+            "a field with no name" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.remove("name") },
+            "a rule whose name is an object" to { m, f -> m.rule().deleting(f); (m.elements().single { it.path("type").asText() == "Rule" } as ObjectNode).putObject("name") },
+            "a type definition whose name is an object" to { m, _ -> m.typeDefinition("CodeType", "x"); ((m.root.path("content").path("typeDefinitions").get(0)) as ObjectNode).putObject("name") },
+            "a rule whose name is an array" to { m, f -> m.rule().deleting(f); (m.elements().single { it.path("type").asText() == "Rule" } as ObjectNode).putArray("name") },
+            "a rule with no name" to { m, f -> m.rule().deleting(f); (m.elements().single { it.path("type").asText() == "Rule" } as ObjectNode).remove("name") },
+            "a computation whose name is an object" to { m, f -> m.computation().deleting(f); (m.elements().last() as ObjectNode).putObject("name") },
+            "a type definition whose name is an array" to { m, _ -> m.typeDefinition("CodeType", "x"); ((m.root.path("content").path("typeDefinitions").get(0)) as ObjectNode).putArray("name") },
+            "a type definition with no name" to { m, _ -> m.typeDefinition("CodeType", "x"); ((m.root.path("content").path("typeDefinitions").get(0)) as ObjectNode).remove("name") },
+            "a type definition whose name is a number" to { m, _ -> m.typeDefinition("CodeType", "x"); ((m.root.path("content").path("typeDefinitions").get(0)) as ObjectNode).put("name", 7) },
+            "a type definition whose name is null" to { m, _ -> m.typeDefinition("CodeType", "x"); ((m.root.path("content").path("typeDefinitions").get(0)) as ObjectNode).putNull("name") },
+            "a computation with no name" to { m, f -> m.computation().deleting(f); (m.elements().last() as ObjectNode).remove("name") },
+            "a group with no name" to { m, f -> (m.element("Items").also { (it.path("Group") as ObjectNode).deleting(f) }).remove("name") },
             "a field whose name is a number" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.put("name", 7) },
             "a field whose name is a boolean" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.put("name", true) },
             "a field whose name is null" to { m, f -> m.element("Code").apply { (path("Field") as ObjectNode).deleting(f) }.putNull("name") },
@@ -265,6 +283,36 @@ class CheckerBasicSentenceAgreementTest {
             "a type definition with a space for an id/ONLY" to emptySet(),
             "a type definition with an empty name/kept" to setOf("RK_NAME_EMPTY"),
             "a type definition with an empty name/ONLY" to setOf("RK_NAME_EMPTY"),
+            // A non-scalar name is read as no name: the declaration fails at conversion, which the filter lifts,
+            // and the sentence states it empty. An absent field name, and a type definition's, fail the reader.
+            "a field whose name is an object/kept" to setOf(UNBUILT),
+            "a field whose name is an object/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a field whose name is an array/kept" to setOf(UNBUILT),
+            "a field whose name is an array/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a field with no name/kept" to setOf(UNBUILT),
+            "a field with no name/ONLY" to setOf(UNBUILT),
+            "a rule whose name is an object/kept" to setOf(UNBUILT),
+            "a rule whose name is an object/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a type definition whose name is an object/kept" to setOf(UNBUILT),
+            "a type definition whose name is an object/ONLY" to setOf(UNBUILT),
+            "a rule whose name is an array/kept" to setOf(UNBUILT),
+            "a rule whose name is an array/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a rule with no name/kept" to setOf(UNBUILT),
+            "a rule with no name/ONLY" to setOf(UNBUILT),
+            "a computation whose name is an object/kept" to setOf(UNBUILT),
+            "a computation whose name is an object/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a type definition whose name is an array/kept" to setOf(UNBUILT),
+            "a type definition whose name is an array/ONLY" to setOf(UNBUILT),
+            "a type definition with no name/kept" to setOf("RK_NAME_EMPTY"),
+            "a type definition with no name/ONLY" to setOf("RK_NAME_EMPTY"),
+            "a type definition whose name is a number/kept" to emptySet(),
+            "a type definition whose name is a number/ONLY" to emptySet(),
+            "a type definition whose name is null/kept" to setOf(UNBUILT),
+            "a type definition whose name is null/ONLY" to setOf(UNBUILT),
+            "a computation with no name/kept" to setOf(UNBUILT),
+            "a computation with no name/ONLY" to setOf(UNBUILT),
+            "a group with no name/kept" to setOf(UNBUILT),
+            "a group with no name/ONLY" to setOf(UNBUILT),
             // A scalar member is read as its text, so a number names an element and a value as a string does;
             // `null` and `true` are read as admitted names too (measured 2026-10-27).
             "a field whose name is a number/kept" to setOf("MVK_NAME_STARTS_WITH_DIGIT_A12_DV", "MVK_PATH_INVALID"),
