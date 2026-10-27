@@ -42,6 +42,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckEditKt {
 public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/lang/Enum {
 	public static final field ARITHMETIC_OPERATION_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field BASE_YEAR_REQUIREMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field BASIC_SENTENCES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field BOOLEAN_COMPARISON_AGREEMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field CATEGORY_REFERENCE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field COMPARISON_OPERATOR_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **DG158 — a field `label` entry whose `text` is `null` (opened 2026-10-27).** A12's reader refuses the source ("Unexpected node type for localized text: NULL"), with or without an `ONLY` filter on the field, so A12 reaches no verdict; the checker reads the model and reports nothing where it should report `CK_MODEL_NOT_BUILDABLE`. Measured beside [KF626](KERNEL-FINDINGS.md#kf626)'s grid on 2026-10-27. Settled by a reader-tier check of every localized-text member the checker does not yet read, the `errorMessage` shape being the one it already reads (`MessageSlotRawShapeLawsTest`).
 
 ## 2. Out of scope
 

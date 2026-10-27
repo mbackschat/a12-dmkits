@@ -97,6 +97,7 @@ final enum class io.github.mbackschat.a12.dm.consistency.syntax/TokenKind : kotl
 final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/Enum<io.github.mbackschat.a12.dm.consistency/CheckFamily> { // io.github.mbackschat.a12.dm.consistency/CheckFamily|null[0]
     enum entry ARITHMETIC_OPERATION_GATES // io.github.mbackschat.a12.dm.consistency/CheckFamily.ARITHMETIC_OPERATION_GATES|null[0]
     enum entry BASE_YEAR_REQUIREMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.BASE_YEAR_REQUIREMENT|null[0]
+    enum entry BASIC_SENTENCES // io.github.mbackschat.a12.dm.consistency/CheckFamily.BASIC_SENTENCES|null[0]
     enum entry BOOLEAN_COMPARISON_AGREEMENT // io.github.mbackschat.a12.dm.consistency/CheckFamily.BOOLEAN_COMPARISON_AGREEMENT|null[0]
     enum entry CATEGORY_REFERENCE // io.github.mbackschat.a12.dm.consistency/CheckFamily.CATEGORY_REFERENCE|null[0]
     enum entry COMPARISON_OPERATOR_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.COMPARISON_OPERATOR_OPERANDS|null[0]

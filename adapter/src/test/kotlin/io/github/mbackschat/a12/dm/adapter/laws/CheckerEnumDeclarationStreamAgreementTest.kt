@@ -152,8 +152,8 @@ class CheckerEnumDeclarationStreamAgreementTest {
     /**
      * The two codeless classes, pinned where they part from the coded stream. The unsupported-signs sentence is
      * published once as `RK_UNSUPPORTED_CHARACTER` wherever A12 raises it, but after the category blocks rather
-     * than straight after the invalid characters; the repeated-value sentence, one per repeated value, is not
-     * published, and never stands alone, since a repeated value always also draws `INT_DUP` or the sign class.
+     * than straight after the invalid characters; the repeated-value sentence is published as
+     * `RK_ENUM_VALUE_DUPLICATE`, one per repeated value and last, where A12's basic check states it (KF626).
      */
     @Test
     fun theCodelessClassesArePublishedOrDeliberatelyNot() {
@@ -162,11 +162,9 @@ class CheckerEnumDeclarationStreamAgreementTest {
             val a12 = kernel(json)
             val ours = ours(json)
             val signs = a12.count { it == SIGNS }
-            val alone = REPEATED in a12 && a12.none { it == INT_DUP || it == SIGNS }
             when {
                 signs > 1 || ours.count { it == SIGNS } != signs -> "$id: signs A12 $a12, ours $ours"
-                alone -> "$id: a repeated-value sentence stands alone in $a12"
-                ours.filterNot { it == SIGNS } != a12.filterNot { it == SIGNS || it == REPEATED } ->
+                ours.filterNot { it == SIGNS } != a12.filterNot { it == SIGNS } ->
                     "$id: A12 $a12, ours $ours"
                 else -> null
             }
@@ -200,7 +198,7 @@ class CheckerEnumDeclarationStreamAgreementTest {
     fun theBlocksAreObservable() {
         assertEquals(listOf(BAD, BAD, BAD, BAD, SIGNS, MISSING, CAT_DUP, INT_DUP, REPEATED),
             kernel(model(rows.getValue("a sign beside restricted arity and a duplicate"))))
-        assertEquals(listOf(BAD, BAD, BAD, BAD, MISSING, CAT_DUP, SIGNS, INT_DUP),
+        assertEquals(listOf(BAD, BAD, BAD, BAD, MISSING, CAT_DUP, SIGNS, INT_DUP, REPEATED),
             ours(model(rows.getValue("a sign beside restricted arity and a duplicate"))))
         assertEquals(listOf(MISSING, SURPLUS, SURPLUS), kernel(model(rows.getValue("surplus, shortfall, surplus"))))
         assertEquals(listOf(MISSING, SURPLUS, CAT_DUP, CAT_DUP, INT_DUP, REPEATED),
@@ -289,7 +287,7 @@ class CheckerEnumDeclarationStreamAgreementTest {
         const val SPANNING = "\u0020-\uFFFD"
         const val UNBUILDABLE = "CK_MODEL_NOT_BUILDABLE"
         const val SIGNS = "RK_UNSUPPORTED_CHARACTER"
-        const val REPEATED = "codeless:repeated-value"
+        const val REPEATED = "RK_ENUM_VALUE_DUPLICATE"
         const val BAD = "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER"
         const val MISSING = "MVK_MISSING_CATEGORY_VALUE"
         const val SURPLUS = "MVK_MISSING_INTERNAL_VALUE"

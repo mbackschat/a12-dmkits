@@ -146,7 +146,18 @@ A Number's `minValue` or `maxValue` is printed before A12 judges it, rounded hal
 
 A rule or computation surviving the default variant meets two alphabets, each answered by a codeless sentence: `RK_RULE_NAME_ALPHABET` for a name that is not an ASCII letter followed by ASCII letters, digits and underscores, which withholds `MVK_RULE_NAME_INVALID`, and `RK_ERROR_CODE_ALPHABET` for a rule's error code, or a computation's name, carrying anything but letters, digits, a space and the underscore, the letters including the German umlauts and `ß` ([KF578](KERNEL-FINDINGS.md#kf578)). A12's own words are *"A rule name must start with a letter followed by letters, digits and underscores."* and *"The error code is only allowed to contain letters, digits, blanks and underscores."*; both judge the value after Java's `trim`, and a number written as the code is judged as its text.
 
-A rule whose `errorCode` is absent or empty also draws A12's codeless `RK_ERROR_CODE_EMPTY`, beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws the class alone, and the sentence is the one slot refusal an `ONLY` variant filter does not take away ([KF579](KERNEL-FINDINGS.md#kf579)).
+A12's basic sentences are `CheckFamily.BASIC_SENTENCES`, each published under a code of the checker's own. They are stated over the model as read, after every class and through any variant filter, so on a declaration an `ONLY` filter deletes or suppresses the sentence is the only refusal ([KF579](KERNEL-FINDINGS.md#kf579), [KF626](KERNEL-FINDINGS.md#kf626)).
+
+| code | drawn by |
+|---|---|
+| `RK_ID_EMPTY`, `RK_NAME_EMPTY` | a declaration's or a type definition's `id` or `name` that is the empty string |
+| `RK_ERROR_CODE_EMPTY` | a rule's `errorCode` absent or empty, beside `MVK_ERROR_CODE_MISSING` |
+| `RK_ERROR_CONDITION_EMPTY`, `RK_ERROR_ENTITY_EMPTY` | a rule's `errorCondition` or `errorEntityRelPath` that is the empty string |
+| `RK_COMPUTED_FIELD_EMPTY`, `RK_COMPUTATION_OPERATION_EMPTY` | a computation's `computedFieldRelPath`, or any alternative's `operation`, that is the empty string |
+| `RK_ENUM_VALUE_DUPLICATE`, `RK_ENUM_CATEGORY_DUPLICATE` | an Enumeration repeating a value token or a category name, once per repeated one |
+| `RK_TYPE_REFERENCE_EMPTY` | a `TypeDefType` field whose `typeDefinitionId` is absent or the empty string |
+
+Each fires on the empty string alone, never on a blank one. A model that also fails to build reports `CK_MODEL_NOT_BUILDABLE` beside it: two categories of one name, two hint-list entries for one locale and an empty computed field do, unless the default variant removes the declaration, which A12 then never converts.
 
 Three element-name laws sit beside the path gate ([KF583](KERNEL-FINDINGS.md#kf583)). A computation whose computed field's path carries a dot or a colon on any segment draws `MVK_ERROR_INVALID_FIELDNAME`, after the index-field gate and only when its condition was read. An underscore group name below an `xml…` ancestor draws `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` beside the prefix class. A default-variant declaration whose name is blank as Java's `isBlank` reads it draws `CK_MODEL_NOT_BUILDABLE`; a no-break space is not blank. A computation's `computedFieldRelPath` is lexed as a condition operand is, so a character A12's condition lexer has no terminal for draws `MVK_LEXER_STANDARD_ERROR` at the computation, ahead of the index and dot gates ([KF586](KERNEL-FINDINGS.md#kf586)). Wherever the checker reads a digit or a name character in condition text, it reads A12's lexer sets rather than a platform's Unicode tables, so a date constant spelled with another script's digit is a string, as it is to A12 ([KF587](KERNEL-FINDINGS.md#kf587)). A date constant's day is judged on the Julian–Gregorian hybrid calendar A12 parses with, so `"05.10.1582"` is no date and `"29.02.1500"` is one ([KF588](KERNEL-FINDINGS.md#kf588)).
 

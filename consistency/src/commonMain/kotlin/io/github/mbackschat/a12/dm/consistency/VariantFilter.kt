@@ -52,8 +52,9 @@ internal fun TrackedFactBase.variantFilterGaps(): List<CoverageGap> =
  *
  * **The seventh break is why [VARIANT_BLIND_CODES] exist at the call site.** An empty `errorCode` still refuses
  * the model under `ONLY`, with the codeless sentence A12 states before it applies the filter ([KERNEL-FINDINGS
- * KF579]). And a filter suppresses what A12 SAYS ABOUT a declaration; it cannot rescue a model that fails to
- * BUILD — so a finding that the model does not load is not a verdict this filter can hide either.
+ * KF579]), and so does every other basic sentence ([KF626]). A source A12's reader refuses is not a verdict this
+ * filter can hide either. A model that reads and then fails to BUILD the declaration is different: A12 never
+ * converts a suppressed declaration, so an unbuildable computed target is lifted with it ([KF626]).
  */
 internal fun TrackedFactBase.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
 

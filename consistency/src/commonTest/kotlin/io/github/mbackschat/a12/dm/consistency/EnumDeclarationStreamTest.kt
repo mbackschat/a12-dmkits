@@ -31,7 +31,7 @@ class EnumDeclarationStreamTest {
 
     @Test
     fun identicalNotificationsAreReportedOnce() {
-        assertEquals(listOf(missing, catDup, intDup), codes(listOf("BASIC", "PLUS", "PLUS"), listOf(listOf("STANDARD"))))
+        assertEquals(listOf(missing, catDup, intDup, "RK_ENUM_VALUE_DUPLICATE"), codes(listOf("BASIC", "PLUS", "PLUS"), listOf(listOf("STANDARD"))))
         assertEquals(listOf(surplus), codes(listOf("BASIC"), listOf(listOf("STANDARD", "HIGH", "HIGH"))))
     }
 
@@ -43,7 +43,7 @@ class EnumDeclarationStreamTest {
 
     @Test
     fun anEntryCarryingASignIsNamedByNoCodedClass() {
-        assertEquals(listOf(signs), codes(listOf("BASIC", cart, cart), listOf(listOf("STANDARD"))))
+        assertEquals(listOf(signs, "RK_ENUM_VALUE_DUPLICATE"), codes(listOf("BASIC", cart, cart), listOf(listOf("STANDARD"))))
         assertEquals(listOf(signs), codes(listOf("BASIC"), listOf(listOf("STANDARD", cart))))
     }
 

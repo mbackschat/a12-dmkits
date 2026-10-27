@@ -6091,7 +6091,7 @@ So the member is not one that stands beside the DSL, which is where the portable
 
 **Three predictions were wrong here, all in the same direction**: the declaration's own slots — its error code, its messages, its target — were expected to stay judged, on the theory that a consistency rule reading them never consults variants. They do not. So there is no surviving subset of a filtered declaration that a checker could go on judging, and suppressing one family rather than the whole declaration would still over-reject.
 
-**The line the last three rows draw is what the checker is built on: a filter suppresses what A12 would SAY ABOUT a declaration, and cannot rescue a model that fails to BUILD.** An empty `errorCode` still refuses the model under `ONLY` — and refuses it *without* the code it carries unfiltered, so reproducing `MVK_ERROR_CODE_MISSING` there would be wrong twice over. *(Corrected 2026-10-21: that refusal is the codeless sentence "The error code is empty.", stated before the filter is applied, not a build failure — [KF579](#kf579).)* The two UNREADABLE rows generalize it: A12's reader runs a tier before any variant logic, so a shape it refuses is refused whatever the filter says. Hence the portable checker suppresses every finding on a filtered declaration *except* the ones saying the model does not load.
+**The line the last three rows draw is what the checker is built on: a filter suppresses what A12 would SAY ABOUT a declaration, and cannot rescue a model that fails to BUILD.** An empty `errorCode` still refuses the model under `ONLY` — and refuses it *without* the code it carries unfiltered, so reproducing `MVK_ERROR_CODE_MISSING` there would be wrong twice over. *(Corrected 2026-10-21: that refusal is the codeless sentence "The error code is empty.", stated before the filter is applied, not a build failure — [KF579](#kf579).)* The two UNREADABLE rows generalize it: A12's reader runs a tier before any variant logic, so a shape it refuses is refused whatever the filter says. Hence the portable checker suppresses every finding on a filtered declaration *except* the ones saying the model does not load. *(Corrected 2026-10-27: "cannot rescue a model that fails to BUILD" holds for the read tier only. A failure while A12 converts the declaration the filter removes, such as an empty computed field, is lifted with it, and a codeless basic sentence is stated anyway — [KF626](#kf626).)*
 
 **`variantFilter` also rides FIELD elements** (`serializer.FieldSerializer` writes it), a carrier outside this checker's rules-and-computations subject matter and not measured here.
 
@@ -12320,7 +12320,7 @@ On [KF494](#kf494)'s own-domain Order host, hold each defective field fixed and 
 | Total: minValue 2, maxValue 1 | MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE | admitted |
 | Total: maxIntegerDigits 16 | codeless refusal | admitted |
 
-“Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel, except that since 2026-10-13 the `maxIntegerDigits 16` row is named by its sentence, `RK_MEMBER_ABOVE_DIGIT_BUDGET`, which the checker now reports too ([KF559](#kf559)). Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
+“Load/build refusal” is the harness's combined `CK_MODEL_NOT_BUILDABLE` category; “codeless refusal” is its `(no code)` sentinel, except that since 2026-10-13 the `maxIntegerDigits 16` row is named by its sentence, `RK_MEMBER_ABOVE_DIGIT_BUDGET`, which the checker now reports too ([KF559](#kf559)). *Corrected 2026-10-27: the filtered missing-`typeDefinitionId` row's codeless refusal is A12's basic type-reference sentence, now named `RK_TYPE_REFERENCE_EMPTY` and reported by the checker ([KF626](#kf626)).* Neither category locates an exception within the kernel stages. In particular, missing and unresolved typedef IDs have different filtered outcomes, and a missing DateType body cannot inherit the missing-member rows' admission. The measurements concern these root-level carriers, English conditions and en_US locale; no nested, mounted, runtime or diagnostic-order claim follows. The BA documentation search for `variant`, `DateRangeType`, `typeDefinitionId` and `formatOfFragment` found two unrelated uses of “variant” and no descriptor/filter contract; the executable kernel is the basis here.
 
 *Locked by:* `adapter.laws.FieldVariantStageLawsTest.mixedFieldArmsHaveThePredictedFilterSensitivity`. Its companion `theMixedFieldPopulationHasOnlyLedgeredCheckerDifferences` sends the same 78 inputs through the portable checker and the shared O1 classification, with a separate [variants-mixed.tsv](../adapter/src/test/resources/checker-near-miss/variants-mixed.tsv) ledger. The pre-run predictions and all 11 misses are retained in [CONFORMANCE-PLAN](CONFORMANCE-PLAN.md); the fixed inputs were not changed to fit the predictions.
 
@@ -14008,7 +14008,7 @@ A rule's code draws two refusals that look like one. `MVK_ERROR_CODE_MISSING` is
 | `""` | the class and the sentence | the sentence alone | the class and the sentence |
 | `" "` (and `"<TAB>"`, measured without a filter and under `ONLY`) | the class alone | nothing | the class alone |
 
-So the sentence reads emptiness, not blankness, and it is the one refusal of a rule's slots that an `ONLY` filter does not take away; beside a broken error target on a deleted rule it still stands alone. That is what [KF420](#kf420)'s "an empty `errorCode` under an ONLY variant filter" row was: the sentence on its own, not a build failure.
+So the sentence reads emptiness, not blankness, and an `ONLY` filter does not take it away; beside a broken error target on a deleted rule it still stands alone. *Corrected 2026-10-27: this read "the one refusal of a rule's slots that an `ONLY` filter does not take away". An empty condition and an empty error target draw sentences of the same rule that survive the filter too ([KF626](#kf626)).* That is what [KF420](#kf420)'s "an empty `errorCode` under an ONLY variant filter" row was: the sentence on its own, not a build failure.
 
 *Locked by:* `adapter.laws.CheckerDeclarationWithholdingAgreementTest`, A12 and the portable checker row by row, which publishes the sentence as `RK_ERROR_CODE_EMPTY` and keeps it through the variant filter's suppression.
 
@@ -15178,3 +15178,33 @@ a12-kernel-lean SPEC-2026-10-26-25. One premium form declares `Rate` and `Rate2`
 The checker read `-1` as a known scale until this measurement, so seven of these rows passed it. Two other readers of the same member already agree with A12: an index key on a `(0, -1)` Number admits `"5"` and refuses `"5.5"` with `MVK_INDEX_VALUE_INVALID`, and a `(0, -1)` hour is a valid `Time` component.
 
 *Locked by:* `adapter.laws.CheckerUnknownMaximumScaleAgreementTest` (`rule check` and `checkConsistency` against the checker).
+
+## §13 supplement — A12's basic sentences are stated over the model as read, so an `ONLY` filter never hides them, while a build failure in the declaration it removes is lifted (BoundModel, kernel 30.8.1, 2026-10-27) <a id="kf626"></a>
+
+> Fold: pending — the filter-independent tier beside [KF299](#kf299)'s suppression and [KF579](#kf579)'s empty-code sentence.
+
+a12-kernel-lean SPEC-2026-10-27-01. One policy model is broken in one way per row, once on a declaration the default variant keeps and once under `ONLY`, which deletes a field and suppresses a rule or computation.
+
+| defect | kept | under `ONLY` |
+|---|---|---|
+| an empty or absent `typeDefinitionId` | unbuilt | "The id of the referenced type definition is not set properly." |
+| two categories of one name (equal or different values) | unbuilt | "The enumeration contains the category 'Band' multiple times." |
+| an Enumeration value twice | three `MVK_*` classes and "The enumeration contains the value 'OPEN' multiple times." | the sentence alone |
+| two `hintList` entries for one locale | unbuilt | admitted |
+| an empty `formatOfFragment` | unbuilt | admitted |
+| an empty field, rule or computation `name` | unbuilt | "The name is empty." |
+| an empty field `id` | "The id is empty." | the same |
+| an empty `errorCondition` / `errorEntityRelPath` | their two `MVK_*` classes and "The error condition is empty." / "The error entity is not set properly." | the sentence alone |
+| an empty `operation` | `MVK_INCOMPLETE_INPUT` and "One of the computation operations is empty." | the sentence alone |
+| an empty `computedFieldRelPath` | unbuilt | "The computed field is not set properly." |
+| a type definition's empty `id` / `name` | "The id is empty." / "The name is empty." | the same |
+| a name, condition, error target or type-definition id of ONE SPACE | unbuilt or the `MVK_*` classes | admitted |
+
+- **The sentences come from one rule, A12's last.** They are `BasicConsistencyCheck`'s categories, run as `BasicConsistencyCheckFromSerializerRule` after `CodeGenerationRule` (source-read, `DocumentModelConsistencyRulesProvider`), over the model as read. That is why they follow every class and survive the filter, as [KF579](#kf579) found for the error code.
+- **"Empty" is `StringUtils.isEmpty`, not "blank".** The one-space rows are the discriminator: under `ONLY` they draw nothing. Absence is empty too where the reader lets it through: [KF498](#kf498)'s codeless refusal of a deleted `TypeDefType` without its id is this same sentence (`FieldVariantStageLawsTest`).
+- **A conversion failure belongs to the declaration, so the filter lifts it.** Two equal keys in a list A12 collects into a map (categories by name, a hint list by locale), a blank fragment format and an empty computed field fail only while A12 converts the declaration; the default variant removes it first. Where it is kept the build fails before any sentence is reported.
+- **Four of the sixteen categories are unreachable from JSON.** An empty `indexFieldName` or `sortFields[].name` leaves the model unbuilt with or without a filter, and a `null` localized text, on an element or a type definition, is refused by the reader (counted from `BasicDocumentModelConsistencyCategory`, source-read).
+
+The checker published only the empty-code sentence until this measurement. It now publishes the twelve reachable categories under ten `RK_*` codes, an element and a type definition sharing the id and name ones, reports the three unbuilt shapes it missed, and no longer reports a suppressed computation's computed target as unbuilt.
+
+*Locked by:* `adapter.laws.CheckerBasicSentenceAgreementTest` (`BoundModel` against the checker, 40 rows); `consistency.BasicSentenceTest` replays the checker's half on both platforms.

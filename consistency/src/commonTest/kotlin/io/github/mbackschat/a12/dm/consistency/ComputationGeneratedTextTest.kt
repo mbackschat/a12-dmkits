@@ -10,19 +10,21 @@ import kotlin.test.assertEquals
  * Mirrors `rulekit.validate.laws.ComputationGeneratedTextLawsTest` row for row, on the subscription shape it
  * measures. Every row compares the checker's COMPLETE class list against A12's classes, so a second family
  * still reading the member as written, or the calculation module's guard class surfacing beside the token
- * class, is as visible as a wrong class. A12's codeless "operations is empty" line carries no class, so the
- * checker's list omits it.
+ * class, is as visible as a wrong class. A12's codeless "operations is empty" line, stated once however many
+ * operations are empty, is the checker's `RK_COMPUTATION_OPERATION_EMPTY` ([KERNEL-FINDINGS KF626]); a whitespace
+ * or `null` operation draws no such line here.
  */
 class ComputationGeneratedTextTest {
 
     private val guard = "FieldFilled(../Tier)"
     private val work = alternative(guard, "42.00")
     private val token = listOf("MVK_UNEXPECTED_TOKEN")
+    private val emptyOperation = "RK_COMPUTATION_OPERATION_EMPTY"
 
     @Test
     fun blankWorkStopsAtItsReachedFailureAfterEarlierChecks() {
-        assertEquals(listOf("MVK_INVALID_ENTITY"), codes("FieldFilled(NoSuchField)", guarded("")))
-        assertEquals(token, codes(null, guarded(""), guarded("")))
+        assertEquals(listOf("MVK_INVALID_ENTITY", emptyOperation), codes("FieldFilled(NoSuchField)", guarded("")))
+        assertEquals(token + emptyOperation, codes(null, guarded(""), guarded("")))
         assertEquals(emptyList(), codes(null, work, work))
     }
 
@@ -43,16 +45,16 @@ class ComputationGeneratedTextTest {
         )
         val expected = linkedMapOf(
             "two guarded — the control" to listOf(),
-            "one guarded, blank" to listOf("MVK_INCOMPLETE_INPUT"),
-            "one unguarded, blank" to listOf("MVK_INCOMPLETE_INPUT"),
-            "two guarded, the second blank" to token,
+            "one guarded, blank" to listOf("MVK_INCOMPLETE_INPUT", emptyOperation),
+            "one unguarded, blank" to listOf("MVK_INCOMPLETE_INPUT", emptyOperation),
+            "two guarded, the second blank" to token + emptyOperation,
             "two guarded, the second whitespace" to token,
             "two guarded, the second null" to token,
-            "two guarded, the FIRST blank" to token,
-            "three guarded, the MIDDLE blank" to token,
-            "two, the blank one unguarded" to token,
+            "two guarded, the FIRST blank" to token + emptyOperation,
+            "three guarded, the MIDDLE blank" to token + emptyOperation,
+            "two, the blank one unguarded" to token + emptyOperation,
             "two, the blank one unguarded and whitespace" to token,
-            "two, the OTHER one unguarded" to token,
+            "two, the OTHER one unguarded" to token + emptyOperation,
         )
         assertEquals<Map<String, List<String>>>(expected, actual, "what a blank operation draws beside its siblings")
     }

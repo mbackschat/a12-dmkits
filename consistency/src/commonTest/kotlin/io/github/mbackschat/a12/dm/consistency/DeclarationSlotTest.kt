@@ -87,7 +87,7 @@ class DeclarationSlotTest {
             ("vk_vk" + "x".repeat(95)) to listOf("MVK_RULE_NAME_INVALID"),
             ("vk_vk" + "x".repeat(96)) to emptyList(),
         )) assertEquals(expected, codesFor(kind, name, BOTH), "$kind/$name")
-        assertEquals(listOf(NAME_ALPHABET, "MVK_ERROR_CODE_MISSING", "RK_ERROR_CODE_EMPTY"),
+        assertEquals(listOf(NAME_ALPHABET, "MVK_ERROR_CODE_MISSING"),
             codesFor("Rule", "vk_vk.Bad", BOTH, slots = "\"errorCode\":\"\""))
     }
 
@@ -263,8 +263,8 @@ class DeclarationSlotTest {
 
         val expected = mapOf(
             "a code — the control" to listOf(),
-            // An absent code draws A12's empty-code sentence too; a blank one does not (KF579).
-            "no errorCode member" to listOf("MVK_ERROR_CODE_MISSING", "RK_ERROR_CODE_EMPTY"),
+            // An absent code also draws A12's empty-code sentence, which is `BasicSentenceTest`'s family (KF579).
+            "no errorCode member" to listOf("MVK_ERROR_CODE_MISSING"),
             "a blank errorCode" to listOf("MVK_ERROR_CODE_MISSING"),
             // Coerced by A12 to the code "7", so refusing it would reject a model the Kernel admits.
             "a numeric errorCode" to listOf(),

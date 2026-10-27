@@ -147,6 +147,12 @@ internal fun DeclaredReference.findings(): List<Finding> {
             ),
         )
     }
+    // An empty path walks no step and so "resolves" to the computation itself, where A12's converter finds no
+    // computed field at all ([KERNEL-FINDINGS KF626]).
+    if (role == ReferenceRole.COMPUTED_TARGET && written.isEmpty()) {
+        return listOf(a12Error(CK_MODEL_NOT_BUILDABLE, declaredAt,
+            "`computedFieldRelPath` is empty, so this computation names no computed field and A12 cannot build the model"))
+    }
     val finding = target.asFinding(role, declaredAt) ?: return emptyList()
     return if (finding.code == ERROR_FIELD_MISSING) {
         listOf(finding, finding.copy(code = MISSING_ERROR_FIELD))

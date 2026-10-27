@@ -173,11 +173,11 @@ internal object FieldVariantPopulation {
             FilterEffect.RETAINS_REFUSAL, filteredCode = "RK_NUMBER_MAX_VALUE_EXCEEDED") { _, _, f ->
             f.withObject("/fieldType/NumberType").put("maxValue", "99999999999999999999")
         },
-        Witness("enum values", "Status", "MVK_INTERNAL_VALUES_DUPLICATE,MVK_CATEGORY_VALUE_DUPLICATE,$UNKEYED_A12_CLASS",
-            filteredCode = UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("enum values", "Status", "MVK_INTERNAL_VALUES_DUPLICATE,MVK_CATEGORY_VALUE_DUPLICATE,RK_ENUM_VALUE_DUPLICATE",
+            filteredCode = "RK_ENUM_VALUE_DUPLICATE") { _, _, f ->
             (f.withObject("/fieldType/EnumerationType").withArray("values").get(1) as ObjectNode).put("value", "OPEN")
         },
-        Witness("string slot binding", "Code", "CK_MODEL_NOT_BUILDABLE", filteredCode = UNKEYED_A12_CLASS) { _, e, _ ->
+        Witness("string slot binding", "Code", "CK_MODEL_NOT_BUILDABLE", filteredCode = "RK_NAME_EMPTY") { _, e, _ ->
             e.putObject("name")
         },
     )
@@ -212,7 +212,7 @@ internal object FieldVariantPopulation {
         Witness("absent custom name", "Code", "CUSTOM_FIELD_TYPE_CODENAME_MISSING") { _, _, f ->
             f.putObject("fieldType").put("type", "CustomFieldType").putObject("CustomFieldType")
         },
-        Witness("absent typedef id", "Code", "CK_MODEL_NOT_BUILDABLE", filteredCode = UNKEYED_A12_CLASS) { _, _, f ->
+        Witness("absent typedef id", "Code", "CK_MODEL_NOT_BUILDABLE", filteredCode = "RK_TYPE_REFERENCE_EMPTY") { _, _, f ->
             f.putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType")
         },
         Witness("unresolved typedef id", "Code", "CK_MODEL_NOT_BUILDABLE") { _, _, f ->

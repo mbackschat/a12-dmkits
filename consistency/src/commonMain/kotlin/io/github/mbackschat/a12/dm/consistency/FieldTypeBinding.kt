@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -227,7 +228,31 @@ private fun unbindableFieldType(
                 "type from where an omitted `$defaulted` takes the default",
         )
     }
-    return null
+    return (body as? JsonObject)?.repeatedBuildKey(type)?.let { (list, key, value) ->
+        unbuildable(field, "`$list` holds two entries whose `$key` is `$value`, and A12 keys that list by `$key` " +
+            "while it builds the type")
+    }
+}
+
+/**
+ * The lists A12's converter collects into a map keyed by one member, so two entries sharing that key leave the
+ * model unbuilt — `Collectors.toMap` refusing the duplicate, whatever the entries' other members hold. A field the
+ * default variant deletes is never converted, so it builds ([KERNEL-FINDINGS KF626]). Only the String type's hint
+ * list was measured among the types that carry one.
+ */
+private val KEYED_BUILD_LISTS = mapOf(
+    FieldType.ENUMERATION to ("categories" to "name"),
+    FieldType.STRING to ("hintList" to "locale"),
+)
+
+/** The first `(list, key, value)` whose key two entries of a [KEYED_BUILD_LISTS] list share, if any. */
+private fun JsonObject.repeatedBuildKey(type: FieldType): Triple<String, String, String>? {
+    val (list, key) = KEYED_BUILD_LISTS[type] ?: return null
+    val keys = (this[list] as? JsonArray).orEmpty().mapNotNull {
+        ((it as? JsonObject)?.get(key) as? JsonPrimitive)?.takeIf { value -> value.isString }?.content
+    }
+    val repeated = keys.groupingBy { it }.eachCount().entries.firstOrNull { it.value > 1 } ?: return null
+    return Triple(list, key, repeated.key)
 }
 
 /**
@@ -310,14 +335,19 @@ private fun unresolvedTypeDefinition(
     field: TrackedDeclaration,
     declaredTypeDefinitionIds: Set<String>,
 ): Finding? {
+    val deleted = field.body.deletesAtDefaultVariant()
     val named = field.boundTypeDefinitionId()
-        ?: return unbuildable(
-            field,
-            "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
-                "resolve",
-        )
-    // KF498 distinguishes a missing id above from a present unresolved id on a filtered field.
-    if (field.body.deletesAtDefaultVariant() || named in declaredTypeDefinitionIds) {
+        // A deleted field's absent id is left to A12's basic sentence, its only refusal there (KF498, KF626).
+        ?: return if (deleted && field.typeDefinitionIdIsAbsent()) {
+            null
+        } else {
+            unbuildable(
+                field,
+                "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
+                    "resolve",
+            )
+        }
+    if (deleted || named in declaredTypeDefinitionIds) {
         return null
     }
     return unbuildable(
@@ -364,12 +394,17 @@ internal fun TrackedFactBase.resolvedFieldTypeOf(field: TrackedDeclaration): Res
     return ResolvedFieldType(defined, declared)
 }
 
-private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
+/** A `TypeDefType` body that is present and carries no `typeDefinitionId` member at all. */
+internal fun TrackedDeclaration.typeDefinitionIdIsAbsent(): Boolean =
+    typeDefBodyIn(body)?.containsKey("typeDefinitionId") == false
+
+private fun typeDefBodyIn(body: JsonObject?): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if (declared.namedFieldType() != FieldType.TYPE_DEF) {
-        return null
-    }
-    val typeDef = FieldType.TYPE_DEF.bodyIn(declared) ?: return null
+    return if (declared.namedFieldType() == FieldType.TYPE_DEF) FieldType.TYPE_DEF.bodyIn(declared) else null
+}
+
+private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
+    val typeDef = typeDefBodyIn(body) ?: return null
     return (typeDef["typeDefinitionId"] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 

@@ -369,6 +369,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         base.computationPreconditionFeatureFindings(at)
     },
     CheckProducer.ModelWide(setOf(CheckFamily.COMPUTATION_CYCLE), ModelStage.GENERATION, { it.computationCycleFindings() }),
+    CheckProducer.ModelWide(setOf(CheckFamily.BASIC_SENTENCES), ModelStage.BASIC, { it.basicSentenceFindings() }),
     CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_SELF_READ)) { base, at -> base.computationSelfReadContributions(at) },
     condition(CheckFamily.REPETITION_KEY_LIST) { base, at -> base.repetitionKeyListContributions(at) },
     condition(CheckFamily.REPETITION_KEY_PLACEMENT) { base, at -> base.repetitionKeyPlacementContributions(at) },

@@ -67,8 +67,9 @@ class DeclarationAdmissionReadingsTest {
                 codes(number(""""maxFractionalDigits":0,"maxLength":17,"positivesOnly":1.5""")),
         )
         val expected = linkedMapOf(
-            "a repeated token on a field ONLY a variant keeps" to emptyList(),
-            "a repeated token" to listOf("MVK_INTERNAL_VALUES_DUPLICATE"),
+            // A12's basic sentence survives the filter that hides the class ([KERNEL-FINDINGS KF626]).
+            "a repeated token on a field ONLY a variant keeps" to listOf("RK_ENUM_VALUE_DUPLICATE"),
+            "a repeated token" to listOf("MVK_INTERNAL_VALUES_DUPLICATE", "RK_ENUM_VALUE_DUPLICATE"),
             "a label for an undeclared locale only" to emptyList(),
             "declared beside undeclared, against undeclared alone" to listOf("MVK_COUNT_OF_VALUES_INVALID"),
             "an sValue padded with a space" to emptyList(),

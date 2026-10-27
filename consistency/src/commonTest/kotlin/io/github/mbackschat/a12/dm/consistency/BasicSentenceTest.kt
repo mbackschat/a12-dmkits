@@ -1,0 +1,119 @@
+package io.github.mbackschat.a12.dm.consistency
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+/**
+ * The checker's half of A12's basic sentences and the build failures beside them ([KERNEL-FINDINGS KF626]), so
+ * the JS checker is held to them as well as the JVM one. A12's answer to every row was measured by
+ * `adapter.laws.CheckerBasicSentenceAgreementTest`, the absent type reference by `FieldVariantStageLawsTest`; this
+ * class only replays it.
+ *
+ * Each defect is placed once on a declaration the default variant keeps and once on one an `ONLY` filter deletes
+ * or suppresses, because the filter is what separates a sentence (stated anyway) from a build failure (lifted).
+ */
+class BasicSentenceTest {
+
+    @Test
+    fun eachDefectDrawsWhatA12DrawsWithAndWithoutTheFilter() {
+        val rows: Map<String, Set<String>> = linkedMapOf(
+            "the control" to model(),
+            "a repeated value" to model(values = REPEATED_VALUE),
+            "a repeated value, deleted" to model(values = REPEATED_VALUE, fieldFilter = ONLY),
+            "a repeated category" to model(categories = REPEATED_CATEGORY),
+            "a repeated category, deleted" to model(categories = REPEATED_CATEGORY, fieldFilter = ONLY),
+            "a repeated hint locale" to model(hints = REPEATED_HINT),
+            "a repeated hint locale, deleted" to model(hints = REPEATED_HINT, codeFilter = ONLY),
+            "an empty type reference, deleted" to model(codeType = EMPTY_REFERENCE, codeFilter = ONLY),
+            "an absent type reference" to model(codeType = ABSENT_REFERENCE),
+            "an absent type reference, deleted" to model(codeType = ABSENT_REFERENCE, codeFilter = ONLY),
+            "an empty field name, deleted" to model(codeName = "", codeFilter = ONLY),
+            "an empty field id" to model(codeId = ""),
+            "an empty condition, suppressed" to model(condition = "", ruleFilter = ONLY),
+            "a condition of one space, suppressed" to model(condition = " ", ruleFilter = ONLY),
+            "an empty error target, suppressed" to model(target = "", ruleFilter = ONLY),
+            "an empty operation, suppressed" to model(operation = "", computationFilter = ONLY),
+            "an empty computed field" to model(computed = ""),
+            "an empty computed field, suppressed" to model(computed = "", computationFilter = ONLY),
+            "an unresolvable computed field, suppressed" to model(computed = "../NoSuchField", computationFilter = ONLY),
+            "a type definition with an empty id" to model(typeDefinition = typeDefinition(id = "")),
+            "a type definition with an id of one space" to model(typeDefinition = typeDefinition(id = " ")),
+            "a type definition with an empty name" to model(typeDefinition = typeDefinition(name = "")),
+        ).mapValues { (_, source) -> codes(source) }
+        val expected: Map<String, Set<String>> = linkedMapOf(
+            "the control" to emptySet(),
+            "a repeated value" to setOf("MVK_CATEGORY_VALUE_DUPLICATE", "MVK_INTERNAL_VALUES_DUPLICATE", RK_ENUM_VALUE_DUPLICATE),
+            "a repeated value, deleted" to setOf(RK_ENUM_VALUE_DUPLICATE),
+            "a repeated category" to setOf(CK_MODEL_NOT_BUILDABLE, RK_ENUM_CATEGORY_DUPLICATE),
+            "a repeated category, deleted" to setOf(RK_ENUM_CATEGORY_DUPLICATE),
+            "a repeated hint locale" to setOf(CK_MODEL_NOT_BUILDABLE),
+            "a repeated hint locale, deleted" to emptySet(),
+            "an empty type reference, deleted" to setOf(RK_TYPE_REFERENCE_EMPTY),
+            "an absent type reference" to setOf(CK_MODEL_NOT_BUILDABLE, RK_TYPE_REFERENCE_EMPTY),
+            "an absent type reference, deleted" to setOf(RK_TYPE_REFERENCE_EMPTY),
+            "an empty field name, deleted" to setOf(RK_NAME_EMPTY),
+            "an empty field id" to setOf(RK_ID_EMPTY),
+            "an empty condition, suppressed" to setOf(RK_ERROR_CONDITION_EMPTY),
+            "a condition of one space, suppressed" to emptySet(),
+            "an empty error target, suppressed" to setOf(RK_ERROR_ENTITY_EMPTY),
+            "an empty operation, suppressed" to setOf(RK_COMPUTATION_OPERATION_EMPTY),
+            "an empty computed field" to setOf(CK_MODEL_NOT_BUILDABLE, RK_COMPUTED_FIELD_EMPTY),
+            "an empty computed field, suppressed" to setOf(RK_COMPUTED_FIELD_EMPTY),
+            "an unresolvable computed field, suppressed" to emptySet(),
+            "a type definition with an empty id" to setOf(RK_ID_EMPTY),
+            "a type definition with an id of one space" to emptySet(),
+            "a type definition with an empty name" to setOf(RK_NAME_EMPTY),
+        )
+        assertEquals(expected, rows, "the rejecting codes of each row")
+    }
+
+    private fun codes(source: String) =
+        checkRead(ModelSource(source)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+
+    private fun model(
+        values: String = """{"value":"OPEN"},{"value":"CLOSED"}""",
+        categories: String = """{"name":"Band","values":["A","B"]}""",
+        hints: String = """{"locale":"en_US","values":["AB"]}""",
+        codeType: String = """{"type":"StringType","StringType":{"hintList":[$hints]}}""",
+        codeName: String = "Code",
+        codeId: String = "/Policy/Code",
+        condition: String = "FieldFilled(Ref)",
+        target: String = "../Ref",
+        operation: String = "1",
+        computed: String = "../Total",
+        fieldFilter: String = "",
+        codeFilter: String = "",
+        ruleFilter: String = "",
+        computationFilter: String = "",
+        typeDefinition: String = "",
+    ) = """
+        {"header":{"id":"policy","locales":[{"code":"en_US"}]},
+         "content":{${typeDefinition}"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
+            {"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType","StringType":{}}}},
+            {"type":"Field","id":"$codeId","name":"$codeName","Field":{"fieldType":$codeType$codeFilter}},
+            {"type":"Field","id":"/Policy/Status","name":"Status","Field":{"fieldType":{"type":"EnumerationType",
+              "EnumerationType":{"values":[$values],"categories":[$categories]}}$fieldFilter}},
+            {"type":"Field","id":"/Policy/Total","name":"Total","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"minFractionalDigits":0,"maxFractionalDigits":0}}}},
+            {"type":"Rule","id":"/Policy/RefCheck","name":"RefCheck","Rule":{"errorCondition":"$condition",
+              "errorEntityRelPath":"$target","errorCode":"REF","errorMessage":[{"locale":"en_US","text":"x"}]$ruleFilter}},
+            {"type":"Computation","id":"/Policy/Calc","name":"Calc","Computation":{"computedFieldRelPath":"$computed",
+              "computationAlternatives":[{"operation":"$operation"}],
+              "errorMessage":[{"locale":"en_US","text":"x"}]$computationFilter}}
+          ]}}
+         ]}}}
+    """.trimIndent()
+
+    private fun typeDefinition(id: String = "CodeType", name: String = "CodeType") =
+        """"typeDefinitions":[{"id":"$id","name":"$name","revision":"1","fieldType":{"type":"StringType","StringType":{}}}],"""
+
+    private companion object {
+        const val ONLY = ""","variantFilter":{"filterType":"ONLY","variants":["premium"]}"""
+        const val REPEATED_VALUE = """{"value":"OPEN"},{"value":"OPEN"}"""
+        const val REPEATED_CATEGORY = """{"name":"Band","values":["A","B"]},{"name":"Band","values":["B","A"]}"""
+        const val REPEATED_HINT = """{"locale":"en_US","values":["AB"]},{"locale":"en_US","values":["CD"]}"""
+        const val EMPTY_REFERENCE = """{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":""}}"""
+        const val ABSENT_REFERENCE = """{"type":"TypeDefType","TypeDefType":{}}"""
+    }
+}

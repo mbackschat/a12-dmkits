@@ -117,6 +117,14 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "write the bound with 15 digits or fewer, counting a leading 0; drop precision the field's fractional digits cannot hold.",
         meaning = "A12's sentence \"Only values with up to 15 digits are allowed.\": a Number's `minValue` or `maxValue`, as A12 prints it, has more than 15 digits, a leading `0` counted (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
     ),
+    "RK_COMPUTATION_OPERATION_EMPTY" to Corrective(
+        fix = "write the operation of every alternative.",
+        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, stated once however many are. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
+    "RK_COMPUTED_FIELD_EMPTY" to Corrective(
+        fix = "name the field the computation writes.",
+        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string, which also leaves the model unbuilt where the computation is not suppressed. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
     "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
         fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
         meaning = "A12's sentence \"The date range format is invalid.\": a DateRange type composes `format + rangeSeparator + format`, and A12 allowlists that PAIR rather than either half, so a valid format and a valid separator can still be refused together (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
@@ -125,9 +133,17 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "use `-` or `/` as the range separator.",
         meaning = "A12's sentence \"Only minus (-) or slash (/) may be used for date range types.\": a DateRange type's `rangeSeparator`, trimmed, is neither empty, `-` nor `/` (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
     ),
+    "RK_ENUM_CATEGORY_DUPLICATE" to Corrective(
+        fix = "give each category its own name.",
+        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name, which also leaves the model unbuilt where the field is kept. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
     "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
         fix = "remove the line break from the value, label or category token.",
         meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return inside its Java-trimmed text, a break at either end being admitted. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break (KERNEL-FINDINGS KF418), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ENUM_VALUE_DUPLICATE" to Corrective(
+        fix = "declare each value once.",
+        meaning = "A12's sentence \"The enumeration contains the value '…' multiple times.\": an Enumeration declares one value token twice, stated once for each repeated token. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CODE_ALPHABET" to Corrective(
         fix = "write the error code, or the computation's name, in letters, digits, spaces and underscores only.",
@@ -137,6 +153,14 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "give the rule a non-empty `errorCode`.",
         meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is absent or empty, drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence before any variant filter (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
     ),
+    "RK_ERROR_CONDITION_EMPTY" to Corrective(
+        fix = "write the rule's condition.",
+        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ERROR_ENTITY_EMPTY" to Corrective(
+        fix = "name the field the rule attaches its error to.",
+        meaning = "A12's sentence \"The error entity is not set properly.\": a rule's `errorEntityRelPath` is the empty string, drawn beside `MVK_ERROR_FIELD_MISSING` where the rule is judged. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
     "RK_FIELD_NAME_ALPHABET" to Corrective(
         fix = "rename the field to ASCII letters, digits, underscores and colons, separating parts with a dot and starting each later part with an ASCII letter.",
         meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not ASCII letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with an ASCII letter. Despite the sentence, a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
@@ -144,6 +168,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     "RK_GROUP_PATH_INVALID" to Corrective(
         fix = "rename the group: a nested group name begins with an ASCII letter or `_` and continues in ASCII letters, digits, `_`, the German umlauts and `ß`, at most 60 characters.",
         meaning = "A12's sentence \"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …\": a part of the trimmed group path an element lives in is over 60 characters or outside the group alphabet, so A12 states it at that group and at every element beneath (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ID_EMPTY" to Corrective(
+        fix = "give it a non-empty `id`.",
+        meaning = "A12's sentence \"The id is empty.\": a declaration's or a type definition's `id` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
         fix = "shorten the root group's name to 60 characters or fewer.",
@@ -169,6 +197,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "write a count of 1 or more (a fractional count may be 0), or -1 to declare no bound where the member admits it; a Number length admits no -1.",
         meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
     ),
+    "RK_NAME_EMPTY" to Corrective(
+        fix = "give it a non-empty `name`.",
+        meaning = "A12's sentence \"The name is empty.\": a declaration's or a type definition's `name` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
     "RK_NUMBER_MAX_VALUE_EXCEEDED" to Corrective(
         fix = "lower the maximum to 10^(15 - k) - 10^(-k) or less, or declare fewer fractional digits to widen that limit.",
         meaning = "A12's sentence \"The maximum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `maxValue`, signed and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
@@ -188,6 +220,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     "RK_SORT_LIST_ABOVE_CAPACITY" to Corrective(
         fix = "keep at most three `sortFields` entries.",
         meaning = "A12's sentence \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.\": a group's `sortFields` holds more than three entries, and each entry beyond the third draws it once (KERNEL-FINDINGS KF345), where the portable checker names the sentence by this code.",
+    ),
+    "RK_TYPE_REFERENCE_EMPTY" to Corrective(
+        fix = "name a type definition the model declares.",
+        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string, which also leaves the model unbuilt where the field is kept. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",

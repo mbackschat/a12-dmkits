@@ -232,8 +232,9 @@ class VariantFilterTest {
      * says — measured on an `errorCode` that is JSON null and on a message entry whose locale the reader
      * rejects, both UNREADABLE filtered and unfiltered
      * (`rulekit.validate.laws.RuleVariantFilterLawsTest`). A filter suppresses what A12 would SAY ABOUT a
-     * declaration and cannot rescue a model that fails to BUILD, so a checker that dropped every finding for a
-     * filtered declaration would report an unloadable model as merely unexamined.
+     * declaration and cannot rescue a source A12 cannot READ, so a checker that dropped every finding for a
+     * filtered declaration would report an unloadable model as merely unexamined. A failure while A12 converts
+     * the suppressed declaration is a different tier, and the filter does lift it (KERNEL-FINDINGS KF626).
      *
      * The `ONLY` filter here is VALID on purpose: an unbindable filter shape is not itself suppressed, so it
      * cannot exercise the exemption, and a test using one passes whether the exemption exists or not.

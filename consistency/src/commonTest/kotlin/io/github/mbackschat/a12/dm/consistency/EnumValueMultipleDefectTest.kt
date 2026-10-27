@@ -21,6 +21,8 @@ class EnumValueMultipleDefectTest {
     private val duplicate = "MVK_INTERNAL_VALUES_DUPLICATE"
     private val spoiltPairing = "MVK_CATEGORY_VALUE_DUPLICATE"
     private val missingCategory = "MVK_MISSING_CATEGORY_VALUE"
+    /** A12's codeless basic sentence, once per repeated value ([KERNEL-FINDINGS KF626]). */
+    private val repeated = "RK_ENUM_VALUE_DUPLICATE"
 
     @Test
     fun aRepeatedValueIsReportedAgainstEveryCategoryItLeavesAmbiguous() {
@@ -41,17 +43,17 @@ class EnumValueMultipleDefectTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["distinct values — the control"] = emptyList()
-        expected["a repeated value under one category"] = listOf(spoiltPairing, duplicate)
+        expected["a repeated value under one category"] = listOf(spoiltPairing, duplicate, repeated)
         // The row that makes the class about the PAIRING rather than the list: no category, no second class.
-        expected["a repeated value under NO category"] = listOf(duplicate)
+        expected["a repeated value under NO category"] = listOf(duplicate, repeated)
         // …and its mirror image, which is why the class cannot be read off its name.
         expected["a repeated CATEGORY token, values distinct"] = emptyList()
         // The cross product, at the cell that settles it: 1×2 and 2×1 both give two, 2×2 gives four.
-        expected["one repeated value under TWO categories"] = listOf(spoiltPairing, spoiltPairing, duplicate)
+        expected["one repeated value under TWO categories"] = listOf(spoiltPairing, spoiltPairing, duplicate, repeated)
         expected["TWO repeated values under TWO categories"] = listOf(
-            spoiltPairing, spoiltPairing, spoiltPairing, spoiltPairing, duplicate, duplicate)
+            spoiltPairing, spoiltPairing, spoiltPairing, spoiltPairing, duplicate, duplicate, repeated, repeated)
         // Duplicated VALUES, not extra occurrences.
-        expected["one value repeated THREE times"] = listOf(spoiltPairing, duplicate)
+        expected["one value repeated THREE times"] = listOf(spoiltPairing, duplicate, repeated)
         assertEquals(expected, actual, "a repeated value is reported against every category it spoils")
     }
 
@@ -59,7 +61,7 @@ class EnumValueMultipleDefectTest {
     @Test
     fun aSpoiltPairingAndAMisalignmentAreBothReported() {
         assertEquals(
-            listOf(missingCategory, spoiltPairing, duplicate),
+            listOf(missingCategory, spoiltPairing, duplicate, repeated),
             codes(listOf("BASIC", "BASIC"), listOf(listOf("A"))),
             "a repeated value under a category one token short",
         )

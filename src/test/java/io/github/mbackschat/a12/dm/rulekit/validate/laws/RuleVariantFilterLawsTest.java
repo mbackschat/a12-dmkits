@@ -115,7 +115,9 @@ class RuleVariantFilterLawsTest {
      * does so with NO {@code MVK_*} code at all, where unfiltered it reports {@code MVK_ERROR_CODE_MISSING}.
      *
      * <p>That row draws the line the fix rests on: a filter suppresses what A12 would SAY ABOUT a
-     * declaration, and cannot rescue a model that fails to BUILD. Three predictions were wrong here, all in
+     * declaration, and cannot rescue a source A12 cannot READ. (The empty code is neither: it is a codeless
+     * basic sentence, stated over the model as read and so through any filter — KERNEL-FINDINGS KF579, KF626.)
+     * Three predictions were wrong here, all in
      * the same direction — the declaration's own slots were expected to be judged regardless, on the theory
      * that a consistency rule reading them never consults variants — which is why the scope was measured per
      * break instead of transferred from the one reference row that was already in hand.

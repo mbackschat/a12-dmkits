@@ -75,7 +75,7 @@ class EnumValueLabelTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["two ordinary values — the control"] = emptyList()
-        expected["the same value twice"] = listOf(duplicate)
+        expected["the same value twice"] = listOf(duplicate, "RK_ENUM_VALUE_DUPLICATE")
         expected["a single value"] = emptyList()
         expected["an EMPTY value token"] = emptyList()
         expected["a value token with a space"] = emptyList()

@@ -39,9 +39,11 @@ class CheckerDeclarationAdmissionAgreementTest {
         "a no-break-space label" to enumRow(noBreakSpaceLabel) to admitted,
         "a repeated label, ONLY-filtered" to enumRow(repeatedLabel, ONLY) to admitted,
         "a repeated label" to enumRow(repeatedLabel) to setOf("MVK_DISPLAY_VALUES_DUPLICATE"),
-        // A12 still refuses the filtered duplicate, with its codeless repeated-value sentence alone (KF551).
-        "a repeated token, ONLY-filtered" to enumRow(listOf(value("BASIC"), value("BASIC")), ONLY) to admitted,
-        "a repeated token" to enumRow(listOf(value("BASIC"), value("BASIC"))) to setOf("MVK_INTERNAL_VALUES_DUPLICATE"),
+        // A12 still refuses the filtered duplicate, with its codeless repeated-value sentence alone (KF551, KF626).
+        "a repeated token, ONLY-filtered" to enumRow(listOf(value("BASIC"), value("BASIC")), ONLY) to
+            setOf("RK_ENUM_VALUE_DUPLICATE"),
+        "a repeated token" to enumRow(listOf(value("BASIC"), value("BASIC"))) to
+            setOf("MVK_INTERNAL_VALUES_DUPLICATE", "RK_ENUM_VALUE_DUPLICATE"),
     ))
 
     @Test
@@ -345,9 +347,11 @@ class CheckerDeclarationAdmissionAgreementTest {
     private fun assertAgreement(rows: Map<String, Set<String>>, build: (String) -> String) =
         assertAgreement(rows.entries.associate { (id, expected) -> (id to build(id)) to expected })
 
+    /** A12's classes, a codeless sentence named as the checker names it and an unnamed one left out. */
     private fun kernel(json: String): Set<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }
-        .mapNotNull { Regex("\\[(\\w+)]$").find(it.message().trim())?.groupValues?.get(1) }.toSet()
+        .map { Regex("\\[(\\w+)]$").find(it.message().trim())?.groupValues?.get(1) ?: codelessClass(it.message()) }
+        .filter { it != UNKEYED_A12_CLASS }.toSet()
 
     private fun ours(json: String): List<String> =
         check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }

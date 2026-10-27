@@ -68,10 +68,12 @@ class FieldTypeBindingTest {
             // With a body PRESENT two part from the other three: the custom type finds no usable `name` and
             // says so under its own class, and the range composes its absent format as `null` and draws the
             // range-format sentence (KF581), where the rest die with nothing to report. With the body ABSENT
-            // all five are alike — A12's reader refuses the declaration before any of it.
+            // all five are alike — A12's reader refuses the declaration before any of it. The present typedef
+            // body also lacks its id, which is A12's basic type-reference sentence (KF626).
             expected["$type, body present"] = when (type) {
                 "CustomFieldType" -> listOf(codenameMissing)
                 "DateRangeType" -> rangeFormat
+                "TypeDefType" -> unbuildable + "RK_TYPE_REFERENCE_EMPTY"
                 else -> unbuildable
             }
             expected["$type, body absent"] = unbuildable
@@ -333,7 +335,8 @@ class FieldTypeBindingTest {
         expected["naming a DECLARED type definition — the control"] = emptyList()
         expected["naming nothing, with one declared"] = unbuildable
         expected["naming nothing, with none declared"] = unbuildable
-        expected["no typeDefinitionId at all"] = unbuildable
+        // Beside the build failure, the absent id is A12's basic type-reference sentence (KF626).
+        expected["no typeDefinitionId at all"] = unbuildable + "RK_TYPE_REFERENCE_EMPTY"
         assertEquals(expected, actual, "what a TypeDefType's reference must name")
 
         // The definitions themselves are read for their IDS alone, so every content law this checker

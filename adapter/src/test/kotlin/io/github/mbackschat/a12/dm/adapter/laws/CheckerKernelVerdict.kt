@@ -32,10 +32,10 @@ internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summ
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Twenty sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * Twenty-nine sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)), and A12's nine basic sentences are the checker's `RK_ID_EMPTY` to `RK_TYPE_REFERENCE_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words and names only the field, while each maximum is a sentence of
  * its own. That keys the two digit maxima faithfully, because among the numeric members A12's collector writes only the
  * integer places can draw the 15 sentence and only the fractional pair the 14 one: group repetitions, the other
@@ -47,8 +47,10 @@ internal fun codelessClass(message: String): String = when {
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
     MINIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MIN_VALUE_EXCEEDED"
     MAXIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MAX_VALUE_EXCEEDED"
+    REPEATED_ENUM_VALUE.containsMatchIn(message) -> "RK_ENUM_VALUE_DUPLICATE"
+    REPEATED_ENUM_CATEGORY.containsMatchIn(message) -> "RK_ENUM_CATEGORY_DUPLICATE"
     else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
-        DATE_RANGE_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+        DATE_RANGE_SENTENCES + BASIC_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -89,6 +91,20 @@ private val PATH_NAME_SENTENCES = mapOf(
         "RK_FIELD_NAME_ALPHABET",
     "Only values with up to 60 characters are allowed." to "RK_MEMBER_ABOVE_60_CHARACTERS",
 )
+
+/** A12's basic sentences ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)); the id and name ones end alike on an element and a type definition. */
+private val BASIC_SENTENCES = mapOf(
+    "The id is empty." to "RK_ID_EMPTY",
+    "The name is empty." to "RK_NAME_EMPTY",
+    "The error condition is empty." to "RK_ERROR_CONDITION_EMPTY",
+    "The error entity is not set properly." to "RK_ERROR_ENTITY_EMPTY",
+    "The computed field is not set properly." to "RK_COMPUTED_FIELD_EMPTY",
+    "One of the computation operations is empty." to "RK_COMPUTATION_OPERATION_EMPTY",
+    "The id of the referenced type definition is not set properly." to "RK_TYPE_REFERENCE_EMPTY",
+)
+
+private val REPEATED_ENUM_VALUE = Regex("""The enumeration contains the value '[^']*' multiple times\.$""")
+private val REPEATED_ENUM_CATEGORY = Regex("""The enumeration contains the category '[^']*' multiple times\.$""")
 
 private val DATE_RANGE_SENTENCES = mapOf(
     "The date range format is invalid." to "RK_DATE_RANGE_FORMAT_INVALID",

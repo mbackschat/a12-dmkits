@@ -849,6 +849,13 @@ enum class CheckFamily {
      * operand, and the two date-yielding extractors ask the format question alone (KF529).
      */
     TEMPORAL_EXTRACTOR_OPERANDS,
+
+    /**
+     * A12's basic sentences: an empty id, name, condition, error target, computed field or operation, a repeated
+     * enumeration value or category, an empty type reference. A12 states them over the model as read, after
+     * every other check and through any variant filter ([KF626]).
+     */
+    BASIC_SENTENCES,
 }
 
 /**

@@ -9,7 +9,15 @@ internal data class MessageFinding(
     override val finding: Finding,
 ) : OwnedFinding
 
-internal enum class ModelStage { DECLARATION, METAMODEL, GENERATION }
+internal enum class ModelStage {
+    DECLARATION, METAMODEL, GENERATION,
+
+    /**
+     * A12's basic sentences: its LAST consistency rule, after code generation, so they follow every class and an
+     * earlier refusal never withholds them ([KERNEL-FINDINGS KF626]).
+     */
+    BASIC,
+}
 
 internal data class ModelFinding(val stage: ModelStage, override val finding: Finding) : ReportFinding
 
@@ -82,7 +90,10 @@ internal fun TrackedFactBase.selectDeclarations(
 /** Cells hold local outcomes; every report re-enters the outer stages against the current model. */
 internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding> {
     val local = cells.values.flatMap { it.contributions }
-    val targets = facts.declarations().flatMap { element ->
+    val suppressed = facts.variantFilterSuppressed()
+    // A computed target is resolved while A12 converts the computation, which it never does for one an `ONLY`
+    // filter suppresses, so even an unbuildable target is lifted there ([KERNEL-FINDINGS KF626]).
+    val targets = facts.declarations().filterNot { it.declaredKind == DeclaredKind.COMPUTATION && it.path in suppressed }.flatMap { element ->
         element.declaredReference()?.findings().orEmpty().map {
             DeclarationFinding(element.key, DeclarationStage.TARGET, it)
         }
@@ -94,7 +105,6 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
         .filterNot { it is ConditionFinding } + targets + conditions)
     val computations = facts.declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }
         .mapTo(mutableSetOf()) { it.key }
-    val suppressed = facts.variantFilterSuppressed()
     fun visible(finding: Finding): Boolean =
         finding.code in VARIANT_BLIND_CODES || finding.at == null || finding.at !in suppressed
     val reported = local.filterIsInstance<ModelFinding>()
@@ -105,12 +115,15 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
         declarations.filter { it.owner in computations } +
         model.filter { it.stage == ModelStage.METAMODEL } +
         declarations.filterNot { it.owner in computations }).map { it.finding }.filter(::visible)
-    return if (selected.any { it.justifiesRejection }) selected else selected +
-        model.filter { it.stage == ModelStage.GENERATION }.map { it.finding }.filter(::visible)
+    fun staged(stage: ModelStage) = model.filter { it.stage == stage }.map { it.finding }.filter(::visible)
+    val judged = if (selected.any { it.justifiesRejection }) selected else selected + staged(ModelStage.GENERATION)
+    return judged + staged(ModelStage.BASIC)
 }
 
 /**
- * The codes a variant filter never takes away: a source A12 cannot build is unbuildable whatever the filter
- * deletes, and the empty-code sentence is stated before the filter is applied ([KERNEL-FINDINGS KF579]).
+ * The codes a variant filter never takes away: a source A12 cannot READ is refused before any filter runs, and
+ * A12's basic sentences are stated over the model as read ([KERNEL-FINDINGS KF579], [KF626]). A model that reads
+ * and then fails to build is a different tier, and a filter deleting the failing declaration does lift it, so
+ * each family judging a conversion-tier failure asks [deletesAtDefaultVariant] or suppression itself.
  */
-internal val VARIANT_BLIND_CODES = setOf(CK_MODEL_NOT_BUILDABLE, RK_ERROR_CODE_EMPTY)
+internal val VARIANT_BLIND_CODES = setOf(CK_MODEL_NOT_BUILDABLE) + BASIC_SENTENCE_CODES

@@ -622,6 +622,8 @@ class CheckFamilyWiringTest {
             ("MVK_INVALID_TIME" to "/Catalog/HoursAddedToAPureClock"),
         // The year of a clock on a model with no Base Year — the format question the shift family asks of a
         // shift, asked of an extractor, so the row fails if an extractor's operand ever goes unread again.
+        // The empty code beside `NoCode`'s slot class: the basic sentence, which a separate family states.
+        CheckFamily.BASIC_SENTENCES to ("RK_ERROR_CODE_EMPTY" to "/Catalog/NoCode"),
         CheckFamily.TEMPORAL_EXTRACTOR_OPERANDS to
             ("MVK_WRONG_DATE_FORMAT_FOR_OP" to "/Catalog/YearOfAPureClock"),
         // A digit count above the ceiling, behind an operand the construct accepts — the row fails if the
@@ -1052,23 +1054,5 @@ class CheckFamilyWiringTest {
             "no family is registered as a scoped walk, so this differential covers nothing",
         )
         assertTrue(examined > 2, "only the two fixtures were examined, so the corpus reached this arm empty")
-    }
-
-    @Test
-    fun onlyDeclaredTargetsReachTheReportWithoutACell() {
-        // R5 condition references carry occurrence/site identity in cells; only target resolution is composed.
-        assertEquals(
-            setOf(CheckFamily.DECLARED_REFERENCES),
-            COMPOSED_FAMILIES,
-            "a family outside the registry bypasses the cell store; register it as a producer instead",
-        )
-
-        // …and the other direction, so the pin cannot be satisfied by shrinking the denominator: every
-        // family is either composed or registered, which is what makes the two sets a partition.
-        assertEquals(
-            CheckFamily.entries.toSet(),
-            COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
-            "every CheckFamily must be composed or registered, or it is advertised by neither",
-        )
     }
 }

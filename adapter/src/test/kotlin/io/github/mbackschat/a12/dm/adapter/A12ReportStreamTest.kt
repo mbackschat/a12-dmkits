@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import io.github.mbackschat.a12.dm.adapter.laws.HarvestedModels
 import io.github.mbackschat.a12.dm.adapter.laws.kernelModelClasses
 import io.github.mbackschat.a12.dm.adapter.laws.checkerVerdict
+import io.github.mbackschat.a12.dm.adapter.laws.codelessClass
 import io.github.mbackschat.a12.dm.core.ModelInputException
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.error.IProblem
@@ -115,15 +116,17 @@ class A12ReportStreamTest {
                     DraftComputation.Alternative(calculation.commonPrecondition(), if (blank) "" else work)
                 }, calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
             val json = validator.inject(host, computation)
+            // A12's basic check states the blank operation last, once however many alternatives are blank (KF626).
             val expected = when {
                 missing -> listOf("MVK_INVALID_ENTITY")
                 first || second -> listOf("MVK_UNEXPECTED_TOKEN")
                 else -> emptyList()
-            }
+            } + if (first || second) listOf("RK_COMPUTATION_OPERATION_EMPTY") else emptyList()
             val whole = originalOutcome(json)
             val id = "$missing:$first:$second"
             assertEquals(null, whole.failure, id)
-            assertEquals(expected, whole.callbacks.map { code(it.message) }.filter { it.startsWith("MVK_") }, "$id kernel")
+            assertEquals(expected, whole.callbacks.map { code(it.message).takeIf { c -> c != "(no code)" } ?: codelessClass(it.message) }
+                .filter { it.startsWith("MVK_") || it.startsWith("RK_") }, "$id kernel")
             val portable = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
             if (expected != portable) mismatches += "$id: expected $expected, portable $portable"
             count++

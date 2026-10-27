@@ -65,7 +65,7 @@ class BlankDslSlotTest {
         expected["a BLANK common precondition"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["a filled operation — the control"] = emptyList()
         // The row that makes the per-member rule necessary: the SAME blank, a different code.
-        expected["a BLANK operation"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["a BLANK operation"] = listOf("MVK_INCOMPLETE_INPUT", "RK_COMPUTATION_OPERATION_EMPTY")
         assertEquals(expected, actual, "what the checker says about a blank DSL slot")
     }
 
@@ -95,8 +95,9 @@ class BlankDslSlotTest {
         ).findings.map { it.code }
         // A12 gives BOTH codes here and the owning family already reproduces the pair, which is why the
         // blank-slot rule excludes this member: without the exclusion it would add a THIRD finding
-        // duplicating the second code. The pair is the measured answer, not a redundancy.
-        assertEquals(listOf("MVK_CONDITION_MISSING", "MVK_INCOMPLETE_INPUT"), codes,
+        // duplicating the second code. The pair is the measured answer, not a redundancy; A12's codeless basic
+        // sentence follows it as `RK_ERROR_CONDITION_EMPTY` ([KERNEL-FINDINGS KF626]).
+        assertEquals(listOf("MVK_CONDITION_MISSING", "MVK_INCOMPLETE_INPUT", "RK_ERROR_CONDITION_EMPTY"), codes,
             "the owning family speaks for a blank condition, and the blank-slot rule must not echo it")
     }
 }

@@ -428,6 +428,7 @@ A replacement landing is conditional ownership, not an instruction to rewrite ev
 | syntax | `CONDITION_COMPLETENESS` | R3a replaces the syntax mechanism; family/report contract retained |
 | parse-action | `CONNECTIVE_AGREEMENT` | R3b candidate; retained through R3a |
 | syntax | `CONDITION_GRAMMAR` | R3a replaces the syntax mechanism; family/report contract retained |
+| basic (last consistency rule, model as read) | `BASIC_SENTENCES` | own family; mirrors `BasicConsistencyCheck`, stated through any variant filter (KF626) |
 <!-- checker-stage-families:end -->
 
 ### What this map opens

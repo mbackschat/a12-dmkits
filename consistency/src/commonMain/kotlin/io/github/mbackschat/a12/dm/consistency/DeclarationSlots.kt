@@ -203,7 +203,7 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
                         "none at all",
                     element.path,
                 ),
-            ) + listOfNotNull(emptyCodeFinding(element, declared as JsonPrimitive?))
+            )
         // An explicit `null` refuses A12's own reader on every rule member measured, which is a tier ABOVE a
         // verdict: no rule is examined, so reporting `MVK_ERROR_CODE_MISSING` here would present this
         // checker's reading as A12's about a model A12 never judged.
@@ -223,20 +223,6 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
         else -> emptyList()
     }
 }
-
-/**
- * A12's second sentence for a rule with no code, which only an ABSENT or zero-length `errorCode` draws — a blank
- * one draws the class alone — and which A12 states before any variant filter, so a rule an `ONLY` filter deletes
- * still draws it, alone ([KERNEL-FINDINGS KF579], [VARIANT_BLIND_CODES]).
- */
-private fun emptyCodeFinding(element: TrackedDeclaration, declared: JsonPrimitive?): Finding? {
-    if (declared != null && declared.content.isNotEmpty()) return null
-    return slotFinding(element, RK_ERROR_CODE_EMPTY,
-        "this rule's `errorCode` is absent or empty, which A12 states in a sentence with no class before it " +
-            "applies any variant filter: \"The error code is empty.\"")
-}
-
-internal const val RK_ERROR_CODE_EMPTY = "RK_ERROR_CODE_EMPTY"
 
 /** The three constants A12's `Severity` binding admits — exactly, and case-sensitively. */
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")

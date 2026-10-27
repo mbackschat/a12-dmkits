@@ -1771,7 +1771,7 @@
       }
     },
     "kf299": {
-      "sha256": "1c47177dfa580dbc3183602f57c7390219f166a2cdc90573247dee78abdca0a6",
+      "sha256": "086fc30e4645a7de55e4624c1bb995fd0a2c7a801f33e168e1e158450297cf01",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -2107,7 +2107,7 @@
       }
     },
     "kf579": {
-      "sha256": "6146d45f1a6e63ddba93d54df125da99cf83ad7ebb9fe44837db2f62375ac262",
+      "sha256": "4da352e5f1a1035b07c018e1945355e00bd401aa2ededb4a0ec1685fd19b4cb7",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -12740,7 +12740,7 @@
       }
     },
     "kf498": {
-      "sha256": "53908ec8294a0feed2c1979cda4d5c64960db3f8d42a2f26765d7f54bea39d8e",
+      "sha256": "27a81e17d1ba200f39cd08330ea75bc41efbb070c6982617686058519cf2212a",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -14870,6 +14870,85 @@
           "state": "NOT_APPLICABLE",
           "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
           "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf626": {
+      "sha256": "9034d655f231f226589cf624c4b068c4729f05cea48d0c441861d2de1a8461eb",
+      "task": "SS28",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "A12's basic sentences and the conversion failures a deleting filter lifts"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel on the forty rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [
+          "the diagnostics catalog"
+        ],
+        "a12-kernel-lean": [
+          "the filtered build-table rows of SPEC-2026-10-27-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits' builders already refuse every empty member here (SerializerTierParityTest classifies them).",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The BASIC_SENTENCES family publishes each reachable sentence through any variant filter on the empty string alone, and a declaration the default variant removes no longer reports its conversion failure.",
+          "evidence": {
+            "A12's basic sentences and the conversion failures a deleting filter lifts": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceAgreementTest.kt#theCheckerStatesWhatA12StatesWithAndWithoutTheFilter",
+              "witness": "Forty rows, each defect kept and filtered, with A12's classes asserted live and the checker's answer compared to them."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission sentence does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission sentence does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's classes are read from BoundModel with codeless sentences mapped by codelessClass.",
+          "evidence": {
+            "BoundModel on the forty rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceAgreementTest.kt#theCheckerStatesWhatA12StatesWithAndWithoutTheFilter",
+              "witness": "The A12 column is asserted against BoundModel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "The nine new RK codes are registered in RkCode, so `dmtool diagnostics` serves them.",
+          "evidence": {
+            "the diagnostics catalog": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CliTourFreshnessTest.java#cliTourDiagnosticsCountMatchesTheLiveRegistry",
+              "witness": "The CI-verified tour counts the live diagnostics registry."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "OPEN",

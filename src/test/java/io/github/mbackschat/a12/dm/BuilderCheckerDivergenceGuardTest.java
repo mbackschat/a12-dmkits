@@ -148,6 +148,11 @@ class BuilderCheckerDivergenceGuardTest {
             // Entered this map on 2026-09-18 — the checker had never named the code until that KDoc.
             Map.entry("MVK_INVALID_TIME_ZONE", Disposition.PROSE_ONLY),
 
+            // The kit names it only in `RkCode.ERROR_CONDITION_EMPTY`'s description, to say which class the
+            // codeless basic sentence rides beside (KF626); the checker reports the class for an empty or blank
+            // condition, and the kit's builder refuses that condition before any code is involved.
+            Map.entry("MVK_CONDITION_MISSING", Disposition.PROSE_ONLY),
+
             // Both estates enforce A12's boolean-kind law, on carriers that cannot share a reader:
             // `Computation` refuses `False` into a CONFIRM computed field and the wrong constant into a
             // BOOLEAN one, each measured (`ConfirmComputationSourceKindLawsTest`), while

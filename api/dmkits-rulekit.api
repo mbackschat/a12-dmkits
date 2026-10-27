@@ -3066,17 +3066,24 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode BOUND_SIGNED_ZERO
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode BOUND_TOO_MANY_DIGITS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_FORBIDDEN_CONSTRUCT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_OPERATION_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_OVERLAPPING_PRECONDITIONS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTED_FIELD_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CONTRADICTORY_PRESENCE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_FORMAT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_SEPARATOR_INVALID
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ENUM_CATEGORY_DUPLICATE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ENUM_TEXT_LINE_BREAK
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ENUM_VALUE_DUPLICATE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_CODE_ALPHABET
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_CODE_EMPTY
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_CONDITION_EMPTY
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_ENTITY_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_FIELD_OUTSIDE_GROUP
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode FIELD_NAME_ALPHABET
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GOTCHA
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GROUP_PATH_INVALID
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ID_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INCOMPLETE_RULE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INPUT_UNREADABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERNAL_ERROR
@@ -3102,6 +3109,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOVE_CHANGES_GROUP_EXPANSION
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOVE_INTO_SELF
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MULTISELECT_MIN_ROWS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NAME_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NAME_EXISTS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NEG_CONDITION_IN_ITERATION
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_KERNEL_BACKEND
@@ -3125,6 +3133,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RULE_NAME_ALPHABET
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode SORT_LIST_ABOVE_CAPACITY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_MISMATCH
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_REFERENCE_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_ENTITY_REFERENCE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_MESSAGE_LOCALE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNGUARDED_NUMBER_COMPARISON
