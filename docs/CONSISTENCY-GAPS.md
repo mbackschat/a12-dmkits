@@ -9,6 +9,7 @@
 ## 1. Open
 
 - **DG158 — a field `label` entry whose `text` is `null` (opened 2026-10-27).** A12's reader refuses the source ("Unexpected node type for localized text: NULL"), with or without an `ONLY` filter on the field, so A12 reaches no verdict; the checker reads the model and reports nothing where it should report `CK_MODEL_NOT_BUILDABLE`. Measured beside [KF626](KERNEL-FINDINGS.md#kf626)'s grid on 2026-10-27. Settled by a reader-tier check of every localized-text member the checker does not yet read, the `errorMessage` shape being the one it already reads (`MessageSlotRawShapeLawsTest`).
+- **DG159 — a temporal `format` outside the admitted vocabulary (opened 2026-10-27).** A `TimeType` declared `HH:mm` is refused by A12 with the codeless sentence "The date format is invalid.", and the checker reports nothing, because [TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md) is not claimed closed and refusing every format outside it would rest a refusal on the limit of a probe ([KF313](KERNEL-FINDINGS.md#kf313)). Met as a fixture slip while measuring [KF627](KERNEL-FINDINGS.md#kf627). Settled by publishing the derived Refused set into `:consistency` from `:dumpTemporalVocabulary` and refusing its members alone, after measuring whether an `ONLY` filter lifts the sentence.
 
 ## 2. Out of scope
 
