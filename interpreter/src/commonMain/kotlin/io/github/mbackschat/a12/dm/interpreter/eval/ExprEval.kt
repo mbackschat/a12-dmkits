@@ -368,7 +368,7 @@ internal fun <T> Interpreter.withIndexedStar(
         ?: throw UnsupportedConstructException("this field-list operand requires a starred source")
     val indexField = indexFieldOf(source.path)
         ?: throw UnsupportedConstructException("SemanticIndex needs an index field on ${source.path}")
-    val parent = Expr.Field(indexField.substringBeforeLast('/'), source.outer)
+    val parent = Expr.Field(keyedStarSelectionGroup(source, indexField), source.outer)
     val row = when (val selection = keyedGroupSelection(parent.semanticIndex(checkNotNull(operand.semanticIndex)))) {
         is KeyedGroupSelection.Row -> selection.ctx
         is KeyedGroupSelection.Absent -> ctxOf(parent).absentGroupRow(parent.path, selection.repetitions)

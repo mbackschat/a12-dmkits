@@ -52,11 +52,16 @@ internal fun TrackedFactBase.groupWildcardContributions(
     return callContributions(element, execution) { member, call ->
         val arm = gates[call.operator] ?: return@callContributions null
         if (anOperandIsRefusedOnRead(call, element)) return@callContributions null
-        if (arm == GroupConditionArm.LIST && call.operands.any { namesARootGroup(it.path, group, element) })
+        // A sound key keeps the star its group carries, and a defective one yields: the semantic-index chain
+        // answers first (KERNEL-FINDINGS KF476, `adapter.laws.CheckerKeyedStarOperandAgreementTest`).
+        val reads = call.operands.map { operand ->
+            operandReferenceIn(operand.text, group, element, call.inAFilterBody) { operand.path?.let(::OperandReference) }
+                ?.reference
+        }
+        if (arm == GroupConditionArm.LIST && reads.any { namesARootGroup(it, group, element) })
             return@callContributions null
-        val starred = call.operands.firstOrNull { starsARepetition(it.path, group, element) }
-            ?: return@callContributions null
-        wildcardFinding(arm, call.operator, starred.path.orEmpty(), element, member, call.spanIn(member))
+        val starred = reads.firstOrNull { starsARepetition(it, group, element) } ?: return@callContributions null
+        wildcardFinding(arm, call.operator, starred, element, member, call.spanIn(member))
     }
 }
 

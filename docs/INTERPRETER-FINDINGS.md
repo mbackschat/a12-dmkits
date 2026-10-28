@@ -5109,3 +5109,27 @@ The expansion was right and the read was not. `expandOneGroupOperand` gives each
 [KF638](KERNEL-FINDINGS.md#kf638) measured a non-repeatable group's nominated key: required while the group holds content, and an ordinary empty when the group is present but holds nothing or only a `null` key. Validation already asked `requiredEmpty`, which says exactly that. `AutoChecks.preliminaryEmptyIndexCells` listed every empty key of an instantiated index-group row instead, so the prepass cleared `FirstFilledValue(Holder/HolderKey, Holder/Alt)` where A12 reads past the key to `0`. It now asks the same predicate, so the two consumers cannot disagree about which keys are required.
 
 *Locked:* `adapter.laws.NonRepeatableIndexKeyComputationDiffTest`.
+
+### IF447: a keyed root group references only its index field (2026-10-28) <a id="if447"></a>
+
+[KF478](KERNEL-FINDINGS.md#kf478) measured `GroupFilled(/Policy For "P1")` from a rule at the indexed root: A12 references the error field and the index field and nothing else, since it expands no root group, keyed or not ([KF522](KERNEL-FINDINGS.md#kf522)). `ModelStaticPlans.expandSelectedReference` expanded the keyed root to every field it covers, so the interpreter's message named the policy's whole content. A keyed root now covers nothing, as the unkeyed root does, and keeps its index field.
+
+*Locked:* `adapter.laws.SingleInstanceKeyOperandDiffTest`.
+
+### IF448: a computation reading through a key lists the index field among its operand errors wherever the index sits (2026-10-28) <a id="if448"></a>
+
+[KF478](KERNEL-FINDINGS.md#kf478) measured an empty index field under a key over the root, a fixed group, and a fixed group inside each row of a repeatable one: A12 lists it among the computation's operand errors on all three. `ComputationEngine.operandSelection` selected the index fields of the key's repeatable ancestors only, a rule measured on repeatable index groups, so a single-instance index group's empty key was never an operand error. It now selects the index field of every ancestor group.
+
+*Locked:* `adapter.laws.SingleInstanceKeyOperandDiffTest`.
+
+### IF449: a keyed star below the index group is read in the firing row's lower coordinates (2026-10-28) <a id="if449"></a>
+
+[KF475](KERNEL-FINDINGS.md#kf475) measured `Sum(Items*/Qty For "s2")` from a rule iterating `Shelves`, inside `Stores` keyed by `StoreCode`: the key selects the store, the firing row fixes the shelf, and a shelf the selected store lacks is a clean no-match. `withIndexedStar` selected the index group's row and let the star read from it, which left the shelf level to that row's context rather than the firing shelf, and the short store's firings disagreed with A12's. It now selects the group directly above the first star whenever that group lies at or below the index group, so every level between keeps the firing row's coordinate and a missing row reads as an absent one.
+
+*Locked:* `adapter.laws.KeyedLowerRowDiffTest`.
+
+### IF450: `FieldValuesNotUnique` compares a keyed field's selected cell (2026-10-28) <a id="if450"></a>
+
+[KF475](KERNEL-FINDINGS.md#kf475) measured `FieldValuesNotUnique(Label, Label For "s2")` from that same shelf rule: the keyed operand contributes the selected store's cell in the firing shelf's row, so a shelf of the selected store duplicates itself, and a shelf the selected store lacks contributes nothing. `comparedCells` had no arm for a keyed field and reported the rule unsupported. It now contributes `semanticIndexCell`, the reader every other consumer of a keyed field already uses, so an empty or missing selected cell compares nothing and an unusable key is skipped like any unconvertible cell.
+
+*Locked:* `adapter.laws.KeyedLowerRowDiffTest`, Label and Date operands.

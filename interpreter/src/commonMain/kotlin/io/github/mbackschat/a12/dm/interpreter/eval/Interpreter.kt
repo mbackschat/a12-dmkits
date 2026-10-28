@@ -1544,7 +1544,7 @@ class Interpreter(
      * in group admission (KF187). Their shared field reader must not choose that operator-specific contract.
      */
     private fun comparedCells(a: Expr): Sequence<Val> {
-        if (a.isIndexedStar()) return withIndexedStar(a as Expr.EntitySpec, sequenceOf(Val.Unknown)) { comparedCells(it) }
+        keyedOperandCells(a) { comparedCells(it) }?.let { return it }
         // Routed through the SHARED owner rather than expanding here. This site used to carry a complete private
         // copy — `containedFields` + `Expr.Star` construction + recursion — with only the depth formula delegated,
         // so the "one owner" claim was false and, worse, the copy DIVERGED: its starred arm passed `bindDepth` raw

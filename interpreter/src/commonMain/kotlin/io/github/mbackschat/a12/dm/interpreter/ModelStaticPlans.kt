@@ -259,11 +259,14 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     /**
      * A selected operand names every field it covers, a group's fields included, and beside them the selected
      * row's own index field: A12 references both whether or not the read is reached (SPEC-2026-10-07-02,
-     * `adapter.laws.SelectedMessageReferenceDiffTest`). A path under no indexed group selects nothing to name.
+     * `adapter.laws.SelectedMessageReferenceDiffTest`). A path under no indexed group selects nothing to name. A
+     * keyed ROOT covers nothing, as an unkeyed one does, and leaves the index field alone
+     * (`adapter.laws.SingleInstanceKeyOperandDiffTest`).
      */
     private fun expandSelectedReference(reference: MessageReference.Selected): List<MessageReference> {
         val indexField = nearestIndexFieldOf(model.indexFields, reference.path) ?: return emptyList()
-        return (coveredFieldPaths(reference.path) + indexField).distinct()
+        val covered = if (pathParts(reference.path).size == 1) emptyList() else coveredFieldPaths(reference.path)
+        return (covered + indexField).distinct()
             .map { path -> reference.copy(path = path, indexField = indexField) }
     }
 

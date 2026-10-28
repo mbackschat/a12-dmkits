@@ -25,8 +25,10 @@ class UnsupportedDegradeTest {
     private val model = ModelDef(
         fields = listOf(FieldDef(cn, Kind.STRING), FieldDef(sku, Kind.STRING), FieldDef(count, Kind.NUMBER)),
         rules = listOf(
-            // a semantic index in a FieldValuesNotUnique operand position — kernel-legal, not modeled there
-            RuleDef("/Order/R1", "/Order", "FieldFilled(CustomerName) And FieldValuesNotUnique($count For \"K1\", CustomerName)", "R1", "../CustomerName"),
+            // a semantic index on a group that declares no index field: A12 refuses it (`MVK_NO_INDEX_FIELD`,
+            // KERNEL-FINDINGS KF476), so it reaches the evaluator only from an unchecked model, and the evaluator
+            // cannot model it. The keyed uniqueness operand this row used until 2026-10-28 is modeled now (KF475).
+            RuleDef("/Order/R1", "/Order", "FieldFilled(CustomerName) And [CustomerName For \"K1\"] == \"a\"", "R1", "../CustomerName"),
             // a healthy rule that must still evaluate (and fire) despite R1's degrade
             RuleDef("/Order/R2", "/Order", "FieldFilled(CustomerName)", "R2", "../CustomerName"),
         ),

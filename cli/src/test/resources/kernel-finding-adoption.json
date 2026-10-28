@@ -4485,14 +4485,15 @@
       }
     },
     "kf475": {
-      "sha256": "5d8f8fe30e8841da44415c209ad533112130df23dc3ff22a42b6e4db7e95a1f9",
-      "task": "IG155",
+      "sha256": "8b15571e656fe301122a7f8303dc8cad713da1f9f5f2e18c857f4e9d97626152",
+      "task": "SS39",
       "scope": {
         "adapter": [
           "keyed-star runtime oracle",
           "keyed-list membership and uniqueness",
           "independently keyed product extents",
-          "mixed absent-key product provenance"
+          "mixed absent-key product provenance",
+          "a lower level below the key that the rule iterates"
         ],
         "dmkits": [
           "typed scalar and collection key composition"
@@ -4501,7 +4502,8 @@
           "keyed-star runtime evaluation",
           "keyed-list membership and uniqueness",
           "independently keyed product extents",
-          "mixed absent-key product provenance"
+          "mixed absent-key product provenance",
+          "a lower level below the key that the rule iterates"
         ],
         "checker": [
           "keyed-star admission population"
@@ -4517,7 +4519,8 @@
         ],
         "a12-kernel-lean": [
           "specification",
-          "evidence"
+          "evidence",
+          "the lower level a rule iterates below a key, SPEC-2026-10-28-07"
         ]
       },
       "consumers": {
@@ -4540,6 +4543,10 @@
             "mixed absent-key product provenance": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AbsentKeyedProductDiffTest.kt#anAbsentKeyMakesTheMixedProductZeroInEitherOperandOrder",
               "witness": "Both kernel strategies and the interpreter lock both P1/absent-P3 orders against zero and one, exact omission attachment, and populated/absent square controls."
+            },
+            "a lower level below the key that the rule iterates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedLowerRowDiffTest.kt#aShelfTheSelectedStoreLacksIsANoMatch",
+              "witness": "Both kernel strategies pin every firing of the short selected store."
             }
           }
         },
@@ -4550,7 +4557,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Selected-parent readers preserve field-list roles; the differential compares every row positionally, including distinct documents with identical condition and row-count labels.",
+          "basis": "A keyed group operand reads its fields in the row its key selects. A keyed star below the index group is read in the firing row's coordinates down to the star, and a keyed field compared for uniqueness contributes its selected cell, so a row the selected group lacks is a clean no-match.",
           "evidence": {
             "keyed-star runtime evaluation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedGroupFieldListDiffTest.kt#aKeySelectsTheParentBeforeItsStarredChildrenAreRead",
@@ -4567,6 +4574,10 @@
             "mixed absent-key product provenance": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AbsentKeyedProductDiffTest.kt#anAbsentKeyMakesTheMixedProductZeroInEitherOperandOrder",
               "witness": "Both kernel strategies and the interpreter lock both P1/absent-P3 orders against zero and one, exact omission attachment, and populated/absent square controls."
+            },
+            "a lower level below the key that the rule iterates": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedLowerRowDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter equals both kernel strategies on five documents on every channel."
             }
           }
         },
@@ -4592,7 +4603,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The September 30 reply receipts the keyed runtime extension and requests committed provenance for the mixed P1/absent-P3 row. AbsentKeyedProductDiffTest supplies that new lock; its outbound provenance response still requires peer receipt.",
+          "basis": "Not yet handed over.",
           "evidence": {}
         }
       }
@@ -16938,22 +16949,25 @@
       }
     },
     "kf478": {
-      "sha256": "e6133737e8ad77ced65ce2630c295a4659fde5e315d94d468fa111fd9f922d92",
-      "task": "SS34",
+      "sha256": "788fe2cf7f2d37418b1091044126944bd306ac6f06da1c1ee4af9dd5a2ed424e",
+      "task": "SS40",
       "scope": {
         "dmkits": [],
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "admission of a key over a root or fixed-group index"
+          "admission of a key over a root or fixed-group index",
+          "references and operand errors of a single-instance key"
         ],
         "interpreter": [
-          "the instance a key over a root or fixed-group index selects"
+          "the instance a key over a root or fixed-group index selects",
+          "references and operand errors of a single-instance key"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the root and fixed-group index rows of SPEC-2026-10-28-02"
+          "the root and fixed-group index rows of SPEC-2026-10-28-02",
+          "the one instance a root or fixed-group key selects at runtime, SPEC-2026-10-28-08"
         ]
       },
       "consumers": {
@@ -16984,16 +16998,24 @@
             "admission of a key over a root or fixed-group index": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/SemanticIndexPinnedLevelLawsTest.java#aKeyOverARootOrFixedIndexAdmitsWhatElseAddresses",
               "witness": "Ten rows over two carriers: four admitted forms and the unstarred-list refusal on each."
+            },
+            "references and operand errors of a single-instance key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SingleInstanceKeyOperandDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Both kernel strategies agree on messages, references and operand errors on three documents."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The key selects the one instance of its index group, or none when it differs or is empty.",
+          "basis": "The key selects its index group's one instance. A keyed root covers no field, so it references only its index field, and a computation reading through any key lists that key's empty index field among its operand errors.",
           "evidence": {
             "the instance a key over a root or fixed-group index selects": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#aKeyOverARootOrFixedIndexSelectsThatGroupsOneInstance",
               "witness": "Match, mismatch and empty key on both carriers; every engine fires the same rules."
+            },
+            "references and operand errors of a single-instance key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SingleInstanceKeyOperandDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter equals both kernel strategies on every document."
             }
           }
         },
@@ -17072,6 +17094,78 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "dmtool's rule check delegates admission to the kernel; its portable engine is the checker assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf476": {
+      "sha256": "ca165568aaf8adad850305bdfc9ae265e5806165dd22fd53b25c8ce60af1f7a7",
+      "task": "SS39",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a keyed star below the index group"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check and checkConsistency on the twenty-four rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the keyed star below the index group of SPEC-2026-10-28-07"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring of a keyed star is unchanged; admission is the kernel's.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "A key admits a star below its index group, and that star meets each single-value operand gate as an unkeyed star does; the checker reduces a keyed operand with its stars before the gate.",
+          "evidence": {
+            "a keyed star below the index group": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedStarOperandAgreementTest.kt#aStarBelowTheKeyedGroupMeetsEveryOperandGate",
+              "witness": "Twenty-four rows, each asserting the checker's codes equal A12's."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "rule check and checkConsistency on the twenty-four rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyedStarOperandAgreementTest.kt#aStarBelowTheKeyedGroupMeetsEveryOperandGate",
+              "witness": "The A12 column is asserted from RuleValidator, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, which already refuses these rows.",
           "evidence": {}
         },
         "a12-kernel-lean": {

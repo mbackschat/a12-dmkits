@@ -525,10 +525,11 @@ private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, Toke
  * entry was dead data behind a comment that promised the opposite, and every family typing an operand
  * through [bareReferenceField] is SILENT on a starred operand.
  *
- * The silence UNDER-reports and is therefore safe, so it is not widened here: admitting the star would make
- * a dozen families judge an operand shape none of them has been measured against, which is the one direction
- * that needs a kernel basis first
- * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed").
+ * The silence UNDER-reports and is therefore safe, so this set is not widened: admitting the star here would
+ * make every bare-spec reader judge an operand shape none of them has been measured against
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed"). The one
+ * reader that does admit it is a KEYED operand's value spec ([keyedReferenceIn]), where the unkeyed operand
+ * already reaches the same gates with its star kept.
  */
 private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".", "..")
 
@@ -664,7 +665,10 @@ private fun TrackedFactBase.keyedReferenceIn(
         ?: return null
     if (category != null && !keepsCategory) return null
     val valueText = if (arrow < 0) inner.substring(0, use.keywordAt) else inner.substring(0, head[arrow].start)
-    val value = bareReferenceIn(valueText, conditionLanguage) ?: return null
+    // The value spec keeps a star below the index group, as the unkeyed operand's path does: A12's star gates
+    // read the entity whether or not it carries a key, and the semantic-index chain below has already refused a
+    // star on or above the index group (KERNEL-FINDINGS KF476, `adapter.laws.CheckerKeyedStarOperandAgreementTest`).
+    val value = bareReferenceIn(valueText, conditionLanguage, admitsStars = true) ?: return null
     val key = inner.substring(use.start, use.end)
     val bareKey = if (use.keyLiteral != null) {
         tokenize(key).size == 1
@@ -729,9 +733,12 @@ internal fun TrackedFactBase.singleReferenceOf(
     referencesIn(operand, conditionLanguage).singleOrNull()?.let { OperandReference(it) }
 }?.reference
 
-/** The one reference a bare entity spec reduces to, or null for text that is not one — no model read. */
-private fun bareReferenceIn(text: String, language: ConditionLanguage): String? {
-    if (!isBareEntitySpec(text)) {
+/**
+ * The one reference a bare entity spec reduces to, or null for text that is not one — no model read. With
+ * [admitsStars], a repetition star directly after a step's name is part of the spec, as `referencesIn` keeps it.
+ */
+private fun bareReferenceIn(text: String, language: ConditionLanguage, admitsStars: Boolean = false): String? {
+    if (!isBareEntitySpec(text, admitsStars)) {
         return null
     }
     return referencesIn(text, language).singleOrNull()
@@ -745,10 +752,14 @@ private fun bareReferenceIn(text: String, language: ConditionLanguage): String? 
  * claim about a result A12 computes from the whole expression. It is also what keeps a clause — a filter, a
  * scope, a semantic-index key, a category arrow — out of a reader that cannot compare one.
  */
-internal fun isBareEntitySpec(text: String): Boolean {
+internal fun isBareEntitySpec(text: String, admitsStars: Boolean = false): Boolean {
     val tokens = tokenize(text)
-    return tokens.isNotEmpty() && tokens.none {
-        it.kind !in REFERENCE_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
+    return tokens.isNotEmpty() && tokens.withIndex().none { (at, token) ->
+        val starOfAStep = admitsStars && token.text == "*" && tokens.getOrNull(at - 1)?.kind.let {
+            it == TokenKind.NAME || it == TokenKind.QUOTED_NAME
+        }
+        !starOfAStep && (token.kind !in REFERENCE_TOKENS ||
+            (token.kind == TokenKind.PUNCTUATION && token.text !in SPEC_PUNCTUATION))
     }
 }
 

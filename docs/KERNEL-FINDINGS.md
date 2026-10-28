@@ -11550,6 +11550,18 @@ Three facts, each with the row that separates it from its rival:
 
 **Extended 2026-10-01 — the mixed absent-key product is committed provenance.** On an independently typed parcel fixture with P1 weights 2/5 and no P3 row, `SumOfProducts` pairing P1 with P3, and P3 with P1, compared with zero fires one `OMISSION_ERROR` at `/Order[1]/Reference` on dynamic Groovy, generated Java and the interpreter. Comparison with one stays silent in both orders; the same fixture also locks P1 squared against 29 and P3 squared against zero. Every rule first passes Kernel 30.8.1 consistency. `adapter.laws.AbsentKeyedProductDiffTest.anAbsentKeyMakesTheMixedProductZeroInEitherOperandOrder` locks all six observations separately. Its red step deliberately expected `VALUE_ERROR` on the first mixed row and failed against the kernel's `OMISSION_ERROR`, so a changed polarity cannot pass as mere firing agreement. Scope is full validation through direct cell construction, a String package index, a lower single-star Number list, and the filled root Reference guard; no computation, partial-validation or other index-kind claim is added. The September 30 outbound letter cited these mixed rows as a direct probe, while the then-committed `KeyedGroupFieldListDiffTest` held only P3 squared; this lock supplies the missing durable witness rather than claiming that older test already held it.
 
+**Extended 2026-10-28 — a level below the key that the rule iterates (a12-kernel-lean SPEC-2026-10-28-07).** A rule reporting on `Shelves`, inside `Stores` keyed by `StoreCode`, reads a key over the store at the firing shelf's row. On a document whose first store has three shelves and whose selected store `s2` has one:
+
+| rule, beside `FieldFilled(ShelfNote)` | fires on | type |
+|---|---|---|
+| `Sum(Items*/Qty For "s2") > 0` | the first shelf of each store | OMISSION |
+| `Sum(Items*/Qty For "s2") == 0` | the first store's second and third shelf | OMISSION |
+| `FieldValuesNotUnique(Label, Label For "s2")`, and its Date twin | the first shelf of each store | VALUE |
+
+So the key selects the store, the firing row fixes the shelf, and a shelf the selected store lacks is a clean no-match: the starred sum counts nothing, and the uniqueness test meets no partner. A shelf of the selected store compares with itself, so its own row is a duplicate. The rival account, that the key selects the store and the star spans all its shelves, predicts the `> 0` rule on all four shelves. Every document also agrees across the three engines when the selected store has every shelf, when its shelves differ, when no store carries the key, and when two stores carry it ([IF449](INTERPRETER-FINDINGS.md#if449), [IF450](INTERPRETER-FINDINGS.md#if450)).
+
+*Locked by:* `adapter.laws.KeyedLowerRowDiffTest`, the short store's firings pinned with their rows and types in `aShelfTheSelectedStoreLacksIsANoMatch`.
+
 ## §9 supplement — a semantic-index key addresses the repetition it keys on each operand gate measured, and a defective key answers before that gate (kernel `checkConsistency`, 2026-09-25) <a id="kf476"></a>
 
 > Fold: not-foldable — a diagnostic-class law about which gate answers on a keyed operand, not an evaluation behaviour.
@@ -11592,6 +11604,12 @@ So a refused constant answers before the filter on the same operand. A string ke
 The checker names A12's class on every row of the grid. The differential now fails on a silent row too, where it had tolerated silence on a key defect; the only rows it listed were those of the constant typing [KF484](#kf484) closed.
 
 *Locked by:* `rulekit.validate.laws.KeyedOperandFamilyGateLawsTest`, every row on all twenty-seven gates with each class written out (the keyed and `For 5` reads of the filtered level's own body, and the seven added carriers, locked there since 2026-09-26); the checker against A12 on the same model: `adapter.laws.CheckerKeyedOperandAgreementTest`.
+
+**Extended 2026-10-28 — a star below the index group (a12-kernel-lean SPEC-2026-10-28-07's `q4`).** A key admits a star on a level below the group that declares the index ([KF351](#kf351)), and that star then meets each single-value operand gate as an unkeyed star does. From a rule iterating `Shelves` inside `Stores`, keyed by `StoreCode`, a read of `Items*` under `For "s1"` is `MVK_NO_WILDCARDS_ALLOWED` in `GroupFilled`, `GroupNotFilled`, `FieldFilled`, `FieldNotFilled`, `Valid`, `RangeAsString`, `RoundAccountingValue`, `AbsValue`, `Length`, `DayFromDate`, a value-list subject, a `RepetitionNotUnique` key, a `Date(…)` construction slot, a bracketed read and a value-list entry. It is `MVK_NO_WILDCARDS_G_ALLOWED` in `AllGroupsFilled` and `NotAllGroupsFilled`. `AtLeastOneGroupFilled` and `Sum` admit it. The controls hold the key's own chain fixed: the star on the index group is `MVK_SEMANTIC_INDEX_AND_WILDCARD`, and the unstarred `Items` is `MVK_NO_WILDCARD` while the bound `Shelves` is admitted. `Valid` over a keyed Number is `MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM`, as over an unkeyed one.
+
+The checker read a keyed operand through a reader that refused any star, so every gate but the bracketed read and the value-list entry stood down on these rows. It now admits the star of a step in a keyed value spec and runs each gate on the reduced reference. A starred keyed operand is also kept out of the group-list duplicate comparison, as an unkeyed star is.
+
+*Locked by:* `adapter.laws.CheckerKeyedStarOperandAgreementTest`, A12's column from `RuleValidator`, kernel 30.8.1.
 
 ## §9 supplement — the level a rule iterates addresses a scalar slot's read, from the declaring group or the error field's (kernel `checkConsistency`, 2026-09-25) <a id="kf477"></a>
 
@@ -11643,6 +11661,10 @@ The portable checker pinned "the one repetition crossed" whenever a key stood on
 **Extended 2026-10-28: what a key over a root or fixed-group index admits, and which row it selects** (a12-kernel-lean SPEC-2026-10-28-02). With the root or `Cover` indexed, A12 admits `[Cover/Note For "X"] == "a"`, `FieldFilled(Cover/Note For "X")`, `Sum(Cover/Items*/Amount For "X")`, and `[Amount For "X"]` from a rule in `Cover/Items`. The unstarred list past the key stays `MVK_NO_WILDCARD`. At runtime the key selects the group's one instance. A stored index equal to the key reads as the unkeyed row and a different one reads empty. An empty index fires neither the read nor its absence and draws `mandatoryField`. The peer's 91-row static batch, rerun here on kernel 30.8.1, reproduces every `ug` verdict, and the checker agrees on each.
 
 *Locked by:* `rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest.aKeyOverARootOrFixedIndexAdmitsWhatElseAddresses` and `adapter.laws.RowBoundSelectedReferenceDiffTest.aKeyOverARootOrFixedIndexSelectsThatGroupsOneInstance` (three-engine).
+
+**Extended 2026-10-28 — what the one instance yields at runtime (a12-kernel-lean SPEC-2026-10-28-08).** A key over a root index or a fixed-group index selects that group's one instance. `GroupFilled(/Policy For "P1")`, from a rule at the indexed root, references the error field and the index field `PolicyRef` and nothing else, because A12 expands no root group, keyed or not ([KF522](#kf522)). A computation that reads through such a key reads the index field too. When the index field is empty while its group holds content, it is among that computation's operand errors on all three measured carriers: the root (`[Cover/Amount For "P1"]`), a fixed group (`[Unit/Power For "U1"]`) and a fixed group inside each row of a repeatable one (`[Leg/Fee For "D1"]`). Every document agrees across dynamic Groovy, generated Java and the interpreter on messages, references and operand errors ([IF447](INTERPRETER-FINDINGS.md#if447), [IF448](INTERPRETER-FINDINGS.md#if448)). An error-text parameter keyed as the condition keys its read, `$Cover/Amount For "P1"$`, renders the field's name: `Cover $Cover/Amount For "P1"$ is set` reads `Cover Amount is set`, and the fixed-group twin reads `Unit Power is set`, on all three engines. The unkeyed parameter is `INVALID_FIELD` there, as [KF412](#kf412) found on a repeatable index (the peer's `m1`–`m4` rows, rerun on `rule check`).
+
+*Locked by:* `adapter.laws.SingleInstanceKeyOperandDiffTest`, the rendered texts in `aKeyedNameParameterRendersTheFieldsName`.
 
 ## §9 supplement — a literal semantic-index key is a string constant the index field judges, or a digit sequence the grammar reads as an entity name (kernel `checkConsistency`, 2026-09-25) <a id="kf479"></a>
 

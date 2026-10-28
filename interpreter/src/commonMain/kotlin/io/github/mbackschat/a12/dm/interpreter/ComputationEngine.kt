@@ -798,9 +798,9 @@ internal class ComputationEngine(
                         alternative.precondition?.let(::semanticIndexTargets).orEmpty() +
                             semanticIndexTargets(alternative.operation)
                     }
-            selectIndexesBelow(
-                semanticTargets.flatMap(::ancestorGroups).filter { it in model.repeatable },
-            )
+            // A key reads its index field wherever the index sits, the root and a fixed group included, so an empty
+            // one is among the computation's operand errors (`adapter.laws.SingleInstanceKeyOperandDiffTest`).
+            selectIndexesBelow(semanticTargets.flatMap(::ancestorGroups))
 
             selectIndexesBelow(joinedSidesOf(computationScopeRefs(parsed), targetScopeOf(comp.targetPath)))
         }

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
@@ -69,7 +70,7 @@ internal fun TrackedFactBase.validityConditionContributions(
     return callContributions(element, execution) { member, call ->
         if (call.operator !in carriers) return@callContributions null
         val shape = execution.callsByStart.getValue(call.at)
-        validityDefect(shape, execution.recognition.calls, dateConstruction, group, element)
+        validityDefect(shape, execution.recognition.calls, dateConstruction, group, element, call)
             ?.let { finding(it, shape, element, member) }
     }
 }
@@ -92,6 +93,7 @@ private fun TrackedFactBase.validityDefect(
     dateConstruction: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    call: ConditionCall,
 ): ValidityDefect? {
     val sole = shape.operands.singleOrNull()
     if (sole != null) {
@@ -101,7 +103,7 @@ private fun TrackedFactBase.validityDefect(
         return null
     }
     val name = shape.operands[1].singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
-    return predefinedTypeArmDefect(shape.operands[0], name, declaringGroup, element)
+    return predefinedTypeArmDefect(shape.operands[0], name, declaringGroup, element, call)
 }
 
 /**
@@ -116,11 +118,20 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
     name: Token,
     declaringGroup: String,
     element: TrackedDeclaration,
+    call: ConditionCall,
 ): ValidityDefect? {
-    if (!subject.all { it.isName() || it.text in SUBJECT_PATH_PUNCTUATION || it.text == "*" }) {
-        return null
+    // A keyed subject meets every gate below as the row its key selects, star included, and an index the
+    // semantic-index chain refuses answers before them (KERNEL-FINDINGS KF476,
+    // `adapter.laws.CheckerKeyedStarOperandAgreementTest`).
+    val keyed = call.operands.firstOrNull()?.text?.takeIf { writesASemanticIndex(it) }
+    val written = if (keyed != null) {
+        operandReferenceIn(keyed, declaringGroup, element, call.inAFilterBody) { null }?.reference ?: return null
+    } else {
+        if (!subject.all { it.isName() || it.text in SUBJECT_PATH_PUNCTUATION || it.text == "*" }) {
+            return null
+        }
+        normalizedPath(subject)
     }
-    val written = normalizedPath(subject)
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
     val target = declarationAt(resolved.path) ?: return null
