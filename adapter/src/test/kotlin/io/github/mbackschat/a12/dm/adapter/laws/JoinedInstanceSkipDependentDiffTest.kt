@@ -70,4 +70,34 @@ class JoinedInstanceSkipDependentDiffTest {
                 "/Order[1]/Lines[2]/Slots[1]/TagTotal|VALUE|20", "/Order[1]/Lines[2]/Slots[1]/Total|VALUE|200"),
         ), observed)
     }
+
+    /**
+     * The target's OWN key, a12-kernel-lean SPEC-2026-10-28-04. A key two slots of the first line share skips both
+     * of that line's instances, so their `Total`, its dependent `Doubled`, the `TagTotal` the line's tags feed and
+     * `Grand` are cleared, while the second line computes. A key no `Refs` row carries is no skip: its Number copies
+     * compute `0`, and so does their dependent.
+     */
+    @Test
+    fun theTargetsOwnKeySkipsOnlyWhenDuplicated() {
+        val seeded = """"Total":7,"Doubled":7,"TagTotal":7"""
+        val refs = """"Refs":[{"Key":1,"Amount":100},{"Key":2,"Amount":200}]"""
+        val observed = linkedMapOf(
+            "own duplicate key" to """{"Order":{"Grand":99,$refs,"Lines":[""" +
+                """{"LineNo":1,"Slots":[{"Key":1,$seeded},{"Key":1,$seeded}],"Tags":[{"Key":1,"Bonus":10}]},""" +
+                """{"LineNo":2,"Slots":[{"Key":2,$seeded}],"Tags":[{"Key":2,"Bonus":20}]}]}}""",
+            "own key unmatched" to """{"Order":{"Grand":99,$refs,"Lines":[""" +
+                """{"LineNo":1,"Slots":[{"Key":1,$seeded}],"Tags":[{"Key":1,"Bonus":10}]},""" +
+                """{"LineNo":2,"Slots":[{"Key":3,$seeded}],"Tags":[{"Key":2,"Bonus":20}]}]}}""",
+        ).mapValues { (_, d) -> outcomes(model, d) }
+        fun cleared(slot: Int) = listOf("Doubled", "TagTotal", "Total").map { "/Order[1]/Lines[1]/Slots[$slot]/$it|CLEARED" }
+        assertEquals(linkedMapOf(
+            "own duplicate key" to listOf("/Order[1]/Grand|CLEARED") + cleared(1) + cleared(2) + listOf(
+                "/Order[1]/Lines[2]/Slots[1]/Doubled|VALUE|400", "/Order[1]/Lines[2]/Slots[1]/TagTotal|VALUE|20",
+                "/Order[1]/Lines[2]/Slots[1]/Total|VALUE|200"),
+            "own key unmatched" to listOf("/Order[1]/Grand|VALUE|100", "/Order[1]/Lines[1]/Slots[1]/Doubled|VALUE|200",
+                "/Order[1]/Lines[1]/Slots[1]/TagTotal|VALUE|10", "/Order[1]/Lines[1]/Slots[1]/Total|VALUE|100",
+                "/Order[1]/Lines[2]/Slots[1]/Doubled|VALUE|0", "/Order[1]/Lines[2]/Slots[1]/TagTotal|VALUE|0",
+                "/Order[1]/Lines[2]/Slots[1]/Total|VALUE|0"),
+        ), observed)
+    }
 }

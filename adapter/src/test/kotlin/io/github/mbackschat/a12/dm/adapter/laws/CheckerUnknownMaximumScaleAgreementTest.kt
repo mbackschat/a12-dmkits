@@ -35,10 +35,13 @@ class CheckerUnknownMaximumScaleAgreementTest {
             .numberField("Fee") { it.fractionDigits(2, 2) }
             .numberField("Count") { it.fractionDigits(0) }
             .numberField("MinOpen") { it.fractionDigits(-1, 2) }
+            .numberField("ZeroOpen") { it.fractionDigits(0, -1) }
+            .stringField("Code") { }
             .numberField("HourOpen") { it.fractionDigits(0, -1).min("0").max("23") }
             .numberField("Hour") { it.fractionDigits(0).min("0").max("23") }
             .timeField("Clock") { it.format("HH:mm:ss") }
-            .group("Lines") { l -> l.repeatable(3).numberField("LineRate") { it.fractionDigits(2, -1) } }
+            .group("Lines") { l -> l.repeatable(3).numberField("LineRate") { it.fractionDigits(2, -1) }
+                .numberField("LineFee") { it.fractionDigits(2, 2) }.stringField("LineNote") { } }
             .group("Keys") { k -> k.repeatable(3).indexField("K").numberField("K") { it.fractionDigits(0, -1) }
                 .numberField("Amount") { it.fractionDigits(2) } } }
         .build().toJson()
@@ -96,11 +99,24 @@ class CheckerUnknownMaximumScaleAgreementTest {
             "C2 two into unknown" to ("=Rate" to "[Fee]"),
             "C3 unknown into unknown" to ("=Rate" to "[Rate2]"),
             "C4 rounded into two" to ("=Fee" to "RoundAccounting([Rate], 2)"),
+            "K1 open minimum zero" to ("ZeroOpen" to "[ZeroOpen] == 1"),
+            "K2 a row the rule iterates" to ("Lines/LineNote" to "FieldFilled(Lines/LineNote) And [Lines/LineRate] == 1.00"),
+            "K3 the same row at two" to ("Lines/LineNote" to "FieldFilled(Lines/LineNote) And [Lines/LineFee] == 1.00"),
+            "K4 a filter body" to ("Rate" to "FieldFilled(Rate) And MaxValue(Lines*/LineFee Having [Lines/LineRate] == 1.00) > 0"),
+            "K5 an extremum" to ("Rate" to "FieldFilled(Rate) And MaxValue(Lines*/LineRate) == 1.00"),
+            "K6 an extremum at two" to ("Rate" to "FieldFilled(Rate) And MaxValue(Lines*/LineFee) == 1.00"),
+            "K7 a sum at two" to ("Rate" to "FieldFilled(Rate) And Sum(Lines*/LineFee) == 1.00"),
+            "C5 a constant into unknown" to ("=Rate" to "1.5"),
+            "C6 a length into unknown" to ("=ZeroOpen" to "Length(Code)"),
+            "C7 a length into whole" to ("=Count" to "Length(Code)"),
+            "C8 first filled with unknown" to ("=Fee" to "FirstFilledValue(Rate, Fee)"),
+            "C9 smaller of unknown" to ("=Fee" to "Min([Rate], [Fee])"),
         )
 
         private const val SCALE = "MVK_INVALID_COMPARE_DEC_PLACES"
 
-        /** Measured through `RuleValidator` and `checkConsistency`, kernel 30.8.1, 2026-10-27. */
+        /** Measured through `RuleValidator` and `checkConsistency`, kernel 30.8.1, 2026-10-27; the `K` rows and `C5`
+         *  to `C9` carry a12-kernel-lean SPEC-2026-10-28-01's carriers, 2026-10-28. */
         val A12 = mapOf(
             "R1 against itself" to setOf(SCALE),
             "R2 two unknown fields" to setOf(SCALE),
@@ -122,7 +138,19 @@ class CheckerUnknownMaximumScaleAgreementTest {
             "C1 unknown into two" to setOf(SCALE),
             "C2 two into unknown" to setOf(SCALE),
             "C3 unknown into unknown" to setOf(SCALE),
-            "C4 rounded into two" to emptySet<String>(),
+            "C4 rounded into two" to emptySet(),
+            "K1 open minimum zero" to setOf(SCALE),
+            "K2 a row the rule iterates" to setOf(SCALE),
+            "K3 the same row at two" to emptySet(),
+            "K4 a filter body" to setOf(SCALE),
+            "K5 an extremum" to setOf(SCALE),
+            "K6 an extremum at two" to emptySet(),
+            "K7 a sum at two" to emptySet(),
+            "C5 a constant into unknown" to setOf(SCALE),
+            "C6 a length into unknown" to setOf(SCALE),
+            "C7 a length into whole" to emptySet(),
+            "C8 first filled with unknown" to setOf(SCALE),
+            "C9 smaller of unknown" to setOf(SCALE),
         )
     }
 }

@@ -2678,17 +2678,19 @@
       }
     },
     "kf522": {
-      "sha256": "01c3a68a8b18a9ce296b2a645f76854b1af3f1d1018581018167419a9bcf06d1",
-      "task": "F-USE-BACKLOG",
+      "sha256": "dc1f2d908a170809acc1c52199db69db31d014e95cbfdedef1fad89422973859",
+      "task": "SS35",
       "scope": {
         "adapter": [
           "message reference and fill-to-fix scope",
-          "selected operand references"
+          "selected operand references",
+          "the firing row below a selected key"
         ],
         "dmkits": [],
         "interpreter": [
           "message reference and fill-to-fix scope",
-          "selected operand references"
+          "selected operand references",
+          "the firing row below a selected key"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -2696,7 +2698,8 @@
         "json-schema-export": [],
         "a12-kernel-lean": [
           "message reference and fill-to-fix scope",
-          "selected operand references"
+          "selected operand references",
+          "the row-bound level below a key of SPEC-2026-10-28-02"
         ]
       },
       "consumers": {
@@ -2711,6 +2714,10 @@
             "selected operand references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#aDuplicatedKeysPointerIsTheKernelsCacheRow",
               "witness": "An unreached selection with a duplicated key names one row on both strategies, neither the first nor the last match in general."
+            },
+            "the firing row below a selected key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#theFiringRowNamesTheLevelBelowARepeatableKeyedGroup",
+              "witness": "Both kernel strategies pin the firing Slots row under a repeatable keyed Bins group."
             }
           }
         },
@@ -2721,7 +2728,7 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing. A selection references its payload, the selected row's index field and a field-valued key, each at the selected row or the unknown row.",
+          "basis": "Fill-to-fix is the static omission subset of the referenced operands, and a root-group operand names nothing. A selection references its payload, the selected row's index field and a field-valued key, each at the selected row or the unknown row; a level below the key that the rule's iteration binds carries the firing row unless the read's own star reopens it.",
           "evidence": {
             "message reference and fill-to-fix scope": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/MessageReferenceScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
@@ -2730,6 +2737,10 @@
             "selected operand references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "Six rules over a field, a literal key, a group payload and a starred list, on seven documents across all three engines."
+            },
+            "the firing row below a selected key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter's references equal both kernel strategies on every document."
             }
           }
         },
@@ -2755,13 +2766,8 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The selected references are accepted under SPEC-2026-10-07-02 at 5472a915; the 2026-10-04 fill-to-fix scope correction has no peer receipt.",
-          "evidence": {
-            "selected operand references": {
-              "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-07-02",
-              "witness": "Payload/index/key membership and unknown/lower-star coordinates corroborated; duplicate-key cache order stays unspecified (KF522; IF376)."
-            }
-          }
+          "basis": "Not yet handed over.",
+          "evidence": {}
         }
       }
     },
@@ -14807,22 +14813,25 @@
       }
     },
     "kf625": {
-      "sha256": "e93addc1afdd369c743fa9bec908c5aaf77cfc40e2768e763c7114d69ff9fbbd",
-      "task": "SS25",
+      "sha256": "41ce2e6d1d2ac80792e785eb17428b56a0034fc0abf80c8ab26d52127bb37545",
+      "task": "SS34",
       "scope": {
         "dmkits": [],
         "checker": [
-          "the declared scale of a Number operand"
+          "the declared scale of a Number operand",
+          "the unknown scale on every carrier"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "rule check and checkConsistency on the twenty-one rows"
+          "rule check and checkConsistency on the twenty-one rows",
+          "rule check on every carrier"
         ],
         "interpreter": [],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the unknown maximum scale of SPEC-2026-10-26-25"
+          "the unknown maximum scale of SPEC-2026-10-26-25",
+          "the carrier rows of SPEC-2026-10-28-01"
         ]
       },
       "consumers": {
@@ -14838,6 +14847,10 @@
             "the declared scale of a Number operand": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
               "witness": "Twenty-one rows, each asserting the checker's codes equal A12's."
+            },
+            "the unknown scale on every carrier": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
+              "witness": "The K rows (an open zero minimum, a row the rule iterates, a filter body, an extremum, a sum) and the C5 to C9 computations."
             }
           }
         },
@@ -14858,6 +14871,10 @@
             "rule check and checkConsistency on the twenty-one rows": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
               "witness": "The A12 column is asserted from RuleValidator and checkConsistency, not copied."
+            },
+            "rule check on every carrier": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnknownMaximumScaleAgreementTest.kt#anUnknownMaximumScaleIsJudgedAsA12JudgesIt",
+              "witness": "Each row's kernel verdict is asserted before the checker's."
             }
           }
         },
@@ -15174,22 +15191,25 @@
       }
     },
     "kf630": {
-      "sha256": "7af8c8076a69f32619d27a6a4e3278f078191da621a21b99eaecf21fe6a09afd",
-      "task": "SS31",
+      "sha256": "f55f78858b47cc000a079f0163bc8d874a43aa03bef5daf46dbd89f514613548",
+      "task": "SS37",
       "scope": {
         "dmkits": [],
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "computation presence reads, starred counts and empty aggregates"
+          "computation presence reads, starred counts and empty aggregates",
+          "a target reading its own key"
         ],
         "interpreter": [
-          "computation presence reads, starred counts and empty aggregates"
+          "computation presence reads, starred counts and empty aggregates",
+          "a target reading its own key"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the computation clauses of SPEC-2026-10-26-02, -05 and -12"
+          "the computation clauses of SPEC-2026-10-26-02, -05 and -12",
+          "the own-key rows of SPEC-2026-10-28-04"
         ]
       },
       "consumers": {
@@ -15220,6 +15240,10 @@
             "computation presence reads, starred counts and empty aggregates": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationOpenClausesDiffTest.kt#eachOpenClauseComputesAsAllThreeEnginesAgree",
               "witness": "Seven documents, every computed outcome pinned."
+            },
+            "a target reading its own key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedInstanceSkipDependentDiffTest.kt#theTargetsOwnKeySkipsOnlyWhenDuplicated",
+              "witness": "Both kernel strategies pinned on unique, duplicated and empty own keys."
             }
           }
         },
@@ -15229,6 +15253,10 @@
           "evidence": {
             "computation presence reads, starred counts and empty aggregates": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationOpenClausesDiffTest.kt#eachOpenClauseComputesAsAllThreeEnginesAgree",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            },
+            "a target reading its own key": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedInstanceSkipDependentDiffTest.kt#theTargetsOwnKeySkipsOnlyWhenDuplicated",
               "witness": "The interpreter's result equals both kernel strategies on every row."
             }
           }
@@ -15757,22 +15785,25 @@
       }
     },
     "kf638": {
-      "sha256": "c7e47ddaa38b7edba2737aee29fe8f823efda951efd4a40323c40655388d447e",
-      "task": "SS31",
+      "sha256": "b1c9b7f28cfc65509ee99079e0868818c3411fc58ef3c91d424e3b55f4080b9a",
+      "task": "SS36",
       "scope": {
         "dmkits": [],
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "the generated checks of an index field in a non-repeatable group"
+          "the generated checks of an index field in a non-repeatable group",
+          "an empty key in a present but empty group, and the rules reading it"
         ],
         "interpreter": [
-          "the generated checks of an index field in a non-repeatable group"
+          "the generated checks of an index field in a non-repeatable group",
+          "an empty key in a present but empty group, and the rules reading it"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the non-repeatable index field of SPEC-2026-10-26-24"
+          "the non-repeatable index field of SPEC-2026-10-26-24",
+          "the holder and rule rows of SPEC-2026-10-28-03 and -06"
         ]
       },
       "consumers": {
@@ -15803,6 +15834,10 @@
             "the generated checks of an index field in a non-repeatable group": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NonRepeatableIndexFieldGeneratedChecksDiffTest.kt#theMandatoryArmChecksANonRepeatableIndexField",
               "witness": "Four documents, every message signature pinned, and an unnominated control."
+            },
+            "an empty key in a present but empty group, and the rules reading it": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NonRepeatableIndexKeyComputationDiffTest.kt#anEmptyKeyPoisonsOnlyWhileItsGroupHoldsContent",
+              "witness": "Both kernel strategies pinned on absent, empty, key-only and content-holding groups."
             }
           }
         },
@@ -15813,6 +15848,10 @@
             "the generated checks of an index field in a non-repeatable group": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NonRepeatableIndexFieldGeneratedChecksDiffTest.kt#theMandatoryArmChecksANonRepeatableIndexField",
               "witness": "The interpreter's result equals both kernel strategies on every row."
+            },
+            "an empty key in a present but empty group, and the rules reading it": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/IndexFindingUnknownToRulesDiffTest.kt#anEmptyOrDuplicatedKeyIsUnknownToEveryRuleReadingIt",
+              "witness": "The interpreter's result equals both kernel strategies on every row of both locks."
             }
           }
         },
@@ -15829,22 +15868,25 @@
       }
     },
     "kf639": {
-      "sha256": "ebeed48d9d68a3e9a76d1a35ad0cd7563efa0c58a4f2fa1ef05d87904f1cbce4",
-      "task": "SS31",
+      "sha256": "d44afadd1e5dd56c490ae5b9f264712b43fbca0daf12e8b40accca97e3094102",
+      "task": "SS37",
       "scope": {
         "dmkits": [],
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "the message type of nine polarity carriers"
+          "the message type of nine polarity carriers",
+          "the message type of each operand form"
         ],
         "interpreter": [
-          "the message type of nine polarity carriers"
+          "the message type of nine polarity carriers",
+          "the message type of each operand form"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the polarity cells of SPEC-2026-10-26-08, -10 and SPEC-2026-10-27-02"
+          "the polarity cells of SPEC-2026-10-26-08, -10 and SPEC-2026-10-27-02",
+          "the operand-form rows of SPEC-2026-10-28-05"
         ]
       },
       "consumers": {
@@ -15875,6 +15917,10 @@
             "the message type of nine polarity carriers": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
               "witness": "Six documents, every message signature pinned."
+            },
+            "the message type of each operand form": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OperandFormFillPolarityDiffTest.kt#eachFormTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "Twenty-four rules, every message signature pinned."
             }
           }
         },
@@ -15884,6 +15930,10 @@
           "evidence": {
             "the message type of nine polarity carriers": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PolarityCarrierGridDiffTest.kt#eachCarrierTypesItsFiredComparisonAsAllThreeEnginesAgree",
+              "witness": "The interpreter's result equals both kernel strategies on every row."
+            },
+            "the message type of each operand form": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OperandFormFillPolarityDiffTest.kt#eachFormTypesItsFiredComparisonAsAllThreeEnginesAgree",
               "witness": "The interpreter's result equals both kernel strategies on every row."
             }
           }
@@ -16878,6 +16928,150 @@
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
           "basis": "This revision changes no CLI surface; the CLI lane runs on the relabelled refusal unchanged.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf478": {
+      "sha256": "e6133737e8ad77ced65ce2630c295a4659fde5e315d94d468fa111fd9f922d92",
+      "task": "SS34",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "admission of a key over a root or fixed-group index"
+        ],
+        "interpreter": [
+          "the instance a key over a root or fixed-group index selects"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the root and fixed-group index rows of SPEC-2026-10-28-02"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged; the root and fixed index field is declared through a JSON edit, as before.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker already names A12's class on these rows; the static lock runs on rule check, which is the kernel.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An addressing rule does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An addressing rule does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "admission of a key over a root or fixed-group index": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/SemanticIndexPinnedLevelLawsTest.java#aKeyOverARootOrFixedIndexAdmitsWhatElseAddresses",
+              "witness": "Ten rows over two carriers: four admitted forms and the unstarred-list refusal on each."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The key selects the one instance of its index group, or none when it differs or is empty.",
+          "evidence": {
+            "the instance a key over a root or fixed-group index selects": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#aKeyOverARootOrFixedIndexSelectsThatGroupsOneInstance",
+              "witness": "Match, mismatch and empty key on both carriers; every engine fires the same rules."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel, and its evaluation goes through the interpreter assessed here.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf487": {
+      "sha256": "dad3b9f96e4eb88793b3cd2ca948e831226a88e76f8b26217b584c74225f83d2",
+      "task": "SS34",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the type of a $-marked comparison side in a filter body"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "rule check on the $-marked rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the $-marked comparison rows of SPEC-2026-10-28-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Typed authoring is unchanged.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "A $-marked side is typed from the outer read it names, so its scale gate answers before the scope class.",
+          "evidence": {
+            "the type of a $-marked comparison side in a filter body": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedComparisonAgreementTest.kt#aMarkedSideInAFilterBodyIsJudgedAsA12JudgesIt",
+              "witness": "Nine rows; the checker names A12's class on each, two of which it misnamed or missed before."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "An admission gate does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "rule check on the $-marked rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerOuterMarkedComparisonAgreementTest.kt#aMarkedSideInAFilterBodyIsJudgedAsA12JudgesIt",
+              "witness": "Each row's kernel verdict is asserted before the checker's."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's rule check delegates admission to the kernel; its portable engine is the checker assessed here.",
           "evidence": {}
         },
         "a12-kernel-lean": {

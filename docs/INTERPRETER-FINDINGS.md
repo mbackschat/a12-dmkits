@@ -5097,3 +5097,15 @@ The second defect was in message class, not in value. `PolarityWalk.leafOmission
 The expansion was right and the read was not. `expandOneGroupOperand` gives each contained field the operand's own depth as its bind depth, as `expansionBindDepth` intends, but `Document.groupScopePrefix` capped every explicit bind depth at the field group's parent, a cap written for parsed stars, whose depth never reaches their starred group. So the operand's own level was always freed. The cap now admits a depth equal to the group's, which only an expansion asks for. A parsed star on a field would ask it too, and A12 refuses that spelling (`MVK_INVALID_WILDCARD`); two interpreter tests used it on hand-built models and now spell the star on the group.
 
 *Locked:* `adapter.laws.FieldValuesNotUniqueOwnRowOperandDiffTest`.
+
+### IF445: a selected reference names the firing row on every level below its key the rule binds (2026-10-28) <a id="if445"></a>
+
+[KF522](KERNEL-FINDINGS.md#kf522) measured a keyed read in a rule that iterates a repeatable level below the key: A12 names the selected row at the keyed level and the firing row below it, over a root, a fixed-group and a repeatable-group index alike. The interpreter wrote every repeatable level below the key as the wildcard `0`, a rule measured on starred lists alone. `MessagePointers.selected` now keeps the firing row's coordinate on the levels its context binds (`EvalContext.boundLevelsOf`), short of the first level the read's own star reopens. `MessageReference.Selected` carries that star's depth for this, so a starred keyed list keeps its wildcard where the rule iterates the level.
+
+*Locked:* `adapter.laws.RowBoundSelectedReferenceDiffTest`, and `adapter.laws.SelectedAuthoredScopeDiffTest` for the starred list.
+
+### IF446: the computation prepass poisons an empty index key only where its generated check requires it (2026-10-28) <a id="if446"></a>
+
+[KF638](KERNEL-FINDINGS.md#kf638) measured a non-repeatable group's nominated key: required while the group holds content, and an ordinary empty when the group is present but holds nothing or only a `null` key. Validation already asked `requiredEmpty`, which says exactly that. `AutoChecks.preliminaryEmptyIndexCells` listed every empty key of an instantiated index-group row instead, so the prepass cleared `FirstFilledValue(Holder/HolderKey, Holder/Alt)` where A12 reads past the key to `0`. It now asks the same predicate, so the two consumers cannot disagree about which keys are required.
+
+*Locked:* `adapter.laws.NonRepeatableIndexKeyComputationDiffTest`.

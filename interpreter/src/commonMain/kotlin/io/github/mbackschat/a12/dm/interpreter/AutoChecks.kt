@@ -241,18 +241,20 @@ internal class AutoChecks(
      * (SPEC-2026-07-23-15; `CalculationCommand.preliminaryValidationOfIndexFields` →
      * `MainValidatorController.preliminaryError` → `markFieldAsInvalidForValidation`): one entry per
      * instantiated index-group row (post-staging, so a defaulted cell is filled and absent here) whose index
-     * cell carries no value. A read of such a cell POISONS the reading computation — unlike an ordinary
-     * required-empty field, which stays empty-as-0 (IF76). Over-limit rows keep their over-repetition
-     * precedence and are skipped, like every other generated check.
+     * cell is required-but-empty, the generated mandatory check's own condition ([requiredEmpty]). A read of such
+     * a cell POISONS the reading computation — unlike an ordinary required-empty field, which stays empty-as-0
+     * (IF76). A non-repeatable group requires its key only while it holds content, so one present but holding
+     * nothing, or only a `null` key, poisons nothing (KERNEL-FINDINGS KF638). Over-limit rows keep their
+     * over-repetition precedence and are skipped, like every other generated check.
      */
     fun preliminaryEmptyIndexCells(doc: Document): Set<Pair<String, List<Int>>> {
         if (model.indexFields.isEmpty()) return emptySet()
         val out = LinkedHashSet<Pair<String, List<Int>>>()
         for (indexField in model.indexFields) {
-            for (row in doc.instantiatedRows(parentGroup(indexField))) {
-                val cell = row + 1
+            for (ctx in doc.instantiatedContextsFor(parentGroup(indexField))) {
+                val cell = ctx.repsOf(indexField)
                 if (paths.overLimitLevel(indexField, cell) != null) continue
-                if (!doc.filledAt(indexField, cell)) out += indexField to cell
+                if (requiredEmpty(indexField, ctx) { context, group -> context.groupFilled(group) }) out += indexField to cell
             }
         }
         return out

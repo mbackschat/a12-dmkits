@@ -101,10 +101,18 @@ internal sealed interface MessageReference {
      * An operand a semantic index SELECTS, named at the row its key selects in the firing row's scope. A12 keeps the
      * selected payload and the selected row's index field in the reference set whether or not the read is reached,
      * and resolves the row through its index cache rather than through the value read, so a key no admitted row
-     * carries names the unknown row and a repeatable level below the key names every row (SPEC-2026-10-07-02,
-     * `adapter.laws.SelectedMessageReferenceDiffTest`). [indexField] is null until the model is known.
+     * carries names the unknown row. Below the key, a level the firing row binds names that row, unless the read's
+     * own star reopens it; every other repeatable level names every row (SPEC-2026-10-07-02, SPEC-2026-10-28-02,
+     * `adapter.laws.SelectedMessageReferenceDiffTest`, `adapter.laws.RowBoundSelectedReferenceDiffTest`).
+     * [starBindDepth] is a starred read's [Expr.Star.bindDepth], null for an unstarred one. [indexField] is null
+     * until the model is known.
      */
-    data class Selected(override val path: String, val key: SelectedKey, val indexField: String? = null) : MessageReference
+    data class Selected(
+        override val path: String,
+        val key: SelectedKey,
+        val indexField: String? = null,
+        val starBindDepth: Int? = null,
+    ) : MessageReference
 }
 
 /** The key of a [MessageReference.Selected]: a written literal, or the field whose current value is the key. */
@@ -226,9 +234,11 @@ private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<Message
     )
     is Expr.EntitySpec -> when (val index = expr.semanticIndex) {
         null -> messageReferences(expr.source, wildcardBindDepth)
-        is Expr.EntityIndex.Literal -> listOf(MessageReference.Selected(expr.source.path, SelectedKey.Literal(index.value)))
+        is Expr.EntityIndex.Literal -> listOf(MessageReference.Selected(expr.source.path, SelectedKey.Literal(index.value),
+            starBindDepth = (expr.source as? Expr.Star)?.bindDepth))
         is Expr.EntityIndex.Field -> listOf(
-            MessageReference.Selected(expr.source.path, SelectedKey.Field(index.path)),
+            MessageReference.Selected(expr.source.path, SelectedKey.Field(index.path),
+                starBindDepth = (expr.source as? Expr.Star)?.bindDepth),
             messageReference(index.path, index.outer, wildcardBindDepth),
         )
     }

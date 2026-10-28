@@ -11640,6 +11640,10 @@ The portable checker pinned "the one repetition crossed" whenever a key stood on
 
 *Locked by:* `rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest`; the checker mirror: `consistency.SemanticIndexPinnedLevelTest`.
 
+**Extended 2026-10-28: what a key over a root or fixed-group index admits, and which row it selects** (a12-kernel-lean SPEC-2026-10-28-02). With the root or `Cover` indexed, A12 admits `[Cover/Note For "X"] == "a"`, `FieldFilled(Cover/Note For "X")`, `Sum(Cover/Items*/Amount For "X")`, and `[Amount For "X"]` from a rule in `Cover/Items`. The unstarred list past the key stays `MVK_NO_WILDCARD`. At runtime the key selects the group's one instance. A stored index equal to the key reads as the unkeyed row and a different one reads empty. An empty index fires neither the read nor its absence and draws `mandatoryField`. The peer's 91-row static batch, rerun here on kernel 30.8.1, reproduces every `ug` verdict, and the checker agrees on each.
+
+*Locked by:* `rulekit.validate.laws.SemanticIndexPinnedLevelLawsTest.aKeyOverARootOrFixedIndexAdmitsWhatElseAddresses` and `adapter.laws.RowBoundSelectedReferenceDiffTest.aKeyOverARootOrFixedIndexSelectsThatGroupsOneInstance` (three-engine).
+
 ## §9 supplement — a literal semantic-index key is a string constant the index field judges, or a digit sequence the grammar reads as an entity name (kernel `checkConsistency`, 2026-09-25) <a id="kf479"></a>
 
 > Fold: not-foldable — a diagnostic-class law about what a key literal is, not an evaluation behaviour.
@@ -12003,6 +12007,21 @@ The last row settles what [KF486](#kf486) had left to source reading. The contai
 The portable checker set every body carrying the marker aside, in the operand walk and the filter walk alike. For containment it read the flag-off regions only. The last row was a wrong class: the filter walk's `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, which A12 never reaches. Every family that asks for the rule's reads now reads one view, `rulesOwnReadsIn`: the flag-off regions, the filtered bases, and every marked read. The filter walk skips a marked read, index included. The checker's marked-path reader also ran a name straight into the next one, so `$Orders/Note For "A"` named nothing and the keyed row outside a filter went unreported. The checker now reports the post-parse index row too. Report assembly had read a class's phase off its code, and this code's other sites are parse-time, so the instance is raised by a producer registered as raising after the parse, and assembly reads the phase off the producer first (`CheckProducer.raisesAfterTheParse`; `consistency.FilterBodyPostParseIndexTest`).
 
 *Locked by:* `adapter.laws.CheckerFilterBodyAgreementTest.aMarkedReadInAFilterBodyIsTheRulesOwnRead`, A12's class written out on every row and the checker required to name it. Mirrored by `consistency.FilterBodyComparisonTest.aMarkedReadInABodyIsTheRulesOwnRead` and by [KF353](#kf353)'s rows in `consistency.IndexFieldBaseTypeTest`.
+
+**Extended 2026-10-28: a marked side of a comparison in a body is typed as its field, and every comparison gate judges it** (a12-kernel-lean SPEC-2026-10-28-01's `$`-correlated carrier). An order's rule reports on `Lines/Label`, so it iterates `Lines`. `Price` and `Cost` hold two places, `Qty` none, `Rate` an unknown scale ([KF625](#kf625)), and `Kind` is an Enumeration of `A` and `B`. Each body sits in `MaxValue(Lines*/Qty Having …) > 0`, paths shortened:
+
+| body | A12 |
+|---|---|
+| `[Price] == [$Qty]`, `[$Qty] == [Price]` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[$Price] == [Cost]` | admitted |
+| `[Price] == [$Rate]`, `[$Rate] == 1.00` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[$Price] == 1.00`, `[$Rate] > 1.00` | `MVK_NO_ITERATION_FOR_WILDCARD` |
+| `[Qty] > 0 And [$Kind] == "Z"` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| `[Qty] > 0 And [$Kind] > 1` | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+
+A body reading only marked fields reaches the walk's scope class only when its comparisons pass, so the comparison's gates answer first. The portable checker typed no marked side, because it handed the bracketed text to a reader that recognizes the marker only at the head of a bare spec. It stood silent on five of these rows and named the scope class on `[$Rate] == 1.00`. It now types the side from the recognizer's own reduction.
+
+*Locked by:* `adapter.laws.CheckerOuterMarkedComparisonAgreementTest`.
 
 ## §12 supplement — the post-parse error-field gates count ordinary levels of authored references; selection replaces one level, not the whole reference (kernel `checkConsistency`, 2026-09-26; extended 2026-10-11) <a id="kf488"></a>
 
@@ -12777,6 +12796,8 @@ A root group is never expanded into its fields, and the reference inventory keep
 | `Sum(Bins/Slots*/Qty For Wanted)` | the selected row's `BinCode`, `Slots[0]/Qty`, and `Wanted` |
 
 The selected row is the matched one; a key no admitted row carries, or an empty key, names row `-5`, and every level below the key that repeats names `0`. The rows are named even where the read is never reached, and where an invalid payload refuses the read. An omission's fill-to-fix carries the same selected pointers. A DUPLICATED key refuses the value read, while the unreached selections still name one row, which A12 takes from its index cache, written in hash-map order. Two measured documents name the first match; in general the row follows the cache's hash-map iteration, which the interpreter does not reproduce ([IF376](INTERPRETER-FINDINGS.md#if376)). *(Locked: `adapter.laws.SelectedMessageReferenceDiffTest`, tri-engine on seven documents, with the duplicate rows pinned on the kernel alone.)*
+
+**Extended 2026-10-28: below the key, a level the firing row binds names that row** (a12-kernel-lean SPEC-2026-10-28-02). Rules in a repeatable `Bays` that read `[Load For "W1"]` over the root's index, or over a fixed `Floor`'s, reference the firing bay. Rules in `Slots` reading `[/Store/Bins/Slots/Qty For "b"]` over the repeatable `Bins` index reference `Bins[2]/Slots[2]/Qty` from row 2 of the first bin: the selected bin, the firing slot. A starred keyed list keeps the wildcard on the level its star reopens, even where the rule iterates it (`SelectedAuthoredScopeDiffTest`'s `PayloadStar` rows). Both strategies agree. The interpreter named `0` on every repeatable level below the key ([IF445](INTERPRETER-FINDINGS.md#if445)). *(Locked: `adapter.laws.RowBoundSelectedReferenceDiffTest`, three-engine, its repeatable-index row pinned on both strategies.)*
 
 ## §6 supplement — a constructed Date's cause-free non-relevant component clears cleanly without stopping the walk, and an empty selection is a missing component (both strategies, 2026-10-09) <a id="kf523"></a>
 
@@ -15190,6 +15211,19 @@ The checker read `-1` as a known scale until this measurement, so seven of these
 
 *Locked by:* `adapter.laws.CheckerUnknownMaximumScaleAgreementTest` (`rule check` and `checkConsistency` against the checker).
 
+**Extended 2026-10-28: the refusal holds on every carrier measured** (a12-kernel-lean SPEC-2026-10-28-01). The peer's 91-row batch, rerun here through `batch --observations` on kernel 30.8.1, reproduces every verdict with identical input hashes. The checker names A12's class on every row once a `$`-marked side is typed ([KF487](#kf487)). Our own rows, on the same premium form with a `(0, -1)` `ZeroOpen`, a scale-2 `LineFee` and a `Code` text:
+
+| written | A12 |
+|---|---|
+| `[ZeroOpen] == 1` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `[Lines/LineRate] == 1.00` from a rule iterating `Lines`; `MaxValue(Lines*/LineFee Having [Lines/LineRate] == 1.00) > 0`; `MaxValue(Lines*/LineRate) == 1.00` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| a computation `1.5` into `Rate`, `Length(Code)` into `ZeroOpen`, `FirstFilledValue(Rate, Fee)` or `Min([Rate], [Fee])` into `Fee` | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `MaxValue(Lines*/LineFee) == 1.00`, `Sum(Lines*/LineFee) == 1.00`, `Length(Code)` into `Count` | admitted |
+
+The peer's `BaseYear`, key-joined, `NumberOfFilledGroups` and waiver rows were reproduced by the rerun and are not locked here. A `-1` maximum with no declared minimum stays unmeasured.
+
+*Locked by:* the `K` and `C5`–`C9` rows of `adapter.laws.CheckerUnknownMaximumScaleAgreementTest`.
+
 ## §13 supplement — A12's basic sentences are stated over the model as read, so an `ONLY` filter never hides them, while a build failure in the declaration it removes is lifted (BoundModel, kernel 30.8.1, 2026-10-27) <a id="kf626"></a>
 
 > Fold: pending — the filter-independent tier beside [KF299](#kf299)'s suppression and [KF579](#kf579)'s empty-code sentence.
@@ -15329,6 +15363,8 @@ The root-level `Refs` shares no repeatable level with `Slots`, so every instance
 
 *Locked by:* `adapter.laws.ComputationOpenClausesDiffTest` and `adapter.laws.JoinedInstanceSkipDependentDiffTest` (both three-engine).
 
+**Extended 2026-10-28: the target's own key** (a12-kernel-lean SPEC-2026-10-28-04). Two slots of one line sharing a key skip both of that line's instances: their `Total`, `Doubled` and `TagTotal` clear, `Grand` clears, and the other line computes. A key no `Refs` row carries is no skip: that slot's `Total`, `TagTotal` and `Doubled` compute `0`. *Locked by:* `adapter.laws.JoinedInstanceSkipDependentDiffTest.theTargetsOwnKeySkipsOnlyWhenDuplicated` (three-engine).
+
 ## §12 supplement — the classification grid: which condition leaves enable the second pass, measured by whether a reached runtime failure fails the rule (differential, kernel 30.8.1, 2026-10-27) <a id="kf631"></a>
 
 > Fold: pending — a measured confirmation of a12-kernel-lean SPEC-2026-10-26-07 and the enablement cells of -10.
@@ -15431,6 +15467,19 @@ A non-repeatable group has one row, so the unique arm has no sibling row to comp
 
 *Locked by:* `adapter.laws.NonRepeatableIndexFieldGeneratedChecksDiffTest` (three-engine).
 
+**Extended 2026-10-28: the key is required only while its group holds content, and its finding is unknown to rules and poison to computation** (a12-kernel-lean SPEC-2026-10-28-03, -06). A claim computes `HolderCode = FirstFilledValue(Holder/HolderKey, Holder/Alt)` and, over the unnominated twin, `PayerCode = FirstFilledValue(Payer/PayerKey, Payer/Alt)`. Both targets are seeded with `9`:
+
+| document | `HolderCode` | `PayerCode` | fired |
+|---|---|---|---|
+| `Holder` holds `Alt` and `Name`, no key | cleared | `5` | `mandatoryField` on `HolderKey`; the twin's generated check |
+| `Holder` present, holding nothing, or only `HolderKey: null` | `0` | `0` | nothing |
+| `Holder` keyed `1` | `1` | `1` | both generated checks |
+| no `Holder` | `0` | `0` | nothing |
+
+An authored rule reads the reported cell as unknown. `FieldNotFilled(Holder/HolderKey)` and `FirstFilledValue(Holder/HolderKey, Holder/Alt) == 5` stay silent where the twin's rules fire. In a repeatable `Lines` indexed by `LineKey`, an empty key silences `FieldNotFilled(LineKey)`, `FieldFilled(LineKey)` and `[LineKey] == 1`. A duplicated key silences both duplicate rows, while the third row, keyed apart, fires. The computation reading the key stores nothing and its generated check stays silent. The interpreter cleared the computation on a present but empty holder too ([IF446](INTERPRETER-FINDINGS.md#if446)).
+
+*Locked by:* `adapter.laws.NonRepeatableIndexKeyComputationDiffTest` and `adapter.laws.IndexFindingUnknownToRulesDiffTest` (three-engine).
+
 ## §12 supplement — the polarity of a filtered count that kept nothing, a distinct count over a closed tail, a filtered `MaxValue`, `CurrentRepetition` against an empty number, and empty Boolean, Confirm and Enumeration comparisons (differential, kernel 30.8.1, 2026-10-27) <a id="kf639"></a>
 
 > Fold: pending — the added polarity cells of a12-kernel-lean SPEC-2026-10-26-08 and -10 and the two cells of SPEC-2026-10-27-02.
@@ -15447,6 +15496,22 @@ A non-repeatable group has one row, so the unique arm has no sibling row to comp
 | `[Express] == False`, `[Express] != True`, `[Tier] != "GOLD"` | Boolean and Enumeration empty | not fired |
 
 *Locked by:* `adapter.laws.PolarityCarrierGridDiffTest` (three-engine).
+
+**Extended 2026-10-28: the operand forms** (a12-kernel-lean SPEC-2026-10-28-05). A quote's rules read the empty signed `Delta`, the empty unsigned `Fee` and the empty text `Code`, beside `Base` = `5` and `Cap` = `7`:
+
+| rule | fires |
+|---|---|
+| `Min([Fee], [Base]) < 10`, `Min([Delta], [Base]) > -10`, `Max([Fee], [Base]) < 10` | OMISSION |
+| `Max([Delta], [Base]) > 3` | VALUE, where a rule letting either operand shrink would fire OMISSION |
+| `Abs([Delta]) < 10`, `AbsValue(Delta) < 10`, `RoundAccountingValue(Delta, 0) > -1`, `RoundAccountingValue(Fee, 0) < 10` | OMISSION |
+| `Abs([Delta]) > -1`, `Abs([Fee]) > -1`, `AbsValue(Delta) > -1`, `RoundAccountingValue(Fee, 0) > -1` | VALUE |
+| `Length(Code) < 3`, `Length(Code) == 0` / `Length(Code) > -1` | OMISSION / VALUE |
+| `NumberOfFilledFields(Lines*/Qty Having [Lines/Flag] == "Y") >= 1`, one line flagged | OMISSION |
+| the same `< 1`, no line flagged, below capacity or at it | OMISSION |
+
+With `Delta` = `-3`, the `Delta` rows that fired OMISSION fire VALUE or not at all. Operand-list `Min` and `Max` over more than two operands stay unmeasured.
+
+*Locked by:* `adapter.laws.OperandFormFillPolarityDiffTest` (three-engine).
 
 ## §6 supplement — a year-optional Date meets its omission check before its month is tested (differential, kernel 30.8.1, 2026-10-27) <a id="kf640"></a>
 

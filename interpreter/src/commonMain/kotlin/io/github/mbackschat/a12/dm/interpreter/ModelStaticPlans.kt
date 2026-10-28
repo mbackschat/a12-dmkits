@@ -264,7 +264,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     private fun expandSelectedReference(reference: MessageReference.Selected): List<MessageReference> {
         val indexField = nearestIndexFieldOf(model.indexFields, reference.path) ?: return emptyList()
         return (coveredFieldPaths(reference.path) + indexField).distinct()
-            .map { path -> MessageReference.Selected(path, reference.key, indexField) }
+            .map { path -> reference.copy(path = path, indexField = indexField) }
     }
 
     /** The field paths a reference covers: itself when it names a field, else every field the group contains. */

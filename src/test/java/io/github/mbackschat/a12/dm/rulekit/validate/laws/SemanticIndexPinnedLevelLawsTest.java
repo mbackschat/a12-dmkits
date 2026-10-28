@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,7 @@ class SemanticIndexPinnedLevelLawsTest {
                                     .numberField("Amount", f -> f.fractionDigits(2))))
                     .group("Cover", c -> c
                             .stringField("CoverRef", f -> { })
+                            .stringField("Note", f -> { })
                             .group("Items", i -> i.repeatable(5).numberField("Amount", f -> f.fractionDigits(2)))))
             .build().toJson();
 
@@ -87,6 +89,36 @@ class SemanticIndexPinnedLevelLawsTest {
         expected.put("the same from a rule the unindexed repetition iterates", "MVK_PARAMSIZE_INVALIDN");
         expected.put("the same unkeyed — the control that the key is what addresses Legs", "MVK_NO_WILDCARD");
         assertEquals(expected, actual, "which level a semantic-index key addresses");
+    }
+
+    /**
+     * A key over a ROOT or FIXED-group index addresses no repetition, so A12 admits every read whose repetitions
+     * something else addresses: a field of the fixed group itself, its presence, a star on the repetition below,
+     * and a read the rule's own iteration binds (a12-kernel-lean SPEC-2026-10-28-02). The unstarred list past the
+     * key is the KF478 refusal above, kept here as the control on each carrier.
+     */
+    @Test
+    void aKeyOverARootOrFixedIndexAdmitsWhatElseAddresses() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (var carrier : List.of(Map.entry("root", ROOT_INDEXED), Map.entry("Cover", COVER_INDEXED))) {
+            String model = carrier.getValue();
+            String on = " (" + carrier.getKey() + " indexed)";
+            actual.put("the fixed group's own field" + on, KernelLaws.verdictModel(model, "/Policy", "../Reference",
+                    "FieldFilled(Reference) And [Cover/Note For \"X\"] == \"a\""));
+            actual.put("its presence" + on, KernelLaws.verdictModel(model, "/Policy", "../Reference",
+                    "FieldFilled(Reference) And FieldFilled(Cover/Note For \"X\")"));
+            actual.put("a star on the repetition below" + on,
+                    sum(model, "/Policy", "../Reference", "Cover/Items*/Amount For \"X\""));
+            actual.put("a read the rule's iteration binds" + on, KernelLaws.verdictModel(model, "/Policy/Cover/Items",
+                    "../Amount", "[Amount For \"X\"] > 0"));
+            actual.put("the unstarred list past the key" + on,
+                    sum(model, "/Policy", "../Reference", "Cover/Items/Amount For \"X\""));
+        }
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String on : actual.keySet()) {
+            expected.put(on, on.startsWith("the unstarred") ? "MVK_NO_WILDCARD" : KernelLaws.ADMITTED);
+        }
+        assertEquals(expected, actual, "what a key over a root or fixed-group index admits");
     }
 
     /**

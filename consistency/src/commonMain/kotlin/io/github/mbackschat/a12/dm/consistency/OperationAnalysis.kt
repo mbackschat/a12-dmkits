@@ -105,7 +105,7 @@ internal class OperationAnalysis(
             when {
                 fieldValueReadIsRefused(shape.read, group, element) -> UNKNOWN
                 shape.read.category != null -> categoryRead(shape.read)
-                else -> bareReferenceField(written(shape), group, element,
+                else -> bareReferenceField(referenceText(shape), group, element,
                     bodyAddresses(shape.read.inAFilterBody, shape.read.outerMarked))?.let(::field) ?: UNKNOWN
             }
         }
@@ -113,6 +113,16 @@ internal class OperationAnalysis(
         is OperationShape.Arithmetic -> arithmetic(shape)
         is OperationShape.Call -> call(shape)
     }
+
+    /**
+     * The text a read's reference is reduced from: a `$`-marked read in a filter body is the rule's own reference,
+     * which the recognizer has already reduced past its marker ([KERNEL-FINDINGS KF487]). Its bracketed text would
+     * hide the marker from the reference reader, which recognizes one only at the head of a bare spec, and every
+     * comparison gate then stood down on a side A12 types ([KERNEL-FINDINGS KF487]). A keyed marked read keeps no
+     * path and stays unjudged.
+     */
+    private fun referenceText(shape: OperationShape.Read): String =
+        shape.read.path?.takeIf { shape.read.outerMarked && shape.read.inAFilterBody } ?: written(shape)
 
     /**
      * A category read, typed as A12 types it: the Enumeration it hangs off, looked up in the CATEGORY's values
