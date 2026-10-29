@@ -5,9 +5,14 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import io.github.mbackschat.a12.dm.core.ModelIndex
+import io.github.mbackschat.a12.dm.core.ModelLoader
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.predicates.a12LanguageTag
+import io.github.mbackschat.a12.dm.predicates.a12LocaleKey
+import io.github.mbackschat.a12.dm.predicates.a12LocaleKeyHasLanguage
 import org.apache.commons.lang3.LocaleUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -23,7 +28,8 @@ import kotlin.random.Random
  * An entry spelling holding a non-ASCII character is the one deliberate departure: the checker reads it as
  * written rather than ship Java's character tables, so it is expected read, and the row A12 refuses is pinned.
  * A header code must also name a language, and name a locale no other code names; it demands no well-formed
- * language tag. The header rows were first taken through `BoundModel.ofJson`, whose own index threw after the
+ * language tag, but two locales writing one JDK tag draw `MVK_SUPP_LANGUAGES_DUPLICATE`, so the checker's tag is
+ * held to the jar over generated header spellings and its class to the gate on every pair of [TAG_POOL]. The header rows were first taken through `BoundModel.ofJson`, whose own index threw after the
  * Kernel had admitted the model, and so recorded eleven refusals A12 never makes (a12-kernel-lean's LF224); they
  * are held to the Kernel gate alone now, and our index is held to read every header the gate admits.
  *
@@ -73,10 +79,48 @@ class CheckerLocaleSpellingAgreementTest {
     }
 
     @Test
-    fun twoLocalesTheJdkTagsAlikeAreLeftToA12() {
-        // The rule behind A12's class is a12-kernel-lean's to state, and unmeasured; the checker does not guess it.
-        val json = declaring("en_US", "en_US_abcdefghi")
-        assertEquals(setOf("MVK_SUPP_LANGUAGES_DUPLICATE") to BUILT, kernelModelClasses(json) to ourVerdict(json), "as (A12, ours)")
+    fun aHeaderLocaleWritesTheJdksLanguageTag() {
+        val spellings = generatedHeaderSpellings().filter { a12LocaleKey(it)?.let(::a12LocaleKeyHasLanguage) == true }
+        assertEquals(
+            spellings.associateWith { LocaleUtils.toLocale(it).toLanguageTag() },
+            spellings.associateWith { a12LanguageTag(a12LocaleKey(it)!!) },
+            "the checker's tag against the jar",
+        )
+    }
+
+    @Test
+    fun twoLocalesWritingOneTagDrawTheDuplicateClass() {
+        val rows = TAG_POOL.flatMapIndexed { i, a -> TAG_POOL.drop(i + 1).map { b -> "$a + $b" } }.associateWith { pair ->
+            val json = declaring(*pair.split(" + ").toTypedArray())
+            kernelModelClasses(json) to rejectingCodes(json).toSet()
+        }
+        assertEquals(rows.mapValues { (_, v) -> v.first to v.first }, rows, "as (A12, ours)")
+    }
+
+    @Test
+    fun eachCollidingTagIsNamedOnceInTheOrderItIsFirstDeclared() {
+        val declarations = listOf(
+            listOf("de_CH", "en_US", "en_US_abcdefghi", "de_CH_abcdefghi"),
+            listOf("en_US", "de_CH", "de_CH_abcdefghi", "en_US_abcdefghi"),
+            listOf("en_US", "en_US_abcdefghi", "en_US_abcdefghij"),
+        )
+        val rows = declarations.associate { codes ->
+            val json = declaring(*codes.toTypedArray())
+            codes.joinToString(" + ") to (kernelTagsNamed(json) to ourTagsNamed(json))
+        }
+        assertEquals(rows.mapValues { (_, v) -> v.first to v.first }, rows, "as (A12, ours)")
+        assertEquals(listOf("de-CH", "en-US"), rows.values.first().first, "the first-declared tag leads")
+    }
+
+    @Test
+    fun aNonAsciiCodeIsLeftOutOfTheTagComparison() {
+        // The one deliberate departure: a non-ASCII code keys as written (a12LocaleKey), so its tag is not claimed.
+        // Two of them write `und` and `de`, which A12 builds: the codes the checker leaves untagged are not one tag.
+        val rows = listOf("de + de_ÄÖ", "ée + de_ÄÖ").associateWith { pair ->
+            val json = declaring(*pair.split(" + ").toTypedArray())
+            kernelModelClasses(json) to ourVerdict(json)
+        }
+        assertEquals(mapOf("de + de_ÄÖ" to (setOf(DUPLICATE) to BUILT), "ée + de_ÄÖ" to (emptySet<String>() to BUILT)), rows, "as (A12, ours)")
     }
 
     private fun labelled(spelling: String): String {
@@ -100,6 +144,29 @@ class CheckerLocaleSpellingAgreementTest {
     }
 
     private fun parses(spelling: String): Boolean = runCatching { LocaleUtils.toLocale(spelling) }.isSuccess
+
+    /** The tags A12's duplicate notifications name, in its order. */
+    private fun kernelTagsNamed(json: String): List<String> = try {
+        ModelLoader.loadSelfContained(json)
+        emptyList()
+    } catch (rejected: ModelConsistencyException) {
+        rejected.notifications().mapNotNull { A12_DUPLICATE_SENTENCE.find(it.message())?.groupValues?.get(1) }
+    }
+
+    /** The tags the checker's duplicate findings name, in its order. */
+    private fun ourTagsNamed(json: String): List<String> =
+        check(ModelSource(json)).findings.filter { it.code == DUPLICATE }.mapNotNull { OUR_TAG.find(it.explain)?.groupValues?.get(1) }
+
+    /** Every header spelling of a language, an optional country or area, and up to three variant segments. */
+    private fun generatedHeaderSpellings(): List<String> {
+        val languages = listOf("de", "DE", "no", "ja", "th", "iw", "deu", "1", "x", "abcdefghi")
+        val countries = listOf("", "CH", "NO", "JP", "TH", "419")
+        val segments = listOf("", "1996", "1abc", "POSIX", "posix", "x", "X", "abcd", "abcdefgh", "abcdefghi", "WIN32", "NY", "JP", "TH", "Latn", "a-b")
+        val variants = listOf("") + segments.filter { it.isNotEmpty() } + segments.flatMap { a -> segments.map { b -> "${a}_$b" } } +
+            List(400) { Random(it).let { r -> (1..3).joinToString("_") { segments[r.nextInt(segments.size)] } } }
+        return languages.flatMap { l -> countries.flatMap { c -> variants.map { v -> if (v.isEmpty()) "${l}_$c".trimEnd('_') else "${l}_${c}_$v" } } }
+            .flatMap { listOf(it, it.replace('_', '-')) }.distinct()
+    }
 
     /** A12's verdict, an escape past its typed channels read as the model it never built. */
     private fun a12Verdict(json: String): String = try {
@@ -156,6 +223,25 @@ class CheckerLocaleSpellingAgreementTest {
             "fr_CH + US" to UNBUILT, "fr_CH + EN" to UNBUILT, "fr_CH + zh_Hans_CN" to UNBUILT, "fr_CH + de_CH-x" to UNBUILT,
             "iw + he" to UNBUILT, "in + id" to UNBUILT, "de_CH + de-CH" to UNBUILT, "DE_419 + de_419" to UNBUILT,
             "iw + de" to BUILT,
+        )
+
+        const val DUPLICATE = "MVK_SUPP_LANGUAGES_DUPLICATE"
+        val A12_DUPLICATE_SENTENCE = Regex("^The language '(.+)' is specified multiple times\\.")
+        val OUR_TAG = Regex("language tag `([^`]+)`")
+
+        /**
+         * Header codes paired with each other through the Kernel gate, kernel 30.8.1, 2026-10-29. Each pairs of a
+         * language tag's rivals: a variant the JDK writes, writes as private use or drops; one in another case; an
+         * ill-formed language it writes as `und`; and the JDK's three legacy locales, of which only `no_NO_NY` meets
+         * another (`nn_NO`). A pair of one locale is A12's classless refusal, and `de_CH` beside `de_CH_1996` builds,
+         * which a comparison of language and country alone would refuse.
+         */
+        val TAG_POOL = listOf(
+            "en_US", "en_US_abcdefghi", "en_US_abcdefghij", "de", "deu", "de_CH", "de-CH-1996", "de_CH_1996", "de_CH_POSIX",
+            "de_CH_posix", "de_CH_POSIX-x", "de_CH_1abc", "de_CH_abcdefgh", "de_CH_abcdefghi", "de_CH_x", "de_CH_X", "de_CH_abcd",
+            "de_CH_1996_x", "de_CH_1996_abcdefghi", "de_CH_x_abcdefghi", "de__1996", "de__POSIX", "DE_419", "de_419", "abcd_419",
+            "abcdefghi_419", "1_419", "d_419", "x_419", "a-b_419", "und", "ja_JP", "ja_JP_JP", "ja_JP_jp", "th_TH", "th_TH_TH",
+            "no_NO", "no_NO_NY", "nn_NO", "sr_RS_Latn", "de-CH-1996-x", "es_419", "en", "he",
         )
     }
 }

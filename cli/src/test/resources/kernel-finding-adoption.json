@@ -17478,7 +17478,7 @@
       }
     },
     "kf649": {
-      "sha256": "b4df4c05ccaa1cc817b714b76febbcb0fa2e2fcee21885ce93d5457898d7ed9f",
+      "sha256": "f3643606ddd359920acbda7c2590f4bb13ab8de2821c8f3fa8ef4a0622e40a33",
       "task": "SS44",
       "scope": {
         "dmkits": [
@@ -17512,12 +17512,16 @@
           }
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "An entry's locale is parsed by the measured grammar, a non-ASCII spelling deliberately read as written, and a header's must also name a language; each locale is keyed by its toString form. Two header locales the JDK writes as one language tag draw a class A12 states and the checker does not: DG163.",
+          "state": "APPLIED",
+          "basis": "An entry's locale is parsed by the measured grammar, a non-ASCII spelling deliberately read as written, and a header's must also name a language; each locale is keyed by its toString form. Two header locales the JDK writes as one language tag draw MVK_SUPP_LANGUAGES_DUPLICATE, once per tag, by a tag written from Locale.toLanguageTag's measured output; a non-ASCII locale writes none, the same deliberate leniency.",
           "evidence": {
             "the locale spellings an entry and a header may carry": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryTakesExactlyTheSpellingsTheParserTakes",
               "witness": "About 2,900 generated spellings, the checker's verdict equal to the jar's on each, beside the Kernel-gate rows of the same class."
+            },
+            "two header locales the JDK tags alike": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#twoLocalesWritingOneTagDrawTheDuplicateClass",
+              "witness": "Every pair of 44 header codes, the checker's classes equal to the Kernel gate's on each, beside the tag held to the jar over generated header spellings."
             }
           }
         },
@@ -17540,8 +17544,8 @@
               "witness": "The A12 column is asserted from the Kernel gate alone, no reader of ours after it, not copied."
             },
             "two header locales the JDK tags alike": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#twoLocalesTheJdkTagsAlikeAreLeftToA12",
-              "witness": "en_US beside en_US_abcdefghi draws MVK_SUPP_LANGUAGES_DUPLICATE from the gate while the checker builds."
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#twoLocalesWritingOneTagDrawTheDuplicateClass",
+              "witness": "The A12 column of every pair is the Kernel gate's own class set, not copied."
             }
           }
         },

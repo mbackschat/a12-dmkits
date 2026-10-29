@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.a12LanguageTag
 import io.github.mbackschat.a12.dm.predicates.isReservedElementName
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -77,9 +78,14 @@ private fun TrackedFactBase.unbindableBaseYearFindings(): List<Finding> = listOf
 /**
  * What the model's own `header.locales` costs it, before any declaration is read.
  *
- * Both rows are model-level and neither belongs to a rule, but both decide what every message slot below
+ * Every row is model-level and none belongs to a rule. The first two decide what every message slot below
  * answers to — a model with no usable declared locale collects no message at all, so its rules would
- * otherwise each report a missing message with nothing saying why.
+ * otherwise each report a missing message with nothing saying why. The third compares the declared locales
+ * as A12 does, by the JDK's language tag ([a12LanguageTag]): distinct locales writing one tag draw
+ * `MVK_SUPP_LANGUAGES_DUPLICATE`, once per tag in the order the tag is first declared, and only from the
+ * entry's own header (KERNEL-FINDINGS KF649, `adapter.laws.CheckerLocaleSpellingAgreementTest`,
+ * `adapter.WorkspaceReachedModelDiffTest`). A non-ASCII locale writes no tag here, so the checker stays
+ * silent where it meets another (`a12LocaleKey`'s deliberate leniency).
  */
 private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
     unreadableLocaleCodes.isNotEmpty() -> unreadableLocaleCodes.map { code ->
@@ -102,7 +108,16 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
                 "message text at all, whatever its rules carry",
         ),
     )
-    else -> emptyList()
+    else -> declaredLocales.groupBy { a12LanguageTag(it) }.filter { (tag, keys) -> tag != null && keys.size > 1 }
+        .map { (tag, keys) ->
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                "MVK_SUPP_LANGUAGES_DUPLICATE",
+                "`header.locales` declares ${keys.joinToString(" and ") { "`$it`" }}, which A12 compares by " +
+                    "the one language tag `$tag`, so it refuses the model — declare only one of them",
+            )
+        }
 }
 
 /**

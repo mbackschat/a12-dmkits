@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.github.mbackschat.a12.dm.adapter.laws.notificationClass
 import io.github.mbackschat.a12.dm.consistency.CK_MODEL_NOT_BUILDABLE
 import io.github.mbackschat.a12.dm.consistency.ConsistencyWorkspace
 import io.github.mbackschat.a12.dm.consistency.ModelSource
@@ -134,6 +135,31 @@ class WorkspaceReachedModelDiffTest {
         }, observed)
     }
 
+    /**
+     * Two locales the JDK writes as one language tag draw `MVK_SUPP_LANGUAGES_DUPLICATE` from the entry's header
+     * alone: an included model or a type-definition library declaring them is expanded and checked without it
+     * (KERNEL-FINDINGS KF649, kernel `30.8.1`).
+     */
+    @Test
+    fun onlyTheEntrysLocalesAreComparedByLanguageTag() {
+        val observed = Carrier.entries.associateWith { carrier ->
+            val (entry, provider) = when (carrier) {
+                Carrier.ENTRY -> cover() to null
+                Carrier.INCLUDE -> permit() to MAPPER.readTree(COMPONENT) as ObjectNode
+                Carrier.TYPE_DEFINITIONS -> coded() to MAPPER.readTree(TYPES) as ObjectNode
+            }
+            (provider ?: entry).withLocales(listOf("en_US", "en_US_abcdefghi"))
+            val sources = listOfNotNull(entry.toString(), provider?.toString())
+            val providerId = provider?.at("/header/id")?.asText()
+            val a12 = KernelConsistencyOracle().checkConsistency(entry.toString()) { if (it == providerId) provider.toString() else null }
+                .map { notificationClass(it.message().trim()) }
+            val checker = ConsistencyWorkspace.fromSources(sources.map(::ModelSource))
+                .check(entry.at("/header/id").asText()).findings.filter { it.justifiesRejection }.map { it.code }
+            a12 to checker
+        }
+        assertEquals(Carrier.entries.associateWith { if (it == Carrier.ENTRY) DUPLICATE_TAG to DUPLICATE_TAG else NONE to NONE }, observed)
+    }
+
     /** [observe]'s three answers, with A12's consistency verdict beside its build: the checker's oracle. */
     private fun observeWithConsistency(entry: String, provider: String?): String {
         val providerId = provider?.let { MAPPER.readTree(it).at("/header/id").asText() }
@@ -222,5 +248,7 @@ class WorkspaceReachedModelDiffTest {
         const val BUILT_AND_CHECKED = "A12 built, A12 consistency checks, interpreter prepares, checker silent"
         const val BUILT_NOT_CHECKED = "A12 built, A12 consistency unbuilt, interpreter prepares, checker not built"
         const val NOT_BUILT_OR_CHECKED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not built"
+        val DUPLICATE_TAG = listOf("MVK_SUPP_LANGUAGES_DUPLICATE")
+        val NONE = emptyList<String>()
     }
 }

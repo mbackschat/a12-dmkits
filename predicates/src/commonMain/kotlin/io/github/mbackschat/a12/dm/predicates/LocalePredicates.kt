@@ -31,6 +31,32 @@ fun a12LocaleKey(code: String): String? = when {
  */
 fun a12LocaleKeyHasLanguage(key: String): Boolean = key.isNotEmpty() && key.first() != '_' && key.first() != '-'
 
+/**
+ * The language tag `java.util.Locale.toLanguageTag` writes for the locale a header [key] from [a12LocaleKey] names,
+ * or null for a key holding a non-ASCII character, which [a12LocaleKey] keeps as written and so never splits.
+ *
+ * A12 compares a model's declared locales by this tag, as written and case-sensitively: two distinct locales writing
+ * one tag draw `MVK_SUPP_LANGUAGES_DUPLICATE` ([KERNEL-FINDINGS KF649]). A language of two to eight letters is
+ * written and any other is `und`; the country is written. The variant's `_`-separated segments are written while
+ * each is a BCP 47 variant, five to eight letters or digits or a digit and three more; from the first that is not,
+ * they are written as private use, `x-lvariant-…`, while each has one to eight letters or digits, and the rest are
+ * dropped, which is how `en_US_abcdefghi` writes `en-US`. Three legacy locales are the JDK's own: `no_NO_NY` writes
+ * `nn-NO`, and `ja_JP_JP` and `th_TH_TH` carry a calendar or numbering extension. Written from the JDK's measured
+ * output, not ported: `adapter.laws.CheckerLocaleSpellingAgreementTest` holds it to that method spelling by spelling.
+ */
+fun a12LanguageTag(key: String): String? {
+    if (key.any { it > '\u007F' }) return null
+    val parts = key.split('_', limit = 3)
+    val country = parts.getOrElse(1) { "" }
+    val nynorsk = key == "no_NO_NY"
+    val segments = parts.getOrNull(2)?.takeUnless { nynorsk }?.split('_').orEmpty()
+    val variants = segments.takeWhile(String::isVariantSubtag)
+    val privateUse = segments.drop(variants.size).takeWhile(String::isPrivateUseSubtag)
+    val language = if (nynorsk) "nn" else parts[0].takeIf(String::isLanguageSubtag) ?: "und"
+    return (listOf(language) + listOf(country).filter(String::isNotEmpty) + variants + listOfNotNull(LEGACY_EXTENSIONS[key]) +
+        if (privateUse.isEmpty()) emptyList() else listOf("x", "lvariant") + privateUse).joinToString("-")
+}
+
 /** A parsed locale, its language and country normalized as `java.util.Locale` normalizes them. */
 private class SpelledLocale(spelledLanguage: String, spelledCountry: String, val variant: String) {
     val language: String = spelledLanguage.asciiLowercase().let { LEGACY_LANGUAGES[it] ?: it }
@@ -86,6 +112,21 @@ private fun String.isArea() = length == 3 && all { it in '0'..'9' }
 private fun String.asciiLowercase() = buildString(length) { this@asciiLowercase.forEach { append(if (it in 'A'..'Z') it + ('a' - 'A') else it) } }
 
 private fun String.asciiUppercase() = buildString(length) { this@asciiUppercase.forEach { append(if (it in 'a'..'z') it - ('a' - 'A') else it) } }
+
+private fun String.isLanguageSubtag() = length in 2..8 && all { it in 'a'..'z' || it in 'A'..'Z' }
+
+private fun String.isVariantSubtag() = when (length) {
+    in 5..8 -> all(Char::isAsciiAlphanumeric)
+    4 -> first() in '0'..'9' && all(Char::isAsciiAlphanumeric)
+    else -> false
+}
+
+private fun String.isPrivateUseSubtag() = length in 1..8 && all(Char::isAsciiAlphanumeric)
+
+private fun Char.isAsciiAlphanumeric() = this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9'
+
+/** The two locales the JDK's constructor gives an extension, which their language tags carry. */
+private val LEGACY_EXTENSIONS = mapOf("ja_JP_JP" to "u-ca-japanese", "th_TH_TH" to "u-nu-thai")
 
 /** The withdrawn ISO 639 codes the JDK reads as their successors, so `iw` and `he` are one locale. */
 private val LEGACY_LANGUAGES = mapOf("iw" to "he", "ji" to "yi", "in" to "id")

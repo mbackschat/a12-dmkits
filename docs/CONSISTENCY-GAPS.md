@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG163 — two header locales the JDK writes as one language tag (opened 2026-10-29).** A12 draws `MVK_SUPP_LANGUAGES_DUPLICATE` on `en_US` beside `en_US_abcdefghi` (the Kernel gate, `validate.laws.ModelHeaderSlotLawsTest`; [KF649](KERNEL-FINDINGS.md#kf649)), and the checker reports the model valid. The rule behind the class, which pairs collide and in what order two such tags are named, is unmeasured: a12-kernel-lean's SPEC-2026-10-29-02 measures eleven colliding pairs and leaves the rule unclaimed. Settled by a measured statement of that rule against the JDK's `Locale.toLanguageTag`; until then the checker stays silent, which `adapter.laws.CheckerLocaleSpellingAgreementTest.twoLocalesTheJdkTagsAlikeAreLeftToA12` pins.
+_None open._
 
 ## 2. Out of scope
 
