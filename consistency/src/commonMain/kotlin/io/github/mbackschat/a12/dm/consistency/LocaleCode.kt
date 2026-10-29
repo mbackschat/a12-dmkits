@@ -19,10 +19,10 @@ package io.github.mbackschat.a12.dm.consistency
  * holds it to that jar spelling by spelling (KERNEL-FINDINGS KF649).
  *
  * **A spelling holding a non-ASCII character is read as written, never judged — deliberately lenient.** The
- * parser classifies letter case and digits by Java's `Character` tables, so `ée` and `de_٣٣٣` are read, and
- * neither target's Kotlin tables are Java's (KF587). Judging them exactly would mean shipping Java's tables;
- * reading them as written can only under-report a spelling such as `ÉÉ`, which A12 refuses, and never refuses
- * a model A12 builds. No declared locale can share such a key, since a header code must be ASCII.
+ * parser classifies letter case and digits by Java's `Character` tables, so `ée` and `de_٣٣٣` are read, while
+ * Kotlin/JS answers from its own tables, so the JVM and Node checkers could disagree (KF587). Judging them
+ * exactly on both would mean shipping Java's tables; reading them as written can only under-report a spelling
+ * such as `ÉÉ`, which A12 refuses, and never refuses a model A12 builds. No declared locale can share such a key, since a header code must be ASCII.
  */
 internal fun localeKeyOrNull(code: String): String? {
     if (code.isEmpty()) {
