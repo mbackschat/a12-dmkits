@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ModelIndex
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.apache.commons.lang3.LocaleUtils
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -16,12 +18,14 @@ import kotlin.random.Random
  * KF649).
  *
  * Both reach Commons Lang's `LocaleUtils.toLocale`, which builds no model from a spelling it refuses. Over 2,410
- * spellings A12's verdict on a label entry was that jar's on every one (`BoundModel`, 2026-10-29), so the entry
+ * spellings A12's verdict on a label entry was that jar's on every one (the Kernel gate, 2026-10-29), so the entry
  * test takes the jar as its oracle over spellings generated here, and checks A12 itself on one row per clause.
  * An entry spelling holding a non-ASCII character is the one deliberate departure: the checker reads it as
  * written rather than ship Java's character tables, so it is expected read, and the row A12 refuses is pinned.
- * A header then demands a well-formed language tag of the parsed locale, which the jar does not judge, so the
- * header test is held to `BoundModel` alone.
+ * A header code must also name a language, and name a locale no other code names; it demands no well-formed
+ * language tag. The header rows were first taken through `BoundModel.ofJson`, whose own index threw after the
+ * Kernel had admitted the model, and so recorded eleven refusals A12 never makes (a12-kernel-lean's LF224); they
+ * are held to the Kernel gate alone now, and our index is held to read every header the gate admits.
  *
  * Own domain (an insurance policy with a reference).
  */
@@ -52,12 +56,27 @@ class CheckerLocaleSpellingAgreementTest {
     }
 
     @Test
-    fun aHeaderAlsoDemandsAWellFormedTag() {
+    fun aHeaderCodeNeedsALanguageAndALocaleOfItsOwn() {
         val rows = HEADER_ROWS.keys.associateWith { declared ->
             val json = declaring(*declared.split(" + ").toTypedArray())
             a12Verdict(json) to ourVerdict(json)
         }
         assertEquals(HEADER_ROWS.mapValues { (_, v) -> v to v }, rows, "as (A12, ours)")
+    }
+
+    @Test
+    fun ourIndexReadsEveryHeaderTheGateAdmits() {
+        val unread = HEADER_ROWS.filterValues { it == BUILT }.keys.filter { declared ->
+            runCatching { ModelIndex.of(declaring(*declared.split(" + ").toTypedArray()), ReferenceResolvers.selfContained()) }.isFailure
+        }
+        assertEquals(emptyList<String>(), unread, "headers A12 builds that our index refuses")
+    }
+
+    @Test
+    fun twoLocalesTheJdkTagsAlikeAreLeftToA12() {
+        // The rule behind A12's class is a12-kernel-lean's to state, and unmeasured; the checker does not guess it.
+        val json = declaring("en_US", "en_US_abcdefghi")
+        assertEquals(setOf("MVK_SUPP_LANGUAGES_DUPLICATE") to BUILT, kernelModelClasses(json) to ourVerdict(json), "as (A12, ours)")
     }
 
     private fun labelled(spelling: String): String {
@@ -109,7 +128,7 @@ class CheckerLocaleSpellingAgreementTest {
         const val BUILT = "built"
         const val UNBUILT = "no model"
 
-        /** One row per clause of the grammar, measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        /** One row per clause of the grammar, measured through the Kernel gate, kernel 30.8.1, 2026-10-29. */
         val ENTRY_ROWS = mapOf(
             "de" to BUILT, "deu" to BUILT, "de_CH" to BUILT, "de-CH" to BUILT, "es_419" to BUILT,
             "de_CH_1996" to BUILT, "de_CH_1996_x" to BUILT, "de_CH_POSIX-x" to BUILT, "de-CH-1996" to BUILT, "de__1996" to BUILT,
@@ -121,20 +140,20 @@ class CheckerLocaleSpellingAgreementTest {
         )
 
         /**
-         * Header declarations, ` + ` separating two codes, measured through `BoundModel`, kernel 30.8.1, 2026-10-29.
-         * Each single code stands beside `fr_CH` so that the model keeps one language A12 builds.
+         * Header declarations, ` + ` separating two codes, measured through the Kernel gate, kernel 30.8.1,
+         * 2026-10-29. Each single code stands beside `fr_CH` so that the model keeps one language A12 builds.
          */
         val HEADER_ROWS = mapOf(
             "fr_CH + de" to BUILT, "fr_CH + deu" to BUILT, "fr_CH + de-CH" to BUILT, "fr_CH + es_419" to BUILT,
             "fr_CH + de-CH-1996" to BUILT, "fr_CH + de_CH_1996" to BUILT, "fr_CH + de_CH_POSIX" to BUILT, "fr_CH + de_CH_1abc" to BUILT,
             "fr_CH + de_CH_abcdefgh" to BUILT, "fr_CH + de_CH_POSIX_WIN32" to BUILT, "fr_CH + DE_419" to BUILT,
             "fr_CH + abcd_419" to BUILT, "fr_CH + abcdefgh_419" to BUILT, "fr_CH + und" to BUILT,
+            // No well-formed language tag is demanded: each of these is no tag the JDK's builder takes.
+            "fr_CH + ée" to BUILT, "fr_CH + de_ÄÖ" to BUILT, "fr_CH + de_٣٣٣" to BUILT, "fr_CH + de_CH_1996_x" to BUILT,
+            "fr_CH + de__1996" to BUILT, "fr_CH + de_CH_x" to BUILT, "fr_CH + de_CH_abcd" to BUILT,
+            "fr_CH + de_CH_abcdefghi" to BUILT, "fr_CH + abcdefghi_419" to BUILT, "fr_CH + 1_419" to BUILT, "fr_CH + d_419" to BUILT,
             "fr_CH + _CH" to UNBUILT, "fr_CH + -CH" to UNBUILT, "fr_CH + _CH_x" to UNBUILT, "fr_CH + CH" to UNBUILT,
-            "fr_CH + US" to UNBUILT, "fr_CH + EN" to UNBUILT, "fr_CH + ée" to UNBUILT, "fr_CH + de_ÄÖ" to UNBUILT,
-            "fr_CH + de_٣٣٣" to UNBUILT, "fr_CH + de_CH_1996_x" to UNBUILT, "fr_CH + zh_Hans_CN" to UNBUILT,
-            "fr_CH + de__1996" to UNBUILT, "fr_CH + de_CH_x" to UNBUILT, "fr_CH + de_CH_abcd" to UNBUILT,
-            "fr_CH + de_CH_abcdefghi" to UNBUILT, "fr_CH + abcdefghi_419" to UNBUILT, "fr_CH + 1_419" to UNBUILT,
-            "fr_CH + d_419" to UNBUILT, "fr_CH + de_CH-x" to UNBUILT,
+            "fr_CH + US" to UNBUILT, "fr_CH + EN" to UNBUILT, "fr_CH + zh_Hans_CN" to UNBUILT, "fr_CH + de_CH-x" to UNBUILT,
             "iw + he" to UNBUILT, "in + id" to UNBUILT, "de_CH + de-CH" to UNBUILT, "DE_419 + de_419" to UNBUILT,
             "iw + de" to BUILT,
         )

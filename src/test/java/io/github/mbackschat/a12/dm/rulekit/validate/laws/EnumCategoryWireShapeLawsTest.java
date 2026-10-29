@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelInputException;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
  * WHICH stored members carry an Enumeration's values and its categories, and what A12 does with a
@@ -146,7 +146,8 @@ class EnumCategoryWireShapeLawsTest {
 
     private static String keyedClassesOf(String modelJson) {
         try {
-            BoundModel.ofJson(modelJson);
+            // The Kernel gate alone, as KernelLaws.verdictOf asks it (KERNEL-FINDINGS KF649).
+            ModelLoader.loadSelfContained(modelJson);
             return KernelLaws.ADMITTED;
         } catch (ModelInputException unreadable) {
             return KernelLaws.UNREADABLE;

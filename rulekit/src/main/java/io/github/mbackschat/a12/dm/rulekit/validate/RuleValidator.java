@@ -270,12 +270,21 @@ public final class RuleValidator {
     private List<String> localeCodes(JsonNode root) {
         List<String> codes = new ArrayList<>();
         for (JsonNode locale : root.path("header").path("locales")) {
-            String code = locale.path("code").asText(null);
-            if (code != null && !code.isBlank()) {
+            String code = headerLocaleCode(locale);
+            if (!code.isBlank()) {
                 codes.add(code);
             }
         }
         return codes.isEmpty() ? List.of("en_US") : codes;
+    }
+
+    /**
+     * A header {@code locales} entry's code as written: A12 admits an object carrying {@code code} or a bare string
+     * (KERNEL-FINDINGS KF290). Each kit reads the shape privately, as no published signature may carry Jackson's
+     * types; {@code core.HeaderLocaleEntryReadersTest} holds every reader to both shapes.
+     */
+    private static String headerLocaleCode(JsonNode entry) {
+        return entry.isTextual() ? entry.asText() : entry.path("code").asText();
     }
 
     /**

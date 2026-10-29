@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import io.github.mbackschat.a12.dm.core.ModelInputException
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.core.ModelLoader
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
 
 /**
@@ -135,9 +135,15 @@ private val BOUND_SENTENCES = mapOf(
     "Only values with up to 15 digits are allowed." to "RK_BOUND_TOO_MANY_DIGITS",
 )
 
-/** Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion. */
+/**
+ * Whole-model admission, also covering the original partial fixtures P4 preserves before hosted completion.
+ *
+ * Asked of the Kernel gate alone. `BoundModel.ofJson` runs our own `ModelIndex` after the gate, and a throw from
+ * that reader is ours, not A12's: read as a refusal, it once put a header column of A12 "refusals" into a
+ * finding that A12 builds (KERNEL-FINDINGS KF649, found by a12-kernel-lean's LF224).
+ */
 internal fun kernelModelClasses(json: String): Set<String> = try {
-    BoundModel.ofJson(json)
+    ModelLoader.loadSelfContained(json)
     emptySet()
 } catch (unreadable: ModelInputException) {
     setOf("CK_MODEL_NOT_BUILDABLE")

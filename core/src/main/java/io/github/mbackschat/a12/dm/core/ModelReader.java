@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -22,6 +21,8 @@ import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.github.mbackschat.a12.dm.predicates.LocalePredicatesKt;
 
 /**
  * The <b>kernel-free</b> DM-JSON assembly layer (kernel-decoupling Stage 2): parse a DM-JSON model, <b>expand
@@ -840,15 +841,30 @@ public final class ModelReader {
                 .bound().orElse(null);
     }
 
+    /**
+     * The header's declared locales as A12 keys them ({@code LocalePredicatesKt.a12LocaleKey}): its own parser, not a
+     * BCP 47 tag parse, which threw on codes such as {@code de_CH_x} that A12 builds (KERNEL-FINDINGS KF649). A
+     * code naming no locale A12 can use is skipped rather than raised: this is a read accessor, and the Kernel gate
+     * is what refuses such a model.
+     */
     private static List<String> readLocales(ObjectNode root) {
         List<String> locales = new ArrayList<>();
         for (JsonNode loc : root.path(DmKeys.HEADER).path(DmKeys.LOCALES)) {
-            String code = loc.path(DmKeys.CODE).asText();
-            if (!code.isEmpty()) {
-                locales.add(new Locale.Builder().setLanguageTag(code.replace('_', '-')).build().toString());
+            String key = LocalePredicatesKt.a12LocaleKey(headerLocaleCode(loc));
+            if (key != null && LocalePredicatesKt.a12LocaleKeyHasLanguage(key)) {
+                locales.add(key);
             }
         }
         return List.copyOf(locales);
+    }
+
+    /**
+     * A header {@code locales} entry's code as written: A12 admits an object carrying {@code code} or a bare string
+     * (KERNEL-FINDINGS KF290). Each kit reads the shape privately, as no published signature may carry Jackson's
+     * types; {@code core.HeaderLocaleEntryReadersTest} holds every reader to both shapes.
+     */
+    private static String headerLocaleCode(JsonNode entry) {
+        return entry.isTextual() ? entry.asText() : entry.path(DmKeys.CODE).asText();
     }
 
     private static ObjectNode parse(String dmJson) {

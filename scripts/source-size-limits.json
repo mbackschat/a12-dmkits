@@ -40,7 +40,7 @@
     "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1141,
     "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 935,
     "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1116,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1471,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1470,
     "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1528,
     "schemakit/src/main/java/io/github/mbackschat/a12/dm/schemakit/JsonSchemaImporter.java": 1420
   }

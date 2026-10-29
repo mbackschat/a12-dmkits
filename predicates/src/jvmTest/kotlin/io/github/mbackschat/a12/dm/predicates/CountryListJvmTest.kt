@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.consistency
+package io.github.mbackschat.a12.dm.predicates
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

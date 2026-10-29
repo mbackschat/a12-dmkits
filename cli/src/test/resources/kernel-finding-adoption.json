@@ -2059,7 +2059,7 @@
       }
     },
     "kf367": {
-      "sha256": "c9b0daad5def6ca8c7540dda2a45e12786d2f36abaea7f00a305f8bb7ebe323e",
+      "sha256": "0efc0488d207aaeaa446571e1f8316cc527179f65704b75fa89bc44d61f321a2",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -17399,29 +17399,36 @@
       }
     },
     "kf290": {
-      "sha256": "9cb8329462afbbcaa575cf1d06a8840194cbdc6d86dcbb2c8c36634afffd9392",
-      "task": "SS42",
+      "sha256": "9db199b79a7b38b9c9b440cced03debaa41a356d386c0cd38e42b41af7c9feb8",
+      "task": "SS44",
       "scope": {
-        "dmkits": [],
+        "dmkits": [
+          "a header locale entry as a bare string"
+        ],
         "checker": [
           "the spelling half of the locale law"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "BoundModel on one row per clause"
+          "the Kernel gate on one row per clause"
         ],
         "interpreter": [],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the locale grammar of SPEC-2026-10-29-01"
+          "the locale grammar of SPEC-2026-10-29-01 and -02"
         ]
       },
       "consumers": {
         "dmkits": {
-          "state": "NOT_APPLICABLE",
-          "basis": "A locale spelling's admission is the kernel's reader's; the kits author locales through their typed surface.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Every kit reader of a header locales entry reads a bare string as it reads an object carrying code: the index, ModelDocument's locale accessors and RuleValidator's declared locales.",
+          "evidence": {
+            "a header locale entry as a bare string": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/core/HeaderLocaleEntryReadersTest.java#theModelDocumentReadsABareEntry",
+              "witness": "Each reader returns de_DE and fr_CH from a bare-string header, where all but the index once read the empty code."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
@@ -17447,9 +17454,9 @@
           "state": "APPLIED",
           "basis": "A12's own verdicts are the expected column of the lock.",
           "evidence": {
-            "BoundModel on one row per clause": {
+            "the Kernel gate on one row per clause": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryClauseByClauseAgainstA12",
-              "witness": "The A12 column is asserted from BoundModel, not copied."
+              "witness": "The A12 column is asserted from the Kernel gate alone, not copied."
             }
           }
         },
@@ -17465,43 +17472,52 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
+          "basis": "Handed over in our letters of 2026-10-29a and 2026-10-29b; the peer's adoption is theirs to report.",
           "evidence": {}
         }
       }
     },
     "kf649": {
-      "sha256": "0b3bad37a12764277263f35ef33b6d4811611f4d31878463a37a00a660d98fc3",
-      "task": "SS42",
+      "sha256": "b4df4c05ccaa1cc817b714b76febbcb0fa2e2fcee21885ce93d5457898d7ed9f",
+      "task": "SS44",
       "scope": {
-        "dmkits": [],
+        "dmkits": [
+          "the index's header locales"
+        ],
         "checker": [
-          "the locale spellings an entry and a header may carry"
+          "the locale spellings an entry and a header may carry",
+          "two header locales the JDK tags alike"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "BoundModel on one row per clause and on the header rows"
+          "the Kernel gate on one row per clause and on the header rows",
+          "two header locales the JDK tags alike"
         ],
         "interpreter": [],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the locale grammar of SPEC-2026-10-29-01"
+          "the locale grammar of SPEC-2026-10-29-01 and -02"
         ]
       },
       "consumers": {
         "dmkits": {
-          "state": "NOT_APPLICABLE",
-          "basis": "A locale spelling's admission is the kernel's reader's; the kits author locales through their typed surface.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "ModelIndex keys a header's codes by the grammar the checker shares from dm-predicates, so it reads every code the Kernel gate admits and skips one naming no language.",
+          "evidence": {
+            "the index's header locales": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexHeaderLocalesTest.java#aCodeA12BuildsIsReadNotRefused",
+              "witness": "de_CH_x, ée, de__1996 and en_US_abcdefghi are read where the index once threw."
+            }
+          }
         },
         "checker": {
-          "state": "APPLIED",
-          "basis": "An entry's locale is parsed by the measured grammar, a non-ASCII spelling deliberately read as written, and a header's must also be a well-formed language tag; each locale is keyed by its toString form.",
+          "state": "OPEN",
+          "basis": "An entry's locale is parsed by the measured grammar, a non-ASCII spelling deliberately read as written, and a header's must also name a language; each locale is keyed by its toString form. Two header locales the JDK writes as one language tag draw a class A12 states and the checker does not: DG163.",
           "evidence": {
             "the locale spellings an entry and a header may carry": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryTakesExactlyTheSpellingsTheParserTakes",
-              "witness": "About 2,900 generated spellings, the checker's verdict equal to the jar's on each, beside the BoundModel rows of the same class."
+              "witness": "About 2,900 generated spellings, the checker's verdict equal to the jar's on each, beside the Kernel-gate rows of the same class."
             }
           }
         },
@@ -17519,9 +17535,13 @@
           "state": "APPLIED",
           "basis": "A12's own verdicts are the expected column of the clause and header rows.",
           "evidence": {
-            "BoundModel on one row per clause and on the header rows": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#aHeaderAlsoDemandsAWellFormedTag",
-              "witness": "The A12 column is asserted from BoundModel, not copied."
+            "the Kernel gate on one row per clause and on the header rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#aHeaderCodeNeedsALanguageAndALocaleOfItsOwn",
+              "witness": "The A12 column is asserted from the Kernel gate alone, no reader of ours after it, not copied."
+            },
+            "two header locales the JDK tags alike": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#twoLocalesTheJdkTagsAlikeAreLeftToA12",
+              "witness": "en_US beside en_US_abcdefghi draws MVK_SUPP_LANGUAGES_DUPLICATE from the gate while the checker builds."
             }
           }
         },
@@ -17537,7 +17557,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
+          "basis": "Handed over in our letters of 2026-10-29a and 2026-10-29b; the peer's adoption is theirs to report.",
           "evidence": {}
         }
       }

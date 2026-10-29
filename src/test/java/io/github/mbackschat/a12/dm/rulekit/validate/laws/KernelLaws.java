@@ -104,7 +104,9 @@ final class KernelLaws {
      */
     static String verdictOf(String modelJson) {
         try {
-            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(modelJson);
+            // The Kernel gate alone: BoundModel.ofJson then runs our own ModelIndex, whose throw would read as
+            // A12's refusal of a model A12 builds (KERNEL-FINDINGS KF649).
+            io.github.mbackschat.a12.dm.core.ModelLoader.loadSelfContained(modelJson);
             return ADMITTED;
         } catch (io.github.mbackschat.a12.dm.core.ModelInputException unreadable) {
             return UNREADABLE;

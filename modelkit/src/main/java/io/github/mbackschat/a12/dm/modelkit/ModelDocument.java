@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -130,13 +131,22 @@ public final class ModelDocument {
         return root.path(DmKeys.HEADER).path(DmKeys.MODEL_TYPE).asText();
     }
 
-    /** The declared locale codes, in document order. */
+    /** The declared locale codes as written, in document order, from either entry shape A12 admits. */
     public List<String> locales() {
         List<String> out = new ArrayList<>();
         for (JsonNode l : root.path(DmKeys.HEADER).path(DmKeys.LOCALES)) {
-            out.add(l.path(DmKeys.CODE).asText());
+            out.add(headerLocaleCode(l));
         }
         return out;
+    }
+
+    /**
+     * A header {@code locales} entry's code as written: A12 admits an object carrying {@code code} or a bare string
+     * (KERNEL-FINDINGS KF290). Each kit reads the shape privately, as no published signature may carry Jackson's
+     * types; {@code core.HeaderLocaleEntryReadersTest} holds every reader to both shapes.
+     */
+    private static String headerLocaleCode(JsonNode entry) {
+        return entry.isTextual() ? entry.asText() : entry.path(DmKeys.CODE).asText();
     }
 
     /**
@@ -150,12 +160,9 @@ public final class ModelDocument {
         ArrayNode locales = header.path(DmKeys.LOCALES).isArray()
                 ? (ArrayNode) header.get(DmKeys.LOCALES)
                 : header.putArray(DmKeys.LOCALES);
-        for (JsonNode l : locales) {
-            if (code.equals(l.path(DmKeys.CODE).asText())) {
-                return this;   // already declared
-            }
+        if (!locales().contains(code)) {
+            locales.addObject().put(DmKeys.CODE, code);
         }
-        locales.addObject().put(DmKeys.CODE, code);
         return this;
     }
 
@@ -166,16 +173,14 @@ public final class ModelDocument {
      * kernel-valid. Fails fast on removing the <b>last</b> locale (a model needs at least one).
      */
     public ModelDocument removeLocale(String code) {
-        JsonNode header = root.path(DmKeys.HEADER);
-        if (!header.path(DmKeys.LOCALES).isArray()) {
-            return this;
-        }
-        ArrayNode locales = (ArrayNode) header.get(DmKeys.LOCALES);
-        if (locales.size() == 1 && code.equals(locales.path(0).path(DmKeys.CODE).asText())) {
+        List<String> declared = locales();
+        if (declared.contains(code) && declared.stream().allMatch(code::equals)) {
             throw new IllegalArgumentException("cannot remove the last locale '" + code
                     + "' — a model needs at least one declared locale");
         }
-        filterArray((ObjectNode) header, DmKeys.LOCALES, DmKeys.CODE, code);
+        if (root.path(DmKeys.HEADER) instanceof ObjectNode header) {
+            filterArray(header, DmKeys.LOCALES, ModelDocument::headerLocaleCode, code);
+        }
         return this;
     }
 
@@ -748,7 +753,7 @@ public final class ModelDocument {
 
     /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
     public ModelDocument removeAnnotation(String elementPath, String name) {
-        filterArray(metaElement(elementPath), DmKeys.ANNOTATIONS, DmKeys.NAME, name);
+        filterArray(metaElement(elementPath), DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
         return this;
     }
 
@@ -771,13 +776,13 @@ public final class ModelDocument {
 
     /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeInternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, DmKeys.LOCALE, locale);
+        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, e -> e.path(DmKeys.LOCALE).asText(), locale);
         return this;
     }
 
     /** Remove the {@code externalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeExternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, DmKeys.LOCALE, locale);
+        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, e -> e.path(DmKeys.LOCALE).asText(), locale);
         return this;
     }
 
@@ -793,15 +798,15 @@ public final class ModelDocument {
         array.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, text);
     }
 
-    /** Drop every entry of {@code element[key]} whose {@code matchField} equals {@code matchValue}; remove the array if it empties. */
-    private static void filterArray(ObjectNode element, String key, String matchField, String matchValue) {
+    /** Drop every entry of {@code element[key]} whose {@code field} reads {@code matchValue}; remove the array if it empties. */
+    private static void filterArray(ObjectNode element, String key, Function<JsonNode, String> field, String matchValue) {
         JsonNode array = element.path(key);
         if (!array.isArray()) {
             return;
         }
         ArrayNode kept = MAPPER.createArrayNode();
         for (JsonNode e : array) {
-            if (!matchValue.equals(e.path(matchField).asText())) {
+            if (!matchValue.equals(field.apply(e))) {
                 kept.add(e);
             }
         }
@@ -842,7 +847,7 @@ public final class ModelDocument {
     public ModelDocument removeModelAnnotation(String name) {
         JsonNode header = root.path(DmKeys.HEADER);
         if (header.isObject()) {
-            filterArray((ObjectNode) header, DmKeys.ANNOTATIONS, DmKeys.NAME, name);
+            filterArray((ObjectNode) header, DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
         }
         return this;
     }

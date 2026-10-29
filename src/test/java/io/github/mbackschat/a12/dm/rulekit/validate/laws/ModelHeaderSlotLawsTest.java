@@ -66,6 +66,9 @@ class ModelHeaderSlotLawsTest {
         actual.put("a header declaring the same locale twice",
                 KernelLaws.verdictOf(patched(root -> ((ArrayNode) root.path("header").path("locales"))
                         .add(MAPPER.createObjectNode().put("code", "en_US")))));
+        actual.put("a header declaring two locales the JDK tags alike",
+                KernelLaws.verdictOf(patched(root -> ((ArrayNode) root.path("header").path("locales"))
+                        .add(MAPPER.createObjectNode().put("code", "en_US_abcdefghi")))));
         actual.put("no `locales` at all",
                 KernelLaws.verdictOf(patched(root -> ((ObjectNode) root.path("header")).remove("locales"))));
         for (String member : new String[] {"id", "modelType", "modelVersion", "labels", "annotations",
@@ -81,9 +84,11 @@ class ModelHeaderSlotLawsTest {
         // `maxDigits` is `IProjectSpecificSettings.MAXDIGITS_IN_NUMBERS` and the programming language is the
         // codegen parameter. A model with no `modelConfig` is admitted outright.
         expected.put("no `modelConfig` at all", KernelLaws.ADMITTED);
-        // …and a repeated locale is refused at the BUILD tier with no class, so
-        // `MVK_SUPP_LANGUAGES_DUPLICATE` has nothing to fire on either — the collector reads a language SET.
+        // …and a repeated locale is refused at the BUILD tier with no class. `MVK_SUPP_LANGUAGES_DUPLICATE` is
+        // still reachable, from two DISTINCT locales: `en_US_abcdefghi`'s variant is no language-tag subtag, so
+        // the JDK tags it `en-US` as it tags `en_US` (KERNEL-FINDINGS KF649, a12-kernel-lean's row k09).
         expected.put("a header declaring the same locale twice", KernelLaws.NOT_BUILDABLE);
+        expected.put("a header declaring two locales the JDK tags alike", "MVK_SUPP_LANGUAGES_DUPLICATE");
         expected.put("no `locales` at all", KernelLaws.NOT_BUILDABLE);
         // Of the header's other members exactly ONE is load-bearing, and it is not the one a reader expects:
         // the model builds with no `id` and no `modelType`, and not without a `modelVersion`.
