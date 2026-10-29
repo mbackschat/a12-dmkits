@@ -283,7 +283,7 @@ private val SPLIT_YEAR_SLOTS = listOf(
 )
 
 /** The catalog ids of every operator A12's `datumExtractOp` rule admits, keyed for spelling lookup. */
-private val EXTRACT_OPS = DATE_EXTRACT_OPERATIONS.associateWith { it }
+private val EXTRACT_OPS = DATE_EXTRACT_OPERATIONS.associate { it.catalogId to it.catalogId }
 
 private sealed interface SlotArm {
     /** A quoted constant, already unquoted. */

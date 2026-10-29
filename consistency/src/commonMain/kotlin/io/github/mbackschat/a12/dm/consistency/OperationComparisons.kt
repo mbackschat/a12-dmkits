@@ -67,13 +67,13 @@ private fun OperationAnalysis.comparisonFinding(
     val customField = left.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD ||
         right.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD
     val words = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
-    val tolerance = TOLERANCE_COMPARISONS.mapNotNull { words[it] }
+    val tolerance = TOLERANCE_COMPARISONS.mapNotNull { words[it.catalogId] }
     if (operator in tolerance) {
         if (left.type == OperationType.Unknown || right.type == OperationType.Unknown) return null
         return if (left.numeric != null && right.numeric != null) null else problem("MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
             "`$operator` compares two numbers within a tolerance, and `${comparison.left}` / `${comparison.right}` are not both numbers — compare them with `==` or `!=` instead")
     }
-    if (PATTERN_COMPARISONS.any { operator == words[it] }) {
+    if (PATTERN_COMPARISONS.any { operator == words[it.catalogId] }) {
         if (customField) return null
         if (leftShape !is OperationShape.Read) return problem("MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON",
             "`$operator` reads one declaration's value against a pattern; put the field on the left and the pattern on the right")

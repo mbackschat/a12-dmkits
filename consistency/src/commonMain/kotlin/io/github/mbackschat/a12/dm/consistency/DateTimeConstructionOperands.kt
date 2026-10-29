@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 
 /**
@@ -33,7 +34,7 @@ internal fun TrackedFactBase.dateTimeConstructionContributions(
     val identities = CONDITION_OPERATOR_IDENTITIES[conditionLanguage] ?: return emptyList()
     val reader = TemporalOperandReader(this, identities, execution, element)
     return callContributions(element, execution) { member, call ->
-        if (identities[call.operator] != "DateTime") return@callContributions null
+        if (identities[call.operator] != OperatorId.DATE_TIME) return@callContributions null
         reader.dateTimeDefect(call)?.findingAt(call, element, member)
     }
 }

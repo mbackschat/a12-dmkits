@@ -4,8 +4,8 @@ import io.github.mbackschat.a12.dm.consistency.asciiLowercase
 
 /** A12's `datumExtractOpName`, by catalog id: the operations a `Date`/`Time` component may call. */
 internal val DATE_EXTRACT_OPERATIONS = setOf(
-    "YearFromDate", "QuarterFromDate", "MonthFromDate", "DayFromDate",
-    "HoursFromTime", "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime",
+    OperatorId.YEAR_FROM_DATE, OperatorId.QUARTER_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.DAY_FROM_DATE,
+    OperatorId.HOURS_FROM_TIME, OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME, OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME,
 )
 
 /** Model-independent recognition; only completed structures become scanner inputs. */
@@ -90,7 +90,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         return true
     }
     private fun kind(token: Token?): KeywordKind? = token?.takeIf { it.kind == TokenKind.NAME }?.let { keywords[it.text] }
-    private fun identity(token: Token?): String? = token?.takeIf { it.kind == TokenKind.NAME }?.let { identities[it.text] }
+    private fun identity(token: Token?): OperatorId? = token?.takeIf { it.kind == TokenKind.NAME }?.let { identities[it.text] }
     private fun comments() { while (peek()?.kind == TokenKind.COMMENT) take() }
     private fun name(token: Token?): Boolean = token != null && when (token.kind) {
         TokenKind.QUOTED_NAME, TokenKind.NUMBER -> true
@@ -139,7 +139,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         if (open("(")) { val node = condition(); require(")"); return node }
         val token = peek() ?: fail(SyntaxFailureKind.DECISION)
         val id = identity(token)
-        if (id == "CustomCondition") { take(); requireName(); return ConditionNode.Custom }
+        if (id == OperatorId.CUSTOM_CONDITION) { take(); requireName(); return ConditionNode.Custom }
         if (kind(token) == KeywordKind.PREDICATE ||
             kind(token) != null && token.text in FORM_CONSTRUCTS ||
             kind(token) == KeywordKind.UNCATALOGED && peek(1)?.text == "(") {
@@ -259,12 +259,12 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         require("(")
         val operands = mutableListOf<List<Token>>()
         var lastOperandStart = cursor
-        if (id != "Time" || !isText(")")) {
+        if (id != OperatorId.TIME || !isText(")")) {
             // A12's grammar has two validity conditions and nothing between them: a `Date` construction alone, or
             // a field and a type name (`ValidityConditionOperandLawsTest.whatTheGrammarAdmitsAsAValidityCondition`).
             val signature = when {
                 id !in VALIDITY -> SIGNATURES[id]
-                identity(peek()) == "Date" -> listOf(Slot.DATE)
+                identity(peek()) == OperatorId.DATE -> listOf(Slot.DATE)
                 else -> listOf(Slot.ENTITY, Slot.STRING)
             }
             var position = 0
@@ -302,7 +302,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                             take(); values = true; value()
                         }
                     }
-                    id == "NumberOfValueInFields" && position == 0 -> {
+                    id == OperatorId.NUMBER_OF_VALUE_IN_FIELDS && position == 0 -> {
                         constant()
                         if (kind(peek()) == null || peek()?.text !in IN_WORDS) fail(SyntaxFailureKind.MATCH)
                         take(); entity()
@@ -311,11 +311,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     Slot.OPERATION -> operation()
                     Slot.DIGITS -> digits()
                     Slot.DAY -> {
-                        if (identity(peek()) !in setOf("FirstDay", "LastDay")) fail(SyntaxFailureKind.MATCH)
+                        if (identity(peek()) !in setOf(OperatorId.FIRST_DAY, OperatorId.LAST_DAY)) fail(SyntaxFailureKind.MATCH)
                         take()
                     }
                     Slot.ENTITY -> entity()
-                    Slot.RANGE -> if (identity(peek()) == "BaseYear") constantToken() else entity()
+                    Slot.RANGE -> if (identity(peek()) == OperatorId.BASE_YEAR) constantToken() else entity()
                     Slot.DATE, Slot.DATE_OR_VALUE_AS_DATE -> {
                         date(valueAsDate = slot == Slot.DATE_OR_VALUE_AS_DATE)
                         peek()
@@ -330,11 +330,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 position++
                 if (signature != null && position == signature.size && id !in REPEATED) break
             } while (consume(","))
-            val required = when (id) { "Date" -> 2; in OPTIONAL_TAIL -> 1; else -> signature?.size ?: 0 }
+            val required = when (id) { OperatorId.DATE -> 2; in OPTIONAL_TAIL -> 1; else -> signature?.size ?: 0 }
             if (position < required) require(",")
             if (id in LIST_MEMBERSHIP && !values) fail(SyntaxFailureKind.MATCH)
         }
-        if (id == "RepetitionNotUnique" && scopeFollows()) {
+        if (id == OperatorId.REPETITION_NOT_UNIQUE && scopeFollows()) {
             take(); take(); entity()
             operands[operands.lastIndex] = tokens.subList(lastOperandStart, cursor)
         }
@@ -376,8 +376,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val id = identity(peek())
         when {
             name(peek()) || peek()?.text in PATH_STARTS -> entity()
-            peek()?.kind == TokenKind.STRING || id in setOf("Today", "Now", "BaseYear") -> constantToken()
-            id in DATE_FUNCTIONS && (id != "ValueAsDate" || valueAsDate) -> call()
+            peek()?.kind == TokenKind.STRING || id in setOf(OperatorId.TODAY, OperatorId.NOW, OperatorId.BASE_YEAR) -> constantToken()
+            id in DATE_FUNCTIONS && (id != OperatorId.VALUE_AS_DATE || valueAsDate) -> call()
             else -> fail(SyntaxFailureKind.DECISION)
         }
     }
@@ -461,14 +461,14 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         } else null
         var indexed = false
         var filtered = false
-        if (identity(peek()) == "SemanticIndex") {
+        if (identity(peek()) == OperatorId.SEMANTIC_INDEX) {
             val indexStart = peek()!!.start
             take()
             if (peek()?.kind == TokenKind.STRING) take() else entity(indexKey = true)
             completed(SyntaxSite.Kind.INDEX, indexStart)
             indexed = true
         }
-        if (identity(peek()) == "Having") {
+        if (identity(peek()) == OperatorId.HAVING) {
             val keyword = take()
             peek()
             val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey)
@@ -500,49 +500,49 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val COMPARISONS = setOf("==", "!=", "<", ">", "<=", ">=")
         val PATH_STARTS = setOf("/", "..", "$")
         val LIST_WORDS = setOf("In", "IN", "in", "To", "TO", "to", "Zu", "ZU", "zu")
-        val VALIDITY = setOf("Valid", "ValidType", "Invalid", "InvalidType")
+        val VALIDITY = setOf(OperatorId.VALID, OperatorId.VALID_TYPE, OperatorId.INVALID, OperatorId.INVALID_TYPE)
         val IN_WORDS = setOf("In", "IN", "in")
-        val MEMBERSHIP = setOf("FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList")
-        val LIST_MEMBERSHIP = setOf("AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList",
-            "NotAllFieldValuesIncludedInValueList", "AtLeastOneDateRangeOverlaps")
-        val ENTITY_LISTS = setOf("FieldFilled", "FieldNotFilled", "AllFieldsFilled", "NoFieldFilled",
-            "AtLeastOneFieldFilled", "NotAllFieldsFilled", "FieldsNotCollectivelyFilled", "NotExactlyOneFieldFilled",
-            "MoreThanOneFieldFilled", "GroupFilled", "GroupNotFilled", "AllGroupsFilled", "NoGroupFilled",
-            "AtLeastOneGroupFilled", "NotAllGroupsFilled", "GroupsNotCollectivelyFilled", "FieldValuesNotUnique",
-            "Sum", "MaxValue", "MinValue", "FirstFilledValue", "SumOfProducts", "NumberOfFilledFields",
-            "NumberOfFilledGroups", "NumberOfDifferentValues", "NumberOfValueInFields", "DateRangesOverlap")
-        val REPEATED = setOf("Max", "Min") + ENTITY_LISTS
-        val OPTIONAL_TAIL = setOf("RoundDownValue", "RoundUpValue", "RoundAccountingValue", "RoundDown", "RoundUp",
-            "RoundAccounting", "Time", "Date")
-        val DATE_FUNCTIONS = setOf("Date", "Time", "DateTime", "DateRange", "AddYears", "AddMonths", "AddDays",
-            "AddHours", "AddMinutes", "AddSeconds", "StartOfDateRange", "EndOfDateRange", "DateFromDateTime",
-            "TimeFromDateTime", "ValueAsDate", "YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate",
-            "HoursFromTime", "MinutesFromTime", "SecondsFromTime")
-        val SIGNATURES = buildMap<String, List<Slot>> {
+        val MEMBERSHIP = setOf(OperatorId.FIELD_VALUE_INCLUDED_IN_VALUE_LIST, OperatorId.FIELD_VALUE_NOT_INCLUDED_IN_VALUE_LIST)
+        val LIST_MEMBERSHIP = setOf(OperatorId.AT_LEAST_ONE_FIELD_VALUE_INCLUDED_IN_VALUE_LIST, OperatorId.NO_FIELD_VALUE_INCLUDED_IN_VALUE_LIST,
+            OperatorId.NOT_ALL_FIELD_VALUES_INCLUDED_IN_VALUE_LIST, OperatorId.AT_LEAST_ONE_DATE_RANGE_OVERLAPS)
+        val ENTITY_LISTS = setOf(OperatorId.FIELD_FILLED, OperatorId.FIELD_NOT_FILLED, OperatorId.ALL_FIELDS_FILLED, OperatorId.NO_FIELD_FILLED,
+            OperatorId.AT_LEAST_ONE_FIELD_FILLED, OperatorId.NOT_ALL_FIELDS_FILLED, OperatorId.FIELDS_NOT_COLLECTIVELY_FILLED, OperatorId.NOT_EXACTLY_ONE_FIELD_FILLED,
+            OperatorId.MORE_THAN_ONE_FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.GROUP_NOT_FILLED, OperatorId.ALL_GROUPS_FILLED, OperatorId.NO_GROUP_FILLED,
+            OperatorId.AT_LEAST_ONE_GROUP_FILLED, OperatorId.NOT_ALL_GROUPS_FILLED, OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED, OperatorId.FIELD_VALUES_NOT_UNIQUE,
+            OperatorId.SUM, OperatorId.MAX_VALUE, OperatorId.MIN_VALUE, OperatorId.FIRST_FILLED_VALUE, OperatorId.SUM_OF_PRODUCTS, OperatorId.NUMBER_OF_FILLED_FIELDS,
+            OperatorId.NUMBER_OF_FILLED_GROUPS, OperatorId.NUMBER_OF_DIFFERENT_VALUES, OperatorId.NUMBER_OF_VALUE_IN_FIELDS, OperatorId.DATE_RANGES_OVERLAP)
+        val REPEATED = setOf(OperatorId.MAX, OperatorId.MIN) + ENTITY_LISTS
+        val OPTIONAL_TAIL = setOf(OperatorId.ROUND_DOWN_VALUE, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_ACCOUNTING_VALUE, OperatorId.ROUND_DOWN, OperatorId.ROUND_UP,
+            OperatorId.ROUND_ACCOUNTING, OperatorId.TIME, OperatorId.DATE)
+        val DATE_FUNCTIONS = setOf(OperatorId.DATE, OperatorId.TIME, OperatorId.DATE_TIME, OperatorId.DATE_RANGE, OperatorId.ADD_YEARS, OperatorId.ADD_MONTHS, OperatorId.ADD_DAYS,
+            OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS, OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE, OperatorId.DATE_FROM_DATE_TIME,
+            OperatorId.TIME_FROM_DATE_TIME, OperatorId.VALUE_AS_DATE, OperatorId.YEAR_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.DAY_FROM_DATE, OperatorId.QUARTER_FROM_DATE,
+            OperatorId.HOURS_FROM_TIME, OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME)
+        val SIGNATURES = buildMap<OperatorId, List<Slot>> {
             for (id in ENTITY_LISTS) put(id, listOf(Slot.ENTITY))
-            for (id in listOf("Length", "AbsValue", "FieldValueAsNumber", "FieldValueAsString", "CurrentRepetition"))
+            for (id in listOf(OperatorId.LENGTH, OperatorId.ABS_VALUE, OperatorId.FIELD_VALUE_AS_NUMBER, OperatorId.FIELD_VALUE_AS_STRING, OperatorId.CURRENT_REPETITION))
                 put(id, listOf(Slot.ENTITY))
-            for (id in listOf("StartOfDateRange", "EndOfDateRange")) put(id, listOf(Slot.RANGE))
+            for (id in listOf(OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE)) put(id, listOf(Slot.RANGE))
             // The range construct takes two field specs, not the date slot (`datumBereichKonstrukt`, KF613).
-            put("DateRange", listOf(Slot.ENTITY, Slot.ENTITY))
-            for (id in listOf("DifferenceInDays", "DifferenceInMonths", "DifferenceInYears", "DifferenceInHours",
-                    "DifferenceInMinutes", "DifferenceInSeconds"))
+            put(OperatorId.DATE_RANGE, listOf(Slot.ENTITY, Slot.ENTITY))
+            for (id in listOf(OperatorId.DIFFERENCE_IN_DAYS, OperatorId.DIFFERENCE_IN_MONTHS, OperatorId.DIFFERENCE_IN_YEARS, OperatorId.DIFFERENCE_IN_HOURS,
+                    OperatorId.DIFFERENCE_IN_MINUTES, OperatorId.DIFFERENCE_IN_SECONDS))
                 put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE_OR_VALUE_AS_DATE))
-            put("DateTime", listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE))
-            for (id in listOf("YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate", "HoursFromTime",
-                    "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime"))
+            put(OperatorId.DATE_TIME, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE))
+            for (id in listOf(OperatorId.YEAR_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.DAY_FROM_DATE, OperatorId.QUARTER_FROM_DATE, OperatorId.HOURS_FROM_TIME,
+                    OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME, OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME))
                 put(id, listOf(Slot.DATE))
-            put("Time", List(3) { Slot.COMPONENT })
-            put("Date", List(4) { Slot.COMPONENT })
-            for (id in listOf("RoundDownValue", "RoundUpValue", "RoundAccountingValue"))
+            put(OperatorId.TIME, List(3) { Slot.COMPONENT })
+            put(OperatorId.DATE, List(4) { Slot.COMPONENT })
+            for (id in listOf(OperatorId.ROUND_DOWN_VALUE, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_ACCOUNTING_VALUE))
                 put(id, listOf(Slot.ENTITY, Slot.DIGITS))
-            for (id in listOf("RoundDown", "RoundUp", "RoundAccounting"))
+            for (id in listOf(OperatorId.ROUND_DOWN, OperatorId.ROUND_UP, OperatorId.ROUND_ACCOUNTING))
                 put(id, listOf(Slot.OPERATION, Slot.DIGITS))
-            for (id in listOf("RangeAsNumber", "RangeAsString"))
+            for (id in listOf(OperatorId.RANGE_AS_NUMBER, OperatorId.RANGE_AS_STRING))
                 put(id, listOf(Slot.ENTITY, Slot.DIGITS, Slot.DIGITS))
-            for (id in listOf("Abs", "Max", "Min")) put(id, listOf(Slot.OPERATION))
-            put("ValueAsDate", listOf(Slot.ENTITY, Slot.DAY))
-            for (id in listOf("AddYears", "AddMonths", "AddDays", "AddHours", "AddMinutes", "AddSeconds"))
+            for (id in listOf(OperatorId.ABS, OperatorId.MAX, OperatorId.MIN)) put(id, listOf(Slot.OPERATION))
+            put(OperatorId.VALUE_AS_DATE, listOf(Slot.ENTITY, Slot.DAY))
+            for (id in listOf(OperatorId.ADD_YEARS, OperatorId.ADD_MONTHS, OperatorId.ADD_DAYS, OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS))
                 put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.OPERATION))
         }
     }

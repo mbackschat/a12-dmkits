@@ -10,20 +10,22 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  */
 
 /**
- * Each language's operator spellings back to their catalog ids, built once from [CONDITION_OPERATOR_KEYWORDS].
+ * Each language's operator spellings back to their [OperatorId]s, built once from [CONDITION_OPERATOR_KEYWORDS].
  *
  * That table runs from id to spelling because only that direction is a function: where two ids share a
  * spelling (`Valid` for `Valid` and `ValidType`), the id listed later wins here.
  */
-internal val CONDITION_OPERATOR_IDENTITIES: Map<ConditionLanguage, Map<String, String>> =
-    CONDITION_OPERATOR_KEYWORDS.mapValues { (_, spellings) -> spellings.entries.associate { (id, spelling) -> spelling to id } }
+internal val CONDITION_OPERATOR_IDENTITIES: Map<ConditionLanguage, Map<String, OperatorId>> =
+    CONDITION_OPERATOR_KEYWORDS.mapValues { (_, spellings) ->
+        spellings.entries.associate { (id, spelling) -> spelling to checkNotNull(OperatorId.of(id)) { "uncataloged id $id" } }
+    }
 
 /** A12's tolerance comparisons (`ComparisonOperation` `NE1`…`NE10`). */
-internal val TOLERANCE_COMPARISONS = setOf("DiffersWithToleranceRange1", "DiffersWithToleranceRange2",
-    "DiffersWithToleranceRange5", "DiffersWithToleranceRange10")
+internal val TOLERANCE_COMPARISONS = setOf(OperatorId.DIFFERS_WITH_TOLERANCE_RANGE_1,
+    OperatorId.DIFFERS_WITH_TOLERANCE_RANGE_2, OperatorId.DIFFERS_WITH_TOLERANCE_RANGE_5, OperatorId.DIFFERS_WITH_TOLERANCE_RANGE_10)
 
 /** A12's pattern comparisons (`NM`, `WM`). */
-internal val PATTERN_COMPARISONS = setOf("PatternMatched", "PatternViolated")
+internal val PATTERN_COMPARISONS = setOf(OperatorId.PATTERN_MATCHED, OperatorId.PATTERN_VIOLATED)
 
 internal const val SEMANTIC_INDEX = "SemanticIndex"
 

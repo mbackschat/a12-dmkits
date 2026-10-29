@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
@@ -293,38 +294,38 @@ internal class OperationAnalysis(
             }
         }
         return when (id) {
-            "Min", "Max" -> extremum(shape, operands)
-            "MinValue", "MaxValue" -> extremum(shape, fields() ?: return UNKNOWN, numericGate = false)
-            "NumberOfDifferentValues" -> {
+            OperatorId.MIN, OperatorId.MAX -> extremum(shape, operands)
+            OperatorId.MIN_VALUE, OperatorId.MAX_VALUE -> extremum(shape, fields() ?: return UNKNOWN, numericGate = false)
+            OperatorId.NUMBER_OF_DIFFERENT_VALUES -> {
                 val fields = fields() ?: return UNKNOWN
                 val result = if (fields.firstOrNull()?.temporal != null) extremum(shape, fields, numericGate = false)
                     else fields.firstOrNull() ?: UNKNOWN
                 if (result.type != OperationType.Unknown) OperationValue(OperationType.Number(0)) else result
             }
-            "Sum", "SumOfProducts", "FirstFilledValue" -> {
+            OperatorId.SUM, OperatorId.SUM_OF_PRODUCTS, OperatorId.FIRST_FILLED_VALUE -> {
                 val fields = fields() ?: return UNKNOWN
                 // KF181 / NumericOperationGateAgreementTest: numeric scale summarizes the expanded list;
                 // KF391's first-field kind rule still applies to nonnumeric results.
-                if (id == "FirstFilledValue" && fields.firstOrNull()?.numeric == null)
+                if (id == OperatorId.FIRST_FILLED_VALUE && fields.firstOrNull()?.numeric == null)
                     fields.firstOrNull()?.derived() ?: UNKNOWN
-                else numericAggregate(fields, id == "SumOfProducts")
+                else numericAggregate(fields, id == OperatorId.SUM_OF_PRODUCTS)
             }
-            "NumberOfFilledFields", "NumberOfFilledGroups", "NumberOfValueInFields", "CurrentRepetition", "Length" ->
+            OperatorId.NUMBER_OF_FILLED_FIELDS, OperatorId.NUMBER_OF_FILLED_GROUPS, OperatorId.NUMBER_OF_VALUE_IN_FIELDS, OperatorId.CURRENT_REPETITION, OperatorId.LENGTH ->
                 OperationValue(OperationType.Number(0))
-            "Abs" -> computedDate(shape, operands.firstOrNull()) ?: operands.firstOrNull()?.derived() ?: UNKNOWN
-            "AbsValue" -> fields()?.singleOrNull()?.derived() ?: UNKNOWN
-            "RoundUp", "RoundDown", "RoundAccounting", "RoundUpValue", "RoundDownValue", "RoundAccountingValue" -> {
+            OperatorId.ABS -> computedDate(shape, operands.firstOrNull()) ?: operands.firstOrNull()?.derived() ?: UNKNOWN
+            OperatorId.ABS_VALUE -> fields()?.singleOrNull()?.derived() ?: UNKNOWN
+            OperatorId.ROUND_UP, OperatorId.ROUND_DOWN, OperatorId.ROUND_ACCOUNTING, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_DOWN_VALUE, OperatorId.ROUND_ACCOUNTING_VALUE -> {
                 computedDate(shape, operands.firstOrNull())?.let { return it }
                 if (shape.operands.firstOrNull() != null && operands.first().type == OperationType.Unknown) return UNKNOWN
                 val scale = shape.call.operands.getOrNull(1)?.let { shape.call.textOf(it).asciiIntOrNull() } ?: 0
                 OperationValue(OperationType.Number(scale))
             }
-            "FieldValueAsString" -> OperationValue(OperationType.Text)
+            OperatorId.FIELD_VALUE_AS_STRING -> OperationValue(OperationType.Text)
             // A12 hands a shift the type of the date it moves (`CheckDatumAddOpImpl`), so a comparison meets the
             // shifted date as that field ([KERNEL-FINDINGS KF606]).
-            "AddDays", "AddMonths", "AddYears", "AddHours", "AddMinutes", "AddSeconds" -> shifted(shape.call)
-            "DateRange" -> constructedRange(shape)
-            "StartOfDateRange", "EndOfDateRange" ->
+            OperatorId.ADD_DAYS, OperatorId.ADD_MONTHS, OperatorId.ADD_YEARS, OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS -> shifted(shape.call)
+            OperatorId.DATE_RANGE -> constructedRange(shape)
+            OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE ->
                 if (shape.call.operands.singleOrNull()?.let { facts.isBaseYearConstant(shape.call.textOf(it)) } == true)
                     UNKNOWN.copy(baseYear = BaseYearRole.ENDPOINT) else UNKNOWN
             else -> UNKNOWN

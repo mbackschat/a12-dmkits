@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 
@@ -41,19 +42,19 @@ internal fun TrackedFactBase.temporalExtractorContributions(
 }
 
 /** The nine extractors, with the component each number extractor reads — A12's `DateUtils.typeToComponent`. */
-internal enum class Extractor(val id: String, val component: Component?) {
-    YEAR_FROM_DATE("YearFromDate", Component.YEAR),
-    QUARTER_FROM_DATE("QuarterFromDate", Component.MONTH),
-    MONTH_FROM_DATE("MonthFromDate", Component.MONTH),
-    DAY_FROM_DATE("DayFromDate", Component.DAY),
-    HOURS_FROM_TIME("HoursFromTime", Component.HOUR),
-    MINUTES_FROM_TIME("MinutesFromTime", Component.MINUTE),
-    SECONDS_FROM_TIME("SecondsFromTime", Component.SECOND),
-    DATE_FROM_DATE_TIME("DateFromDateTime", null),
-    TIME_FROM_DATE_TIME("TimeFromDateTime", null);
+internal enum class Extractor(val id: OperatorId, val component: Component?) {
+    YEAR_FROM_DATE(OperatorId.YEAR_FROM_DATE, Component.YEAR),
+    QUARTER_FROM_DATE(OperatorId.QUARTER_FROM_DATE, Component.MONTH),
+    MONTH_FROM_DATE(OperatorId.MONTH_FROM_DATE, Component.MONTH),
+    DAY_FROM_DATE(OperatorId.DAY_FROM_DATE, Component.DAY),
+    HOURS_FROM_TIME(OperatorId.HOURS_FROM_TIME, Component.HOUR),
+    MINUTES_FROM_TIME(OperatorId.MINUTES_FROM_TIME, Component.MINUTE),
+    SECONDS_FROM_TIME(OperatorId.SECONDS_FROM_TIME, Component.SECOND),
+    DATE_FROM_DATE_TIME(OperatorId.DATE_FROM_DATE_TIME, null),
+    TIME_FROM_DATE_TIME(OperatorId.TIME_FROM_DATE_TIME, null);
 
     companion object {
-        fun of(id: String): Extractor? = entries.firstOrNull { it.id == id }
+        fun of(id: OperatorId): Extractor? = entries.firstOrNull { it.id == id }
     }
 }
 

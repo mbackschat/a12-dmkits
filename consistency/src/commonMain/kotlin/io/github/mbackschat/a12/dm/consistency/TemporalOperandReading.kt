@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
@@ -36,7 +37,7 @@ internal sealed interface ExtractedFrom {
  */
 internal class TemporalOperandReader(
     val facts: TrackedFactBase,
-    val identities: Map<String, String>,
+    val identities: Map<String, OperatorId>,
     val execution: ConditionExecution,
     val element: TrackedDeclaration,
 ) {
@@ -58,7 +59,7 @@ internal class TemporalOperandReader(
 
     /** Whether [operand] is a whole `ValueAsDate` call, which `DateTime`'s Date gates do not ask (KF643). */
     fun isValueAsDate(operand: CallOperand): Boolean =
-        execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }?.let { identities[it.operator] } == "ValueAsDate"
+        execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }?.let { identities[it.operator] } == OperatorId.VALUE_AS_DATE
 
     /** The format A12 registers for a nested operation it admits, or null where this reader cannot say. */
     private fun operation(shape: CallShape): ExtractedFrom? = with(facts) {
@@ -66,22 +67,22 @@ internal class TemporalOperandReader(
         val call = shape.asCall(conditionLanguage, inBody)
         val operands = call.operands
         val format = when (identities[shape.operator]) {
-            "DateFromDateTime", "TimeFromDateTime" -> {
+            OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME -> {
                 // Where the extractor family judges the inner stamp, a refusal is already reported at the inner
                 // call. The check is for an operand it cannot type, where another class may answer first:
                 // silence, not a guess.
                 val from = operands.singleOrNull()?.let { typed(it, inBody) } ?: return null
                 if (!from.components.containsAll(Component.entries)) return null
-                if (identities[shape.operator] == "DateFromDateTime") DATE_FORMAT else TIME_FORMAT
+                if (identities[shape.operator] == OperatorId.DATE_FROM_DATE_TIME) DATE_FORMAT else TIME_FORMAT
             }
-            "Time" -> TIME_FORMAT.takeIf { operands.isNotEmpty() && operands.all { judgedComponent(it, inBody) } }
-            "Date" -> when (operands.size) {
+            OperatorId.TIME -> TIME_FORMAT.takeIf { operands.isNotEmpty() && operands.all { judgedComponent(it, inBody) } }
+            OperatorId.DATE -> when (operands.size) {
                 2 -> YEARLESS_DATE_FORMAT
                 3 -> DATE_FORMAT
                 else -> null
             }?.takeIf { operands.all { judgedComponent(it, inBody) } }
-            "DateTime" -> STAMP_FORMAT.takeIf { operands.size == 2 && dateTimeDefect(call) == null }
-            "StartOfDateRange", "EndOfDateRange" -> endpointFormat(operands.singleOrNull() ?: return null, inBody)
+            OperatorId.DATE_TIME -> STAMP_FORMAT.takeIf { operands.size == 2 && dateTimeDefect(call) == null }
+            OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE -> endpointFormat(operands.singleOrNull() ?: return null, inBody)
             else -> admittedShiftField(call, group, element)
                 ?.let { temporalFormatOf(it) }
         } ?: return null

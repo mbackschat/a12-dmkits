@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
@@ -7,7 +8,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionNode
 import io.github.mbackschat.a12.dm.consistency.syntax.ConnectiveKind
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
 import io.github.mbackschat.a12.dm.consistency.syntax.PATTERN_COMPARISONS
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
 import io.github.mbackschat.a12.dm.consistency.syntax.RecognizedEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
@@ -164,7 +164,7 @@ private class IterationGuard(
      */
     val outer: List<GuardReference>,
     val operations: List<OperationShape>,
-    val identities: Map<String, String>,
+    val identities: Map<String, OperatorId>,
     /** The condition text the recognized offsets index into. */
     val source: String,
 ) {
@@ -242,25 +242,25 @@ private class IterationGuard(
         return when (id) {
             in NEGATIVE_PRESENCE -> list.none { iterates(it, judged) }
             in POSITIVE_PRESENCE -> !counted(1)
-            "MoreThanOneFieldFilled", "FieldValuesNotUnique" -> !counted(2)
-            "FieldFilled", "AllFieldsFilled" -> !(list.sumOf { it.entries } == 1L && counted(1))
-            "GroupFilled", "AllGroupsFilled" -> !(list.size == 1 && !list.single().starred && counted(1))
+            OperatorId.MORE_THAN_ONE_FIELD_FILLED, OperatorId.FIELD_VALUES_NOT_UNIQUE -> !counted(2)
+            OperatorId.FIELD_FILLED, OperatorId.ALL_FIELDS_FILLED -> !(list.sumOf { it.entries } == 1L && counted(1))
+            OperatorId.GROUP_FILLED, OperatorId.ALL_GROUPS_FILLED -> !(list.size == 1 && !list.single().starred && counted(1))
             // Leaves A12's guard has no arm for, admitted and iterating where their references do.
-            "DateRangesOverlap", "AtLeastOneDateRangeOverlaps", REPETITION_NOT_UNIQUE -> true
+            OperatorId.DATE_RANGES_OVERLAP, OperatorId.AT_LEAST_ONE_DATE_RANGE_OVERLAPS, OperatorId.REPETITION_NOT_UNIQUE -> true
             // One spelling names both forms, so the operand decides: only a `Date` construction is A12's date
             // validity condition (`IDateValidityCondition`); the field-and-type form has no arm.
-            "Valid", "ValidType", "Invalid", "InvalidType" ->
-                identities[call.operands.firstOrNull()?.firstOrNull()?.text] != "Date" ||
-                    id.startsWith("Valid") || list.none { iterates(it, judged) }
-            "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList",
-            "AtLeastOneFieldValueIncludedInValueList" -> listMembershipAdmitted(id, call, judged)
-            "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList" -> valueListAdmitted(id, call, judged)
+            OperatorId.VALID, OperatorId.VALID_TYPE, OperatorId.INVALID, OperatorId.INVALID_TYPE ->
+                identities[call.operands.firstOrNull()?.firstOrNull()?.text] != OperatorId.DATE ||
+                    (id == OperatorId.VALID || id == OperatorId.VALID_TYPE) || list.none { iterates(it, judged) }
+            OperatorId.NO_FIELD_VALUE_INCLUDED_IN_VALUE_LIST, OperatorId.NOT_ALL_FIELD_VALUES_INCLUDED_IN_VALUE_LIST,
+            OperatorId.AT_LEAST_ONE_FIELD_VALUE_INCLUDED_IN_VALUE_LIST -> listMembershipAdmitted(id, call, judged)
+            OperatorId.FIELD_VALUE_INCLUDED_IN_VALUE_LIST, OperatorId.FIELD_VALUE_NOT_INCLUDED_IN_VALUE_LIST -> valueListAdmitted(id, call, judged)
             else -> null
         }
     }
 
     /** `Subject list In values`: the entities before the `In` keyword are the list, the rest the values. */
-    private fun listMembershipAdmitted(id: String, call: CallShape, judged: Judged): Boolean? {
+    private fun listMembershipAdmitted(id: OperatorId, call: CallShape, judged: Judged): Boolean? {
         val all = within(call.at, call.end)
         if (all.none { iterates(it, judged) }) return true
         val inAt = call.operands.flatten().firstOrNull { it.kind == TokenKind.NAME && it.text in IN_WORDS }?.start
@@ -271,21 +271,21 @@ private class IterationGuard(
             .any { it.start > inAt && (it.kind == TokenKind.STRING || it.kind == TokenKind.NUMBER) }
         val subjectOutside = subjects.any { !iterates(it, judged) }
         return when (id) {
-            "NoFieldValueIncludedInValueList" -> false
-            "NotAllFieldValuesIncludedInValueList" -> !subjectOutside
+            OperatorId.NO_FIELD_VALUE_INCLUDED_IN_VALUE_LIST -> false
+            OperatorId.NOT_ALL_FIELD_VALUES_INCLUDED_IN_VALUE_LIST -> !subjectOutside
             else -> !(subjectOutside && (values.any { !iterates(it, judged) } || stringValues))
         }
     }
 
     /** `Field, values…`: judged only when the values iterate and the field does not. */
-    private fun valueListAdmitted(id: String, call: CallShape, judged: Judged): Boolean? {
+    private fun valueListAdmitted(id: OperatorId, call: CallShape, judged: Judged): Boolean? {
         val subject = call.operands.firstOrNull()?.firstOrNull()?.start ?: return null
         val all = within(call.at, call.end)
         val field = all.filter { it.start == subject }
         val values = all - field.toSet()
         if (all.none { iterates(it, judged) } || field.any { iterates(it, judged) }) return true
         return when (id) {
-            "FieldValueNotIncludedInValueList" -> false
+            OperatorId.FIELD_VALUE_NOT_INCLUDED_IN_VALUE_LIST -> false
             else -> values.all { iterates(it, judged) }
         }
     }
@@ -298,7 +298,7 @@ private class IterationGuard(
     private fun comparisonAdmitted(shape: ComparisonShape, judged: Judged): Boolean? {
         val left = operations.spanning(shape.left) ?: return null
         val right = operations.spanning(shape.right) ?: return null
-        val written = shape.operator.text.let { identities[it] ?: it }.takeIf { it in FACING } ?: return null
+        val written = shape.operator.text.let { identities[it]?.catalogId ?: it }.takeIf { it in FACING } ?: return null
         val kinds = (kindOf(left) ?: return null) to (kindOf(right) ?: return null)
         if (readsJudgedRepetition(shape, judged)) return false
         var admitted: Boolean? = true
@@ -328,7 +328,7 @@ private class IterationGuard(
     private fun readsJudgedRepetition(shape: ComparisonShape, judged: Judged): Boolean =
         operations.filterIsInstance<OperationShape.Call>().any { op ->
             op.at >= shape.left.first().start && op.end <= shape.right.last().end &&
-                identities[op.call.operator] == "CurrentRepetition" &&
+                identities[op.call.operator] == OperatorId.CURRENT_REPETITION &&
                 within(op.at, op.end).any { iterates(it, judged) }
         }
 
@@ -339,7 +339,7 @@ private class IterationGuard(
         is OperationShape.Literal, is OperationShape.Arithmetic -> OperationKind.OTHER
         is OperationShape.Call -> when (val id = identities[op.call.operator]) {
             null -> null
-            "SumOfProducts" -> OperationKind.PRODUCT_SUM
+            OperatorId.SUM_OF_PRODUCTS -> OperationKind.PRODUCT_SUM
             in ENTITY_LIST_KINDS -> ENTITY_LIST_KINDS.getValue(id)
             in OPERATION_LISTS -> OperationKind.OPERATION_LIST
             in FIELD_OPERATIONS -> OperationKind.FIELD
@@ -503,31 +503,31 @@ private fun TrackedFactBase.guardReferenceOf(
 
 private val JUDGED = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
 
-private val NEGATIVE_PRESENCE = setOf("FieldNotFilled", "NoFieldFilled", "NotAllFieldsFilled", "NotExactlyOneFieldFilled",
-    "GroupNotFilled", "NoGroupFilled", "NotAllGroupsFilled")
-private val POSITIVE_PRESENCE = setOf("AtLeastOneFieldFilled", "FieldsNotCollectivelyFilled", "AtLeastOneGroupFilled",
-    "GroupsNotCollectivelyFilled")
+private val NEGATIVE_PRESENCE = setOf(OperatorId.FIELD_NOT_FILLED, OperatorId.NO_FIELD_FILLED, OperatorId.NOT_ALL_FIELDS_FILLED, OperatorId.NOT_EXACTLY_ONE_FIELD_FILLED,
+    OperatorId.GROUP_NOT_FILLED, OperatorId.NO_GROUP_FILLED, OperatorId.NOT_ALL_GROUPS_FILLED)
+private val POSITIVE_PRESENCE = setOf(OperatorId.AT_LEAST_ONE_FIELD_FILLED, OperatorId.FIELDS_NOT_COLLECTIVELY_FILLED, OperatorId.AT_LEAST_ONE_GROUP_FILLED,
+    OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED)
 private val ENTITY_LIST_KINDS = mapOf(
-    "NumberOfFilledFields" to OperationKind.COUNT, "NumberOfFilledGroups" to OperationKind.COUNT,
-    "NumberOfDifferentValues" to OperationKind.COUNT, "NumberOfValueInFields" to OperationKind.COUNT_OF_VALUE,
-    "Sum" to OperationKind.AMOUNT, "MinValue" to OperationKind.AMOUNT, "MaxValue" to OperationKind.AMOUNT,
-    "FirstFilledValue" to OperationKind.AMOUNT,
+    OperatorId.NUMBER_OF_FILLED_FIELDS to OperationKind.COUNT, OperatorId.NUMBER_OF_FILLED_GROUPS to OperationKind.COUNT,
+    OperatorId.NUMBER_OF_DIFFERENT_VALUES to OperationKind.COUNT, OperatorId.NUMBER_OF_VALUE_IN_FIELDS to OperationKind.COUNT_OF_VALUE,
+    OperatorId.SUM to OperationKind.AMOUNT, OperatorId.MIN_VALUE to OperationKind.AMOUNT, OperatorId.MAX_VALUE to OperationKind.AMOUNT,
+    OperatorId.FIRST_FILLED_VALUE to OperationKind.AMOUNT,
 )
-private val OPERATION_LISTS = setOf("Max", "Min", "Abs", "RoundAccounting", "RoundUp", "RoundDown")
-private val FIELD_OPERATIONS = setOf("Length", "RoundAccountingValue", "RoundUpValue", "RoundDownValue", "AbsValue",
-    "RangeAsNumber", "FieldValueAsNumber", "RangeAsString", "FieldValueAsString", "ValueAsDate")
-private val DATE_DIFFERENCES = setOf("DifferenceInSeconds", "DifferenceInMinutes", "DifferenceInHours", "DifferenceInDays",
-    "DifferenceInMonths", "DifferenceInYears")
-private val DATE_EXTRACTIONS = setOf("DayFromDate", "MonthFromDate", "YearFromDate", "QuarterFromDate", "HoursFromTime",
-    "MinutesFromTime", "SecondsFromTime", "DateFromDateTime", "TimeFromDateTime")
+private val OPERATION_LISTS = setOf(OperatorId.MAX, OperatorId.MIN, OperatorId.ABS, OperatorId.ROUND_ACCOUNTING, OperatorId.ROUND_UP, OperatorId.ROUND_DOWN)
+private val FIELD_OPERATIONS = setOf(OperatorId.LENGTH, OperatorId.ROUND_ACCOUNTING_VALUE, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_DOWN_VALUE, OperatorId.ABS_VALUE,
+    OperatorId.RANGE_AS_NUMBER, OperatorId.FIELD_VALUE_AS_NUMBER, OperatorId.RANGE_AS_STRING, OperatorId.FIELD_VALUE_AS_STRING, OperatorId.VALUE_AS_DATE)
+private val DATE_DIFFERENCES = setOf(OperatorId.DIFFERENCE_IN_SECONDS, OperatorId.DIFFERENCE_IN_MINUTES, OperatorId.DIFFERENCE_IN_HOURS, OperatorId.DIFFERENCE_IN_DAYS,
+    OperatorId.DIFFERENCE_IN_MONTHS, OperatorId.DIFFERENCE_IN_YEARS)
+private val DATE_EXTRACTIONS = setOf(OperatorId.DAY_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.YEAR_FROM_DATE, OperatorId.QUARTER_FROM_DATE, OperatorId.HOURS_FROM_TIME,
+    OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME, OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME)
 /**
  * Every comparison operator, as read from the right-hand side. The tolerance comparisons take part in the arms
  * where `!=` does (`IterationNotValidVisitor.checkIfVergleichMitKleiner`, kernel 30.8.1); the pattern ones in none.
  */
 private val FACING = mapOf("==" to "==", "!=" to "!=", "<" to ">", ">" to "<", "<=" to ">=", ">=" to "<=") +
-    (TOLERANCE_COMPARISONS + PATTERN_COMPARISONS).associateWith { it }
+    (TOLERANCE_COMPARISONS + PATTERN_COMPARISONS).map { it.catalogId }.associateWith { it }
 /** Comparisons below a bound, which an operation counting filled rows cannot meet without one. */
-private val BELOW = setOf("<", "<=", "!=") + TOLERANCE_COMPARISONS
+private val BELOW = setOf("<", "<=", "!=") + TOLERANCE_COMPARISONS.map { it.catalogId }
 /** Comparisons an amount meets at zero. */
 private val AT_ZERO = setOf("==", "<=", ">=")
 private val IN_WORDS = setOf("In", "IN", "in")
