@@ -19,7 +19,7 @@ class BaseYearRequirementTest {
     private fun codes(condition: String, baseYear: Boolean): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"order-base-year","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"28.4.0","id":"order-base-year","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{BASE_YEAR"name":"order"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

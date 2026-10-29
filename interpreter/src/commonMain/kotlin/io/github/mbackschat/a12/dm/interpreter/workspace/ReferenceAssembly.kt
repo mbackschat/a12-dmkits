@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.conditionLanguageCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits

@@ -107,7 +107,7 @@ class OperationContractTest {
         val differences = SyntaxFixtureData.operationLaws.mapNotNull { record ->
             val row = Json.parseToJsonElement(record).jsonObject
             val expected = row.getValue("observedClasses").jsonArray.map { it.jsonPrimitive.content }.toSet()
-            val actual = checkRead(ModelSource(row.getValue("model").jsonPrimitive.content))
+            val actual = checkRead(checkableSource(row.getValue("model").jsonPrimitive.content))
                 .findings.filter { it.justifiesRejection }.map { it.code }.toSet()
             if (expected == actual) null else "${row.getValue("id").jsonPrimitive.content}: $expected != $actual"
         }
@@ -121,7 +121,7 @@ class OperationContractTest {
             val row = Json.parseToJsonElement(record).jsonObject
             val filter = row.getValue("onlyCodes").takeUnless { it == JsonNull }
                 ?.jsonArray?.map { it.jsonPrimitive.content }?.toSet()
-            val actual = checkRead(ModelSource(row.getValue("model").jsonPrimitive.content))
+            val actual = checkRead(checkableSource(row.getValue("model").jsonPrimitive.content))
                 .findings.map { it.code }.filter { filter == null || it in filter }
             // R3b-TP's separate completed-host measurements correct these three former silences.
             val key = if (row.getValue("id").jsonPrimitive.content in CORRECTED_SILENCES) "completedKernelClasses" else "classes"

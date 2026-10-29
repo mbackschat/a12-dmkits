@@ -110,10 +110,10 @@ class ReachedModelRefusalTest {
 
     private fun order(locales: String) = ModelSource(
         """
-        {"header":{"id":"order","locales":$locales,"modelReferences":[
+        {"header":{"modelVersion":"28.4.0","id":"order","locales":$locales,"modelReferences":[
            {"alias":"addr","modelType":"document","purpose":"include","reference":"addr"},
            {"alias":"lib","modelType":"document","purpose":"typeDefinitions","reference":"lib"}]},
-         "content":{"modelRoot":{"rootGroups":[
+         "content":{"modelInfo":{"name":"order"},"modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
              {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"OrderCode"}}}},
              {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr","elements":[]}}
@@ -123,7 +123,7 @@ class ReachedModelRefusalTest {
 
     private fun address(edit: String, locales: String) = ModelSource(
         """
-        {"header":{"id":"addr","locales":$locales},
+        {"header":{"modelVersion":"28.4.0","id":"addr","locales":$locales},
          "content":{$edit"modelRoot":{"rootGroups":[
            {"type":"Group","id":"a0","name":"Address","Group":{"elements":[
              {"type":"Field","id":"a1","name":"Street","Field":{"fieldType":{"type":"StringType"}}}]}}]}}}
@@ -132,7 +132,7 @@ class ReachedModelRefusalTest {
 
     private fun library(edit: String, locales: String, roots: String) = ModelSource(
         """
-        {"header":{"id":"lib","locales":$locales},
+        {"header":{"modelVersion":"28.4.0","id":"lib","locales":$locales},
          "content":{$edit"typeDefinitions":[{"id":"OrderCode","name":"OrderCode","fieldType":{"type":"StringType"}}],
           "modelRoot":{"rootGroups":$roots}}}
         """.trimIndent(),

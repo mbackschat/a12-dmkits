@@ -23,8 +23,8 @@ class NumberTypeDigitTest {
     private fun codes(numberType: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Amount","Field":{"fieldType":{"type":"NumberType",
                   "NumberType":{$numberType}}}}

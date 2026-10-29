@@ -26,8 +26,8 @@ class CorrectiveTest {
      */
     private val reachability = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g90","name":"SeasonalSeasonalSeasonalSeasonalSeasonalSeasonalSeasonalStock","Group":{"elements":[
             {"type":"Field","id":"f90","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
           ]}},

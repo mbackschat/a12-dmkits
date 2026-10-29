@@ -26,8 +26,8 @@ class RuleIterationAddressesScalarSlotTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"id":"policy-iterated-slot","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"policy-iterated-slot","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"indexFieldName":"ClaimRef",

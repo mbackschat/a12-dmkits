@@ -20,8 +20,8 @@ class ParallelIterationUniquenessTest {
     private fun codes(condition: String, pickKeyType: String = "StringType"): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"DepotRef","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":50,
@@ -106,8 +106,8 @@ class ParallelIterationUniquenessTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":50,
                       "indexFieldName":"LineRef","elements":[

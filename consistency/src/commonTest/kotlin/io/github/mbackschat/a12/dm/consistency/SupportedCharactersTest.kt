@@ -35,8 +35,8 @@ class SupportedCharactersTest {
     private fun report(definition: String?, vararg values: String) = checkRead(
         ModelSource(
             """
-            {"header":{"id":"shop","locales":[{"code":"en_US"}]},
-             "content":{${definition?.let { """"modelConfig":{"supportedCharacters":$it},""" } ?: ""}
+            {"header":{"modelVersion":"28.4.0","id":"shop","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},${definition?.let { """"modelConfig":{"supportedCharacters":$it},""" } ?: ""}
               "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shop","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Delivery","Field":{"fieldType":{
@@ -105,8 +105,8 @@ class SupportedCharactersTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"shop","locales":[{"code":"en_US"}]},
-                 "content":{"modelConfig":{"supportedCharacters":["A-Z"]},
+                {"header":{"modelVersion":"28.4.0","id":"shop","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelConfig":{"supportedCharacters":["A-Z"]},
                   "modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Shop","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Delivery","Field":{"fieldType":{

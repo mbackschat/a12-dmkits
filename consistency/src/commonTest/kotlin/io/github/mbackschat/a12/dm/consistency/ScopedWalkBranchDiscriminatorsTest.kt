@@ -93,8 +93,8 @@ class ScopedWalkBranchDiscriminatorsTest {
 
         /** `FieldValuesNotUnique` over a GROUP, which the family expands to the fields beneath it. */
         private val GROUP_OPERAND = """
-            {"header":{"id":"discriminator","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"discriminator","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
                   {"type":"Field","id":"f1","name":"Placed","Field":{"fieldType":{
@@ -111,8 +111,8 @@ class ScopedWalkBranchDiscriminatorsTest {
 
         /** An entity-list operand under a repetition the computation's own level does not address. */
         private val CROSSED_REPETITION_LIST = """
-            {"header":{"id":"discriminator","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"discriminator","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"repeatability":9,"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[
                   {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}},
@@ -128,8 +128,8 @@ class ScopedWalkBranchDiscriminatorsTest {
 
         /** A rounding operand that is a bare reference across a repetition. */
         private val CROSSED_REPETITION_ROUNDING = """
-            {"header":{"id":"discriminator","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"discriminator","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[
                   {"type":"Field","id":"f1","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
@@ -144,8 +144,8 @@ class ScopedWalkBranchDiscriminatorsTest {
 
         /** A comparison whose operands both sit under a repetition the rule's level does not address. */
         private val CROSSED_REPETITION_COMPARISON = """
-            {"header":{"id":"discriminator","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"discriminator","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[
                   {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}},

@@ -94,8 +94,8 @@ class RepetitionScopeGroupTest {
      * and a field directly in the scope so the kind gate has a carrier.
      */
     private fun model(errorField: String, condition: String): String = """
-        {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
             {"type":"Field","id":"f0","name":"DepotRef","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Group","id":"g1","name":"Crates","Group":{"repeatability":20,"elements":[

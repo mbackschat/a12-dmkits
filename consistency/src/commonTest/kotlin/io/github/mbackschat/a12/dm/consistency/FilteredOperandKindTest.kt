@@ -23,8 +23,8 @@ class FilteredOperandKindTest {
     /** A policy model whose one rule carries [condition]; `Claims` repeats and is keyed on `ClaimRef`. */
     private fun source(condition: String): ModelSource = ModelSource(
             """
-            {"header":{"id":"policy-filter","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"policy-filter","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Insured","Group":{"elements":[

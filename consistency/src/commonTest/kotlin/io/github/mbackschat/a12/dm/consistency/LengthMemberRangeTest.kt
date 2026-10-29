@@ -60,8 +60,8 @@ class LengthMemberRangeTest {
     private fun model(type: String, members: String, fieldExtra: String): String {
         val extra = if (type == "NumberType") ""","minFractionalDigits":0,"maxFractionalDigits":0""" else ""
         return """
-            {"header":{"id":"ticket","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"ticket","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Ticket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Entry","Field":{"fieldType":{
                   "type":"$type","$type":{$members$extra}}$fieldExtra}}

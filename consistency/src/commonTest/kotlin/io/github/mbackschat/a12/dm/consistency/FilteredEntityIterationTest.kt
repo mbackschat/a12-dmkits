@@ -25,8 +25,8 @@ class FilteredEntityIterationTest {
     private fun source(group: String, errorField: String, condition: String): ModelSource =
         ModelSource(
             """
-            {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"OrderRef","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":50,
@@ -161,8 +161,8 @@ class FilteredEntityIterationTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"fulfilment","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":50,
                       "indexFieldName":"LineRef","elements":[

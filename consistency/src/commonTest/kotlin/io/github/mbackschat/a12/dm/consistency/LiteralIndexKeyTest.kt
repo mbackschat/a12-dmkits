@@ -29,8 +29,8 @@ class LiteralIndexKeyTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"id":"policy-literal-key","locales":[{"code":"en_US"}]},
-                 "content":{"modelConfig":{"conditionLanguage":{"code":"${language.code}"}},"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"policy-literal-key","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"${language.code}"}},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":5,"indexFieldName":"ClaimRef",

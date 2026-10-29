@@ -16,7 +16,7 @@ class ElementNameKf583Test {
         val r = "/$root"; val p = "$r/$part"; val b = "$p/$bin"
         val index = if (indexed) ""","repeatability":5,"indexFieldName":"$label"""" else ""
         return checkRead(ModelSource("""
-            {"header":{"id":"orders","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
              {"type":"Group","id":"$r","name":"$root","Group":{"elements":[
               {"type":"Group","id":"$p","name":"$part","Group":{"elements":[
                {"type":"Group","id":"$b","name":"$bin","Group":{"elements":[

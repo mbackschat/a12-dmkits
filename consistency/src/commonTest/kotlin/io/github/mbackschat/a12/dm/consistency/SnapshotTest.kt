@@ -174,9 +174,9 @@ class SnapshotTest {
         mountAlias: String = "catalog",
         mount: String = """{"type":"Group","id":"g-ship","name":"ShipTo","Group":{"modelAlias":"catalog"}},""",
     ) = """
-        {"header":{"id":"orders","locales":[{"code":"en_US"}],
+        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
           "modelReferences":[{"alias":"catalog","reference":"$mountAlias"}]},
-         "content":{"typeDefinitions":$typeDefinitions,$config
+         "content":{"modelInfo":{"name":"model"},"typeDefinitions":$typeDefinitions,$config
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
              {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -192,8 +192,8 @@ class SnapshotTest {
     """.trimIndent()
 
     private fun catalog() = """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"cg0","name":"Address","Group":{"elements":[
             {"type":"Field","id":"cf0","name":"Zip","Field":{"fieldType":{"type":"StringType"}}}
           ]}}

@@ -96,8 +96,8 @@ class PreparedModelDerivedValueTest {
     private companion object {
         /** An ordinary two-group model: the row is about derivation, so the content only has to be read. */
         private val MODEL = """
-            {"header":{"id":"derived","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"derived","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},

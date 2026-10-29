@@ -59,8 +59,8 @@ class SumOfProductsOperandReachTest {
         """.trimIndent()
         fun into(name: String) = if (name == group) rule else ""
         val source = """
-            {"header":{"id":"fulfilment-products","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"fulfilment-products","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Summary","Group":{"elements":[
                   ${number("f0", "Result")}${into("Summary")}]}},

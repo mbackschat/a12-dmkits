@@ -12,6 +12,7 @@ class CustomFieldTypeLoadTest {
         val model = ModelLoader.load(
             """
             {
+              "header": { "id": "m" },
               "content": { "modelRoot": { "rootGroups": [ {
                 "type": "Group", "id": "/Order", "name": "Order", "Group": { "elements": [ {
                   "type": "Field", "id": "/Order/Code", "name": "Code", "Field": { "fieldType": {
@@ -34,7 +35,7 @@ class CustomFieldTypeLoadTest {
     fun absentBoundsStayAbsent() {
         val model = ModelLoader.load(
             """
-            { "content": { "modelRoot": { "rootGroups": [ {
+            { "header": { "id": "m" }, "content": { "modelRoot": { "rootGroups": [ {
               "type": "Group", "id": "/G", "name": "G", "Group": { "elements": [ {
                 "type": "Field", "id": "/G/Code", "name": "Code", "Field": { "fieldType": {
                   "type": "CustomFieldType", "CustomFieldType": { "name": "ProjectCode" }

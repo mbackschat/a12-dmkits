@@ -95,8 +95,8 @@ class ConfigFlagTest {
         admit(
             ModelSource(
                 """
-                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                 "content":{"modelConfig":{"fieldRefByShortNameAllowed":$spelling},
+                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":$spelling},
                   "modelRoot":{"rootGroups":[
                    {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[]}}
                   ]}}}

@@ -29,8 +29,8 @@ class PatternAdmissionTest {
     private fun codes(pattern: String?): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
                 pattern?.let { ""","StringType":{"pattern":"${it.replace("\\", "\\\\")}",$patternMessage}""" } ?: ""
@@ -93,8 +93,8 @@ class PatternAdmissionTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType",
                       "StringType":{"pattern":"a\\*+",$patternMessage}}}}
@@ -122,8 +122,8 @@ class PatternAdmissionTest {
             checkRead(
                 ModelSource(
                     """
-                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                     "content":{"modelRoot":{"rootGroups":[
+                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                     "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Reference","Field":{${if (filtered) """"variantFilter":{"filterType":"ONLY"},""" else ""}"fieldType":{"type":"StringType"${
                         pattern?.let { ""","StringType":{"pattern":"$it",$patternMessage}""" } ?: ""

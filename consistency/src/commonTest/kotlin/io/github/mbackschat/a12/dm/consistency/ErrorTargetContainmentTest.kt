@@ -154,8 +154,8 @@ class ErrorTargetContainmentTest {
     private fun returns(declaration: String, into: String): String {
         fun body(path: String) = if (path == into) ",$declaration" else ""
         return """
-            {"header":{"id":"returns","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"returns","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Returns","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"TotalRefund","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Group","id":"g1","name":"Policy","Group":{"elements":[

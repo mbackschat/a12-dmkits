@@ -15,7 +15,7 @@ class ConditionBindingTest {
 
     private fun model(condition: String, language: String = "en_US") = ModelSource(
         """
-        {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{
+        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
           "modelConfig":{"conditionLanguage":{"code":"$language"},"fieldRefByShortNameAllowed":false},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -181,7 +181,7 @@ class ConditionBindingTest {
     fun everyDslBearingMemberOfAComputationIsRead() {
         val source = ModelSource(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
@@ -220,7 +220,7 @@ class ConditionBindingTest {
     fun anUnexpandedMountSuspendsTheReferenceChecksInsteadOfRejecting() {
         val source = ModelSource(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Address","Group":{"modelAlias":"address-model"}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
@@ -246,7 +246,7 @@ class ConditionBindingTest {
     fun anUnbuildableComputedTargetIsAlsoACoverageGap() {
         val source = ModelSource(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
                   "errorMessage":[{"locale":"en_US","text":"x"}],

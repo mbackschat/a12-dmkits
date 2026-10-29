@@ -41,8 +41,8 @@ class RootLevelIterationPinningTest {
     private fun model(indexedRoot: Boolean): String {
         val rootKey = if (indexedRoot) ""","indexFieldName":"CaseNo"""" else ""
         return """
-            {"header":{"id":"register","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"register","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Register","Group":{"repeatability":5$rootKey,"elements":[
                 {"type":"Field","id":"f0","name":"CaseNo","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

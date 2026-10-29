@@ -77,8 +77,8 @@ class MessageParameterSyntaxTest {
 
     /** An insurance desk whose condition reads the one field the rows name. */
     private fun model(text: String): String = """
-        {"header":{"id":"policy-dollar-count","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"policy-dollar-count","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f1","name":"Adjuster","Field":{"fieldType":{"type":"StringType"}}},

@@ -43,8 +43,8 @@ class DeclarationSlotTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"id":"catalog","locales":[$locales]},
-                     "content":{"modelRoot":{"rootGroups":[
+                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[$locales]},
+                     "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"$kind","id":"x0","name":"$name","$kind":{${

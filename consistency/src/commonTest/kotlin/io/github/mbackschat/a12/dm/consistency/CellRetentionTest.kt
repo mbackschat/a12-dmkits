@@ -123,8 +123,8 @@ class CellRetentionTest {
     private companion object {
         /** A rule and a repeating group, which is what reaches all producer shapes — checked above. */
         private val MODEL = """
-            {"header":{"id":"retention","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"retention","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[

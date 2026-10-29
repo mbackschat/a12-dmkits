@@ -54,14 +54,14 @@ class ChecksCompletedScopeTest {
 
         /** Admitted, and declares nothing — the state `emptyFactBase` reports as a gap. */
         private val NO_DECLARATIONS = """
-            {"header":{"id":"empty","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[]}}}
+            {"header":{"modelVersion":"28.4.0","id":"empty","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[]}}}
         """.trimIndent()
 
         /** One group, one field, one rule, one computation: enough that every producer is asked. */
         private val ONE_OF_EACH = """
-            {"header":{"id":"populated","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"populated","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},

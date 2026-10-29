@@ -95,8 +95,8 @@ class RangeOperandGatesTest {
 
     /** An e-commerce catalogue mirroring the laws test's carrier. */
     private fun model(probe: String): String = """
-        {"header":{"id":"catalog-range","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog-range","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},

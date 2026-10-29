@@ -192,7 +192,7 @@ class ReportHarvestContractTest {
             "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1",
         ), rows.filter { "replacement" in it }.map { it.getValue("id").jsonPrimitive.content }.toSet())
         val reports = rows.associate { row -> row.getValue("id").jsonPrimitive.content to
-            checkRead(ModelSource(row.getValue("model").jsonPrimitive.content)).findings }
+            checkRead(checkableSource(row.getValue("model").jsonPrimitive.content)).findings }
         val failures = mutableListOf<String>()
         for (row in rows) {
             try {

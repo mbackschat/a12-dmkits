@@ -16,8 +16,8 @@ class TemporalAndCustomBaseTypeTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"parcel-shipment","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"parcel-shipment","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},

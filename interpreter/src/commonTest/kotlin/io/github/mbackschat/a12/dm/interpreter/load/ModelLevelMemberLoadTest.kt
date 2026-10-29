@@ -49,6 +49,38 @@ class ModelLevelMemberLoadTest {
         assertEquals(mapOf("en_us" to "header.locales", "empty" to "loads", "twice" to "loads"), observed)
     }
 
+    /**
+     * A frame member A12's reader cannot bind refuses the model by its path (KF650). The absent model info and the
+     * bare condition language are read, as A12 reads them, and are the controls.
+     */
+    @Test
+    fun anUnbindableFrameMemberRefusesTheModelByItsPath() {
+        val observed = linkedMapOf(
+            "modelInfo absent, bare language" to model(""""modelConfig":{"conditionLanguage":"de_DE"},"""),
+            "modelConfig null" to model(""""modelConfig":null,"""),
+            "name null" to model(""""modelInfo":{"name":null},"""),
+            "labels object" to model("", ""","labels":{}"""),
+            "character entry object" to model(""""modelConfig":{"supportedCharacters":["a",{}]},"""),
+            "language without code" to model(""""modelConfig":{"conditionLanguage":{}},"""),
+        ).mapValues { (_, json) ->
+            try {
+                ModelLoader.load(json)
+                "loads"
+            } catch (refused: InvalidPreparedModelSourceException) {
+                refused.path
+            }
+        }
+        assertEquals(
+            mapOf(
+                "modelInfo absent, bare language" to "loads", "modelConfig null" to "content.modelConfig",
+                "name null" to "content.modelInfo.name", "labels object" to "header.labels",
+                "character entry object" to "content.modelConfig.supportedCharacters[1]",
+                "language without code" to "content.modelConfig.conditionLanguage",
+            ),
+            observed,
+        )
+    }
+
     private fun model(members: String, header: String = "") = """
         {"header":{"id":"policy"$header},
          "content":{$members"modelRoot":{"rootGroups":[{"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[

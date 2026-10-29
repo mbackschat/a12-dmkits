@@ -58,8 +58,8 @@ class EnumDeclarationStreamTest {
         }.joinToString(",")
         val config = if (restricted) ""","modelConfig":{"supportedCharacters":["A-Z"]}""" else ""
         return """
-            {"header":{"id":"store","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"store","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Store","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{
                   "type":"EnumerationType","EnumerationType":{"values":[$valueJson],"categories":[$categoryJson]}}}}

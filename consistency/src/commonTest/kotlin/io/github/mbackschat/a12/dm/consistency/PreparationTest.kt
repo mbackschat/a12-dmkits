@@ -25,7 +25,7 @@ class PreparationTest {
     private fun preparedRoots(rootGroups: String): PreparedModel = prepared(model(rootGroups))
 
     private fun model(rootGroups: String, modelConfig: String = "") =
-        """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
+        """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
 
     private val twoLevel = model(
         """
@@ -273,8 +273,8 @@ class PreparationTest {
     @Test
     fun aMemberOfTheWrongJsonTypeIsDiagnosedRatherThanRaised() {
         listOf(
-            """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":{}}}}""",
-            """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[7]}}}""",
+            """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":{}}}}""",
+            """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
             model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
         ).forEach { json ->
@@ -294,7 +294,7 @@ class PreparationTest {
      */
     @Test
     fun aModelWithNoRootGroupsPreparesEmptyWithoutRaising() {
-        listOf("""{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{}}""", model("")).forEach { json ->
+        listOf("""{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"}}}""", model("")).forEach { json ->
             val prepared = prepared(json)
             assertEquals(emptyList(), prepared.elements, json)
             assertEquals(emptyList(), prepared.diagnostics, json)

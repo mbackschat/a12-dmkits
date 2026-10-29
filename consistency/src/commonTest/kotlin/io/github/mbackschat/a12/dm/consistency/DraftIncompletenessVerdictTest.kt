@@ -140,8 +140,8 @@ class DraftIncompletenessVerdictTest {
         const val PRECONDITION = "computationAlternatives[0].precondition"
 
         private val COMPUTING = """
-            {"header":{"id":"$COMPUTING_ID","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"$COMPUTING_ID","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType",
@@ -162,8 +162,8 @@ class DraftIncompletenessVerdictTest {
         const val ENDS_EARLY = "FieldFilled(Holder) And"
 
         private val MODEL = """
-            {"header":{"id":"$MODEL_ID","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"$MODEL_ID","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{

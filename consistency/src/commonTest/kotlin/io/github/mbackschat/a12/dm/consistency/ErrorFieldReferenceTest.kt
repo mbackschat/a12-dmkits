@@ -21,8 +21,8 @@ class ErrorFieldReferenceTest {
     private fun codes(errorFieldRelPath: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Customs","Group":{"elements":[
@@ -179,8 +179,8 @@ class ErrorFieldReferenceTest {
     private fun nestedCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"shipment-nested","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"shipment-nested","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Parcels","Group":{"repeatability":9,
@@ -206,8 +206,8 @@ class ErrorFieldReferenceTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Field","id":"f1","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},

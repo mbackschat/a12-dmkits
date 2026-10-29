@@ -56,8 +56,8 @@ class OperandListConstantsTest {
             .map { it.code }
 
     private fun model(operation: String): String = """
-        {"header":{"id":"order","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":3,"elements":[

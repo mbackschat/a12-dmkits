@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.conditionLanguageCode
 import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
 import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
 import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
@@ -880,8 +881,3 @@ internal fun JsonObject.withoutModelReferences(): JsonObject {
 private fun JsonObject.fieldRefByShortNameAllowed(): Boolean =
     configFlag(objectMember("content")?.objectMember("modelConfig")?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
 
-internal fun JsonObject.conditionLanguageCode(): String? =
-    objectMember("content")
-        ?.objectMember("modelConfig")
-        ?.objectMember("conditionLanguage")
-        ?.strictString("code")

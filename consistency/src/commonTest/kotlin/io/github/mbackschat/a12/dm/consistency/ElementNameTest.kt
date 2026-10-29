@@ -22,8 +22,8 @@ class ElementNameTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                     "content":{"modelRoot":{"rootGroups":[
+                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                     "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         $children,
                         {"type":"Group","id":"g1","name":"Archive","Group":{"elements":[
@@ -85,8 +85,8 @@ class ElementNameTest {
                 admit(
                     ModelSource(
                         """
-                        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                         "content":{"modelRoot":{"rootGroups":[
+                        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                             ${rule("r0", "Check")},${rule("r1", "Check")},${rule("r2", "Check")}
                           ]}}

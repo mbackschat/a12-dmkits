@@ -28,8 +28,8 @@ class FieldVariantFilterTest {
     /** A model whose `Tier` field carries [filter], with a rule that mentions it but targets `AutoRenew`. */
     private fun mentioning(filter: String?) = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
             {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
@@ -45,8 +45,8 @@ class FieldVariantFilterTest {
     /** The same, with the rule TARGETING the filtered field instead of merely mentioning it. */
     private fun targeting(filter: String?) = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
             {"type":"Rule","id":"r0","name":"TargetRule","Rule":{
@@ -66,8 +66,8 @@ class FieldVariantFilterTest {
      */
     private fun mentioningByPath(filter: String?) = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
             {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
@@ -92,8 +92,8 @@ class FieldVariantFilterTest {
      */
     private fun mentioningByShortNameFallback(filter: String?) = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":true},
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
              {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
@@ -205,8 +205,8 @@ class FieldVariantFilterTest {
 
         val ruleFiltered = ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"FilteredRule","Rule":{

@@ -26,8 +26,8 @@ class SyntaxPhasePrecedenceTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"PriceRule","Rule":{

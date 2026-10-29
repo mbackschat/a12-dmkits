@@ -29,8 +29,8 @@ class EmptyGroupOperandTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"store","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"store","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Store","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Empty","Group":{"elements":[]}},
@@ -103,8 +103,8 @@ class EmptyGroupOperandTest {
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
             fun afterASibling(at: String) = rule(at).let { if (it.isEmpty()) it else ",$it" }
             return checkRead(ModelSource("""
-                {"header":{"id":"store","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"store","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Store","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Empty","Group":{"elements":[
@@ -143,8 +143,8 @@ class EmptyGroupOperandTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"store","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"store","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Store","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Empty","Group":{"elements":[]}},

@@ -125,8 +125,8 @@ class BasicSentenceTest {
         computationFilter: String = "",
         typeDefinition: String = "",
     ) = """
-        {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-         "content":{${typeDefinition}"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},${typeDefinition}"modelRoot":{"rootGroups":[
           {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType","StringType":{}}}},
             {"type":"Field","id":"$codeId",$codeName"Field":{"fieldType":$codeType$codeFilter}},

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.laws.notificationClass
 import io.github.mbackschat.a12.dm.consistency.CK_MODEL_NOT_BUILDABLE
 import io.github.mbackschat.a12.dm.consistency.ConsistencyWorkspace
+import io.github.mbackschat.a12.dm.consistency.DiagnosticCode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
@@ -43,6 +44,52 @@ class WorkspaceReachedModelDiffTest {
         }
         assertEquals(observed.mapValues { (row, _) ->
             if (row.endsWith("untouched") || row.endsWith("bound")) BUILT else NOT_BUILT
+        }, observed)
+    }
+
+    /**
+     * A model's frame, the `header` and `content` objects and the members under them, is bound by A12's reader in
+     * every model the entry reaches, so a member it cannot bind leaves the entry model unbuilt wherever it sits. Three
+     * members are needed only by the entry's consistency check, so they cost a reached model nothing: the version, the
+     * model info and a `null` supported character (KERNEL-FINDINGS KF650). Each carrier's untouched row is the control.
+     */
+    @Test
+    fun aReachedModelsUnbindableFrameLeavesTheEntryUnbuilt() {
+        val edits = linkedMapOf<String, (ObjectNode) -> Unit>(
+            "header absent" to { it.remove("header") },
+            "content absent" to { it.remove("content") },
+            "header.id []" to { (it.path("header") as ObjectNode).putArray("id") },
+            "content.modelRoot \"x\"" to { (it.path("content") as ObjectNode).put("modelRoot", "x") },
+            "content.modelConfig.supportedCharacters [{}]" to { (it.at("/content/modelConfig") as ObjectNode).putArray("supportedCharacters").addObject() },
+            "header.labels {}" to { (it.path("header") as ObjectNode).putObject("labels") },
+            "header.modelVersion absent" to { (it.path("header") as ObjectNode).remove("modelVersion") },
+            "content.modelInfo absent" to { (it.path("content") as ObjectNode).remove("modelInfo") },
+            "content.modelInfo.name null" to { (it.at("/content/modelInfo") as ObjectNode).putNull("name") },
+            "content.modelConfig null" to { (it.path("content") as ObjectNode).putNull("modelConfig") },
+            "content.modelConfig.conditionLanguage {}" to { (it.at("/content/modelConfig") as ObjectNode).putObject("conditionLanguage") },
+            "content.modelConfig.supportedCharacters [null]" to { (it.at("/content/modelConfig") as ObjectNode).putArray("supportedCharacters").addNull() },
+            "content.modelRoot.rootGroups null" to { (it.at("/content/modelRoot") as ObjectNode).putNull("rootGroups") },
+        )
+        val observed = linkedMapOf<String, String>()
+        for (carrier in Carrier.entries) {
+            observed["$carrier untouched"] = models(carrier) {}.let { (entry, provider) -> observeWithConsistency(entry, provider) }
+            edits.forEach { (row, edit) ->
+                observed["$carrier $row"] = models(carrier, edit).let { (entry, provider) -> observeWithConsistency(entry, provider) }
+            }
+        }
+        val checkOnly = setOf("header.modelVersion absent", "content.modelInfo absent", "content.modelConfig.supportedCharacters [null]")
+        // No text `header.id` or no `content` object: the checker's admission refuses the source and names why, and a
+        // library it cannot admit leaves the entry's library type unresolved, which is a refusal of its own.
+        val unadmitted = setOf("header absent", "content absent", "header.id []")
+        assertEquals(observed.mapValues { (row, _) ->
+            val edit = row.substringAfter(' ')
+            when {
+                edit == "untouched" -> BUILT_AND_CHECKED
+                edit in unadmitted && !row.startsWith("TYPE_DEFINITIONS") -> NOT_BUILT_OR_ADMITTED
+                edit !in checkOnly -> NOT_BUILT_OR_CHECKED
+                row.startsWith("ENTRY") -> BUILT_NOT_CHECKED
+                else -> BUILT_AND_CHECKED
+            }
         }, observed)
     }
 
@@ -186,14 +233,22 @@ class WorkspaceReachedModelDiffTest {
      * A12's build, the interpreter's preparation and the checker's refusal of an entry model, with [edit] applied to
      * the `content` of the model [carrier] names.
      */
-    private fun observe(carrier: Carrier, edit: (ObjectNode) -> Unit): String {
+    private fun observe(carrier: Carrier, edit: (ObjectNode) -> Unit): String =
+        observeRoot(carrier) { root -> edit(root.path("content") as ObjectNode) }
+
+    /** [observe], with [edit] applied to the whole model [carrier] names rather than to its `content`. */
+    private fun observeRoot(carrier: Carrier, edit: (ObjectNode) -> Unit): String =
+        models(carrier, edit).let { (entry, provider) -> observe(entry, provider) }
+
+    /** The entry model and the provider [carrier] names, if any, with [edit] applied to the model it names. */
+    private fun models(carrier: Carrier, edit: (ObjectNode) -> Unit): Pair<String, String?> {
         val (entry, provider) = when (carrier) {
             Carrier.ENTRY -> cover() to null
             Carrier.INCLUDE -> permit() to MAPPER.readTree(COMPONENT) as ObjectNode
             Carrier.TYPE_DEFINITIONS -> coded() to MAPPER.readTree(TYPES) as ObjectNode
         }
-        edit((provider ?: entry).path("content") as ObjectNode)
-        return observe(entry.toString(), provider?.toString())
+        edit(provider ?: entry)
+        return entry.toString() to provider?.toString()
     }
 
     private fun observe(entry: String, provider: String?): String {
@@ -204,10 +259,13 @@ class WorkspaceReachedModelDiffTest {
         val interpreter = runCatching {
             ModelWorkspace.fromSources(sources.map { WorkspaceModelSource.builder().json(it).build() }).prepare(entryId)
         }.isSuccess
-        val checker = ConsistencyWorkspace.fromSources(sources.map(::ModelSource))
-            .check(entryId).findings.any { it.code == CK_MODEL_NOT_BUILDABLE }
-        return "A12 ${if (a12) "built" else "not built"}, interpreter ${if (interpreter) "prepares" else "refuses"}, " +
-            "checker ${if (checker) "not built" else "silent"}"
+        val report = ConsistencyWorkspace.fromSources(sources.map(::ModelSource)).check(entryId)
+        val checker = when {
+            report.findings.any { it.code == CK_MODEL_NOT_BUILDABLE } -> "not built"
+            report.diagnostics.any { it.code in ADMISSION_REFUSALS } -> "not admitted"
+            else -> "silent"
+        }
+        return "A12 ${if (a12) "built" else "not built"}, interpreter ${if (interpreter) "prepares" else "refuses"}, checker $checker"
     }
 
     private fun ObjectNode.setMember(member: Triple<String, String, Any>) {
@@ -248,6 +306,11 @@ class WorkspaceReachedModelDiffTest {
         const val BUILT_AND_CHECKED = "A12 built, A12 consistency checks, interpreter prepares, checker silent"
         const val BUILT_NOT_CHECKED = "A12 built, A12 consistency unbuilt, interpreter prepares, checker not built"
         const val NOT_BUILT_OR_CHECKED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not built"
+        const val NOT_BUILT_OR_ADMITTED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not admitted"
+
+        /** The checker's admission refusals: a source it cannot read as a DocumentModel at all. */
+        val ADMISSION_REFUSALS = setOf(DiagnosticCode.SOURCE_NOT_WELL_FORMED, DiagnosticCode.SOURCE_HAS_NO_IDENTITY,
+            DiagnosticCode.SOURCE_HAS_NO_MODEL_CONTENT)
         val DUPLICATE_TAG = listOf("MVK_SUPP_LANGUAGES_DUPLICATE")
         val NONE = emptyList<String>()
     }

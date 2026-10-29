@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 class OrderingMemberFieldNameKf589Test {
 
     private fun codes(field: String, members: String, outer: String = "Channel", second: String = "Qty", deleted: Boolean = false) = checkRead(ModelSource("""
-        {"header":{"id":"orders","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
          {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
           {"type":"Group","id":"/Order/Items","name":"Items","Group":{"repeatability":5,$members"elements":[
            {"type":"Field","id":"/Order/Items/$field","name":"$field","Field":{${if (deleted) DELETED else ""}"fieldType":{"type":"StringType","StringType":{}}}},

@@ -197,8 +197,8 @@ class ImpactTest {
 
     /** The canonical model, changed one substitution at a time so each row moves exactly one thing. */
     private val base = """
-        {"header":{"id":"orders","locales":[{"code":"en_US"}]},
-         "content":{"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
+        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
           "modelConfig":{"fieldRefByShortNameAllowed":true},
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[

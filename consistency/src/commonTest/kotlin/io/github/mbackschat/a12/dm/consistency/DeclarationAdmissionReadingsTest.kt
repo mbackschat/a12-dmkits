@@ -20,8 +20,8 @@ class DeclarationAdmissionReadingsTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"/Policy/Item","name":"Item","Field":{"fieldType":$fieldType$variant}}$nested
                   ]}}
@@ -111,7 +111,7 @@ class DeclarationAdmissionReadingsTest {
         )
         assertEquals<Map<String, List<String>>>(expected, actual.mapValues { it.value.sorted() })
         val atTheLimit = checkRead(ModelSource(
-            """{"header":{"id":"policy","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            """{"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[{"type":"Field","id":"/Policy/Item",
               "name":"Item","Field":{"fieldType":${number(""""maxFractionalDigits":-15,"maxValue":${1e30 - 1e15}""")}}}]}}]}}}""",
         ))

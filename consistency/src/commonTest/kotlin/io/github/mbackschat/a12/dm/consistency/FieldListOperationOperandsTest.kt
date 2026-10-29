@@ -19,8 +19,8 @@ class FieldListOperationOperandsTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"claim","locales":[{"code":"en_US"}]},
-             "content":{"typeDefinitions":[{"id":"POLICY_NUMBER_1","name":"PolicyNumber",
+            {"header":{"modelVersion":"28.4.0","id":"claim","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"typeDefinitions":[{"id":"POLICY_NUMBER_1","name":"PolicyNumber",
                "fieldType":{"type":"StringType"}}],
               "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[

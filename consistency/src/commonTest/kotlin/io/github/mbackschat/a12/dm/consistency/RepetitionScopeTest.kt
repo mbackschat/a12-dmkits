@@ -27,8 +27,8 @@ class RepetitionScopeTest {
     /** A repeatable claim list inside a policy, and a rule that names its own rule group. */
     private val policy = ModelSource(
         """
-        {"header":{"id":"policies","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"policies","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r0","name":"HolderNamed","Rule":{

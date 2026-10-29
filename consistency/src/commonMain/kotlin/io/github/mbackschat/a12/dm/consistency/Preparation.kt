@@ -198,7 +198,8 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     cannot parse, an entry locale it does not declare, or a library's root group; from an included model also a
  *     locale declared twice or the empty code. From the entry itself: a locale declared twice, which A12 builds but
  *     cannot check, and a declaration with no `name` or a type definition whose `name` is `null`, an object or an array,
- *     which its reader refuses (KF644). The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
+ *     which its reader refuses (KF644). From any of them, a frame member A12 cannot use ([frameDefects], KF650): one
+ *     its reader cannot bind in every model, and one it needs for the check in the entry alone. The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
  *     [unreadableLocaleCodes].
  */
 data class PreparedModel(
@@ -598,6 +599,18 @@ private fun readClosure(
         val source = pending.removeFirst()
         val root = source.parsed as? JsonObject
         val content = root?.get("content") as? JsonObject
+        val frame = source.parsed.frameDefects()
+        if (source === entry) {
+            reachedRefusals += frame.map {
+                when (it.tier) {
+                    FrameTier.READ -> "In the entry model, ${it.sentence}, which A12's reader cannot bind, so the model never loads"
+                    FrameTier.CHECK -> "In the entry model, ${it.sentence}, so A12 builds the model but its consistency check cannot run"
+                }
+            }
+        } else {
+            reachedRefusals += frame.filter { it.tier == FrameTier.READ }
+                .map { unbuilt("In the model `${source.modelId}`, ${it.sentence}, which A12 cannot bind") }
+        }
         if (source !== entry) {
             reachedRefusals += content.unbindableModelMembers().map { unbuilt("In the model `${source.modelId}`, $it, which A12 cannot bind") }
             val declared = (root?.get("header") as? JsonObject).declaredLocales()

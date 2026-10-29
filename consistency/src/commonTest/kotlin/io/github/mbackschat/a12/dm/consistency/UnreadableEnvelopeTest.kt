@@ -22,8 +22,8 @@ class UnreadableEnvelopeTest {
     /** Every envelope below is present and is a STRING, the shape A12's reader refuses outright. */
     private val source = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r0","name":"BadRule","Rule":"not an object"},
@@ -68,8 +68,8 @@ class UnreadableEnvelopeTest {
     fun aBindableEnvelopeDrawsNothingFromThisTier() {
         val sound = ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"GoodRule","Rule":{

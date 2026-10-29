@@ -16,7 +16,7 @@ class AdmissionRetentionTest {
 
     @Test
     fun admissionRetainsTheParsedTreeSoALaterPhaseNeedNotReparse() {
-        val outcome = admit(ModelSource("""{"header":{"id":"order"},"content":{"modelInfo":{"name":"Order"}}}"""))
+        val outcome = admit(ModelSource("""{"header":{"modelVersion":"28.4.0","id":"order"},"content":{"modelInfo":{"name":"Order"}}}"""))
 
         val admitted = assertIs<Admission.Admitted>(outcome)
         val content = admitted.parsed.jsonObject["content"]!!.jsonObject
@@ -34,7 +34,7 @@ class AdmissionRetentionTest {
     @Test
     fun aNumericFieldConfigurationKeepsItsAuthoredScale() {
         val json = """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"order"},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"/Order/Total","name":"Total","Field":{"fieldType":{
                   "type":"NumberType","NumberType":{"minValue":0.00,"maxValue":250.00}}}}

@@ -334,9 +334,11 @@ class FieldTypeMessageTextTest {
     ): String = buildJsonObject {
         putJsonObject("header") {
             put("id", "claims-field-messages")
+            put("modelVersion", "28.4.0")
             putJsonArray("locales") { locales.forEach { addJsonObject { put("code", it) } } }
         }
         putJsonObject("content") {
+            putJsonObject("modelInfo") { put("name", "claims-field-messages") }
             language?.let { putJsonObject("modelConfig") { putJsonObject("conditionLanguage") { put("code", it) } } }
             putJsonObject("modelRoot") {
                 putJsonArray("rootGroups") {

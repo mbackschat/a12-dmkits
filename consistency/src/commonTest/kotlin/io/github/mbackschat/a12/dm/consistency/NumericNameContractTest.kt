@@ -41,7 +41,7 @@ class NumericNameContractTest {
         assertEquals(18, SyntaxFixtureData.numericKeys.size)
         for (record in SyntaxFixtureData.numericKeys) {
             val row = Json.parseToJsonElement(record).jsonObject
-            val actual = checkRead(ModelSource(row.getValue("model").jsonPrimitive.content)).findings
+            val actual = checkRead(checkableSource(row.getValue("model").jsonPrimitive.content)).findings
                 .filter { it.justifiesRejection }.map { it.code }
             assertEquals(row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }, actual,
                 row.getValue("id").jsonPrimitive.content)

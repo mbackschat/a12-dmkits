@@ -22,8 +22,8 @@ class MessageParameterReferenceTest {
     private fun germanSaying(text: String): List<String> = checkRead(
         ModelSource(
             """
-        {"header":{"id":"vertrag","locales":[{"code":"de_DE"}]},
-         "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"vertrag","locales":[{"code":"de_DE"}]},
+         "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Vertrag","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Referenz","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r0","name":"Probe","Rule":{
@@ -281,8 +281,8 @@ class MessageParameterReferenceTest {
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
         }
         return """
-            {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-             "content":{"modelConfig":{"fieldRefByShortNameAllowed":"True"},
+            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":"True"},
               "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

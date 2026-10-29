@@ -114,8 +114,8 @@ class ComputedTargetKindTest {
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
         return """
-            {"header":{"id":"rental","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"rental","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Rental","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Group","id":"g1","name":"Station","Group":{"elements":[

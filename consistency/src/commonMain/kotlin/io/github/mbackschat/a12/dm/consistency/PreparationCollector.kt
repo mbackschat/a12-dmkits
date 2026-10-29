@@ -514,9 +514,13 @@ internal fun JsonObject.scalarText(key: String): String? = (this[key] as? JsonPr
 private operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)
 
 /**
- * The declared condition language code, or `null` when the model does not state one — read leniently on
- * purpose, because an unreadable code is not a reason to refuse the model when A12 itself defaults.
+ * The declared condition language code, or `null` when the model does not state one. A12 binds the member as a
+ * locale, so a bare text declares it as an object's `code` does: `"de_DE"` reads German conditions (KF650). A shape
+ * its binding refuses is [frameDefects]' to report, and reads here as no code.
  */
 internal fun JsonObject?.conditionLanguageCode(): String? =
-    ((this?.get("modelConfig") as? JsonObject)?.get("conditionLanguage") as? JsonObject)
-        ?.get("code")?.let { (it as? JsonPrimitive)?.contentOrNull }
+    when (val declared = (this?.get("modelConfig") as? JsonObject)?.get("conditionLanguage")) {
+        is JsonObject -> (declared["code"] as? JsonPrimitive)?.contentOrNull
+        is JsonPrimitive -> declared.takeIf { it.isString }?.content
+        else -> null
+    }

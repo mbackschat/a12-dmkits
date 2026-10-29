@@ -22,7 +22,7 @@ class WorkspaceMountTest {
     /** A provider whose root group carries [elements]; its own root name must never survive into a path. */
     private fun provider(id: String, root: String, elements: String, flag: Boolean = false) = source(
         """
-        {"header":{"id":"$id","locales":[{"code":"en_US"}]},"content":{
+        {"header":{"modelVersion":"28.4.0","id":"$id","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
           "modelConfig":{"fieldRefByShortNameAllowed":$flag},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g","name":"$root","Group":{"elements":[$elements]}}
@@ -52,9 +52,9 @@ class WorkspaceMountTest {
     private fun host(mountBody: String = """"modelAlias":"addr"""", extra: String = "", flag: Boolean = false) =
         source(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
-            ]},"content":{
+            ]},"content":{"modelInfo":{"name":"model"},
               "modelConfig":{"fieldRefByShortNameAllowed":$flag},
               "modelRoot":{"rootGroups":[
                 {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -141,7 +141,7 @@ class WorkspaceMountTest {
      */
     private fun twoRootProvider(rules: String = "") = source(
         """
-        {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}$rules]}},
           {"type":"Group","id":"g2","name":"Contact","Group":{"elements":[${field("Email")}]}}
         ]}}}
@@ -225,9 +225,9 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val address = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"g","purpose":"include","reference":"geo"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 ${field("Street")},
                 {"type":"Group","id":"gg","name":"Where","Group":{"modelAlias":"g"}}
@@ -246,9 +246,9 @@ class WorkspaceMountTest {
         val address = provider("address", "Address", field("Street"))
         val entry = source(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
                 {"type":"Group","id":"g2","name":"BillTo","Group":{"modelAlias":"addr"}},
@@ -269,9 +269,9 @@ class WorkspaceMountTest {
     fun anIncludeCycleIsReportedRatherThanFollowed() {
         val address = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"back","purpose":"include","reference":"order"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 {"type":"Group","id":"gg","name":"Loop","Group":{"modelAlias":"back"}}
               ]}}
@@ -375,7 +375,7 @@ class WorkspaceMountTest {
     fun anAttachmentProviderRootShieldsItsSubtreeAndAMountsOwnMarkerDoesNot() {
         val shielded = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"usageType":"attachment","elements":[
                 ${field("Street")},${broken()}
               ]}}
@@ -469,7 +469,7 @@ class WorkspaceMountTest {
     fun aProviderMissingAnEntryLocaleSuspendsTheMount() {
         val narrow = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
             ]}}}
             """,
@@ -485,8 +485,8 @@ class WorkspaceMountTest {
     fun aProviderCoveringEveryEntryLocaleMountsNormally() {
         val wide = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
             ]}}}
             """,
@@ -508,8 +508,8 @@ class WorkspaceMountTest {
     fun aMountedDeclarationsMessagesAreJudgedAgainstTheEntrysLocales() {
         val provider = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 ${field("Street")},
                 {"type":"Rule","id":"r","name":"StreetFilled","Rule":{"errorCode":"C",
@@ -538,9 +538,9 @@ class WorkspaceMountTest {
     /** The host of the rows above, declaring two locales where [host] declares one. */
     private fun bilingualHost() = source(
         """
-        {"header":{"id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
+        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
           {"alias":"addr","purpose":"include","reference":"address"}
-        ]},"content":{"modelRoot":{"rootGroups":[
+        ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
           ]}}
@@ -553,7 +553,7 @@ class WorkspaceMountTest {
     fun aProviderWithoutExactlyOneRootGroupSuspendsTheMount() {
         val two = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"a","name":"Address","Group":{"elements":[${field("Street")}]}},
               {"type":"Group","id":"b","name":"Other","Group":{"elements":[${field("City")}]}}
             ]}}}
@@ -566,8 +566,8 @@ class WorkspaceMountTest {
 
     /** A provider whose sole root group is [root] verbatim, so a row can vary the root itself. */
     private fun providerWithRoot(root: String) = source(
-        """{"header":{"id":"address","locales":[{"code":"en_US"}]},
-           "content":{"modelRoot":{"rootGroups":[$root]}}}""",
+        """{"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+           "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[$root]}}}""",
     )
 
     private fun addressRoot(extra: String = "") =
@@ -642,8 +642,8 @@ class WorkspaceMountTest {
     fun aNonObjectRootElementSuspendsTheMountAtEitherLevel() {
         val provider = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[${addressRoot()},5]}}}
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[${addressRoot()},5]}}}
             """,
         )
 
@@ -666,8 +666,8 @@ class WorkspaceMountTest {
     @Test
     fun aModelRootIncludeOfARootlessProviderSuspendsTheMount() {
         val provider = source(
-            """{"header":{"id":"address","locales":[{"code":"en_US"}]},
-                "content":{"modelRoot":{"rootGroups":[]}}}""",
+            """{"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+                "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[]}}}""",
         )
         val report = check(host(mountBody = modelRoot), provider)
 
@@ -685,7 +685,7 @@ class WorkspaceMountTest {
     fun aNamelessModelRootRootSuspendsTheWholeMount() {
         val provider = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               ${addressRoot()},
               {"type":"Group","id":"g2","Group":{"elements":[${field("Email")}]}}
             ]}}}
@@ -786,9 +786,9 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val nesting = source(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"g","purpose":"include","reference":"geo"}
-            ]},"content":{
+            ]},"content":{"modelInfo":{"name":"model"},
               "modelConfig":{"fieldRefByShortNameAllowed":true},
               "modelRoot":{"rootGroups":[
                 {"type":"Group","id":"g","name":"Address","Group":{"elements":[
@@ -807,9 +807,9 @@ class WorkspaceMountTest {
 
         val twice = source(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
                 {"type":"Group","id":"g2","name":"BillTo","Group":{"modelAlias":"addr"}}
@@ -837,9 +837,9 @@ class WorkspaceMountTest {
         // index makes a resolvable provider-bound reference ambiguous — a model A12 accepts, refused.
         val prefixSiblings = source(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
                 {"type":"Group","id":"g2","name":"ShipToBilling","Group":{"modelAlias":"addr"}}
@@ -880,9 +880,9 @@ class WorkspaceMountTest {
     fun aCycleThatNeverReachesTheEntryModelIsStillReported() {
         fun mutual(id: String, other: String) = source(
             """
-            {"header":{"id":"$id","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"$id","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"x","purpose":"include","reference":"$other"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"${id.uppercase()}","Group":{"elements":[
                 {"type":"Group","id":"gg","name":"Next","Group":{"modelAlias":"x"}}
               ]}}
@@ -891,9 +891,9 @@ class WorkspaceMountTest {
         )
         val entry = source(
             """
-            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"ma"}
-            ]},"content":{"modelRoot":{"rootGroups":[
+            ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
               ]}}
@@ -932,7 +932,7 @@ class WorkspaceMountTest {
     fun aBrokenDeclarationInAProviderNamesTheProvider() {
         val address = ModelSource(
             """
-            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 {"type":"Field","name":"Street","Field":{"fieldType":{"type":"StringType"}}}
               ]}}

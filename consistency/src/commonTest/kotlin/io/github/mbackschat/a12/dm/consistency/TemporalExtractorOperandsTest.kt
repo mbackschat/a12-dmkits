@@ -18,7 +18,7 @@ class TemporalExtractorOperandsTest {
     private fun codes(condition: String, baseYear: Boolean = false): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"policy-extractors","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"28.4.0","id":"policy-extractors","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{BASE_YEAR"name":"policy"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

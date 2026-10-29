@@ -71,8 +71,8 @@ class DigitMemberRangeTest {
             .filter { it.at == "/Ticket/Effort" && it.justifiesRejection }.map { it.code }.sorted()
 
     private fun model(members: String, fieldExtra: String): String = """
-        {"header":{"id":"ticket","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"ticket","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Ticket","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Effort","Field":{"fieldType":{
               "type":"NumberType","NumberType":{$members}}$fieldExtra}}

@@ -32,7 +32,7 @@ class CheckCellKeyTest {
     ): PreparedModel {
         val source = ModelSource(
             """
-            {"header":{"id":"keys","locales":$locales},
+            {"header":{"modelVersion":"28.4.0","id":"keys","locales":$locales},
              "content":{$modelConfig$modelInfo$typeDefinitions
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -159,8 +159,8 @@ class CheckCellKeyTest {
         // members are free, and the cell key carries only the path.
         fun model(kind: String) = ModelSource(
             """
-            {"header":{"id":"kinds","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"kinds","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"$kind","id":"r0","name":"Check","$kind":{
@@ -205,8 +205,8 @@ class CheckCellKeyTest {
     fun twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport() {
         val source = ModelSource(
             """
-            {"header":{"id":"twins","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"twins","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"Twin","Rule":{

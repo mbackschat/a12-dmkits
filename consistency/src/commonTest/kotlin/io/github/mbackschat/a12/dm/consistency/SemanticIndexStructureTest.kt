@@ -226,8 +226,8 @@ class SemanticIndexStructureTest {
      * from the root.
      */
     private fun depot(probe: String, anchor: String): String = """
-        {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"LookupKey","Field":{"fieldType":{"type":"StringType"}}},
@@ -301,8 +301,8 @@ class SemanticIndexStructureTest {
 
     /** An insurance policy with three indexed shapes, mirroring the laws test's carrier. */
     private fun model(probe: String): String = """
-        {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"LookupCode","Field":{"fieldType":{"type":"StringType"}}},

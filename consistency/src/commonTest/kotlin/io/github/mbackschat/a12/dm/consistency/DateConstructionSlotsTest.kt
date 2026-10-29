@@ -34,8 +34,8 @@ class DateConstructionSlotsTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"id":"booking","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"booking","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Booking","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"BookingRef","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"TravelDate","Field":{"fieldType":{"type":"DateType",
@@ -411,8 +411,8 @@ class DateConstructionSlotsTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"id":"booking-legs","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"booking-legs","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Booking","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"TravelDate","Field":{"fieldType":{"type":"DateType",
                   "DateType":{"format":"yyyy-MM-dd"}}}},

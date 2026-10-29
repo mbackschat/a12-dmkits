@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.workspace
 import io.github.mbackschat.a12.dm.interpreter.a12LocaleKeyOrNull
 import io.github.mbackschat.a12.dm.interpreter.declaredLocaleCodes
 import io.github.mbackschat.a12.dm.interpreter.declaredLocaleKeys
-import io.github.mbackschat.a12.dm.interpreter.modelMemberText
+import io.github.mbackschat.a12.dm.interpreter.modelMemberState
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
 import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
@@ -216,7 +216,7 @@ internal class WorkspaceAssemblyContext(
             val parsedSource = ParsedWorkspaceSource(source, root)
             root.unbindableModelMember()?.let { member ->
                 throw invalidModelElement(parsedSource, member,
-                    "$member holds ${root.modelMemberText(member)}, which A12 cannot bind, so A12 does not load the model")
+                    "$member ${root.modelMemberState(member)}, which A12 cannot bind, so A12 does not load the model")
             }
             parsedSource
         }

@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class BlankDateFormatKf584Test {
 
     private fun report(fieldType: String, typeDefinitions: String = "") = checkRead(ModelSource("""
-        {"header":{"id":"policies","locales":[{"code":"en_US"}]},"content":{$typeDefinitions"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"policies","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$typeDefinitions"modelRoot":{"rootGroups":[
          {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
           {"type":"Field","id":"/Policy/Start","name":"Start","Field":{"fieldType":$fieldType}}
          ]}}

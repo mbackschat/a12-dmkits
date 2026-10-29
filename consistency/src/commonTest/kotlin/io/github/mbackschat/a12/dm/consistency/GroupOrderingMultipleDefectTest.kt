@@ -90,8 +90,8 @@ class GroupOrderingMultipleDefectTest {
             ""","sortFields":[${sortFields.joinToString(",") { """{"name":"$it"}""" }}]"""
         }
         return """
-            {"header":{"id":"order","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Items","Group":{"repeatability":50$indexMember$sortMember,
                   "elements":[

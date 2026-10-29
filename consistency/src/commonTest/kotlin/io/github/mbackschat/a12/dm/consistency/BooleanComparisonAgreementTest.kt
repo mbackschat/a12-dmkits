@@ -11,8 +11,8 @@ class BooleanComparisonAgreementTest {
         val findings = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"order","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Field","id":"f5","name":"TermsAccepted","Field":{

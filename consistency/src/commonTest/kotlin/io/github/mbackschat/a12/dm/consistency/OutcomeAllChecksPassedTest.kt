@@ -151,8 +151,8 @@ class OutcomeAllChecksPassedTest {
 
         /** One group, one field, one rule, one computation, nothing wrong: every producer is asked. */
         private val CLEAN = """
-            {"header":{"id":"clean","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"clean","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
@@ -169,8 +169,8 @@ class OutcomeAllChecksPassedTest {
 
         /** The same shape, with the rule naming a field that is not declared. */
         private val REJECTED = """
-            {"header":{"id":"rejected","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"rejected","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
@@ -187,8 +187,8 @@ class OutcomeAllChecksPassedTest {
 
         /** The clean shape plus one element with no `type`/`id`/`name`: reported, and skipped. */
         private val UNREADABLE_DECLARATION = """
-            {"header":{"id":"skipped","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"skipped","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"id":"nameless"},
                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
@@ -206,8 +206,8 @@ class OutcomeAllChecksPassedTest {
 
         /** A condition language A12 does not support: refused outright, so nothing is examined. */
         private val UNSUPPORTED_LANGUAGE = """
-            {"header":{"id":"nolang","locales":[{"code":"en_US"}]},
-             "content":{"modelConfig":{"conditionLanguage":{"code":"xx_XX"}},
+            {"header":{"modelVersion":"28.4.0","id":"nolang","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"xx_XX"}},
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                  {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}}
@@ -217,8 +217,8 @@ class OutcomeAllChecksPassedTest {
 
         /** Admitted, and declares nothing — the state `emptyFactBase` reports as a gap. */
         private val NO_DECLARATIONS = """
-            {"header":{"id":"empty","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[]}}}
+            {"header":{"modelVersion":"28.4.0","id":"empty","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[]}}}
         """.trimIndent()
     }
 }

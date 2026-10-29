@@ -153,8 +153,8 @@ class ComputationPreconditionFeaturesTest {
                  "errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
         return """
-            {"header":{"id":"basket","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"basket","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[
                   {"type":"Field","id":"f0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},

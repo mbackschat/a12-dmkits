@@ -246,7 +246,7 @@ class ModelLoaderTest {
         // invalid" — probed HH:mm / HH.mm.ss / H:mm:ss), so the drop is unobservable via the kernel but real for
         // the standalone interpreter, whose format-driven parseTimeToIso honors it (IF56).
         val def = ModelLoader.load(
-            """{ "content": { "modelRoot": { "rootGroups": [ {
+            """{ "header": { "id": "m" }, "content": { "modelRoot": { "rootGroups": [ {
                   "type":"Group","id":"/F","name":"F","Group": { "elements": [
                     { "type":"Field","id":"/F/T","name":"T",
                       "Field": { "fieldType": {"type":"TimeType","TimeType":{"format":"HH.mm.ss"}} } } ] } } ] } } }""",
@@ -261,7 +261,7 @@ class ModelLoaderTest {
         // formatOfFragment as the format — which drives the eval's completion. Each of the four fragment
         // formats must round-trip through the loader (IF57).
         val def = ModelLoader.load(
-            """{ "content": { "modelRoot": { "rootGroups": [ {
+            """{ "header": { "id": "m" }, "content": { "modelRoot": { "rootGroups": [ {
                   "type":"Group","id":"/Card","name":"Card","Group": { "elements": [
                     { "type":"Field","id":"/Card/Ym","name":"Ym",
                       "Field": { "fieldType": {"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"yyyy-MM"}} } },

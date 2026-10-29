@@ -27,8 +27,8 @@ class GroupListOperandsTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"PolicyNumber","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Coverage","Group":{"elements":[
@@ -274,8 +274,8 @@ class GroupListOperandsTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"police","locales":[{"code":"de_DE"}]},
-                 "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"police","locales":[{"code":"de_DE"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Police","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Nummer","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Werkstatt","Group":{"elements":[
@@ -313,8 +313,8 @@ class GroupListOperandsTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"PolicyNumber","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Garage","Group":{"elements":[
@@ -425,8 +425,8 @@ class GroupListOperandsTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Number","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Coverage","Group":{"elements":[

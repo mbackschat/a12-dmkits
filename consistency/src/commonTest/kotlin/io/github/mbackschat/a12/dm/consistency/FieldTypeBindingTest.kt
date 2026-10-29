@@ -21,8 +21,8 @@ class FieldTypeBindingTest {
     /** A model whose single field carries [fieldType] verbatim, or no such member when it is null. */
     private fun typed(fieldType: String?) = ModelSource(
         """
-        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{${
             fieldType?.let { """"fieldType":$it""" } ?: ""
@@ -281,8 +281,8 @@ class FieldTypeBindingTest {
     fun aFieldTypeOnAGroupIsIgnoredTheWayA12IgnoresIt() {
         val withGroup = ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{
                 "fieldType":{"type":"NotAType","NotAType":{}},
                 "elements":[{"type":"Field","id":"f0","name":"Tier","Field":{
@@ -306,8 +306,8 @@ class FieldTypeBindingTest {
     fun aTypeDefTypeReferenceResolvesAgainstTheModelsTypeDefinitions() {
         fun typed(fieldType: String, typeDefinitions: String?) = ModelSource(
             """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{${typeDefinitions?.let { """"typeDefinitions":$it,""" } ?: ""}
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},${typeDefinitions?.let { """"typeDefinitions":$it,""" } ?: ""}
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                  {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":$fieldType}}

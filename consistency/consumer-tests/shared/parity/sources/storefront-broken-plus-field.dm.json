@@ -1,9 +1,11 @@
 {
   "header": {
     "id": "storefront",
+    "modelVersion": "28.4.0",
     "locales": [{ "code": "en_US" }]
   },
   "content": {
+    "modelInfo": { "name": "storefront" },
     "modelRoot": {
       "rootGroups": [
         {

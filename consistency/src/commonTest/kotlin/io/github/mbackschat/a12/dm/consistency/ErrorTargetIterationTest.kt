@@ -100,8 +100,8 @@ class ErrorTargetIterationTest {
 
     /** The reconciliation shape with the rule declared in `Expected`, reporting on `Received/Note`. */
     private fun outsideGroupModel(condition: String): String = """
-        {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Shipment","Group":{"repeatability":5,"elements":[
             {"type":"Group","id":"g1","name":"Received","Group":{"repeatability":10,
               "indexFieldName":"LineNo","elements":[
@@ -125,8 +125,8 @@ class ErrorTargetIterationTest {
     @Test
     fun aFlatModelIsNotThisFamilysBusiness() {
         val flat = """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
@@ -186,8 +186,8 @@ class ErrorTargetIterationTest {
     private fun model(condition: String, repeatableRoot: Boolean): String {
         val rootRepeats = if (repeatableRoot) """"repeatability":5,""" else ""
         return """
-            {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{$rootRepeats"elements":[
                 {"type":"Group","id":"g1","name":"Received","Group":{"repeatability":10,
                   "indexFieldName":"LineNo","elements":[

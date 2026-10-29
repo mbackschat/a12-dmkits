@@ -17,8 +17,8 @@ class RepetitionNotUniqueCombinationTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Pallets","Group":{"repeatability":9,"elements":[
@@ -81,8 +81,8 @@ class RepetitionNotUniqueCombinationTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"depot","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Pallets","Group":{"repeatability":9,"elements":[
                       {"type":"Field","id":"f1","name":"PalletNote","Field":{"fieldType":{"type":"StringType"}}},

@@ -360,8 +360,8 @@ class CheckFamilyWiringTest {
      */
     private val germanSource = ModelSource(
         """
-        {"header":{"id":"wiring-de","locales":[{"code":"de_DE"}]},
-         "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"wiring-de","locales":[{"code":"de_DE"}]},
+         "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"gd0","name":"Bestellung","Group":{"repeatability":9,"elements":[
             {"type":"Field","id":"fd0","name":"Kennzeichen","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"rd0","name":"FormularRegel","Rule":{
@@ -387,8 +387,8 @@ class CheckFamilyWiringTest {
      */
     private val cycleSource = ModelSource(
         """
-        {"header":{"id":"wiring-cycle","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"wiring-cycle","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"gc0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"fc0","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"fc1","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
@@ -420,8 +420,8 @@ class CheckFamilyWiringTest {
      */
     private val orderingSource = ModelSource(
         """
-        {"header":{"id":"wiring-ordering","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"wiring-ordering","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"go0","name":"Catalog","Group":{"elements":[
             {"type":"Group","id":"go1","name":"BadKey","Group":{"repeatability":20,
               "indexFieldName":"Key","elements":[

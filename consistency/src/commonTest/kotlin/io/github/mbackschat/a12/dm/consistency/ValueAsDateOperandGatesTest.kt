@@ -118,8 +118,8 @@ class ValueAsDateOperandGatesTest {
 
     /** An e-commerce returns desk mirroring the laws test's carrier. */
     private fun model(formRule: String, rowRule: String): String = """
-        {"header":{"id":"returns-valueasdate","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"returns-valueasdate","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Returns","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Limit","Field":{"fieldType":{"type":"DateType",

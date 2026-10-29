@@ -31,7 +31,7 @@ class FieldReadContractTest {
         for (record in SyntaxFixtureData.fieldReads) {
             val row = Json.parseToJsonElement(record).jsonObject
             val onlyCode = row.getValue("onlyCode").jsonPrimitive.contentOrNull
-            val actual = checkRead(ModelSource(row.getValue("model").jsonPrimitive.content)).findings
+            val actual = checkRead(checkableSource(row.getValue("model").jsonPrimitive.content)).findings
                 .filter { if (onlyCode == null) it.category == FindingCategory.A12_CONSTRAINT else it.code == onlyCode }
                 .map { it.code }.sorted()
             assertEquals(row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }, actual,

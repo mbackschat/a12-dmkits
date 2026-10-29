@@ -22,8 +22,8 @@ class ShortNameFallbackScopeTest {
 
     private fun model(variantFilter: String) = ModelSource(
         """
-        {"header":{"id":"shortname","locales":[{"code":"en_US"}]},
-         "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},
+        {"header":{"modelVersion":"28.4.0","id":"shortname","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":true},
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
              {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}$variantFilter}},

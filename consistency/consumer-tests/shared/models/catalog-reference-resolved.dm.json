@@ -1,6 +1,7 @@
 {
   "header": {
     "id": "catalog-reference-resolved",
+    "modelVersion": "28.4.0",
     "locales": [
       {
         "code": "en_US"
@@ -8,6 +9,7 @@
     ]
   },
   "content": {
+    "modelInfo": { "name": "catalog-reference-resolved" },
     "modelConfig": {
       "fieldRefByShortNameAllowed": true
     },

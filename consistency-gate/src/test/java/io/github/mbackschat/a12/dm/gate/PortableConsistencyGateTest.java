@@ -218,8 +218,8 @@ class PortableConsistencyGateTest {
 
     private static String order(String errorTarget, String condition) {
         return """
-            {"header":{"id":"orders","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
@@ -232,9 +232,9 @@ class PortableConsistencyGateTest {
 
     private static String mounting(String condition) {
         return """
-            {"header":{"id":"orders","locales":[{"code":"en_US"}],
+            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
               "modelReferences":[{"alias":"catalog","reference":"catalog"}]},
-             "content":{"modelRoot":{"rootGroups":[
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g-ship","name":"ShipTo","Group":{"modelAlias":"catalog"}},
@@ -248,9 +248,9 @@ class PortableConsistencyGateTest {
 
     private static String catalog(String extraElements) {
         return """
-            {"header":{"id":"catalog","locales":[{"code":"en_US"}],
+            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}],
               "modelReferences":[{"alias":"geo","reference":"geo"}]},
-             "content":{"modelRoot":{"rootGroups":[
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"cg0","name":"Address","Group":{"elements":[
                 {"type":"Field","id":"cf0","name":"Zip","Field":{"fieldType":{"type":"StringType"}}}%s
               ]}}
@@ -260,8 +260,8 @@ class PortableConsistencyGateTest {
 
     private static String duplicateMessageLocale() {
         return """
-            {"header":{"id":"orders","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
@@ -275,9 +275,9 @@ class PortableConsistencyGateTest {
 
     private static String importingTypes() {
         return """
-            {"header":{"id":"orders","locales":[{"code":"en_US"}],
+            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
               "modelReferences":[{"alias":"types","reference":"types","purpose":"typeDefinitions"}]},
-             "content":{"modelRoot":{"rootGroups":[
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f-total","name":"Total","Field":{"fieldType":{
@@ -293,16 +293,16 @@ class PortableConsistencyGateTest {
     /** A library declares no root group: A12 does not expand an import whose root holds one (KF594). */
     private static String types() {
         return """
-            {"header":{"id":"types","locales":[{"code":"en_US"}]},
-             "content":{"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
+            {"header":{"modelVersion":"28.4.0","id":"types","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
               "modelRoot":{"rootGroups":[]}}}
             """;
     }
 
     private static String geo() {
         return """
-            {"header":{"id":"geo","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"geo","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"gg0","name":"Territory","Group":{"elements":[
                 {"type":"Field","id":"gf0","name":"Country","Field":{"fieldType":{"type":"StringType"}}}
               ]}}

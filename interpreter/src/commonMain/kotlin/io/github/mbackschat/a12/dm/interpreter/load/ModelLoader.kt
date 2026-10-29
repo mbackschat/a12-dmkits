@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
+import io.github.mbackschat.a12.dm.interpreter.conditionLanguageCode
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
 import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
 import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
@@ -9,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.javaIntOrNull
 import io.github.mbackschat.a12.dm.interpreter.javaTrimmed
 import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.configFlag
-import io.github.mbackschat.a12.dm.interpreter.modelMemberText
+import io.github.mbackschat.a12.dm.interpreter.modelMemberState
 import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlin.jvm.JvmStatic
@@ -89,7 +90,7 @@ object ModelLoader {
         (root as? JsonObject)?.let { model ->
             model.unbindableModelMember()?.let { member ->
                 throw invalidElement(member,
-                    "$member holds ${model.modelMemberText(member)}, which A12 cannot bind, so A12 does not load the model")
+                    "$member ${model.modelMemberState(member)}, which A12 cannot bind, so A12 does not load the model")
             }
         }
         val sink = Sink()
@@ -112,9 +113,7 @@ object ModelLoader {
         // against java.util.TimeZone before this kernel-free JVM+JS boundary.
         val timeZoneNode = (modelConfig as? JsonObject)?.get("timeZone")
         val timeZone = if (timeZoneNode == null) ModelTimeZone.UTC else ModelTimeZone.of(timeZoneNode.asTextOrNull())
-        val conditionLanguage = ConditionLanguage.fromCode(
-            modelConfig.path("conditionLanguage").path("code").asTextOrNull(),
-        )
+        val conditionLanguage = ConditionLanguage.fromCode((root as? JsonObject)?.conditionLanguageCode())
         return ModelDef(
             fields = sink.fields,
             rules = sink.rules,

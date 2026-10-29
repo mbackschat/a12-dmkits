@@ -166,8 +166,8 @@ class IndexFieldBaseTypeTest {
             keyed("ByRange", RANGE),
         )
         return """
-            {"header":{"id":"keyed-shipments","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"keyed-shipments","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[${groups.joinToString(",")}]}}
              ]}}}
         """.trimIndent()

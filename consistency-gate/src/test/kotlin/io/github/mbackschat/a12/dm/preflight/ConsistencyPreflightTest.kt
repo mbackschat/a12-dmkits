@@ -97,8 +97,8 @@ class ConsistencyPreflightTest {
         json.map { WorkspaceModelSource.builder().json(it).diagnosticLabel("orders.dm.json").build() }
 
     private fun order(condition: String = "FieldFilled(Code)") = """
-        {"header":{"id":"orders","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{

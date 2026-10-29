@@ -44,8 +44,8 @@ class ModelTextRepertoireTest {
         reference: String = """{"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}}""",
         groupLabel: String = "Claim",
     ) = """
-        {"header":{"id":"claims-repertoire","locales":[{"code":"en_US"}],"labels":[{"locale":"en_US","text":"Claims"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"claims-repertoire","locales":[{"code":"en_US"}],"labels":[{"locale":"en_US","text":"Claims"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Claim","Group":{"label":[{"locale":"en_US","text":${q(groupLabel)}}],
            "elements":[
             $reference,

@@ -21,8 +21,8 @@ class HModelPathSuffixTest {
     /** A policy model whose one rule carries [condition]; `Insured` is the only group that does not repeat. */
     private fun model(condition: String): ModelSource = ModelSource(
             """
-            {"header":{"id":"policy-paths","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"policy-paths","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Insured","Group":{"elements":[

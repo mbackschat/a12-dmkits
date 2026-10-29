@@ -7,8 +7,8 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal val WIRING_MODEL = ModelSource(
     """
-    {"header":{"id":"wiring","locales":[{"code":"en_US"}]},
-     "content":{"modelConfig":{"supportedCharacters":["A-Z"]},"modelRoot":{"rootGroups":[
+    {"header":{"modelVersion":"28.4.0","id":"wiring","locales":[{"code":"en_US"}]},
+     "content":{"modelInfo":{"name":"model"},"modelConfig":{"supportedCharacters":["A-Z"]},"modelRoot":{"rootGroups":[
       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Field","id":"f1","name":"Unbindable","Field":{

@@ -97,8 +97,8 @@ class SumOfProductsOperandsTest {
      * plain fields — every shape the four laws separate, on one model so no row moves a second variable.
      */
     private fun model(operands: String): String = """
-        {"header":{"id":"basket","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"basket","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f5","name":"Other","Field":{"fieldType":{"type":"NumberType"}}},

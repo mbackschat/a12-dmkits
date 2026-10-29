@@ -75,8 +75,8 @@ class OuterMarkerPositionTest {
 
     /** An insurance claims desk mirroring the laws test's carrier. */
     private fun model(condition: String): String = """
-        {"header":{"id":"claim-outer-marker","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"28.4.0","id":"claim-outer-marker","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"ExcessDue","Field":{"fieldType":{"type":"NumberType"}}},

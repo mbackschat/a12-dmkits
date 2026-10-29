@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * The first of a model's own model-level members A12's reader cannot bind, as its path, or null.
  *
+ * Its frame comes first ([unbindableFrameMember]): a member missing or of a kind the reader cannot bind.
  * The header's `locales` binds each code as a locale, so one A12 cannot parse (`en_us`) refuses; the empty code is
  * read, and what it costs depends on which model declares it ([a12LocaleKeyOrNull]). `DocumentModelInfo` and
  * `DocumentModelConfig` hold four members that are not text: the `Integer` `baseYear` and the primitive `boolean`s
@@ -14,6 +17,7 @@ import kotlinx.serialization.json.JsonObject
  * any of them leaves the entry model unbuilt (KF594; `adapter.WorkspaceReachedModelDiffTest`).
  */
 internal fun JsonObject.unbindableModelMember(): String? {
+    unbindableFrameMember()?.let { return it }
     if (declaredLocaleCodes().any { it.isNotEmpty() && a12LocaleKeyOrNull(it) == null }) return "header.locales"
     val content = this["content"] as? JsonObject
     val info = content?.get("modelInfo") as? JsonObject
@@ -23,9 +27,25 @@ internal fun JsonObject.unbindableModelMember(): String? {
     }?.let { (owner, member) -> "content.$owner.$member" }
 }
 
-/** The model's value at [path], one [unbindableModelMember] returned, for a refusal message. */
-internal fun JsonObject.modelMemberText(path: String): String =
-    path.split('.').fold<String, JsonElement?>(this) { node, key -> (node as? JsonObject)?.get(key) }.toString()
+/** What the model holds at [path], one [unbindableModelMember] returned, for a refusal message. */
+internal fun JsonObject.modelMemberState(path: String): String =
+    path.split('.').fold<String, JsonElement?>(this) { node, key ->
+        val name = key.substringBefore('[')
+        val member = (node as? JsonObject)?.get(name)
+        key.substringAfter('[', "").removeSuffix("]").asciiIntOrNull()?.let { (member as? JsonArray)?.getOrNull(it) } ?: member
+    }?.let { "holds $it" } ?: "is absent"
+
+/**
+ * The declared condition-language code, or null when the model states none. A12 binds the member as a locale, so a
+ * bare text declares it as an object's `code` does, and `"de_DE"` reads German conditions (KF650); a shape its
+ * binding refuses never arrives here ([unbindableFrameMember]).
+ */
+internal fun JsonObject.conditionLanguageCode(): String? =
+    when (val declared = ((this["content"] as? JsonObject)?.get("modelConfig") as? JsonObject)?.get("conditionLanguage")) {
+        is JsonObject -> (declared["code"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        is JsonPrimitive -> declared.takeIf { it.isString }?.content
+        else -> null
+    }
 
 private val MODEL_BOOLEANS = listOf(
     "modelInfo" to "immutable",

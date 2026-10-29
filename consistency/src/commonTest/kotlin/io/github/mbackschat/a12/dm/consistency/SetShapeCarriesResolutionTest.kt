@@ -222,8 +222,8 @@ class SetShapeCarriesResolutionTest {
          * gate on that second tier, so without it the same name is simply undeclared.
          */
         private val TWINS = """
-            {"header":{"id":"twins","locales":[{"code":"en_US"}]},
-             "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"twins","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
                   {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},

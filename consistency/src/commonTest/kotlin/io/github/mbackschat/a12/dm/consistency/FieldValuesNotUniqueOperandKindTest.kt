@@ -17,8 +17,8 @@ class FieldValuesNotUniqueOperandKindTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"claim","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"claim","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Adjuster","Field":{"fieldType":{"type":"StringType"}}},
@@ -83,8 +83,8 @@ class FieldValuesNotUniqueOperandKindTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"id":"claim","locales":[{"code":"en_US"}]},
-                 "content":{"modelRoot":{"rootGroups":[
+                {"header":{"modelVersion":"28.4.0","id":"claim","locales":[{"code":"en_US"}]},
+                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Field","id":"f2","name":"FiledOn","Field":{"fieldType":{"type":"DateType",

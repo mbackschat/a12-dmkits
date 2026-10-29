@@ -16,8 +16,8 @@ class SelectedDateSlotTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"id":"policy-selected-slots","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"28.4.0","id":"policy-selected-slots","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Key","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Events","Group":{"repeatability":3,"indexFieldName":"Code",

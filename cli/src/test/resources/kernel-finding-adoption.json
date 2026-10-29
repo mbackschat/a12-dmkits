@@ -17565,6 +17565,90 @@
           "evidence": {}
         }
       }
+    },
+    "kf650": {
+      "sha256": "6498481b7daaf6a8adc3e5f7748d51d8d1584e46732e8afe015d05b373dfc209",
+      "task": "SS46",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "each frame member as A12 binds it",
+          "the check-only shapes on the entry alone"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the Kernel gate on every frame row"
+        ],
+        "interpreter": [
+          "the members the reader cannot bind"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the frame rows of our message of 2026-10-29"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author through DocumentModelDraft, which writes every frame member A12 needs.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker reads the frame by the measured binding table and reports each member A12 cannot use as CK_MODEL_NOT_BUILDABLE, a check-only shape on the entry alone; a bare conditionLanguage declares its code.",
+          "evidence": {
+            "each frame member as A12 binds it": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerModelFrameAgreementTest.kt#everyFrameMemberIsReadAsA12ReadsIt",
+              "witness": "Every member absent and in six JSON kinds, the checker's classes equal to the Kernel gate's on each row not pinned to a named gap."
+            },
+            "the check-only shapes on the entry alone": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableFrameLeavesTheEntryUnbuilt",
+              "witness": "Thirteen edits on the entry, an included model and a type-definition library, the checker's outcome equal to A12's on each carrier."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-reading fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-reading fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of every frame row.",
+          "evidence": {
+            "the Kernel gate on every frame row": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerModelFrameAgreementTest.kt#aMissingVersionOrModelInfoWithholdsEveryClass",
+              "witness": "The A12 column is the Kernel gate's own class set over sixteen presence combinations and two rules, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter refuses a model whose frame member A12's reader cannot bind, by its path, and reads a bare conditionLanguage as its code.",
+          "evidence": {
+            "the members the reader cannot bind": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLevelMemberLoadTest.kt#anUnbindableFrameMemberRefusesTheModelByItsPath",
+              "witness": "Six rows on both runtimes, the unbindable ones refused by path and the bare de_DE read as German."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's model check delegates the frame to the kernel; its portable engine is the checker.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Sent to the peer session on 2026-10-29; the peer's adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
