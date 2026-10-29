@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.firstReferenceSpansIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * An entity named inside condition or operation text.
@@ -151,8 +150,8 @@ internal fun draftableMembers(kind: String, body: JsonObject): List<String> = wh
 
 /** Read one member of [draftableMembers], or null when the declaration does not carry it. */
 private fun conditionText(body: JsonObject, member: String): String? {
-    val (_, key) = alternativeMemberOf(member) ?: return body.text(member)
-    return alternativeOf(body, member)?.text(key)
+    val (_, key) = alternativeMemberOf(member) ?: return body.scalarText(member)
+    return alternativeOf(body, member)?.scalarText(key)
 }
 
 /**
@@ -267,4 +266,3 @@ internal fun syntaxEntryOf(member: String): SyntaxEntry =
 
 private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 
-private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
