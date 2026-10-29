@@ -315,6 +315,15 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Spec-sync round of 2026-10-30 <a id="spec-sync-2026-10-30"></a>
+
+The queue is SPEC-2026-10-29-06 of a12-kernel-lean's ledger at its commit `7df9a5caf419e3e841c4c20a40d92bcee45af299`: a model with one of [KF650](KERNEL-FINDINGS.md#kf650)'s four check-only frame shapes is not evaluated on the checked runtime route, so an evaluator refuses it. The acceptance asks how our interpreter treats the four shapes.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS52** | SPEC-2026-10-29-06 | the interpreter's treatment of the four shapes measured, beside A12's runtime with no check in front | **done** — the interpreter and `dmtool model eval` evaluate all four and fire; A12's runtime evaluates only the model lacking `modelVersion` and throws before any rule on the other three; the interpreter's comment claiming those cost only the check is corrected | `CheckOnlyFrameRuntimeDiffTest`, KF650 | IG183, an owner decision |
+| **SS53** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30 | — |
+
 ### The model frame, 2026-10-29 <a id="model-frame-2026-10-29"></a>
 
 Not a ledger entry: a model without `content.modelInfo` was found to leave A12 without a verdict while the checker passed every check, and the sweep of its class measured every frame member through the Kernel gate ([KF650](KERNEL-FINDINGS.md#kf650)). The measurements went to a12-kernel-lean as a message, not a ledger entry.

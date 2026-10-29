@@ -17567,8 +17567,8 @@
       }
     },
     "kf650": {
-      "sha256": "6498481b7daaf6a8adc3e5f7748d51d8d1584e46732e8afe015d05b373dfc209",
-      "task": "SS46",
+      "sha256": "7a41ede405e30b300f34018ad51d6a714571cba51ce2a24cae27031999569029",
+      "task": "SS52",
       "scope": {
         "dmkits": [],
         "checker": [
@@ -17578,7 +17578,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "the Kernel gate on every frame row"
+          "the Kernel gate on every frame row",
+          "the runtime with no check in front"
         ],
         "interpreter": [
           "the members the reader cannot bind"
@@ -17625,12 +17626,16 @@
             "the Kernel gate on every frame row": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerModelFrameAgreementTest.kt#aMissingVersionOrModelInfoWithholdsEveryClass",
               "witness": "The A12 column is the Kernel gate's own class set over sixteen presence combinations and two rules, not copied."
+            },
+            "the runtime with no check in front": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckOnlyFrameRuntimeDiffTest.kt#onlyAMissingVersionIsEvaluatedByTheKernelWhileTheInterpreterEvaluatesAllFour",
+              "witness": "The four check-only shapes beside a control on dynamic Groovy and generated Java, each Kernel failure named by the A12 class that throws."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The interpreter refuses a model whose frame member A12's reader cannot bind, by its path, and reads a bare conditionLanguage as its code.",
+          "basis": "The interpreter refuses a model whose frame member A12's reader cannot bind, by its path, and reads a bare conditionLanguage as its code. It evaluates the check-only shapes A12's runtime cannot, which INTERPRETER-GAPS IG183 leaves to an owner decision.",
           "evidence": {
             "the members the reader cannot bind": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLevelMemberLoadTest.kt#anUnbindableFrameMemberRefusesTheModelByItsPath",

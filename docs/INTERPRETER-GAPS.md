@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG183 — the interpreter evaluates three check-only frame shapes that A12's runtime cannot evaluate (opened 2026-10-30).** With no consistency check in front, both Kernel strategies throw before any rule runs on an entry model lacking `content.modelInfo`, with `header.locales` absent or `null`, or with a `null` supported character, while the interpreter, and so `dmtool model eval`, evaluates each and fires the rule ([KF650](KERNEL-FINDINGS.md#kf650); `adapter.laws.CheckOnlyFrameRuntimeDiffTest`). A missing `modelVersion` is evaluated by both and needs nothing. Settled by an owner decision between refusing the three on the entry model, as the interpreter already refuses a member A12's reader cannot bind, and keeping the leniency as a characterized divergence. Before a refusal lands, two scopes need their own measurement: a model whose `locales` are missing but that has no localized element to expand, and a reached rather than entry model.
 
 ## 2. Deferred / ongoing-incremental
 

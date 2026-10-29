@@ -15,8 +15,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * an array, a text, a number and a boolean, in every model a workspace reaches (`adapter.WorkspaceReachedModelDiffTest`).
  * A text takes any JSON scalar and no object or array, a list takes only an array and an object only an object, and
  * `null` refuses only where the kernel marks the member non-null. The condition language binds as a locale: a text, or
- * an object whose `code` is a text. A member A12 binds but needs later, such as `modelVersion` or `modelInfo`, costs
- * the entry model's consistency check and not its evaluation, so it is not refused here.
+ * an object whose `code` is a text. A member A12 binds but needs later is not refused here. A missing `modelVersion`
+ * costs only the entry model's consistency check. A missing `modelInfo`, absent or `null` `locales` and a `null`
+ * supported character also stop A12's runtime before any rule runs (`adapter.laws.CheckOnlyFrameRuntimeDiffTest`,
+ * 2026-10-30); whether the interpreter should refuse them too is INTERPRETER-GAPS IG183.
  */
 internal fun JsonObject.unbindableFrameMember(): String? = FRAME.firstNotNullOfOrNull { it.unbindableIn(this[it.name], it.name) }
 
