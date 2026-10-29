@@ -29,4 +29,7 @@ internal fun String.asciiLowercase(): String = buildString(length) { this@asciiL
 internal fun String.asciiUppercase(): String =
     buildString(length) { this@asciiUppercase.forEach { append(if (it in 'a'..'z') it - ('a' - 'A') else it) } }
 
+/** An ASCII letter of either case, where Kotlin's `isLetter` reads each platform's Unicode tables. */
+internal fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
+
 private fun Char.asciiLower(): Char = if (this in 'A'..'Z') this + ('a' - 'A') else this

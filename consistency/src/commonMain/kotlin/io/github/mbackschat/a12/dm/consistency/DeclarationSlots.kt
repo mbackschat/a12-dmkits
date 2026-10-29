@@ -148,8 +148,6 @@ private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
 private val ERROR_CODE_CHARACTERS: Set<Char> =
     (('A'..'Z') + ('a'..'z') + ('0'..'9') + "äöüÄÖÜß _".toList()).toSet()
 
-private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
-
 private fun slotFinding(element: TrackedDeclaration, code: String, explain: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path)
 

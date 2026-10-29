@@ -113,7 +113,6 @@ private enum class ElementPathPart {
     }
 }
 
-private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
 private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
 private fun Char.isGroupCharacter(): Boolean = isAsciiLetter() || isAsciiDigit() || this == '_' || this in "äöüÄÖÜß"
 
