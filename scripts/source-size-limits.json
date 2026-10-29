@@ -33,7 +33,6 @@
     "interpreter/consumer-tests/browser/scripts/smoke.ts": 931,
     "interpreter/consumer-tests/browser/src/showcase.ts": 968,
     "interpreter/consumer-tests/typescript/src/index.ts": 835,
-    "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/DmInterpreter.kt": 883,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/InterpreterApi.kt": 828,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Document.kt": 1543,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt": 1593,
