@@ -55,6 +55,9 @@ class CheckerBasicSentenceOrderAgreementTest {
         val json = root.toString()
         assertEquals(TYPE_DEFINITION_ORDER, a12Basic(json), "A12's sentences, in order")
         assertEquals(TYPE_DEFINITION_ORDER, ourBasic(json), "the checker's findings, in order")
+        // The classes alone cannot tell `Beta` from `Gamma`, so `HashMap` order would pass the two lines above.
+        assertEquals(DEFINITION_IDS, a12DefinitionIds(json), "the definitions A12's sentences name, in order")
+        assertEquals(DEFINITION_IDS, ourDefinitionIds(json), "the definitions the checker's findings name, in order")
     }
 
     @Test
@@ -96,6 +99,17 @@ class CheckerBasicSentenceOrderAgreementTest {
 
     private fun ourBasic(json: String): List<String> = check(ModelSource(json)).findings.map { it.code }.filter { it in BASIC }
 
+    /** Each definition sentence's id: A12 names a definition by its id, or by its name when the id is the empty defect. */
+    private fun a12DefinitionIds(json: String): List<String> = a12Sentences(json).mapNotNull { sentence ->
+        Regex("""^Type definition with (id|name) '([^']*)':""").find(sentence)?.groupValues
+            ?.let { (_, by, value) -> if (by == "id") value else "" }
+    }
+
+    /** Each definition finding's id; the definitions' findings are the basic sentences with no element path. */
+    private fun ourDefinitionIds(json: String): List<String> = check(ModelSource(json)).findings
+        .filter { it.code in BASIC && it.at == null }
+        .map { Regex("entry `([^`]*)`").find(it.explain)?.groupValues?.get(1) ?: "" }
+
     private fun a12Repeated(json: String): List<String> =
         a12Sentences(json).mapNotNull { Regex("""the value '([^']*)' multiple times\.$""").find(it)?.groupValues?.get(1) }
 
@@ -108,6 +122,9 @@ class CheckerBasicSentenceOrderAgreementTest {
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val TYPE_DEFINITION_ORDER = listOf("RK_ID_EMPTY", "RK_NAME_EMPTY", "RK_NAME_EMPTY", "RK_NAME_EMPTY")
+
+        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29: `Type definition with name 'Alpha': The id is empty.`, then `Beta`'s and `Gamma`'s name sentences. */
+        val DEFINITION_IDS = listOf("", "Beta", "Gamma")
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val REPEATED_ORDER = listOf("CLOSED", "PENDING", "OPEN")
