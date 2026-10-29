@@ -48,7 +48,7 @@ internal val BASIC_SENTENCE_CODES = setOf(
 /**
  * An Enumeration's repeated values and category names, one sentence for each, and an absent or empty type reference.
  * A12 collects the repeats into a `HashMap` and states them as it iterates (KERNEL-FINDINGS KF647), so they come in
- * [javaHashMapOrder].
+ * [computeIfAbsentOrder].
  */
 private fun fieldSentences(field: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val declared = body?.get("fieldType") as? JsonObject ?: return emptyList()
@@ -132,11 +132,11 @@ private fun JsonObject.emptyMember(member: String): String? =
 /** The values of [key] that two or more entries of the [list] share, each once, in the order A12 states them. */
 private fun JsonObject.repeated(list: String, key: String): List<String> {
     val seen = mutableSetOf<String>()
-    // A12's map receives a repeated value at its second occurrence, when the repeat is first detected.
+    // A12 calls `computeIfAbsent` at every occurrence after the first, so the third one can still resize its map.
     val repeats = (this[list] as? JsonArray).orEmpty()
         .mapNotNull { ((it as? JsonObject)?.get(key) as? JsonPrimitive)?.takeIf { value -> value.isString }?.content }
         .filterNot { seen.add(it) }
-    return javaHashMapOrder(repeats)
+    return computeIfAbsentOrder(repeats)
 }
 
 private fun sentence(element: TrackedDeclaration?, code: String, explain: String) = Finding(

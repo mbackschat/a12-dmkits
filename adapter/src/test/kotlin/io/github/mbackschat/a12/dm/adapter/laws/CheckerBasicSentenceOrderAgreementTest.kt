@@ -22,11 +22,13 @@ import org.junit.jupiter.api.assertThrows
  * expansion left them, sorted by id: declared `Beta`, `''`, `Gamma`, they are stated `''`, `Beta`, `Gamma`, where
  * declaration order and `HashMap` order (`''`, `Gamma`, `Beta`) both disagree. Two definitions sharing an id, the
  * empty one included, never reach that check: A12's expansion refuses the repeat and builds no model. An
- * Enumeration's repeated values are collected by `Java8Utils.findDuplicates` into a `HashMap`, so they are
- * stated in that map's iteration order. The three values here separate that order from first-occurrence and
- * second-occurrence order alike: declared `OPEN, CLOSED, PENDING` and then reversed, they draw `CLOSED`,
- * `PENDING`, `OPEN` if the map decides, `OPEN, CLOSED, PENDING` if declaration does, and `PENDING, CLOSED, OPEN`
- * if the second occurrence does.
+ * Enumeration's repeated values are collected by `Java8Utils.findDuplicates` into a `HashMap` through
+ * `computeIfAbsent`, so they are stated in that map's iteration order. The three values of `Status` separate that
+ * order from first-occurrence and second-occurrence order alike: declared `OPEN, CLOSED, PENDING` and then
+ * reversed, they draw `CLOSED`, `PENDING`, `OPEN` if the map decides, `OPEN, CLOSED, PENDING` if declaration does,
+ * and `PENDING, CLOSED, OPEN` if the second occurrence does. `Frequency` and `Line` separate `computeIfAbsent`'s
+ * fill from `put`'s: `QUARTERLY` and `ONCE` share a bucket, where the newer key goes first, and `Line`'s thirteen
+ * values cross the resize threshold, which `computeIfAbsent` acts on only at its next call.
  *
  * Both columns are ordered lists: A12's sentences as `ModelConsistencyException` carries them, and the checker's
  * findings as `check` returns them, each restricted to the basic sentences.
@@ -39,7 +41,9 @@ class CheckerBasicSentenceOrderAgreementTest {
 
     private val base = DocumentModelDraft.named("policy-basic-order").locale("en_US")
         .rootGroup("Policy") { p -> p.stringField("Ref") { }.stringField("Code") { }
-            .enumField("Status") { it.value("OPEN").value("CLOSED").value("PENDING") } }
+            .enumField("Status") { it.value("OPEN").value("CLOSED").value("PENDING") }
+            .enumField("Frequency") { e -> FREQUENCIES.forEach { e.value(it) } }
+            .enumField("Line") { e -> LINES.forEach { e.value(it) } } }
         .build().toJson()
 
     @Test
@@ -61,6 +65,16 @@ class CheckerBasicSentenceOrderAgreementTest {
     }
 
     @Test
+    fun typeDefinitionIdsCompareByCodeUnitNotByCase() {
+        val root = mapper.readTree(base) as ObjectNode
+        val definitions = (root.path("content") as ObjectNode).putArray("typeDefinitions")
+        for (id in listOf("deductible", "Prämie", "Coverage", "Überschuss")) definition(definitions, id, "")
+        val json = root.toString()
+        assertEquals(CODE_UNIT_IDS, a12DefinitionIds(json), "the definitions A12's sentences name, in order")
+        assertEquals(CODE_UNIT_IDS, ourDefinitionIds(json), "the definitions the checker's findings name, in order")
+    }
+
+    @Test
     fun twoDefinitionsSharingAnIdLeaveNoModel() {
         for (id in listOf("", "Beta")) {
             val root = mapper.readTree(base) as ObjectNode
@@ -75,13 +89,28 @@ class CheckerBasicSentenceOrderAgreementTest {
 
     @Test
     fun repeatedValuesComeInTheOrderA12sMapIterates() {
+        for ((field, expected) in listOf("Status" to REPEATED_ORDER, "Frequency" to FREQUENCY_ORDER, "Line" to LINE_ORDER)) {
+            val json = repeating(field) { values -> values.toList().reversed().forEach { values.add(it.deepCopy<ObjectNode>()) } }
+            assertEquals(expected, a12Repeated(json), "A12's repeated values of $field, in order")
+            assertEquals(expected, ourRepeated(json), "the checker's repeated values of $field, in order")
+        }
+    }
+
+    @Test
+    fun aThirdOccurrenceStillCallsTheMapAndCanResizeIt() {
+        val json = repeating("Line") { values ->
+            values.toList().reversed().forEach { values.add(it.deepCopy<ObjectNode>()) }
+            values.add(values.first().deepCopy<ObjectNode>())
+        }
+        assertEquals(LINE_THIRD_ORDER, a12Repeated(json), "A12's repeated values, in order")
+        assertEquals(LINE_THIRD_ORDER, ourRepeated(json), "the checker's repeated values, in order")
+    }
+
+    private fun repeating(field: String, edit: (ArrayNode) -> Unit): String {
         val root = mapper.readTree(base) as ObjectNode
-        val values = elements(root).single { it.path("name").asText() == "Status" }
-            .path("Field").path("fieldType").path("EnumerationType").path("values") as ArrayNode
-        values.toList().reversed().forEach { values.add(it.deepCopy<ObjectNode>()) }
-        val json = root.toString()
-        assertEquals(REPEATED_ORDER, a12Repeated(json), "A12's repeated values, in order")
-        assertEquals(REPEATED_ORDER, ourRepeated(json), "the checker's repeated values, in order")
+        edit(elements(root).single { it.path("name").asText() == field }
+            .path("Field").path("fieldType").path("EnumerationType").path("values") as ArrayNode)
+        return root.toString()
     }
 
     private fun elements(root: ObjectNode): ArrayNode =
@@ -127,6 +156,22 @@ class CheckerBasicSentenceOrderAgreementTest {
         val DEFINITION_IDS = listOf("", "Beta", "Gamma")
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        val CODE_UNIT_IDS = listOf("Coverage", "Prämie", "deductible", "Überschuss")
+
+        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val REPEATED_ORDER = listOf("CLOSED", "PENDING", "OPEN")
+
+        val FREQUENCIES = listOf("MONTHLY", "QUARTERLY", "ANNUAL", "WEEKLY", "ONCE")
+
+        val LINES = listOf("LIFE", "HOME", "AUTO", "TRAVEL", "HEALTH", "PET", "BOAT", "FARM", "CYBER", "LEGAL", "DENTAL", "FLOOD", "THEFT")
+
+        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        val FREQUENCY_ORDER = listOf("WEEKLY", "QUARTERLY", "ONCE", "ANNUAL", "MONTHLY")
+
+        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        val LINE_ORDER = listOf("CYBER", "FLOOD", "AUTO", "TRAVEL", "FARM", "LEGAL", "DENTAL", "HEALTH", "HOME", "PET", "THEFT", "LIFE", "BOAT")
+
+        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        val LINE_THIRD_ORDER = listOf("CYBER", "FLOOD", "TRAVEL", "DENTAL", "AUTO", "FARM", "LEGAL", "HEALTH", "HOME", "PET", "THEFT", "LIFE", "BOAT")
     }
 }

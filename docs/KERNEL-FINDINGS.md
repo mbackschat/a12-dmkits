@@ -5763,7 +5763,7 @@ The third row is what bounds it: without it "the provider must match the entry" 
 
 **Every mechanism above is source-located, not inferred from its row** — `kernel-md/kernel-md-serializer/src/main/java/com/mgmtp/a12/kernel/md/serializer/model/internal/service/serialization/LocalizedTextMapDeserializer.java:60-94`. `deserialize` does `for (JsonNode entry : parser.readValueAsTree())`, which is Jackson's node iterator: an ARRAY yields its elements, an OBJECT its values, and a scalar yields nothing — the three container rows in one line. Each entry's `locale` and `text` must be present and `JsonNodeType.STRING` or the reader raises (`"Missing locale for localized text"`, `"Unexpected node type for localized text"`), the code goes through **`LocaleUtils.toLocale`** — Apache Commons Lang, which is why `en_123` and `en_US_POSIX` are admitted while `en_us` is not — and the result is `builder.add(locale, text)` into a MAP, which is why the last entry for a locale wins. The measurements came first; this read tells us the rows are the mechanism rather than a coincidence of the fixtures.
 
-**Which SPELLINGS the parser takes, measured as a set rather than inferred.** Admitted: `en_US`, `en-US`, `en`, `eng`, `fr_CA`, `en_US_POSIX`, `en_123`. Refused (UNREADABLE): `en_us`, `EN_US`, `EN`, `e`, `en_U`, `en_USA`, `klingon`. The shape is therefore *lowercase 2–3-letter language, optional uppercase 2-letter country or 3-digit area, free-form variant beyond that* — and a reader must mirror the REFUSALS as refusals, because normalizing `en_us` would analyse a model that does not load.
+**Which SPELLINGS the parser takes, measured as a set rather than inferred.** Admitted: `en_US`, `en-US`, `en`, `eng`, `fr_CA`, `en_US_POSIX`, `en_123`. Refused (UNREADABLE): `en_us`, `EN_US`, `EN`, `e`, `en_U`, `en_USA`, `klingon`. A reader must mirror the REFUSALS as refusals, because normalizing `en_us` would analyse a model that does not load. *Corrected 2026-10-29:* the shape this paragraph inferred from those fourteen spellings, "lowercase 2–3-letter language, optional uppercase 2-letter country or 3-digit area, free-form variant beyond that", is narrower than the parser, which also takes `US`, `_US`, `en__POSIX`, `XX_123` and `ée`; [KF649](#kf649) states the measured grammar and the header's further demands.
 
 **The two sides were varied INDEPENDENTLY, which the first table above cannot do.** Every row of that table carries the same code in the header and the message, so each of its refusals is attributable to the header alone and establishes nothing about a message's own `locale` — leaving a reader free to parse one side and compare the other as text. Holding the header at `en_US` and varying only the message: `en_us`, `EN_US`, `en_U` and `klingon` are all **UNREADABLE** there too.
 
@@ -15664,23 +15664,27 @@ The checker reported nothing on these refusals except the `errorMessage` shapes 
 
 *Locked by:* `adapter.laws.CheckerLocalizedTextShapeAgreementTest`, 456 rows (each shape on each carrier, kept and with every element under an `ONLY` filter), the refused shapes pinned and A12's column asserted against `BoundModel`.
 
-## §13 supplement — A12 states the type definitions' basic sentences first, sorted by id, and an Enumeration's repeated values in `HashMap` order; a repeated type-definition id leaves no model (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf647"></a>
+## §13 supplement — A12 states the type definitions' basic sentences first, sorted by id code unit by code unit, and an Enumeration's repeated values in the order of a `HashMap` filled by `computeIfAbsent`; a repeated type-definition id leaves no model (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf647"></a>
 
 > Fold: pending — the order and multiplicity of [KF626](#kf626)'s sentences.
 
 | input | A12's sentences, in order |
 |---|---|
 | type definitions declared `Beta`/name `""`, `""`/`Alpha`, `Gamma`/`""`, and a filtered field with an empty name | id empty, name empty, name empty, name empty |
+| type definitions `deductible`, `Prämie`, `Coverage`, `Überschuss`, each with an empty name | `Coverage`, `Prämie`, `deductible`, `Überschuss` |
 | an Enumeration declaring `OPEN`, `CLOSED`, `PENDING` and then the three again in reverse | `CLOSED`, `PENDING`, `OPEN` repeated |
+| `MONTHLY`, `QUARTERLY`, `ANNUAL`, `WEEKLY`, `ONCE`, then reversed | `WEEKLY`, `QUARTERLY`, `ONCE`, `ANNUAL`, `MONTHLY` |
+| thirteen lines of business, then reversed | `CYBER`, `FLOOD`, `AUTO`, `TRAVEL`, `FARM`, `LEGAL`, `DENTAL`, `HEALTH`, `HOME`, `PET`, `THEFT`, `LIFE`, `BOAT` |
+| the same, and the first value a third time | `CYBER`, `FLOOD`, `TRAVEL`, `DENTAL`, `AUTO`, `FARM`, `LEGAL`, `HEALTH`, `HOME`, `PET`, `THEFT`, `LIFE`, `BOAT` |
 | two type definitions sharing the id `""` or `Beta` | no model: `IllegalArgumentException` "The type definition id '…' already exists." |
 
-- **Definitions come before elements, one sentence per defect, in id order.** Declaration order would put a name sentence first, and `HashMap` order would state `Gamma` before `Beta`; only id order gives the first row. The expansion rewrites the definitions sorted by id (`TypeDefCache.getOrderedTypeDefs`, source-read) before `BasicConsistencyCheck` walks them.
-- **Repeated values follow the map.** `Java8Utils.findDuplicates` collects them into a `HashMap` (source-read). First-occurrence order would give `OPEN, CLOSED, PENDING`, and second-occurrence order `PENDING, CLOSED, OPEN`; the row gives neither.
+- **Definitions come before elements, one sentence per defect, in id order.** Declaration order would put a name sentence first, and `HashMap` order would state `Gamma` before `Beta`; only id order gives the first row. The expansion rewrites the definitions sorted by id (`TypeDefCache.getOrderedTypeDefs`, `Comparator.comparing(FieldTypeDefinition::getId)`, source-read) before `BasicConsistencyCheck` walks them, so ids compare by UTF-16 code unit: uppercase before lowercase, and `Ü` after both, where a case-blind or collating order would put `deductible` second.
+- **Repeated values follow the map.** `Java8Utils.findDuplicates` collects them into a `HashMap` by calling `computeIfAbsent` at every occurrence after a value's first (source-read). First-occurrence order would give `OPEN, CLOSED, PENDING`, and second-occurrence order `PENDING, CLOSED, OPEN`; the row gives neither. `computeIfAbsent` fills the map differently from `put`, and the next three rows each turn on one difference: it puts a new key at the head of its bucket, so `QUARTERLY`, met after `ONCE` in their shared bucket, is stated first; it resizes before a call once the map holds more than twelve keys rather than after the insertion that crossed the line, so thirteen values stay in sixteen buckets; and a third occurrence is such a call, so it resizes them into thirty-two.
 - **A repeated id never reaches the check.** The expansion throws before the model exists, the empty id included, so one empty-id sentence per definition is all A12 can state.
 
-The checker stated the definitions' sentences in declaration order, after the elements', and the repeated values in declaration order, and read a repeated id as a model. It now orders both as A12 does, emulating `java.util.HashMap`'s iteration with Java's `String.hashCode` (checked against the real map over random key sets of up to 120 keys and a colliding set that forces the pre-tree resize), and reports a repeated id as `CK_MODEL_NOT_BUILDABLE`.
+The checker stated the definitions' sentences in declaration order, after the elements', and the repeated values in declaration order, and read a repeated id as a model. It now orders both as A12 does, emulating the map's iteration with Java's `String.hashCode`, and reports a repeated id as `CK_MODEL_NOT_BUILDABLE`. *Corrected 2026-10-29:* the emulation first modelled a map filled by `put` at each second occurrence and was checked against exactly that, so it agreed with A12 only where no two repeated values shared a bucket and no resize was due; a12-kernel-lean's rows (SPEC-2026-10-29-01) disagreed with it on all four of their Enumerations. It now models `computeIfAbsent` at every repeat occurrence and is checked against the real map filled as `findDuplicates` fills it.
 
-*Locked by:* `adapter.laws.CheckerBasicSentenceOrderAgreementTest`, both columns compared as ordered lists; `consistency.JavaHashOrderJvmTest` for the map order.
+*Locked by:* `adapter.laws.CheckerBasicSentenceOrderAgreementTest`, both columns compared as ordered lists; `consistency.JavaHashOrderJvmTest` for the map order, against `java.util.HashMap` filled as `findDuplicates` fills it.
 
 ## §10 supplement — a refused temporal format draws "The date format is invalid." on a surviving date, time, datetime or fragment field, through the type definition it uses, and an `ONLY` filter lifts it (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf648"></a>
 
@@ -15702,3 +15706,29 @@ So the sentence is a consistency verdict on the surviving field rather than a re
 The checker reported nothing. It now publishes the sentence as `RK_DATE_FORMAT_INVALID` for a format in the Refused table, which `:dumpTemporalVocabulary` generates into `:consistency` as the formats refused on all three kinds and as a fragment format. `QQQ` stays silent there: A12 refuses it, but a format outside the probed universe is undiscovered rather than refused to the checker ([KF313](#kf313)).
 
 *Locked by:* `adapter.laws.CheckerTemporalFormatAgreementTest` (`BoundModel` against the checker); `rulekit.validate.laws.TemporalFormatVocabularyGuardTest` re-derives the generated set from the kernel.
+
+## §13 supplement — a locale spelling is read by Commons Lang's parser, whose grammar is wider than [KF290](#kf290)'s spellings, and a header then demands a well-formed language tag of it (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf649"></a>
+
+> Fold: pending — the spelling half of [KF290](#kf290)'s locale law.
+
+A message entry's `locale` and a header's `locales[].code` both go through `LocaleUtils.toLocale` (`LocalizedTextMapDeserializer`, `ModelHeaderUtils`, source-read), and a spelling it refuses leaves no model. Over a12-kernel-lean's 2,410 spellings (their capture at `d9fd465c`), A12's verdict on a label entry equalled that jar's on every one, 309 parsing. The header column, measured beside a second declared language so that a repeat is not the cause, refuses more:
+
+| spelling | entry | header |
+|---|---|---|
+| `de`, `deu`, `de_CH`, `de-CH`, `es_419`, `de_CH_1996`, `de-CH-1996`, `und` | read | read |
+| `de__1996`, a variant without a country | read | no model |
+| `de_CH_1996_x`, `de_CH_x`, a variant keeping its separators | read | no model: each subtag must be 5–8 letters or digits, or 4 opening with a digit |
+| `_CH`, `-CH`, `_CH_x`, and `CH` or `US`, a bare pair the JDK lists as a country | read | no model: no language |
+| `EN`, `QQ`, a bare pair the JDK does not list | no model | no model |
+| `DE_419`, `1_419`, `d_419`: any first segment before a three-digit area | read | read for `DE_419` (as `de_419`) and `abcd_419`; no model for `1_419`, `d_419` and `abcdefghi_419` |
+| `ée`, `de_ÄÖ`, `de_٣٣٣`: Unicode's letter-case and digit classes | read | no model: a tag is ASCII |
+| `de_CH_`, `de_CH-x`, `de-CH_x`, `_CH_`, `DE_419_x`, `zh_Hans_CN`, ` de` | no model | no model |
+| `iw` beside `he`, `in` beside `id`, `de_CH` beside `de-CH`, `DE_419` beside `de_419` | — | no model: one locale declared twice |
+
+- **The separator is `_`, or `-` when the spelling holds no `_`.** So `de-CH_x` fails on its first segment, and `de_CH-x` on a country of four characters.
+- **The header's extra demands are the JDK's language-tag grammar** (`IllformedLocaleException`, which escapes past A12's typed channels), applied to the parsed locale: a language of 2–8 ASCII letters, a country of two ASCII letters or three ASCII digits, a variant only beside a country. An empty language draws "The validated character sequence is empty".
+- **Equal locales are one key.** The JDK lowercases the language, uppercases the country and reads the withdrawn `iw`, `ji` and `in` as `he`, `yi` and `id`, so each pair in the last row is a repeated declaration.
+
+The checker read a spelling by [KF290](#kf290)'s inferred shape: it refused 277 entry spellings A12 reads (every bare country, every leading separator, the variant without a country, the any-first-segment area and the non-ASCII classes) and read 5 it refuses (a trailing separator, mixed separators); on a header it read 7 codes A12 refuses, refused `EN_123` and `XX_123`, which A12 builds, and missed the legacy-code repeats. It now parses with the grammar above, written from these verdicts, keeps the header's tag demands to header codes, and keys each locale by its `toString` form. One departure is deliberate: Kotlin's character tables are not Java's on either target ([KF587](#kf587)), so an entry spelling holding a non-ASCII character is read as written rather than judged, which under-reports a spelling such as `ÉÉ` that A12 refuses and never refuses a model A12 builds; a header code must be ASCII, so the header column stays exact. Over the 2,410 spellings the header column now agrees with A12 on every one, and the entry column on all but the non-ASCII spellings A12 refuses.
+
+*Locked by:* `adapter.laws.CheckerLocaleSpellingAgreementTest`: an entry against the jar over about 2,900 generated spellings and against `BoundModel` on one row per clause, the non-ASCII departure pinned on `ÉÉ`, a header against `BoundModel`; `consistency.CountryListJvmTest` holds the embedded country list to the JDK's; `consistency.PlatformCharacterTableJvmTest` now also refuses a case classifier in shared code.

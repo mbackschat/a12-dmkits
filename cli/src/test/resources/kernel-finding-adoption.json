@@ -17248,7 +17248,7 @@
       }
     },
     "kf647": {
-      "sha256": "475302f21cc99cb9d608a8a997621868022934b0fe97194d78b801ec8e45a56e",
+      "sha256": "b258f4538b6e0fe26fcf567353d00c6d9ea46a64e9d45575bfc21097b8f565e3",
       "task": "DG160",
       "scope": {
         "dmkits": [],
@@ -17274,7 +17274,7 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "Type definitions' sentences come first in id order, repeated values in Java HashMap order, and a repeated type-definition id is reported as a model A12 does not build.",
+          "basis": "Type definitions' sentences come first in code-unit id order, repeated values in the order of a Java HashMap filled by computeIfAbsent at every repeat occurrence, and a repeated type-definition id is reported as a model A12 does not build.",
           "evidence": {
             "basic sentence order and a repeated type-definition id": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceOrderAgreementTest.kt#typeDefinitionSentencesComeFirstOnePerDefect",
@@ -17390,6 +17390,150 @@
               "witness": "The CI-verified tour counts the live diagnostics registry."
             }
           }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf290": {
+      "sha256": "9cb8329462afbbcaa575cf1d06a8840194cbdc6d86dcbb2c8c36634afffd9392",
+      "task": "SS42",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the spelling half of the locale law"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel on one row per clause"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the locale grammar of SPEC-2026-10-29-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A locale spelling's admission is the kernel's reader's; the kits author locales through their typed surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The inferred shape is withdrawn for KF649's measured grammar; the parsed-locale comparison stands.",
+          "evidence": {
+            "the spelling half of the locale law": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryClauseByClauseAgainstA12",
+              "witness": "One row per clause of the grammar, the checker's verdict equal to A12's."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the lock.",
+          "evidence": {
+            "BoundModel on one row per clause": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryClauseByClauseAgainstA12",
+              "witness": "The A12 column is asserted from BoundModel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's model check delegates admission to the kernel; its portable engine is the checker.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf649": {
+      "sha256": "7f421846aebc172e2a583ce0d0d31e24a5be271d1832f8ca1a9b90c225d9e9e2",
+      "task": "SS42",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "the locale spellings an entry and a header may carry"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel on one row per clause and on the header rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the locale grammar of SPEC-2026-10-29-01"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A locale spelling's admission is the kernel's reader's; the kits author locales through their typed surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "An entry's locale is parsed by the measured grammar, a non-ASCII spelling deliberately read as written, and a header's must also be a well-formed language tag; each locale is keyed by its toString form.",
+          "evidence": {
+            "the locale spellings an entry and a header may carry": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#anEntryTakesExactlyTheSpellingsTheParserTakes",
+              "witness": "About 2,900 generated spellings, the checker's verdict equal to the jar's on each, beside the BoundModel rows of the same class."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own verdicts are the expected column of the clause and header rows.",
+          "evidence": {
+            "BoundModel on one row per clause and on the header rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocaleSpellingAgreementTest.kt#aHeaderAlsoDemandsAWellFormedTag",
+              "witness": "The A12 column is asserted from BoundModel, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's model check delegates admission to the kernel; its portable engine is the checker.",
+          "evidence": {}
         },
         "a12-kernel-lean": {
           "state": "OPEN",

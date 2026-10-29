@@ -40,7 +40,8 @@ class PlatformCharacterTableJvmTest {
     @Test
     fun theScanCatchesEveryClassifierSpelling() {
         val planted = listOf("c.isDigit()", "s.isBlank()", "s?.isNullOrBlank()", "s.isNotBlank()", "s.ifBlank { x }",
-            "s.trim()", "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x", "s.toIntOrNull()",
+            "s.trim()", "s.trimEnd()", "map(String::trim)", "if (isLetterOrDigit()) x", "c.isLowerCase()",
+            "all(Char::isUpperCase)", "if (isTitleCase()) x", "s.toIntOrNull()",
             "s.toLongOrNull()", "a.equals(b, ignoreCase = true)", "p.doubleOrNull", "p.floatOrNull", "s.lowercase()",
             "s.uppercase()", "c.lowercaseChar()", "c.uppercaseChar()", "a.equals(b, true)", "s.startsWith(\"x\", true)",
             "s.endsWith(p, true)", "Regex(p, RegexOption.IGNORE_CASE)")
@@ -52,9 +53,9 @@ class PlatformCharacterTableJvmTest {
     private companion object {
         /** A platform classifier call, a blank test, or an argument-free trim; a trim with a predicate is A12's own. */
         val CLASSIFIER = Regex(
-            """\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|digitToInt|digitToIntOrNull)\(""" +
-                """|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace)\b""" +
-                """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace)\(\)""" +
+            """\.(isDigit|isLetter|isLetterOrDigit|isWhitespace|isLowerCase|isUpperCase|isTitleCase|digitToInt|digitToIntOrNull)\(""" +
+                """|Char::(isDigit|isLetter|isLetterOrDigit|isWhitespace|isLowerCase|isUpperCase|isTitleCase)\b""" +
+                """|(?<![\w.])(isDigit|isLetter|isLetterOrDigit|isWhitespace|isLowerCase|isUpperCase|isTitleCase)\(\)""" +
                 """|\.(isBlank|isNotBlank|isNullOrBlank)\(|\.ifBlank\b|\.(trim|trimStart|trimEnd)\(\)""" +
                 """|String::(isBlank|isNotBlank|trim|trimStart|trimEnd)\b""" +
                 """|\.(doubleOrNull|floatOrNull)\b|\.(lowercase|uppercase|lowercaseChar|uppercaseChar|titlecase|titlecaseChar)\(\)""" +

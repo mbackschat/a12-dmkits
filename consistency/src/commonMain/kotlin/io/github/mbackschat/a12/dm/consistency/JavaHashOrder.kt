@@ -1,37 +1,43 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * The order in which a `java.util.HashMap<String, …>` iterates [keys] inserted in this order.
+ * The order in which a `java.util.HashMap<String, …>` iterates its keys after `computeIfAbsent` was called with
+ * each of [calls] in turn, a key already present included.
  *
- * A12 states some sentences while iterating such a map (`Java8Utils.findDuplicates`, KERNEL-FINDINGS KF647), so
- * this is the order a checker must state them in. The map starts with 16 buckets, doubles once it holds more than
- * three quarters of its capacity, and places a key by `String.hashCode` spread as `h ^ (h >>> 16)`; within a
- * bucket it keeps insertion order, which a resize preserves.
+ * A12 states an Enumeration's repeated values while iterating such a map, which `Java8Utils.findDuplicates` fills
+ * by calling `computeIfAbsent` at every repeat occurrence (KERNEL-FINDINGS KF647), so this is the order a checker
+ * must state them in. `computeIfAbsent` differs from `put` twice, and both differences are visible in that order:
+ * it places a new key at the HEAD of its bucket, and it resizes BEFORE a call once the map already holds more than
+ * three quarters of its capacity, a call finding its key included, rather than right after the insertion that
+ * crossed it. The map starts with 16 buckets, doubles on each resize keeping each bucket's order, and places a key
+ * by `String.hashCode` spread as `h ^ (h >>> 16)`.
  *
- * Exact while no bucket would hold nine keys: Java resizes a table smaller than 64 at that point, as here, but at
- * 64 buckets or more it turns the bucket into a tree, whose order this does not reproduce. That needs nine keys
- * colliding in their low six hash bits among more than 24, and a key set reaching it is left in insertion order.
+ * Exact while no bucket would hold eight keys at 64 buckets or more: Java resizes a smaller table at that point,
+ * as here, but at 64 buckets it turns the bucket into a tree, whose order this does not reproduce. That needs
+ * eight keys colliding in their low six hash bits among more than 24, and a key set reaching it is left in
+ * first-call order.
  */
-internal fun javaHashMapOrder(keys: List<String>): List<String> {
-    var capacity = 16
-    var buckets = List(capacity) { mutableListOf<String>() }
+internal fun computeIfAbsentOrder(calls: List<String>): List<String> {
+    var capacity = 0
+    var size = 0
+    var buckets = emptyList<MutableList<String>>()
     fun grow() {
-        capacity *= 2
+        capacity = if (capacity == 0) INITIAL_CAPACITY else capacity * 2
         buckets = List(capacity) { mutableListOf<String>() }.also { grown ->
             buckets.flatten().forEach { grown[indexOf(it, capacity)] += it }
         }
     }
-    val distinct = keys.distinct()
-    for ((count, key) in distinct.withIndex()) {
+    for (key in calls) {
+        if (capacity == 0 || size > capacity * 3 / 4) grow()
         val bucket = buckets[indexOf(key, capacity)]
-        bucket += key
-        // `putVal` treeifies a bin on appending its ninth node, and `treeifyBin` resizes a table under 64 instead,
-        // before the size check below can resize again.
-        if (bucket.size > TREEIFY_THRESHOLD) {
-            if (capacity >= MIN_TREEIFY_CAPACITY) return distinct
+        if (key in bucket) continue
+        bucket.add(0, key)
+        size++
+        // `treeifyBin` runs once the bucket held seven keys before this one, and resizes a table under 64 instead.
+        if (bucket.size >= TREEIFY_THRESHOLD) {
+            if (capacity >= MIN_TREEIFY_CAPACITY) return calls.distinct()
             grow()
         }
-        if (count + 1 > capacity * 3 / 4) grow()
     }
     return buckets.flatten()
 }
@@ -41,6 +47,8 @@ private fun indexOf(key: String, capacity: Int): Int {
     for (unit in key) h = 31 * h + unit.code
     return (h xor (h ushr 16)) and (capacity - 1)
 }
+
+private const val INITIAL_CAPACITY = 16
 
 private const val TREEIFY_THRESHOLD = 8
 

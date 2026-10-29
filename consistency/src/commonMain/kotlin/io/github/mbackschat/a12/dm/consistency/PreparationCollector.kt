@@ -433,7 +433,7 @@ private fun JsonObject?.declaresShortNameFallback(): Boolean =
     configFlag((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
 
 /**
- * What a header's `locales` declares: the locale [keys][localeKeyOrNull] it covers, and the codes it spells
+ * What a header's `locales` declares: the locale [keys][headerLocaleKeyOrNull] it covers, and the codes it spells
  * in a way A12 cannot use.
  *
  * @param keys in declaration order and without repeats. KEYS rather than the authored text because A12
@@ -463,7 +463,7 @@ internal fun JsonObject?.declaredLocales(): DeclaredLocales {
             is JsonPrimitive -> entry.contentOrNull?.takeIf { entry.isString }
             else -> null
         } ?: continue
-        val key = localeKeyOrNull(code)
+        val key = headerLocaleKeyOrNull(code)
         when {
             key == null -> unreadable += code
             key in keys -> repeated += key

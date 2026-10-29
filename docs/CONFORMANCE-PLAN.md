@@ -278,6 +278,15 @@ The queue is the six `pending` entries of a12-kernel-lean's ledger at its commit
 | **SS40** | SPEC-2026-10-28-08 | the peer's static rows reproduced on `rule check`; the `a-*` documents and the `ix*` references equal across the three engines, locked in our own domain | **done** — every verdict reproduced; the interpreter fixed for a keyed root's references and a single-instance index field's operand error | `SingleInstanceKeyOperandDiffTest`; [KF478](KERNEL-FINDINGS.md#kf478), [IF447](INTERPRETER-FINDINGS.md#if447), [IF448](INTERPRETER-FINDINGS.md#if448) | the carriers the peer lists as unmeasured stay unclaimed |
 | **SS41** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the outbound letter of 2026-10-28b | — |
 
+### Spec-sync round of 2026-10-29 <a id="spec-sync-2026-10-29"></a>
+
+The queue is the one `pending` entry of a12-kernel-lean's ledger at its commit `d9fd465c411be7f8e0df78e005d96da34465c022`, SPEC-2026-10-29-01. Its `order_DM` and `order2_DM` models and its 2,410 locale spellings were replayed here through `BoundModel` and the checker before any change.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS42** | SPEC-2026-10-29-01 | the type-definition order of `order_DM`, the repeated-value orders of `E1`–`E4`, and the 2,410 spellings on an entry and on a header, each equal between A12 and the checker and locked in our own domain | **done** — every A12 row reproduced; the checker fixed for the repeated-value order on all four Enumerations and for the locale grammar on 282 entry and 9 header spellings, a non-ASCII entry spelling deliberately read as written | `CheckerBasicSentenceOrderAgreementTest`, `CheckerLocaleSpellingAgreementTest`, `JavaHashOrderJvmTest`, `CountryListJvmTest`; [KF647](KERNEL-FINDINGS.md#kf647) corrected, [KF649](KERNEL-FINDINGS.md#kf649), [KF290](KERNEL-FINDINGS.md#kf290) corrected | ids beyond the Latin-1 range and another JDK's country list stay unmeasured |
+| **SS43** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the outbound letter of 2026-10-29a | — |
+
 ### DG102 — constant index-key pattern and declared-type evidence gate (acceptance matrix before runs, 2026-09-28)
 
 Each row uses a typed `DocumentModelDraft` insurance-policy host with repeatable indexed groups and `FieldFilled(Reference) And Sum(<group>/Amount For "<constant>") > 0`. `RuleValidator.check` is the acceptance oracle; the portable `check` is the comparison oracle. A matched key should reach `MVK_PARAMSIZE_INVALIDN` on this probe, while a rejected key should stop at `MVK_INDEX_VALUE_INVALID`. The two classes intentionally distinguish value admission from simply skipping semantic-index analysis. The current `CheckerIndexKeyConstantAgreementTest` retains its independent KF481 kernel-law claim until an equivalent class assertion is in the sweep.
