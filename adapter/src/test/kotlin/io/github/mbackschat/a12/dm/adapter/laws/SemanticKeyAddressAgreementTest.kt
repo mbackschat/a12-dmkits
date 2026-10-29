@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -62,8 +60,7 @@ class SemanticKeyAddressAgreementTest {
                 val result = RuleValidator().check(json, rule.draft())
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
                 assertEquals(setOfNotNull(code), kernel, "$index $label kernel")
-                val portable = check(ModelSource(TypedRules.inject(json, rule))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(TypedRules.inject(json, rule)).toSet()
                 if (kernel != portable) wrong += "$index $label: kernel=$kernel portable=$portable"
             }
             if (index == KeyIndex.None || index == KeyIndex.Matching) {
@@ -73,8 +70,7 @@ class SemanticKeyAddressAgreementTest {
                 val result = RuleValidator().check(json, rule.draft())
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
                 assertEquals(if (index == KeyIndex.None) emptySet() else setOf("MVK_ERROR_FIELD_NO_INDEX"), kernel, "$index target kernel")
-                val portable = check(ModelSource(TypedRules.inject(json, rule))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(TypedRules.inject(json, rule)).toSet()
                 if (kernel != portable) wrong += "$index target: kernel=$kernel portable=$portable"
             }
             if (index == KeyIndex.None) {
@@ -83,7 +79,7 @@ class SemanticKeyAddressAgreementTest {
                 val computed = TypedRules.inject(json, calc)
                 val result = RuleValidator().check(json, calc.draft())
                 assertEquals(setOf("MVK_SEMANTIC_INDEX_INVALID_ITER"), result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet())
-                val portable = check(ModelSource(computed)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(computed).toSet()
                 if (portable != setOf("MVK_SEMANTIC_INDEX_INVALID_ITER")) wrong += "computation: portable=$portable"
             }
         }

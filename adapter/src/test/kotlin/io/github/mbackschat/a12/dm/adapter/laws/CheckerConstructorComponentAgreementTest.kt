@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -64,8 +62,7 @@ class CheckerConstructorComponentAgreementTest {
                 val a12 = validator.check(model, draft).let { r ->
                     if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }.sorted()
                 }
-                val ours = check(ModelSource(validator.inject(model, draft))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.sorted()
+                val ours = rejectingCodes(validator.inject(model, draft)).sorted()
                 observed[construction.format(component)] = a12.joinToString()
                 if (a12 != ours) wrong += "${construction.format(component)}: A12 $a12, ours $ours"
             }
@@ -123,8 +120,7 @@ class CheckerConstructorComponentAgreementTest {
             val a12 = validator.check(model, draft).let { r ->
                 if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }.sorted()
             }
-            val ours = check(ModelSource(validator.inject(model, draft))).findings
-                .filter { it.justifiesRejection }.map { it.code }.sorted()
+            val ours = rejectingCodes(validator.inject(model, draft)).sorted()
             observed[row] = a12.joinToString()
             if (a12 != ours) wrong += "$row: A12 $a12, ours $ours"
         }

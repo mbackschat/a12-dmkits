@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity as KernelSeverity
 import io.github.mbackschat.a12.dm.edit.EditSession
@@ -118,8 +116,7 @@ class MessageGroupFootprintAgreementTest {
         assertEquals(rows.map { Triple(it.id, it.model, it.expected) }, stored.map {
             Triple(it["id"].asText(), it["model"].asText(), it["classes"].map { code -> code.asText() })
         }, "portable replay keeps every exact authored model and expected result")
-        val portable = rows.map { row -> row.id to check(ModelSource(row.model)).findings
-            .filter { it.justifiesRejection }.map { it.code } }
+        val portable = rows.map { row -> row.id to rejectingCodes(row.model) }
         assertEquals(kernel, portable, "complete-model portable agreement")
     }
 }

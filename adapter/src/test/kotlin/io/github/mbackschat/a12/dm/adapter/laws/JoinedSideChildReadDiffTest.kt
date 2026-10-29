@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity as CoreSeverity
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
@@ -190,7 +188,7 @@ class JoinedSideChildReadDiffTest {
             val a12 = KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.selfContained())
                 .filter { it.severity() == CoreSeverity.ERROR }.mapNotNull { CODE.find(it.message())?.groupValues?.get(1) }
                 .toSortedSet()
-            val checker = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSortedSet()
+            val checker = rejectingCodes(json).toSortedSet()
             if (a12.isNotEmpty()) return@mapValues "refused $a12; checker $checker"
             val prepared = PreparedModel.loadExpandedJson(json)
             val interpreter = prepared.createInterpreter()
@@ -228,7 +226,7 @@ class JoinedSideChildReadDiffTest {
     @Test
     fun a12AndTheCheckerAdmitTheModel() {
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model), "A12 admits every rule")
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 
     @Test

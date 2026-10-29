@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -105,7 +103,7 @@ class CheckerLengthReaderAgreementTest {
     }
 
     private fun ourClasses(json: String) =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+        rejectingCodes(json).toSet()
 
     private companion object {
         const val MIN = "minLength"

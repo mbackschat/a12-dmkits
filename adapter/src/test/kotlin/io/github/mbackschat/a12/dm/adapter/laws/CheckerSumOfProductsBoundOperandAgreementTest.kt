@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -82,7 +80,7 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
             val a12 = KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.selfContained())
                 .filter { it.severity() == Severity.ERROR }
                 .mapNotNull { Regex("\\[([A-Z][A-Z0-9_]+)]").find(it.message())?.groupValues?.get(1) }.toSet()
-            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(json).toSet()
             a12 to ours
         }
         val lowest = setOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
@@ -103,8 +101,7 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
         val draft = DraftRule(row.group, "ProbeRule", errorRel, row.condition, "PROBE", "ERROR")
         val result = validator.check(order, draft)
         val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("?") }.toSet()
-        val ours = check(ModelSource(validator.inject(order, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(order, draft)).toSet()
         return a12 to ours
     }
 

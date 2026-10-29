@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation
@@ -86,14 +84,14 @@ class CheckerTemporalExtractorAgreementTest {
     /** A12's codes for one rule, in order and with their multiplicity, so a duplicate finding is a difference. */
     private fun kernel(model: String, draft: DraftRule): List<String> =
         validator.check(model, draft).let { r ->
-            if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.sorted()
+            if (r.ok()) emptyList() else r.diagnostics().map { it.codeOrSummary() }.sorted()
         }
 
     private fun kernel(model: String, extractor: String, operand: String): List<String> =
         kernel(model, draft(extractor, operand))
 
     private fun ours(model: String, draft: DraftRule): List<String> =
-        check(ModelSource(validator.inject(model, draft))).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(validator.inject(model, draft)).sorted()
 
     @Test
     fun theCheckerNamesA12sClassOnEveryExtractorOperand() {

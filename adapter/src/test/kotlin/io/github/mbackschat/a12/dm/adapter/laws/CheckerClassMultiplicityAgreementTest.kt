@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -140,7 +138,7 @@ class CheckerClassMultiplicityAgreementTest {
         .sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private companion object {
         const val XML = "MVK_NAME_STARTS_WITH_XML"

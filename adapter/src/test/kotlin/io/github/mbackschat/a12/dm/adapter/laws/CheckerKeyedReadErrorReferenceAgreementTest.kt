@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -53,8 +51,7 @@ class CheckerKeyedReadErrorReferenceAgreementTest {
         val draft = DraftRule("/Depot", "ProbeRule", "../Parcels/Weight", condition, "PROBE", "ERROR")
         val result = validator.check(depot, draft)
         val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("?") }.toSet()
-        val ours = check(ModelSource(validator.inject(depot, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(depot, draft)).toSet()
         return a12 to ours
     }
 }

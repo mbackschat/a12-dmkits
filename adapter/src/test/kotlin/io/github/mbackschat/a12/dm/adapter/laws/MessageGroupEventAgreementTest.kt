@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
@@ -174,7 +172,7 @@ class MessageGroupEventAgreementTest {
             "/checker-near-miss/message-group-events.json")).readText()))
         assertEquals(rows, stored.map { Row(it["id"].asText(), it["model"].asText(), it["classes"].map { code -> code.asText() }) },
             "common hosts replay the exact typed model bytes in order")
-        val portable = rows.map { it.id to check(ModelSource(it.model)).findings.filter { it.justifiesRejection }.map { it.code } }
+        val portable = rows.map { it.id to rejectingCodes(it.model) }
         assertEquals(observed, portable, "portable event order")
     }
 

@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.edit.EditSession
@@ -166,8 +164,7 @@ class MessageGroupArgumentAgreementTest {
         }, "portable replay preserves the exact typed model bytes and every observation")
         val kernel = rows.map { it.id to kernelCodes(it.model) }
         assertEquals(rows.map { it.id to it.classes }, kernel, "kernel witness grid")
-        val portable = rows.map { row -> row.id to check(ModelSource(row.model)).findings
-            .filter { it.justifiesRejection }.map { it.code } }
+        val portable = rows.map { row -> row.id to rejectingCodes(row.model) }
         assertEquals(rows.map { it.id to it.portableClasses }, portable, "portable witness grid")
     }
 }

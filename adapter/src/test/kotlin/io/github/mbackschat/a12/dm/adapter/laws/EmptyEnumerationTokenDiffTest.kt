@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -45,8 +43,7 @@ class EmptyEnumerationTokenDiffTest {
             val draft = DraftRule("/Gift", "ProbeRule", "../Wrapping", row.first, "PROBE", "ERROR")
             val result = validator.check(order, draft)
             val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("?") }.toSet()
-            val ours = check(ModelSource(validator.inject(order, draft))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(validator.inject(order, draft)).toSet()
             a12 to ours
         }
         assertEquals(rows.mapValues { (_, row) -> row.second to row.second }, observed,

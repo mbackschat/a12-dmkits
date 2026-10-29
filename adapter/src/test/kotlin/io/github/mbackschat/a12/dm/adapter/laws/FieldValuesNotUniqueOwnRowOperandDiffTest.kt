@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.ThreeEngineRuns.admitted
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.adapter.laws.ThreeEngineRuns.signatures
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,7 +32,7 @@ class FieldValuesNotUniqueOwnRowOperandDiffTest {
     /** A12's verdict on each spelling, and the portable checker's beside it. */
     @Test
     fun theRulesOwnGroupIsAdmittedUnstarredAndAsRuleGroup() {
-        fun checker(json: String) = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+        fun checker(json: String) = rejectingCodes(json)
         val admittedForms = listOf("FieldValuesNotUnique(/Order/Lines)", "FieldValuesNotUnique(RuleGroup)",
             "FieldValuesNotUnique(/Order/Lines*)")
         for (condition in admittedForms) {

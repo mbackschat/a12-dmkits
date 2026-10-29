@@ -74,7 +74,7 @@ class CheckerBlankDateFormatAgreementTest {
     }.sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private val base: String = DocumentModelDraft.named("policy-dates").locale("en_US")
         .rootGroup("Policy") { p -> p.stringField("Number") { } }.build().toJson()

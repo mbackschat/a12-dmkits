@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -125,11 +123,11 @@ class CheckerLengthLimitAgreementTest {
     private fun kernel(json: String): List<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }.map { notification ->
             val message = notification.message().trim()
-            Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: codelessClass(message)
+            notificationClass(message)
         }.sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private val base: String = DocumentModelDraft.named("ticket-length").locale("en_US")
         .rootGroup("Ticket") { g -> g.stringField(DESCRIPTION) { }.stringField(SUMMARY) { }

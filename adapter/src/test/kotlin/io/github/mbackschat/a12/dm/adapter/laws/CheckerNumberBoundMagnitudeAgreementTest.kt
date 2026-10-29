@@ -52,11 +52,11 @@ class CheckerNumberBoundMagnitudeAgreementTest {
     private fun kernel(json: String): List<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }.map { notification ->
             val message = notification.message().trim()
-            Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: codelessClass(message)
+            notificationClass(message)
         }.sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private val base: String = DocumentModelDraft.named("policy-premiums").locale("en_US")
         .rootGroup("Policy") { p -> p.stringField("Number") { } }.build().toJson()

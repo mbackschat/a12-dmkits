@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -56,7 +54,7 @@ class CheckerLedgerOperandGateAgreementTest {
         val draft = DraftRule("/Book", "GateProbe", "../${row.errorField}", row.condition, "PROBE", "ERROR")
         val result = validator.check(book, draft)
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(book, draft))).findings.filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(book, draft))
         return a12.sorted() to ours.sorted()
     }
 

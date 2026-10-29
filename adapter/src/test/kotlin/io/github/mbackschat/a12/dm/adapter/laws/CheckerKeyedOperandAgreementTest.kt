@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -217,8 +215,7 @@ class CheckerKeyedOperandAgreementTest {
             val a12 = validator.check(desk, draft).let { result ->
                 if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED_A12_CLASS) }.toSet()
             }
-            val ours = check(ModelSource(validator.inject(desk, draft))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(validator.inject(desk, draft)).toSet()
             ours to a12
         }
         val invalid = setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
@@ -256,8 +253,7 @@ class CheckerKeyedOperandAgreementTest {
         val a12 = validator.check(model, draft).let { result ->
             if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse(UNKEYED_A12_CLASS) }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(model, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(model, draft)).toSet()
         return Comparison(a12, ours)
     }
 

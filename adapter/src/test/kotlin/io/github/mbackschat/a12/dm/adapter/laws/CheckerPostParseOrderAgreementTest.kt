@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -155,10 +153,10 @@ class CheckerPostParseOrderAgreementTest {
     }
 
     private fun io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult.codes() =
-        diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+        diagnostics().map { it.codeOrSummary() }.toSet()
 
     private fun verdicts(a12: Set<String>, injected: String) =
-        a12 to check(ModelSource(injected)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+        a12 to rejectingCodes(injected).toSet()
 
     private companion object {
         /** A filter body selecting a `Picks` row by key, read through the capture and then plainly. */

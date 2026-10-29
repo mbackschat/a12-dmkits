@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
@@ -43,8 +41,7 @@ class CheckerTypeDefinedRawFieldAgreementTest {
             .errorCondition(condition).errorCode("PROBE").severity("ERROR").messages(listOf(Dsl.en(message))).build()
         val result = validator.check(claim, draft)
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(claim, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(claim, draft))
         return a12.sorted() to ours.sorted()
     }
 
@@ -112,7 +109,7 @@ class CheckerTypeDefinedRawFieldAgreementTest {
             .map { it.message().trim().let { m -> Regex("\\[(\\w+)]$").find(m)?.groupValues?.get(1) ?: "codeless: $m" } }
             .sorted()
 
-    private fun ours(json: String) = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+    private fun ours(json: String) = rejectingCodes(json).sorted()
 
     private class Probe(val condition: String, val a12: List<String>, val message: String = "Check the claim.",
         val errorField: String = "Other")

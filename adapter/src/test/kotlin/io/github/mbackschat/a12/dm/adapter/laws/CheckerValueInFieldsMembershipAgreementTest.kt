@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -39,7 +37,7 @@ class CheckerValueInFieldsMembershipAgreementTest {
             .messages(listOf(Dsl.en("Check the order."))).build()
         val result = validator.check(order, draft)
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(order, draft))).findings.filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(order, draft))
         return a12.sorted() to ours.sorted()
     }
 

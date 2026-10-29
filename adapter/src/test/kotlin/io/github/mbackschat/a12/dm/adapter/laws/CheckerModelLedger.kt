@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import java.io.File
@@ -16,7 +14,7 @@ internal fun assertModelLedger(rows: List<ConditionCase>, count: Int, name: Stri
     rows.forEach { row ->
         val a12 = kernelModelClasses(row.model)
         if (a12 != setOfNotNull(row.expected)) predictions += "${row.id}: $a12"
-        val ours = check(ModelSource(row.model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(row.model).toSet()
         val verdict = checkerVerdict(a12, ours) ?: return@forEach
         val signature = key(verdict, a12, ours)
         clusters[signature] = clusters.getOrDefault(signature, 0) + 1

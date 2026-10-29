@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -110,10 +108,9 @@ class CheckerComparisonOperandShapeAgreementTest {
     private fun compare(probe: String): Pair<Set<String>, Set<String>> {
         val draft = DraftRule("/Policy", "ProbeRule", "../Holder", "FieldFilled(Holder) And $probe", "PROBE", "ERROR")
         val a12 = validator.check(policy, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(policy, draft)).toSet()
         return a12 to ours
     }
 

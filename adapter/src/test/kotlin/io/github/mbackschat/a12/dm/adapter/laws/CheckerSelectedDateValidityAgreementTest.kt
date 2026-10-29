@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -81,10 +79,9 @@ class CheckerSelectedDateValidityAgreementTest {
             val (condition, a12) = probe
             val draft = DraftRule("/Policy", "ProbeRule", "../Key", "FieldFilled(Key) And $condition", "PROBE", "ERROR")
             val kernel = validator.check(policy, draft).let { r ->
-                if (r.ok()) emptySet() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+                if (r.ok()) emptySet() else r.diagnostics().map { it.codeOrSummary() }.toSet()
             }
-            val ours = check(ModelSource(validator.inject(policy, draft))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(validator.inject(policy, draft)).toSet()
             val observed = kernel to ours
             if (observed == (a12 to a12)) null else "$row: expected (A12, ours) ${a12 to a12}, observed $observed"
         }

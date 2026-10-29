@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -182,10 +180,9 @@ class CheckerListAdmissionOrderAgreementTest {
         val draft = DraftRule("/Policy", "ProbeRule", "../Reference", "FieldFilled(Reference) And $probe", "PROBE",
             "ERROR")
         val a12 = validator.check(policy, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(policy, draft)).toSet()
         return a12 to ours
     }
 

@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -113,13 +111,12 @@ class CheckerComputedPathLexerAgreementTest {
         return listOf("CK_MODEL_NOT_BUILDABLE")
     }.map { notification ->
         val message = notification.message().trim()
-        val code = Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1)
-            ?: codelessClass(message).let { if (it == UNKEYED_A12_CLASS) "codeless:$message" else it }
+        val code = legibleNotificationClass(message)
         code
     }.sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private companion object {
         fun named(vararg codes: Int) = "La" + codes.joinToString("") { Char(it).toString() } + "bel"

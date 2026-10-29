@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -36,8 +34,7 @@ class SelectedParallelUniquenessAgreementTest {
                 val result = RuleValidator().check(base, rule.draft())
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
                 assertEquals(expected, kernel, "$fieldKey $label kernel")
-                val portable = check(ModelSource(TypedRules.inject(base, rule))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(TypedRules.inject(base, rule)).toSet()
                 if (kernel != portable) wrong += "$fieldKey $label kernel=$kernel portable=$portable"
             }
         }

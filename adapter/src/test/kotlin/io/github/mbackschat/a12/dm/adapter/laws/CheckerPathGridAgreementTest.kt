@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
@@ -61,8 +59,7 @@ class CheckerPathGridAgreementTest {
                 val a12 = validator.check(policy, draft).let { result ->
                     if (result.ok()) emptySet() else result.diagnostics().map { it.ledgerClass() }.toSet()
                 }
-                val ours = check(ModelSource(validator.inject(policy, draft))).findings
-                        .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val ours = rejectingCodes(validator.inject(policy, draft)).toSet()
                 compared++
                 checkerVerdict(a12, ours)?.let { live += listOf(group, operand, it, a12.sorted().joinToString(","),
                         ours.sorted().joinToString(",")).joinToString("\t") }

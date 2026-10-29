@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
@@ -128,10 +126,9 @@ class CheckerArgumentSlotAgreementTest {
         val rule = DraftRule.builder().groupPath("/Order").name("SlotProbe").errorEntityRelPath("../Total")
             .errorCondition(condition).errorCode("SLOT_PROBE").severity("ERROR").build()
         val a12 = validator.check(model, rule).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(model, rule))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(model, rule)).toSet()
         return a12 to ours
     }
 

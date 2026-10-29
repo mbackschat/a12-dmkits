@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -101,6 +99,6 @@ class CorrelatedFieldOperandDiffTest {
 
     @Test
     fun theCheckerIsSilentOnTheModelA12Admits() {
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 }

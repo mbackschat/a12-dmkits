@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -68,7 +66,7 @@ class CheckerCategoryComparisonAgreementTest {
     }
 
     private fun ours(model: String) =
-        check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(model).sorted()
 
     private companion object {
         const val ENUM_OR_STRING = "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING"

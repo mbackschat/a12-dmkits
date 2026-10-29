@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -32,7 +30,7 @@ class CheckerKeyedGuardCycleAgreementTest {
         .map { it.message().trim().let { m -> Regex("\\[(\\w+)]$").find(m)?.groupValues?.get(1) ?: "codeless: $m" } }
         .sorted()
 
-    private fun ours(json: String) = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+    private fun ours(json: String) = rejectingCodes(json).sorted()
 
     private val verdicts by lazy { ROWS.mapValues { (_, guards) -> model(guards).let { kernel(it) to ours(it) } } }
 

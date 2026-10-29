@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -192,9 +190,8 @@ class CheckerRepetitionNotUniquePairedGateAgreementTest {
             .errorCondition(row.condition).errorCode("PROBE").severity("ERROR").build()
         val result = validator.check(model, rule)
         val a12 = if (result.ok()) emptySet() else
-            result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
-        val ours = check(ModelSource(validator.inject(model, rule))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+            result.diagnostics().map { it.codeOrSummary() }.toSet()
+        val ours = rejectingCodes(validator.inject(model, rule)).toSet()
         return a12 to ours
     }
 

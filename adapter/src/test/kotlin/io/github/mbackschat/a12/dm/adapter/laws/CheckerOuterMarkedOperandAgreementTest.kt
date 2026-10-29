@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -42,8 +40,7 @@ class CheckerOuterMarkedOperandAgreementTest {
         val a12 = validator.check(customer, draft).let { r ->
             if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code)") }
         }
-        val ours = check(ModelSource(validator.inject(customer, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(customer, draft))
         return a12.sorted() to ours.sorted()
     }
 

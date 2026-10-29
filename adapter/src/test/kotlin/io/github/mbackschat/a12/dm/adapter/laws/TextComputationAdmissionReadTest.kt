@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter
-import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.*
@@ -81,8 +80,7 @@ class TextComputationAdmissionReadTest {
             val computation = probe.computation
             val kernel = validator.check(json, computation.draft())
             val codes = kernel.diagnostics().map { it.code().orElse("<codeless>") }.sorted()
-            val portable = check(ModelSource(ModelWriter.addComputation(json, computation))).findings
-                .filter { it.justifiesRejection }.map { it.code }.sorted()
+            val portable = rejectingCodes(ModelWriter.addComputation(json, computation)).sorted()
             println("${computation.name()}|kernel=$codes|portable=$portable")
             assertEquals(probe.codes.isEmpty(), kernel.ok(), "${computation.name()}: ${kernel.diagnostics()}")
             assertEquals(probe.codes, codes, "${computation.name()} kernel admission")
@@ -174,8 +172,7 @@ class TextComputationAdmissionReadTest {
                 .errorField(custom).`when`(probe.condition).message(Dsl.en("Review the parcel identifier.")).build()
             val kernel = validator.check(json, rule.draft())
             val kernelCodes = kernel.diagnostics().map { it.code().orElse("<codeless>") }.sorted()
-            val portable = check(ModelSource(ModelWriter.addRule(json, rule))).findings
-                .filter { it.justifiesRejection }.map { it.code }.sorted()
+            val portable = rejectingCodes(ModelWriter.addRule(json, rule)).sorted()
             println("${probe.id}|kernel=$kernelCodes|portable=$portable")
             checks += Executable {
                 assertEquals(probe.codes.isEmpty(), kernel.ok(), "${probe.id}: ${kernel.diagnostics()}")

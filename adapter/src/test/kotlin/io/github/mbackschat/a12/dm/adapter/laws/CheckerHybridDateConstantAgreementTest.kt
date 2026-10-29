@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -42,12 +40,11 @@ class CheckerHybridDateConstantAgreementTest {
     private fun kernel(json: String): List<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
         .map { notification ->
             val message = notification.message().trim()
-            Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1)
-                ?: codelessClass(message).let { if (it == UNKEYED_A12_CLASS) "codeless:$message" else it }
+            legibleNotificationClass(message)
         }.sorted()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(json).sorted()
 
     private companion object {
         val CONDITIONS = listOf("04.10.1582", "05.10.1582", "14.10.1582", "15.10.1582", "29.02.1500", "29.02.1300", "29.02.1700")

@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -79,9 +77,8 @@ class CheckerConditionCallOperandAgreementTest {
     private fun verdicts(condition: String): Pair<Set<String>, Set<String>> {
         val draft = DraftRule("/Shipment", "ProbeRule", "../Weight", condition, "PROBE", "ERROR")
         val result = validator.check(shipment, draft)
-        val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
-        val ours = check(ModelSource(validator.inject(shipment, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
+        val ours = rejectingCodes(validator.inject(shipment, draft)).toSet()
         return a12 to ours
     }
 

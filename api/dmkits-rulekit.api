@@ -3070,6 +3070,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_OVERLAPPING_PRECONDITIONS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTED_FIELD_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CONTRADICTORY_PRESENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_FORMAT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_FORMAT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_SEPARATOR_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ENUM_CATEGORY_DUPLICATE

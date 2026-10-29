@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -62,7 +60,7 @@ class CheckerRangeConstructAgreementTest {
         val draft = DraftRule("/Policy", "RangeProbe", "../Title", "FieldFilled(Title) And $condition", "PROBE", "ERROR")
         val result = validator.check(policy, draft)
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings.filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(policy, draft))
         return a12.sorted() to ours.sorted()
     }
 

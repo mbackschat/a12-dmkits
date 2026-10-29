@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -45,6 +43,6 @@ internal class TypeDefinedTwins(
 
     private fun verdicts(result: ValidationResult, injected: String): Pair<List<String>, List<String>> {
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        return a12.sorted() to check(ModelSource(injected)).findings.filter { it.justifiesRejection }.map { it.code }.sorted()
+        return a12.sorted() to rejectingCodes(injected).sorted()
     }
 }

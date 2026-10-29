@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -287,10 +285,9 @@ class CheckerFieldValueReadCarrierAgreementTest {
         val draft = DraftRule(group, "ProbeRule", "../$errorLeaf", "FieldFilled($errorLeaf) And $probe", "PROBE",
             "ERROR")
         val a12 = validator.check(model, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(model, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(model, draft)).toSet()
         return a12 to ours
     }
 
@@ -303,10 +300,9 @@ class CheckerFieldValueReadCarrierAgreementTest {
         val draft = DraftComputation(group, "Derived", target, null,
             listOf(DraftComputation.Alternative(null, operation)))
         val a12 = validator.check(model, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(model, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(model, draft)).toSet()
         return a12 to ours
     }
 

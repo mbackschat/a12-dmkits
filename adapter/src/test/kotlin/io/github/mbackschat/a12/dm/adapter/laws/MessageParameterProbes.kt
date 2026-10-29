@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.edit.EditSession
@@ -84,5 +82,5 @@ internal object MessageParameterProbes {
 
     /** The portable checker's rejection-justifying codes, in report order. */
     fun portable(model: String): List<String> =
-        check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }
+        rejectingCodes(model)
 }

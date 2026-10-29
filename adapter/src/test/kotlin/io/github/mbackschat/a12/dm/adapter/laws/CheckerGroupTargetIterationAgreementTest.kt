@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -44,7 +42,7 @@ class CheckerGroupTargetIterationAgreementTest {
         val draft = DraftRule("/Shipment/Received", "TargetProbe", "../$target", condition, "PROBE", "ERROR")
         val result = validator.check(shipment, draft)
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(validator.inject(shipment, draft))).findings.filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(validator.inject(shipment, draft))
         return a12.sorted() to ours.sorted()
     }
 

@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation
@@ -73,12 +71,11 @@ class CheckerDateTimeConstructionAgreementTest {
 
     private fun kernel(model: String, construction: String): List<String> =
         validator.check(model, draft(construction)).let { r ->
-            if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.sorted()
+            if (r.ok()) emptyList() else r.diagnostics().map { it.codeOrSummary() }.sorted()
         }
 
     private fun ours(model: String, construction: String): List<String> =
-        check(ModelSource(validator.inject(model, draft(construction)))).findings
-            .filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(validator.inject(model, draft(construction))).sorted()
 
     @Test
     fun theCheckerNamesA12sClassOnEveryOperandOfEitherSlot() {

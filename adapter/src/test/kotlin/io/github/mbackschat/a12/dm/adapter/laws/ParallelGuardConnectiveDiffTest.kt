@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -74,7 +72,7 @@ class ParallelGuardConnectiveDiffTest {
     /** The portable checker must not refuse a connective shape A12 admits; it leaves this guard to the kernel. */
     @Test
     fun theCheckerIsSilentOnTheModelA12Admits() {
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 
     private companion object {

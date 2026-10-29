@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
@@ -48,7 +46,7 @@ internal object KeyedOrderModel {
             validator.check(json, draft) to validator.inject(json, draft)
         }
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }
-        val ours = check(ModelSource(injected)).findings.filter { it.justifiesRejection }.map { it.code }
+        val ours = rejectingCodes(injected)
         return a12.sorted() to ours.sorted()
     }
 }

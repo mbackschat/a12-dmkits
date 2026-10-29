@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -45,7 +43,7 @@ class RepetitionNotUniqueSiblingGroupKeyDiffTest {
         json = RuntimeLaws.withRule(json, "/Order", "R_MIXED", "../Lines/Supplier/Code", "MIXED",
             RuntimeLaws.render(Dsl.repetitionNotUnique(supplier, sku)))
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(json), "A12 admits every key")
-        assertEquals(emptyList<String>(), check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code },
+        assertEquals(emptyList<String>(), rejectingCodes(json),
             "the portable checker refuses none of them")
         json
     }

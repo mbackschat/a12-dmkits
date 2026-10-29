@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.consistency.ModelSource
+import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import io.github.mbackschat.a12.dm.core.ModelInputException
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -29,13 +31,29 @@ internal fun checkerVerdict(a12: Set<String>, ours: Set<String>): String? = when
 /** The class a ledger records for one A12 diagnostic: its key, or for a codeless one [codelessClass]. */
 internal fun Diagnostic.ledgerClass(): String = code().orElse(codelessClass(summary()))
 
+/** A rule check's class for one diagnostic: its key, or its summary marked as codeless so a diff shows the words. */
+internal fun Diagnostic.codeOrSummary(): String = code().orElse("(no code: ${summary()})")
+
+/** A12's class for one trimmed notification message: its `[KEY]` suffix, or [codelessClass] of its words. */
+internal fun notificationClass(message: String): String = KEYED_SUFFIX.find(message)?.groupValues?.get(1) ?: codelessClass(message)
+
+/** [notificationClass], an unnamed codeless sentence spelled `codeless:<message>` so a disagreement shows its words. */
+internal fun legibleNotificationClass(message: String): String =
+    notificationClass(message).let { if (it == UNKEYED_A12_CLASS) "codeless:$message" else it }
+
+/** The checker's codes that justify rejecting [json], in the order its report states them. */
+internal fun rejectingCodes(json: String): List<String> =
+    check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+
+private val KEYED_SUFFIX = Regex("\\[(\\w+)]$")
+
 /**
  * The checker's name for a codeless A12 sentence, or [UNKEYED_A12_CLASS].
  *
- * Twenty-nine sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
+ * These sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)), and A12's nine basic sentences are the checker's `RK_ID_EMPTY` to `RK_TYPE_REFERENCE_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a refused temporal format's is `RK_DATE_FORMAT_INVALID` ([KF648](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf648)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)), and A12's nine basic sentences are the checker's `RK_ID_EMPTY` to `RK_TYPE_REFERENCE_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words and names only the field, while each maximum is a sentence of
  * its own. That keys the two digit maxima faithfully, because among the numeric members A12's collector writes only the
  * integer places can draw the 15 sentence and only the fractional pair the 14 one: group repetitions, the other
@@ -127,7 +145,7 @@ internal fun kernelModelClasses(json: String): Set<String> = try {
     val messages = rejected.notifications().map { it.message().trim() }
     check(messages.isNotEmpty()) { "A12 refused the model without a notification" }
     messages.map { message ->
-        Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1) ?: when {
+        KEYED_SUFFIX.find(message)?.groupValues?.get(1) ?: when {
             message.contains("the kernel could not build this model:") -> "CK_MODEL_NOT_BUILDABLE"
             else -> codelessClass(message)
         }

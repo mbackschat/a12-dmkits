@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -44,10 +42,9 @@ class CheckerTimeYearExtractorAgreementTest {
                 val draft = DraftRule("/Term", "ProbeRule", "../Holder", "FieldFilled(Holder) And $condition",
                     "PROBE", "ERROR")
                 val kernel = validator.check(model, draft).let { r ->
-                    if (r.ok()) emptySet() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+                    if (r.ok()) emptySet() else r.diagnostics().map { it.codeOrSummary() }.toSet()
                 }
-                val ours = check(ModelSource(validator.inject(model, draft))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val ours = rejectingCodes(validator.inject(model, draft)).toSet()
                 val expected = if (axis == "no base year" && label != "an ordinary date — armed control") {
                     setOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
                 } else {

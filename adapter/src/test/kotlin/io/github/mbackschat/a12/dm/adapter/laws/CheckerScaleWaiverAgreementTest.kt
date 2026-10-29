@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives
@@ -56,8 +54,7 @@ class CheckerScaleWaiverAgreementTest {
         val draft = DraftRule("/Policy", "ProbeRule", "../Units", condition, "PROBE", "ERROR")
         val result = validator.check(model, draft)
         val a12 = if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("?") }.toSet()
-        val ours = check(ModelSource(validator.inject(model, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(model, draft)).toSet()
         return a12 to ours
     }
 

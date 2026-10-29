@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -103,10 +101,9 @@ class CheckerMembershipReadOrderAgreementTest {
         val draft = DraftComputation("/Order", "Derived", "../Probe", precondition,
             listOf(DraftComputation.Alternative(null, "1")))
         val a12 = validator.check(order, draft).let { result ->
-            if (result.ok()) emptySet() else result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
+            if (result.ok()) emptySet() else result.diagnostics().map { it.codeOrSummary() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(order, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(order, draft)).toSet()
         return a12 to ours
     }
 

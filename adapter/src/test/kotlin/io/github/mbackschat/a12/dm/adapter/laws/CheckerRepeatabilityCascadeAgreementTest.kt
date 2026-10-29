@@ -66,8 +66,7 @@ class CheckerRepeatabilityCascadeAgreementTest {
     }.map { notification ->
         val message = notification.message().trim()
         val at = ATTACHED.find(message)?.groupValues?.get(1) ?: "(unattached)"
-        val code = Regex("\\[(\\w+)]$").find(message)?.groupValues?.get(1)
-            ?: codelessClass(message).let { if (it == UNKEYED_A12_CLASS) "codeless:$message" else it }
+        val code = legibleNotificationClass(message)
         "$code@$at"
     }.sorted()
 

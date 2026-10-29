@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.SortOrder
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -63,7 +61,7 @@ class FieldVariantStageLawsTest {
         var compared = 0
         for (row in rows) {
             val a12 = kernelModelClasses(row.json)
-            val ours = check(ModelSource(row.json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(row.json).toSet()
             compared++
             val verdict = checkerVerdict(a12, ours) ?: continue
             val key = "$verdict\t${column(a12)}\t${column(ours)}"

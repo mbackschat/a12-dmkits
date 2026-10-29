@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -89,7 +87,7 @@ class FirstFilledDateCrossKindTargetDiffTest {
     /** The portable checker admits the model too: it judges the cross-kind targets by their format, as A12 does. */
     @Test
     fun thePortableCheckerAdmitsTheModel() {
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 
     /** The adapter reads both Date selections back typed: a TIME-kind dotted operand is a Date (DG128). */
@@ -161,7 +159,7 @@ class FirstFilledDateCrossKindTargetDiffTest {
                 .dateField("DateStamp") { it.format(STAMP) } }
             .build().toJson(), "/Claim", "ComputeDateStamp", "../DateStamp", "FirstFilledValue(Reported, Confirmed)")
         val kernel = MessageParameterProbes.kernel(refused)
-        val portable = check(ModelSource(refused)).findings.filter { it.justifiesRejection }.map { it.code }
+        val portable = rejectingCodes(refused)
         assertTrue(kernel.any { "MVK_INVALID_COMPARE_TO_DATE" in it }, "A12: $kernel")
         assertEquals(listOf("MVK_INVALID_COMPARE_TO_DATE"), portable, "the portable checker")
     }

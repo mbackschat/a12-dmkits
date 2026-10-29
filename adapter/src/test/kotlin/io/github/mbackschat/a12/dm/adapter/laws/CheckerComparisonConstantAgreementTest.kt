@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -192,8 +190,8 @@ class CheckerComparisonConstantAgreementTest {
             else -> error("no carrier $draft")
         }
         val a12 = if (result.ok()) emptySet() else
-            result.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.toSet()
-        val ours = check(ModelSource(injected)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            result.diagnostics().map { it.codeOrSummary() }.toSet()
+        val ours = rejectingCodes(injected).toSet()
         return a12 to ours
     }
 
@@ -240,7 +238,6 @@ class CheckerComparisonConstantAgreementTest {
         assertEquals(rows.size, rows.map { it.id }.toSet().size)
         val expected = rows.map { it.id to emptySet<String>() }
         assertEquals(expected, rows.map { it.id to kernelModelClasses(it.model) }, "kernel comparison admission control")
-        assertEquals(expected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable comparison admission control")
+        assertEquals(expected, rows.map { row -> row.id to rejectingCodes(row.model).toSet() }, "portable comparison admission control")
     }
 }

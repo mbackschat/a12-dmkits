@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
@@ -56,8 +54,7 @@ class SelectedAuthoredScopeDiffTest {
                     .`when`(condition).message(Dsl.en("Check selected stock.")).build() }
                 val result = RuleValidator().check(base, rule.draft())
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
-                val portable = check(ModelSource(TypedRules.inject(base, rule))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(TypedRules.inject(base, rule)).toSet()
                 if (kernel != expected || portable != expected)
                     wrong += "group=$group fieldKey=$fieldKey $label: expected=$expected kernel=$kernel portable=$portable"
                 val computation = store.computation(bin.num("Result")) { it.name("SelectedCalc")
@@ -65,8 +62,7 @@ class SelectedAuthoredScopeDiffTest {
                     .message(Dsl.en("Check computed stock.")).build() }
                 val computedModel = TypedRules.inject(base, computation)
                 assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(computedModel), "$group $fieldKey $label computation")
-                assertEquals(emptySet<String>(), check(ModelSource(computedModel)).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet(), "$group $fieldKey $label computation")
+                assertEquals(emptySet<String>(), rejectingCodes(computedModel).toSet(), "$group $fieldKey $label computation")
             }
         }
         assertEquals(emptyList<String>(), wrong)
@@ -94,8 +90,7 @@ class SelectedAuthoredScopeDiffTest {
                 val result = RuleValidator().check(base, rule.draft())
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
                 assertEquals(expected, kernel, "$fieldKey $label kernel")
-                assertEquals(expected, check(ModelSource(TypedRules.inject(base, rule))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet(), "$fieldKey $label portable")
+                assertEquals(expected, rejectingCodes(TypedRules.inject(base, rule)).toSet(), "$fieldKey $label portable")
             }
         }
     }
@@ -117,8 +112,7 @@ class SelectedAuthoredScopeDiffTest {
                 .`when`(if (guarded) marker.filled().and(selected) else selected)
                 .message(Dsl.en("Check selected stock.")).build() }
             assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(TypedRules.inject(base, rule)))
-            assertEquals(emptySet<String>(), check(ModelSource(TypedRules.inject(base, rule))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet(), rule.render())
+            assertEquals(emptySet<String>(), rejectingCodes(TypedRules.inject(base, rule)).toSet(), rule.render())
         }
     }
 
@@ -139,8 +133,7 @@ class SelectedAuthoredScopeDiffTest {
                 .message(Dsl.en("Check selected stock.")).build() }
             val result = RuleValidator().check(base, rule.draft())
             val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
-            val portable = check(ModelSource(TypedRules.inject(base, rule))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            val portable = rejectingCodes(TypedRules.inject(base, rule)).toSet()
             assertEquals(setOf(expected), kernel, rule.render())
             assertEquals(kernel, portable, rule.render())
         }

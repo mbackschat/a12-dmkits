@@ -84,7 +84,7 @@ class CheckerNearMissSweepTest {
         fun compare(id: String, model: String, expected: Set<String>) {
             val a12 = kernelModelClasses(model)
             assertEquals(expected, a12, id)
-            val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(model).toSet()
             compared++
             checkerVerdict(a12, ours)?.let { verdict ->
                 val signature = key(verdict, a12, ours)
@@ -184,7 +184,7 @@ class CheckerNearMissSweepTest {
             val json = validator.inject(FieldReadPopulation.host, row.rule)
             val a12 = kernelModelClasses(json)
             if (a12 != setOfNotNull(row.modelCode)) predictions += "${row.rule.errorCondition()}: $a12"
-            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(json).toSet()
             val verdict = checkerVerdict(a12, ours) ?: return@forEach
             val signature = key(verdict, a12, ours)
             clusters[signature] = clusters.getOrDefault(signature, 0) + 1
@@ -265,7 +265,7 @@ class CheckerNearMissSweepTest {
         var compared = 0
         fun compare(json: String): Set<String> {
             val a12 = kernelModelClasses(json)
-            val ours = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(json).toSet()
             compared++
             checkerVerdict(a12, ours)?.let { verdict ->
                 val signature = key(verdict, a12, ours)
@@ -297,7 +297,7 @@ class CheckerNearMissSweepTest {
         val observations = rows.map { row ->
             val model = row.model()
             val a12 = kernelModelClasses(model)
-            val ours = check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(model).toSet()
             "${row.id}\t${checkerVerdict(a12, ours) ?: "AGREE"}\t${a12.column()}\t${ours.column()}"
         }.joinToString("\n", postfix = "\n")
         File("build/checker-harvest/scanner.tsv").apply { parentFile.mkdirs(); writeText(observations) }

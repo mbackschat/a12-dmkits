@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -40,12 +38,11 @@ class CheckerArithmeticShapeAgreementTest {
 
     private fun kernel(errorField: String, condition: String): List<String> =
         validator.check(order, draft(errorField, condition)).let { r ->
-            if (r.ok()) emptyList() else r.diagnostics().map { it.code().orElse("(no code: ${it.summary()})") }.sorted()
+            if (r.ok()) emptyList() else r.diagnostics().map { it.codeOrSummary() }.sorted()
         }
 
     private fun ours(errorField: String, condition: String): List<String> =
-        check(ModelSource(validator.inject(order, draft(errorField, condition)))).findings
-            .filter { it.justifiesRejection }.map { it.code }.sorted()
+        rejectingCodes(validator.inject(order, draft(errorField, condition))).sorted()
 
     @Test
     fun theCheckerNamesA12sClassOnEveryAcceptanceCell() {

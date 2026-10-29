@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
@@ -68,8 +66,7 @@ class CheckerIndexKeyConstantAgreementTest {
         val a12 = validator.check(policy, draft).let { result ->
             if (result.ok()) emptySet() else result.diagnostics().map { it.ledgerClass() }.toSet()
         }
-        val ours = check(ModelSource(validator.inject(policy, draft))).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet()
+        val ours = rejectingCodes(validator.inject(policy, draft)).toSet()
         return a12 to ours
     }
 
@@ -215,8 +212,7 @@ class CheckerIndexKeyConstantAgreementTest {
         assertEquals(rows.size, rows.map { it.id }.toSet().size)
         val expected = rows.map { it.id to setOfNotNull(it.expected) }
         assertEquals(expected, rows.map { it.id to kernelModelClasses(it.model) }, "kernel literal length control")
-        assertEquals(expected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable literal length control")
+        assertEquals(expected, rows.map { row -> row.id to rejectingCodes(row.model).toSet() }, "portable literal length control")
     }
 
     @Test
@@ -230,7 +226,6 @@ class CheckerIndexKeyConstantAgreementTest {
             row.id to if (row.id.endsWith("-lone-cr") || row.id.endsWith("-repeated-cr")) emptySet()
                 else setOfNotNull(row.expected)
         }
-        assertEquals(portableExpected, rows.map { row -> row.id to check(ModelSource(row.model)).findings
-            .filter { it.justifiesRejection }.map { it.code }.toSet() }, "portable CUSTOM bounds and retained CR decline")
+        assertEquals(portableExpected, rows.map { row -> row.id to rejectingCodes(row.model).toSet() }, "portable CUSTOM bounds and retained CR decline")
     }
 }

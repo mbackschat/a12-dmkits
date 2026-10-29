@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -88,7 +86,7 @@ class ElementPathStageLawsTest {
                 path !in nameCodes && "MVK_PATHS_INCONSISTENT" !in nameCodes) setOf("INVALID_CHARACTERS") else emptySet()
             val kernel = kernelModelClasses(json)
             if (expected != kernel) predictions += "$label: predicted $expected, observed $kernel"
-            val portable = check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }.toSet()
+            val portable = rejectingCodes(json).toSet()
             checkerVerdict(kernel, portable)?.let { verdict ->
                 val key = "$verdict\t${column(kernel)}\t${column(portable)}"
                 clusters[key] = clusters.getOrDefault(key, 0) + 1

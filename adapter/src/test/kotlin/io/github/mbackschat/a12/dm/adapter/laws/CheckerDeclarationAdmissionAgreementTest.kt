@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -354,7 +352,7 @@ class CheckerDeclarationAdmissionAgreementTest {
         .filter { it != UNKEYED_A12_CLASS }.toSet()
 
     private fun ours(json: String): List<String> =
-        check(ModelSource(json)).findings.filter { it.justifiesRejection }.map { it.code }
+        rejectingCodes(json)
 
     private fun policy(): ObjectNode = mapper.readTree(DocumentModelDraft.named("policy-declarations").locale("en_US")
         .rootGroup("Policy") { p -> p.stringField("Number") { } }.build().toJson()) as ObjectNode

@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -70,8 +68,7 @@ class SelectedContainmentAgreementTest {
                 val result = RuleValidator().check(base, draft)
                 val kernel = result.diagnostics().filter { !result.ok() }.map { it.code().orElse("uncoded") }.toSet()
                 assertEquals(expected, kernel, "$carrier $scope ${pathRef.value()} kernel")
-                val portable = check(ModelSource(RuleValidator().inject(base, draft))).findings
-                    .filter { it.justifiesRejection }.map { it.code }.toSet()
+                val portable = rejectingCodes(RuleValidator().inject(base, draft)).toSet()
                 if (kernel != portable) wrong += "$carrier $scope ${pathRef.value()}: kernel=$kernel portable=$portable"
             }
         }

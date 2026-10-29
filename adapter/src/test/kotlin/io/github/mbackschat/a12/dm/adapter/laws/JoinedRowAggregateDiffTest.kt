@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -140,7 +138,7 @@ class JoinedRowAggregateDiffTest {
 
     @Test
     fun theCheckerIsSilentOnTheModelA12Admits() {
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 
     /**
@@ -187,8 +185,7 @@ class JoinedRowAggregateDiffTest {
             val draft = DraftRule("/Fulfilment", "ProbeRule", "../Stock/OnHand",
                 "FieldFilled(Stock/OnHand) And FieldFilled(Orders/Qty) And $condition", "PROBE", "ERROR")
             val a12 = validator.check(skeleton, draft).diagnostics().map { it.code().orElse("?") }.toSet()
-            val ours = check(ModelSource(validator.inject(skeleton, draft))).findings
-                .filter { it.justifiesRejection }.map { it.code }.toSet()
+            val ours = rejectingCodes(validator.inject(skeleton, draft)).toSet()
             return a12 to ours
         }
         fun both(vararg codes: String) = codes.toSet().let { it to it }

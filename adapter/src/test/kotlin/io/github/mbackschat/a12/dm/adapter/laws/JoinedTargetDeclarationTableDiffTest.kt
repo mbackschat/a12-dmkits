@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
-import io.github.mbackschat.a12.dm.consistency.ModelSource
-import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -145,7 +143,7 @@ class JoinedTargetDeclarationTableDiffTest {
     fun a12AndTheCheckerAdmitTheCarrier() {
         assertEquals(emptyList<String>(), KernelConsistencyOracle().checkConsistency(model, ReferenceResolvers.selfContained())
             .filter { it.severity().name == "ERROR" }.map { it.message() })
-        assertEquals(emptyList<String>(), check(ModelSource(model)).findings.filter { it.justifiesRejection }.map { it.code })
+        assertEquals(emptyList<String>(), rejectingCodes(model))
     }
 
     @Test
