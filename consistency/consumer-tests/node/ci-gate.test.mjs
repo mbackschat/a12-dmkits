@@ -45,8 +45,10 @@ const missingPath = join(scratch, 'never-written.dm.json');
  * carries a diagnostic AND ran its families (103 of them, measured 2026-09-16), so "any diagnostic means the
  * tool failed" and "no family ran means the tool failed" disagree here and nowhere else in this file.
  */
+// A `null` name, not an absent one: A12 loads the first and its reader refuses the second (KERNEL-FINDINGS KF644),
+// which would make this a model A12 never builds rather than one the checker reads in part.
 const partiallyReadablePath = write('storefront-malformed-declaration.dm.json',
-  soundModel.replace('"elements": [', '"elements": [{ "type": "Field", "id": "/Storefront/Nameless" },'));
+  soundModel.replace('"elements": [', '"elements": [{ "type": "Field", "id": "/Storefront/Nameless", "name": null },'));
 
 test('a sound model passes every check, and is still not A12-validated', () => {
   const result = runGate([soundPath]);
