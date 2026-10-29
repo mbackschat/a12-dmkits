@@ -17649,6 +17649,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf183": {
+      "sha256": "94bd5f82b20fa240e7e3f2f2e24747d2fcc7e9c22d19f2968ba8c0e026e24386",
+      "task": "SS47",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a fixed group beneath the star"
+        ],
+        "interpreter": [
+          "a fixed group beneath the star"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "SPEC-2026-10-29-03"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author conditions; a message's referenced set is a runtime channel they do not produce.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges a model statically and emits no runtime message.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both Kernel strategies are the expected column of the referenced sets, read whole and sorted.",
+          "evidence": {
+            "a fixed group beneath the star": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/StarredGroupFixedDescendantReferenceDiffTest.kt#aFixedGroupBeneathTheStarCarriesOneWhileTheStarredLevelCarriesZero",
+              "witness": "Four rules over Claims* and Claims*/Adjuster, dynamic Groovy and generated Java each naming Adjuster[1] beneath Claims[0]."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter's referenced set equals both Kernel strategies'; no production change was needed.",
+          "evidence": {
+            "a fixed group beneath the star": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/StarredGroupFixedDescendantReferenceDiffTest.kt#aFixedGroupBeneathTheStarCarriesOneWhileTheStarredLevelCarriesZero",
+              "witness": "The same four rules, the interpreter's sets equal to the Kernel's on each."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation is the interpreter's.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Their SPEC-2026-10-29-03, answered in our handback message of 2026-10-29; adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
