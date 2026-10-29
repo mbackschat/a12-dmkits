@@ -139,7 +139,12 @@ function judge(buildSucceeded: boolean, log: string, fresh: readonly Counts[]): 
   if (/No tests found for given includes|selected no test for/.test(log)) {
     return { verdict: "no-verdict", reason: "the filter matched no test in this lane — a typo or the wrong lane" };
   }
-  const routing = log.match(/[^\n]*deliberately excludes[\s\S]*?(?:\n\s*\n|$)/)?.[0];
+  // Located by indexOf, never by a regex opening with `[^\n]*`: unanchored, that scan is quadratic in the line, and a
+  // failing map assertion prints millions of characters on one (2.4 s at 40,000 measured 2026-10-29; hours at 3.2M).
+  const hint = log.indexOf("deliberately excludes");
+  const blank = hint < 0 ? -1 : log.slice(hint).search(/\n[ \t\r]*\n/);
+  const routing = hint < 0 ? undefined
+    : log.slice(log.lastIndexOf("\n", hint) + 1, blank < 0 ? log.length : hint + blank);
   if (routing) {
     return { verdict: "no-verdict", reason: `this lane does not host that control; the build names the task that `
       + `does — re-run with it as the lane:\n${routing.trim()}` };

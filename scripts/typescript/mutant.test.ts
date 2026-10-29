@@ -79,6 +79,17 @@ test("each run that ran nothing is no verdict, whatever the build's exit said", 
   assert.equal(judge(true, "", [{ tests: 0, failures: 0, errors: 0 }]).verdict, "no-verdict");
 });
 
+test("a verdict reads a log whose failure printed one enormous line in linear time", () => {
+  // A failing map assertion printed a 3.2-million-character line on 2026-10-29, and an unanchored routing scan
+  // hung the batch on it for hours. This line is long enough for a quadratic scan to take seconds.
+  const log = `FooTest > aMap() FAILED\n    expected: <{${"de=de, ".repeat(15_000)}}>\nBUILD FAILED`;
+  const started = performance.now();
+  assert.equal(judge(false, log, [RED]).verdict, "killed");
+  assert.ok(performance.now() - started < 1000, `judged in ${Math.round(performance.now() - started)} ms`);
+  assert.match(judge(false, `${log}\n:cli:test deliberately excludes FooTest\n  run :cli:fooGuardTest`, []).reason,
+    /fooGuardTest/, "the routing hint is still found after the long line, ending at the end of the log");
+});
+
 test("a batch exits with its worst verdict, and an incomplete batch is no verdict", () => {
   assert.equal(exitCodeFor(["killed", "killed"]), 0);
   assert.equal(exitCodeFor(["killed", "survived"]), 1);
