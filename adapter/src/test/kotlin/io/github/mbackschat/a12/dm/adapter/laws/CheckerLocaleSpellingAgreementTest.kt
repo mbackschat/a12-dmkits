@@ -112,11 +112,11 @@ class CheckerLocaleSpellingAgreementTest {
         /** One row per clause of the grammar, measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val ENTRY_ROWS = mapOf(
             "de" to BUILT, "deu" to BUILT, "de_CH" to BUILT, "de-CH" to BUILT, "es_419" to BUILT,
-            "de_CH_1996" to BUILT, "de_CH_1996_x" to BUILT, "de-CH-1996" to BUILT, "de__1996" to BUILT,
+            "de_CH_1996" to BUILT, "de_CH_1996_x" to BUILT, "de_CH_POSIX-x" to BUILT, "de-CH-1996" to BUILT, "de__1996" to BUILT,
             "_CH" to BUILT, "-CH" to BUILT, "_CH_x" to BUILT, "CH" to BUILT, "ée" to BUILT, "de_ÄÖ" to BUILT, "de_٣٣٣" to BUILT,
             "DE_419" to BUILT, "1_419" to BUILT,
             "EN" to UNBUILT, "QQ" to UNBUILT, "de_ch" to UNBUILT, "DE_CH" to UNBUILT, "d" to UNBUILT, "de_C" to UNBUILT,
-            "de_CHE" to UNBUILT, "de_CH_" to UNBUILT, "de_CH-x" to UNBUILT, "de-CH_x" to UNBUILT, "_CH_" to UNBUILT,
+            "de_CHE" to UNBUILT, "de_CH_" to UNBUILT, "de_CH-x" to UNBUILT, "de-CH_x" to UNBUILT, "de-CH-x_y" to UNBUILT, "_CH_" to UNBUILT,
             "DE_419_x" to UNBUILT, "zh_Hans_CN" to UNBUILT, " de" to UNBUILT, "de " to UNBUILT,
         )
 
