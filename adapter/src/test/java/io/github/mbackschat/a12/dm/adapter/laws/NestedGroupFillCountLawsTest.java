@@ -461,19 +461,16 @@ class NestedGroupFillCountLawsTest {
 
     /**
      * <b>An OMISSION can name only FILLED cells — so filtering {@code fillToFix} to empty ones shows nothing.</b>
-     * a12-kernel-lean measured the channel as the whole {@code referenced} set or empty, never a proper subset,
-     * across 30 message observations; this reproduces it on a shape neither of us had used for it, the
-     * computation's implicit self-validation, and on our kernel oracle.
+     * Measured on the computation's implicit self-validation, on our kernel oracle.
      *
      * <p>The document is the trap: four of five rows instantiated with EVERY cell filled, so the target types
      * {@code OMISSION_ERROR} on row headroom alone. There is no empty cell anywhere in an instantiated row, yet
      * the channel is non-empty — a consumer that filters it to unfilled cells renders an empty hint for a
      * message whose whole point is telling the user what to fill.
      *
-     * <p>Our own interpreter is not exposed: {@code DmInterpreter} sets {@code fillToFix} to {@code referenced}
-     * for an OMISSION and to empty otherwise, unconditionally, so it cannot emit a proper subset. That identity
-     * is differentially locked against the kernel's {@code getRefOmissionErrorResponsiblePointers} in
-     * {@code RichMessageDiffTest}; this adds the all-filled row it lacked.
+     * <p>The channel equals {@code referenced} here because this condition reads no field only for presence;
+     * one that does withholds it (KERNEL-FINDINGS KF219 as corrected 2026-10-29, KF522), which
+     * {@code ComputationImplicitFillToFixDiffTest} locks on the same carrier.
      */
     @Test
     void anOmissionsFillToFixIsTheWholeReferencedSetEvenWhenEveryCellItNamesIsFilled() {
@@ -484,7 +481,7 @@ class NestedGroupFillCountLawsTest {
         assertEquals("OMISSION_ERROR", m.type().toString(), "row headroom types it OMISSION though nothing is empty");
         assertFalse(m.omissionResponsible().isEmpty(), "the channel is populated even with no empty cell to name");
         assertEquals(m.referenced(), m.omissionResponsible(),
-                "the whole referenced set, never a proper subset — so it is not a list of what is unfilled");
+                "the whole referenced set, filled cells included — so it is not a list of what is unfilled");
     }
 
     /**

@@ -17721,6 +17721,78 @@
           "evidence": {}
         }
       }
+    },
+    "kf219": {
+      "sha256": "40e2706494fb85059cd3b8dbbafe6a23d2506b7740a2bb88dff61706fb9bce8f",
+      "task": "SS49",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "a presence-only precondition withheld"
+        ],
+        "interpreter": [
+          "a presence-only precondition withheld"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "SPEC-2026-10-29-04"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author computations; a message's fill-to-fix set is a runtime channel they do not produce.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The checker judges a model statically and emits no runtime message.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime message fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both Kernel strategies are the expected column of each implicit message's type, referenced and fill-to-fix sets, read whole and sorted.",
+          "evidence": {
+            "a presence-only precondition withheld": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationImplicitFillToFixDiffTest.kt#aPresenceOnlyPreconditionIsReferencedAndWithheldFromFillToFix",
+              "witness": "Four premium computations over an empty Loading, dynamic Groovy and generated Java each withholding the presence-read Discount and riders and listing Discount under an ordinary read."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "The interpreter's sets equal both Kernel strategies'; its implicit rule already took the static omission set, so no production change was needed.",
+          "evidence": {
+            "a presence-only precondition withheld": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationImplicitFillToFixDiffTest.kt#aPresenceOnlyPreconditionIsReferencedAndWithheldFromFillToFix",
+              "witness": "The same four computations, the interpreter's sets equal to the Kernel's on each."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool's evaluation is the interpreter's.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Their SPEC-2026-10-29-04, answered in our handback of 2026-10-29; adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

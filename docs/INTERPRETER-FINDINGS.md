@@ -4585,6 +4585,8 @@ The owner decided to keep this as a characterized divergence rather than reprodu
 
 Enforcement: `SelectedMessageReferenceDiffTest.aDuplicatedKeysPointerIsTheKernelsCacheRow` pins the kernel's row on both strategies, and those documents stay out of the three-engine agreement.
 
+**Extended 2026-10-29:** a12-kernel-lean's spec/08 §4.3 now states the cache's population, identifier hash, bucket and capacity (their SPEC-2026-10-29-05), and it predicts the Kernel's row on every full-validation row of their topology and collision captures where it decides one ([CONFORMANCE-PLAN SS50](CONFORMANCE-PLAN.md#spec-sync-2026-10-29d)). Where a bin is collision-heavy, identical inputs still select either row on this host, so the row is not a function of model and document bytes alone, and the owner decision above stands.
+
 **Extended 2026-10-12:** the same first-admitted policy owns duplicate parallel error and referenced addresses. Value reads still use unique admitted rows only. `ParallelValidationDispatchDiffTest.parallelMessageIdentityDoesNotMakeDuplicateValuesAvailable` locks both consumers' separation; `SelectedMessageReferenceDiffTest.selectedMessageAssociationsAdmitOnlyRelevantIndexRows` locks original partial relevance. [IF388](#if388) records the shared message projection and default association correction.
 
 ### IF377: a computation's filter walk is bounded by the whole programme's operand and target groups, also when `computeField` runs one closure (2026-10-09) <a id="if377"></a>

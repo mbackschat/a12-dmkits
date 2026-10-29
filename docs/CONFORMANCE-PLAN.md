@@ -305,6 +305,16 @@ The queue is SPEC-2026-10-29-03 of a12-kernel-lean's ledger at its commit `d10d0
 | **SS47** | SPEC-2026-10-29-03 | the capture's `LNone` and `TNone` rows reconciled on the Kernel gate; any statement of the exception in our record found and corrected; the fact measured in our own domain | **done** — the gate equals their artifact on 99 of 99 rows and 12,158 reference pointers, message text aside, and the interpreter agrees on all 198 calls; no statement of the exception was found in our docs or sources, and KF183's starred-versus-unstarred sentence, the nearest one, is scoped to the starred level | `StarredGroupFixedDescendantReferenceDiffTest`, KF183 | — |
 | **SS48** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback message of 2026-10-29 | — |
 
+### Spec-sync round of 2026-10-29d <a id="spec-sync-2026-10-29d"></a>
+
+The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledger at its commit `0d13acf1e49ecc1dd2691058ea599dd3386505d0`: a computation's implicit message lists `fillToFix` by the omission projection rather than all or nothing, and the message cache's population, identifier hash, bucket and capacity decide a duplicated key's winner. Their captures were replayed through `kernelProbe` and `probeDifferential` before any change.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS49** | SPEC-2026-10-29-04 | the `FilteredComp`, `AF2Comp` and `Cg02` messages reconciled on the Kernel gate; any all-or-nothing statement in our record corrected; the projection locked on the computation carrier in our own domain | **done** — the gate equals their four artifacts on all 2,732 messages, `fillToFix` included, and the interpreter differential agrees on every request; KF219 and `NestedGroupFillCountLawsTest` stated the all-or-nothing rule and are corrected; the upward count pruning they left unclaimed is measured on the generated condition | `ComputationImplicitFillToFixDiffTest`, KF219 | — |
+| **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
+| **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
+
 ### The model frame, 2026-10-29 <a id="model-frame-2026-10-29"></a>
 
 Not a ledger entry: a model without `content.modelInfo` was found to leave A12 without a verdict while the checker passed every check, and the sweep of its class measured every frame member through the Kernel gate ([KF650](KERNEL-FINDINGS.md#kf650)). The measurements went to a12-kernel-lean as a message, not a ledger entry.
