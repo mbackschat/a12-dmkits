@@ -60,7 +60,7 @@ private fun TrackedFactBase.labelFindings(
     values: List<JsonObject?>,
 ): List<Finding> {
     val texts = values.map { value ->
-        (value?.get("label") as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+        localizedTextEntries(value?.get("label"))
             .mapNotNull { entry -> entry.string("locale")?.let { localeKeyOrNull(it) }?.to(entry) }
             .filter { (locale, _) -> locale in declaredLocales }
             // A later entry for one locale replaces an earlier one, as everywhere else A12 collects texts.

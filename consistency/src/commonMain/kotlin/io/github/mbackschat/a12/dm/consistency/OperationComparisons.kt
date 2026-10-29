@@ -178,7 +178,7 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
         val entries = values.map { it as? JsonObject ?: return null }
         return facts.declaredLocales.associateWith { locale -> entries.associate { entry ->
             val token = entry.string("value") ?: return null
-            val label = (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+            val label = localizedTextEntries(entry["label"])
                 .lastOrNull { it.string("locale")?.let(::localeKeyOrNull) == locale }?.string("text")
             token to (label ?: token)
         } }

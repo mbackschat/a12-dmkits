@@ -44,7 +44,7 @@ class CheckerBlankDateFormatAgreementTest {
             assertEquals(listOf(DATE_FORMAT_SENTENCE), kernel(json), type)
             val report = check(ModelSource(json))
             assertEquals(emptyList<String>(), report.findings.filter { it.justifiesRejection }.map { it.code }, type)
-            assertTrue(report.gaps.any { "admitted vocabulary" in it.reason }, "the silence is disclosed: ${report.gaps}")
+            assertTrue(report.gaps.any { "probed universe" in it.reason }, "the silence is disclosed: ${report.gaps}")
         }
     }
 
@@ -106,7 +106,7 @@ class CheckerBlankDateFormatAgreementTest {
     private companion object {
         const val UNBUILT = "CK_MODEL_NOT_BUILDABLE"
         const val FIELD_PATH = "/Policy/Start"
-        const val DATE_FORMAT_SENTENCE = "codeless:The date format is invalid."
+        const val DATE_FORMAT_SENTENCE = "RK_DATE_FORMAT_INVALID"
         val NO_BREAK_SPACE = Char(0x00A0).toString()
         val EM_SPACE = Char(0x2003).toString()
         val TYPES_WITH_FORMAT = listOf("DateType", "DateTimeType", "TimeType")

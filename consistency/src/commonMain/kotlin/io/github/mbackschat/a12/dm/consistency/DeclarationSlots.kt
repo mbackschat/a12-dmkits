@@ -426,8 +426,8 @@ private fun authoredLocalePolicyFindings(
  * Three shapes of the `errorMessage` member itself are measured, and then source-located in
  * `LocalizedTextMapDeserializer.deserialize` ([KERNEL-FINDINGS KF290]): it loops `for (JsonNode entry :
  * parser.readValueAsTree())`, so an ARRAY yields its declarations(), an OBJECT its values, and a scalar or an
- * absent member yields none — leaving the declaration simply message-less. Only the ENTRIES have a shape the
- * reader refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why
- * it stops the read instead of contributing an unusable entry.
+ * absent member yields none — leaving the declaration simply message-less. Only the ENTRIES, and a `null`
+ * member ([KERNEL-FINDINGS KF646]), have a shape the reader refuses, and a refusal there is about the SOURCE
+ * rather than about this declaration, which is why it stops the read instead of contributing an unusable entry.
  */
 private fun TrackedDeclaration.authoredMessages(): AuthoredMessages? = body?.authoredMessages()

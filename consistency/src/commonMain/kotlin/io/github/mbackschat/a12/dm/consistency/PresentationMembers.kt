@@ -4,7 +4,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A rule's two map-valued PRESENTATION members — `guiPatterns` and `variantErrorMessages`.
@@ -26,10 +25,12 @@ import kotlinx.serialization.json.JsonPrimitive
  * **The two shape laws are NOT the same law, and measuring one member would have shipped the other's wrong.**
  * Both take an object of scalars and refuse a container where a scalar belongs. They part on a NULL value:
  * `Map<String, String>` admits one, while `Map<String, ILocalizedTextMap>` raises past every typed Kernel
- * channel because the value type is `@NonNull`-bound. And `variantErrorMessages` alone has an inner entry
- * shape — an array of `{locale, text}` pairs, each key required, the array required even to hold a single
- * entry — where a bare scalar in that same slot is nonetheless admitted. Whole grid, both members and every
- * tier: `rulekit.validate.laws.RuleVariantPresentationLawsTest`.
+ * channel because the value type is `@NonNull`-bound. And each `variantErrorMessages` value binds as any text
+ * map does ([localizedTextRefusal]): a list or an object of `{locale, text}` entries, each key a string, while
+ * a bare scalar is admitted. *Corrected 2026-10-29:* this said the value must be an array even to hold one
+ * entry. The measured row was a bare entry, whose values are strings and so are not entries; an object OF
+ * entries binds (`adapter.laws.CheckerLocalizedTextShapeAgreementTest`, KERNEL-FINDINGS KF646). Whole grid,
+ * both members and every tier: `rulekit.validate.laws.RuleVariantPresentationLawsTest`.
  *
  * Nothing is reported for a computation: neither member exists on that carrier.
  */
@@ -61,12 +62,10 @@ private fun guiPatternFindings(element: TrackedDeclaration, body: JsonObject): L
 }
 
 /**
- * `variantErrorMessages`: an object whose values are scalars, or arrays of `{locale, text}` entries.
+ * `variantErrorMessages`: an object whose values each bind as a localized-text map.
  *
- * An explicit `null` VALUE gets its own branch because its tier differs from every other refusal here — it
- * escapes A12's typed channels rather than refusing its reader — and the sibling member admits the identical
- * shape. The finding is the same either way, since both leave a model that cannot be used, but the two are
- * separated so the next reader does not take one member's null row as the other's.
+ * An explicit `null` value refuses as a `null` text map does anywhere; the sibling member `guiPatterns` admits
+ * the identical shape, which is why the two members are not one law.
  */
 private fun variantErrorMessageFindings(element: TrackedDeclaration, body: JsonObject): List<Finding> {
     val declared = body["variantErrorMessages"] ?: return emptyList()
@@ -75,30 +74,8 @@ private fun variantErrorMessageFindings(element: TrackedDeclaration, body: JsonO
             unbindable(element, "variantErrorMessages", "is ${shapeOf(declared)} where A12 binds a map"),
         )
     return byVariant.entries.mapNotNull { (variant, texts) ->
-        when {
-            texts is JsonNull ->
-                unbindable(element, "variantErrorMessages", "maps `$variant` to null, which A12's text map cannot be")
-            texts is JsonObject ->
-                unbindable(
-                    element,
-                    "variantErrorMessages",
-                    "maps `$variant` to an object, and A12 binds a LIST of locale/text entries even for one",
-                )
-            texts is JsonArray && texts.any { !isTextEntry(it) } ->
-                unbindable(
-                    element,
-                    "variantErrorMessages",
-                    "gives `$variant` an entry without both a `locale` and a `text`",
-                )
-            else -> null
-        }
+        localizedTextRefusal(texts)?.let { unbindable(element, "variantErrorMessages", "maps `$variant` to a text map that $it") }
     }
-}
-
-/** One well-formed `ILocalizedTextMap` entry: an object carrying both keys, neither of them a container. */
-private fun isTextEntry(entry: JsonElement): Boolean {
-    val fields = entry as? JsonObject ?: return false
-    return fields["locale"] is JsonPrimitive && fields["text"] is JsonPrimitive
 }
 
 private fun unbindable(element: TrackedDeclaration, member: String, complaint: String) = Finding(

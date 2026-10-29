@@ -99,7 +99,7 @@ private fun TrackedFactBase.declaredTexts(body: JsonObject): List<DeclaredText> 
 
 /** …and only for a locale the model DECLARES, which is the over-rejection this family must not make. */
 private fun TrackedFactBase.declaredLabels(entry: JsonObject): List<DeclaredText> =
-    (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+    localizedTextEntries(entry["label"])
         .filter { label -> label.string("locale")?.let { localeKeyOrNull(it) } in declaredLocales }
         .mapNotNull { label -> label.string("text") }
         .map { DeclaredText(TextCarrier.DISPLAY_VALUE, it) }

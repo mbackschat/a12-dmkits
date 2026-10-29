@@ -30,11 +30,36 @@ import kotlinx.serialization.json.JsonPrimitive
  * **An absent `format` is the declared DEFAULT rather than nothing**, measured on both gates: the builder
  * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are ADMITTED — which is why
  * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
+ *
+ * The format itself is gated first, and only over the derived Refused table ([refusedFormatFinding]).
  */
 internal fun TrackedFactBase.temporalConfigFindings(field: TrackedDeclaration): List<Finding> {
     if (field.declaredKind != DeclaredKind.FIELD || field.body.deletesAtDefaultVariant()) {
         return emptyList()
     }
+    return listOfNotNull(refusedFormatFinding(field)) + configFindings(field)
+}
+
+/**
+ * A format A12 refuses with its codeless "The date format is invalid." ([KERNEL-FINDINGS KF648]).
+ *
+ * Read through the field's resolved type, because A12 judges a type definition's format on the field that uses it
+ * and never on the definition alone. The set is the probed universe's Refused table, generated from the kernel
+ * into [REFUSED_TEMPORAL_FORMATS], so a format outside it stays silent ([KERNEL-FINDINGS KF313]).
+ */
+private fun TrackedFactBase.refusedFormatFinding(field: TrackedDeclaration): Finding? {
+    val format = temporalFormatOf(field)?.takeIf { it in REFUSED_TEMPORAL_FORMATS } ?: return null
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        RK_DATE_FORMAT_INVALID,
+        "the format `$format` is one A12 refuses on every date, time, datetime and fragment field, in a sentence " +
+            "with no class — declare one of the formats it admits, listed in TEMPORAL-FORMAT-VOCABULARY",
+        field.path,
+    )
+}
+
+private fun configFindings(field: TrackedDeclaration): List<Finding> {
     val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
     val type = declared.namedFieldType() ?: return emptyList()
     val body = type.bodyIn(declared) ?: return emptyList()
@@ -129,6 +154,8 @@ private val YEAR_FREE_FORMATS = setOf("HH:mm:ss", "MM", "MM-dd", "MMdd", "ddMM",
 // VOCABULARY-GRID-END
 
 internal val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
+
+internal const val RK_DATE_FORMAT_INVALID = "RK_DATE_FORMAT_INVALID"
 
 /**
  * The formats a PARTIAL precision admits — a strict subset of the year-bearing set, and not "carries all

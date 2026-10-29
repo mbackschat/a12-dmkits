@@ -195,7 +195,7 @@ internal fun TrackedFactBase.bearsDisplayValues(field: TrackedDeclaration): Bool
     val values = enumerationBodyOf(field)?.get("values") as? JsonArray ?: return false
     return values.filterIsInstance<JsonObject>().any { entry ->
         val token = (entry["value"] as? JsonPrimitive)?.contentOrNull
-        (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+        localizedTextEntries(entry["label"])
             .any { label -> (label["text"] as? JsonPrimitive)?.contentOrNull.let { it != null && it != token } }
     }
 }

@@ -50,7 +50,7 @@ internal fun codelessClass(message: String): String = when {
     REPEATED_ENUM_VALUE.containsMatchIn(message) -> "RK_ENUM_VALUE_DUPLICATE"
     REPEATED_ENUM_CATEGORY.containsMatchIn(message) -> "RK_ENUM_CATEGORY_DUPLICATE"
     else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
-        DATE_RANGE_SENTENCES + BASIC_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+        TEMPORAL_FORMAT_SENTENCES + BASIC_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -106,8 +106,9 @@ private val BASIC_SENTENCES = mapOf(
 private val REPEATED_ENUM_VALUE = Regex("""The enumeration contains the value '[^']*' multiple times\.$""")
 private val REPEATED_ENUM_CATEGORY = Regex("""The enumeration contains the category '[^']*' multiple times\.$""")
 
-private val DATE_RANGE_SENTENCES = mapOf(
+private val TEMPORAL_FORMAT_SENTENCES = mapOf(
     "The date range format is invalid." to "RK_DATE_RANGE_FORMAT_INVALID",
+    "The date format is invalid." to "RK_DATE_FORMAT_INVALID",
     "Only minus (-) or slash (/) may be used for date range types." to "RK_DATE_RANGE_SEPARATOR_INVALID",
 )
 

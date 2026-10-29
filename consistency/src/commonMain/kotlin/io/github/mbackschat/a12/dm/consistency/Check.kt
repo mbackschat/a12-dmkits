@@ -1183,9 +1183,9 @@ private val UNREAD_MEMBERS = listOf(
         reason = "a field type's body is judged on the member A12 constructs from and on the two CONTENT " +
             "laws measured beyond it — a `DateRangeType`'s (format, separator) pair, and an " +
             "`EnumerationType`'s values against its categories. What a member otherwise holds is left to " +
-            "A12: a declared `format` outside the admitted vocabulary is refused there and cannot be " +
-            "reported here, since the admitted set is explicitly not closed and the refused one is a " +
-            "probe's universe rather than a law; a `CustomFieldType`'s `name` is judged on presence alone, " +
+            "A12: a declared `format` is reported refused only when the probed universe holds it, so one " +
+            "outside that universe, which A12 refuses too, is left to it, since the admitted set is " +
+            "explicitly not closed; a `CustomFieldType`'s `name` is judged on presence alone, " +
             "and A12 refuses a no-break-space name in prose with no class this checker could cite",
     ),
     CoverageGap(

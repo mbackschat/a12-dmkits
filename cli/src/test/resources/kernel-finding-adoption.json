@@ -17174,6 +17174,229 @@
           "evidence": {}
         }
       }
+    },
+    "kf646": {
+      "sha256": "df026b424e7cf6f706b649f1fa1d04d751f649fe38d5193e4a4beebdebc7752a",
+      "task": "DG158",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "every localized-text member's shape, kept and filtered"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel on the 456 shape rows"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the localized-text member shapes A12's reader binds and refuses"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A reader-tier admission fact does not change the kits' authoring surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Each member bound through A12's text-map reader is read as a list's elements or an object's values; a malformed entry or a null member is refused as a source A12 does not load, through any variant filter.",
+          "evidence": {
+            "every localized-text member's shape, kept and filtered": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocalizedTextShapeAgreementTest.kt#aLocalizedTextShapeTheReaderRefusesLeavesNoModel",
+              "witness": "Nineteen shapes on twelve carriers, kept and filtered, the checker's verdict equal to A12's on each."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's verdicts are read from BoundModel, with an escape read as the unbuilt model.",
+          "evidence": {
+            "BoundModel on the 456 shape rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerLocalizedTextShapeAgreementTest.kt#aLocalizedTextShapeTheReaderRefusesLeavesNoModel",
+              "witness": "The set of refused shapes is pinned and A12's column is asserted, not copied."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf647": {
+      "sha256": "475302f21cc99cb9d608a8a997621868022934b0fe97194d78b801ec8e45a56e",
+      "task": "DG160",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "basic sentence order and a repeated type-definition id"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "BoundModel's notification order"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": [
+          "the order of A12's basic sentences and the repeated type-definition id"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A sentence-order fact does not change the kits' authoring surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Type definitions' sentences come first in id order, repeated values in Java HashMap order, and a repeated type-definition id is reported as a model A12 does not build.",
+          "evidence": {
+            "basic sentence order and a repeated type-definition id": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceOrderAgreementTest.kt#typeDefinitionSentencesComeFirstOnePerDefect",
+              "witness": "Both columns compared as ordered lists, beside the repeated-value and repeated-id rows of the same class."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's sentences are read in the order ModelConsistencyException carries them.",
+          "evidence": {
+            "BoundModel's notification order": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerBasicSentenceOrderAgreementTest.kt#repeatedValuesComeInTheOrderA12sMapIterates",
+              "witness": "A12's ordered column is asserted against a value order that separates map, declaration and second-occurrence order."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No diagnostic code was added; the CLI reports the checker's existing codes.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf648": {
+      "sha256": "96cfa2647bb9e120cc407a4293aad5d3421c57fd74819815d9ae76622e35a2e3",
+      "task": "DG159",
+      "scope": {
+        "dmkits": [],
+        "checker": [
+          "a refused temporal format on a surviving field"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [
+          "the codeless sentence's class"
+        ],
+        "interpreter": [],
+        "dmtool-cli": [
+          "the diagnostics catalog"
+        ],
+        "a12-kernel-lean": [
+          "the class and variant scope of a refused temporal format"
+        ]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A verdict class on a refused format does not change the kits' authoring surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "A format in the generated Refused table draws RK_DATE_FORMAT_INVALID on a surviving date, time, datetime or fragment field, through its type definition too; a format outside the probed universe draws nothing.",
+          "evidence": {
+            "a refused temporal format on a surviving field": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTemporalFormatAgreementTest.kt#aRefusedFormatDrawsTheSentenceOnEveryCarrierAndAnAdmittedOneNothing",
+              "witness": "Four carriers, eleven refused, thirteen admitted and one unprobed format, kept and filtered, compared with A12."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema import.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A model-admission fact does not change JSON Schema export.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "codelessClass maps \"The date format is invalid.\" to RK_DATE_FORMAT_INVALID.",
+          "evidence": {
+            "the codeless sentence's class": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerTemporalFormatAgreementTest.kt#aTypeDefinitionCarriesItsFormatToTheFieldThatUsesIt",
+              "witness": "A12's column is read from BoundModel through that mapping."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "RK_DATE_FORMAT_INVALID is registered in RkCode, so `dmtool diagnostics` serves it.",
+          "evidence": {
+            "the diagnostics catalog": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/CliTourFreshnessTest.java#cliTourDiagnosticsCountMatchesTheLiveRegistry",
+              "witness": "The CI-verified tour counts the live diagnostics registry."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

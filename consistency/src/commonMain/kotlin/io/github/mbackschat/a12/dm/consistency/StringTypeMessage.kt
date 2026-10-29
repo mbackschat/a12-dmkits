@@ -22,7 +22,8 @@ package io.github.mbackschat.a12.dm.consistency
  * half-translated message and no pattern draws both codes at once. A consumer keying on the pattern codes
  * alone would read a bilingual gap as clean.
  *
- * Only the ENTRIES have a shape A12's reader refuses; a scalar at the member binds and collects nothing.
+ * Only the ENTRIES, and a `null` member, have a shape A12's reader refuses; a scalar at the member binds and
+ * collects nothing.
  * That boundary is [authoredMessages]' and is measured on this carrier too, which is what lets one reader
  * serve both.
  */

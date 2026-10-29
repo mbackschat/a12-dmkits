@@ -15640,3 +15640,65 @@ Repeatable `Lines`, indexed by `Code`, and four rules at `/Order` reading `Lines
 The empty cell also draws the generated `mandatoryField`. All three engines agree on every row. The second row is the discriminator: a compromised column that silenced the whole rule would leave it silent, and it fires, so the unknown read stays inside its branch and a true branch beside it decides the `Or`.
 
 *Locked by:* `adapter.laws.CompromisedColumnNoMatchBranchDiffTest`.
+
+## §13 supplement — a localized-text member binds a scalar, an empty list or an object of entries, and refuses `null` and every malformed entry, alike on all twelve carriers and before any variant filter (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf646"></a>
+
+> Fold: pending — the reader tier beside [KF643](#kf643)'s refusals and [KF644](#kf644)'s name shapes.
+
+Nineteen shapes of one member's value, each placed on twelve carriers: a field's `label` and `helperText`, a group's `label`, an element's `externalDescription` and `internalDescription`, every Enumeration value's `label`, an Enumeration's `errorMessage`, a type definition's description, a rule's `errorMessage` and `variantErrorMessages` value, a String type's `errorMessage`, and a requiredness configuration's `errorMessage`.
+
+| the member's value | A12 |
+|---|---|
+| a list of `{locale, text}` entries, a text empty or not | built |
+| an empty list, a text, a number | built, no text |
+| an object whose values are entries | built, each value an entry |
+| `null` | unbuilt |
+| an entry whose `text` is `null`, a number, a boolean, an array or absent | unbuilt |
+| an entry whose `locale` is `null`, a number, absent or a spelling A12's parser refuses | unbuilt |
+| an entry that is a text or `null` | unbuilt |
+| an object holding an entry with a `null` text | unbuilt |
+
+The twelve carriers agree on every row, although the descriptions bind through `ElementDeserializer` and the rest through Jackson's property binding; both reach `LocalizedTextMapDeserializer`, which iterates the member's node, so a list yields its elements, an object its values, and a scalar nothing (source-read; the rows are the evidence). An `ONLY` filter does not lift a refusal, because the reader runs before any filter. A `variantErrorMessages` value is one such member per variant, so a single entry written as an object, whose values are strings, is refused there.
+
+The checker reported nothing on these refusals except the `errorMessage` shapes it already read. It now refuses each as a source A12's reader does not load, on every carrier and through any filter. The same reading corrected three siblings: a `null` `errorMessage` on a rule or a String type, which it had admitted; an object of entries under `variantErrorMessages`, which it had refused; and an object-form label, which five label families had skipped, so two values labelled alike in that form now draw `MVK_DISPLAY_VALUES_DUPLICATE` as A12 does.
+
+*Locked by:* `adapter.laws.CheckerLocalizedTextShapeAgreementTest`, 456 rows (each shape on each carrier, kept and with every element under an `ONLY` filter), the refused shapes pinned and A12's column asserted against `BoundModel`.
+
+## §13 supplement — A12 states the type definitions' basic sentences first, sorted by id, and an Enumeration's repeated values in `HashMap` order; a repeated type-definition id leaves no model (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf647"></a>
+
+> Fold: pending — the order and multiplicity of [KF626](#kf626)'s sentences.
+
+| input | A12's sentences, in order |
+|---|---|
+| type definitions declared `Beta`/name `""`, `""`/`Alpha`, `Gamma`/`""`, and a filtered field with an empty name | id empty, name empty, name empty, name empty |
+| an Enumeration declaring `OPEN`, `CLOSED`, `PENDING` and then the three again in reverse | `CLOSED`, `PENDING`, `OPEN` repeated |
+| two type definitions sharing the id `""` or `Beta` | no model: `IllegalArgumentException` "The type definition id '…' already exists." |
+
+- **Definitions come before elements, one sentence per defect, in id order.** Declaration order would put a name sentence first, and `HashMap` order would state `Gamma` before `Beta`; only id order gives the first row. The expansion rewrites the definitions sorted by id (`TypeDefCache.getOrderedTypeDefs`, source-read) before `BasicConsistencyCheck` walks them.
+- **Repeated values follow the map.** `Java8Utils.findDuplicates` collects them into a `HashMap` (source-read). First-occurrence order would give `OPEN, CLOSED, PENDING`, and second-occurrence order `PENDING, CLOSED, OPEN`; the row gives neither.
+- **A repeated id never reaches the check.** The expansion throws before the model exists, the empty id included, so one empty-id sentence per definition is all A12 can state.
+
+The checker stated the definitions' sentences in declaration order, after the elements', and the repeated values in declaration order, and read a repeated id as a model. It now orders both as A12 does, emulating `java.util.HashMap`'s iteration with Java's `String.hashCode` (checked against the real map over random key sets of up to 120 keys and a colliding set that forces the pre-tree resize), and reports a repeated id as `CK_MODEL_NOT_BUILDABLE`.
+
+*Locked by:* `adapter.laws.CheckerBasicSentenceOrderAgreementTest`, both columns compared as ordered lists; `consistency.JavaHashOrderJvmTest` for the map order.
+
+## §10 supplement — a refused temporal format draws "The date format is invalid." on a surviving date, time, datetime or fragment field, through the type definition it uses, and an `ONLY` filter lifts it (BoundModel, kernel 30.8.1, 2026-10-29) <a id="kf648"></a>
+
+> Fold: pending — the verdict class of [TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)'s Refused table, beside [KF206](#kf206) and [KF313](#kf313).
+
+Eleven members of the Refused table, the thirteen admitted formats and `QQQ`, which the probed universe does not contain, on four carriers: the `format` of a `DateType`, `TimeType` and `DateTimeType` field and the `formatOfFragment` of a `DateFragmentType` field.
+
+| row | A12 |
+|---|---|
+| a refused format, or `QQQ`, on a kept field of any of the four | "The date format is invalid.", with no class |
+| the same under an `ONLY` filter the default variant does not pass | admitted |
+| an admitted format, kept or filtered | admitted |
+| a type definition declaring `HH:mm`, unused | admitted |
+| …used by a kept field | the sentence |
+| …used by a filtered field | admitted |
+
+So the sentence is a consistency verdict on the surviving field rather than a reader refusal, and a type definition is judged only through a field that keeps it. The fragment's member answers as the other three do.
+
+The checker reported nothing. It now publishes the sentence as `RK_DATE_FORMAT_INVALID` for a format in the Refused table, which `:dumpTemporalVocabulary` generates into `:consistency` as the formats refused on all three kinds and as a fragment format. `QQQ` stays silent there: A12 refuses it, but a format outside the probed universe is undiscovered rather than refused to the checker ([KF313](#kf313)).
+
+*Locked by:* `adapter.laws.CheckerTemporalFormatAgreementTest` (`BoundModel` against the checker); `rulekit.validate.laws.TemporalFormatVocabularyGuardTest` re-derives the generated set from the kernel.

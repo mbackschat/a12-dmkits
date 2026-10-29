@@ -578,6 +578,7 @@ private fun readClosure(
     val ids = mutableSetOf<String>()
     val bodies = mutableMapOf<String, JsonObject>()
     val ambiguous = mutableSetOf<String>()
+    val entryIds = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
     val reachedRefusals = mutableListOf<String>()
     val entryDeclared = ((entry.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales()
@@ -622,7 +623,17 @@ private fun readClosure(
                 reachedRefusals += "The `content.typeDefinitions` entry ${definition["id"]} holds `$name` as its `name`, " +
                     "which A12's reader refuses, so the model never loads"
             }
+            if (source === entry) {
+                reachedRefusals += definition.typeDefinitionTextRefusals().map {
+                    "In the `content.typeDefinitions` entry ${definition["id"]}, $it, so A12's reader refuses the source and the model never loads"
+                }
+            }
             val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
+            // A12's expansion refuses a repeated id, the empty one included, and builds no model (KF647).
+            if (source === entry && id in entryIds) {
+                reachedRefusals += "The `content.typeDefinitions` id `$id` is declared twice, which A12's expansion refuses, so the model never loads"
+            }
+            if (source === entry) entryIds += id
             ids += id
             if (id in ambiguous) continue
             if (id in bodies) {
@@ -789,6 +800,9 @@ private class Collector(
         val unreadableEnvelope = envelope != null && envelope !is JsonObject
         if (unreadableEnvelope) {
             malformed(path, "`$kind` must be a JSON object", scope)
+        }
+        if (scope.isEntry) {
+            readerRefusals += element.declarationTextRefusals(kind).map { "In `$path`, $it, so A12's reader refuses the source and the model never loads" }
         }
         if (excluded) {
             return

@@ -70,6 +70,8 @@ class CorrectiveTest {
               "DateRangeType":{"format":"dd.MM","rangeSeparator":"-"}}}},
             {"type":"Field","id":"f23","name":"Rolling","Field":{"fieldType":{"type":"DateRangeType",
               "DateRangeType":{"format":"dd.MM","rangeSeparator":"-","interpretationOfYear":"FROM"}}}},
+            {"type":"Field","id":"f24","name":"DispatchClock","Field":{"fieldType":{"type":"TimeType",
+              "TimeType":{"format":"HH:mm"}}}},
             {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}},

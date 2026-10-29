@@ -1103,7 +1103,8 @@ tasks.register('vocabularyGuardTest', Test) {
                     'cli/src/main/resources/schema/field-add.schema.json',
                     'cli/src/main/resources/schema/field-modify.schema.json',
                     'cli/src/main/resources/schema/typedef-add.schema.json',
-                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java'),
+                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java',
+                    'consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/RefusedTemporalFormats.kt'),
     ])
 }
 
@@ -1152,11 +1153,11 @@ tasks.register('dumpCheckerCorrectives', Test) {
 }
 
 // The temporal format vocabulary is DERIVED from the kernel, never authored: `dumpTemporalVocabulary` runs the
-// guard with `temporalVocabulary.fix=true` so it writes docs/TEMPORAL-FORMAT-VOCABULARY.md instead of asserting
-// against it — the same fixer shape as `dumpKitApi` and `:cli:dumpOperatorIndex`. It owns no class of its own.
+// guard with `temporalVocabulary.fix=true` so it writes docs/TEMPORAL-FORMAT-VOCABULARY.md and the portable checker's
+// refused set (`consistency/…/RefusedTemporalFormats.kt`) instead of asserting against them — the same fixer shape as `dumpKitApi` and `:cli:dumpOperatorIndex`. It owns no class of its own.
 tasks.register('dumpTemporalVocabulary', Test) {
     group = 'documentation'
-    description = 'Regenerate docs/TEMPORAL-FORMAT-VOCABULARY.md by probing the kernel over the candidate universe.'
+    description = 'Regenerate docs/TEMPORAL-FORMAT-VOCABULARY.md and the checker\'s refused set by probing the kernel over the candidate universe.'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath

@@ -125,6 +125,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "name the field the computation writes.",
         meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
+    "RK_DATE_FORMAT_INVALID" to Corrective(
+        fix = "declare a format A12 admits, for example `yyyy-MM-dd` for a date or `HH:mm:ss` for a time; TEMPORAL-FORMAT-VOCABULARY lists them.",
+        meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field the default variant keeps or through the type definition it uses (KERNEL-FINDINGS KF648). The checker names only the formats measured refused in TEMPORAL-FORMAT-VOCABULARY, where the portable checker names the sentence by this code.",
+    ),
     "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
         fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
         meaning = "A12's sentence \"The date range format is invalid.\": a DateRange type composes `format + rangeSeparator + format`, and A12 allowlists that PAIR rather than either half, so a valid format and a valid separator can still be refused together (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",

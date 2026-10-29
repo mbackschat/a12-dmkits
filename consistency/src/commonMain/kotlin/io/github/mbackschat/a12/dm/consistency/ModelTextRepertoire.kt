@@ -95,7 +95,7 @@ private fun TrackedDeclaration.annotationTexts(): List<CarriedText> =
 private fun JsonObject.enumTexts(declaredLocales: List<String>): List<CarriedText> =
     (this["values"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { entry ->
         listOfNotNull(entry.string("value")?.let { CarriedText("the enum value `$it`", it) }) +
-            (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+            localizedTextEntries(entry["label"])
                 .filter { label -> label.string("locale")?.let { localeKeyOrNull(it) } in declaredLocales }
                 .mapNotNull { label -> label.string("text")?.let { CarriedText("an enum label", it) } }
     } + (this["categories"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { category ->

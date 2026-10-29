@@ -23,7 +23,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * `sortFields[].name` leaves the model unbuilt first, and a localized text of `null` is refused by the reader.
  */
 internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
-    declarations().flatMap { element ->
+    // A12's walker visits the type definitions before the elements (KERNEL-FINDINGS KF647).
+    typeDefinitionSentences() + declarations().flatMap { element ->
         val body = element.body
         val shared = listOfNotNull(
             element.id?.takeIf { it.isEmpty() }?.let { sentence(element, RK_ID_EMPTY, "this declaration's `id` is empty") },
@@ -35,7 +36,7 @@ internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
             DeclaredKind.COMPUTATION -> computationSentences(element, body)
             else -> emptyList()
         }
-    } + typeDefinitionSentences()
+    }
 
 /** The codes [basicSentenceFindings] publishes, each A12's sentence for one member ([VARIANT_BLIND_CODES]). */
 internal val BASIC_SENTENCE_CODES = setOf(
@@ -44,7 +45,11 @@ internal val BASIC_SENTENCE_CODES = setOf(
     RK_TYPE_REFERENCE_EMPTY,
 )
 
-/** An Enumeration's repeated values and category names, one sentence for each, and an absent or empty type reference. */
+/**
+ * An Enumeration's repeated values and category names, one sentence for each, and an absent or empty type reference.
+ * A12 collects the repeats into a `HashMap` and states them as it iterates (KERNEL-FINDINGS KF647), so they come in
+ * [javaHashMapOrder].
+ */
 private fun fieldSentences(field: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val declared = body?.get("fieldType") as? JsonObject ?: return emptyList()
     val type = declared.namedFieldType() ?: return emptyList()
@@ -101,19 +106,19 @@ private fun computationSentences(computation: TrackedDeclaration, body: JsonObje
 )
 
 /**
- * A type definition's empty id and empty name, which carry no element path. Two definitions with an empty id
- * draw the sentence once here where A12 states it twice; the verdict is the same.
+ * Each type definition's empty id and empty name, one sentence per defect, ordered by id as A12 states them: its
+ * expansion rewrites the definitions sorted by id before this check walks them (`TypeDefCache.getOrderedTypeDefs`,
+ * KERNEL-FINDINGS KF647). They carry no element path. Two definitions sharing an id, the empty one included, leave
+ * no model before this check runs, so one sentence per id is A12's count.
  */
-private fun TrackedFactBase.typeDefinitionSentences(): List<Finding> {
-    val ids = declaredTypeDefinitionIds
-    val emptyId = if ("" in ids) listOf(sentence(null, RK_ID_EMPTY, "a `content.typeDefinitions` entry has an empty `id`")) else emptyList()
-    // An absent name reads as empty too (KF644); `null`, an object or an array is the reader's refusal instead.
-    val emptyName = ids.firstOrNull { id ->
-        typeDefinitionBody(id)?.let { "name" !in it || it.emptyMember("name") != null } == true
-    }?.let {
-        sentence(null, RK_NAME_EMPTY, "the `content.typeDefinitions` entry `$it` has an absent or empty `name`")
-    }
-    return emptyId + listOfNotNull(emptyName)
+private fun TrackedFactBase.typeDefinitionSentences(): List<Finding> = declaredTypeDefinitionIds.sorted().flatMap { id ->
+    listOfNotNull(
+        sentence(null, RK_ID_EMPTY, "a `content.typeDefinitions` entry has an empty `id`").takeIf { id.isEmpty() },
+        // An absent name reads as empty too (KF644); `null`, an object or an array is the reader's refusal instead.
+        typeDefinitionBody(id)?.takeIf { "name" !in it || it.emptyMember("name") != null }?.let {
+            sentence(null, RK_NAME_EMPTY, "the `content.typeDefinitions` entry `$id` has an absent or empty `name`")
+        },
+    )
 }
 
 /** Whether this member is absent, `null` or the empty string — what `StringUtils.isEmpty` reads after the reader. */
@@ -124,11 +129,15 @@ private fun JsonObject.isEmptyOrMissing(member: String): Boolean =
 private fun JsonObject.emptyMember(member: String): String? =
     (this[member] as? JsonPrimitive)?.takeIf { it.isString && it.content.isEmpty() }?.content
 
-/** The values of [key] that two or more entries of the [list] share, each once. */
-private fun JsonObject.repeated(list: String, key: String): List<String> =
-    (this[list] as? JsonArray).orEmpty()
+/** The values of [key] that two or more entries of the [list] share, each once, in the order A12 states them. */
+private fun JsonObject.repeated(list: String, key: String): List<String> {
+    val seen = mutableSetOf<String>()
+    // A12's map receives a repeated value at its second occurrence, when the repeat is first detected.
+    val repeats = (this[list] as? JsonArray).orEmpty()
         .mapNotNull { ((it as? JsonObject)?.get(key) as? JsonPrimitive)?.takeIf { value -> value.isString }?.content }
-        .groupingBy { it }.eachCount().filterValues { it > 1 }.keys.toList()
+        .filterNot { seen.add(it) }
+    return javaHashMapOrder(repeats)
+}
 
 private fun sentence(element: TrackedDeclaration?, code: String, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code,

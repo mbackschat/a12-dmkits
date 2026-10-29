@@ -12,9 +12,10 @@ import kotlin.test.assertEquals
  * which sweep both gates across the whole admitted format vocabulary).
  *
  * **The silent rows are the ones that could do damage**, because this family reports A12's own consistency
- * codes on models A12 reads and builds. A format outside the admitted vocabulary, a `false` check, a `FULL`
- * precision, and the range carrier are each a shape A12 ACCEPTS — reporting one would refuse a model the
- * kernel takes, and nothing downstream could catch it.
+ * codes on models A12 reads and builds. A `false` check, a `FULL` precision and the range carrier are each a
+ * shape A12 ACCEPTS — reporting one would refuse a model the kernel takes, and nothing downstream could catch
+ * it. A format outside the admitted vocabulary draws neither config code: A12 refuses it with its own sentence
+ * instead, which the checker names only over the probed Refused table (KERNEL-FINDINGS KF648).
  */
 class TemporalConfigTest {
 
@@ -36,6 +37,7 @@ class TemporalConfigTest {
 
     private val pre1900 = listOf("MVK_ADDITIONAL_CHECK_INVALID")
     private val partial = listOf("MVK_OPTIONAL_DATE_TYPE_INVALID")
+    private val refused = listOf(RK_DATE_FORMAT_INVALID)
 
     @Test
     fun thePre1900CheckIsReportedOnAYearFreeFormatAndNowhereElse() {
@@ -46,8 +48,10 @@ class TemporalConfigTest {
             date("""{"format":"yyyy-MM","youngerThan1900Check":true}""")
         actual["the check written FALSE"] = date("""{"format":"MM","youngerThan1900Check":false}""")
         actual["the check with no format, so the default applies"] = date("""{"youngerThan1900Check":true}""")
-        actual["the check on a format A12 does not admit"] =
+        actual["the check on a format A12 refuses"] =
             date("""{"format":"MM.yyyy","youngerThan1900Check":true}""")
+        actual["the check on a format outside the probed universe"] =
+            date("""{"format":"QQQ","youngerThan1900Check":true}""")
         // The trailing-separator format, admitted and year-free — the thirteenth member, which a checker
         // keyed on a twelve-format list would have left silent (KERNEL-FINDINGS KF313).
         actual["the check on the trailing-dot format"] =
@@ -63,9 +67,11 @@ class TemporalConfigTest {
         // admits a body with no format on BOTH gates — the two rows lock that A12 answer, not the branch the
         // checker takes to reach it (reading the default and reading nothing are verdict-equivalent here).
         expected["the check with no format, so the default applies"] = emptyList()
+        // A refused format draws its own sentence and no config gate (KERNEL-FINDINGS KF648).
+        expected["the check on a format A12 refuses"] = refused
         // Silent by design: the admitted set is a probe's result rather than a closed one, so a format
         // outside it is undiscovered and refusing it would rest on the limit of that probe.
-        expected["the check on a format A12 does not admit"] = emptyList()
+        expected["the check on a format outside the probed universe"] = emptyList()
         expected["the check on the trailing-dot format"] = pre1900
         assertEquals(expected, actual, "where the checker reports the pre-1900 gate")
     }
@@ -88,8 +94,10 @@ class TemporalConfigTest {
         // The row the vocabulary restriction exists for, and the only gate it is load-bearing on: this one
         // reports every format that is not a complete pure date, so without the restriction an unrecognised
         // format would draw a finding on the strength of a probe's limit. Measured as a surviving mutant.
-        actual["a precision on a format A12 does not admit"] =
+        actual["a precision on a format A12 refuses"] =
             date("""{"format":"MM.yyyy","datePrecision":"DAY_OPTIONAL"}""")
+        actual["a precision on a format outside the probed universe"] =
+            date("""{"format":"QQQ","datePrecision":"DAY_OPTIONAL"}""")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["DAY_OPTIONAL on a complete date — the control"] = emptyList()
@@ -99,7 +107,8 @@ class TemporalConfigTest {
         expected["DAY_OPTIONAL on the instant format"] = partial
         expected["the FULL default written out"] = emptyList()
         expected["a precision with no format, so the default applies"] = emptyList()
-        expected["a precision on a format A12 does not admit"] = emptyList()
+        expected["a precision on a format A12 refuses"] = refused
+        expected["a precision on a format outside the probed universe"] = emptyList()
         assertEquals(expected, actual, "where the checker reports the precision gate")
     }
 
