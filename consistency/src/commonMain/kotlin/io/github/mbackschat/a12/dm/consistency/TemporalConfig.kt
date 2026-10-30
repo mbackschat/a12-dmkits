@@ -64,10 +64,9 @@ private fun configFindings(field: TrackedDeclaration): List<Finding> {
     val type = declared.namedFieldType() ?: return emptyList()
     val body = type.bodyIn(declared) ?: return emptyList()
     return when (type) {
-        FieldType.DATE -> listOfNotNull(
-            pre1900Finding(field, body, body.declaredFormat("format")),
-            partialPrecisionFinding(field, body, body.declaredFormat("format")),
-        )
+        FieldType.DATE -> body.declaredFormat("format").let { format ->
+            listOfNotNull(pre1900Finding(field, body, format), partialPrecisionFinding(field, body, format))
+        }
         // The fragment carrier spells its format under its own member and takes only the first gate,
         // having no precision of its own.
         FieldType.DATE_FRAGMENT -> listOfNotNull(

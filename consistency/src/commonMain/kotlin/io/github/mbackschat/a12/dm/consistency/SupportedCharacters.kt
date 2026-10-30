@@ -40,7 +40,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * halves otherwise: an entry holding a surrogate unit leaves A12 unable to build the model.
  *
  * **That entry, and one A12's charset reader refuses, stop A12's whole check**, so this family never sees them: the
- * preparation refuses the model ([unbuildableCharacterRefusals]).
+ * preparation refuses the model ([unbuildableCharacterRefusal]).
  *
  * **What it leaves alone**, all of it under-reporting: a restriction carrying an entry this checker cannot
  * read as a singleton or an inclusive `x-y` range — a COMBINED grapheme (more than one code point) is a
@@ -124,19 +124,17 @@ private fun admittedRanges(declared: List<String?>): List<CharRange>? {
  * nothing beside it is reported, measured beside a time zone and a version A12 refuses
  * (`adapter.laws.CheckerFrameValueAgreementTest`).
  */
-internal fun List<String?>.unbuildableCharacterRefusals(): List<String> = listOfNotNull(
-    when {
-        any { entry -> entry.orEmpty().any(Char::isSurrogate) } ->
-            "In the entry model, `content.modelConfig.supportedCharacters` holds an entry with a surrogate unit, " +
-                "and A12 cannot build a model from that, so no consistency verdict about it exists; a " +
-                "supplementary-plane character cannot be admitted by any entry"
-        else -> refusedEntry(this)?.let { entry ->
-            "In the entry model, `content.modelConfig.supportedCharacters` holds `$entry`, which is neither one " +
-                "character, a range `x-y` that runs upwards, nor one combined grapheme of at most three units, and " +
-                "A12 cannot build a model from that, so no consistency verdict about it exists"
-        }
-    },
-)
+internal fun List<String?>.unbuildableCharacterRefusal(): String? = when {
+    any { entry -> entry.orEmpty().any(Char::isSurrogate) } ->
+        "In the entry model, `content.modelConfig.supportedCharacters` holds an entry with a surrogate unit, " +
+            "and A12 cannot build a model from that, so no consistency verdict about it exists; a " +
+            "supplementary-plane character cannot be admitted by any entry"
+    else -> refusedEntry(this)?.let { entry ->
+        "In the entry model, `content.modelConfig.supportedCharacters` holds `$entry`, which is neither one " +
+            "character, a range `x-y` that runs upwards, nor one combined grapheme of at most three units, and " +
+            "A12 cannot build a model from that, so no consistency verdict about it exists"
+    }
+}
 
 /**
  * The first entry A12's charset reader refuses, or null when this checker can name none.

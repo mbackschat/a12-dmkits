@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A12's basic sentences: the codeless notifications of `BasicConsistencyCheck`, each published under a code of
@@ -79,19 +78,12 @@ private fun fieldSentences(field: TrackedDeclaration, body: JsonObject?): List<F
 private fun ruleSentences(rule: TrackedDeclaration, body: JsonObject?): List<Finding> {
     // No body is an envelope A12's reader refuses, and that refusal is the declaration's one finding.
     body ?: return emptyList()
-    val code = body["errorCode"]
     return listOfNotNull(
-        if (body.isEmptyOrMissing("errorCondition")) {
-            sentence(rule, RK_ERROR_CONDITION_EMPTY, "this rule's `errorCondition` is absent or empty")
-        } else {
-            null
-        },
+        sentence(rule, RK_ERROR_CONDITION_EMPTY, "this rule's `errorCondition` is absent or empty")
+            .takeIf { body.isEmptyOrMissing("errorCondition") },
         body.emptyMember("errorEntityRelPath")?.let { sentence(rule, RK_ERROR_ENTITY_EMPTY, "this rule's `errorEntityRelPath` is empty") },
-        if (code == null || code is JsonPrimitive && code.isString && code.content.isEmpty()) {
-            sentence(rule, RK_ERROR_CODE_EMPTY, "this rule's `errorCode` is absent or empty")
-        } else {
-            null
-        },
+        sentence(rule, RK_ERROR_CODE_EMPTY, "this rule's `errorCode` is absent or empty")
+            .takeIf { body["errorCode"] == null || body.emptyMember("errorCode") != null },
     )
 }
 
@@ -126,15 +118,14 @@ private fun JsonObject.isEmptyOrMissing(member: String): Boolean =
     this[member].let { it == null || it is JsonNull } || emptyMember(member) != null
 
 /** This member when it is present as the empty string, which is exactly what `StringUtils.isEmpty` adds to absence. */
-private fun JsonObject.emptyMember(member: String): String? =
-    (this[member] as? JsonPrimitive)?.takeIf { it.isString && it.content.isEmpty() }?.content
+private fun JsonObject.emptyMember(member: String): String? = string(member)?.takeIf { it.isEmpty() }
 
 /** The values of [key] that two or more entries of the [list] share, each once, in the order A12 states them. */
 private fun JsonObject.repeated(list: String, key: String): List<String> {
     val seen = mutableSetOf<String>()
     // A12 calls `computeIfAbsent` at every occurrence after the first, so the third one can still resize its map.
     val repeats = (this[list] as? JsonArray).orEmpty()
-        .mapNotNull { ((it as? JsonObject)?.get(key) as? JsonPrimitive)?.takeIf { value -> value.isString }?.content }
+        .mapNotNull { (it as? JsonObject)?.string(key) }
         .filterNot { seen.add(it) }
     return computeIfAbsentOrder(repeats)
 }

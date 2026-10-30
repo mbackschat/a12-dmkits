@@ -66,7 +66,7 @@ internal fun TrackedFactBase.dateArgumentContributions(
 ): List<ConditionFinding> {
     if (execution == null) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it] }.toSet()
+    val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it.id.catalogId] }.toSet()
     val group = element.path.substringBeforeLast('/')
     return execution.recognition.sites.filterIsInstance<SyntaxSite.DateArgument>().mapNotNull { site ->
         val span = execution.carrier.semanticSpan(site.tokens.first().start, site.tokens.last().end)
@@ -79,10 +79,7 @@ internal fun TrackedFactBase.dateArgumentContributions(
 }
 
 /** The extractions that yield a NUMBER, so one standing in a date slot is the slot's own defect. */
-private val NUMERIC_EXTRACTIONS = listOf(
-    "YearFromDate", "MonthFromDate", "DayFromDate", "QuarterFromDate",
-    "HoursFromTime", "MinutesFromTime", "SecondsFromTime",
-)
+private val NUMERIC_EXTRACTIONS = Extractor.entries.filter { it.component != null }
 
 private class DateArgumentDefect(val code: String, val said: String)
 

@@ -917,9 +917,6 @@ internal fun TrackedFactBase.crossesARepetitionOutside(declaringGroup: String, p
             !(declaringGroup == candidate || declaringGroup.startsWith("$candidate/"))
     }
 
-internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
-    repeatableGroupPaths().count { it == path || path.startsWith("$it/") }
-
 /**
  * Whether [field] is a STRING that waives A12's per-cell value validation, a type definition read as the type
  * it defines.

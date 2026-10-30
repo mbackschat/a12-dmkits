@@ -195,7 +195,7 @@ internal class Collector(
         }
         val provider = providers[reference]
             ?: return unexpanded(path, alias, "no source with `header.id` `$reference` was supplied")
-        val providerHeader = (provider.parsed as? JsonObject)?.get("header") as? JsonObject
+        val providerHeader = provider.header
         // A12 refuses to expand a provider that does not declare every locale of the entry model — a
         // DocumentModelExpansionException raised before any declaration is read, so the whole model is
         // unusable rather than this one mount (measured 2026-09-12,
@@ -215,7 +215,7 @@ internal class Collector(
                 "${uncovered.joinToString(", ")}, so A12 refuses to expand this include at all and " +
                 "nothing here is a verdict about the model")
         }
-        val providerContent = (provider.parsed as? JsonObject)?.get("content") as? JsonObject
+        val providerContent = provider.content
         val declaredRoots = (providerContent?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray
         val roots = declaredRoots?.filterIsInstance<JsonObject>().orEmpty()
         // A non-object root element is a measured refusal of A12's own expansion (KF3), so it may not be
@@ -227,8 +227,11 @@ internal class Collector(
         }
         val target = MountTarget(
             reference = reference,
-            header = (provider.parsed as? JsonObject)?.get("header") as? JsonObject,
-            shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
+            header = providerHeader,
+            // A provider's flag is read without diagnosing it: an unreadable value is the provider's own refusal
+            // to report if it is ever checked itself, and the same reading matters because the flag decides
+            // whether the provider's bare names bind before integration.
+            shortNameFallbackAllowed = providerContent.fieldRefByShortNameAllowed(),
             diagnosticLabel = provider.source.diagnosticLabel,
             visiting = scope.visiting + reference,
             // This mount's own exclusions on top of whatever it was mounted under. The mount group's own
@@ -334,7 +337,6 @@ internal class Collector(
         }
     }
 
-
     private fun malformed(at: String?, explain: String, scope: PreparationScope) {
         // The identity is the SOURCE the declaration was written in, not the model being checked. A mounted
         // provider's broken element is the provider's, and attributing it to the entry model sends a reader
@@ -423,16 +425,6 @@ private enum class IncludeLevel {
 }
 
 /**
- * A PROVIDER's own `fieldRefByShortNameAllowed`, read without diagnosing: an unreadable value in a model that
- * is only being mounted is the entry model's problem to report if it is ever checked itself, and treating it
- * as off matches [Collector.flag]'s own fallback. The READING is the same one, which is the point — a
- * provider's flag decides whether its bare names are bound before integration, so a spelling read differently
- * here retargets references the entry model cannot see.
- */
-private fun JsonObject?.declaresShortNameFallback(): Boolean =
-    configFlag((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
-
-/**
  * What a header's `locales` declares: the locale [keys][headerLocaleKeyOrNull] it covers, and the codes it spells
  * in a way A12 cannot use.
  *
@@ -493,7 +485,7 @@ private const val TYPE_DEFINITIONS_PURPOSE = "typeDefinitions"
  * a malformed value must not suspend an include that A12 would expand in full. The quoted `"true"` is the one
  * that looks harmless and is not, which is why `isString` decides rather than the text.
  *
- * Deliberately NOT the coercion [Collector.flag] applies: `fieldRefByShortNameAllowed` DOES accept its quoted
+ * Deliberately NOT the coercion [flag] applies: `fieldRefByShortNameAllowed` DOES accept its quoted
  * spelling (measured separately). Two members, two Jackson bindings, and assuming one rule for both is how
  * this was wrong in the first place.
  */
@@ -510,8 +502,6 @@ private fun JsonObject.flagIsOn(key: String): Boolean =
  * member as missing is the conservative arm, since that is a finding rather than a silent substitution.
  */
 internal fun JsonObject.scalarText(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
-
-private operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)
 
 /**
  * The declared condition language code, or `null` when the model does not state one. A12 binds the member as a

@@ -4,7 +4,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * GENERATED from `rulekit/src/main/resources/catalog/operators.json` by `:consistency:generateConditionKeywords`.
  * Do not edit: `verifyConditionKeywords` regenerates and diffs, so a hand edit here or a catalog change there
  * fails the build. The catalog is the single owner because its examples are CI-executed against the Kernel;
- * the terminals it does not carry are declared in `consistency/build.gradle` with their reason, and
+ * the terminals it does not carry are declared in `consistency/gradle/condition-keywords.gradle` with their reason, and
  * `ConditionKeywordProjectionTest` measures the union against the Kernel's own terminal bundle.
  */
 

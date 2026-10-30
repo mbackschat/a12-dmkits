@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.DATE_EXTRACT_OPERATIONS
 import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_IDENTITIES
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
@@ -343,7 +344,7 @@ private class IterationGuard(
             in ENTITY_LIST_KINDS -> ENTITY_LIST_KINDS.getValue(id)
             in OPERATION_LISTS -> OperationKind.OPERATION_LIST
             in FIELD_OPERATIONS -> OperationKind.FIELD
-            in DATE_DIFFERENCES, in DATE_EXTRACTIONS -> OperationKind.DATE
+            in DATE_DIFFERENCES, in DATE_EXTRACT_OPERATIONS -> OperationKind.DATE
             else -> OperationKind.OTHER
         }
     }
@@ -518,8 +519,6 @@ private val FIELD_OPERATIONS = setOf(OperatorId.LENGTH, OperatorId.ROUND_ACCOUNT
     OperatorId.RANGE_AS_NUMBER, OperatorId.FIELD_VALUE_AS_NUMBER, OperatorId.RANGE_AS_STRING, OperatorId.FIELD_VALUE_AS_STRING, OperatorId.VALUE_AS_DATE)
 private val DATE_DIFFERENCES = setOf(OperatorId.DIFFERENCE_IN_SECONDS, OperatorId.DIFFERENCE_IN_MINUTES, OperatorId.DIFFERENCE_IN_HOURS, OperatorId.DIFFERENCE_IN_DAYS,
     OperatorId.DIFFERENCE_IN_MONTHS, OperatorId.DIFFERENCE_IN_YEARS)
-private val DATE_EXTRACTIONS = setOf(OperatorId.DAY_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.YEAR_FROM_DATE, OperatorId.QUARTER_FROM_DATE, OperatorId.HOURS_FROM_TIME,
-    OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME, OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME)
 /**
  * Every comparison operator, as read from the right-hand side. The tolerance comparisons take part in the arms
  * where `!=` does (`IterationNotValidVisitor.checkIfVergleichMitKleiner`, kernel 30.8.1); the pattern ones in none.

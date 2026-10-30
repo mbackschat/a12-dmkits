@@ -461,13 +461,13 @@ fun prepare(
     admitted: Admission.Admitted,
     providers: Map<String, Admission.Admitted> = emptyMap(),
 ): PreparedModel {
-    val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
+    val content = admitted.content
     // Any present code is parsed as a locale, an empty or blank one included, and one A12 does not support refuses
     // the model (`CheckerUnicodeBlankAgreementTest`): blank is no absence here.
     val declaredCode = content.conditionLanguageCode()
     val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
     val entry = PreparationScope(
-        header = (admitted.parsed as? JsonObject)?.get("header") as? JsonObject,
+        header = admitted.header,
         origin = DeclarationOrigin(admitted.modelId),
         visiting = setOf(admitted.modelId),
         diagnosticLabel = admitted.source.diagnosticLabel,
@@ -495,7 +495,7 @@ fun prepare(
         unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
         reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals + frame.refusals +
-            characters.unbuildableCharacterRefusals(),
+            listOfNotNull(characters.unbuildableCharacterRefusal()),
         frameValues = frame.values,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
@@ -537,6 +537,12 @@ private fun JsonObject?.unbindableModelMembers(): List<String> =
 /** The model's base year where it is present and A12's reader cannot bind it, for the entry and a reached model alike. */
 private fun JsonObject?.unbindableBaseYear(): JsonElement? = (this?.get("modelInfo") as? JsonObject)?.get("baseYear")
     ?.takeIf { it !is JsonPrimitive || it.bindJavaInt() == JavaIntBinding.Unbindable }
+
+/** An admitted source's `header`, or null where it holds no object there. */
+internal val Admission.Admitted.header: JsonObject? get() = (parsed as? JsonObject)?.get("header") as? JsonObject
+
+/** An admitted source's `content`, or null where it holds no object there. */
+internal val Admission.Admitted.content: JsonObject? get() = (parsed as? JsonObject)?.get("content") as? JsonObject
 
 /**
  * `fieldRefByShortNameAllowed`, read through A12's own POJO binding — never a raised conversion.
@@ -590,7 +596,7 @@ private fun readClosure(
     val entryIds = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
     val reachedRefusals = mutableListOf<String>()
-    val entryDeclared = ((entry.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales()
+    val entryDeclared = entry.header.declaredLocales()
     val entryLocales = entryDeclared.keys.toSet()
     // A12 gathers the entry's locales into one map for its check, so a repeat leaves no verdict to mirror.
     if (entryDeclared.repeated.isNotEmpty()) {
@@ -605,10 +611,10 @@ private fun readClosure(
     val pending = ArrayDeque(listOf(entry))
     while (pending.isNotEmpty()) {
         val source = pending.removeFirst()
-        val root = source.parsed as? JsonObject
-        val content = root?.get("content") as? JsonObject
+        val content = source.content
         val frame = source.parsed.frameDefects()
-        if (source === entry) {
+        val isEntry = source === entry
+        if (isEntry) {
             reachedRefusals += frame.map {
                 when (it.tier) {
                     FrameTier.READ -> "In the entry model, ${it.sentence}, which A12's reader cannot bind, so the model never loads"
@@ -618,10 +624,8 @@ private fun readClosure(
         } else {
             reachedRefusals += frame.filter { it.tier == FrameTier.READ }
                 .map { unbuilt("In the model `${source.modelId}`, ${it.sentence}, which A12 cannot bind") }
-        }
-        if (source !== entry) {
             reachedRefusals += content.unbindableModelMembers().map { unbuilt("In the model `${source.modelId}`, $it, which A12 cannot bind") }
-            val declared = (root?.get("header") as? JsonObject).declaredLocales()
+            val declared = source.header.declaredLocales()
             // The empty code is read and costs only an include, which the include pass below answers.
             reachedRefusals += declared.unreadable.filter { it.isNotEmpty() }.map {
                 unbuilt("In the model `${source.modelId}`, `header.locales` declares `$it`, which A12 cannot use as a locale")
@@ -640,21 +644,23 @@ private fun readClosure(
             // Its reader also refuses a definition's name written as `null`, an object or an array (KF644, entry
             // measured) — unlike an element's, whose `null` name it admits.
             val name = definition["name"]
-            if (source === entry && (name is JsonNull || name is JsonObject || name is JsonArray)) {
-                reachedRefusals += "The `content.typeDefinitions` entry ${definition["id"]} holds `$name` as its `name`, " +
-                    "which A12's reader refuses, so the model never loads"
-            }
-            if (source === entry) {
+            if (isEntry) {
+                if (name is JsonNull || name is JsonObject || name is JsonArray) {
+                    reachedRefusals += "The `content.typeDefinitions` entry ${definition["id"]} holds `$name` as its " +
+                        "`name`, which A12's reader refuses, so the model never loads"
+                }
                 reachedRefusals += definition.typeDefinitionTextRefusals().map {
                     "In the `content.typeDefinitions` entry ${definition["id"]}, $it, so A12's reader refuses the source and the model never loads"
                 }
             }
             val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
             // A12's expansion refuses a repeated id, the empty one included, and builds no model (KF647).
-            if (source === entry && id in entryIds) {
-                reachedRefusals += "The `content.typeDefinitions` id `$id` is declared twice, which A12's expansion refuses, so the model never loads"
+            if (isEntry) {
+                if (id in entryIds) {
+                    reachedRefusals += "The `content.typeDefinitions` id `$id` is declared twice, which A12's expansion refuses, so the model never loads"
+                }
+                entryIds += id
             }
-            if (source === entry) entryIds += id
             ids += id
             if (id in ambiguous) continue
             if (id in bodies) {
@@ -664,7 +670,7 @@ private fun readClosure(
                 bodies[id] = definition
             }
         }
-        ((root?.get("header") as? JsonObject)?.get("modelReferences") as? JsonArray)
+        (source.header?.get("modelReferences") as? JsonArray)
             ?.filterIsInstance<JsonObject>()
             ?.forEach { reference ->
                 val referenced = reference.scalarText("reference") ?: return@forEach
@@ -678,7 +684,7 @@ private fun readClosure(
             }
     }
     for (library in libraries) {
-        val content = (providers[library]?.parsed as? JsonObject)?.get("content") as? JsonObject
+        val content = providers[library]?.content
         val rootGroups = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray
         if (!rootGroups.isNullOrEmpty()) {
             reachedRefusals += unbuilt("The type-definition library `$library` declares a root group, so A12 cannot " +
@@ -688,7 +694,7 @@ private fun readClosure(
     // An included model's locales are gathered into one map keyed by locale, which a repeat breaks and the empty
     // code, read as no locale, breaks too; a library is expanded without that map.
     for (include in includes) {
-        val declared = ((providers[include]?.parsed as? JsonObject)?.get("header") as? JsonObject).declaredLocales()
+        val declared = providers[include]?.header.declaredLocales()
         if (declared.repeated.isNotEmpty() || "" in declared.unreadable) {
             reachedRefusals += unbuilt("The included model `$include` declares a locale twice or an empty locale " +
                 "code, so A12 cannot expand the include")

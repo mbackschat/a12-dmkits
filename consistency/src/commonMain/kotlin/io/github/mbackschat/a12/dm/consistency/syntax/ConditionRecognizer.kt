@@ -225,8 +225,9 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 sites += SyntaxSite.FieldRead(read)
                 complete(OperationShape.Read(read))
             }
-            consume("-") -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
-            token.kind == TokenKind.NUMBER -> { digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end)) }
+            consume("-") || token.kind == TokenKind.NUMBER -> {
+                digits(decimal = true); complete(OperationShape.Literal(token.start, tokens[cursor - 1].end))
+            }
             token.kind == TokenKind.STRING || kind(token) == KeywordKind.CONSTANT -> {
                 constantToken(); complete(OperationShape.Literal(token.start, token.end))
             }
@@ -308,22 +309,22 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                         take(); entity()
                     }
                     else -> when (slot) {
-                    Slot.OPERATION -> operation()
-                    Slot.DIGITS -> digits()
-                    Slot.DAY -> {
-                        if (identity(peek()) !in setOf(OperatorId.FIRST_DAY, OperatorId.LAST_DAY)) fail(SyntaxFailureKind.MATCH)
-                        take()
-                    }
-                    Slot.ENTITY -> entity()
-                    Slot.RANGE -> if (identity(peek()) == OperatorId.BASE_YEAR) constantToken() else entity()
-                    Slot.DATE, Slot.DATE_OR_VALUE_AS_DATE -> {
-                        date(valueAsDate = slot == Slot.DATE_OR_VALUE_AS_DATE)
-                        peek()
-                        sites += SyntaxSite.DateArgument(operator.text, tokens.subList(from, cursor), filterActive)
-                    }
-                    Slot.COMPONENT -> component()
-                    Slot.STRING -> { if (peek()?.kind != TokenKind.STRING) fail(SyntaxFailureKind.MATCH); take() }
-                    null -> argument(reference = operator.text !in FORM_CONSTRUCTS)
+                        Slot.OPERATION -> operation()
+                        Slot.DIGITS -> digits()
+                        Slot.DAY -> {
+                            if (identity(peek()) !in DAY_MARKERS) fail(SyntaxFailureKind.MATCH)
+                            take()
+                        }
+                        Slot.ENTITY -> entity()
+                        Slot.RANGE -> if (identity(peek()) == OperatorId.BASE_YEAR) constantToken() else entity()
+                        Slot.DATE, Slot.DATE_OR_VALUE_AS_DATE -> {
+                            date(valueAsDate = slot == Slot.DATE_OR_VALUE_AS_DATE)
+                            peek()
+                            sites += SyntaxSite.DateArgument(operator.text, tokens.subList(from, cursor), filterActive)
+                        }
+                        Slot.COMPONENT -> component()
+                        Slot.STRING -> { if (peek()?.kind != TokenKind.STRING) fail(SyntaxFailureKind.MATCH); take() }
+                        null -> argument(reference = operator.text !in FORM_CONSTRUCTS)
                     }
                 }
                 operands += tokens.subList(from, cursor)
@@ -376,7 +377,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val id = identity(peek())
         when {
             name(peek()) || peek()?.text in PATH_STARTS -> entity()
-            peek()?.kind == TokenKind.STRING || id in setOf(OperatorId.TODAY, OperatorId.NOW, OperatorId.BASE_YEAR) -> constantToken()
+            peek()?.kind == TokenKind.STRING || id in DATE_CONSTANTS -> constantToken()
             id in DATE_FUNCTIONS && (id != OperatorId.VALUE_AS_DATE || valueAsDate) -> call()
             else -> fail(SyntaxFailureKind.DECISION)
         }
@@ -514,10 +515,11 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         val REPEATED = setOf(OperatorId.MAX, OperatorId.MIN) + ENTITY_LISTS
         val OPTIONAL_TAIL = setOf(OperatorId.ROUND_DOWN_VALUE, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_ACCOUNTING_VALUE, OperatorId.ROUND_DOWN, OperatorId.ROUND_UP,
             OperatorId.ROUND_ACCOUNTING, OperatorId.TIME, OperatorId.DATE)
+        val DAY_MARKERS = setOf(OperatorId.FIRST_DAY, OperatorId.LAST_DAY)
+        val DATE_CONSTANTS = setOf(OperatorId.TODAY, OperatorId.NOW, OperatorId.BASE_YEAR)
         val DATE_FUNCTIONS = setOf(OperatorId.DATE, OperatorId.TIME, OperatorId.DATE_TIME, OperatorId.DATE_RANGE, OperatorId.ADD_YEARS, OperatorId.ADD_MONTHS, OperatorId.ADD_DAYS,
-            OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS, OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE, OperatorId.DATE_FROM_DATE_TIME,
-            OperatorId.TIME_FROM_DATE_TIME, OperatorId.VALUE_AS_DATE, OperatorId.YEAR_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.DAY_FROM_DATE, OperatorId.QUARTER_FROM_DATE,
-            OperatorId.HOURS_FROM_TIME, OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME)
+            OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS, OperatorId.START_OF_DATE_RANGE, OperatorId.END_OF_DATE_RANGE,
+            OperatorId.VALUE_AS_DATE) + DATE_EXTRACT_OPERATIONS
         val SIGNATURES = buildMap<OperatorId, List<Slot>> {
             for (id in ENTITY_LISTS) put(id, listOf(Slot.ENTITY))
             for (id in listOf(OperatorId.LENGTH, OperatorId.ABS_VALUE, OperatorId.FIELD_VALUE_AS_NUMBER, OperatorId.FIELD_VALUE_AS_STRING, OperatorId.CURRENT_REPETITION))
@@ -529,9 +531,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     OperatorId.DIFFERENCE_IN_MINUTES, OperatorId.DIFFERENCE_IN_SECONDS))
                 put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE_OR_VALUE_AS_DATE))
             put(OperatorId.DATE_TIME, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.DATE))
-            for (id in listOf(OperatorId.YEAR_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.DAY_FROM_DATE, OperatorId.QUARTER_FROM_DATE, OperatorId.HOURS_FROM_TIME,
-                    OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME, OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME))
-                put(id, listOf(Slot.DATE))
+            for (id in DATE_EXTRACT_OPERATIONS) put(id, listOf(Slot.DATE))
             put(OperatorId.TIME, List(3) { Slot.COMPONENT })
             put(OperatorId.DATE, List(4) { Slot.COMPONENT })
             for (id in listOf(OperatorId.ROUND_DOWN_VALUE, OperatorId.ROUND_UP_VALUE, OperatorId.ROUND_ACCOUNTING_VALUE))

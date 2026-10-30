@@ -58,9 +58,16 @@ internal fun TrackedFactBase.variantFilterGaps(): List<CoverageGap> =
  */
 internal fun TrackedFactBase.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
 
-private fun TrackedFactBase.suppressed(): List<TrackedDeclaration> = suppressible().filter { element ->
-    val declared = element.body?.get("variantFilter")
-    declared is JsonObject && declared.filterType() == FilterType.Spelled(SUPPRESSING_FILTER)
+private fun TrackedFactBase.suppressed(): List<TrackedDeclaration> = suppressible().filter { it.filtersItselfOut() }
+
+/**
+ * Whether this declaration's own `variantFilter` is the suppressing `ONLY` — the per-declaration half of
+ * [variantFilterSuppressed], for a family judging one declaration, so that it reads that declaration's body alone
+ * rather than every rule's and computation's.
+ */
+internal fun TrackedDeclaration.filtersItselfOut(): Boolean {
+    val declared = body?.get("variantFilter")
+    return declared is JsonObject && declared.filterType() == FilterType.Spelled(SUPPRESSING_FILTER)
 }
 
 /**

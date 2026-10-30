@@ -200,9 +200,6 @@ private fun OperationAnalysis.displayDefect(left: OperationValue, right: Operati
     return null
 }
 
-internal fun TrackedFactBase.operationFindings(element: TrackedDeclaration): List<Finding> =
-    operationContributions(element).map { it.finding }
-
 /**
  * The operation members whose lowered comparison passes A12's scale gate, as this analysis types them. An
  * operation it cannot type is absent, so a caller reads absence as "unknown", never as "refused".

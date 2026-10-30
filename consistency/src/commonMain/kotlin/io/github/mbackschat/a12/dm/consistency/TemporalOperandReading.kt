@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.DATE_EXTRACT_OPERATIONS
 import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
@@ -43,8 +44,12 @@ internal class TemporalOperandReader(
 ) {
     private val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
 
+    /** The call [operand] is in its whole, or null when it is not exactly one call. */
+    private fun callOf(operand: CallOperand): CallShape? =
+        execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }
+
     fun typed(operand: CallOperand, inAFilterBody: Boolean): ExtractedFrom? = with(facts) {
-        execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }?.let { return operation(it) }
+        callOf(operand)?.let { return operation(it) }
         if (isBaseYearConstant(operand.text)) return if (hasBaseYear) ExtractedFrom.Computed(componentsOf(DATE_FORMAT)) else null
         when (val constant = writtenConstantOf(operand.text)) {
             is WrittenConstant.Temporal -> return if (constant.keyword) ExtractedFrom.Computed(constant.components)
@@ -59,21 +64,22 @@ internal class TemporalOperandReader(
 
     /** Whether [operand] is a whole `ValueAsDate` call, which `DateTime`'s Date gates do not ask (KF643). */
     fun isValueAsDate(operand: CallOperand): Boolean =
-        execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }?.let { identities[it.operator] } == OperatorId.VALUE_AS_DATE
+        callOf(operand)?.let { identities[it.operator] } == OperatorId.VALUE_AS_DATE
 
     /** The format A12 registers for a nested operation it admits, or null where this reader cannot say. */
     private fun operation(shape: CallShape): ExtractedFrom? = with(facts) {
         val inBody = shape.inAFilterBody(conditionLanguage)
         val call = shape.asCall(conditionLanguage, inBody)
         val operands = call.operands
-        val format = when (identities[shape.operator]) {
+        val id = identities[shape.operator]
+        val format = when (id) {
             OperatorId.DATE_FROM_DATE_TIME, OperatorId.TIME_FROM_DATE_TIME -> {
                 // Where the extractor family judges the inner stamp, a refusal is already reported at the inner
                 // call. The check is for an operand it cannot type, where another class may answer first:
                 // silence, not a guess.
                 val from = operands.singleOrNull()?.let { typed(it, inBody) } ?: return null
                 if (!from.components.containsAll(Component.entries)) return null
-                if (identities[shape.operator] == OperatorId.DATE_FROM_DATE_TIME) DATE_FORMAT else TIME_FORMAT
+                if (id == OperatorId.DATE_FROM_DATE_TIME) DATE_FORMAT else TIME_FORMAT
             }
             OperatorId.TIME -> TIME_FORMAT.takeIf { operands.isNotEmpty() && operands.all { judgedComponent(it, inBody) } }
             OperatorId.DATE -> when (operands.size) {
@@ -96,8 +102,7 @@ internal class TemporalOperandReader(
      */
     private fun judgedComponent(operand: CallOperand, inAFilterBody: Boolean): Boolean = with(facts) {
         operand.literal != null ||
-            execution.callsByStart[operand.at]?.takeIf { it.end == operand.end }
-                ?.let { shape -> identities[shape.operator]?.let(Extractor::of) } != null ||
+            callOf(operand)?.let { shape -> identities[shape.operator] in DATE_EXTRACT_OPERATIONS } == true ||
             bareReferenceField(operand.text, group, element, inAFilterBody)?.let(::effectiveFieldType)
                 .let { it == FieldType.NUMBER || it == FieldType.STRING }
     }

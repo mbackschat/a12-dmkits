@@ -34,7 +34,7 @@ internal fun TrackedFactBase.ruleMemberContributions(element: TrackedDeclaration
     // A missing condition fails while A12 converts the rule, which it never does for one an `ONLY` filter
     // suppresses; its basic sentence states the defect there instead ([KERNEL-FINDINGS KF643]). A missing
     // target is different: the reader itself refuses it, before any filter applies.
-    val conversionLifted = element.path in variantFilterSuppressed()
+    val conversionLifted = element.filtersItselfOut()
     return requiredTextFindings(element, body["errorEntityRelPath"], ERROR_TARGET).map {
         DeclarationFinding(element.key, DeclarationStage.TARGET, it)
     } + requiredTextFindings(element, body["errorCondition"], CONDITION)
