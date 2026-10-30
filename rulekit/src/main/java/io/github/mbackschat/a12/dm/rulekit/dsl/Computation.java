@@ -216,6 +216,36 @@ public record Computation(
             return calc(operation.expression());
         }
 
+        /** The same alternative from a Boolean expression. */
+        public Builder calc(BoolExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** The same alternative from a confirm expression. */
+        public Builder calc(ConfirmExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** The same alternative from a date-range expression. */
+        public Builder calc(DateRangeExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** The same alternative from a date-time expression. */
+        public Builder calc(DateTimeExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** The same alternative from an enumeration expression. */
+        public Builder calc(EnumExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** The same alternative from a time expression. */
+        public Builder calc(TimeExpr operation) {
+            return calc(operation.expression());
+        }
+
         /** The single unconditional alternative with a closed implicit-validation tolerance band. */
         public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
             alternatives.add(new Alternative(Optional.empty(), operation, Optional.ofNullable(toleranceRangeOp)));
@@ -580,6 +610,36 @@ public record Computation(
 
         /** As {@link Builder#calc(DateExpr)}, for a preconditioned alternative. */
         public Builder calc(DateExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(BoolExpr)}, for a preconditioned alternative. */
+        public Builder calc(BoolExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(ConfirmExpr)}, for a preconditioned alternative. */
+        public Builder calc(ConfirmExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(DateRangeExpr)}, for a preconditioned alternative. */
+        public Builder calc(DateRangeExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(DateTimeExpr)}, for a preconditioned alternative. */
+        public Builder calc(DateTimeExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(EnumExpr)}, for a preconditioned alternative. */
+        public Builder calc(EnumExpr operation) {
+            return calc(operation.expression());
+        }
+
+        /** As {@link Builder#calc(TimeExpr)}, for a preconditioned alternative. */
+        public Builder calc(TimeExpr operation) {
             return calc(operation.expression());
         }
 

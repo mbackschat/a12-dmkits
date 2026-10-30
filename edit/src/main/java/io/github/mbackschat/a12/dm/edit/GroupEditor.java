@@ -322,6 +322,48 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
         return this;
     }
 
+    /** As {@link #addComputation(NumberRef, Function)} for an ENUMERATION computed field. Chains. */
+    public GroupEditor addComputation(EnumRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a BOOLEAN computed field. Chains. */
+    public GroupEditor addComputation(BoolRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a CONFIRM computed field. Chains. */
+    public GroupEditor addComputation(ConfirmRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a TIME computed field. Chains. */
+    public GroupEditor addComputation(TimeRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a DATE_TIME computed field. Chains. */
+    public GroupEditor addComputation(DateTimeRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a DATE_FRAGMENT computed field. Chains. */
+    public GroupEditor addComputation(DateFragmentRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for a DATE_RANGE computed field. Chains. */
+    public GroupEditor addComputation(DateRangeRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
     /** As {@link #addComputation(NumberRef, Function)} for any computed field kind (via {@link #field(String)})
      *  — the general form behind the typed conveniences. Chains. */
     public GroupEditor addComputation(FieldRef computed, Function<Computation.Builder, Computation> body) {
@@ -363,6 +405,48 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     /** As {@link #computation(NumberRef, Function)} for a DATE computed field — the compose peer of
      *  {@link #addComputation(DateRef, Function)}. */
     public Computation computation(DateRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for an ENUMERATION computed field — the compose peer of
+     *  {@link #addComputation(EnumRef, Function)}. */
+    public Computation computation(EnumRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a BOOLEAN computed field — the compose peer of
+     *  {@link #addComputation(BoolRef, Function)}. */
+    public Computation computation(BoolRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a CONFIRM computed field — the compose peer of
+     *  {@link #addComputation(ConfirmRef, Function)}. */
+    public Computation computation(ConfirmRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a TIME computed field — the compose peer of
+     *  {@link #addComputation(TimeRef, Function)}. */
+    public Computation computation(TimeRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a DATE_TIME computed field — the compose peer of
+     *  {@link #addComputation(DateTimeRef, Function)}. */
+    public Computation computation(DateTimeRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a DATE_FRAGMENT computed field — the compose peer of
+     *  {@link #addComputation(DateFragmentRef, Function)}. */
+    public Computation computation(DateFragmentRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a DATE_RANGE computed field — the compose peer of
+     *  {@link #addComputation(DateRangeRef, Function)}. */
+    public Computation computation(DateRangeRef computed, Function<Computation.Builder, Computation> body) {
         return body.apply(session.boundModel().computation(computed));
     }
 
