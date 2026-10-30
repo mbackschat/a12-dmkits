@@ -40,11 +40,14 @@ class PortableAcceptanceGateTest {
                 "no family completed, so a silent report would mean nothing: " + run.report().getGaps());
     }
 
-    /** A rule reporting on a field that does not exist — refused by A12 and named by the checker alike. */
+    /**
+     * A rule reporting on a field that does not exist — refused by A12 and named by the checker alike. The frame
+     * members are complete, so the refusal is the rule's and not the frame's (KERNEL-FINDINGS KF650).
+     */
     private static String unresolvableErrorTarget() {
         return """
-            {"header":{"id":"orders","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+             "content":{"modelInfo":{"name":"orders"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
