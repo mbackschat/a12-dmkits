@@ -31,7 +31,7 @@ internal fun JsonObject?.entryFrameValues(): EntryFrameValues {
     val refusals = mutableListOf<String>()
     val version = (this?.get("header") as? JsonObject)?.get("modelVersion").frameText()
     val major = version?.let(VERSION::matchEntire)?.groupValues?.get(1)
-    if (major != null && major.toIntOrNull() == null) {
+    if (major != null && major.asciiIntOrNull() == null) {
         refusals += "In the entry model, `header.modelVersion` holds `$version`, whose major version A12 cannot read as " +
             "a Java `int`, so A12 builds the model but its consistency check cannot run"
     }
@@ -72,8 +72,8 @@ private fun JsonObject.generatedCodeName(refusals: MutableList<String>): String?
             "the branch against, so A12 builds the model but its consistency check cannot run"
         null
     }
-    val lowered = written.lowercase()
-    val version = branch?.frameText()?.lowercase()?.takeIf { lowered.endsWith("_$it") }
+    val lowered = written.javaLowercase()
+    val version = branch?.frameText()?.javaLowercase()?.takeIf { lowered.endsWith("_$it") }
     val cut = version?.let { lowered.lastIndexOf("_$it") }
     if (cut != null && cut > written.length) {
         refusals += "In the entry model, `content.modelInfo.name` holds `$written`, which A12 cuts before its branch " +
@@ -82,7 +82,7 @@ private fun JsonObject.generatedCodeName(refusals: MutableList<String>): String?
         return null
     }
     val modelName = cut?.let { written.substring(0, it) } ?: written
-    return listOfNotNull(modelName, version).filterNot { it.isA12Blank() }.joinToString("_") { it.lowercase() }
+    return listOfNotNull(modelName, version).filterNot { it.isA12Blank() }.joinToString("_") { it.javaLowercase() }
 }
 
 /**
@@ -140,7 +140,7 @@ internal fun TrackedFactBase.versionFindings(): List<Finding> {
     val parts = version?.let(VERSION::matchEntire)?.groupValues
     return when {
         version == null -> emptyList()
-        parts?.get(1)?.toIntOrNull() == A12_MAJOR && parts[2].toDouble() <= A12_MINOR -> emptyList()
+        parts?.get(1)?.asciiIntOrNull() == A12_MAJOR && parts[2].toDouble() <= A12_MINOR -> emptyList()
         else -> listOfNotNull(
             frameFinding(RK_MODEL_VERSION_PATTERN,
                 "`header.modelVersion` holds `$version`, which is not a version `major.minor.patch` in ASCII digits")

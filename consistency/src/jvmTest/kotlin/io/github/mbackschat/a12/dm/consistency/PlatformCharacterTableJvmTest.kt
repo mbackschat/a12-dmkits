@@ -17,7 +17,8 @@ import kotlin.test.assertTrue
  * Kotlin's blank tests and its argument-free trims ask the same tables, and they are the sharper case, because Java
  * reads the no-break spaces as text where Kotlin strips them: a no-break-space message text or enum label, which A12
  * admits, was reported missing that way (KERNEL-FINDINGS KF310). `isA12Blank`, `isLexerBlank`, `isUnicodeBlank` and
- * the `javaTrimmed` family name which reading each site takes.
+ * the `javaTrimmed` family name which reading each site takes. Where A12 itself applies a full Unicode case mapping,
+ * `javaLowercase` makes it a platform call per target, and `JavaLowercaseTest` runs its cases on both.
  */
 class PlatformCharacterTableJvmTest {
 
