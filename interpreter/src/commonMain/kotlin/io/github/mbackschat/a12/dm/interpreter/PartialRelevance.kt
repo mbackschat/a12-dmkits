@@ -214,7 +214,7 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
         val byBreadth = wildcardMasksByBreadth(expanded)
         return expanded.filter { candidate ->
             val own = wildcardMask(candidate.indices)
-            val ownBreadth = countOneBits(own)
+            val ownBreadth = own.countOneBits()
             byBreadth.none { (breadth, masks) ->
                 breadth > ownBreadth && masks.any { mask ->
                     mask and own == own && broaderTuple(candidate.indices, mask) in tuples
@@ -255,7 +255,7 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
             .map { wildcardMask(it.indices) }
             .filter { it != 0L }
             .distinct()
-            .groupBy { countOneBits(it) }
+            .groupBy { it.countOneBits() }
             .toList()
             .sortedBy { it.first }
 
@@ -269,16 +269,6 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
         indices.mapIndexed { level, index ->
             if (mask shr level and 1L == 1L) RelevantEntity.ALL else index
         }
-
-    private fun countOneBits(mask: Long): Int {
-        var rest = mask
-        var count = 0
-        while (rest != 0L) {
-            rest = rest and (rest - 1)
-            count++
-        }
-        return count
-    }
 
     /** The relevant entities carrying one index per path segment — the shape both gates can reason about. */
     private fun wellFormed(relevant: Set<RelevantEntity>): List<RelevantEntity> =

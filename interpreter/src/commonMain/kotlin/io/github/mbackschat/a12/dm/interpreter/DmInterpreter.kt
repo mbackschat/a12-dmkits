@@ -704,7 +704,7 @@ class DmInterpreter private constructor(
         // so eliminating the rule — not inventing a per-read np value state — is the mechanism-exact twin.
         if (eliminatedNvvMetaLengthRule(ast)) return emptyList()
         val refs = nonStarredRefs(ast).distinct()
-        val errorPath = resolveErrorPath(rule)
+        val errorPath = prepared.errorPath
         val parallel = prepared.iteration as? IterationPlan.Parallel
         if (parallel != null && pass.dispatch?.admits(errorPath, parallel) == false) return emptyList()
         // A rule whose condition contains a RepetitionNotUnique leaf gets its duplicate cache built ONCE (IF149),
@@ -797,7 +797,6 @@ class DmInterpreter private constructor(
             val firedType = if (prepared.reachObservable) interp.firedTypeInTwoPasses(ast, prepared.classifies)
                 else interp.firedType(ast)
             if (firedType != null) {
-                val type = firedType
                 val text = rule.messages[pass.locale]?.let {
                     renderMessage(
                         it,
@@ -825,7 +824,7 @@ class DmInterpreter private constructor(
                         fieldPathOf = { name -> messageParameterPath(rule.group, name) },
                     )
                 } ?: ""
-                val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
+                val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == firedType }
                 // When the RNU leaf contributes this message's polarity, its cluster projection already contains
                 // every occurrence of an RNU key path. Drop a same-path ordinary occurrence, render the remaining
                 // small prefix, and expose an O(1) immutable joined view over the shared cluster list. This keeps
@@ -836,13 +835,13 @@ class DmInterpreter private constructor(
                 val referenced = joinedList(directPointers, rnuPointers)
                 // refOmissionErrorResponsible: the referenced operands that can cause an omission, filled or not,
                 // fixed per rule ([omissionReferences]); the RNU cluster stays in. Empty for a VALUE error.
-                val fillToFix = if (type == MsgType.OMISSION) {
+                val fillToFix = if (firedType == MsgType.OMISSION) {
                     if (directRefs.all { it in prepared.omissionReferences }) referenced
                     else joinedList(directRefs.filter { it in prepared.omissionReferences }
                         .map { pointers.of(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
-                    errorPointer(ctx), rule.severity, type, text, referenced,
+                    errorPointer(ctx), rule.severity, firedType, text, referenced,
                     fillToFix))
             }
             // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
@@ -922,7 +921,7 @@ class DmInterpreter private constructor(
         val argument = written.replace("'", "")
         val path = when (argument) {
             messageTerminals.ruleGroup -> ruleGroup
-            messageTerminals.rootGroup -> ruleGroup.split('/').take(2).joinToString("/")
+            messageTerminals.rootGroup -> rootGroupOf(ruleGroup)
             else -> if (argument.startsWith('/')) argument
                 else relativeMessageGroup(argument, ruleGroup) ?: return null
         }

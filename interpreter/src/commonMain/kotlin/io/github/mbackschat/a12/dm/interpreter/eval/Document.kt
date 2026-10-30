@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.IndexIdentityCandidate
 import io.github.mbackschat.a12.dm.interpreter.ModelEntityKind
 import io.github.mbackschat.a12.dm.interpreter.indexKeyOf
+import io.github.mbackschat.a12.dm.interpreter.pathParts
 import io.github.mbackschat.a12.dm.interpreter.resolveIndexIdentity
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
@@ -21,7 +22,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 
@@ -2575,7 +2575,6 @@ internal class DenseGroupTreeMaterializer(
         )
     }
 
-    private fun pathParts(path: String): List<String> = path.trim('/').split('/')
 }
 
 /**

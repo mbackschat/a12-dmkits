@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.parentGroup
+import io.github.mbackschat.a12.dm.interpreter.pathParts
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 
 /**
@@ -10,9 +12,8 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
  * A star on the index group itself, or a leaf group's star, selects the index group.
  */
 internal fun keyedStarSelectionGroup(star: Expr.Star, indexField: String): String {
-    val indexGroup = indexField.substringBeforeLast('/')
-    val aboveStar = star.bindDepth.takeIf { it >= 0 }
-        ?.let { depth -> star.path.trim('/').split('/').take(depth).joinToString("/", prefix = "/") }
+    val indexGroup = parentGroup(indexField)
+    val aboveStar = star.bindDepth.takeIf { it >= 0 }?.let { depth -> "/" + pathParts(star.path).take(depth).joinToString("/") }
     return aboveStar?.takeIf { it == indexGroup || it.startsWith("$indexGroup/") } ?: indexGroup
 }
 

@@ -19,6 +19,8 @@ import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 /** One rule's fully prepared, value-independent execution plan. */
 internal data class PreparedRulePlan(
     val ast: Cond,
+    /** The absolute path the rule's `errorEntityRelPath` names ([resolveErrorPath]). */
+    val errorPath: String,
     val iteration: IterationPlan,
     val repetitionNotUnique: RnuPlan?,
     /** The deepest error-containing selector for one exact authored semantic-key target, at a level ordinary

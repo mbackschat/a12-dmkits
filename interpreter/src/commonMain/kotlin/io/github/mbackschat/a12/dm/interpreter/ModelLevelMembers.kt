@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.interpreter
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * The first of a model's own model-level members A12's reader cannot bind, as its path, or null.

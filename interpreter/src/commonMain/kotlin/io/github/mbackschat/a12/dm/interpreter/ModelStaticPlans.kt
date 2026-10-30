@@ -177,6 +177,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
         }
         return PreparedRulePlan(
             ast = ast,
+            errorPath = errorPath,
             iteration = iteration,
             repetitionNotUnique = rnu,
             semanticErrorIndex = semanticErrorIndex,
