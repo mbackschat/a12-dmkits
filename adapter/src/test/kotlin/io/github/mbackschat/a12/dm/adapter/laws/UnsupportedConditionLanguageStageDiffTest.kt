@@ -68,7 +68,9 @@ class UnsupportedConditionLanguageStageDiffTest {
                     prepared.createInterpreter().validateFull(prepared.documents.readDocument("""{"Policy":{}}"""))
                         .findings.joinToString { it.code }
                 } catch (refused: ModelPreparationError) {
-                    "refused " + refused.diagnostics.joinToString { "${it.code} ${it.path}" }
+                    // A German reading of the English rule is a rule that does not parse in German.
+                    if (refused.diagnostics.any { "in de_DE" in it.message }) "de"
+                    else "refused " + refused.diagnostics.joinToString { "${it.code} ${it.path}" }
                 }
             },
         )

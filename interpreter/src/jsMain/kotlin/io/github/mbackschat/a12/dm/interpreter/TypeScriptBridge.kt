@@ -243,7 +243,7 @@ class InterpreterBridgePreparedModel internal constructor(
             )
         } catch (error: CoreInterpreterIntegrationError) {
             InterpreterBridgeInterpreterResult(null, integrationFailure(error))
-        }
+        } catch (error: CoreModelPreparationError) { InterpreterBridgeInterpreterResult(null, preparationFailure(error)) }
 }
 
 @JsExport

@@ -848,7 +848,8 @@ class Interpreter private constructor(
                 engine.supportAudit().map(::unsupportedProgram),
             )
         } catch (error: Throwable) {
-            throw InterpreterIntegrationError.of(
+            // Binding parses the model's own texts, so a text that does not parse is the model's, not a host's.
+            throw error as? ModelPreparationError ?: InterpreterIntegrationError.of(
                 phase = InterpreterIntegrationPhase.BIND,
                 reason = InterpreterIntegrationReason.FACTORY_THREW,
                 cause = error,

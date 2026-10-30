@@ -71,14 +71,26 @@ internal class ParsedModel(
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
         model.rules.associateWith { r -> lazy {
             observe(PreparationWork.RULE_AST, r.path)
-            parseRuleCondition(r.conditionText, r.group, refResolver, model.conditionLanguage)
+            sourceText(r.path, "condition") { parseRuleCondition(r.conditionText, r.group, refResolver, model.conditionLanguage) }
         } }
 
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
         model.computations.associateWith { c -> lazy {
             observe(PreparationWork.COMPUTATION_AST, c.targetPath)
-            parseComputation(c)
+            sourceText(c.name?.let { "${c.group}/$it" } ?: c.targetPath, "computation") { parseComputation(c) }
         } }
+
+    /**
+     * Parse [element]'s own text, refusing it as a model source when it does not parse. A12 evaluates no rule of
+     * such a model: its check refuses the text and neither strategy generates code for the model
+     * (`adapter.laws.UnsupportedConditionLanguageStageDiffTest`). A construct that parses but that this interpreter
+     * does not evaluate is [UnsupportedConstructException], which the support audit reports instead.
+     */
+    private inline fun <T> sourceText(element: String, what: String, parse: () -> T): T = try {
+        parse()
+    } catch (refused: IllegalArgumentException) {
+        throw invalidModelSource("the $what of $element does not parse: ${refused.message}", path = element)
+    }
 
     /** The implicit per-computation validation rules (IF32/IF65): one synthetic [RuleDef] per named computation,
      *  with its condition AST **built directly from the already-parsed alternatives** ([parsedOf]) rather than

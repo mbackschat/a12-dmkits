@@ -266,23 +266,25 @@ class PreparedModel private constructor(
                 throw invalidModelSource(error.message ?: "prepared model source is invalid")
             }
 
-        private fun invalidModelSource(
-            message: String,
-            path: String? = null,
-            reference: String? = null,
-        ): ModelPreparationError =
-            ModelPreparationError.from(
-                listOf(
-                    PreparedInputDiagnostic(
-                        code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE,
-                        path = path,
-                        reference = reference,
-                        message = message,
-                    ),
-                ),
-            )
     }
 }
+
+/** A model source the interpreter cannot prepare, at the model member or element [path] that makes it so. */
+internal fun invalidModelSource(
+    message: String,
+    path: String? = null,
+    reference: String? = null,
+): ModelPreparationError =
+    ModelPreparationError.from(
+        listOf(
+            PreparedInputDiagnostic(
+                code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE,
+                path = path,
+                reference = reference,
+                message = message,
+            ),
+        ),
+    )
 
 private data class PreparedInputDiagnostic(
     override val code: ModelPreparationDiagnosticCode,

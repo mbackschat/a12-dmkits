@@ -54,4 +54,23 @@ class EvalRuntimeUnevaluableFrameRefusalTest {
         CliTestSupport.Result expanded = CliTestSupport.run("-m", model.toString(), "model", "expand");
         assertEquals(0, expanded.code(), () -> "A12 expands the model, so expand answers: " + expanded.out() + expanded.err());
     }
+
+    /**
+     * English rules in a German model do not parse, so A12 evaluates none of its rules (KERNEL-FINDINGS KF283). The
+     * refusal names the rule whose text does not parse; it is the model's, never an internal error of the tool.
+     */
+    @Test
+    void aRuleThatDoesNotParseInItsLanguageIsRefusedAsTheModels(@TempDir Path dir) throws Exception {
+        ObjectNode model = (ObjectNode) M.readTree(EvalRuntimeUnevaluableFrameRefusalTest.class
+                .getResourceAsStream("/models/order-ruled.dm.json"));
+        ((ObjectNode) model.at("/content/modelConfig")).putObject("conditionLanguage").put("code", "de_DE");
+        Path f = dir.resolve("order-german.dm.json");
+        Files.writeString(f, model.toString());
+        Path doc = dir.resolve("doc.json");
+        Files.writeString(doc, "{}");
+        CliTestSupport.Result res = CliTestSupport.run("-m", f.toString(), "model", "eval", "--instance", doc.toString());
+        JsonNode diag = M.readTree(res.out()).path("diagnostics").path(0);
+        assertEquals("RK_MODEL_PREPARATION_FAILED", diag.path("code").asText(), res::out);
+        assertTrue(diag.path("summary").asText().contains("does not parse"), res::out);
+    }
 }

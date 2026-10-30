@@ -206,7 +206,7 @@ Audited 2026-07-28 against the kernel's runtime API. `ValidationSeverity{ERROR, 
 
 ## 5. Interpreter lifecycle and evaluation
 
-`PreparedModel.createInterpreter` creates an active evaluator with an optional immutable `InterpreterConfiguration`. A prepared model contains no request document or callback instance. A document snapshot is immutable from the public surface.
+`PreparedModel.createInterpreter` creates an active evaluator with an optional immutable `InterpreterConfiguration`. Binding parses the model's rule and computation texts, so a text that does not parse in the model's condition language fails as `ModelPreparationError` with `INVALID_MODEL_SOURCE` at the element's path, never as an integration error (IF453). A prepared model contains no request document or callback instance. A document snapshot is immutable from the public surface.
 
 Callers may retain one prepared model and interpreter and validate successive document snapshots, which is the ordinary dynamic-form use case. Model parsing, executable preparation, and bounded model-owned caches are reused; each validation or computation call owns its transient evaluation state and immutable result.
 
