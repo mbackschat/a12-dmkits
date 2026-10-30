@@ -275,6 +275,10 @@ tasks.withType(Test).matching { it.name in ['test', 'checkerSilenceGuardTest'] }
 
 tasks.named('test') {
     systemProperty 'perf.results.dir', rootProject.file('perf-results')
+    // A law that names the A12 class throwing reads the exception's stack trace, and HotSpot drops the trace of an
+    // implicit exception it has thrown often enough: measured 2026-10-30, `CheckOnlyFrameRuntimeDiffTest` alone named
+    // `VersionChecker`, and the same test after 131 other classes in its fork saw a bare NullPointerException.
+    jvmArgs '-XX:-OmitStackTraceInFastThrow'
     // Gate tiering (docs/TESTING-SPEC "Test tiers"): the performance tests (@Tag 'perf' routine tier + @Tag
     // 'perf-bench' checkpoint tier) and the differential fuzzers (@Tag 'fuzz') are EXCLUDED from the default local
     // run. Opt in with -PrunPerf / -PrunFuzz (or -PallTests for all three). CI runs fuzz on every push and the

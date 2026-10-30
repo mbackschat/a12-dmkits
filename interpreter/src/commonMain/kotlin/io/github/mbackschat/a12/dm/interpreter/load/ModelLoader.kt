@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.configFlag
 import io.github.mbackschat.a12.dm.interpreter.modelMemberState
 import io.github.mbackschat.a12.dm.interpreter.unbindableModelMember
+import io.github.mbackschat.a12.dm.interpreter.runtimeUnevaluableFrameMember
 import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
@@ -79,7 +80,15 @@ object ModelLoader {
 
     /** Load an expanded, self-contained DM-JSON model into a kernel-free [ModelDef]. */
     @JvmStatic
-    fun load(dmJson: String): ModelDef {
+    fun load(dmJson: String): ModelDef = load(dmJson, forEvaluation = false)
+
+    /**
+     * As [load], and also refuse a model A12 reads but its runtime cannot evaluate ([runtimeUnevaluableFrameMember]):
+     * the runtime preparation gate's load, so reading or expanding such a model stays possible.
+     */
+    internal fun loadForEvaluation(dmJson: String): ModelDef = load(dmJson, forEvaluation = true)
+
+    private fun load(dmJson: String, forEvaluation: Boolean): ModelDef {
         val root = try {
             parseA12Json(dmJson)
         } catch (e: SerializationException) {
@@ -91,6 +100,11 @@ object ModelLoader {
             model.unbindableModelMember()?.let { member ->
                 throw invalidElement(member,
                     "$member ${model.modelMemberState(member)}, which A12 cannot bind, so A12 does not load the model")
+            }
+            if (forEvaluation) model.runtimeUnevaluableFrameMember()?.let { member ->
+                throw invalidElement(member,
+                    "$member ${model.modelMemberState(member)}, which A12's runtime cannot evaluate a model with, " +
+                        "so A12 runs none of its rules or computations")
             }
         }
         val sink = Sink()

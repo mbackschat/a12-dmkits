@@ -86,8 +86,8 @@ class NumberExponentIngressTest {
     private companion object {
         val MODEL = """
             {
-              "header":{"id":"sales-orders"},
-              "content":{
+              "header":{"id":"sales-orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "content":{"modelInfo":{"name":"sales-orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",
                   "Group":{"elements":[

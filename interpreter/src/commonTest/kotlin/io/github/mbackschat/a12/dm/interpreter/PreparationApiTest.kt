@@ -396,8 +396,8 @@ class PreparationApiTest {
             modelConfig = "",
             fieldType = """{"type":"StringType"}""",
         ).replace(
-            """"header":{"id":"malformed-references"}""",
-            """"header":{"id":"malformed-references","modelReferences":{}}""",
+            """"header":{"id":"malformed-references"""",
+            """"header":{"id":"malformed-references","modelReferences":{}""",
         )
 
         val failure = assertIs<ModelPreparationResult.Failure>(
@@ -421,7 +421,7 @@ class PreparationApiTest {
             modelConfig = "",
             fieldType = """{"type":"StringType"}""",
         ).replace(
-            """"header":{"id":"out-of-tree"}""",
+            """"header":{"id":"out-of-tree"""",
             """
                 "header":{
                   "id":"out-of-tree",
@@ -431,7 +431,6 @@ class PreparationApiTest {
                     "name":"Phantom",
                     "Field":{"fieldType":{"type":"StringType"}}
                   }
-                }
             """.trimIndent(),
         )
 
@@ -536,8 +535,8 @@ class PreparationApiTest {
         val config = modelConfig.takeIf(String::isNotEmpty)?.let { """"modelConfig":{$it},""" }.orEmpty()
         return """
             {
-              "header":{"id":"$id"},
-              "content":{
+              "header":{"id":"$id","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "content":{"modelInfo":{"name":"$id"},
                 $config
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Root","name":"Root",
@@ -556,8 +555,8 @@ class PreparationApiTest {
         element: String,
     ): String = """
         {
-          "header":{"id":"$id"},
-          "content":{
+          "header":{"id":"$id","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+          "content":{"modelInfo":{"name":"$id"},
             "modelRoot":{"rootGroups":[{
               "type":"Group","id":"/Root","name":"Root",
               "Group":{"elements":[$element]}

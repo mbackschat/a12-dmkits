@@ -443,8 +443,8 @@ class DocumentTransportTest {
 
     private fun foreignModel(): String = """
         {
-          "header":{"id":"claims"},
-          "content":{
+          "header":{"id":"claims","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+          "content":{"modelInfo":{"name":"claims"},
             "modelRoot":{"rootGroups":[{
               "type":"Group","id":"/Claim","name":"Claim",
               "Group":{"elements":[{
@@ -459,8 +459,8 @@ class DocumentTransportTest {
     private companion object {
         val ORDER_MODEL = """
             {
-              "header":{"id":"orders"},
-              "content":{
+              "header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "content":{"modelInfo":{"name":"orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",
                   "Group":{"elements":[

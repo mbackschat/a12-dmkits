@@ -17567,7 +17567,7 @@
       }
     },
     "kf650": {
-      "sha256": "7a41ede405e30b300f34018ad51d6a714571cba51ce2a24cae27031999569029",
+      "sha256": "e43205ae19589496b22b76bd2290b2d3c06ceb010b8fe128c5b72d895fac7f10",
       "task": "SS52",
       "scope": {
         "dmkits": [],
@@ -17582,9 +17582,12 @@
           "the runtime with no check in front"
         ],
         "interpreter": [
-          "the members the reader cannot bind"
+          "the members the reader cannot bind",
+          "the shapes A12's runtime cannot evaluate"
         ],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "the interpreter verbs' refusal"
+        ],
         "a12-kernel-lean": [
           "the frame rows of our message of 2026-10-29"
         ]
@@ -17628,25 +17631,34 @@
               "witness": "The A12 column is the Kernel gate's own class set over sixteen presence combinations and two rules, not copied."
             },
             "the runtime with no check in front": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckOnlyFrameRuntimeDiffTest.kt#onlyAMissingVersionIsEvaluatedByTheKernelWhileTheInterpreterEvaluatesAllFour",
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckOnlyFrameRuntimeDiffTest.kt#onlyAMissingVersionIsEvaluatedAndTheInterpreterRefusesTheOtherThreeAsTheKernelDoes",
               "witness": "The four check-only shapes beside a control on dynamic Groovy and generated Java, each Kernel failure named by the A12 class that throws."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The interpreter refuses a model whose frame member A12's reader cannot bind, by its path, and reads a bare conditionLanguage as its code. It evaluates the check-only shapes A12's runtime cannot, which INTERPRETER-GAPS IG183 leaves to an owner decision.",
+          "basis": "The interpreter refuses a model whose frame member A12's reader cannot bind, by its path, and reads a bare conditionLanguage as its code. Its runtime preparation refuses the three check-only shapes A12's runtime cannot evaluate, by path, and evaluates a model lacking modelVersion (IF451).",
           "evidence": {
             "the members the reader cannot bind": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLevelMemberLoadTest.kt#anUnbindableFrameMemberRefusesTheModelByItsPath",
               "witness": "Six rows on both runtimes, the unbindable ones refused by path and the bare de_DE read as German."
+            },
+            "the shapes A12's runtime cannot evaluate": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/RuntimeFrameRefusalTest.kt#runtimePreparationRefusesWhatA12sRuntimeCannotEvaluate",
+              "witness": "Six rows on both runtimes, the three refused by path at preparation while every row still loads."
             }
           }
         },
         "dmtool-cli": {
-          "state": "NOT_APPLICABLE",
-          "basis": "dmtool's model check delegates the frame to the kernel; its portable engine is the checker.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "dmtool's model check delegates the frame to the kernel and its portable engine is the checker; its interpreter verbs refuse the shapes A12's runtime cannot evaluate, and model expand still answers.",
+          "evidence": {
+            "the interpreter verbs' refusal": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/EvalRuntimeUnevaluableFrameRefusalTest.java#everyInterpreterVerbRefusesAModelA12sRuntimeCannotEvaluate",
+              "witness": "model eval, model compute and rule eval refuse a model without modelInfo as RK_MODEL_PREPARATION_FAILED naming the member; model expand exits 0."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "OPEN",

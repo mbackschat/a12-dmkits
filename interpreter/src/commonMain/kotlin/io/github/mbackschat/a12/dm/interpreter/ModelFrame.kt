@@ -15,12 +15,27 @@ import kotlinx.serialization.json.JsonPrimitive
  * an array, a text, a number and a boolean, in every model a workspace reaches (`adapter.WorkspaceReachedModelDiffTest`).
  * A text takes any JSON scalar and no object or array, a list takes only an array and an object only an object, and
  * `null` refuses only where the kernel marks the member non-null. The condition language binds as a locale: a text, or
- * an object whose `code` is a text. A member A12 binds but needs later is not refused here. A missing `modelVersion`
- * costs only the entry model's consistency check. A missing `modelInfo`, absent or `null` `locales` and a `null`
- * supported character also stop A12's runtime before any rule runs (`adapter.laws.CheckOnlyFrameRuntimeDiffTest`,
- * 2026-10-30); whether the interpreter should refuse them too is INTERPRETER-GAPS IG183.
+ * an object whose `code` is a text. A member A12 binds but needs later is not refused here: A12 reads and expands
+ * such a model, and only evaluation refuses it ([runtimeUnevaluableFrameMember]).
  */
 internal fun JsonObject.unbindableFrameMember(): String? = FRAME.firstNotNullOfOrNull { it.unbindableIn(this[it.name], it.name) }
+
+/**
+ * The path of the first member of [this] model's frame that A12 binds and its runtime cannot evaluate the model
+ * without, or null: a missing `content.modelInfo`, absent or `null` `header.locales`, or a `null` supported
+ * character. Each stops both Kernel strategies before any rule runs, with or without a rule in the model, while A12
+ * still reads and expands it; a missing `header.modelVersion` costs only the consistency check and is evaluated
+ * (KF650; `adapter.laws.CheckOnlyFrameRuntimeDiffTest`, kernel `30.8.1`, 2026-10-30). Read on the expanded entry,
+ * whose frame is the only one expansion keeps.
+ */
+internal fun JsonObject.runtimeUnevaluableFrameMember(): String? {
+    val header = this["header"] as? JsonObject
+    val content = this["content"] as? JsonObject
+    if (content != null && "modelInfo" !in content) return "content.modelInfo"
+    if (header?.get("locales").let { it == null || it is JsonNull }) return "header.locales"
+    val characters = (content?.get("modelConfig") as? JsonObject)?.get("supportedCharacters") as? JsonArray
+    return characters?.indexOfFirst { it is JsonNull }?.takeIf { it >= 0 }?.let { "content.modelConfig.supportedCharacters[$it]" }
+}
 
 private fun FrameMember.unbindableIn(value: JsonElement?, path: String): String? = when {
     value == null -> path.takeIf { required }

@@ -59,8 +59,8 @@ class InterpreterEvaluationClockTest {
 
     private fun renewal(zone: String) = """
         {
-          "header":{"id":"renewal"},
-          "content":{
+          "header":{"id":"renewal","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+          "content":{"modelInfo":{"name":"renewal"},
             "modelConfig":{"timeZone":"$zone"},
             "modelRoot":{"rootGroups":[{
               "type":"Group","id":"/Renewal","name":"Renewal",

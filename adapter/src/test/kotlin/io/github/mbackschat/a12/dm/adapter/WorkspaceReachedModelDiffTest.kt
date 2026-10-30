@@ -51,7 +51,9 @@ class WorkspaceReachedModelDiffTest {
      * A model's frame, the `header` and `content` objects and the members under them, is bound by A12's reader in
      * every model the entry reaches, so a member it cannot bind leaves the entry model unbuilt wherever it sits. Three
      * members are needed only by the entry's consistency check, so they cost a reached model nothing: the version, the
-     * model info and a `null` supported character (KERNEL-FINDINGS KF650). Each carrier's untouched row is the control.
+     * model info and a `null` supported character (KERNEL-FINDINGS KF650). On the entry, A12's runtime cannot
+     * evaluate the last two, so the interpreter's preparation refuses them there (INTERPRETER-FINDINGS IF451). Each
+     * carrier's untouched row is the control.
      */
     @Test
     fun aReachedModelsUnbindableFrameLeavesTheEntryUnbuilt() {
@@ -78,6 +80,8 @@ class WorkspaceReachedModelDiffTest {
             }
         }
         val checkOnly = setOf("header.modelVersion absent", "content.modelInfo absent", "content.modelConfig.supportedCharacters [null]")
+        // A12's runtime cannot evaluate these two on the entry, so runtime preparation refuses them there (KF650).
+        val unevaluable = setOf("content.modelInfo absent", "content.modelConfig.supportedCharacters [null]")
         // No text `header.id` or no `content` object: the checker's admission refuses the source and names why, and a
         // library it cannot admit leaves the entry's library type unresolved, which is a refusal of its own.
         val unadmitted = setOf("header absent", "content absent", "header.id []")
@@ -87,6 +91,7 @@ class WorkspaceReachedModelDiffTest {
                 edit == "untouched" -> BUILT_AND_CHECKED
                 edit in unadmitted && !row.startsWith("TYPE_DEFINITIONS") -> NOT_BUILT_OR_ADMITTED
                 edit !in checkOnly -> NOT_BUILT_OR_CHECKED
+                row.startsWith("ENTRY") && edit in unevaluable -> BUILT_NOT_CHECKED_OR_PREPARED
                 row.startsWith("ENTRY") -> BUILT_NOT_CHECKED
                 else -> BUILT_AND_CHECKED
             }
@@ -305,6 +310,7 @@ class WorkspaceReachedModelDiffTest {
         const val NOT_BUILT = "A12 not built, interpreter refuses, checker not built"
         const val BUILT_AND_CHECKED = "A12 built, A12 consistency checks, interpreter prepares, checker silent"
         const val BUILT_NOT_CHECKED = "A12 built, A12 consistency unbuilt, interpreter prepares, checker not built"
+        const val BUILT_NOT_CHECKED_OR_PREPARED = "A12 built, A12 consistency unbuilt, interpreter refuses, checker not built"
         const val NOT_BUILT_OR_CHECKED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not built"
         const val NOT_BUILT_OR_ADMITTED = "A12 not built, A12 consistency unbuilt, interpreter refuses, checker not admitted"
 

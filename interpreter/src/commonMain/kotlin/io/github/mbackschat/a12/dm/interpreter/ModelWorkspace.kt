@@ -233,7 +233,7 @@ class PreparedModel private constructor(
 
         private fun loadDefinition(json: String): ModelDef =
             try {
-                ModelLoader.load(json)
+                ModelLoader.loadForEvaluation(json)
             } catch (error: UnpreparedModelResidueException) {
                 throw ModelPreparationError.from(
                     listOf(

@@ -112,8 +112,8 @@ class A12JsonCommentToleranceTest {
     private companion object {
         val ORDER_MODEL = """
             {
-              "header":{"id":"orders"},
-              "content":{
+              "header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "content":{"modelInfo":{"name":"orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",
                   "Group":{"elements":[
@@ -135,8 +135,8 @@ class A12JsonCommentToleranceTest {
         val COMMENTED_ORDER_MODEL = """
             {
               // the model this workspace prepares
-              "header":{"id":"orders"},
-              "content":{
+              "header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "content":{"modelInfo":{"name":"orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",
                   "Group":{"elements":[

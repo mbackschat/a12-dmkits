@@ -321,7 +321,7 @@ The queue is SPEC-2026-10-29-06 of a12-kernel-lean's ledger at its commit `7df9a
 
 | batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
 |---|---|---|---|---|---|
-| **SS52** | SPEC-2026-10-29-06 | the interpreter's treatment of the four shapes measured, beside A12's runtime with no check in front | **done** — the interpreter and `dmtool model eval` evaluate all four and fire; A12's runtime evaluates only the model lacking `modelVersion` and throws before any rule on the other three; the interpreter's comment claiming those cost only the check is corrected | `CheckOnlyFrameRuntimeDiffTest`, KF650 | IG183, an owner decision |
+| **SS52** | SPEC-2026-10-29-06 | the interpreter's treatment of the four shapes measured, beside A12's runtime with no check in front | **done** — the interpreter and `dmtool model eval` evaluate all four and fire; A12's runtime evaluates only the model lacking `modelVersion` and throws before any rule on the other three; the interpreter's comment claiming those cost only the check is corrected | `CheckOnlyFrameRuntimeDiffTest`, KF650 | IG183, closed 2026-10-30 by IF451: runtime preparation refuses the three |
 | **SS53** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30 | — |
 
 ### The model frame, 2026-10-29 <a id="model-frame-2026-10-29"></a>
