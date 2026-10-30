@@ -56,7 +56,7 @@ internal fun semanticIndexUsesIn(
 ): List<SemanticIndexUse> {
     val tokens = tokenize(text)
     val keywords = CONDITION_KEYWORDS.getValue(language)
-    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+    val filter = OPERATOR_SPELLINGS.getValue(language)[OperatorId.HAVING]
     val found = mutableListOf<RawUse>()
     tokens.indices.forEach { at ->
         if (tokens[at].kind != TokenKind.NAME || tokens[at].text != keyword) {

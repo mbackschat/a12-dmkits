@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * Where a `RepetitionNotUnique` KEY has to sit relative to the scope that bounds it.
@@ -48,9 +47,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
  */
 internal fun TrackedFactBase.repetitionContainmentContributions(element: TrackedDeclaration): List<ConditionFinding> {
     if (element.declaredKind != DeclaredKind.RULE) return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
-    val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val spelling = keywords[OperatorId.REPETITION_NOT_UNIQUE] ?: return emptyList()
+    val scopeKeyword = keywords[OperatorId.FROM_SCOPE] ?: return emptyList()
     val group = element.path.substringBeforeLast('/')
     return callContributions(element) { member, call ->
         if (call.operator != spelling) return@callContributions null

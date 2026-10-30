@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * What KIND of declaration each FIELD-LIST operation admits in the entity list it shares with the others.
@@ -85,7 +85,7 @@ internal fun TrackedFactBase.fieldListOperationContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val arms = ARM_OF.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (arms.isEmpty()) {
         return emptyList()
@@ -106,11 +106,11 @@ private enum class FieldListArm {
 }
 
 private val ARM_OF = mapOf(
-    "FirstFilledValue" to FieldListArm.NO_CONFIRM,
-    "Sum" to FieldListArm.ALL_NUMBERS,
-    "MaxValue" to FieldListArm.SORTABLE,
-    "MinValue" to FieldListArm.SORTABLE,
-    "NumberOfDifferentValues" to FieldListArm.DISTINCT,
+    OperatorId.FIRST_FILLED_VALUE to FieldListArm.NO_CONFIRM,
+    OperatorId.SUM to FieldListArm.ALL_NUMBERS,
+    OperatorId.MAX_VALUE to FieldListArm.SORTABLE,
+    OperatorId.MIN_VALUE to FieldListArm.SORTABLE,
+    OperatorId.NUMBER_OF_DIFFERENT_VALUES to FieldListArm.DISTINCT,
 )
 
 
@@ -136,7 +136,7 @@ private fun TrackedFactBase.operandDefect(
 ): FieldListDefect? {
     // A filtered operand is its base: A12 reads the whole spec, body included, before this switch, and a body
     // defect closes at an earlier site (KERNEL-FINDINGS KF612).
-    val filter = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(HAVING)
+    val filter = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.HAVING)
     val reads = call.operands.map { operand ->
         operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {
             (operand.path ?: operand.base?.takeIf { operand.clauses.all { it.keyword == filter } })?.let { OperandReference(it) }

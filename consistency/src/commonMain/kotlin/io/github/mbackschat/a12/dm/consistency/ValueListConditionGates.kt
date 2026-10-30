@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
@@ -80,7 +81,7 @@ internal fun TrackedFactBase.valueListConditionContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = VALUE_LIST_CONDITIONS
         .mapNotNull { (id, dateRange) -> keywords[id]?.let { it to dateRange } }
         .toMap()
@@ -100,10 +101,10 @@ internal fun TrackedFactBase.valueListConditionContributions(
  * plain field where the other three take a list, and refuses the written-out value list they require.
  */
 private val VALUE_LIST_CONDITIONS = listOf(
-    "AtLeastOneFieldValueIncludedInValueList" to false,
-    "NoFieldValueIncludedInValueList" to false,
-    "NotAllFieldValuesIncludedInValueList" to false,
-    "AtLeastOneDateRangeOverlaps" to true,
+    OperatorId.AT_LEAST_ONE_FIELD_VALUE_INCLUDED_IN_VALUE_LIST to false,
+    OperatorId.NO_FIELD_VALUE_INCLUDED_IN_VALUE_LIST to false,
+    OperatorId.NOT_ALL_FIELD_VALUES_INCLUDED_IN_VALUE_LIST to false,
+    OperatorId.AT_LEAST_ONE_DATE_RANGE_OVERLAPS to true,
 )
 
 /** The base-type classes the kind gate admits; every other one draws its class. */

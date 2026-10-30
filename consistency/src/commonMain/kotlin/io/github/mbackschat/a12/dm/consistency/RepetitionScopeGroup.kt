@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * What a `RepetitionNotUnique` `@From` scope has to be: a REPEATABLE group.
@@ -42,9 +41,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
  */
 internal fun TrackedFactBase.repetitionScopeContributions(element: TrackedDeclaration): List<ConditionFinding> {
     if (element.declaredKind != DeclaredKind.RULE) return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
-    val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val spelling = keywords[OperatorId.REPETITION_NOT_UNIQUE] ?: return emptyList()
+    val scopeKeyword = keywords[OperatorId.FROM_SCOPE] ?: return emptyList()
     val group = element.path.substringBeforeLast('/')
     return callContributions(element) { member, call ->
         if (call.operator != spelling || !repetitionKeyListIsSound(call, group, element)) return@callContributions null
@@ -97,7 +96,7 @@ private fun TrackedFactBase.scopeFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             "MVK_NO_FIELDS_ALLOWED",
-            "this $member scopes `$REPETITION_NOT_UNIQUE` to `${declared.path}`, which is a field — the scope " +
+            "this $member scopes `${OperatorId.REPETITION_NOT_UNIQUE.catalogId}` to `${declared.path}`, which is a field — the scope " +
                 "names the repeatable group whose repetitions are compared",
             element.path,
             span,
@@ -108,7 +107,7 @@ private fun TrackedFactBase.scopeFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             "MVK_NO_WILDCARDS_ALLOWED",
-            "this $member scopes `$REPETITION_NOT_UNIQUE` to `${scope.reference}`, which carries a repetition star " +
+            "this $member scopes `${OperatorId.REPETITION_NOT_UNIQUE.catalogId}` to `${scope.reference}`, which carries a repetition star " +
                 "— the scope names the whole repeatable group whose rows are compared, so drop the star",
             element.path,
             span,
@@ -119,7 +118,7 @@ private fun TrackedFactBase.scopeFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
-            "this $member scopes `$REPETITION_NOT_UNIQUE` to one repetition of `${declared.path}`, selected by " +
+            "this $member scopes `${OperatorId.REPETITION_NOT_UNIQUE.catalogId}` to one repetition of `${declared.path}`, selected by " +
                 "its semantic index — the scope names the whole repetition whose rows are compared, so drop the key",
             element.path,
             span,
@@ -132,7 +131,7 @@ private fun TrackedFactBase.scopeFinding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_GROUP_NOT_REPEATABLE",
-        "this $member scopes `$REPETITION_NOT_UNIQUE` to `${declared.path}`, which does not repeat — the " +
+        "this $member scopes `${OperatorId.REPETITION_NOT_UNIQUE.catalogId}` to `${declared.path}`, which does not repeat — the " +
             "operator compares one repetition of the scope against another, so the scope has to be a " +
             "repeatable group",
         element.path,

@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -64,7 +65,7 @@ private val TOLERANCE_BANDS = setOf(
 internal fun JsonObject.loweredComparisonOperator(language: ConditionLanguage): String? =
     when (val band = bound("toleranceRangeOp", TOLERANCE_BANDS)) {
         Bound.Unset -> "!="
-        is Bound.Spelled -> CONDITION_OPERATOR_KEYWORDS[language]?.get(band.value)
+        is Bound.Spelled -> OperatorId.of(band.value)?.let { OPERATOR_SPELLINGS[language]?.get(it) }
         is Bound.Refused -> null
     }
 

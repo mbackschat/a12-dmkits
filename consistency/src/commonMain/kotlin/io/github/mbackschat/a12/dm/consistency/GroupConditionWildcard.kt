@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * A repetition wildcard in a GROUP-CONDITION operand, where five of the seven operators refuse one.
@@ -43,7 +44,7 @@ internal fun TrackedFactBase.groupWildcardContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val gates = WILDCARD_GATES.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (gates.isEmpty()) {
         return emptyList()
@@ -83,11 +84,11 @@ private enum class GroupConditionArm(val code: String, val because: String) {
  * wildcard gate for them and admits the same star.
  */
 private val WILDCARD_GATES = mapOf(
-    "GroupFilled" to GroupConditionArm.SCALAR,
-    "GroupNotFilled" to GroupConditionArm.SCALAR,
-    "AllGroupsFilled" to GroupConditionArm.LIST,
-    "GroupsNotCollectivelyFilled" to GroupConditionArm.LIST,
-    "NotAllGroupsFilled" to GroupConditionArm.LIST,
+    OperatorId.GROUP_FILLED to GroupConditionArm.SCALAR,
+    OperatorId.GROUP_NOT_FILLED to GroupConditionArm.SCALAR,
+    OperatorId.ALL_GROUPS_FILLED to GroupConditionArm.LIST,
+    OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED to GroupConditionArm.LIST,
+    OperatorId.NOT_ALL_GROUPS_FILLED to GroupConditionArm.LIST,
 )
 
 /**

@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * What the two SUBSTRING operators demand of the field they cut, and of the interval that cuts it.
@@ -46,7 +47,7 @@ internal fun TrackedFactBase.rangeOperandContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OPERATORS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
@@ -59,7 +60,7 @@ internal fun TrackedFactBase.rangeOperandContributions(
 }
 
 /** Both substring operators; one kernel method checks them, so one family owns both. */
-private val RANGE_OPERATORS = listOf("RangeAsString", "RangeAsNumber")
+private val RANGE_OPERATORS = listOf(OperatorId.RANGE_AS_STRING, OperatorId.RANGE_AS_NUMBER)
 
 /** The operand, the interval's start and its end — A12 parses the last two as integers unconditionally. */
 private const val RANGE_ARITY = 3

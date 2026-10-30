@@ -1,8 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.soleFieldValueReadIn
@@ -74,7 +75,7 @@ internal fun TrackedFactBase.scalarValueListContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = SCALAR_VALUE_LISTS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
@@ -86,7 +87,8 @@ internal fun TrackedFactBase.scalarValueListContributions(
 }
 
 /** The two value-list predicates that take ONE subject field, named by their catalog ids. */
-private val SCALAR_VALUE_LISTS = setOf("FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList")
+private val SCALAR_VALUE_LISTS =
+    setOf(OperatorId.FIELD_VALUE_INCLUDED_IN_VALUE_LIST, OperatorId.FIELD_VALUE_NOT_INCLUDED_IN_VALUE_LIST)
 
 /** The declarations the subject gate admits — A12 asks three POSITIVE predicates and this is their union. */
 private val SUBJECT_TYPES =

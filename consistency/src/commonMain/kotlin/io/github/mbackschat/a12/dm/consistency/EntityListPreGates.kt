@@ -1,9 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
@@ -58,9 +57,9 @@ internal fun TrackedFactBase.entityListPreGateContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
-    val infixCarrier = keywords[NUMBER_OF_VALUE_IN_FIELDS]
+    val infixCarrier = keywords[OperatorId.NUMBER_OF_VALUE_IN_FIELDS]
     if (gates.isEmpty()) {
         return emptyList()
     }
@@ -90,28 +89,28 @@ private enum class RootGroupGate {
  * own place among their other gates ([BuiltEntityList]).
  */
 private val ROOT_GROUP_GATE_OF = mapOf(
-    "FieldFilled" to RootGroupGate.PLAIN,
-    "FieldNotFilled" to RootGroupGate.PLAIN,
-    "AtLeastOneFieldFilled" to RootGroupGate.PLAIN,
-    "NoFieldFilled" to RootGroupGate.PLAIN,
-    "SumOfProducts" to RootGroupGate.PLAIN,
-    "AllFieldsFilled" to RootGroupGate.PLAIN,
-    "FieldsNotCollectivelyFilled" to RootGroupGate.PLAIN,
-    "NotAllFieldsFilled" to RootGroupGate.PLAIN,
-    "NotExactlyOneFieldFilled" to RootGroupGate.PLAIN,
-    "MoreThanOneFieldFilled" to RootGroupGate.PLAIN,
-    "FieldValuesNotUnique" to RootGroupGate.PLAIN,
-    "MaxValue" to RootGroupGate.PLAIN,
-    "MinValue" to RootGroupGate.PLAIN,
-    "Sum" to RootGroupGate.PLAIN,
-    "FirstFilledValue" to RootGroupGate.PLAIN,
-    "NumberOfFilledFields" to RootGroupGate.PLAIN,
-    "NumberOfDifferentValues" to RootGroupGate.PLAIN,
-    NUMBER_OF_VALUE_IN_FIELDS to RootGroupGate.PLAIN,
-    "DateRangesOverlap" to RootGroupGate.PLAIN,
-    "GroupFilled" to RootGroupGate.NONE,
-    "GroupNotFilled" to RootGroupGate.NONE,
-    "RepetitionNotUnique" to RootGroupGate.NONE,
+    OperatorId.FIELD_FILLED to RootGroupGate.PLAIN,
+    OperatorId.FIELD_NOT_FILLED to RootGroupGate.PLAIN,
+    OperatorId.AT_LEAST_ONE_FIELD_FILLED to RootGroupGate.PLAIN,
+    OperatorId.NO_FIELD_FILLED to RootGroupGate.PLAIN,
+    OperatorId.SUM_OF_PRODUCTS to RootGroupGate.PLAIN,
+    OperatorId.ALL_FIELDS_FILLED to RootGroupGate.PLAIN,
+    OperatorId.FIELDS_NOT_COLLECTIVELY_FILLED to RootGroupGate.PLAIN,
+    OperatorId.NOT_ALL_FIELDS_FILLED to RootGroupGate.PLAIN,
+    OperatorId.NOT_EXACTLY_ONE_FIELD_FILLED to RootGroupGate.PLAIN,
+    OperatorId.MORE_THAN_ONE_FIELD_FILLED to RootGroupGate.PLAIN,
+    OperatorId.FIELD_VALUES_NOT_UNIQUE to RootGroupGate.PLAIN,
+    OperatorId.MAX_VALUE to RootGroupGate.PLAIN,
+    OperatorId.MIN_VALUE to RootGroupGate.PLAIN,
+    OperatorId.SUM to RootGroupGate.PLAIN,
+    OperatorId.FIRST_FILLED_VALUE to RootGroupGate.PLAIN,
+    OperatorId.NUMBER_OF_FILLED_FIELDS to RootGroupGate.PLAIN,
+    OperatorId.NUMBER_OF_DIFFERENT_VALUES to RootGroupGate.PLAIN,
+    OperatorId.NUMBER_OF_VALUE_IN_FIELDS to RootGroupGate.PLAIN,
+    OperatorId.DATE_RANGES_OVERLAP to RootGroupGate.PLAIN,
+    OperatorId.GROUP_FILLED to RootGroupGate.NONE,
+    OperatorId.GROUP_NOT_FILLED to RootGroupGate.NONE,
+    OperatorId.REPETITION_NOT_UNIQUE to RootGroupGate.NONE,
 )
 
 private fun finding(code: String, explain: String, at: String, span: TextSpan): Finding =
@@ -237,7 +236,7 @@ private fun TrackedFactBase.entityListOperandsOf(
     // By CATALOG ID, never by the literal: `For` is `Fuer` in German and a bare literal would read a German
     // model's field of that name as a key — the same reasoning `repetitionScopeContributions` states for
     // `@From`, which is a PATH_OP alongside this one and means something else entirely.
-    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val indexKeyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
     return call.operands.map { operand ->
         if (operand.clauses.isEmpty()) {
             operand.path?.let { return@map ListOperand(it, "") }
@@ -401,9 +400,10 @@ internal fun TrackedFactBase.listGateAheadOfTheArmAnswers(
         call.operands.any { categoryAccessesIn(it.text, conditionLanguage).isNotEmpty() }) {
         return true
     }
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return false
     val gate = ROOT_GROUP_GATE_OF.entries.firstOrNull { keywords[it.key] == call.operator }?.value ?: return false
-    val written = entityListOperandsOf(call, keywords[NUMBER_OF_VALUE_IN_FIELDS], declaringGroup, element) ?: return false
+    val written = entityListOperandsOf(call, keywords[OperatorId.NUMBER_OF_VALUE_IN_FIELDS], declaringGroup, element)
+        ?: return false
     val targets = written.map {
         addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected, it.bodyAddressed(call.inAFilterBody)) ?: return false
     }

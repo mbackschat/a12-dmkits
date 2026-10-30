@@ -1,11 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.markedReferenceSpansIn
@@ -113,16 +111,16 @@ private class ParallelRule(
 
 private fun TrackedFactBase.parallelRuleOf(element: TrackedDeclaration): ParallelRule? {
     if (element.kind != "Rule") return null
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
-    val filterKeyword = keywords[HAVING] ?: return null
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return null
+    val filterKeyword = keywords[OperatorId.HAVING] ?: return null
     val body = element.body ?: return null
     val target = (element.declaredReference()?.target as? Reference.Resolved)?.path ?: return null
     val anchor = anchorOf(target) ?: return null
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     // KF372: an error field outside its declaring group is refused during the parse.
     if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) return null
-    return ParallelRule(body, target, anchor, declaringGroup, filterKeyword, keywords[SEMANTIC_INDEX],
-        keywords[REPETITION_NOT_UNIQUE])
+    return ParallelRule(body, target, anchor, declaringGroup, filterKeyword, keywords[OperatorId.SEMANTIC_INDEX],
+        keywords[OperatorId.REPETITION_NOT_UNIQUE])
 }
 
 /** The first `$`-marked body read at a level A12 marks as parallel-iterated, or null. */

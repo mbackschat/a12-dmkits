@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * What KIND of field `FieldValuesNotUnique` admits in its list, how their date SPELLINGS must agree, and the two
@@ -49,15 +50,13 @@ internal fun TrackedFactBase.fieldValuesNotUniqueContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val carrier = keywords[FIELD_VALUES_NOT_UNIQUE] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val carrier = keywords[OperatorId.FIELD_VALUES_NOT_UNIQUE] ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return callContributions(element, execution) { member, call ->
         if (call.operator == carrier) operandKindFinding(call, group, element, member) else null
     }
 }
-
-private const val FIELD_VALUES_NOT_UNIQUE = "FieldValuesNotUnique"
 
 private const val KIND_REFUSED = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
 
@@ -91,7 +90,7 @@ private fun TrackedFactBase.operandKindFinding(
         // The one declared type measured as refused by this gate; every other refusal belongs to a later one.
         if (effectiveFieldType(field) == FieldType.DATE_RANGE) {
             return finding(
-                "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${field.path}` is a " +
+                "in `$member`: `${OperatorId.FIELD_VALUES_NOT_UNIQUE.catalogId}` compares stored values, and `${field.path}` is a " +
                     "date RANGE — list the range's own fields, or compare a field of another kind",
                 element,
                 call.spanIn(member),
@@ -103,7 +102,7 @@ private fun TrackedFactBase.operandKindFinding(
             spelling = field.path to format
         } else if (first.second != format) {
             return finding(
-                "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares the stored text, so every temporal field " +
+                "in `$member`: `${OperatorId.FIELD_VALUES_NOT_UNIQUE.catalogId}` compares the stored text, so every temporal field " +
                     "it lists must be spelled alike — `${first.first}` declares `${first.second}` and " +
                     "`${field.path}` declares `$format`",
                 element,
@@ -120,7 +119,7 @@ private fun TrackedFactBase.operandKindFinding(
     classes.zipWithNext().forEachIndexed { at, (left, right) ->
         if (left != right) {
             return finding(
-                "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares values of one kind, and `${fields[at + 1].path}` " +
+                "in `$member`: `${OperatorId.FIELD_VALUES_NOT_UNIQUE.catalogId}` compares values of one kind, and `${fields[at + 1].path}` " +
                     "is `${effectiveFieldType(fields[at + 1])}` beside `${fields[at].path}`, " +
                     "`${effectiveFieldType(fields[at])}` — compare each kind in its own condition",
                 element,
@@ -131,7 +130,7 @@ private fun TrackedFactBase.operandKindFinding(
     }
     fields.firstOrNull(::waivesValueValidation)?.let { raw ->
         return finding(
-            "in `$member`: `$FIELD_VALUES_NOT_UNIQUE` compares stored values, and `${raw.path}` waives value " +
+            "in `$member`: `${OperatorId.FIELD_VALUES_NOT_UNIQUE.catalogId}` compares stored values, and `${raw.path}` waives value " +
                 "validation — compare a validated field, or drop `noValueValidation` from it",
             element,
             call.spanIn(member),

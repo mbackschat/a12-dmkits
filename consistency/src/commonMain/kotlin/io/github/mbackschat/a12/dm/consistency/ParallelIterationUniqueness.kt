@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -47,7 +47,7 @@ internal fun TrackedFactBase.parallelIterationContributions(
 
 private fun TrackedFactBase.parallelIterationUniquenessFindings(element: TrackedDeclaration): List<Finding> {
     if (element.kind != "Rule") return emptyList()
-    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
+    val spelling = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.REPETITION_NOT_UNIQUE) ?: return emptyList()
     val body = element.body ?: return emptyList()
     val callsUniqueness = conditionTexts(element.kind, body).any { (member, text) ->
         callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator == spelling }

@@ -1,9 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
@@ -111,7 +110,7 @@ internal fun TrackedFactBase.rulesOwnReferences(element: TrackedDeclaration): Se
 internal fun TrackedFactBase.rulesOwnIterationLevels(element: TrackedDeclaration): Map<String, Set<String>>? {
     val declared = element.body ?: return emptyMap()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
     val levelsByReference = mutableMapOf<String, MutableSet<String>>()
     for ((_, text) in conditionTexts(element.kind, declared)) {
         val indexes = keyword?.let { semanticIndexUsesIn(text, conditionLanguage, it) }.orEmpty()
@@ -168,9 +167,9 @@ internal fun TrackedFactBase.anOperandIsRefusedOnRead(call: ConditionCall, eleme
     val anchor = anchorOf(target.path) ?: return false
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val contained = target.path == declaringGroup || target.path.startsWith("$declaringGroup/")
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]
-    val keyed = setOfNotNull(keywords?.get(SEMANTIC_INDEX))
-    val filter = setOfNotNull(keywords?.get(HAVING))
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage]
+    val keyed = setOfNotNull(keywords?.get(OperatorId.SEMANTIC_INDEX))
+    val filter = setOfNotNull(keywords?.get(OperatorId.HAVING))
     return call.operands.any { operand ->
         val isKeyed = operand.clauses.any { it.keyword in keyed }
         val read = operandReferenceIn(operand.text, declaringGroup, element, call.inAFilterBody) {

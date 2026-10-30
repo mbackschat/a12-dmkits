@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.operandOf
@@ -65,8 +65,8 @@ internal fun TrackedFactBase.dateArgumentContributions(
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
     if (execution == null) return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it.id.catalogId] }.toSet()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it.id] }.toSet()
     val group = element.path.substringBeforeLast('/')
     return execution.recognition.sites.filterIsInstance<SyntaxSite.DateArgument>().mapNotNull { site ->
         val span = execution.carrier.semanticSpan(site.tokens.first().start, site.tokens.last().end)

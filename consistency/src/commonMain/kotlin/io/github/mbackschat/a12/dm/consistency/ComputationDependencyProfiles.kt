@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.*
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -12,7 +13,7 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
     private val written = targets.values.toSet()
     private val groups = facts.declarations().filter { it.declaredKind == DeclaredKind.GROUP }.map { it.path }.toSet()
     private val repeatable = facts.repeatableGroups().map { it.path }
-    private val keywords = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
+    private val keywords = OPERATOR_SPELLINGS.getValue(facts.conditionLanguage)
 
     private val profiles = computations.groupBy { targets[it.path] }.mapValues { (target, writers) ->
         if (target == null) emptySet() else writers.flatMap { writer ->
@@ -36,8 +37,8 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
                 val calls = callsIn(text, facts.conditionLanguage, syntaxEntryOf(member))
                 val special = calls.mapNotNull { call ->
                     when (call.operator) {
-                        keywords["CurrentRepetition"] -> call to emptyList()
-                        keywords["GroupFilled"] -> containingGroup(call, writer, target)?.let { group ->
+                        keywords[OperatorId.CURRENT_REPETITION] -> call to emptyList()
+                        keywords[OperatorId.GROUP_FILLED] -> containingGroup(call, writer, target)?.let { group ->
                             call to written.filter { it != target && it.startsWith("$group/") && group !in profiles[it].orEmpty() }
                         }
                         else -> null
@@ -83,7 +84,7 @@ internal class ComputationDependencyProfiles(private val facts: TrackedFactBase,
     }
 
     private fun containingGroup(call: ConditionCall, writer: TrackedDeclaration, target: String): String? {
-        if (call.operator != keywords["GroupFilled"]) return null
+        if (call.operator != keywords[OperatorId.GROUP_FILLED]) return null
         val operand = call.operands.singleOrNull() ?: return null
         // A selection guards as the group it selects: A12 admits two computations a keyed `GroupFilled` over their
         // group guards, as it does the plain form (`adapter.laws.CheckerKeyedGuardCycleAgreementTest`).

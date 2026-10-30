@@ -1,12 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.CUSTOM_CONDITION
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.fieldValueReadsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
@@ -135,9 +132,9 @@ private fun TrackedFactBase.walkedFilters(
     execution: ConditionExecution?,
 ): List<WalkedFilter> {
     if (execution == null) return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val callable = keywords.values.toSet()
-    val indexKeyword = keywords[SEMANTIC_INDEX]
+    val indexKeyword = keywords[OperatorId.SEMANTIC_INDEX]
     val group = element.path.substringBeforeLast('/')
     return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().mapNotNull { exit ->
         val site = execution.entitiesByStart[exit.entry.start] ?: return@mapNotNull null
@@ -185,7 +182,7 @@ private fun TrackedFactBase.filterVerdictOf(
     text: String,
     indexKeyword: String?,
     callable: Set<String>,
-    keywords: Map<String, String>,
+    keywords: Map<OperatorId, String>,
     group: String,
     element: TrackedDeclaration,
 ): FilterVerdict? {
@@ -282,8 +279,8 @@ private fun TrackedFactBase.filterVerdictOf(
  * `RepetitionNotUnique`. All three carry one class, so which one the text names first matters only to the
  * message.
  */
-private fun disallowedConstructIn(text: String, keywords: Map<String, String>): String? =
-    listOfNotNull(keywords[HAVING], keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
+private fun disallowedConstructIn(text: String, keywords: Map<OperatorId, String>): String? =
+    listOf(OperatorId.HAVING, OperatorId.CUSTOM_CONDITION, OperatorId.REPETITION_NOT_UNIQUE).mapNotNull { keywords[it] }
         .firstOrNull { namesKeyword(text, setOf(it)) != null }
 
 private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(

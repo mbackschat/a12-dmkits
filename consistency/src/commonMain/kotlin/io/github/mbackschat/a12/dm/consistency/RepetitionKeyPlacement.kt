@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * Where a `RepetitionNotUnique` KEY has to sit relative to the rule that names it.
@@ -54,7 +54,7 @@ internal fun TrackedFactBase.repetitionKeyPlacementContributions(
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
     if (element.kind != "Rule") return emptyList()
-    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
+    val spelling = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.REPETITION_NOT_UNIQUE) ?: return emptyList()
     val group = element.path.substringBeforeLast('/')
     return callContributions(element, execution) { member, call ->
         if (call.operator == spelling) placementFinding(call, group, element, member) else null

@@ -1,9 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.DATE_EXTRACT_OPERATIONS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
@@ -67,9 +68,9 @@ import kotlinx.serialization.json.intOrNull
  */
 internal fun TrackedFactBase.dateConstructionContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val constructions = TemporalConstruction.entries.mapNotNull { c -> keywords[c.id]?.let { it to c } }.toMap()
-    val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
+    val extractOps = DATE_EXTRACT_OPERATIONS.mapNotNull { id -> keywords[id]?.let { it to id } }.toMap()
     return callContributions(element, execution) { member, call ->
         val construction = constructions[call.operator] ?: return@callContributions null
         val shape = execution.callsByStart.getValue(call.at)
@@ -103,8 +104,8 @@ internal fun TrackedFactBase.aDateSlotAnswersFirst(
     shape: CallShape,
     element: TrackedDeclaration,
 ): Boolean {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
-    val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return false
+    val extractOps = DATE_EXTRACT_OPERATIONS.mapNotNull { id -> keywords[id]?.let { it to id } }.toMap()
     return TemporalConstruction.DATE.defectAmongSlots(this, element, shape, extractOps) != null
 }
 
@@ -114,8 +115,8 @@ internal fun TrackedFactBase.readDateConstruction(
     element: TrackedDeclaration,
 ): DateConstructionReading? {
     val operands = shape.operands
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
-    val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return null
+    val extractOps = DATE_EXTRACT_OPERATIONS.mapNotNull { id -> keywords[id]?.let { it to id } }.toMap()
     val construction = TemporalConstruction.DATE
     // The COMPLETE shape only. A year-less construction's own law is `MVK_MISSING_YEAR`, asked before the
     // validity question and owned by [baseYearContributions]; reading it here would put a second
@@ -135,13 +136,14 @@ internal fun TrackedFactBase.readDateConstruction(
  * Keeping [constant] and [entity] apart is what stops the complete year from carrying one number for both:
  * a constant year has to lie in 1800..2199 and a field year may be bounded anywhere up to 9999, so a slot
  * holding a single maximum would refuse `maxValue: 9999` — a declaration A12 admits.
+ *
+ * @property expects the extract operator this slot takes; null for the split year's two slots, which take none.
  */
 private data class Slot(
     val name: String,
     val constant: ConstantDemand,
     val entity: EntityDemand,
-    val expects: String,
-    val splitYear: Boolean = false,
+    val expects: OperatorId?,
 )
 
 /**
@@ -174,31 +176,31 @@ private fun boundedBy(maxValue: Int) = EntityDemand(maxLength = 2, maxValue = ma
  * `Date` is listed with the three slots it can have; a two-parameter construction is judged on the two it
  * wrote, its missing year being a law of its own, and the four-parameter shape swaps the year for [SPLIT_YEAR_SLOTS].
  */
-private enum class TemporalConstruction(val id: String, val slots: List<Slot>, val ownFamily: Set<String>) {
+private enum class TemporalConstruction(val id: OperatorId, val slots: List<Slot>, val ownFamily: Set<OperatorId>) {
     DATE(
-        "Date",
+        OperatorId.DATE,
         listOf(
-            Slot("day", constantRange(1, 32), boundedBy(31), "DayFromDate"),
-            Slot("month", constantRange(1, 13), boundedBy(12), "MonthFromDate"),
+            Slot("day", constantRange(1, 32), boundedBy(31), OperatorId.DAY_FROM_DATE),
+            Slot("month", constantRange(1, 13), boundedBy(12), OperatorId.MONTH_FROM_DATE),
             Slot(
                 "year",
                 ConstantDemand(minInclusive = 1800, maxExclusive = 2200, width = 4),
                 EntityDemand(maxLength = 4, maxValue = 9999, flexibleFloor = 1000),
-                "YearFromDate",
+                OperatorId.YEAR_FROM_DATE,
             ),
         ),
-        setOf("DayFromDate", "MonthFromDate", "YearFromDate"),
+        setOf(OperatorId.DAY_FROM_DATE, OperatorId.MONTH_FROM_DATE, OperatorId.YEAR_FROM_DATE),
     ),
 
     /** A trailing component may be omitted, so any prefix of the three is a shape A12 accepts. */
     TIME(
-        "Time",
+        OperatorId.TIME,
         listOf(
-            Slot("hour", constantRange(0, 24), boundedBy(23), "HoursFromTime"),
-            Slot("minute", constantRange(0, 60), boundedBy(59), "MinutesFromTime"),
-            Slot("second", constantRange(0, 60), boundedBy(59), "SecondsFromTime"),
+            Slot("hour", constantRange(0, 24), boundedBy(23), OperatorId.HOURS_FROM_TIME),
+            Slot("minute", constantRange(0, 60), boundedBy(59), OperatorId.MINUTES_FROM_TIME),
+            Slot("second", constantRange(0, 60), boundedBy(59), OperatorId.SECONDS_FROM_TIME),
         ),
-        setOf("HoursFromTime", "MinutesFromTime", "SecondsFromTime"),
+        setOf(OperatorId.HOURS_FROM_TIME, OperatorId.MINUTES_FROM_TIME, OperatorId.SECONDS_FROM_TIME),
     ),
     ;
 
@@ -219,7 +221,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         model: TrackedFactBase,
         element: TrackedDeclaration,
         shape: CallShape,
-        extractOps: Map<String, String>,
+        extractOps: Map<String, OperatorId>,
     ): SlotDefect? =
         if (admitsArity(shape.operands.size)) defectAmongSlots(model, element, shape, extractOps) else null
 
@@ -234,7 +236,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         model: TrackedFactBase,
         element: TrackedDeclaration,
         shape: CallShape,
-        extractOps: Map<String, String>,
+        extractOps: Map<String, OperatorId>,
     ): SlotDefect? {
         val operands = shape.operands
         val inAFilterBody = shape.inAFilterBody(model.conditionLanguage)
@@ -274,23 +276,20 @@ private const val SPLIT_YEAR_ARITY = 4
  */
 private val SPLIT_YEAR_SLOTS = listOf(
     Slot(
-        "century", ConstantDemand(18, 22, width = 2), EntityDemand(2, 99, flexibleFloor = 10), "", splitYear = true,
+        "century", ConstantDemand(18, 22, width = 2), EntityDemand(2, 99, flexibleFloor = 10), expects = null,
     ),
     Slot(
-        "short year", ConstantDemand(0, 100, width = 2), EntityDemand(2, 99, flexibleFloor = null), "",
-        splitYear = true,
+        "short year", ConstantDemand(0, 100, width = 2), EntityDemand(2, 99, flexibleFloor = null), expects = null,
     ),
 )
 
-/** The catalog ids of every operator A12's `datumExtractOp` rule admits, keyed for spelling lookup. */
-private val EXTRACT_OPS = DATE_EXTRACT_OPERATIONS.associate { it.catalogId to it.catalogId }
 
 private sealed interface SlotArm {
     /** A quoted constant, already unquoted. */
     data class Constant(val digits: String) : SlotArm
 
     /** An extract operator, by catalog id. */
-    data class Extract(val op: String) : SlotArm
+    data class Extract(val op: OperatorId) : SlotArm
 
     /** A bare entity path — no wildcard, no category selector, no filter. */
     data class Entity(val path: String, override val outerMarked: Boolean = false) : SlotArm
@@ -330,7 +329,7 @@ private fun TrackedFactBase.armIn(
     shape: CallShape,
     operand: List<Token>,
     element: TrackedDeclaration,
-    extractOps: Map<String, String>,
+    extractOps: Map<String, OperatorId>,
 ): SlotArm {
     val text = shape.textOf(operand)
     val arm = armOf(operand, extractOps)
@@ -341,7 +340,7 @@ private fun TrackedFactBase.armIn(
     return SlotArm.Keyed(operandReferenceIn(text, declaringGroup, element, shape.inAFilterBody(conditionLanguage)) { null }?.reference)
 }
 
-private fun armOf(operand: List<Token>, extractOps: Map<String, String>): SlotArm {
+private fun armOf(operand: List<Token>, extractOps: Map<String, OperatorId>): SlotArm {
     val head = operand.firstOrNull() ?: return SlotArm.Unjudged
     if (head.text == OUTER_MARKER) {
         return when (val marked = armOf(operand.drop(1), emptyMap())) {
@@ -405,13 +404,14 @@ private fun Slot.rangeText(): String {
  * The second arm is not "an operator of another family": A12's switch lists the three operators its own slots
  * expect and treats every other one, `QuarterFromDate` included, as not allowed in the construction at all.
  */
-private fun Slot.extractDefect(op: String, ownFamily: Set<String>): SlotDefect? = when {
-    splitYear -> SlotDefect(
-        "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS", name, op, "a two-digit constant or a field",
+private fun Slot.extractDefect(op: OperatorId, ownFamily: Set<OperatorId>): SlotDefect? = when {
+    expects == null -> SlotDefect(
+        "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS", name, op.catalogId,
+        "a two-digit constant or a field",
     )
     op == expects -> null
-    op in ownFamily -> SlotDefect("MVK_INVALID_DATE_OR_TIME_EXTRACT_OP", name, op, expects)
-    else -> SlotDefect("MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", name, op, expects)
+    op in ownFamily -> SlotDefect("MVK_INVALID_DATE_OR_TIME_EXTRACT_OP", name, op.catalogId, expects.catalogId)
+    else -> SlotDefect("MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", name, op.catalogId, expects.catalogId)
 }
 
 private fun slotFinding(

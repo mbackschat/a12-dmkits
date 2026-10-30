@@ -12,7 +12,7 @@ internal val DATE_EXTRACT_OPERATIONS = setOf(
 internal class ConditionRecognizer(private val source: String, language: ConditionLanguage) {
     private val tokens = tokenize(source)
     private val keywords = CONDITION_KEYWORDS.getValue(language)
-    private val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(language)
+    private val spellings = OPERATOR_SPELLINGS.getValue(language)
     private val identities = CONDITION_OPERATOR_IDENTITIES.getValue(language)
     private val calls = mutableListOf<CallShape>()
     private val comparisons = mutableListOf<ComparisonShape>()
@@ -65,7 +65,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
 
     private fun failure(kind: SyntaxFailureKind, token: Token?): ShapeFailure {
         val start = token?.start ?: source.length
-        val scope = spellings.getValue("FromScope")
+        val scope = spellings.getValue(OperatorId.FROM_SCOPE)
         val end = if (token?.text == "@" && source.startsWith(scope, start)) start + scope.length else token?.end ?: start
         return ShapeFailure(start, token == null && kind == SyntaxFailureKind.MATCH,
             source.substring(start, end), kind, end)
@@ -487,7 +487,8 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             path, indexKey, filterActive, indexed, filtered, category)
     }
 
-    private fun scopeFollows(): Boolean = isText("@") && peek(1)?.text == spellings["FromScope"]?.removePrefix("@")
+    private fun scopeFollows(): Boolean =
+        isText("@") && peek(1)?.text == spellings[OperatorId.FROM_SCOPE]?.removePrefix("@")
 
     private class RecognitionStop(val failure: ShapeFailure) : RuntimeException()
     /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */

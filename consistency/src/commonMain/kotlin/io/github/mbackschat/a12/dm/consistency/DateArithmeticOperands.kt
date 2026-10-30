@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * The four questions a date-arithmetic operator asks of the date it shifts, and the one it asks of the amount.
@@ -57,7 +58,7 @@ internal fun TrackedFactBase.dateArithmeticContributions(
 
 /** The component a shift operator spelled [operator] in this model's language adds, or null for any other. */
 private fun TrackedFactBase.addedComponentOf(operator: String): Component? {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return null
     return ADDED_COMPONENT_OF.entries.firstOrNull { (id, _) -> keywords[id] == operator }?.value
 }
 
@@ -88,12 +89,12 @@ internal fun TrackedFactBase.admittedShiftField(
 
 /** Which datetime component each carrier adds — A12's `DateUtils.typeToComponent`, for these six tokens. */
 private val ADDED_COMPONENT_OF = mapOf(
-    "AddDays" to Component.DAY,
-    "AddMonths" to Component.MONTH,
-    "AddYears" to Component.YEAR,
-    "AddHours" to Component.HOUR,
-    "AddMinutes" to Component.MINUTE,
-    "AddSeconds" to Component.SECOND,
+    OperatorId.ADD_DAYS to Component.DAY,
+    OperatorId.ADD_MONTHS to Component.MONTH,
+    OperatorId.ADD_YEARS to Component.YEAR,
+    OperatorId.ADD_HOURS to Component.HOUR,
+    OperatorId.ADD_MINUTES to Component.MINUTE,
+    OperatorId.ADD_SECONDS to Component.SECOND,
 )
 
 /** The two carriers A12 refuses over a stamp outright, whatever their component question says. */

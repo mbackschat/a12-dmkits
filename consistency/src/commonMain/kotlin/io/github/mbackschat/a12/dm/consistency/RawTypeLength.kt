@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.maxLengthDeclaration
 
@@ -44,7 +45,7 @@ internal fun TrackedFactBase.rawLengthContributions(
 }.orEmpty()
 
 private fun TrackedFactBase.rawTypeLengthFindings(element: TrackedDeclaration): List<Finding> {
-    val length = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get("Length") ?: return emptyList()
+    val length = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.LENGTH) ?: return emptyList()
     val body = element.body ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return conditionTexts(element.kind, body).mapNotNull { (member, text) ->

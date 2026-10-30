@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxFailureKind
 import io.github.mbackschat.a12.dm.consistency.syntax.isLexerBlank
@@ -42,10 +43,10 @@ internal fun ConditionText.semanticSpan(at: Int, end: Int): TextSpan? {
 internal fun computationCondition(body: JsonObject, target: String, language: ConditionLanguage): ConditionText? {
     val alternatives = body["computationAlternatives"] as? JsonArray ?: return null
     if (alternatives.isEmpty() || alternatives.any { it !is JsonObject }) return null
-    val words = CONDITION_OPERATOR_KEYWORDS.getValue(language)
+    val words = OPERATOR_SPELLINGS.getValue(language)
     val out = ConditionText()
-    val and = words.getValue("And")
-    val or = words.getValue("Or")
+    val and = words.getValue(OperatorId.AND)
+    val or = words.getValue(OperatorId.OR)
     fun text(objectValue: JsonObject, key: String): String? = (objectValue[key] as? JsonPrimitive)?.contentOrNull
     fun precondition(member: String, value: String?) {
         if (value == null) return
@@ -58,7 +59,7 @@ internal fun computationCondition(body: JsonObject, target: String, language: Co
         val keyword = if (language == ConditionLanguage.EN) "SuppressWarning" else "UnterdrueckeWarnung"
         out.append("@$keyword(${suppressions.joinToString(",") { (it as? JsonPrimitive)?.contentOrNull ?: "null" }})\n")
     }
-    out.append("${words.getValue("FieldFilled")}($target) $and ")
+    out.append("${words.getValue(OperatorId.FIELD_FILLED)}($target) $and ")
     precondition("commonPrecondition", text(body, "commonPrecondition"))
     val grouped = alternatives.size > 1
     if (grouped) out.append("(\n")

@@ -197,11 +197,11 @@ internal fun List<Token>.namesAnEntity(): Boolean = any { it.isName() || it.text
 private class ReferenceScan(
     private val source: String,
     private val language: ConditionLanguage,
-    private val semanticIndex: String? = CONDITION_OPERATOR_KEYWORDS.getValue(language)[SEMANTIC_INDEX],
+    private val semanticIndex: String? = OPERATOR_SPELLINGS.getValue(language)[OperatorId.SEMANTIC_INDEX],
 ) {
     private val tokens = tokenize(source)
     private val keywords = CONDITION_KEYWORDS.getValue(language)
-    private val customCondition = CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION]
+    private val customCondition = OPERATOR_SPELLINGS.getValue(language)[OperatorId.CUSTOM_CONDITION]
     private val completedSteps = ConditionRecognizer(source, language).recognize(SyntaxEntry.CONDITION).completedSteps
 
     private var at = 0
@@ -440,7 +440,7 @@ private const val UP_STEP = ".."
  * use of the predicate — which is the whole reason this goes through the tokenizer instead of scanning for a
  * substring. [spellings] arrive already resolved for the model's condition language, since that is where the
  * id-to-spelling table lives; re-testing them against [CONDITION_KEYWORDS] here would add a branch no model
- * can take, because every spelling in [CONDITION_OPERATOR_KEYWORDS] is a keyword of that same language.
+ * can take, because every spelling in [OPERATOR_SPELLINGS] is a keyword of that same language.
  */
 internal fun namesKeyword(text: String, spellings: Set<String>): String? =
     tokenize(text).firstOrNull { it.kind == TokenKind.NAME && it.text in spellings }?.text

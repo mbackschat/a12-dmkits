@@ -41,7 +41,7 @@ internal fun CallShape.inAFilterBody(language: ConditionLanguage): Boolean =
  * One call: the operator as it was SPELLED, and its top-level arguments in authored order.
  *
  * The spelling rather than the catalog id, because that is what the text carries; a consumer that names an
- * operator resolves its id through [CONDITION_OPERATOR_KEYWORDS] for the model's own language.
+ * operator resolves its id through [OPERATOR_SPELLINGS] for the model's own language.
  *
  * @param at the offset of the operator name.
  * @param end the offset just past the closing parenthesis: where the call has been read, which is where A12
@@ -170,7 +170,7 @@ private fun List<Token>.asOperand(
         return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text, at = at,
             end = end)
     }
-    val operators = CONDITION_OPERATOR_KEYWORDS.getValue(language)
+    val operators = OPERATOR_SPELLINGS.getValue(language)
     val bodies = cuts.mapIndexed { position, cut ->
         subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
     }
@@ -183,9 +183,9 @@ private fun List<Token>.asOperand(
             if (body.isEmpty()) "" else source.substring(body.first().start, body.last().end),
             // An empty body has no first token, so its offset is where one would begin: after the keyword.
             body.firstOrNull()?.start ?: this[cut.at + cut.width - 1].end,
-            filtersKey = entityKey.takeIf { cut.keyword == operators[HAVING] },
+            filtersKey = entityKey.takeIf { cut.keyword == operators[OperatorId.HAVING] },
         )
-        if (cut.keyword == operators[SEMANTIC_INDEX] && body.singleOrNull()?.kind != TokenKind.STRING) {
+        if (cut.keyword == operators[OperatorId.SEMANTIC_INDEX] && body.singleOrNull()?.kind != TokenKind.STRING) {
             entityKey = clause
         }
         clause
@@ -282,7 +282,7 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
  * text that does not parse has its bodies set aside too.
  */
 internal fun withoutFilterConditions(text: String, language: ConditionLanguage): String {
-    val filter = CONDITION_OPERATOR_KEYWORDS[language]?.get(HAVING) ?: return text
+    val filter = OPERATOR_SPELLINGS[language]?.get(OperatorId.HAVING) ?: return text
     val bodies = clausedOperandsIn(text, language).flatMap { operand -> operand.clauses }.filter { it.keyword == filter }
     val switches = bodies.flatMap { listOf(it.at to true, it.at + it.text.length to false) }.sortedBy { it.first }
     val blanked = text.toCharArray()
@@ -309,7 +309,7 @@ internal fun withoutFilterConditions(text: String, language: ConditionLanguage):
  *   inside another filter's body is the rule's read too ([KERNEL-FINDINGS KF486]).
  */
 internal fun rulesOwnReadsIn(text: String, language: ConditionLanguage): String {
-    val filter = CONDITION_OPERATOR_KEYWORDS[language]?.get(HAVING) ?: return text
+    val filter = OPERATOR_SPELLINGS[language]?.get(OperatorId.HAVING) ?: return text
     val restored = withoutFilterConditions(text, language).toCharArray()
     val bases = clausedOperandsIn(text, language)
         .filter { operand -> operand.clauses.any { it.keyword == filter } }
@@ -491,7 +491,7 @@ fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry)
  *
  * @param left the text left of the operator, verbatim between its first and last token.
  * @param operator the comparison operator AS SPELLED — a symbol, or a keyword a consumer resolves through
- *     [CONDITION_OPERATOR_KEYWORDS] for the model's own language.
+ *     [OPERATOR_SPELLINGS] for the model's own language.
  * @param at the offset of the operator, so a finding can point at the comparison rather than at the rule.
  * @param right the text right of the operator, by the same rule as [left].
  * @param start the offset of the left side's first token, and [end] the offset just past the right side's
@@ -569,7 +569,7 @@ internal data class FieldValueRead(
 
 /** Every `Having` body in [text], each placed by its own offset. */
 internal fun filterBodiesIn(text: String, language: ConditionLanguage): List<OperandClause> {
-    val filter = CONDITION_OPERATOR_KEYWORDS.getValue(language)[HAVING]
+    val filter = OPERATOR_SPELLINGS.getValue(language)[OperatorId.HAVING]
     return clausedOperandsIn(text, language).flatMap { operand -> operand.clauses.filter { it.keyword == filter } }
 }
 

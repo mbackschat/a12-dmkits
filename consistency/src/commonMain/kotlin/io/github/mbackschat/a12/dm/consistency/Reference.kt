@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isName
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
@@ -649,7 +649,7 @@ private fun TrackedFactBase.keyedReferenceIn(
     // `adapter.laws.CheckerRuleGroupOperandAgreementTest`). Matched on the authored text, because a quoted
     // `'RuleGroup'` is a field of that name and reduces to the same path string.
     if (isRuleContext(text.javaTrimmed(), conditionLanguage)) return OperandReference(declaringGroup)
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return plain()
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX) ?: return plain()
     // A use is a NAME token spelling the keyword, and a token's text is a substring of its source.
     if (keyword !in text) return plain()
     val inner = text.withoutEnclosingBrackets()
@@ -682,7 +682,7 @@ private fun TrackedFactBase.keyedReferenceIn(
 
 /** Whether [text] writes a semantic index anywhere, which is what routes it to [operandReferenceIn]. */
 internal fun TrackedFactBase.writesASemanticIndex(text: String): Boolean {
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return false
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX) ?: return false
     return semanticIndexUsesIn(text, conditionLanguage, keyword).isNotEmpty()
 }
 

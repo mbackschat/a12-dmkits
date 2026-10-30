@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -57,7 +57,7 @@ internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Member
 /** The value path of every keyed read in the declaration's conditions, once per occurrence. */
 private fun TrackedFactBase.keyedReadPaths(element: TrackedDeclaration, group: String): List<String> {
     val body = element.body ?: return emptyList()
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX) ?: return emptyList()
     return conditionTexts(element.kind, body).flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
         .mapNotNull { use -> use.valuePath?.let { resolvedPathOf(it, group, element) } }
 }

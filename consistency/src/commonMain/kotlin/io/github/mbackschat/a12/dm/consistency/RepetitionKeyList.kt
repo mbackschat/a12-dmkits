@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.FROM_SCOPE
-import io.github.mbackschat.a12.dm.consistency.syntax.REPETITION_NOT_UNIQUE
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * What a `RepetitionNotUnique` KEY LIST has to hold before either branch of the operator's check runs.
@@ -45,7 +44,7 @@ internal fun TrackedFactBase.repetitionKeyListContributions(
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
     if (element.kind != "Rule") return emptyList()
-    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE) ?: return emptyList()
+    val spelling = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.REPETITION_NOT_UNIQUE) ?: return emptyList()
     val group = element.path.substringBeforeLast('/')
     return callContributions(element, execution) { member, call ->
         if (call.operator == spelling) (keyListOf(call, group, element) as? KeyList.Defective)?.let { finding(it, call, element, member) } else null
@@ -80,7 +79,7 @@ private fun TrackedFactBase.keyListOf(
     if (call.operands.isEmpty()) {
         return KeyList.AnsweredEarlier
     }
-    val scopeKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(FROM_SCOPE)
+    val scopeKeyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.FROM_SCOPE)
     val reads = call.operands.map { operand ->
         // The operand's own path keeps a key's star, which the text reader's reduction drops; a clause ahead of
         // the scope leaves no bare path, and the reader then takes a keyed or categorized text itself. The

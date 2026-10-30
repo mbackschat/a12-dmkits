@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
-import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 
 /**
  * The places a model's declared BASE YEAR is not optional.
@@ -44,9 +44,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
 internal fun TrackedFactBase.baseYearContributions(element: TrackedDeclaration): List<ConditionFinding> {
     if (hasBaseYear) return emptyList()
     val execution = conditionExecution(element) ?: return emptyList()
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val baseYear = keywords[BASE_YEAR_CONSTANT] ?: return emptyList()
-    val construction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val baseYear = keywords[OperatorId.BASE_YEAR] ?: return emptyList()
+    val construction = keywords[OperatorId.DATE] ?: return emptyList()
     return execution.recognition.sites.mapNotNull { site ->
         when (site) {
             is SyntaxSite.Completion -> {
@@ -83,8 +83,6 @@ internal fun TrackedFactBase.baseYearContributions(element: TrackedDeclaration):
  * (`rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`, [KF338]).
  */
 internal fun TrackedFactBase.messageBaseYearDefect(): String? = if (hasBaseYear) null else "NO_BASE_YEAR"
-
-private const val BASE_YEAR_CONSTANT = "BaseYear"
 
 /** Raised by `konstanteReferenzjahr`, whose production is the constant's one token. */
 private fun constantFinding(baseYear: String, element: TrackedDeclaration, member: String, span: TextSpan) = Finding(

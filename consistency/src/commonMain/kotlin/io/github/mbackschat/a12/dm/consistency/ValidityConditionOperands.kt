@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.DATE_CONSTRUCTION
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
@@ -59,9 +59,9 @@ internal fun TrackedFactBase.validityConditionContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = VALIDITY_CONDITIONS.mapNotNull { keywords[it] }.toSet()
-    val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
+    val dateConstruction = keywords[OperatorId.DATE] ?: return emptyList()
     if (carriers.isEmpty()) {
         return emptyList()
     }
@@ -76,7 +76,7 @@ internal fun TrackedFactBase.validityConditionContributions(
 }
 
 /** Both spellings of the keyword; the two arms share it and are told apart by the operand shape. */
-private val VALIDITY_CONDITIONS = listOf("ValidType", "InvalidType")
+private val VALIDITY_CONDITIONS = listOf(OperatorId.VALID_TYPE, OperatorId.INVALID_TYPE)
 
 /** The two declarations `isStringEnumOrExtensibleEnum` admits — the third disjunct is a string-type FLAG. */
 private val CODE_BEARING_TYPES = setOf(FieldType.STRING, FieldType.ENUMERATION)

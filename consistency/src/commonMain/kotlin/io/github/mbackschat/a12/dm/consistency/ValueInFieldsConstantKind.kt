@@ -1,12 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.NOW_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.NUMBER_OF_VALUE_IN_FIELDS
-import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
@@ -80,12 +76,12 @@ internal fun TrackedFactBase.valueInFieldsConstantContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val carrier = keywords[NUMBER_OF_VALUE_IN_FIELDS] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val carrier = keywords[OperatorId.NUMBER_OF_VALUE_IN_FIELDS] ?: return emptyList()
     val spellings = ConstantSpellings(
-        keywords[TRUE_CONSTANT],
-        keywords[FALSE_CONSTANT],
-        listOfNotNull(keywords[TODAY_CONSTANT], keywords[NOW_CONSTANT]),
+        keywords[OperatorId.TRUE],
+        keywords[OperatorId.FALSE],
+        listOfNotNull(keywords[OperatorId.TODAY], keywords[OperatorId.NOW]),
     )
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return callContributions(element, execution) { member, call ->
@@ -154,7 +150,7 @@ private fun TrackedFactBase.constantKindFinding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             arm.code,
-            "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts `${constantText.javaTrimmed()}`, a point in time — this " +
+            "in `$member`: `${OperatorId.NUMBER_OF_VALUE_IN_FIELDS.catalogId}` counts `${constantText.javaTrimmed()}`, a point in time — this " +
                 "operator counts a number, a text or a boolean constant and nothing else, whatever the " +
                 "listed declarations are. Compare the date against a field instead of counting it",
             element.path,
@@ -186,7 +182,7 @@ private fun TrackedFactBase.constantKindFinding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         defect.code,
-        "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` ${defect.detail}",
+        "in `$member`: `${OperatorId.NUMBER_OF_VALUE_IN_FIELDS.catalogId}` ${defect.detail}",
         element.path,
         call.spanIn(member),
     )
@@ -317,7 +313,7 @@ private fun unexpectedConstantToken(constantText: String, element: TrackedDeclar
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_UNEXPECTED_TOKEN",
-        "in `$member`: `$NUMBER_OF_VALUE_IN_FIELDS` counts " +
+        "in `$member`: `${OperatorId.NUMBER_OF_VALUE_IN_FIELDS.catalogId}` counts " +
             (constantText.javaTrimmed().takeIf { it.isNotEmpty() }?.let { "`$it`, which is not a constant" }
                 ?: "nothing — the slot before `In` is empty") +
             ". That position takes a number, a text, `True`, `False` or a point in time, and nothing " +

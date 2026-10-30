@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageSuffix
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
@@ -101,7 +101,7 @@ private fun TrackedFactBase.conditionRidesItWithoutIterating(
         val path = resolve(written) ?: return@any false
         declarationAt(path)?.declaredKind == DeclaredKind.GROUP && owner.startsWith("$path/")
     }) return true
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
     return conditionTexts(element.kind, body).any { (_, text) ->
         val starred = referencesIn(text, conditionLanguage).any { written ->
             val path = resolve(written) ?: return@any false

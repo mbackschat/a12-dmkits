@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.soleFieldValueReadIn
 import kotlinx.serialization.json.JsonArray
@@ -66,8 +67,6 @@ internal fun TrackedFactBase.enumComputationSourceContributions(element: Tracked
         }
 }
 
-private const val FIRST_FILLED_VALUE = "FirstFilledValue"
-
 /**
  * The defect this operation carries, or null where it carries none and where this reader may not judge.
  *
@@ -91,7 +90,7 @@ private fun TrackedFactBase.sourceDefect(
 
 /** The operand texts of a sole `FirstFilledValue` call, or null when the operation is not one. */
 private fun TrackedFactBase.firstFilledOperands(operation: String, element: TrackedDeclaration): List<String>? {
-    val carrier = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(FIRST_FILLED_VALUE) ?: return null
+    val carrier = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.FIRST_FILLED_VALUE) ?: return null
     val call = callsIn(operation, conditionLanguage, syntaxEntryOf("operation")).singleOrNull() ?: return null
     if (call.operator != carrier) {
         return null
@@ -134,7 +133,7 @@ private fun TrackedFactBase.readDefect(
     }
     if (unassignable != null) {
         return "reads `${source.path}`, which is $unassignable — A12 assigns an enumeration only from a " +
-            "constant it declares, an enumeration it covers, or a `$FIRST_FILLED_VALUE` over those"
+            "constant it declares, an enumeration it covers, or a `${OperatorId.FIRST_FILLED_VALUE.catalogId}` over those"
     }
     val body = enumerationBodyOf(source) ?: return null
     if (body["tableName"] != null) {
@@ -144,8 +143,8 @@ private fun TrackedFactBase.readDefect(
     if (category == null && bearsDisplayValues(source) != bearsDisplayValues(target)) {
         if (!aFirstFilledValueOperand) return null
         val (bearing, plain) = if (bearsDisplayValues(source)) source.path to target.path else target.path to source.path
-        return "reads `${source.path}` inside `$FIRST_FILLED_VALUE`, and `$bearing` carries display labels while " +
-            "`$plain` carries none — A12 checks that agreement for a `$FIRST_FILLED_VALUE` operand here. Give " +
+        return "reads `${source.path}` inside `${OperatorId.FIRST_FILLED_VALUE.catalogId}`, and `$bearing` carries display labels while " +
+            "`$plain` carries none — A12 checks that agreement for a `${OperatorId.FIRST_FILLED_VALUE.catalogId}` operand here. Give " +
             "both the same labels, or neither"
     }
     val uncovered = values - admitted

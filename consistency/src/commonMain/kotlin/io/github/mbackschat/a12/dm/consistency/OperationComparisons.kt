@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionComparison
 import io.github.mbackschat.a12.dm.consistency.syntax.ComparisonShape
 import io.github.mbackschat.a12.dm.consistency.syntax.OperationShape
@@ -66,14 +66,14 @@ private fun OperationAnalysis.comparisonFinding(
         "`${comparison.left}` and `${comparison.right}` are both written-out values, so the comparison decides nothing about the document — put a field on one side")
     val customField = left.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD ||
         right.field?.let { facts.effectiveFieldType(it) } == FieldType.CUSTOM_FIELD
-    val words = CONDITION_OPERATOR_KEYWORDS.getValue(facts.conditionLanguage)
-    val tolerance = TOLERANCE_COMPARISONS.mapNotNull { words[it.catalogId] }
+    val words = OPERATOR_SPELLINGS.getValue(facts.conditionLanguage)
+    val tolerance = TOLERANCE_COMPARISONS.mapNotNull { words[it] }
     if (operator in tolerance) {
         if (left.type == OperationType.Unknown || right.type == OperationType.Unknown) return null
         return if (left.numeric != null && right.numeric != null) null else problem("MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
             "`$operator` compares two numbers within a tolerance, and `${comparison.left}` / `${comparison.right}` are not both numbers — compare them with `==` or `!=` instead")
     }
-    if (PATTERN_COMPARISONS.any { operator == words[it.catalogId] }) {
+    if (PATTERN_COMPARISONS.any { operator == words[it] }) {
         if (customField) return null
         if (leftShape !is OperationShape.Read) return problem("MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON",
             "`$operator` reads one declaration's value against a pattern; put the field on the left and the pattern on the right")

@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
@@ -67,12 +67,12 @@ internal fun TrackedFactBase.entityListArityContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val laws = ARITY_OF.mapNotNull { (id, law) -> keywords[id]?.let { it to law } }.toMap()
     if (laws.isEmpty()) {
         return emptyList()
     }
-    val filterKeyword = keywords[HAVING]
+    val filterKeyword = keywords[OperatorId.HAVING]
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     return callContributions(element, execution) { member, call ->
         laws[call.operator]?.let { arityFinding(call, it, filterKeyword, group, element, member) }
@@ -112,29 +112,29 @@ private enum class ArityLaw(val code: String, val wants: String, val kindFirst: 
  * absent: their arms of the same switches call no arity gate at all.
  */
 private val ARITY_OF = mapOf(
-    "FieldFilled" to ArityLaw.EXACTLY_ONE,
-    "FieldNotFilled" to ArityLaw.EXACTLY_ONE,
-    "GroupFilled" to ArityLaw.EXACTLY_ONE,
-    "GroupNotFilled" to ArityLaw.EXACTLY_ONE,
-    "SumOfProducts" to ArityLaw.EXACTLY_TWO,
-    "AllFieldsFilled" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "FieldsNotCollectivelyFilled" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "NotAllFieldsFilled" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "NotExactlyOneFieldFilled" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "MoreThanOneFieldFilled" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "FieldValuesNotUnique" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "MaxValue" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "MinValue" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "Sum" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "FirstFilledValue" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "NumberOfFilledFields" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "NumberOfDifferentValues" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "NumberOfValueInFields" to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
-    "DateRangesOverlap" to ArityLaw.MORE_THAN_ONE_FIELD,
-    "AllGroupsFilled" to ArityLaw.MORE_THAN_ONE_ENTITY,
-    "GroupsNotCollectivelyFilled" to ArityLaw.MORE_THAN_ONE_ENTITY,
-    "NotAllGroupsFilled" to ArityLaw.MORE_THAN_ONE_ENTITY,
-    "NumberOfFilledGroups" to ArityLaw.MORE_THAN_ONE_GROUP,
+    OperatorId.FIELD_FILLED to ArityLaw.EXACTLY_ONE,
+    OperatorId.FIELD_NOT_FILLED to ArityLaw.EXACTLY_ONE,
+    OperatorId.GROUP_FILLED to ArityLaw.EXACTLY_ONE,
+    OperatorId.GROUP_NOT_FILLED to ArityLaw.EXACTLY_ONE,
+    OperatorId.SUM_OF_PRODUCTS to ArityLaw.EXACTLY_TWO,
+    OperatorId.ALL_FIELDS_FILLED to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.FIELDS_NOT_COLLECTIVELY_FILLED to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.NOT_ALL_FIELDS_FILLED to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.NOT_EXACTLY_ONE_FIELD_FILLED to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.MORE_THAN_ONE_FIELD_FILLED to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.FIELD_VALUES_NOT_UNIQUE to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.MAX_VALUE to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.MIN_VALUE to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.SUM to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.FIRST_FILLED_VALUE to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.NUMBER_OF_FILLED_FIELDS to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.NUMBER_OF_DIFFERENT_VALUES to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.NUMBER_OF_VALUE_IN_FIELDS to ArityLaw.MORE_THAN_ONE_FIELD_OR_A_GROUP,
+    OperatorId.DATE_RANGES_OVERLAP to ArityLaw.MORE_THAN_ONE_FIELD,
+    OperatorId.ALL_GROUPS_FILLED to ArityLaw.MORE_THAN_ONE_ENTITY,
+    OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED to ArityLaw.MORE_THAN_ONE_ENTITY,
+    OperatorId.NOT_ALL_GROUPS_FILLED to ArityLaw.MORE_THAN_ONE_ENTITY,
+    OperatorId.NUMBER_OF_FILLED_GROUPS to ArityLaw.MORE_THAN_ONE_GROUP,
 )
 
 private fun TrackedFactBase.arityFinding(

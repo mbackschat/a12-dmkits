@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
@@ -87,7 +87,7 @@ private data class PlainSelfRead(val member: String, val written: String, val wa
 
 private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads? {
     if (element.declaredKind != DeclaredKind.COMPUTATION) return null
-    val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val operators = OPERATOR_SPELLINGS[conditionLanguage] ?: return null
     val target = computedTargetOf(element) ?: return null
     val body = element.body ?: return null
     val texts = conditionTexts(element.kind, body)
@@ -95,7 +95,7 @@ private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads?
     // The scale gate answers ahead of both classes, but it can only take a verdict away, so it is asked once a
     // read is found rather than of every computation: its probe is a whole operation analysis.
     texts.firstNotNullOfOrNull { (member, text) ->
-        projectedSelfReadIn(text, target, group, element, operators[SEMANTIC_INDEX])
+        projectedSelfReadIn(text, target, group, element, operators[OperatorId.SEMANTIC_INDEX])
             ?.let { SelfReads.Projected(member, it) }
     }?.let { return it.takeIf { scaleGateStandsAside(target, element, body, texts) } }
     val unwalked = unguardedAmongSeveralAlternatives(body)
@@ -105,8 +105,8 @@ private fun TrackedFactBase.selfReadsOf(element: TrackedDeclaration): SelfReads?
         ?.let { alternativeWalkPosition(it, AlternativeStep.PRECONDITION) }
     val reads = walked.filter { (member, _) -> member != "commonPrecondition" || commonPosition != null }
         .flatMap { (member, text) ->
-            val exempt = exemptOperandsIn(text, member, operators[GROUP_FILLED], operators[CURRENT_REPETITION],
-                operators[AT_LEAST_ONE_GROUP_FILLED])
+            val exempt = exemptOperandsIn(text, member, operators[OperatorId.GROUP_FILLED],
+                operators[OperatorId.CURRENT_REPETITION], operators[OperatorId.AT_LEAST_ONE_GROUP_FILLED])
             referenceSpansIn(text, conditionLanguage)
                 .filter { span -> exempt.none { it.at <= span.start && span.end <= it.end } }
                 .map { it.written }
@@ -125,12 +125,6 @@ internal fun unguardedAmongSeveralAlternatives(body: JsonObject): Set<String> {
         .filter { (_, alternative) -> (alternative as? JsonObject).lacksAPrecondition() }
         .map { "computationAlternatives[${it.index}].operation" }.toSet()
 }
-
-private const val GROUP_FILLED = "GroupFilled"
-
-private const val CURRENT_REPETITION = "CurrentRepetition"
-
-private const val AT_LEAST_ONE_GROUP_FILLED = "AtLeastOneGroupFilled"
 
 /**
  * Whether the implicit target-scale comparison cannot answer ahead of this class on [target].

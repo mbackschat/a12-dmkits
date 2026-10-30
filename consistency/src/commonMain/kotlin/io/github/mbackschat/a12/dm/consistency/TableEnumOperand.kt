@@ -47,7 +47,7 @@ internal fun TrackedFactBase.tableEnumContributions(
 }
 
 /**
- * The operator's two spellings, held here rather than read from `CONDITION_OPERATOR_KEYWORDS`.
+ * The operator's two spellings, held here rather than read from `OPERATOR_SPELLINGS`.
  *
  * That map carries only CATALOGED operators, and this one cannot be cataloged: every example of it a catalog
  * entry would have to publish is refused, the catalog's examples being CI-executed against the Kernel. Both

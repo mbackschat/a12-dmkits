@@ -1,10 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.FALSE_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.NOW_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.TODAY_CONSTANT
-import io.github.mbackschat.a12.dm.consistency.syntax.TRUE_CONSTANT
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.decodeAuthoredStringLiteral
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
@@ -44,7 +41,7 @@ internal sealed interface WrittenConstant {
 /** Whether [side] is the `BaseYear` terminal in the model's condition language. */
 internal fun TrackedFactBase.isBaseYearConstant(side: String): Boolean {
     val single = tokenize(side).singleOrNull() ?: return false
-    return single.text == CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get("BaseYear")
+    return single.text == OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.BASE_YEAR)
 }
 
 /** What [side] is as a written-out constant, or null where it is none this reader types. */
@@ -58,12 +55,12 @@ internal fun TrackedFactBase.writtenConstantOf(side: String): WrittenConstant? {
             ?.let { WrittenConstant.Temporal(componentsOf(it), keyword = false) }
             ?: WrittenConstant.Text(value)
     }
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return null
     return when (single.text) {
-        keywords[TRUE_CONSTANT] -> WrittenConstant.BooleanConstant(yes = true)
-        keywords[FALSE_CONSTANT] -> WrittenConstant.BooleanConstant(yes = false)
-        keywords[TODAY_CONSTANT] -> WrittenConstant.Temporal(componentsOf(DATE_FORMAT), keyword = true)
-        keywords[NOW_CONSTANT] -> WrittenConstant.Temporal(componentsOf(STAMP_FORMAT), keyword = true)
+        keywords[OperatorId.TRUE] -> WrittenConstant.BooleanConstant(yes = true)
+        keywords[OperatorId.FALSE] -> WrittenConstant.BooleanConstant(yes = false)
+        keywords[OperatorId.TODAY] -> WrittenConstant.Temporal(componentsOf(DATE_FORMAT), keyword = true)
+        keywords[OperatorId.NOW] -> WrittenConstant.Temporal(componentsOf(STAMP_FORMAT), keyword = true)
         else -> null
     }
 }

@@ -1,9 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OUTER_MARKER
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
@@ -93,27 +94,27 @@ internal fun TrackedFactBase.groupListContributions(
 }
 
 /** The one group-list carrier that refuses a keyed operand. */
-private const val GROUP_COUNT = "NumberOfFilledGroups"
+private val GROUP_COUNT = OperatorId.NUMBER_OF_FILLED_GROUPS
 
 /** The six operators whose argument list is a list of GROUPS, named by their catalog ids. */
 private val GROUP_LIST_OPERATORS = setOf(
-    "AllGroupsFilled",
-    "NotAllGroupsFilled",
-    "GroupsNotCollectivelyFilled",
-    "AtLeastOneGroupFilled",
-    "NoGroupFilled",
+    OperatorId.ALL_GROUPS_FILLED,
+    OperatorId.NOT_ALL_GROUPS_FILLED,
+    OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED,
+    OperatorId.AT_LEAST_ONE_GROUP_FILLED,
+    OperatorId.NO_GROUP_FILLED,
     GROUP_COUNT,
 )
 
 /** …and the three that refuse a FIELD operand, which is not the same set and not a subset of one law's. */
-private val FIELD_REFUSING_OPERATORS = setOf(GROUP_COUNT, "GroupFilled", "GroupNotFilled")
+private val FIELD_REFUSING_OPERATORS = setOf(GROUP_COUNT, OperatorId.GROUP_FILLED, OperatorId.GROUP_NOT_FILLED)
 
 /** The three carriers that admit a root as the list's SOLE operand. */
-private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", GROUP_COUNT)
+private val SOLE_ROOT_CARRIERS = setOf(OperatorId.AT_LEAST_ONE_GROUP_FILLED, OperatorId.NO_GROUP_FILLED, GROUP_COUNT)
 
 /** How this model's language spells each of [ids]; an id the catalog does not carry contributes nothing. */
-private fun TrackedFactBase.spelled(ids: Set<String>): Set<String> =
-    ids.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+private fun TrackedFactBase.spelled(ids: Set<OperatorId>): Set<String> =
+    ids.mapNotNull { OPERATOR_SPELLINGS[conditionLanguage]?.get(it) }.toSet()
 
 private fun TrackedFactBase.operandFinding(
     call: ConditionCall,
@@ -191,7 +192,7 @@ private fun TrackedFactBase.operandFinding(
  * value or not: a key the index chain refuses is reported at its own site, which closes before this call.
  */
 private fun TrackedFactBase.semanticIndexFinding(call: ConditionCall, member: String, at: String): Finding? {
-    if (call.operator != CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(GROUP_COUNT)) return null
+    if (call.operator != OPERATOR_SPELLINGS[conditionLanguage]?.get(GROUP_COUNT)) return null
     val selected = call.operands.firstOrNull { writesASemanticIndex(it.text) }?.text?.javaTrimmed() ?: return null
     return finding(
         "MVK_SEMANTIC_INDEX_NOT_ALLOWED",

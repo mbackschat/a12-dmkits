@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * The per-call CONSTANT budget of the numeric operand-list `Min` and `Max`.
@@ -27,7 +28,7 @@ internal fun TrackedFactBase.operandListConstantContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_LIST_MATH.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
@@ -39,7 +40,7 @@ internal fun TrackedFactBase.operandListConstantContributions(
 }
 
 /** The two operand-list selectors, named by their catalog ids; the aggregates `MinValue`/`MaxValue` differ. */
-private val OPERAND_LIST_MATH = listOf("Min", "Max")
+private val OPERAND_LIST_MATH = listOf(OperatorId.MIN, OperatorId.MAX)
 
 private fun budgetFinding(operator: String, element: TrackedDeclaration, member: String, span: TextSpan): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

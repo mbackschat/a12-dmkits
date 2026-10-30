@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -55,7 +56,7 @@ internal fun TrackedFactBase.fieldValueOperatorContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = ARM_OF.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
@@ -71,11 +72,11 @@ internal fun TrackedFactBase.fieldValueOperatorContributions(
 private enum class ValueOperatorArm { ABSOLUTE, LENGTH, AS_NUMBER, AS_STRING, REPETITION }
 
 private val ARM_OF = mapOf(
-    "CurrentRepetition" to ValueOperatorArm.REPETITION,
-    "AbsValue" to ValueOperatorArm.ABSOLUTE,
-    "Length" to ValueOperatorArm.LENGTH,
-    "FieldValueAsNumber" to ValueOperatorArm.AS_NUMBER,
-    "FieldValueAsString" to ValueOperatorArm.AS_STRING,
+    OperatorId.CURRENT_REPETITION to ValueOperatorArm.REPETITION,
+    OperatorId.ABS_VALUE to ValueOperatorArm.ABSOLUTE,
+    OperatorId.LENGTH to ValueOperatorArm.LENGTH,
+    OperatorId.FIELD_VALUE_AS_NUMBER to ValueOperatorArm.AS_NUMBER,
+    OperatorId.FIELD_VALUE_AS_STRING to ValueOperatorArm.AS_STRING,
 )
 
 /** A12's `MAX_ALLOWED_DIGITS`, read straight off `CheckImplLenientBaseClass`. */

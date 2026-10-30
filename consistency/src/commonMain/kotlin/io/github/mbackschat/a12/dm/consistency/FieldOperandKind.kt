@@ -1,8 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * A GROUP, or a starred field, handed to one of the two field predicates that take an entity rather than a list.
@@ -51,10 +52,10 @@ internal fun TrackedFactBase.fieldOperandKindContributions(
 }
 
 /** The two scalar field predicates, named by their catalog ids. */
-private val ENTITY_FIELD_OPERATORS = setOf("FieldFilled", "FieldNotFilled")
+private val ENTITY_FIELD_OPERATORS = setOf(OperatorId.FIELD_FILLED, OperatorId.FIELD_NOT_FILLED)
 
 private fun TrackedFactBase.spelledCarriers(): Set<String> =
-    ENTITY_FIELD_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+    ENTITY_FIELD_OPERATORS.mapNotNull { OPERATOR_SPELLINGS[conditionLanguage]?.get(it) }.toSet()
 
 private fun TrackedFactBase.operandFinding(
     operand: CallOperand,

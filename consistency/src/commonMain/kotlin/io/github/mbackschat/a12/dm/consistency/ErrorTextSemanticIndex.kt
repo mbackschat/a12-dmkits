@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageKey
@@ -13,7 +13,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.provesPresence
 /** A key binds the condition's field/key pair and its index field, not every sibling (KF412). */
 internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, element: TrackedDeclaration): MessageCompletion {
     if (key.entity?.ruleGroup == true) return MessageCompletion.Refused("MVK_INTERNAL_ERROR")
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return MessageCompletion.Declined
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
+        ?: return MessageCompletion.Declined
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val spec = key.literal?.let { "\"$it\"" } ?: key.entity?.let {
         (resolveMessageEntity(group, it.written.replace("'", ""), element.origin) as? Reference.Resolved)?.path
@@ -34,7 +35,7 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
 ): MessageCompletion {
     if (element.kind != "Rule") return MessageCompletion.Declined
     val text = element.body?.string("errorCondition") ?: return MessageCompletion.Declined
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
         ?: return MessageCompletion.Declined
     val uses = semanticIndexUsesIn(text, conditionLanguage, keyword)
     if (uses.isEmpty()) return MessageCompletion.Refused("INVALID_GROUP")
@@ -46,8 +47,9 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
         (pair.valuePath == named || pair.valuePath.startsWith("$named/"))
     val pairs = uses.map { boundPair(it, group, element) ?: return MessageCompletion.Declined }
     if (pairs.none(::matches)) return MessageCompletion.Refused("INVALID_GROUP")
-    val positive = setOf("FieldFilled", "GroupFilled", "AllFieldsFilled", "AllGroupsFilled")
-        .mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+    val positive =
+        setOf(OperatorId.FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.ALL_FIELDS_FILLED, OperatorId.ALL_GROUPS_FILLED)
+        .mapNotNull { OPERATOR_SPELLINGS[conditionLanguage]?.get(it) }.toSet()
     val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
         ?: return MessageCompletion.Declined
     val proven = provesPresence(tree) { call ->

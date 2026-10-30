@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 
@@ -29,7 +30,7 @@ internal fun TrackedFactBase.computationPreconditionFeatureFindings(element: Tra
     if (element.kind != "Computation") {
         return emptyList()
     }
-    val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(conditionLanguage)
+    val spellings = OPERATOR_SPELLINGS.getValue(conditionLanguage)
     val prohibited = PROHIBITED_IN_A_PRECONDITION.map { spellings.getValue(it) }.toSet()
     val body = element.body ?: return emptyList()
     return conditionTexts(element.kind, body)
@@ -54,4 +55,4 @@ internal fun TrackedFactBase.computationPreconditionFeatureFindings(element: Tra
  * The third — the legacy count-given op — is absent deliberately: it has no English spelling and no catalog
  * id, so there is no measurement behind it here. See this file's KDoc.
  */
-private val PROHIBITED_IN_A_PRECONDITION = setOf("CustomCondition", "RepetitionNotUnique")
+private val PROHIBITED_IN_A_PRECONDITION = setOf(OperatorId.CUSTOM_CONDITION, OperatorId.REPETITION_NOT_UNIQUE)

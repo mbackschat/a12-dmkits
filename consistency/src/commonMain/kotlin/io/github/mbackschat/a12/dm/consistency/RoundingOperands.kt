@@ -1,8 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.isAsciiDigit
 import io.github.mbackschat.a12.dm.consistency.syntax.outerMarkedPathIn
 
@@ -42,7 +43,7 @@ internal fun TrackedFactBase.roundingContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_KIND_OF.mapNotNull { (id, kind) -> keywords[id]?.let { it to kind } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
@@ -58,13 +59,13 @@ internal fun TrackedFactBase.roundingContributions(
 private enum class RoundedOperand { ENTITY_SPEC, OPERATION, ABSOLUTE }
 
 private val OPERAND_KIND_OF = mapOf(
-    "Abs" to RoundedOperand.ABSOLUTE,
-    "RoundUpValue" to RoundedOperand.ENTITY_SPEC,
-    "RoundDownValue" to RoundedOperand.ENTITY_SPEC,
-    "RoundAccountingValue" to RoundedOperand.ENTITY_SPEC,
-    "RoundUp" to RoundedOperand.OPERATION,
-    "RoundDown" to RoundedOperand.OPERATION,
-    "RoundAccounting" to RoundedOperand.OPERATION,
+    OperatorId.ABS to RoundedOperand.ABSOLUTE,
+    OperatorId.ROUND_UP_VALUE to RoundedOperand.ENTITY_SPEC,
+    OperatorId.ROUND_DOWN_VALUE to RoundedOperand.ENTITY_SPEC,
+    OperatorId.ROUND_ACCOUNTING_VALUE to RoundedOperand.ENTITY_SPEC,
+    OperatorId.ROUND_UP to RoundedOperand.OPERATION,
+    OperatorId.ROUND_DOWN to RoundedOperand.OPERATION,
+    OperatorId.ROUND_ACCOUNTING to RoundedOperand.OPERATION,
 )
 
 /** A12's ceiling, raised to 14 by `A12K-3691` and read straight off `CheckOpUtils`. */

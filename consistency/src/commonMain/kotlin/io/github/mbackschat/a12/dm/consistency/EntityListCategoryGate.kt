@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 
 /**
  * A category inside an entity list whose carrier refuses one: `MVK_CATEGORY_NOT_ALLOWED`.
@@ -55,33 +56,33 @@ internal enum class CategoryGate {
 
 /** Every operator whose carrier calls `checkNoCategories`, by catalog id, with where it calls it. */
 private val CATEGORY_GATE_OF = mapOf(
-    "NumberOfFilledFields" to CategoryGate.BEFORE_THE_LIST,
-    "NumberOfFilledGroups" to CategoryGate.BEFORE_THE_LIST,
-    "NumberOfDifferentValues" to CategoryGate.BEFORE_THE_LIST,
-    "AtLeastOneFieldFilled" to CategoryGate.AFTER_THE_LIST,
-    "NoFieldFilled" to CategoryGate.AFTER_THE_LIST,
-    "FieldFilled" to CategoryGate.AFTER_THE_LIST,
-    "FieldNotFilled" to CategoryGate.AFTER_THE_LIST,
-    "NotAllFieldsFilled" to CategoryGate.AFTER_THE_LIST,
-    "AllFieldsFilled" to CategoryGate.AFTER_THE_LIST,
-    "FieldsNotCollectivelyFilled" to CategoryGate.AFTER_THE_LIST,
-    "NotExactlyOneFieldFilled" to CategoryGate.AFTER_THE_LIST,
-    "MoreThanOneFieldFilled" to CategoryGate.AFTER_THE_LIST,
-    "DateRangesOverlap" to CategoryGate.AFTER_THE_LIST,
-    "FieldValuesNotUnique" to CategoryGate.AFTER_THE_LIST,
-    "AtLeastOneGroupFilled" to CategoryGate.AFTER_THE_LIST,
-    "NoGroupFilled" to CategoryGate.AFTER_THE_LIST,
-    "AllGroupsFilled" to CategoryGate.AFTER_THE_LIST,
-    "NotAllGroupsFilled" to CategoryGate.AFTER_THE_LIST,
-    "GroupsNotCollectivelyFilled" to CategoryGate.AFTER_THE_LIST,
-    "GroupFilled" to CategoryGate.AFTER_THE_LIST,
-    "GroupNotFilled" to CategoryGate.AFTER_THE_LIST,
-    "RepetitionNotUnique" to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NUMBER_OF_FILLED_FIELDS to CategoryGate.BEFORE_THE_LIST,
+    OperatorId.NUMBER_OF_FILLED_GROUPS to CategoryGate.BEFORE_THE_LIST,
+    OperatorId.NUMBER_OF_DIFFERENT_VALUES to CategoryGate.BEFORE_THE_LIST,
+    OperatorId.AT_LEAST_ONE_FIELD_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NO_FIELD_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.FIELD_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.FIELD_NOT_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NOT_ALL_FIELDS_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.ALL_FIELDS_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.FIELDS_NOT_COLLECTIVELY_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NOT_EXACTLY_ONE_FIELD_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.MORE_THAN_ONE_FIELD_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.DATE_RANGES_OVERLAP to CategoryGate.AFTER_THE_LIST,
+    OperatorId.FIELD_VALUES_NOT_UNIQUE to CategoryGate.AFTER_THE_LIST,
+    OperatorId.AT_LEAST_ONE_GROUP_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NO_GROUP_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.ALL_GROUPS_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.NOT_ALL_GROUPS_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.GROUPS_NOT_COLLECTIVELY_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.GROUP_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.GROUP_NOT_FILLED to CategoryGate.AFTER_THE_LIST,
+    OperatorId.REPETITION_NOT_UNIQUE to CategoryGate.AFTER_THE_LIST,
 )
 
 /** [CATEGORY_GATE_OF] keyed by how this model's language spells each operator. */
 private fun TrackedFactBase.categoryGatesByKeyword(): Map<String, CategoryGate> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyMap()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyMap()
     return CATEGORY_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
 }
 

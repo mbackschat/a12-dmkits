@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxSite
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
@@ -38,7 +38,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  */
 internal fun TrackedFactBase.semanticIndexKeyContributions(element: TrackedDeclaration): List<ConditionFinding> {
     val execution = conditionExecution(element) ?: return emptyList()
-    val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
+    val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX) ?: return emptyList()
     val text = execution.carrier.text
     val uses = semanticIndexUsesIn(text, conditionLanguage, keyword).associateBy { it.keywordAt }
     val group = element.path.substringBeforeLast('/')

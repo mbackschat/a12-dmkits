@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 
 /**
@@ -52,7 +53,7 @@ internal fun TrackedFactBase.dateRangeOperandContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OVERLAP_CARRIERS
         .mapNotNull { (id, carrier) -> keywords[id]?.let { it to carrier } }
         .toMap()
@@ -70,8 +71,8 @@ internal fun TrackedFactBase.dateRangeOperandContributions(
 private enum class RangeCarrier { PLAIN_LIST, VALUE_LIST }
 
 private val RANGE_OVERLAP_CARRIERS = mapOf(
-    "DateRangesOverlap" to RangeCarrier.PLAIN_LIST,
-    "AtLeastOneDateRangeOverlaps" to RangeCarrier.VALUE_LIST,
+    OperatorId.DATE_RANGES_OVERLAP to RangeCarrier.PLAIN_LIST,
+    OperatorId.AT_LEAST_ONE_DATE_RANGE_OVERLAPS to RangeCarrier.VALUE_LIST,
 )
 
 /** The two year interpretations A12 refuses here; `STANDARD` is expressed by omitting the key. */

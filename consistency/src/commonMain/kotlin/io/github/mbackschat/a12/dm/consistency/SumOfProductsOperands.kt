@@ -1,9 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
-import io.github.mbackschat.a12.dm.consistency.syntax.HAVING
-import io.github.mbackschat.a12.dm.consistency.syntax.SEMANTIC_INDEX
+import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
 
 /**
@@ -52,9 +51,9 @@ internal fun TrackedFactBase.sumOfProductsContributions(
     element: TrackedDeclaration,
     execution: ConditionExecution? = conditionExecution(element),
 ): List<ConditionFinding> {
-    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val operator = keywords[SUM_OF_PRODUCTS] ?: return emptyList()
-    val filterKeyword = keywords[HAVING] ?: return emptyList()
+    val keywords = OPERATOR_SPELLINGS[conditionLanguage] ?: return emptyList()
+    val operator = keywords[OperatorId.SUM_OF_PRODUCTS] ?: return emptyList()
+    val filterKeyword = keywords[OperatorId.HAVING] ?: return emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val targetGroup = iterationScopeOf(element.declaredReference(), group)?.scope
     return callContributions(element, execution) { member, call ->
@@ -66,8 +65,6 @@ internal fun TrackedFactBase.sumOfProductsContributions(
         classOf(pair[0]!!, pair[1]!!)?.let { finding(it, element, member, call.spanIn(member)) }
     }
 }
-
-private const val SUM_OF_PRODUCTS = "SumOfProducts"
 
 /**
  * A group among the operands, which A12 refuses with `MVK_NO_GROUPS_ALLOWED` before it counts them: "only
@@ -104,7 +101,7 @@ private fun TrackedFactBase.groupOperandFinding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_NO_GROUPS_ALLOWED",
-        "in `$member`: `$SUM_OF_PRODUCTS` multiplies two field lists, and `${group.path}` is a group — name one " +
+        "in `$member`: `${OperatorId.SUM_OF_PRODUCTS.catalogId}` multiplies two field lists, and `${group.path}` is a group — name one " +
             "field of it, starred",
         element.path,
         span,
@@ -150,7 +147,7 @@ private fun TrackedFactBase.readOperand(
     filterKeyword: String,
     inAFilterBody: Boolean,
 ): ParallelOperand? {
-    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX)
+    val indexKeyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
     val keyed = operand.clauses.isNotEmpty() && operand.clauses.all { it.keyword == indexKeyword }
     val selection = if (keyed) {
         operandReferenceIn(operand.text, declaringGroup, element, inAFilterBody) { null }?.takeIf { it.indexSelected }
@@ -226,7 +223,7 @@ private fun finding(code: String, element: TrackedDeclaration, member: String, s
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,
-    "in `$member`: `$SUM_OF_PRODUCTS` multiplies two parallel repetition lists, so both operands must name " +
+    "in `$member`: `${OperatorId.SUM_OF_PRODUCTS.catalogId}` multiplies two parallel repetition lists, so both operands must name " +
         "fields of ONE group and each must star that group's lowest repeatable level — " +
         ADVICE.getValue(code),
     element.path,
@@ -238,7 +235,7 @@ private val ADVICE = mapOf(
     "MVK_DIFFERENT_GROUPS" to "these two name fields of different groups",
     "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED" to
         "one of them leaves the lowest repeatable level without an unrestricted star, either unstarred or " +
-        "restricted by a `$HAVING` filter, so star that level on both",
+        "restricted by a `${OperatorId.HAVING.catalogId}` filter, so star that level on both",
     "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED" to "one of them stars more than the lowest level",
     "MVK_REPEATABLE_LEVEL_REQUIRED" to "neither of them has a repeatable level to iterate",
     "MVK_NO_NUMBER" to "one of them names a field that is not a number, and only numbers multiply",
