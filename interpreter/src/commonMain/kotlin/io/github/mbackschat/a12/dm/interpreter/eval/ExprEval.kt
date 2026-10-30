@@ -827,8 +827,13 @@ private fun Interpreter.coerceTemporalLiteral(v: Val, declaredFormat: String?): 
  * **It must be a leap year**, and it binds only this unconfigured case — a model that declares a Base Year
  * anchors to that instead, and [coerceTemporalLiteral] prefers it. On the temporal-operation carrier the choice is
  * kernel-observable: with no Base Year declared both kernel strategies count 2 days from `28.02.` to `01.03.`
- * (`adapter.laws.YearlessConstantOperationDiffTest`). A common year here would answer 1 and diverge. Which leap
- * year is not pinned — reading the borrowed year back is refused `MVK_NO_CONST`.
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). A common year here would answer 1 and diverge.
+ *
+ * **Which leap year is observable only beside a stored yearless field**, whose own fallback is also 2000
+ * (`Document`'s fragment completion): both kernel strategies count 60 days from `"01.01."` to a stored `03-01` and
+ * 365 to `12-31`, so the literal completes in the field's year, and 2004 here disagrees with both
+ * (`adapter.laws.YearlessShiftAnchorDiffTest`, KERNEL-FINDINGS KF93). Two literals alone narrow it no further than a
+ * leap year from 1904 to 2020, and reading the borrowed year back is refused `MVK_NO_CONST`.
  */
 private const val YEARLESS_ANCHOR_YEAR = 2000
 

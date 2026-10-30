@@ -315,6 +315,15 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Spec-sync round of 2026-10-30c <a id="spec-sync-2026-10-30c"></a>
+
+The queue is SPEC-2026-10-30-03 and SPEC-2026-10-30-04 of a12-kernel-lean's ledger at its commit `d7da3a7050db3a3fb929104765f46d38a9a5d411`: two component-omitting Dates of different component sets compare as their own earliest completions, and with no Base Year a stored `MM-dd` field's day shift starts from 2000 on the hybrid calendar and keeps the year it reaches. The acceptance asks us to reconcile both in our own record, and to claim nothing about other operators, `DATEFRAGMENT` declarations, compact or dotted spellings, `AddMonths`, an `MM` source, ordering across a year-crossing shift or the constants' exact anchor year.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS58** | SPEC-2026-10-30-03, SPEC-2026-10-30-04 | the pair comparison, the shift anchor, the year-keeping comparison and the constants' shared year reconciled in our own domain on both strategies and the interpreter | **done** — every measured row agrees with both clauses on both strategies and the interpreter, with no change to either engine; a constant beside a stored yearless field completes in that field's year | `ComponentOmittingDatePairDiffTest`, `YearlessShiftAnchorDiffTest`, KF93 | — |
+| **SS59** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30c | — |
+
 ### Spec-sync round of 2026-10-30b <a id="spec-sync-2026-10-30b"></a>
 
 The queue is SPEC-2026-10-30-02 of a12-kernel-lean's ledger at its commit `70adc180da20762a95576ba47c41e30d1463f639`: a yearless field copied as it is into a year-bearing Date target takes the declared Base Year. The acceptance asks us to reconcile the bare-copy store, the month-only completion to the first and the clears in our own record, and to claim nothing about a `DATEFRAGMENT` declaration, partial precision, a repeatable carrier or a DateTime target.

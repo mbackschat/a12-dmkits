@@ -17959,6 +17959,185 @@
           "evidence": {}
         }
       }
+    },
+    "kf93": {
+      "sha256": "a305f77d38665623010d30e2704f0274c1fb9ceedca275fda819023892006bbf",
+      "task": "SS58",
+      "scope": {
+        "dmkits": [],
+        "checker": ["pair admission", "shift admission"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["pair comparison", "shift anchor", "shifted comparison", "constant year"],
+        "interpreter": ["pair comparison", "shift anchor", "shifted comparison", "constant year"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["pair comparison", "shift anchor"]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extension states how A12 evaluates admitted shapes, which no kit carries; the locks author every model through the typed surface.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The portable checker admits every measured model, as A12 does, with no change.",
+          "evidence": {
+            "pair admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComponentOmittingDatePairDiffTest.kt#a12AndThePortableCheckerAdmitEveryPair",
+              "witness": "Ten comparisons across five component sets under Base Year 2023 draw nothing on either side."
+            },
+            "shift admission": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#a12AndThePortableCheckerAdmitBothModels",
+              "witness": "Day shifts, yearless differences and the shifted comparison draw nothing on either side, with and without a Base Year."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no rule or computation.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Export reads a model A12 admitted.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Dynamic Groovy pins every row and static Java agrees on every document.",
+          "evidence": {
+            "pair comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComponentOmittingDatePairDiffTest.kt#eachOperandCompletesToItsOwnEarliestDate",
+              "witness": "2023-06 before 06-11, 06 before 06-11 and 2023 before 2023-06, and every first-of-period pair equal."
+            },
+            "shift anchor": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#withoutABaseYearTheShiftStartsFromTheYear2000",
+              "witness": "02-28 shifted by 1, 36890, 73049 and -36160 days stores 02-29, 02-28, 02-28 and 02-27, and the two shifts past 1582 store the Julian labels reached from 2000."
+            },
+            "shifted comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#aShiftedDayKeepsTheYearItReaches",
+              "witness": "AddDays(12-31, 1) is not the stored 01-01, with and without a Base Year."
+            },
+            "constant year": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#yearlessConstantsCompleteInOneYear",
+              "witness": "31.12. to 01.01. is -365 and 01.01. to a stored 12-31 is 365 with no Base Year, -364 and 364 under 2001."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter agrees on every document with no change: a stored yearless field and a yearless constant both fall back to 2000, and a shift keeps the year it reaches.",
+          "evidence": {
+            "pair comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComponentOmittingDatePairDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter fires the rules dynamic Groovy fires on all five documents."
+            },
+            "shift anchor": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter stores every shift dynamic Groovy stores, with and without a Base Year."
+            },
+            "shifted comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter fires the next-day rule on the documents dynamic Groovy fires it on."
+            },
+            "constant year": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter counts every yearless difference as dynamic Groovy does; anchoring the constant in 2004 disagrees."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter and checks through the kernel and the checker.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "Both clauses are the peer's own SPEC-2026-10-30-03 and -04 at d7da3a70, which our locks reproduce row for row.",
+          "evidence": {
+            "pair comparison": {
+              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-03",
+              "witness": "The entry states the earliest completions our pair lock pins."
+            },
+            "shift anchor": {
+              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-04",
+              "witness": "The entry states the anchor 2000 and the year-keeping comparison our shift lock pins."
+            }
+          }
+        }
+      }
+    },
+    "kf239": {
+      "sha256": "e618f9e696c3b6fd769cf136069d8b8993b5e68f3b3c690d723c0b1327013f1f",
+      "task": "SS58",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["constant year beside a field"],
+        "interpreter": ["constant year beside a field"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["constant year beside a field"]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extension states the year a literal takes at runtime, which no kit carries.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extension changes no admission; the gate rows stand as measured.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no temporal constant.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Export reads a model A12 admitted.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Dynamic Groovy pins the yearless differences beside a stored field and static Java agrees.",
+          "evidence": {
+            "constant year beside a field": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#yearlessConstantsCompleteInOneYear",
+              "witness": "01.01. to a stored 12-31 is 365 and to 03-01 is 60 with no Base Year, 364 and 59 under 2001."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter's literal fallback and its stored-field fallback are both 2000, so it agrees with no change; anchoring the literal in 2004 disagrees.",
+          "evidence": {
+            "constant year beside a field": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/YearlessShiftAnchorDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter counts every difference beside a stored field as dynamic Groovy does."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool evaluates through the interpreter.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The peer's SPEC-2026-10-30-04 at d7da3a70 states that both operands of a measured DifferenceInDays complete in one anchor year.",
+          "evidence": {
+            "constant year beside a field": {
+              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-04",
+              "witness": "The entry's delta names the shared anchor year our lock pins."
+            }
+          }
+        }
+      }
     }
   }
 }
