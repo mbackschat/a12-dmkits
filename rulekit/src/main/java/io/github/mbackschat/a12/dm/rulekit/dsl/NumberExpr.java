@@ -236,6 +236,29 @@ public final class NumberExpr implements TemporalComponent {
         return toThePowerOf(new NumberExpr(NumberLiteral.of(literal)));
     }
 
+    // A kind-typed ref as the RIGHT operand, for the reason the comparison overloads above give: without these
+    // `ref.plus(expr)` compiled and `expr.plus(ref)` did not (found 2026-10-30 writing `Sum(…) + [field]`).
+
+    public NumberExpr plus(NumberRef other) {
+        return plus(other.asNumber());
+    }
+
+    public NumberExpr minus(NumberRef other) {
+        return minus(other.asNumber());
+    }
+
+    public NumberExpr times(NumberRef other) {
+        return times(other.asNumber());
+    }
+
+    public NumberExpr dividedBy(NumberRef other) {
+        return dividedBy(other.asNumber());
+    }
+
+    public NumberExpr toThePowerOf(NumberRef other) {
+        return toThePowerOf(other.asNumber());
+    }
+
     /**
      * This expression with the {@code ==}/{@code !=} scale gate lifted, for a rule that carries A12's waiver
      * ({@link Rule.Builder#allowDifferingDecimals()}, KERNEL-FINDINGS KF75). The comparison it builds is the

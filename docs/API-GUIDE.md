@@ -830,7 +830,7 @@ TimeExpr capturedClock = Dsl.time(
 
 **Time construction uses a prefix.** `Dsl.time()` through `Dsl.time(hour, minute, second)` preserve the kernel's four legal arities. Omitted trailing components are fixed zero: `Dsl.time()` is midnight, `Dsl.time(Dsl.temporalComponent("10"))` is 10:00:00, and the two-component form is 10:30:00. The public `TimeConstruction` node therefore carries a copied `List<Calculation>` rather than three mandatory record slots; its former three-argument constructor remains as the source-compatible full-form convenience (findings 105–106 / IF232–IF234).
 
-**Arithmetic on a kind-typed ref.** `plus`/`minus`/`times`/`dividedBy`/`toThePowerOf` sit directly on `NumberRef`, taking another ref, a `NumberExpr` or a `long`, and `Computation.Builder.calc` takes a `NumberExpr` beside its `Calculation` form. Both are sugar over `asNumber()`/`expression()` and render identically, so the calculation arm of a ref now reads like its comparison arm instead of widening to `NumberExpr` and back (DG60):
+**Arithmetic on a kind-typed ref.** `plus`/`minus`/`times`/`dividedBy`/`toThePowerOf` sit directly on `NumberRef`, taking another ref, a `NumberExpr` or a `long`, and `Computation.Builder.calc` takes a `NumberExpr` beside its `Calculation` form. `NumberExpr` takes a `NumberRef` as its right operand in both arms, so `Dsl.sum(list).plus(field)` compiles as `field.plus(Dsl.sum(list))` does. All of these are sugar over `asNumber()`/`expression()` and render identically, so the calculation arm of a ref now reads like its comparison arm instead of widening to `NumberExpr` and back (DG60, `NumberRefArithmeticTest`):
 
 <!-- snippet: ref-arithmetic -->
 ```java

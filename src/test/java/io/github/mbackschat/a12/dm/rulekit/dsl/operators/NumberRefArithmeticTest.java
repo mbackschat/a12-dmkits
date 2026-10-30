@@ -83,6 +83,23 @@ class NumberRefArithmeticTest {
         assertEquals("[/Order/Quantity] * 2 > [/Order/UnitPrice]", render(QUANTITY.times(2).gt(UNIT_PRICE)));
     }
 
+    /**
+     * Arithmetic composes from either side too: an expression takes a ref as its right operand, as its comparisons
+     * already did. Found 2026-10-30 writing a joined-reference differential, where {@code Sum(…) + [field]} would
+     * not compile with the aggregate on the left.
+     */
+    @Test
+    void anExpressionTakesARefAsItsRightOperand() {
+        var left = QUANTITY.times(2);
+        assertEquals(render(left.plus(UNIT_PRICE.asNumber()).gt(0)), render(left.plus(UNIT_PRICE).gt(0)));
+        assertEquals(render(left.minus(UNIT_PRICE.asNumber()).gt(0)), render(left.minus(UNIT_PRICE).gt(0)));
+        assertEquals(render(left.times(UNIT_PRICE.asNumber()).gt(0)), render(left.times(UNIT_PRICE).gt(0)));
+        assertEquals(render(left.dividedBy(UNIT_PRICE.asNumber()).gt(0)), render(left.dividedBy(UNIT_PRICE).gt(0)));
+        assertEquals(render(left.toThePowerOf(UNIT_PRICE.asNumber()).gt(0)),
+                render(left.toThePowerOf(UNIT_PRICE).gt(0)));
+        assertEquals("[/Order/Quantity] * 2 + [/Order/UnitPrice] > 0", render(left.plus(UNIT_PRICE).gt(0)));
+    }
+
     @Test
     void anExpressionOperandAndALiteralReachTheSameNodes() {
         assertEquals(render(QUANTITY.asNumber().times(UNIT_PRICE.asNumber().plus(1)).gt(0)),
