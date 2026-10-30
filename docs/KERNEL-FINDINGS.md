@@ -14771,13 +14771,13 @@ A partial call runs only rules whose error entity is a field (`CodeGenTeilValidi
 
 **Extended 2026-10-30: a rule reporting on the ROOT fires once, at the root itself** (a12-kernel-lean SPEC-2026-10-30-08). An insurance policy's root `Policy` holds `Remark`, `Contact` and the fixed group `Ledger` with `Number`. Three rules declared in `Ledger` report on `../..`, the root; they are written past the typed builder, which refuses a target outside the declaring group ([FEATURE-GAPS §4](FEATURE-GAPS.md#4-deferred--out-of-scope--wont-build)).
 
-| condition | `{}` | only `Contact` | only `Remark` | only `Ledger/Number` |
+| condition | `{"Policy":{}}` | only `Contact` | only `Remark` | only `Ledger/Number` |
 |---|---|---|---|---|
-| `GroupNotFilled(/Policy)` | OMISSION at `Policy[1]` | — | — | — |
-| `GroupFilled(/Policy)` | — | VALUE at `Policy[1]` | VALUE | VALUE |
-| `GroupFilled(/Policy) And FieldNotFilled(/Policy/Remark)` | — | OMISSION at `Policy[1]` | — | OMISSION |
+| `GroupNotFilled(/Policy)` | OMISSION at `/Policy` | — | — | — |
+| `GroupFilled(/Policy)` | — | VALUE at `/Policy` | VALUE | VALUE |
+| `GroupFilled(/Policy) And FieldNotFilled(/Policy/Remark)` | — | OMISSION at `/Policy` | — | OMISSION |
 
-Each fires once per document. The first two reference nothing and list nothing to fill; the third references and lists `Remark` alone. The same target under `FieldNotFilled(/Policy/Remark)` alone draws `MVK_ERROR_FIELD_NOT_REFERENCED`, and a rule declared in `Policy` itself reporting on `..` under `GroupNotFilled(/Policy)` fails A12's build with no class; the portable checker answers `MVK_ERROR_FIELD_NOT_REFERENCED` and `CK_MODEL_NOT_BUILDABLE`. Both strategies agree on every document. The interpreter fired and referenced alike but addressed these messages at `Policy[1]/Ledger[1]/..` until a bare `..` popped a name ([IF454](INTERPRETER-FINDINGS.md#if454)). Not measured: partial validation, a repeating root, a root target beside a repeatable group or a join, and `AtLeastOneGroupFilled` on a root target. *(Locked: `adapter.laws.RootErrorTargetDiffTest`.)*
+Each fires once per document, at the bare root pointer `/Policy`, which carries no index where a field below it does (`/Policy[1]/Remark`). *Corrected 2026-10-30:* this table first wrote `Policy[1]`, which the lock never pinned; a12-kernel-lean followed the lock (their `src-inbound-2026-10-30f` at `ce266fb0`). The first two reference nothing and list nothing to fill; the third references and lists `Remark` alone. The same target under `FieldNotFilled(/Policy/Remark)` alone draws `MVK_ERROR_FIELD_NOT_REFERENCED`, and a rule declared in `Policy` itself reporting on `..` under `GroupNotFilled(/Policy)` fails A12's build with no class; the portable checker answers `MVK_ERROR_FIELD_NOT_REFERENCED` and `CK_MODEL_NOT_BUILDABLE`. Both strategies agree on every document. The interpreter fired and referenced alike but addressed these messages at `Policy[1]/Ledger[1]/..` until a bare `..` popped a name ([IF454](INTERPRETER-FINDINGS.md#if454)). Not measured: partial validation, a repeating root, a root target beside a repeatable group or a join, and `AtLeastOneGroupFilled` on a root target. *(Locked: `adapter.laws.RootErrorTargetDiffTest`.)*
 
 *Locked by:* `adapter.laws.GroupTargetRuntimeDiffTest` (A12 pinned on the rows above, both strategies agreeing on every document of both channels and on computation, the interpreter equal on the lossless pointer key) and `…GroupTargetCarrierDiffTest` (the admission of every neighbouring carrier, the nested rows at both capacities, and the keyed group target's silence).
 

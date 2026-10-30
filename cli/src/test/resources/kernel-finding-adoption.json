@@ -1275,7 +1275,7 @@
       }
     },
     "kf603": {
-      "sha256": "0c780e66e1167e43a70338de2685f6e391a277ebeed08e31880ec59ed1985d97",
+      "sha256": "81062a26c45ae4833025afe709591a21a06af42743d8a45521f411531f3911a5",
       "task": "SS63",
       "scope": {
         "dmkits": [
@@ -1301,7 +1301,8 @@
         "dmtool-cli": [],
         "a12-kernel-lean": [
           "A12 on a group target and below a joined side",
-          "A12 on the neighbouring carriers"
+          "A12 on the neighbouring carriers",
+          "A12 on a root target"
         ]
       },
       "consumers": {
@@ -1349,7 +1350,7 @@
             },
             "A12 on a root target": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#theRootFiresOnceAtItsBarePointerAndNamesNoneOfItsFields",
-              "witness": "Four policies pinned from dynamic Groovy: the root's absence as an omission and its presence as a value, each once at Policy[1]."
+              "witness": "Four policies pinned from dynamic Groovy: the root's absence as an omission and its presence as a value, each once at the bare /Policy."
             }
           }
         },
@@ -1386,8 +1387,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
-          "evidence": {}
+          "basis": "The root target (SPEC-2026-10-30-08) was accepted against our handback of 2026-10-30e at ce266fb0, the bare root pointer followed from our lock; the group-target rows are not yet handed over.",
+          "evidence": {
+            "A12 on a root target": {
+              "reference": "a12-kernel-lean@ce266fb0ef0d2fbf1cf0838a08dbf0e50d8bea98:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30f",
+              "witness": "The entry is accepted against d310167e8, the checkpoint keeping the bare root pointer the lock pins."
+            }
+          }
         }
       }
     },
@@ -2221,7 +2227,8 @@
         "json-schema-export": [],
         "a12-kernel-lean": [
           "native number node text",
-          "SPEC07 JSON conversion"
+          "SPEC07 JSON conversion",
+          "a declared comma separator"
         ]
       },
       "consumers": {
@@ -2302,11 +2309,15 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit. SPEC-2026-10-10-07 conversion is reconciled here; Lean owns verification.",
+          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit. SPEC-2026-10-10-07 conversion is reconciled here; Lean owns verification. The declared comma separator (SPEC-2026-10-30-09) was accepted against our handback of 2026-10-30e at ce266fb0; a computed Number's rendering under `,` stays unmeasured there.",
           "evidence": {
             "native number node text": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-11",
               "witness": "Native and quoted Number and String inputs, signed zero, scientific thresholds and a native 1e999999999 String value corroborated (A12JsonIngressKernelTest; KF1)."
+            },
+            "a declared comma separator": {
+              "reference": "a12-kernel-lean@ce266fb0ef0d2fbf1cf0838a08dbf0e50d8bea98:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30f",
+              "witness": "The entry is accepted against d310167e8: separator twins give identical codes, the stored comma text a formal error and the comma literal refused under both."
             }
           }
         }
@@ -2735,7 +2746,8 @@
         "a12-kernel-lean": [
           "message reference and fill-to-fix scope",
           "selected operand references",
-          "the row-bound level below a key of SPEC-2026-10-28-02"
+          "the row-bound level below a key of SPEC-2026-10-28-02",
+          "the root under either polarity"
         ]
       },
       "consumers": {
@@ -2810,8 +2822,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
-          "evidence": {}
+          "basis": "The root under either polarity (SPEC-2026-10-30-08) was accepted against our handback of 2026-10-30e at ce266fb0; the other surfaces are not yet handed over.",
+          "evidence": {
+            "the root under either polarity": {
+              "reference": "a12-kernel-lean@ce266fb0ef0d2fbf1cf0838a08dbf0e50d8bea98:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30f",
+              "witness": "The entry is accepted against d310167e8: the root names none of its fields on a root target or beside a field target."
+            }
+          }
         }
       }
     },
@@ -6012,7 +6029,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "specification"
+          "specification",
+          "the kept instant inside one computation"
         ]
       },
       "consumers": {
@@ -6076,11 +6094,15 @@
         },
         "a12-kernel-lean": {
           "state": "ALREADY_CONFORMS",
-          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier.",
+          "basis": "The peer originated the measurement; this estate reproduced it on its own carrier. The kept instant inside one computation (SPEC-2026-10-30-10) was accepted against our handback of 2026-10-30e at ce266fb0.",
           "evidence": {
             "specification": {
               "reference": "a12-kernel-lean@433a486a74c1c8fb397518902030e03dda0f4491:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-02-01",
               "witness": "The DateTime join checkpoint's eleven compute documents."
+            },
+            "the kept instant inside one computation": {
+              "reference": "a12-kernel-lean@ce266fb0ef0d2fbf1cf0838a08dbf0e50d8bea98:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30f",
+              "witness": "The entry is accepted against d310167e8: ordered, unequal to a stored 02:30 and 60 minutes apart in the overlap, equal in both controls."
             }
           }
         }
