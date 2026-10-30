@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
 import io.github.mbackschat.a12.dm.interpreter.conditionLanguageCode
+import io.github.mbackschat.a12.dm.interpreter.resolveRelative
 import io.github.mbackschat.a12.dm.interpreter.parseA12Json
 import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
 import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
@@ -721,22 +722,11 @@ object ModelLoader {
     }
 
     /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */
-    private fun resolveRel(nodeId: String, rel: String): String {
-        var base = nodeId
-        var r = rel
-        while (r.startsWith("../")) {
-            val boundary = base.lastIndexOf('/')
-            if (boundary < 0) {
-                throw InvalidPreparedModelSourceException(
-                    nodeId,
-                    "computedFieldRelPath '$rel' at '$nodeId' walks above the model root",
-                )
-            }
-            base = base.substring(0, boundary)
-            r = r.substring(3)
-        }
-        return if (r.isEmpty()) base else "$base/$r"
-    }
+    private fun resolveRel(nodeId: String, rel: String): String =
+        resolveRelative(nodeId, rel) ?: throw InvalidPreparedModelSourceException(
+            nodeId,
+            "computedFieldRelPath '$rel' at '$nodeId' walks above the model root",
+        )
 
     // ── JsonElement helpers — mirror the Jackson JsonNode accessors the port relies on. ─────────────
     //   `path` chains through a missing key as null (like Jackson's MissingNode); the typed readers give the

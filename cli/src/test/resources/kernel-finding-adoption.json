@@ -1275,24 +1275,28 @@
       }
     },
     "kf603": {
-      "sha256": "2d16c6a02ca53652cd189aaf325979256aa791780ac2c44f4fe290e7754a6ab0",
-      "task": "SS7",
+      "sha256": "0c780e66e1167e43a70338de2685f6e391a277ebeed08e31880ec59ed1985d97",
+      "task": "SS63",
       "scope": {
         "dmkits": [
           "a typed rule reporting on a group"
         ],
-        "checker": [],
+        "checker": [
+          "the root target's refused carriers"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
           "A12 on a group target and below a joined side",
-          "A12 on the neighbouring carriers"
+          "A12 on the neighbouring carriers",
+          "A12 on a root target"
         ],
         "interpreter": [
           "the interpreter on a group target and below a joined side",
           "the interpreter in partial calls",
           "the interpreter computing below a joined side",
-          "the interpreter on the neighbouring carriers"
+          "the interpreter on the neighbouring carriers",
+          "the interpreter on a root target"
         ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
@@ -1312,9 +1316,14 @@
           }
         },
         "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Runtime behaviour; the admission of these rules is KF601's.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Runtime behaviour is not the checker's; the admission of group targets is KF601's. On a root target it already refused what A12 refuses, the unbuildable own-declaration as CK_MODEL_NOT_BUILDABLE.",
+          "evidence": {
+            "the root target's refused carriers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#aConditionNotNamingTheRootIsRefused",
+              "witness": "A root target whose condition names no group draws MVK_ERROR_FIELD_NOT_REFERENCED from A12 and the checker alike."
+            }
+          }
         },
         "json-schema-import": {
           "state": "NOT_APPLICABLE",
@@ -1337,12 +1346,16 @@
             "A12 on the neighbouring carriers": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetCarrierDiffTest.kt#theNestedLevelIsDenseOnlyWhileItsCapacityIsAtMostFive",
               "witness": "Every declared part at capacity five, the occupied ones at six, below matched and unmatched lines."
+            },
+            "A12 on a root target": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#theRootFiresOnceAtItsBarePointerAndNamesNoneOfItsFields",
+              "witness": "Four policies pinned from dynamic Groovy: the root's absence as an omission and its presence as a value, each once at Policy[1]."
             }
           }
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The interpreter withholds a group target's own level, iterates an unkeyed level below a joined group inside the join, and skips a group target in partial calls.",
+          "basis": "The interpreter withholds a group target's own level, iterates an unkeyed level below a joined group inside the join, and skips a group target in partial calls. A bare `..` in an error target pops one name, so a root target is addressed at the root (IF454).",
           "evidence": {
             "the interpreter on a group target and below a joined side": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetRuntimeDiffTest.kt#theInterpreterReportsAsA12OnEveryDocument",
@@ -1359,6 +1372,10 @@
             "the interpreter on the neighbouring carriers": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/GroupTargetCarrierDiffTest.kt#theInterpreterReportsAsA12OrDeclinesTheRule",
               "witness": "Equal to A12 on every admitted carrier but the keyed group target, which it declines on every document."
+            },
+            "the interpreter on a root target": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter addresses a root target's message at the root on every document; before IF454 it named Policy[1]/Ledger[1]/.."
             }
           }
         },
@@ -2179,20 +2196,24 @@
       }
     },
     "kf1": {
-      "sha256": "16242eb3a27b4be721dd13e5ae2e857d27c8a4660fd0b31d649f938f04a70341",
-      "task": "F-USE-BACKLOG",
+      "sha256": "efcc7aa16cf48a13dbda3661863f0f27742cbc9384af95e2f29b44b2f76aceb6",
+      "task": "SS64",
       "scope": {
         "adapter": [
           "native number node text",
-          "notification and fatal conversion"
+          "notification and fatal conversion",
+          "a declared comma separator"
         ],
         "dmkits": [],
         "interpreter": [
           "native number node text",
           "numeric document id text",
-          "surviving object coordinates"
+          "surviving object coordinates",
+          "a declared comma separator"
         ],
-        "checker": [],
+        "checker": [
+          "a declared comma separator"
+        ],
         "dmtool-cli": [
           "canonical conversion on runtime verbs"
         ],
@@ -2215,6 +2236,10 @@
             "notification and fatal conversion": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/A12JsonIngressDiffTest.kt#notificationOnlyNodesPreserveSiblingsWhileFatalInputsRefuseTheDocument",
               "witness": "Independent expected serializer writeback and public-reader output distinguish discarded shapes from fatal scalar IDs and parse/root failures."
+            },
+            "a declared comma separator": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DeclaredCommaSeparatorDiffTest.kt#theTwinsGiveIdenticalMessages",
+              "witness": "Twins differing in decimalSeparator alone give the same codes on five documents; a stored 1,5 is zahlHatUngueltigeZeichen under both."
             }
           }
         },
@@ -2238,13 +2263,22 @@
             "surviving object coordinates": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/DocumentTransportTest.kt#jsonRepetitionsCompactSurvivingObjectsIndependentlyAtEachParent",
               "witness": "JVM/Node lock null/mixed prefixes, empty objects, zero/two survivors and per-parent compaction."
+            },
+            "a declared comma separator": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DeclaredCommaSeparatorDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter, which reads no separator from the model, equals dynamic Groovy under both twins."
             }
           }
         },
         "checker": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Document ingestion is a runtime concern; the checker judges models.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Document ingestion is a runtime concern; on the one model-level member, decimalSeparator, the checker already admitted a declared comma and refused a comma literal as A12 does.",
+          "evidence": {
+            "a declared comma separator": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DeclaredCommaSeparatorDiffTest.kt#aCommaLiteralIsRefusedUnderEitherSeparator",
+              "witness": "The checker admits both twins and refuses the literal 1,5 as MVK_UNEXPECTED_TOKEN under both, as A12 does."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "APPLIED",
@@ -2678,19 +2712,21 @@
       }
     },
     "kf522": {
-      "sha256": "dc1f2d908a170809acc1c52199db69db31d014e95cbfdedef1fad89422973859",
-      "task": "SS35",
+      "sha256": "753a023bd003b676ca51fa5dc11db0493dd436523e1b9fe5d3a466493a96f477",
+      "task": "SS63",
       "scope": {
         "adapter": [
           "message reference and fill-to-fix scope",
           "selected operand references",
-          "the firing row below a selected key"
+          "the firing row below a selected key",
+          "the root under either polarity"
         ],
         "dmkits": [],
         "interpreter": [
           "message reference and fill-to-fix scope",
           "selected operand references",
-          "the firing row below a selected key"
+          "the firing row below a selected key",
+          "the root under either polarity"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -2718,6 +2754,10 @@
             "the firing row below a selected key": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#theFiringRowNamesTheLevelBelowARepeatableKeyedGroup",
               "witness": "Both kernel strategies pin the firing Slots row under a repeatable keyed Bins group."
+            },
+            "the root under either polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#theRootFiresOnceAtItsBarePointerAndNamesNoneOfItsFields",
+              "witness": "GroupNotFilled(/Policy) names no field on a root target, and beside FieldNotFilled(Remark) only Remark, under And and Or."
             }
           }
         },
@@ -2741,6 +2781,10 @@
             "the firing row below a selected key": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RowBoundSelectedReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
               "witness": "The interpreter's references equal both kernel strategies on every document."
+            },
+            "the root under either polarity": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootErrorTargetDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter's reference and fill-to-fix lists equal dynamic Groovy's on every root-target and field-target message."
             }
           }
         },
@@ -5949,17 +5993,19 @@
       }
     },
     "kf504": {
-      "sha256": "8382b3e41ad29424a4d14c3e989ef43d06f267a8fcd30de76e3b0b4e32ed9ebc",
-      "task": "F-USE-BACKLOG",
+      "sha256": "f2c29107c3991bd90dc3e242a5635c9ec50d89407c32104b25aafcba38332e1e",
+      "task": "SS65",
       "scope": {
         "adapter": [
-          "computed DateTime join"
+          "computed DateTime join",
+          "a kept overlap instant inside one computation"
         ],
         "dmkits": [
           "typed day shift over a DateTime"
         ],
         "interpreter": [
-          "computed DateTime join"
+          "computed DateTime join",
+          "a kept overlap instant inside one computation"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -5977,6 +6023,10 @@
             "computed DateTime join": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
               "witness": "The peer's eleven join and two landing documents with their ids, plus our spring twin."
+            },
+            "a kept overlap instant inside one computation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverlapInstantInComputationDiffTest.kt#theComputationReadsTheKeptInstant",
+              "witness": "From 2024-10-27T01:30 the two shifts are ordered, 60 minutes apart and unequal to a stored 02:30; the same-day and summer controls see equality."
             }
           }
         },
@@ -5997,6 +6047,10 @@
             "computed DateTime join": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputedDateTimeJoinDiffTest.kt#aLaterComputationReadsAComputedDateTimeAtItsRendering",
               "witness": "The interpreter is the third engine of the same differential."
+            },
+            "a kept overlap instant inside one computation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/OverlapInstantInComputationDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The interpreter equals dynamic Groovy on every outcome and message of the three documents, with no change."
             }
           }
         },

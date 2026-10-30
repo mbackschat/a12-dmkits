@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.parse.A12Lexis
+import io.github.mbackschat.a12.dm.interpreter.resolveRelative
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /**
@@ -156,20 +157,12 @@ private fun selectedText(
 }
 
 /**
- * A field token's path below the rule's group: an absolute name as written, otherwise after one step up per
- * leading `../`. The kernel reads every spelling of one field at the same cell, so a nested rule's `../X` and
+ * A field token's path below the rule's group: an absolute name as written, otherwise resolved against the group,
+ * each `..` popping one name. The kernel reads every spelling of one field at the same cell, so a nested rule's `../X` and
  * `/Root/Group/X` render the enclosing row alike (KF561). A model-aware caller adds the short-name tier.
  */
-internal fun messageFieldPath(base: String, name: String): String {
-    if (name.startsWith('/')) return name
-    var parent = base
-    var rest = name
-    while (rest.startsWith("../")) {
-        parent = parent.substringBeforeLast('/')
-        rest = rest.removePrefix("../")
-    }
-    return "$parent/$rest"
-}
+internal fun messageFieldPath(base: String, name: String): String =
+    if (name.startsWith('/')) name else resolveRelative(base, name) ?: name
 
 /** The capture groups of the pattern below, in order: the signed offset, group, name, value suffix, category, key
  *  selection, index name and index category. */

@@ -54,6 +54,8 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 two component-omitting Dates of different component sets compare as their own earliest completions ([kf93](KERNEL-FINDINGS.md#kf93)) | — | `ComponentOmittingDatePairDiffTest` | — |
 | §6 a stored yearless day shift starts from 2000 without a Base Year and keeps the year it reaches ([kf93](KERNEL-FINDINGS.md#kf93)) | — | `YearlessShiftAnchorDiffTest` | — |
 | §6 a component-omitting Date argument of `DateTime(date, time)` completes to its earliest day in the Base Year ([kf627](KERNEL-FINDINGS.md#kf627)) | — | `DateTimeComponentCompletionDiffTest` | — |
+| §6 inside one computation a comparison and a sub-day difference read the instant a shift keeps across an overlap ([kf504](KERNEL-FINDINGS.md#kf504)) | — | `OverlapInstantInComputationDiffTest` | — |
+| §1 a declared `,` decimal separator changes neither stored Number reads nor condition literals ([kf1](KERNEL-FINDINGS.md#kf1)) | — | `DeclaredCommaSeparatorDiffTest` | — |
 | §6 a dotted literal beside a first-filled Date compares as a date | — | `FirstFilledDateLiteralComparisonDiffTest` | `FirstFilledDateLiteralTest` |
 | §6 a declared temporal format matched as the regex it once compiled to | — | — | `FormatPatternRegexEquivalenceTest` |
 | §9 a keyed fill quantifier over a duplicated key decides nothing | — | `KeyedNotAllFieldsFilledDiffTest` | — |
@@ -61,6 +63,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §9 a starred read of a joined group references its own fields at coordinate `0` and no index field ([kf539](KERNEL-FINDINGS.md#kf539)) | — | `JoinedStarredReferenceDiffTest` | — |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |
 | §9 a group error target's own level, a target below a joined side, and partial calls on a group target ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `GroupTargetRuntimeDiffTest` | — |
+| §9 a rule reporting on the root fires once at the bare root pointer and the root names none of its fields ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `RootErrorTargetDiffTest` | `RelativePathResolutionTest` |
 | §9 the carriers beside those rows: a keyed group target joined at its own level, levels below a group target, group reads below a joined side, phantom and duplicate-key nested rows, a partial call relevant to a nested row ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `GroupTargetCarrierDiffTest` | — |
 | §9 a keyed group target inside a group joined on another key leaves `PARALLEL_ITERATION` (`-6`) on its references, readable only with assertions off ([kf607](KERNEL-FINDINGS.md#kf607)) | — | `KernelProbeParallelIterationPointerTest`, `ParallelIterationAssertionLawsTest` | — |
 | §9 join planning: a star anchor tied with a group target's own level, and a joined group below another keyed group, both refused by A12 in every written order ([if432](INTERPRETER-FINDINGS.md#if432)) | `JoinPlanningRefusalLawsTest` | `JoinPlanningShapeTest` | — |

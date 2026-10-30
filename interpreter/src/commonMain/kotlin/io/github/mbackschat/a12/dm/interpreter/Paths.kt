@@ -34,13 +34,23 @@ internal fun rootGroupOf(path: String): String = "/" + pathParts(path).first()
  * rule **node** (`rule.path`), so `../DeliveryDate` on `/Order/DeliveryNotBeforeOrder` pops the node
  * name → `/Order`, then appends → `/Order/DeliveryDate` (a sibling field in the rule's own group).
  */
-internal fun resolveErrorPath(rule: RuleDef): String {
-    var base = rule.path
-    var rel = rule.errorEntityRelPath
-    while (rel.startsWith("../")) {
-        base = base.substringBeforeLast('/', "")
-        rel = rel.removePrefix("../")
+internal fun resolveErrorPath(rule: RuleDef): String =
+    checkNotNull(resolveRelative(rule.path, rule.errorEntityRelPath)) {
+        "errorEntityRelPath '${rule.errorEntityRelPath}' at '${rule.path}' walks above the model root"
     }
-    return if (rel.isEmpty()) base else "$base/$rel"
+
+/**
+ * [rel] resolved against the element [base]: each `..` pops one name, with or without a slash after it, and every
+ * other step appends. A root target from a nested group ends in a bare `..` (`../..`, IF454). Null when a step
+ * walks above the model root; popping to the top and naming another root reaches that root.
+ */
+internal fun resolveRelative(base: String, rel: String): String? {
+    val names = base.split('/').filter { it.isNotEmpty() }.toMutableList()
+    for (step in rel.split('/')) when (step) {
+        "" -> {}
+        ".." -> if (names.isEmpty()) return null else names.removeAt(names.lastIndex)
+        else -> names.add(step)
+    }
+    return "/" + names.joinToString("/")
 }
 

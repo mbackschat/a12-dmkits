@@ -5154,3 +5154,8 @@ The parser refuses a text by `IllegalArgumentException` with no element path, an
 
 *Locked:* `interpreter.UnparseableModelTextRefusalTest` (JVM and JS; the English model is the control); `TypeScriptBridgeUnparseableModelTest`; `cli.EvalRuntimeUnevaluableFrameRefusalTest.aRuleThatDoesNotParseInItsLanguageIsRefusedAsTheModels`; the `de_DE`/`de-DE` rows of `adapter.laws.UnsupportedConditionLanguageStageDiffTest`.
 
+### IF454: a relative path's bare `..` pops a name (2026-10-30) <a id="if454"></a>
+
+`resolveErrorPath`, `ModelLoader.resolveRel` and `messageFieldPath` each walked only `../` prefixes, so a step with no slash after it stayed a name. A rule in `/Policy/Ledger` reporting on the root writes `../..`, and the interpreter addressed its message at `Policy[1]/Ledger[1]/..` where A12 names `Policy[1]` ([KF603](KERNEL-FINDINGS.md#kf603), found reconciling a12-kernel-lean SPEC-2026-10-30-08); firing and references already agreed. The three now share `resolveRelative`, which pops on every `..` step. Only an error target can end in `..`: a computed field and a message token always name a field, so the other two sites keep their results.
+
+*Locked:* `interpreter.RelativePathResolutionTest`; `adapter.laws.RootErrorTargetDiffTest.allThreeEnginesAgreeOnEveryDocument`.
