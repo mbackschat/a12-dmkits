@@ -315,6 +315,16 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Spec-sync round of 2026-10-30d <a id="spec-sync-2026-10-30d"></a>
+
+The queue is SPEC-2026-10-30-06 and SPEC-2026-10-30-07 of a12-kernel-lean's ledger at its commit `8fae94b5e81ea046f8d2428b6108fe3a19bbe359`: a component-omitting Date argument of `DateTime(date, time)` completes to its earliest day, and a starred read of a joined group brings no index field into a joined message's references. The acceptance asks us to reconcile both in our own record, and to claim nothing about other years, `DATEFRAGMENT` declarations, a repeatable carrier, or a filtered starred read of a joined group in a parallel validation rule.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS60** | SPEC-2026-10-30-06 | the completion of each component-omitting argument reconciled in our own domain on both strategies and the interpreter, with the yearless argument's year separated from the clock's | **done** — Base Year 2023 against a 2026 clock and 2022 arguments: the yearless arguments take the Base Year, and only its Berlin gap clears; no engine changed | `DateTimeComponentCompletionDiffTest`, KF627 | — |
+| **SS61** | SPEC-2026-10-30-07 | the reference account reconciled on a validation rule and three computations' generated rules | **done** — every starred read sits at coordinate `0` with no index field and every row-bound read brings its `Team`, on both strategies and the interpreter with no change; KF539's unqualified clause narrowed in place | `JoinedStarredReferenceDiffTest`, KF539 | — |
+| **SS62** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30d | — |
+
 ### Spec-sync round of 2026-10-30c <a id="spec-sync-2026-10-30c"></a>
 
 The queue is SPEC-2026-10-30-03 and SPEC-2026-10-30-04 of a12-kernel-lean's ledger at its commit `d7da3a7050db3a3fb929104765f46d38a9a5d411`: two component-omitting Dates of different component sets compare as their own earliest completions, and with no Base Year a stored `MM-dd` field's day shift starts from 2000 on the hybrid calendar and keeps the year it reaches. The acceptance asks us to reconcile both in our own record, and to claim nothing about other operators, `DATEFRAGMENT` declarations, compact or dotted spellings, `AddMonths`, an `MM` source, ordering across a year-crossing shift or the constants' exact anchor year.

@@ -53,10 +53,12 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 a yearless Date copied bare into a year-bearing Date target, completed by the Base Year ([kf550](KERNEL-FINDINGS.md#kf550)) | — | `YearlessDateCopyDiffTest` | — |
 | §6 two component-omitting Dates of different component sets compare as their own earliest completions ([kf93](KERNEL-FINDINGS.md#kf93)) | — | `ComponentOmittingDatePairDiffTest` | — |
 | §6 a stored yearless day shift starts from 2000 without a Base Year and keeps the year it reaches ([kf93](KERNEL-FINDINGS.md#kf93)) | — | `YearlessShiftAnchorDiffTest` | — |
+| §6 a component-omitting Date argument of `DateTime(date, time)` completes to its earliest day in the Base Year ([kf627](KERNEL-FINDINGS.md#kf627)) | — | `DateTimeComponentCompletionDiffTest` | — |
 | §6 a dotted literal beside a first-filled Date compares as a date | — | `FirstFilledDateLiteralComparisonDiffTest` | `FirstFilledDateLiteralTest` |
 | §6 a declared temporal format matched as the regex it once compiled to | — | — | `FormatPatternRegexEquivalenceTest` |
 | §9 a keyed fill quantifier over a duplicated key decides nothing | — | `KeyedNotAllFieldsFilledDiffTest` | — |
 | §9 parallel validation availability, dispatch and frames | — | `ParallelValidationDispatchDiffTest` | `ParallelValidationDispatchTest` |
+| §9 a starred read of a joined group references its own fields at coordinate `0` and no index field ([kf539](KERNEL-FINDINGS.md#kf539)) | — | `JoinedStarredReferenceDiffTest` | — |
 | §9 full-validation iteration domain | — | `ValidationIterationDomainDiffTest`, `DeeperErrorFieldIterationDiffTest` | — |
 | §9 a group error target's own level, a target below a joined side, and partial calls on a group target ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `GroupTargetRuntimeDiffTest` | — |
 | §9 the carriers beside those rows: a keyed group target joined at its own level, levels below a group target, group reads below a joined side, phantom and duplicate-key nested rows, a partial call relevant to a nested row ([kf603](KERNEL-FINDINGS.md#kf603)) | — | `GroupTargetCarrierDiffTest` | — |

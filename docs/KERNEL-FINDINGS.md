@@ -13247,7 +13247,19 @@ The [KF537](#kf537) carrier, with every rule in `Shipment/Lines` joined to `Pick
 | `FieldFilled(OrderedQty) And FieldNotFilled(PickedQty)` (OMISSION) | the same four | `Picks/LineRef`, `Picks/PickedQty` |
 | `FieldFilled(OrderedQty)`, no join (the control) | `Lines/OrderedQty` | — |
 
-So under a parallel iteration a referenced field in a joined group comes with that group's index field, in both lists, and on an unmatched key the index field carries the `-5` sentinel as its field does. The control is a rule over the same index-keyed group without the join, and it references no index field, so the join causes it, not the index declaration. Every row holds identically on dynamic Groovy and static Java. Measured only for fields that sit directly in the joined groups. *(Locked: `adapter.laws.ParallelGuardConnectiveDiffTest`.)*
+So under a parallel iteration a field of a joined group read at the joined row comes with that group's index field, in both lists, and on an unmatched key the index field carries the `-5` sentinel as its field does. The control is a rule over the same index-keyed group without the join, and it references no index field, so the join causes it, not the index declaration. Every row holds identically on dynamic Groovy and static Java. Measured only for fields that sit directly in the joined groups. *(Locked: `adapter.laws.ParallelGuardConnectiveDiffTest`.)*
+
+*Extended 2026-10-30 (a12-kernel-lean SPEC-2026-10-30-07; corrected in place, since the paragraph above first said "a referenced field" of a joined group, which covered starred reads it never measured):* **a STARRED read of a joined group adds its own fields at coordinate `0` and no index field.** `Needs` and `Cover` keyed by `Team`, every rule and computation in `Needs` reading `Cover/Headcount` at the joined row, over matched teams and a team only `Needs` has:
+
+| read | references it adds |
+|---|---|
+| `FieldValuesNotUnique(Needs*/Label)` in a validation rule | `Needs[0]/Label` |
+| `Sum(Needs*/Base)` in a computation's generated rule | `Needs[0]/Base` |
+| `Sum(Needs*/Base Having [Needs/Headcount] > 1)`, the same | `Needs[0]/Base`, `Needs[0]/Headcount` |
+| `Sum(Cover*/Headcount)`, the same | `Cover[0]/Headcount` |
+| the row-bound `[Cover/Headcount]` and the target or error field beside each | the field and its group's `Team`, at the joined row; `-5` on `Cover` for the unmatched team |
+
+No message references an index field at coordinate `0`. Every message here also reads both joined groups at the joined row, so both `Team` fields at the joined row are referenced anyway; whether a starred read alone would bring one there has no shape in this carrier to show it. Both strategies and the interpreter agree on every list. Not measured: a filtered starred read of a joined group in a parallel validation rule. *(Locked: `adapter.laws.JoinedStarredReferenceDiffTest`.)*
 
 ## §6 supplement — an interpreted DateRange is converted under its declared format and read under the format its class shares; a dependent reads a computed date or range as its target stores it (both strategies, 2026-10-09) <a id="kf540"></a>
 
@@ -15325,6 +15337,8 @@ The checker published only the empty-code sentence until this measurement. It no
 The checker was silent on 86 of the grid's first 136 rows, each refused by this check; it now names A12's class on all 144. It reports them through `DATE_TIME_CONSTRUCTION_OPERANDS`, silent on the Time operand while it cannot type the Date and on the `ValueAsDate` placement A12 exempts from the Date gates.
 
 *Locked by:* `adapter.laws.CheckerDateTimeConstructionAgreementTest` (whole grid, A12 against the checker, and the discriminating rows pinned).
+
+*Extended 2026-10-30 (a12-kernel-lean SPEC-2026-10-30-06): **an admitted component-omitting Date argument completes to its earliest day, a yearless one in the Base Year.** Under Base Year 2023 with the clock in 2026, `DateTime(D, Clock)` at `12:30:00` stores `2022-01-01T12:30:00` from `yyyy` `2022`, `2022-03-01T12:30:00` from `yyyy-MM` `2022-03`, `2023-03-01T12:30:00` from `MM` `03` and `2023-03-31T12:30:00` from `MM-dd` `03-31`. In Europe/Berlin at `02:30:00`, `03-26` clears, the 2023 spring gap, while `03-29`, the 2026 one, stores `2023-03-29T02:30:00`; the UTC twin, differing in its zone alone, stores every label. So the yearless argument takes the Base Year, not the clock's year and not the other arguments'. Both strategies and the interpreter agree on every document. Not measured: other operators beside this construction, `DATE_FRAGMENT` declarations, a repeatable carrier. *(Locked: `adapter.laws.DateTimeComponentCompletionDiffTest`.)*
 
 ## §5 supplement — a 19-digit literal is admitted, only an ungrouped power chain and two divisions in one region are refused, and a raw String takes a per-operator class under `<`, `-` and `Sum` (rule check, kernel 30.8.1, 2026-10-27) <a id="kf628"></a>
 

@@ -9746,22 +9746,25 @@
       }
     },
     "kf539": {
-      "sha256": "6514ad3634b2d8942429640531213e35f87369d7ff8a25a88d031a32cd9ecf1f",
-      "task": "F-USE-BACKLOG",
+      "sha256": "bc3649657f5ab086dea6db1803ea29691688cc488961cac63dbdd45f7499a6d3",
+      "task": "SS61",
       "scope": {
         "adapter": [
-          "parallel message references"
+          "parallel message references",
+          "starred joined reads"
         ],
         "dmkits": [],
         "interpreter": [
-          "parallel message references"
+          "parallel message references",
+          "starred joined reads"
         ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "parallel message references"
+          "parallel message references",
+          "starred joined reads"
         ]
       },
       "consumers": {
@@ -9772,6 +9775,10 @@
             "parallel message references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
               "witness": "Six rules over four key profiles, with a no-join control rule in the same model."
+            },
+            "starred joined reads": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedStarredReferenceDiffTest.kt#theRowBoundReadBesideItStillBringsItsIndexField",
+              "witness": "Every reference list of eleven messages pinned from dynamic Groovy: starred reads at coordinate 0 with no index field, row-bound reads with their group's Team."
             }
           }
         },
@@ -9782,11 +9789,15 @@
         },
         "interpreter": {
           "state": "APPLIED",
-          "basis": "The static reference plan adds each joined group's index field beside its referenced fields, for references and omission references, under a parallel plan only.",
+          "basis": "The static reference plan adds each joined group's index field beside its referenced fields, for references and omission references, under a parallel plan only. A starred read on a joined level itself adds no index field, since SPEC-2026-10-30-07 was measured without a change.",
           "evidence": {
             "parallel message references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ParallelGuardConnectiveDiffTest.kt#theAdmittedConnectiveShapesFireAlikeOnEveryEngine",
               "witness": "All three engines agree on every message's reference and fill-to-fix lists."
+            },
+            "starred joined reads": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedStarredReferenceDiffTest.kt#allThreeEnginesAgreeOnEveryReference",
+              "witness": "The interpreter's reference lists equal dynamic Groovy's on every message; naming an index at the starred coordinate fails it."
             }
           }
         },
@@ -9817,6 +9828,10 @@
             "parallel message references": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
               "witness": "A joined group's referenced payload brings its index field into the reference and fill-to-fix lists; the single-group control does not (ParallelGuardConnectiveDiffTest; KF539)."
+            },
+            "starred joined reads": {
+              "reference": "a12-kernel-lean@8fae94b5e81ea046f8d2428b6108fe3a19bbe359:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-07",
+              "witness": "The entry narrows the index-field rule to a read at the joined row, as our lock pins."
             }
           }
         }
@@ -14986,8 +15001,8 @@
       }
     },
     "kf627": {
-      "sha256": "d87ac822a2a2c9d6e141e434926b7352ab35698573c8bb24401fb320b9966a91",
-      "task": "SS30",
+      "sha256": "e5d07aa2e18e9dff222f44105d9818329236e69fda4b586e9cecf513f885cc8e",
+      "task": "SS60",
       "scope": {
         "dmkits": [],
         "checker": [
@@ -14996,12 +15011,16 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "rule check on the 144 rows"
+          "rule check on the 144 rows",
+          "DateTime completion"
         ],
-        "interpreter": [],
+        "interpreter": [
+          "DateTime completion"
+        ],
         "dmtool-cli": [],
         "a12-kernel-lean": [
-          "the DateTime operand gates of SPEC-2026-10-26-21"
+          "the DateTime operand gates of SPEC-2026-10-26-21",
+          "DateTime completion"
         ]
       },
       "consumers": {
@@ -15037,13 +15056,22 @@
             "rule check on the 144 rows": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateTimeConstructionAgreementTest.kt#aSlotAnswersInA12sOrder",
               "witness": "The A12 column is asserted from RuleValidator, not copied."
+            },
+            "DateTime completion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateTimeComponentCompletionDiffTest.kt#eachArgumentCompletesToItsEarliestDay",
+              "witness": "yyyy, yyyy-MM, MM and MM-dd complete to the earliest day, the yearless two in Base Year 2023 with the clock in 2026, on dynamic Groovy with static Java agreeing."
             }
           }
         },
         "interpreter": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Admission is decided before evaluation, and the interpreter evaluates only admitted models.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter completes a component-omitting Date argument as both strategies do, with no change, and clears the Berlin gap label of the Base Year.",
+          "evidence": {
+            "DateTime completion": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/DateTimeComponentCompletionDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "Every target of both zone twins equals dynamic Groovy's; completing in the clock's year fails it."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "NOT_APPLICABLE",
@@ -15052,8 +15080,13 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
-          "evidence": {}
+          "basis": "The completion is the peer's SPEC-2026-10-30-06, which our lock reproduces and separates from the clock's year; the operand gates of SPEC-2026-10-26-21 are not yet handed over.",
+          "evidence": {
+            "DateTime completion": {
+              "reference": "a12-kernel-lean@8fae94b5e81ea046f8d2428b6108fe3a19bbe359:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-06",
+              "witness": "The entry states the earliest-day completion our lock pins."
+            }
+          }
         }
       }
     },

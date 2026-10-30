@@ -232,10 +232,11 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     }
 
     /**
-     * Under a parallel iteration, a field of a joined group is referenced beside that group's own index field, in
-     * the reference list and, for an omission, the fill-to-fix list alike: A12 reads the key to join the row. A
-     * rule over one index-keyed group alone references no index field (`adapter.laws.ParallelGuardConnectiveDiffTest`,
-     * measured on fields directly in the joined groups).
+     * Under a parallel iteration, a field of a joined group read at the joined row is referenced beside that group's
+     * own index field, in the reference list and, for an omission, the fill-to-fix list alike. A rule over one
+     * index-keyed group alone references no index field (`adapter.laws.ParallelGuardConnectiveDiffTest`), and a
+     * starred read of a joined group adds its own fields at coordinate `0` with none
+     * (`adapter.laws.JoinedStarredReferenceDiffTest`, KERNEL-FINDINGS KF539).
      */
     private fun withJoinIndexes(iteration: IterationPlan, references: List<MessageReference>): List<MessageReference> {
         if (iteration !is IterationPlan.Parallel) return references
