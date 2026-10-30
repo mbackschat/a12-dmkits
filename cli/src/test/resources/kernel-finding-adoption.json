@@ -9823,15 +9823,15 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Adopted in spec/07 at 2d57eca2 after inspecting our differential at 59b94e1e5; the peer's SG10 owns the executable reconciliation, so no receipt is inferred from prose adoption.",
+          "basis": "Adopted in spec/07 at 2d57eca2 after inspecting our differential at 59b94e1e5; the peer's SG10 owns the executable reconciliation, so no receipt is inferred from prose adoption. The starred joined reads (SPEC-2026-10-30-07) were accepted against our handback of 2026-10-30d at 78870a41, with the starred-read-alone case adopted into spec/07 §2.4 as unmeasured.",
           "evidence": {
             "parallel message references": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/sources/inbound-handbacks.md#src-inbound-2026-10-09a",
               "witness": "A joined group's referenced payload brings its index field into the reference and fill-to-fix lists; the single-group control does not (ParallelGuardConnectiveDiffTest; KF539)."
             },
             "starred joined reads": {
-              "reference": "a12-kernel-lean@8fae94b5e81ea046f8d2428b6108fe3a19bbe359:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-07",
-              "witness": "The entry narrows the index-field rule to a read at the joined row, as our lock pins."
+              "reference": "a12-kernel-lean@78870a4144ff3888dd3ed158cddff14186e7d25e:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30e",
+              "witness": "The entry is accepted against 0e40ab976 and the joined-row limit adopted."
             }
           }
         }
@@ -15080,11 +15080,11 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The completion is the peer's SPEC-2026-10-30-06, which our lock reproduces and separates from the clock's year; the operand gates of SPEC-2026-10-26-21 are not yet handed over.",
+          "basis": "The completion (SPEC-2026-10-30-06) was accepted against our handback of 2026-10-30d at 78870a41, with our Base Year separation adopted into spec/05 §3.3; the operand gates of SPEC-2026-10-26-21 are not yet handed over.",
           "evidence": {
             "DateTime completion": {
-              "reference": "a12-kernel-lean@8fae94b5e81ea046f8d2428b6108fe3a19bbe359:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-06",
-              "witness": "The entry states the earliest-day completion our lock pins."
+              "reference": "a12-kernel-lean@78870a4144ff3888dd3ed158cddff14186e7d25e:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30e",
+              "witness": "The entry is accepted against 0e40ab976 and the yearless argument's Base Year adopted."
             }
           }
         }
