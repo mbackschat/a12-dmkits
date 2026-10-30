@@ -35,12 +35,15 @@ internal sealed interface CheckProducer {
      *
      * @param findings its findings, empty for a producer whose whole output is a coverage gap.
      * @param gaps its gaps, empty for the great majority that report none.
+     * @param alsoAt findings of the same families that A12 states at another stage of its rule order — one producer
+     *     per family keeps the family's claim and its reads in one cell, which a second registration would split.
      */
     class ModelWide(
         override val completes: Set<CheckFamily>,
         val stage: ModelStage,
         val findings: (TrackedFactBase) -> List<Finding> = { emptyList() },
         val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
+        val alsoAt: Map<ModelStage, (TrackedFactBase) -> List<Finding>> = emptyMap(),
     ) : CheckProducer
 
     /**
@@ -164,7 +167,11 @@ internal fun schedule(
         when (producer) {
             is CheckProducer.ModelWide -> listOf(
                 ScheduledCell(CellKey(producer)) {
-                    CheckOutput(producer.findings(tracked).map { ModelFinding(producer.stage, it) }, producer.gaps(tracked))
+                    CheckOutput(
+                        producer.findings(tracked).map { ModelFinding(producer.stage, it) } +
+                            producer.alsoAt.flatMap { (stage, findings) -> findings(tracked).map { ModelFinding(stage, it) } },
+                        producer.gaps(tracked),
+                    )
                 },
             )
             is CheckProducer.Condition -> walked.map { (at, cursor, _) ->
@@ -262,8 +269,8 @@ private fun path(family: CheckFamily): CheckProducer = condition(family) { facts
 
 /** Local outputs are cached in registry order; reached sites and outer stages assemble the public report. */
 internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
-    CheckProducer.ModelWide(setOf(CheckFamily.DECLARATION_SLOTS), ModelStage.VERSION, { it.versionFindings() }),
-    produces(CheckFamily.DECLARATION_SLOTS) { it.declarationSlotFindings() },
+    CheckProducer.ModelWide(setOf(CheckFamily.DECLARATION_SLOTS), ModelStage.DECLARATION, { it.declarationSlotFindings() },
+        alsoAt = mapOf(ModelStage.VERSION to { it.versionFindings() })),
     perDeclarationWalk(CheckFamily.ERROR_TEXT_PRESENCE, DeclarationStage.MESSAGE) { it.errorTextPresenceFindings() },
     CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_ALTERNATIVES)) { base, at -> base.computationAlternativeContributions(at) },
     perDeclarationWalk(CheckFamily.COMPUTATION_ROUNDING, DeclarationStage.CALCULATION_EXTRACTION) { it.computationRoundingFindings() },

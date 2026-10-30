@@ -92,6 +92,37 @@ class CheckerRepetitionNotUniqueGateAgreementTest {
         assertAgreement(predicted)
     }
 
+    /**
+     * Inside a `Having` body the key list and the `@From` scope are still judged, and they answer ahead of the body
+     * walk's iteration classes and its construct gate: the construct is refused only once its own gates pass.
+     */
+    @Test
+    fun insideAFilterBodyTheKeyListAndScopeAnswerAheadOfTheBody() {
+        fun filtered(body: String) = onReference("Sum(Claims*/Amount Having $body) > 0")
+        val predicted = linkedMapOf(
+            "a sound key in the filtered repetition — control" to
+                (filtered("RepetitionNotUnique(Claims/ClaimRef)") to DISALLOWED),
+            "a sound key in another repetition — control" to (filtered("RepetitionNotUnique(Payments/PayRef)") to ITERATION),
+            "a group key" to (filtered("RepetitionNotUnique(Insured)") to GROUP),
+            "a starred key in the filtered repetition" to (filtered("RepetitionNotUnique(Claims*/ClaimRef)") to WILDCARD),
+            "a starred key in another repetition" to (filtered("RepetitionNotUnique(Payments*/PayRef)") to WILDCARD),
+            "a key without value validation" to (filtered("RepetitionNotUnique(Claims/RawNote)") to RAW),
+            "a sound key, then a starred one" to
+                (filtered("RepetitionNotUnique(Claims/Amount, Claims*/ClaimRef)") to WILDCARD),
+            "an in-scope read, then a starred key" to
+                (filtered("[Claims/ClaimRef] == \"x\" And RepetitionNotUnique(Claims*/ClaimRef)") to WILDCARD),
+            "a starred key beside a scope" to (filtered("RepetitionNotUnique(Claims*/ClaimRef @From Claims)") to WILDCARD),
+            "a key outside its scope" to (filtered("RepetitionNotUnique(Claims/ClaimRef @From Payments)") to NOT_IN_GROUP),
+            "a scope naming a field of the filtered repetition" to
+                (filtered("RepetitionNotUnique(Claims/ClaimRef @From Claims/ClaimRef)") to setOf("MVK_NO_FIELDS_ALLOWED")),
+            "a scope naming a field below the filtered repetition" to
+                (filtered("RepetitionNotUnique(Claims/Items/ItemRef @From Claims/Items/ItemRef)") to setOf("MVK_NO_FIELDS_ALLOWED")),
+            "a sound key inside its scope — control" to
+                (filtered("RepetitionNotUnique(Claims/ClaimRef @From Claims)") to DISALLOWED),
+        )
+        assertAgreement(predicted)
+    }
+
     private fun assertAgreement(predicted: Map<String, Pair<DraftRule, Set<String>>>) {
         val wrong = predicted.mapNotNull { (row, cell) ->
             val (rule, a12) = cell
@@ -103,6 +134,9 @@ class CheckerRepetitionNotUniqueGateAgreementTest {
     }
 
     private fun atRoot(condition: String) = rule("/Policy", "../Claims/ClaimRef", condition)
+
+    /** At the root reporting on a root field, so no repetition is iterated by the target. */
+    private fun onReference(condition: String) = rule("/Policy", "../Reference", condition)
 
     /** One level down, where a key can sit outside the rule's own group. */
     private fun inClaims(condition: String) = rule("/Policy/Claims", "../ClaimRef", condition)
@@ -128,6 +162,8 @@ class CheckerRepetitionNotUniqueGateAgreementTest {
         val WILDCARD = setOf("MVK_NO_WILDCARDS_ALLOWED")
         val RAW = setOf("MVK_INVALID_RAW_TYPE")
         val NOT_IN_GROUP = setOf("MVK_NOT_IN_GROUP")
+        val DISALLOWED = setOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+        val ITERATION = setOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
 
         /** The rows where the checker answers otherwise, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf()

@@ -61,6 +61,16 @@ class CheckerEntitySpecModifierAgreementTest {
             ("FirstFilledValue(Lines/Grade -> Tier For \"a\", Status -> Tier) == \"High\"" to admitted),
     ))
 
+    /** A `Having` body addresses every level its reads cross, so a category on a group there is the group's class. */
+    @Test
+    fun aCategoryInAFilterBodyIsJudgedOnTheLevelsTheBodyAddresses() = assertAgreement(linkedMapOf(
+        "on the filtered group" to ("Sum(Lines*/Qty Having [Lines -> Tier] == \"High\") > 0" to setOf("MVK_NO_GROUPS_ALLOWED")),
+        "on a group below the filtered one" to ("Sum(Packages*/Parcels*/Weight Having [Packages/Parcels -> Tier] == " +
+            "\"High\") > 0" to setOf("MVK_NO_GROUPS_ALLOWED")),
+        "on a field of the filtered group — the control" to
+            ("Sum(Lines*/Qty Having [Lines/Grade -> Tier] == \"High\") > 0" to admitted),
+    ))
+
     @Test
     fun aFilteredOperandTakesNoKeyAboveItsStar() = assertAgreement(linkedMapOf(
         "a body on the filtered path" to ("Sum(Packages/Parcels*/Weight For \"p\" Having " +

@@ -137,7 +137,6 @@ private fun TrackedFactBase.walkedFilters(
     if (execution == null) return emptyList()
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val callable = keywords.values.toSet()
-    val clauseKeywords = setOfNotNull(keywords[FROM])
     val indexKeyword = keywords[SEMANTIC_INDEX]
     val group = element.path.substringBeforeLast('/')
     return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterExit>().mapNotNull { exit ->
@@ -145,11 +144,9 @@ private fun TrackedFactBase.walkedFilters(
         val span = execution.carrier.semanticSpan(site.start, site.end) ?: return@mapNotNull null
         val text = execution.carrier.text.substring(exit.entry.end, exit.end)
         WalkedFilter(site, span, filterVerdictOf(normalizedPath(exit.entry.path), text,
-            indexKeyword, clauseKeywords, callable, keywords, group, element))
+            indexKeyword, callable, keywords, group, element))
     }
 }
-
-private const val FROM = "From"
 
 /** [text] with each of [spans] blanked in place. */
 private fun withoutSpans(text: String, spans: List<ReferenceSpan>): String {
@@ -187,7 +184,6 @@ private fun TrackedFactBase.filterVerdictOf(
     written: String,
     text: String,
     indexKeyword: String?,
-    clauseKeywords: Set<String>,
     callable: Set<String>,
     keywords: Map<String, String>,
     group: String,
@@ -195,12 +191,12 @@ private fun TrackedFactBase.filterVerdictOf(
 ): FilterVerdict? {
     // A filter written after an entity key filters the KEY ([SyntaxSite.FilterEntry.indexKey]): A12 asks every gate
     // below of the key's spec, while the key is parsed, so the key is the filtered entity here.
-    // A scope clause and the rule-context keyword each put a shape in the body that this walk has no measured
-    // cell for, carrying indices A12 reads and no path this reader can resolve. A starred bracket read is the
-    // field-value read's star gate, which A12 raises as the bracket is read.
+    // The rule-context keyword puts a shape in the body that this walk has no measured cell for, carrying indices
+    // A12 reads and no path this reader can resolve. A starred bracket read is the field-value read's star gate,
+    // which A12 raises as the bracket is read. A `@From` scope needs no such exit: `RepetitionNotUnique`'s own
+    // gates answer ahead of this walk in a body (KERNEL-FINDINGS KF355).
     val marked = markedReferenceSpansIn(text)
     if (namesRuleContext(text, conditionLanguage) ||
-        namesKeyword(text, clauseKeywords) != null ||
         fieldValueReadsIn(text, conditionLanguage, syntaxEntryOf("errorCondition")).any { it.path?.contains('*') == true }
     ) {
         return null

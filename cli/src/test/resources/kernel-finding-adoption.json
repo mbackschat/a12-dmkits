@@ -18247,6 +18247,133 @@
           }
         }
       }
+    },
+    "kf355": {
+      "sha256": "4ebaa7b521ad53d54541526cdd9987630fa4b2ae2e8eb4e89914b8c616d3e420",
+      "task": "SS67",
+      "scope": {
+        "dmkits": ["a key list in a Having body"],
+        "checker": ["a key list in a Having body"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a key list in a Having body"]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "FieldListRef.having refuses every RepetitionNotUnique in a filter body, and A12 refuses every such body; the kit names the construct, the one change every such body needs, where A12 may name a key's class first.",
+          "evidence": {
+            "a key list in a Having body": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/operators/IterationConditionTest.java#havingRejectsForbiddenFilterConstructs",
+              "witness": "A RepetitionNotUnique filter body is refused on a typed handle before A12 is asked."
+            }
+          }
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker now judges this ahead of the body walk and the construct gate, on the levels the body addresses.",
+          "evidence": {
+            "a key list in a Having body": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerRepetitionNotUniqueGateAgreementTest.kt#insideAFilterBodyTheKeyListAndScopeAnswerAheadOfTheBody",
+              "witness": "The checker names A12's class on all thirteen rows, key and scope classes ahead of the construct and iteration classes."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no filter body.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Export reads a model A12 admitted.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extension is an admission law; the adapter adds no gate of its own and asks A12.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The interpreter evaluates only models A12 admits, and every row here is refused.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reaches admission through A12 and the checker.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Handed over in our letter of 2026-10-30f; adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf359": {
+      "sha256": "8fc167ad1e533e306d5d8359a0f34321966a67b682fd78a2c522a35f01583b65",
+      "task": "SS67",
+      "scope": {
+        "dmkits": [],
+        "checker": ["a category in a Having body"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["a category in a Having body"]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kit reaches a category only off an Enumeration field handle (EnumRef.category), so it builds no group category in a filter body or anywhere else.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker now judges this ahead of the body walk and the construct gate, on the levels the body addresses.",
+          "evidence": {
+            "a category in a Having body": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerEntitySpecModifierAgreementTest.kt#aCategoryInAFilterBodyIsJudgedOnTheLevelsTheBodyAddresses",
+              "witness": "Lines -> Tier and Packages/Parcels -> Tier draw MVK_NO_GROUPS_ALLOWED from both; Lines/Grade -> Tier is admitted by both."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no filter body.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Export reads a model A12 admitted.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The extension is an admission law; the adapter adds no gate of its own and asks A12.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The interpreter evaluates only models A12 admits, and every row here is refused.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "dmtool reaches admission through A12 and the checker.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Handed over in our letter of 2026-10-30f; adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

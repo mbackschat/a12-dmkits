@@ -315,6 +315,15 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Gates inside a filter body, 2026-10-30f <a id="filter-body-gates-2026-10-30f"></a>
+
+Not a ledger entry: a simplification pass over the portable checker found `RepetitionNotUnique`'s key gates skipped in a `Having` body and its `@From` scope and a category's group gate read as unaddressed there. Measured on the Kernel gate before any change; the result narrows a12-kernel-lean's statement that `RepetitionNotUnique` in a filter condition draws `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS67** | KF355, KF359 | the key-list, scope and category-group classes in a body equal between A12 and the checker, with the construct and iteration classes as controls | **done** — the checker judges the key list and the scope ahead of the body walk and the construct gate, and a category on the levels the body addresses; the kit's typed refusal of the whole construct stands | `CheckerRepetitionNotUniqueGateAgreementTest`, `CheckerEntitySpecModifierAgreementTest`, KF355, KF359 | — |
+| **SS68** | handback | the measurement handed to a12-kernel-lean as a self-contained letter | **done** | the handback of 2026-10-30f | — |
+
 ### Spec-sync round of 2026-10-30e <a id="spec-sync-2026-10-30e"></a>
 
 The queue is SPEC-2026-10-30-08, SPEC-2026-10-30-09 and SPEC-2026-10-30-10 of a12-kernel-lean's ledger at its commit `e298d221c4b67d9b02b6ecb0b1d24ca7c1947c1a`: a rule reporting on the root fires once at the root and the root names none of its fields under either polarity, a declared `,` decimal separator changes neither stored Number reads nor condition literals, and inside one computation a comparison and a sub-day difference read the instant a shift keeps across an overlap. The acceptance asks us to reconcile each in our own record, and to claim nothing about partial validation, a repeating root, `AtLeastOneGroupFilled` on a root target, a computed Number's rendering or the stored text's other consumers under `,`, or `DifferenceInDays` over a kept overlap instant.

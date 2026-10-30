@@ -51,7 +51,7 @@ internal fun TrackedFactBase.repetitionScopeContributions(element: TrackedDeclar
         call.operands.firstNotNullOfOrNull { operand ->
             val scope = scopeTextOf(operand, scopeKeyword) ?: return@firstNotNullOfOrNull null
             val read = categorySpecIn(scope.text, group, element, call.inAFilterBody) { scope.bare } ?: return@firstNotNullOfOrNull null
-            scopeFinding(read, group, element, member, call.spanIn(member))
+            scopeFinding(read, group, element, call.inAFilterBody, member, call.spanIn(member))
         }
     }
 }
@@ -83,15 +83,14 @@ private fun TrackedFactBase.scopeFinding(
     scope: OperandReference,
     declaringGroup: String,
     element: TrackedDeclaration,
+    inAFilterBody: Boolean,
     member: String,
     span: TextSpan,
 ): Finding? {
     if (scope.category != null) {
         return null
     }
-    val target = addressedTargetOf(
-        scope.reference, declaringGroup, element, scope.indexSelected, everyLevelAddressed = false,
-    ) ?: return null
+    val target = addressedTargetOf(scope, declaringGroup, element, inAFilterBody) ?: return null
     val declared = declarationAt(target) ?: return null
     if (declared.declaredKind == DeclaredKind.FIELD) {
         return Finding(

@@ -34,8 +34,8 @@ import kotlinx.serialization.json.contentOrNull
 internal fun TrackedFactBase.categoryContributions(element: TrackedDeclaration): List<ConditionFinding> =
     entityContributions(element, EntityCheck.CATEGORY) { entity, span ->
         val category = entity.category ?: return@entityContributions null
-        categoryFinding(entity.writtenPath, category.text.trim('`'),
-            element.path.substringBeforeLast('/'), element, span.member, span, entity.indexed)
+        categoryFinding(entity.writtenPath, category.text.trim('`'), element.path.substringBeforeLast('/'), element,
+            span.member, span, entity.indexed, everyLevelAddressed = bodyAddresses(entity.inFilter, entity.outerMarked))
     }
 
 private fun TrackedFactBase.categoryFinding(
@@ -46,6 +46,7 @@ private fun TrackedFactBase.categoryFinding(
     member: String,
     span: TextSpan,
     indexSelected: Boolean,
+    everyLevelAddressed: Boolean,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
@@ -53,7 +54,7 @@ private fun TrackedFactBase.categoryFinding(
     }
     val named = declarationAt(resolved.path) ?: return null
     if (named.declaredKind == DeclaredKind.GROUP) {
-        addressedTargetOf(path, declaringGroup, element, indexSelected, everyLevelAddressed = false)
+        addressedTargetOf(path, declaringGroup, element, indexSelected, everyLevelAddressed)
             ?: return null
         return finding(
             "MVK_NO_GROUPS_ALLOWED",

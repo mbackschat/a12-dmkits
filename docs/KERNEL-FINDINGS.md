@@ -9465,6 +9465,8 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **The portable family (`CheckFamily.CATEGORY_REFERENCE`) is silent on a `TypeDefType` field, and the reference corpus is why.** A field typed by reference to a type definition may BE an Enumeration declaring the category — preparation keeps type definitions' ids alone, so the checker cannot tell. A first version reported `MVK_NO_ENUMERATION` on `[format->containsYear]` in a model A12 builds, caught by `adapter.laws.CheckerSilenceOnCleanModelsTest` before the family landed. The silence is the documented under-report; the coverage gap it rides on was already declared in `Check.kt`.
 
+**Extended 2026-10-30: in a `Having` body the GROUP row holds on the levels the body addresses.** `Sum(Lines*/Qty Having [Lines -> Tier] == "High") > 0`, and the same over `[Packages/Parcels -> Tier]` below `Packages*/Parcels*`, draw `MVK_NO_GROUPS_ALLOWED`; `[Lines/Grade -> Tier]` there is admitted. The checker had judged the group only where the rule's iteration addresses it, so it stayed silent on the first and named the walk's iteration class on the second. *(Locked: `adapter.laws.CheckerEntitySpecModifierAgreementTest.aCategoryInAFilterBodyIsJudgedOnTheLevelsTheBodyAddresses`.)*
+
 ## §9 supplement — the complete gate chain over a `Having` filter's OWN operand, whose measured order is NOT its source order (measured, 2026-09-14) <a id="kf358"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
@@ -9637,6 +9639,20 @@ Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`, and the rows above
 | `Insured, Insured`; `/Policy, Claims/ClaimRef`, both orders; `Insured, Insured/InsuredName` | `MVK_DUPLICATE_PARAM1`; `MVK_DUPLICATE_PARAM2`; `MVK_DUPLICATE_PARAM2` | the duplicate gate answers ahead of the fields-only gate |
 
 The indexed repeatable pair had first been placed inside the indexed `Claims`, and drew `MVK_MULTIPLE_INDEX_FIELDS` before any gate of this construct ([KF332](#kf332)), so the pair sits in an index-free frame. **At runtime** the admitted repeatable-root rule compares the root's own rows across the document, as an explicit `@From` of the root does, while a key in a repeatable subgroup of the root is compared per root row (both strategies; `adapter.laws.RepetitionNotUniqueRepeatableRootDiffTest`, [IF343](INTERPRETER-FINDINGS.md#if343)). *(Locked: `validate.laws.RepetitionNotUniquePairedGateLawsTest`, and every row in `adapter.laws.CheckerRepetitionNotUniquePairedGateAgreementTest` beside the portable checker's class.)*
+
+**Extended 2026-10-30: inside a `Having` body the key list and the scope are judged as anywhere else, and ahead of the body's own gates.** At the root reporting on `Reference`, as the body of `Sum(Claims*/Amount Having …) > 0`:
+
+| body | A12 |
+|---|---|
+| `RepetitionNotUnique(Claims/ClaimRef)`, and with `@From Claims` | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+| `RepetitionNotUnique(Payments/PayRef)` | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+| `RepetitionNotUnique(Insured)` | `MVK_NO_GROUPS_ALLOWED` |
+| `RepetitionNotUnique(Claims*/ClaimRef)`, `(Payments*/PayRef)`, `(Claims/Amount, Claims*/ClaimRef)`, after an in-scope read, and beside `@From Claims` | `MVK_NO_WILDCARDS_ALLOWED` |
+| `RepetitionNotUnique(Claims/RawNote)` | `MVK_INVALID_RAW_TYPE` |
+| `RepetitionNotUnique(Claims/ClaimRef @From Payments)` | `MVK_NOT_IN_GROUP` |
+| `@From Claims/ClaimRef`, and `@From Claims/Items/ItemRef` over its own key | `MVK_NO_FIELDS_ALLOWED` |
+
+So the construct is refused only once its own gates pass, and a starred key in another repetition draws the key's class rather than the walk's iteration class. An unstarred key in the filtered repetition reaches the key gates because the body addresses every level an unmarked read crosses, as it does for every other operand there. The checker had skipped the key list in a body and read the scope as unaddressed, so it answered otherwise on the eight key-gate and `MVK_NOT_IN_GROUP` rows. *(Locked: `adapter.laws.CheckerRepetitionNotUniqueGateAgreementTest.insideAFilterBodyTheKeyListAndScopeAnswerAheadOfTheBody`.)*
 
 ## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
 

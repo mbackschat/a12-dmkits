@@ -76,8 +76,8 @@ private fun TrackedFactBase.keyListOf(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): KeyList {
-    // A12 refuses the construct itself inside a filter body, so its key list is never read there.
-    if (call.operands.isEmpty() || call.inAFilterBody) {
+    // Inside a filter body too: A12 judges the key list there before it refuses the construct (KERNEL-FINDINGS KF355).
+    if (call.operands.isEmpty()) {
         return KeyList.AnsweredEarlier
     }
     val scopeKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(FROM_SCOPE)
@@ -90,7 +90,7 @@ private fun TrackedFactBase.keyListOf(
             ?: return KeyList.AnsweredEarlier
     }
     val targets = reads.map {
-        addressedTargetOf(it.reference, declaringGroup, element, it.indexSelected, everyLevelAddressed = false)
+        addressedTargetOf(it, declaringGroup, element, call.inAFilterBody)
             ?: return KeyList.AnsweredEarlier
     }
     if (entityListDuplicateAnswers(reads, targets) || reads.any { it.category != null }) {
