@@ -78,7 +78,22 @@ class ConditionLanguageWriteTest {
         assertFalse(written.contains("FeldAngegeben(Amount)"));
     }
 
+    /**
+     * A12 reads the code by the locale key its parser makes of it, so `de-DE` declares German as `de_DE` does
+     * (`adapter.laws.UnsupportedConditionLanguageStageDiffTest`); writing English into it would hand A12 a rule it
+     * refuses.
+     */
+    @Test
+    void aHyphenatedGermanCodeWritesGerman() {
+        BoundModel model = germanModel("de-DE");
+        assertGermanRuleText(model.add(positiveAmountRule(model, "PositiveAmount")).toJson());
+    }
+
     private static BoundModel germanModel() {
+        return germanModel("de_DE");
+    }
+
+    private static BoundModel germanModel(String code) {
         String structure = DocumentModelDraft.named("localized-write")
                 .locale("en_US")
                 .rootGroup("Policy", policy -> policy
@@ -88,7 +103,7 @@ class ConditionLanguageWriteTest {
                 .build()
                 .toJson();
         EditSession session = EditSession.read(structure);
-        session.config().conditionLanguage("de_DE");
+        session.config().conditionLanguage(code);
         return BoundModel.ofJson(session.toJson());
     }
 

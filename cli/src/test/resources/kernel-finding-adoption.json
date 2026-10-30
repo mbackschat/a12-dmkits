@@ -1747,7 +1747,7 @@
       }
     },
     "kf310": {
-      "sha256": "1d559b09951c8027c9bc29e23ab7b04548c7b514f5e14fe4ebd0a1018eed091a",
+      "sha256": "462be316031b4e40d673f75d9477b328732d569116450d67ec37cf339f1fadbf",
       "task": "F-USE-BACKLOG",
       "scope": {
         "dmkits": [],
@@ -17566,8 +17566,32 @@
         }
       }
     },
+    "kf283": {
+      "sha256": "2b9425db4b8bc530714a8b282fe419b10fb73596d7b6f28704e7e70a05926003",
+      "task": "SS54",
+      "scope": {
+        "dmkits": ["the language a code selects"],
+        "checker": ["the language a code selects"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the code table"],
+        "interpreter": ["the code table"],
+        "dmtool-cli": [],
+        "a12-kernel-lean": ["the refusal of zz and the empty code"]
+      },
+      "consumers": {
+        "dmkits": {"state": "APPLIED", "basis": "rulekit's ConditionLanguage.ofModelCode reads the code by its locale key, so typed writes into a de-DE model render German.", "evidence": {"the language a code selects": {"reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ConditionLanguageWriteTest.java#aHyphenatedGermanCodeWritesGerman", "witness": "A rule added to a de-DE model is written in German and the Kernel gate accepts it."}}},
+        "checker": {"state": "APPLIED", "basis": "The checker reads the code by its locale key and reports every other code as CK_MODEL_NOT_BUILDABLE.", "evidence": {"the language a code selects": {"reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/ConditionBindingTest.kt#aConditionLanguageIsReadByItsLocaleKey", "witness": "de-DE reads German and en-US English, each with its other-language twin refused; de_DE_x and the empty code are not built."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no condition language of its own.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "APPLIED", "basis": "A12's check and both strategies are the expected columns of every code row.", "evidence": {"the code table": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnsupportedConditionLanguageStageDiffTest.kt#eachCodeIsReadByItsLocaleKeyAndRefusedWhereA12Refuses", "witness": "Seventeen codes, each read English, German, unsupported or unread on the check and both strategies alike."}}},
+        "interpreter": {"state": "APPLIED", "basis": "The interpreter reads the code by its locale key, refuses a code the parser refuses at load and an unsupported one at runtime preparation (IF452).", "evidence": {"the code table": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnsupportedConditionLanguageStageDiffTest.kt#eachCodeIsReadByItsLocaleKeyAndRefusedWhereA12Refuses", "witness": "The interpreter column reads de-DE as German and refuses every code A12 does not evaluate, by path."}}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool reaches the language through the kits, the interpreter and the checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "OPEN", "basis": "The handback of 2026-10-30a reports the code table; the peer's adoption is theirs to report.", "evidence": {}}
+      }
+    },
     "kf650": {
-      "sha256": "e43205ae19589496b22b76bd2290b2d3c06ceb010b8fe128c5b72d895fac7f10",
+      "sha256": "69964fb8bd78448874535c97ec2c46e7100b1528258b505b406876a0b6e0210a",
       "task": "SS52",
       "scope": {
         "dmkits": [],

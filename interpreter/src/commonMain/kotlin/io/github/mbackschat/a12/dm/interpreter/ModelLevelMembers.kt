@@ -41,11 +41,7 @@ internal fun JsonObject.modelMemberState(path: String): String =
  * binding refuses never arrives here ([unbindableFrameMember]).
  */
 internal fun JsonObject.conditionLanguageCode(): String? =
-    when (val declared = ((this["content"] as? JsonObject)?.get("modelConfig") as? JsonObject)?.get("conditionLanguage")) {
-        is JsonObject -> (declared["code"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-        is JsonPrimitive -> declared.takeIf { it.isString }?.content
-        else -> null
-    }
+    ((this["content"] as? JsonObject)?.get("modelConfig") as? JsonObject)?.get("conditionLanguage")?.let(::localeCode)
 
 private val MODEL_BOOLEANS = listOf(
     "modelInfo" to "immutable",

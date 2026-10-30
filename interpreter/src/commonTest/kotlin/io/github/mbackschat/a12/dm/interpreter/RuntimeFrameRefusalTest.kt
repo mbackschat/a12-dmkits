@@ -46,6 +46,41 @@ class RuntimeFrameRefusalTest {
         )
     }
 
+    /**
+     * A condition language is read by the locale key A12's parser makes of its code, so `de-DE` declares German as
+     * `de_DE` does; a code the parser refuses is not loaded, and one it reads but A12 does not support (the empty code
+     * included) is refused only for evaluation (`adapter.laws.UnsupportedConditionLanguageStageDiffTest`).
+     */
+    @Test
+    fun aConditionLanguageIsReadByItsLocaleKeyAndRefusedWhereA12RefusesIt() {
+        val codes = listOf("en_US", "de_DE", "en-US", "de-DE", "de_DE_x", "zz", "", "fr_FR", "en_us", "klingon", " ", "\u00a0")
+        val observed = codes.associateWith { code ->
+            val json = model(config = """"modelConfig":{"conditionLanguage":{"code":"$code"}},""")
+            val loaded = try {
+                ModelLoader.load(json).conditionLanguage.name
+            } catch (refused: IllegalArgumentException) {
+                "unread"
+            }
+            val prepared = try {
+                PreparedModel.loadExpandedJson(json)
+                "prepared"
+            } catch (refused: ModelPreparationError) {
+                refused.diagnostics.joinToString { "${it.code} ${it.path}" }
+            }
+            "$loaded, $prepared"
+        }
+        val unsupported = "EN, INVALID_MODEL_SOURCE content.modelConfig.conditionLanguage"
+        val unread = "unread, INVALID_MODEL_SOURCE content.modelConfig.conditionLanguage"
+        assertEquals(
+            mapOf(
+                "en_US" to "EN, prepared", "de_DE" to "DE, prepared", "en-US" to "EN, prepared", "de-DE" to "DE, prepared",
+                "de_DE_x" to unsupported, "zz" to unsupported, "" to unsupported, "fr_FR" to unsupported,
+                "en_us" to unread, "klingon" to unread, " " to unread, "\u00a0" to unread,
+            ),
+            observed,
+        )
+    }
+
     private fun model(
         header: String = """"id":"policy","modelVersion":"28.4.0","locales":[{"code":"en_US"}]""",
         info: String = """"modelInfo":{"name":"policy"},""",

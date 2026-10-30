@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -15,18 +16,20 @@ import kotlinx.serialization.json.JsonPrimitive
  * an array, a text, a number and a boolean, in every model a workspace reaches (`adapter.WorkspaceReachedModelDiffTest`).
  * A text takes any JSON scalar and no object or array, a list takes only an array and an object only an object, and
  * `null` refuses only where the kernel marks the member non-null. The condition language binds as a locale: a text, or
- * an object whose `code` is a text. A member A12 binds but needs later is not refused here: A12 reads and expands
- * such a model, and only evaluation refuses it ([runtimeUnevaluableFrameMember]).
+ * an object whose `code` is a text, that A12's locale parser reads, the empty code included ([a12LocaleKeyOrNull];
+ * `adapter.laws.UnsupportedConditionLanguageStageDiffTest`, 2026-10-30). A member A12 binds but needs later is not
+ * refused here: A12 reads and expands such a model, and only evaluation refuses it ([runtimeUnevaluableFrameMember]).
  */
 internal fun JsonObject.unbindableFrameMember(): String? = FRAME.firstNotNullOfOrNull { it.unbindableIn(this[it.name], it.name) }
 
 /**
  * The path of the first member of [this] model's frame that A12 binds and its runtime cannot evaluate the model
- * without, or null: a missing `content.modelInfo`, absent or `null` `header.locales`, or a `null` supported
- * character. Each stops both Kernel strategies before any rule runs, with or without a rule in the model, while A12
- * still reads and expands it; a missing `header.modelVersion` costs only the consistency check and is evaluated
- * (KF650; `adapter.laws.CheckOnlyFrameRuntimeDiffTest`, kernel `30.8.1`, 2026-10-30). Read on the expanded entry,
- * whose frame is the only one expansion keeps.
+ * without, or null: a missing `content.modelInfo`, absent or `null` `header.locales`, a `null` supported character,
+ * or a condition language other than English and German. Each stops both Kernel strategies before any rule runs,
+ * with or without a rule in the model, while A12 still reads and expands it; a missing `header.modelVersion` costs
+ * only the consistency check and is evaluated (KF650; `adapter.laws.CheckOnlyFrameRuntimeDiffTest` and
+ * `UnsupportedConditionLanguageStageDiffTest`, kernel `30.8.1`, 2026-10-30). Read on the expanded entry, whose frame
+ * is the only one expansion keeps.
  */
 internal fun JsonObject.runtimeUnevaluableFrameMember(): String? {
     val header = this["header"] as? JsonObject
@@ -34,7 +37,9 @@ internal fun JsonObject.runtimeUnevaluableFrameMember(): String? {
     if (content != null && "modelInfo" !in content) return "content.modelInfo"
     if (header?.get("locales").let { it == null || it is JsonNull }) return "header.locales"
     val characters = (content?.get("modelConfig") as? JsonObject)?.get("supportedCharacters") as? JsonArray
-    return characters?.indexOfFirst { it is JsonNull }?.takeIf { it >= 0 }?.let { "content.modelConfig.supportedCharacters[$it]" }
+    characters?.indexOfFirst { it is JsonNull }?.takeIf { it >= 0 }?.let { return "content.modelConfig.supportedCharacters[$it]" }
+    val language = conditionLanguageCode()
+    return "content.modelConfig.conditionLanguage".takeIf { language != null && ConditionLanguage.ofCode(language) == null }
 }
 
 private fun FrameMember.unbindableIn(value: JsonElement?, path: String): String? = when {
@@ -53,9 +58,15 @@ private enum class Bind {
         OBJECT -> value is JsonObject
         LIST -> value is JsonArray
         TEXT -> value is JsonPrimitive
-        LOCALE -> value is JsonPrimitive && value.isString ||
-            value is JsonObject && (value["code"] as? JsonPrimitive)?.isString == true
+        LOCALE -> localeCode(value)?.let { it.isEmpty() || a12LocaleKeyOrNull(it) != null } == true
     }
+}
+
+/** The code a locale member declares, written bare or as an object's `code`, or null when it declares no text. */
+internal fun localeCode(value: JsonElement): String? = when (value) {
+    is JsonPrimitive -> value.takeIf { it.isString }?.content
+    is JsonObject -> (value["code"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+    else -> null
 }
 
 /** One frame member: how A12 binds it, whether its absence refuses the source, and whether `null` binds. */

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.a12LocaleKeyOrNull
+
 /**
  * The keyword language declared by `content.modelConfig.conditionLanguage`. Display locales are independent:
  * a model can carry English labels while its stored conditions use German keywords.
@@ -60,8 +62,16 @@ enum class ConditionLanguage(val code: String) {
         private val DE_TO = setOf("Zu", "zu", "ZU")
         private val IN = setOf("In", "in", "IN")
 
-        internal fun fromCode(code: String?): ConditionLanguage =
-            if (code == DE.code) DE else EN
+        /**
+         * The language [code] names as A12 reads it, by the locale key its parser makes of the code, so `de-DE` is
+         * German as `de_DE` is; null for any other code, which A12's runtime refuses (KF650,
+         * `adapter.laws.UnsupportedConditionLanguageStageDiffTest`, kernel `30.8.1`, 2026-10-30).
+         */
+        internal fun ofCode(code: String): ConditionLanguage? =
+            a12LocaleKeyOrNull(code).let { key -> entries.firstOrNull { it.code == key } }
+
+        /** The language a model declaring [code] is read in: English when it declares none or one A12 refuses. */
+        internal fun fromCode(code: String?): ConditionLanguage = code?.let(::ofCode) ?: EN
 
         /**
          * Identifier keywords from the CI-locked bilingual operator catalog plus the grammar-only `In`,

@@ -123,7 +123,7 @@ class CheckerModelFrameAgreementTest {
         val SHAPES = linkedMapOf("absent" to null, "null" to "null", "{}" to "{}", "[]" to "[]", "\"x\"" to "\"x\"", "5" to "5", "true" to "true")
 
         val CONDITION_LANGUAGES = listOf(
-            "\"en_US\"", "\"de_DE\"", "{\"code\":\"de_DE\"}", "{\"code\":\"zz\"}", "{\"code\":\"en_us\"}", "{\"code\":5}",
+            "\"en_US\"", "\"de_DE\"", "{\"code\":\"de_DE\"}", "{\"code\":\"de-DE\"}", "{\"code\":\"en-US\"}", "{\"code\":\"zz\"}", "{\"code\":\"en_us\"}", "{\"code\":5}",
             "{\"code\":\"\"}", "{\"code\":null}", "{\"code\":{}}", "{\"x\":\"en_US\"}",
         )
 

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
+import io.github.mbackschat.a12.dm.consistency.localeKeyOrNull
+
 /**
  * The language a model's condition text is written in.
  *
@@ -16,13 +18,15 @@ enum class ConditionLanguage(val code: String) {
         /**
          * The language [code] names, or `null` when it names none.
          *
+         * A12 reads the code by the locale key its parser makes of it, so `de-DE` is German as `de_DE` is, while
+         * `de_DE_x` and the empty code name no supported language (`UnsupportedConditionLanguageStageDiffTest`).
          * There is no fallback for an unrecognized code, because A12 has none: a model declaring `fr_FR` is
          * REFUSED outright ("Die im ValidierungsModus übergebene Sprache fr_FR wird nicht unterstützt",
          * uncoded, measured by `ModelConfigCoercionLawsTest`). Reading
          * `AbstractMultiLanguageHandler`'s constructor predicts a silent substitution of German instead;
          * that substitution exists but a gate ahead of it means no model ever reaches it.
          */
-        fun of(code: String): ConditionLanguage? = entries.firstOrNull { it.code == code }
+        fun of(code: String): ConditionLanguage? = localeKeyOrNull(code).let { key -> entries.firstOrNull { it.code == key } }
 
         /** The language for an ABSENT declaration: English, the default `DocumentModelConfig` carries. */
         val DEFAULT: ConditionLanguage = EN

@@ -91,6 +91,26 @@ class ConditionBindingTest {
         assertEquals(true, report.findings.single().explain.contains("fr_FR"))
     }
 
+    /**
+     * A12 reads a condition language by the locale key its parser makes of the code, so `de-DE` declares German as
+     * `de_DE` does and `en-US` English as `en_US` does, while `de_DE_x` and the empty code name no supported language
+     * (`adapter.laws.UnsupportedConditionLanguageStageDiffTest`). Each German condition beside its English twin is
+     * the control that the code is read, not ignored.
+     */
+    @Test
+    fun aConditionLanguageIsReadByItsLocaleKey() {
+        assertEquals(
+            listOf(emptyList(), listOf("MVK_UNEXPECTED_TOKEN"), emptyList(), listOf("MVK_UNEXPECTED_TOKEN")),
+            listOf(
+                codes("FeldAngegeben(Amount)", language = "de-DE"), codes("FieldFilled(Amount)", language = "de-DE"),
+                codes("FieldFilled(Amount)", language = "en-US"), codes("FeldAngegeben(Amount)", language = "en-US"),
+            ),
+        )
+        for (unsupported in listOf("de_DE_x", "")) {
+            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), check(model("FieldFilled(Amount)", unsupported)).findings.map { it.code }, unsupported)
+        }
+    }
+
     @Test
     fun aConditionPathAboveTheRootIsItsOwnRejection() {
         assertEquals(

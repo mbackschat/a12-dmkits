@@ -315,6 +315,15 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Spec-sync round of 2026-10-30a <a id="spec-sync-2026-10-30a"></a>
+
+The queue is SPEC-2026-10-30-01 of a12-kernel-lean's ledger at its commit `d3bd7f65dc286cbf0716fb243e785c80e2362008`: a model declaring a condition language other than `en_US` or `de_DE` is refused with no class for the two codes they measured, `zz` and the empty code. The acceptance asks us to reconcile the refusal's class in our record and claim no other code.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS54** | SPEC-2026-10-30-01 | the refusal's class and stage reconciled for `zz` and the empty code, and the code domain measured as a set | **done** — no class for either, and both are read and expanded and then refused by the check and both strategies; `de-DE` and `en-US` select their languages; the interpreter, the checker and rulekit matched the code by spelling and now read its locale key, and the interpreter refuses the codes A12 refuses | `UnsupportedConditionLanguageStageDiffTest`, KF283, IF452 | — |
+| **SS55** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30a | — |
+
 ### Spec-sync round of 2026-10-30 <a id="spec-sync-2026-10-30"></a>
 
 The queue is SPEC-2026-10-29-06 of a12-kernel-lean's ledger at its commit `7df9a5caf419e3e841c4c20a40d92bcee45af299`: a model with one of [KF650](KERNEL-FINDINGS.md#kf650)'s four check-only frame shapes is not evaluated on the checked runtime route, so an evaluator refuses it. The acceptance asks how our interpreter treats the four shapes.

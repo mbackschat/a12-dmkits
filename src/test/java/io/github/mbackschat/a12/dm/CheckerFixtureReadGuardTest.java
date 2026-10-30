@@ -58,7 +58,7 @@ class CheckerFixtureReadGuardTest {
             "BasicSentenceTest.kt", Set.of("check(ModelSource(source))"),
             "CheckReadSupport.kt", Set.of("check(source)"),
             "ConditionBindingTest.kt", Set.of("check(model(\"FieldFilled(Amount)\", language = \"fr_FR\"))",
-                    "check(source)"),
+                    "check(model(\"FieldFilled(Amount)\", unsupported))", "check(source)"),
             "ConsistencyCheckTest.kt", Set.of("check(ModelSource(\"{ not json\"))"),
             "OutcomeAllChecksPassedTest.kt", Set.of("check(ModelSource(UNSUPPORTED_LANGUAGE))"),
             "ParityCorpusTest.kt", Set.of("check(sources[0])"),

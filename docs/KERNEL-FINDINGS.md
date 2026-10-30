@@ -5566,6 +5566,17 @@ The same three conditions on the SAME model with only `conditionLanguage` flippe
 
 *Corrected 2026-09-12: this first added "with anything else silently becoming German", read off `AbstractMultiLanguageHandler`'s constructor, which does substitute `Locale.GERMANY` for an unsupported locale. It does not manifest. A model declaring `fr_FR` is refused before any lexing — "Die im ValidierungsModus übergebene Sprache fr_FR wird nicht unterstützt", uncoded — under BOTH languages' spellings, so no model reaches that substitution. A source-read fallback stated as behaviour, which is the class the oracle table warns about; `ModelConfigCoercionLawsTest` now measures it.*
 
+**Which code selects which language, and where any other is refused (measured 2026-10-30, `SPEC-2026-10-30-01`).** A12 parses the code as a locale and compares the locale, so the spelling is gone once read: `de-DE` selects German as `de_DE` does, `en-US` English, and A12 writes `de-DE` back as `de_DE`. Every other code is refused at one of two stages, both without a class:
+
+| code | read? | the check | dynamic Groovy, generated Java |
+|---|---|---|---|
+| `en_US`, `en-US` | yes | English | English |
+| `de_DE`, `de-DE` | yes | German | German |
+| `de_DE_x`, `zz`, the empty code, `fr_FR`, `de`, `en` | yes, and expanded | throws "Die im ValidierungsModus übergebene Sprache … wird nicht unterstützt" | throw the same |
+| `en_us`, `EN_US`, `klingon`, `en_USA`, a space, a no-break space, an em space | no: "Invalid locale format" | — | — |
+
+So the refusal of a read code builds the model and then fails the check, from A12's generated meta-model validator rather than as a notification; the class is none for every code measured. The read/unread split follows the header locale grammar ([KF649](#kf649)) on every row of this carrier.
+
 Two consequences follow, and both are load-bearing for any tool that reads condition text:
 
 - **A keyword of one language is an ordinary field name in the other.** `And` is a terminal for `en_US` and a plain name for `de_DE`; `Und` is the reverse (measured). A tool holding the union of the two vocabularies reads such a field as an operator and drops the reference silently — no diagnostic, because nothing failed.
@@ -5573,7 +5584,7 @@ Two consequences follow, and both are load-bearing for any tool that reads condi
 
 The renderer's side of the same map is `AbstractMultiLanguageHandler.hasToBeQuoted(str)`, which is literally `isATerminal(str)` for the model's language. So the set a checker must treat as keywords and the set A12 quotes when a field name collides are one set, per language — and `KeywordReverseParityTest.rendererQuotesEveryLiveLexerTerminalThatCanBeAnEntityName` already exercises that direction.
 
-*(Locked: `consistency.ConditionKeywordProjectionTest` pins the portable checker's shipped keyword table to these bundles in both directions, per language; `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` locks the behavioural consequence on the Kernel itself, and `rulekit.validate.laws.ModelConfigCoercionLawsTest` the unsupported-code refusal. The count is re-derived by the projection test, not restated anywhere.)*
+*(Locked: `consistency.ConditionKeywordProjectionTest` pins the portable checker's shipped keyword table to these bundles in both directions, per language; `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` locks the behavioural consequence on the Kernel itself, and `rulekit.validate.laws.ModelConfigCoercionLawsTest` the unsupported-code refusal, and `adapter.laws.UnsupportedConditionLanguageStageDiffTest` the code table on the check, both strategies and the interpreter. The count is re-derived by the projection test, not restated anywhere.)*
 
 ## §10 supplement — an unresolvable reference has THREE different answers, and the two carriers resolve from different origins (`ModelLoader.loadAndCheck`, measured, 2026-09-12) <a id="kf284"></a>
 
@@ -6421,7 +6432,7 @@ The portable checker's completeness family now asks its shape parser where it st
 |---|---|
 | a rule's message text, an enumeration's label | a no-break space alone is text: admitted |
 | a message parameter `$…$` | only `$$` is the dollar escape; `$ $` draws `MVK_INCOMPLETE_INPUT`, a no-break or em space `MVK_LEXER_STANDARD_ERROR` |
-| `modelConfig.conditionLanguage.code` | no blank at all: an empty, space, no-break or em-space code is read as a locale, which A12's reader refuses ("Invalid locale format"), so the model is not built |
+| `modelConfig.conditionLanguage.code` | no blank at all: a space, no-break or em-space code is refused by A12's locale reader ("Invalid locale format"), so the model is not built. *Corrected 2026-10-30:* this row also said so of the empty code, which A12 reads and expands and then refuses as an unsupported language at the check ([KF283](#kf283)); the checker's verdict, `CK_MODEL_NOT_BUILDABLE`, is the same for both |
 | a group's `repeatability` written as text | Java's `trim`, then a whole number ([KF590](#kf590)) |
 
 *Locked by:* `rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier` and `RuleConditionAndTargetSlotLawsTest`; the Unicode rows by the `whichSpacesMake…` tests of `RuleCodeAndSeverityLawsTest`, `RuleConditionAndTargetSlotLawsTest`, `ComputationAlternativeSlotLawsTest` and `FieldTypeBodyMemberLawsTest`, and the content law by `RuleCodeAndSeverityLawsTest.theErrorCodeContentLawIsStatedInProseAlone`. The portable side is `consistency`'s `BlankDslSlotTest` and `MemberBlanknessTest`, with `A12BlankJvmTest` comparing `isJavaWhitespace` with the JDK for every `char`.
@@ -15747,7 +15758,7 @@ A12 reads a model's FRAME, the `header` and `content` objects and the members un
 | text (`id`, `modelType`, `description`, `modelInfo.name`, `variant`, `branch`, `revision`, `comment`, `joinedModelsInfo`, `decimalSeparator`, `timeZone`) | any scalar, a number or boolean as its text; absent | an object or an array; `null` where the kernel marks it non-null (`name`, `decimalSeparator`, `timeZone`) |
 | list (`locales`, `labels`, `annotations`, `modelReferences`, `typeDefinitions`, `supportedCharacters`, `rootGroups`) | an array; absent | any other kind; `null` where non-null (`typeDefinitions`, `supportedCharacters`, `rootGroups`) |
 | object (`header`, `content`, `modelInfo`, `modelConfig`, `modelRoot`) | an object | any other kind; `null`; absent for `header` and `content` |
-| `conditionLanguage`, a locale | a text, or an object whose `code` is a text: `"de_DE"` reads German conditions as `{"code":"de_DE"}` does | `null`, `{}`, an array, a number, a boolean, a `code` that is `null` or an object, an object without `code` |
+| `conditionLanguage`, a locale | a text, or an object whose `code` is a text, that A12's locale parser reads: `"de_DE"` reads German conditions as `{"code":"de_DE"}` does, and a code it does not read, such as `en_us`, refuses the model ([KF283](#kf283)) | `null`, `{}`, an array, a number, a boolean, a `code` that is `null` or an object, an object without `code` |
 | a `supportedCharacters` entry | a text, number or boolean | an object or an array |
 
 **Four shapes cost the CHECK, not the read.** Without `header.modelVersion`, without `content.modelInfo`, with `header.locales` absent or `null`, or with a `null` among the supported characters, A12 builds the model and its consistency check fails without a class ("documentModelInfo is marked non-null but is null"). The version and the model info are each needed on their own: across the sixteen presence combinations of `modelVersion`, `modelInfo`, `modelConfig` and `modelType`, the check ran exactly when the first two were both present. And the failure costs the whole check, not just the clean verdict: a rule naming a field that does not exist, `MVK_INVALID_ENTITY` with both members present, draws no class without either. The 183 near-miss models harvested from fixtures written without the two members are unbuilt for the same reason, each recorded so beside its completed twin (`checker-near-miss/harvested-operation-checks.json`).
