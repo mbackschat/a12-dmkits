@@ -321,7 +321,7 @@ The queue is SPEC-2026-10-30-03 and SPEC-2026-10-30-04 of a12-kernel-lean's ledg
 
 | batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
 |---|---|---|---|---|---|
-| **SS58** | SPEC-2026-10-30-03, SPEC-2026-10-30-04 | the pair comparison, the shift anchor, the year-keeping comparison and the constants' shared year reconciled in our own domain on both strategies and the interpreter | **done** — every measured row agrees with both clauses on both strategies and the interpreter, with no change to either engine; a constant beside a stored yearless field completes in that field's year | `ComponentOmittingDatePairDiffTest`, `YearlessShiftAnchorDiffTest`, KF93 | — |
+| **SS58** | SPEC-2026-10-30-03, SPEC-2026-10-30-04 | the pair comparison, the shift anchor, the year-keeping comparison and the constants' shared year reconciled in our own domain on both strategies and the interpreter | **done** — every measured row agrees with both clauses on both strategies and the interpreter, with no change to either engine; a constant beside a stored yearless field completes in one leap year with it; a12-kernel-lean accepted both at `46d174f6` and recorded our first wording, which named the field's year as 2000, `not-adopted` | `ComponentOmittingDatePairDiffTest`, `YearlessShiftAnchorDiffTest`, KF93 | — |
 | **SS59** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30c | — |
 
 ### Spec-sync round of 2026-10-30b <a id="spec-sync-2026-10-30b"></a>

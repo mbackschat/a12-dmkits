@@ -17961,7 +17961,7 @@
       }
     },
     "kf93": {
-      "sha256": "a305f77d38665623010d30e2704f0274c1fb9ceedca275fda819023892006bbf",
+      "sha256": "5fe924a082d9e4b211cc626b68ad64292e84536525495c88a6d2f01f4589acf5",
       "task": "SS58",
       "scope": {
         "dmkits": [],
@@ -18053,23 +18053,23 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "ALREADY_CONFORMS",
-          "basis": "Both clauses are the peer's own SPEC-2026-10-30-03 and -04 at d7da3a70, which our locks reproduce row for row.",
+          "state": "APPLIED",
+          "basis": "Both clauses are the peer's own SPEC-2026-10-30-03 and -04, which our locks reproduce row for row; the peer accepted both against our handback of 2026-10-30c at 46d174f6.",
           "evidence": {
             "pair comparison": {
-              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-03",
-              "witness": "The entry states the earliest completions our pair lock pins."
+              "reference": "a12-kernel-lean@46d174f6e1f82848a3c09d0794811471a599a4bf:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-03",
+              "witness": "The entry is accepted, reconciled with no correction against the ten rules and five documents our pair lock pins."
             },
             "shift anchor": {
-              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-04",
-              "witness": "The entry states the anchor 2000 and the year-keeping comparison our shift lock pins."
+              "reference": "a12-kernel-lean@46d174f6e1f82848a3c09d0794811471a599a4bf:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-04",
+              "witness": "The entry is accepted, reconciled with no correction against the anchor 2000 and the year-keeping comparison our shift lock pins."
             }
           }
         }
       }
     },
     "kf239": {
-      "sha256": "e618f9e696c3b6fd769cf136069d8b8993b5e68f3b3c690d723c0b1327013f1f",
+      "sha256": "f3990bfffd5ec40c9ec75a6afcfcafe26079d10ee7c43a4eff196ead11f63134",
       "task": "SS58",
       "scope": {
         "dmkits": [],
@@ -18129,11 +18129,11 @@
         },
         "a12-kernel-lean": {
           "state": "ALREADY_CONFORMS",
-          "basis": "The peer's SPEC-2026-10-30-04 at d7da3a70 states that both operands of a measured DifferenceInDays complete in one anchor year.",
+          "basis": "The peer's spec/05 states that both operands of a measured DifferenceInDays complete in one anchor year, as the corrected extension does; the peer recorded our first wording, which named that year as the field's 2000, not-adopted.",
           "evidence": {
             "constant year beside a field": {
-              "reference": "a12-kernel-lean@d7da3a7050db3a3fb929104765f46d38a9a5d411:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-30-04",
-              "witness": "The entry's delta names the shared anchor year our lock pins."
+              "reference": "a12-kernel-lean@46d174f6e1f82848a3c09d0794811471a599a4bf:docs/sources/inbound-handbacks.md#src-inbound-2026-10-30d",
+              "witness": "The review agrees on 365 and 60, 364 and 59, and leaves the year and its supplier open, as the corrected extension does."
             }
           }
         }
