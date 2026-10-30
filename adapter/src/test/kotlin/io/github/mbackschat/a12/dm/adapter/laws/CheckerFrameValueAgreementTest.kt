@@ -218,6 +218,8 @@ class CheckerFrameValueAgreementTest {
             "broken reference" to broken,
             "broken reference, version \"29.0.0\"" to edited(broken, "/header/modelVersion", mapper.valueToTree("29.0.0")),
             "broken reference, timeZone \"x\"" to edited(broken, "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+            "cycle, version \"x\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("x")),
+            "broken reference, name \"xmlP\"" to edited(broken, "/content/modelInfo/name", mapper.valueToTree("xmlP")),
         )
         val cycle = setOf("MVK_ERROR_CALC_CYCLE")
         assertAgreement(rows, refused = mapOf(
@@ -226,6 +228,7 @@ class CheckerFrameValueAgreementTest {
             "characters [\"ab\"], version \"x\"" to UNBUILT, "characters [surrogate], timeZone \"x\"" to UNBUILT,
             "version \"29.0.0\", timeZone \"x\"" to INCOMPATIBLE + ZONE, "broken reference" to ENTITY,
             "broken reference, version \"29.0.0\"" to INCOMPATIBLE + ENTITY, "broken reference, timeZone \"x\"" to ENTITY + ZONE,
+            "cycle, version \"x\"" to PATTERN + INCOMPATIBLE + cycle, "broken reference, name \"xmlP\"" to ENTITY + NAME,
         ))
         val ordered = rows.filterKeys { "version" in it && "characters" !in it }
             .mapValues { (_, json) -> a12(json).toList() to rejectingCodes(json) }
