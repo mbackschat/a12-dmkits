@@ -10,6 +10,12 @@ internal data class MessageFinding(
 ) : OwnedFinding
 
 internal enum class ModelStage {
+    /**
+     * A12's two version rules: its FIRST consistency rules, separate from code generation, so their sentences precede
+     * every class and withhold none, a computation cycle included ([KERNEL-FINDINGS KF650]).
+     */
+    VERSION,
+
     DECLARATION, METAMODEL, GENERATION,
 
     /**
@@ -121,7 +127,7 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
         declarations.filterNot { it.owner in computations }).map { it.finding }.filter(::visible)
     fun staged(stage: ModelStage) = model.filter { it.stage == stage }.map { it.finding }.filter(::visible)
     val judged = if (selected.any { it.justifiesRejection }) selected else selected + staged(ModelStage.GENERATION)
-    return judged + staged(ModelStage.BASIC)
+    return staged(ModelStage.VERSION) + judged + staged(ModelStage.BASIC)
 }
 
 /**

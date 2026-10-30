@@ -9,7 +9,9 @@ import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.consistency.outcome
 import io.github.mbackschat.a12.dm.core.ModelLoader
+import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -40,11 +42,13 @@ class CheckerFrameValueAgreementTest {
     @Test
     fun theGeneratedCodeNameIsJudgedAsA12DerivesIt() {
         val rows = linkedMapOf<String, String>()
-        for (name in listOf(null, "\"\"", "\"Policy\"", "\"_p\"", "\"1p\"", "\"p q\"", "\"Prämie\"", "\"xm\"", "\"xmlP\"", "\"XmLp\"", "5", "true")) {
+        for (name in listOf(null, "\"\"", "\"Policy\"", "\"_p\"", "\"1p\"", "\"p q\"", "\"Prämie\"", "\"xm\"", "\"xmlP\"", "\"XmLp\"", "5", "true",
+                "\"  \"", "\"\\u00a0\"", "\"XML\\u0130\"")) {
             rows["name $name"] = named(name, branch = null)
         }
         for ((name, branch) in listOf("\"_xmlb\"" to "xmlb", "\"_xmlb\"" to "XMLB", "\"  _xmlb\"" to "xmlb", "\"x_xmlb\"" to "xmlb",
-            "\"_\"" to "", "\"xml_v1\"" to "v1", "\"Policy_V1\"" to "v1", "\"a_xml\"" to "xml", "\"xmlP\"" to " ", null to "v1")) {
+            "\"_\"" to "", "\"xml_v1\"" to "v1", "\"Policy_V1\"" to "v1", "\"a_xml\"" to "xml", "\"xmlP\"" to " ", null to "v1",
+            "\"xml\\u0130\\u0130_b\"" to "b", "\"\\u0130\\u0130\\u0130_b\"" to "b")) {
             rows["name $name branch \"$branch\""] = named(name, branch)
         }
         assertAgreement(rows, refused = mapOf(
@@ -52,6 +56,9 @@ class CheckerFrameValueAgreementTest {
             "name \"_xmlb\" branch \"xmlb\"" to NAME, "name \"_xmlb\" branch \"XMLB\"" to NAME,
             "name \"  _xmlb\" branch \"xmlb\"" to NAME, "name \"_\" branch \"\"" to NAME, "name \"xml_v1\" branch \"v1\"" to NAME,
             "name \"xmlP\" branch \" \"" to NAME, "name null branch \"v1\"" to UNBUILT,
+            "name \"  \"" to NAME, "name \"XML\\u0130\"" to NAME, "name \"xml\\u0130\\u0130_b\" branch \"b\"" to NAME,
+            // Lower-cased, each U+0130 is two units, so the index A12 cuts the original name at lies past its end.
+            "name \"\\u0130\\u0130\\u0130_b\" branch \"b\"" to UNBUILT,
         ))
     }
 
@@ -59,7 +66,7 @@ class CheckerFrameValueAgreementTest {
     @Test
     fun theModelVersionIsJudgedAsA12ReadsIt() {
         val texts = listOf("28.4.0", "28.0.0", "28.3.99", "28.4.00", "28.04.0", "028.4.0", "28.4.0000000000000000001", "28.4.1",
-            "29.0.0", "27.9.9", "28.5", "x", "28.4.0 ", "٢٨.4.0", "28.4.0.0", "-28.4.0", "99999999999.0.0")
+            "29.0.0", "27.9.9", "28.5", "x", "28.4.0 ", "٢٨.4.0", "28.4.0.0", "-28.4.0", "99999999999.0.0", "2147483647.0.0", "2147483648.0.0")
         val rows = linkedMapOf<String, String>()
         texts.forEach { rows["version \"$it\""] = edited("/header/modelVersion", mapper.valueToTree(it)) }
         listOf("5", "true").forEach { rows["version $it"] = edited("/header/modelVersion", mapper.readTree(it)) }
@@ -69,8 +76,11 @@ class CheckerFrameValueAgreementTest {
             "version \"28.5\"" to both, "version \"x\"" to both, "version \"28.4.0 \"" to both, "version \"٢٨.4.0\"" to both,
             "version \"28.4.0.0\"" to both, "version \"-28.4.0\"" to both, "version 5" to both, "version true" to both,
             // The major overflows Java's `int`, which A12 parses it into, so its check throws.
-            "version \"99999999999.0.0\"" to UNBUILT,
+            "version \"99999999999.0.0\"" to UNBUILT, "version \"2147483647.0.0\"" to INCOMPATIBLE,
+            "version \"2147483648.0.0\"" to UNBUILT,
         ))
+        val unreadable = rows.getValue("version \"x\"")
+        assertEquals(a12(unreadable).toList(), rejectingCodes(unreadable), "the pattern's sentence first, as A12 states it")
     }
 
     /** `NoMetaModelChecks.checkTimeZone`: `GMT`, an id of the JDK's registry exactly, or a custom offset up to `23:59`. */
@@ -94,7 +104,7 @@ class CheckerFrameValueAgreementTest {
         val admitted = listOf("[\"a\"]", "[\"a-z\"]", "[\"-\"]", "[\"---\"]", "[\" \"]", "[5]", "[-0]", "[\"\\u00e9-\\u017f\"]",
             "[\"e\\u0301\"]", "[\"e\\u0301x\"]", "[\"ae\\u0301\"]", "[\"a\\u0301\\u0301\"]", "[\"\\r\\n\"]")
         val unbuilt = listOf("[\"\"]", "[\"ab\"]", "[\"  \"]", "[\"--\"]", "[\"a-\"]", "[\"z-a\"]", "[\"a--\"]", "[\"\\u00e9\\u00e9\"]",
-            "[\"a-b-c\"]", "[\"a\",\"ab\"]", "[\"e\\u0301\\u0301\\u0301\"]", "[true]", "[12]", "[1.5]")
+            "[\"a-b-c\"]", "[\"a\",\"ab\"]", "[\"e\\u0301\\u0301\\u0301\"]", "[true]", "[12]", "[1.5]", "[-0.0]", "[1.50]")
         val rows = linkedMapOf<String, String>()
         (admitted + unbuilt).forEach { rows["characters $it"] = edited("/content/modelConfig/supportedCharacters", mapper.readTree(it)) }
         assertAgreement(rows, refused = unbuilt.associate { "characters $it" to UNBUILT })
@@ -122,24 +132,26 @@ class CheckerFrameValueAgreementTest {
     }
 
     /**
-     * A12 refuses two combined graphemes that can split one text two ways, here `aé` beside `é̂`
-     * with `a` admitted, and only a grapheme segmenter sees that. The checker therefore passes every check it has and
-     * names the gap, which is why `ALL_CHECKS_PASSED` is never A12's acceptance (CONSISTENCY-API, `CheckOutcome`).
+     * A12 refuses two combined graphemes that can split one text two ways, here `ae\u0301` beside `e\u0301\u0302`
+     * with `a` admitted, and two characters that are not one grapheme, here `\u03b1\u03b2`; only a grapheme segmenter
+     * sees either. The checker therefore passes every check it has and names the gap, which is why `ALL_CHECKS_PASSED`
+     * is never A12's acceptance (CONSISTENCY-API, `CheckOutcome`).
      */
     @Test
-    fun anOverlapOfCombinedGraphemesPassesEveryCheckA12Refuses() {
-        val json = edited("/content/modelConfig/supportedCharacters", mapper.readTree("[\"a\",\"ae\\u0301\",\"e\\u0301\\u0302\"]"))
-        val report = check(ModelSource(json))
-        assertEquals(
-            Triple(UNBUILT, CheckOutcome.ALL_CHECKS_PASSED, true),
-            Triple(a12(json), report.outcome, report.gaps.isNotEmpty()),
-            "as (A12, the checker's outcome, a gap named)",
-        )
+    fun anEntryOnlyAGraphemeSegmenterRefusesPassesEveryCheck() {
+        val observed = listOf("[\"a\",\"ae\\u0301\",\"e\\u0301\\u0302\"]", "[\"\\u03b1\\u03b2\"]").associateWith { entries ->
+            val json = edited("/content/modelConfig/supportedCharacters", mapper.readTree(entries))
+            val report = check(ModelSource(json))
+            Triple(a12(json), report.outcome, report.gaps.isNotEmpty())
+        }
+        assertEquals(observed.mapValues { Triple(UNBUILT, CheckOutcome.ALL_CHECKS_PASSED, true) }, observed,
+            "as (A12, the checker's outcome, a gap named)")
     }
 
     /**
      * A reached model's values are never asked for: A12 builds and checks an entry whose included model carries each
-     * value it refuses on the entry, and so does the checker. The untouched component is the control.
+     * value it refuses on the entry, and so does the checker. The untouched component is the control, and the same
+     * values on the entry are the control that both sides can refuse here.
      */
     @Test
     fun anIncludedModelsValuesAreNeverAsked() {
@@ -159,6 +171,56 @@ class CheckerFrameValueAgreementTest {
             "$pointer $value" to (a12 to ours.findings.none { it.justifiesRejection })
         }
         assertEquals(observed.mapValues { true to true }, observed, "as (A12 builds and checks, the checker refuses nothing)")
+        val onTheEntry = edits.mapNotNull { (pointer, value) -> pointer?.let { "$it $value" to edited(permit, it, mapper.readTree(value)) } }
+            .associate { (row, entry) ->
+                val a12 = runCatching { ModelLoader.loadAndCheck(entry) { if (it == "component") component else null } }.isSuccess
+                val ours = ConsistencyWorkspace.fromSources(listOf(ModelSource(entry), ModelSource(component))).check("permit")
+                row to (a12 to ours.findings.none { it.justifiesRejection })
+            }
+        assertEquals(onTheEntry.mapValues { false to false }, onTheEntry, "as (A12 refuses the entry, and so does the checker)")
+    }
+
+    /**
+     * A frame value beside another defect. A12's version rules run first and withhold nothing, so a version sentence
+     * comes before a computation cycle; the generated-code name and the time zone are judged by the code generation
+     * that also finds the cycle, and either withholds it. A refused or surrogate supported-character entry stops A12's
+     * whole check, so nothing beside it is reported.
+     */
+    @Test
+    fun aFrameValueBesideAnotherDefectIsReportedAsA12ReportsIt() {
+        val cyclic = run {
+            val numbers = DocumentModelDraft.named("policy-frame").locale("en_US")
+                .rootGroup("Policy") { p -> p.numberField("Premium") { }.numberField("Rebate") { } }.build().toJson()
+            val policy = EditSession.read(numbers).group("/Policy")
+            val (premium, rebate) = policy.num("Premium") to policy.num("Rebate")
+            // Injected, because the editor refuses the cycle these rows need.
+            listOf(Triple("ComputePremium", premium, rebate), Triple("ComputeRebate", rebate, premium))
+                .map { (name, target, source) ->
+                    policy.computation(target) { it.name(name).calc(source.asNumber()).message(Dsl.en("Check the premium.")).build() }
+                }
+                .fold(numbers) { model, computation -> TypedRules.inject(model, computation) }
+        }
+        val characters = "/content/modelConfig/supportedCharacters"
+        val rows = linkedMapOf(
+            "cycle" to cyclic,
+            "cycle, version \"29.0.0\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("29.0.0")),
+            "cycle, timeZone \"x\"" to edited(cyclic, "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+            "cycle, name \"xmlP\"" to edited(cyclic, "/content/modelInfo/name", mapper.valueToTree("xmlP")),
+            "characters [\"ab\"], timeZone \"x\"" to edited(edited(characters, mapper.readTree("[\"ab\"]")),
+                "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+            "characters [\"ab\"], version \"x\"" to edited(edited(characters, mapper.readTree("[\"ab\"]")),
+                "/header/modelVersion", mapper.valueToTree("x")),
+            "characters [surrogate], timeZone \"x\"" to edited(edited(characters, mapper.readTree("[\"\\ud83d\"]")),
+                "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+        )
+        val cycle = setOf("MVK_ERROR_CALC_CYCLE")
+        assertAgreement(rows, refused = mapOf(
+            "cycle" to cycle, "cycle, version \"29.0.0\"" to INCOMPATIBLE + cycle, "cycle, timeZone \"x\"" to ZONE,
+            "cycle, name \"xmlP\"" to NAME, "characters [\"ab\"], timeZone \"x\"" to UNBUILT,
+            "characters [\"ab\"], version \"x\"" to UNBUILT, "characters [surrogate], timeZone \"x\"" to UNBUILT,
+        ))
+        val versioned = rows.getValue("cycle, version \"29.0.0\"")
+        assertEquals(a12(versioned).toList(), rejectingCodes(versioned), "the version's sentence first, as A12 states it")
     }
 
     private fun assertAgreement(rows: Map<String, String>, refused: Map<String, Set<String>>) {

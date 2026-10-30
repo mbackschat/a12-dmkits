@@ -482,6 +482,7 @@ fun prepare(
     val definitions = readClosure(admitted, providers)
     val baseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
     val frame = (admitted.parsed as? JsonObject).entryFrameValues()
+    val characters = content.declaredSupportedCharacters()
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = content.fieldRefByShortNameAllowed(),
@@ -489,11 +490,12 @@ fun prepare(
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
-        supportedCharacters = content.declaredSupportedCharacters(),
+        supportedCharacters = characters,
         hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
         unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
-        reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals + frame.refusals,
+        reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals + frame.refusals +
+            characters.unbuildableCharacterRefusals(),
         frameValues = frame.values,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
@@ -712,7 +714,7 @@ private fun JsonObject?.declaredSupportedCharacters(): List<String?> =
         ?: emptyList()
 
 /** A text, a Boolean and a number written without an exponent, as A12's reader binds them to a `String`. */
-private fun JsonPrimitive.boundText(): String? = when {
+internal fun JsonPrimitive.boundText(): String? = when {
     isString || booleanOrNull != null -> content
     content == "-0" -> "0"
     PLAIN_NUMBER.matches(content) -> content

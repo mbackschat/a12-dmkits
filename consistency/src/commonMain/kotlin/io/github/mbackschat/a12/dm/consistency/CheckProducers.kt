@@ -262,6 +262,7 @@ private fun path(family: CheckFamily): CheckProducer = condition(family) { facts
 
 /** Local outputs are cached in registry order; reached sites and outer stages assemble the public report. */
 internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
+    CheckProducer.ModelWide(setOf(CheckFamily.DECLARATION_SLOTS), ModelStage.VERSION, { it.versionFindings() }),
     produces(CheckFamily.DECLARATION_SLOTS) { it.declarationSlotFindings() },
     perDeclarationWalk(CheckFamily.ERROR_TEXT_PRESENCE, DeclarationStage.MESSAGE) { it.errorTextPresenceFindings() },
     CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_ALTERNATIVES)) { base, at -> base.computationAlternativeContributions(at) },

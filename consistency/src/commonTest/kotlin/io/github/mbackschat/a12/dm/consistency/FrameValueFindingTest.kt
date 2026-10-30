@@ -16,6 +16,8 @@ class FrameValueFindingTest {
             "control" to frame(),
             "name begins with xml" to frame(info = """{"name":"XmlPolicy"}"""),
             "name without its branch is empty" to frame(info = """{"name":"_","branch":""}"""),
+            "name lengthened by lower-casing" to frame(info = """{"name":"XML\u0130"}"""),
+            "name cut past its end" to frame(info = """{"name":"\u0130\u0130\u0130_b","branch":"b"}"""),
             "branch beside no name" to frame(info = """{"branch":"v1"}"""),
             "zero offset" to frame(config = """{"timeZone":"GMT+0"}"""),
             "offset past 23 hours" to frame(config = """{"timeZone":"GMT+24"}"""),
@@ -35,6 +37,7 @@ class FrameValueFindingTest {
             mapOf(
                 "control" to emptyList(), "name begins with xml" to listOf("MVK_INVALID_NAME_4_GENERATED_CODE"),
                 "name without its branch is empty" to listOf("MVK_INVALID_NAME_4_GENERATED_CODE"), "branch beside no name" to unbuilt,
+                "name lengthened by lower-casing" to listOf("MVK_INVALID_NAME_4_GENERATED_CODE"), "name cut past its end" to unbuilt,
                 "zero offset" to emptyList(), "offset past 23 hours" to listOf("MVK_INVALID_TIME_ZONE"),
                 "zone in the wrong case" to listOf("MVK_INVALID_TIME_ZONE"), "older minor and patch" to emptyList(),
                 "newer patch" to listOf(RK_MODEL_VERSION_INCOMPATIBLE), "two parts" to both, "major past an int" to unbuilt,
@@ -42,7 +45,7 @@ class FrameValueFindingTest {
                 "a combined grapheme" to emptyList(),
             ),
             rows.mapValues { (row, json) ->
-                // A12's check cannot run on these two, so the checker completes no family and `checkRead` would refuse them.
+                // A12's check cannot run on these, so the checker completes no family and `checkRead` would refuse them.
                 val report = if (row in PRE_EMPTED) check(ModelSource(json)) else checkRead(ModelSource(json))
                 report.findings.filter { it.justifiesRejection }.map { it.code }
             },
@@ -50,7 +53,8 @@ class FrameValueFindingTest {
     }
 
     private companion object {
-        val PRE_EMPTED = setOf("branch beside no name", "major past an int")
+        val PRE_EMPTED = setOf("branch beside no name", "name cut past its end", "major past an int", "two plain characters",
+            "downward range")
     }
 
     private fun frame(info: String = """{"name":"policy"}""", config: String = "{}", version: String = "28.4.0") =

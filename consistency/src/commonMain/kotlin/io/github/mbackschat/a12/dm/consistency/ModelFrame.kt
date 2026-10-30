@@ -106,7 +106,8 @@ private val FRAME = listOf(
     )),
     FrameMember("content", Bind.OBJECT, absent = FrameTier.READ, nulled = FrameTier.READ, members = listOf(
         FrameMember("modelInfo", Bind.OBJECT, absent = FrameTier.CHECK, nulled = FrameTier.READ, members = listOf(
-            // An absent name builds and draws MVK_INVALID_NAME_4_GENERATED_CODE, a class this checker does not state.
+            // An absent name builds and draws MVK_INVALID_NAME_4_GENERATED_CODE, judged with the name A12 derives
+            // (FrameValues.kt).
             FrameMember("name", Bind.TEXT, nulled = FrameTier.READ),
             text("variant"), text("branch"), text("revision"), text("comment"), text("joinedModelsInfo"),
         )),

@@ -304,13 +304,14 @@ public final class StructuralKernelFix {
                             + "describes it (measured 2026-09-13, KERNEL-FINDINGS KF321). A value that carries no "
                             + "`labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.")),
             Map.entry(KernelCode.MVK_INVALID_TIME_ZONE, new Hint(
-                    "Set modelConfig.timeZone to a nonblank Java time-zone id. Exact UTC, GMT, and Europe/Berlin "
-                            + "are accepted by both the kernel and the interpreter-backed evaluator; another known "
-                            + "Java id such as America/New_York is kernel-valid but the interpreter will refuse it. "
-                            + "Omit the slot to use the UTC default.",
-                    "The kernel resolves modelConfig.timeZone through java.util.TimeZone and rejects an explicit "
-                            + "null, blank, or unknown/typo id that silently collapses to GMT. Absence is different: "
-                            + "only a missing slot selects the UTC default.")),
+                    "Set modelConfig.timeZone to a Java time-zone id, spelled exactly, or a GMT offset such as "
+                            + "GMT+01:00. Exact UTC, GMT, and Europe/Berlin are accepted by both the kernel and the "
+                            + "interpreter-backed evaluator; another known Java id such as America/New_York is "
+                            + "kernel-valid but the interpreter will refuse it. Omit the slot to use the UTC default.",
+                    "The kernel resolves modelConfig.timeZone through java.util.TimeZone and draws this code for a "
+                            + "blank or unknown id, which silently collapses to GMT, GMT itself excepted; an offset such "
+                            + "as GMT+1, GMT-01:30 or GMT+0130, up to 23:59, is valid. An explicit null is refused "
+                            + "earlier, when the model is read, and a missing slot selects the UTC default.")),
             Map.entry(KernelCode.MVK_INVALID_RAW_TYPE, new Hint(
                     "The condition (or computation) reads the VALUE of a field that declares noValueValidation "
                             + "(a raw-type string) — the kernel forbids every value use of such a field: comparisons, "

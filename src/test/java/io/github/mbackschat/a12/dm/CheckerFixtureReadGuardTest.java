@@ -63,7 +63,8 @@ class CheckerFixtureReadGuardTest {
             "ConsistencyCheckTest.kt", Set.of("check(ModelSource(\"{ not json\"))"),
             "OutcomeAllChecksPassedTest.kt", Set.of("check(ModelSource(UNSUPPORTED_LANGUAGE))"),
             "ParityCorpusTest.kt", Set.of("check(sources[0])"),
-            "ReportJsonTest.kt", Set.of("check(ModelSource(json))"));
+            "ReportJsonTest.kt", Set.of("check(ModelSource(json))"),
+            "SupportedCharactersTest.kt", Set.of("check(source(definition, *values))"));
 
     /** A file whose calls all reach a local {@code check} that guards its own fixtures. */
     private static final Set<String> OWN_GUARDED_CHECK = Set.of("WorkspaceMountTest.kt");

@@ -17611,7 +17611,7 @@
           "evidence": {
             "the version grid": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#theModelVersionIsJudgedAsA12ReadsIt",
-              "witness": "Nineteen versions, each the Kernel gate's sentences written out, and the checker's codes equal to them."
+              "witness": "Twenty-one versions, each the Kernel gate's sentences written out, and the checker's codes equal to them, the pattern's sentence first."
             }
           }
         },
@@ -17661,15 +17661,40 @@
         "a12-kernel-lean": {"state": "OPEN", "basis": "The handback of 2026-10-30a reports the code table; the peer's adoption is theirs to report.", "evidence": {}}
       }
     },
+    "kf425": {
+      "sha256": "148206bc8f083aea0b945208c810aaf6167f3fc603212d260883a91ce2f6ac09",
+      "task": "SS46",
+      "scope": {
+        "dmkits": [],
+        "checker": ["the codegen-tier codes it reports"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {"state": "NOT_APPLICABLE", "basis": "The kits leave the codegen tier's verdicts to the kernel check.", "evidence": {}},
+        "checker": {"state": "APPLIED", "basis": "The consequence now defers the count to MVK-LEDGER, whose scope paragraph the denominator guard holds to the checker's source; the time-zone witness it named is reported since KF650.", "evidence": {"the codegen-tier codes it reports": {"reference": "src/test/java/io/github/mbackschat/a12/dm/CodegenTierCodeDenominatorGuardTest.java#thePortableCheckerCoversExactlyTheCodegenTierCodesTheLedgerClaims", "witness": "The codes the checker reports equal the ledger's claimed set."}}},
+        "json-schema-import": {"state": "NOT_APPLICABLE", "basis": "Import writes no codegen-tier member.", "evidence": {}},
+        "json-schema-export": {"state": "NOT_APPLICABLE", "basis": "Export reads a model A12 admitted.", "evidence": {}},
+        "adapter": {"state": "NOT_APPLICABLE", "basis": "The correction changes no measurement the adapter makes.", "evidence": {}},
+        "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
+        "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker.", "evidence": {}},
+        "a12-kernel-lean": {"state": "NOT_APPLICABLE", "basis": "A correction to this repository's own wording, with no claim in their spec.", "evidence": {}}
+      }
+    },
     "kf650": {
-      "sha256": "8c694ed6e5c6d818be29abe767f8a97c5e3fa3d813fa305c8bcd2f82ce2311a5",
+      "sha256": "44f4040d7dab47decf75e2d086c0a99c59d2c56e33e6c57e861281256262a661",
       "task": "SS46",
       "scope": {
         "dmkits": [],
         "checker": [
           "each frame member as A12 binds it",
           "the check-only shapes on the entry alone",
-          "the four values A12 judges by their text"
+          "the four values A12 judges by their text",
+          "each value beside another defect"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -17706,11 +17731,15 @@
             },
             "the four values A12 judges by their text": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#aSupportedCharacterEntryIsReadAsA12ParsesIt",
-              "witness": "Twenty-seven character entries, each A12's class written out and the checker's equal to it; the name, version and time-zone grids are the class's sibling tests."
+              "witness": "Twenty-nine character entries, each A12's class written out and the checker's equal to it; the name, version and time-zone grids are the class's sibling tests."
             },
             "the check-only shapes on the entry alone": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableFrameLeavesTheEntryUnbuilt",
               "witness": "Thirteen edits on the entry, an included model and a type-definition library, the checker's outcome equal to A12's on each carrier."
+            },
+            "each value beside another defect": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#aFrameValueBesideAnotherDefectIsReportedAsA12ReportsIt",
+              "witness": "A version sentence before a computation cycle, a name or time zone withholding it, and a refused or surrogate entry reported alone, in A12's order where it states two."
             }
           }
         },
@@ -17738,7 +17767,7 @@
             },
             "the Kernel gate on every frame value": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#theModelVersionIsJudgedAsA12ReadsIt",
-              "witness": "Nineteen versions, each the Kernel gate's class set written out as the expected column rather than copied from the run."
+              "witness": "Twenty-one versions, each the Kernel gate's class set written out as the expected column rather than copied from the run."
             }
           }
         },

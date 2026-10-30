@@ -37,10 +37,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * letter and both surrogate halves (KERNEL-FINDINGS KF551). A range spanning the whole surrogate block, such as
  * `U+0020-U+FFFD`, admits the low unit and still refuses the high one, so the character draws one finding
  * (KF560, `adapter.laws.CheckerEnumDeclarationStreamAgreementTest`). No buildable restriction separates the two
- * halves otherwise: an entry holding a surrogate unit leaves A12 unable to build the model, which this family
- * reports as [CK_MODEL_NOT_BUILDABLE] and judges nothing further.
+ * halves otherwise: an entry holding a surrogate unit leaves A12 unable to build the model.
  *
- * **An entry A12's charset reader refuses leaves no model either**, reported the same way ([refusedEntry]).
+ * **That entry, and one A12's charset reader refuses, stop A12's whole check**, so this family never sees them: the
+ * preparation refuses the model ([unbuildableCharacterRefusals]).
  *
  * **What it leaves alone**, all of it under-reporting: a restriction carrying an entry this checker cannot
  * read as a singleton or an inclusive `x-y` range — a COMBINED grapheme (more than one code point) is a
@@ -48,20 +48,6 @@ import kotlinx.serialization.json.JsonPrimitive
  * reading of it would refuse values A12 admits. That silence is published as a [CoverageGap].
  */
 internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
-    val unbuilt = when {
-        declaresSurrogate(supportedCharacters) ->
-            "this model's `supportedCharacters` holds an entry with a surrogate unit, and A12 cannot build a " +
-                "model from that, so no consistency verdict about it exists; a supplementary-plane character " +
-                "cannot be admitted by any entry"
-        else -> refusedEntry(supportedCharacters)?.let { entry ->
-            "this model's `supportedCharacters` holds `$entry`, which is neither one character, a range `x-y` that " +
-                "runs upwards, nor one combined grapheme of at most three units, and A12 cannot build a model from " +
-                "that, so no consistency verdict about it exists"
-        }
-    }
-    if (unbuilt != null) {
-        return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, CK_MODEL_NOT_BUILDABLE, unbuilt, null))
-    }
     val admitted = admittedRanges(supportedCharacters) ?: return emptyList()
     return defaultVariantFields().flatMap { field ->
         val values = field.ownEnumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
@@ -80,7 +66,7 @@ internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
  * skip is declaration-level for the ordinary reason — a consumer needs to know which enum was left to A12.
  */
 internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
-    if (supportedCharacters.isEmpty() || declaresSurrogate(supportedCharacters) || refusedEntry(supportedCharacters) != null) {
+    if (supportedCharacters.isEmpty()) {
         return emptyList()
     }
     if (admittedRanges(supportedCharacters) == null) {
@@ -88,10 +74,12 @@ internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
             CoverageGap(
                 at = null,
                 reason = "this model restricts its characters with an entry this checker reads as neither a " +
-                    "singleton nor an inclusive `x-y` range, so NO enum value was judged against it — A12 " +
-                    "also admits a combined grapheme, whose membership test is a walk over code-point " +
-                    "sequences rather than a per-character one, and a number written in exponent form is an " +
-                    "entry whose text this checker does not know",
+                    "singleton nor an inclusive `x-y` range, so NO enum value was judged against it, and whether " +
+                    "A12 can build the model at all is left to A12 — it admits a combined grapheme, whose " +
+                    "membership test is a walk over code-point sequences rather than a per-character one, refuses " +
+                    "two or three characters that are not one grapheme and two combined graphemes that overlap, and " +
+                    "only a grapheme segmenter decides either; a number written in exponent form is an entry whose " +
+                    "text this checker does not know",
             ),
         )
     }
@@ -130,8 +118,25 @@ private fun admittedRanges(declared: List<String?>): List<CharRange>? {
     }
 }
 
-/** Whether an entry holds a surrogate unit, which leaves A12 unable to build the model (KF560). */
-private fun declaresSurrogate(declared: List<String?>): Boolean = declared.any { entry -> entry.orEmpty().any(Char::isSurrogate) }
+/**
+ * Why A12 builds no model from the entry's restriction, or nothing when it reads it: an entry holding a surrogate unit
+ * (KF560), and an entry its charset reader refuses ([refusedEntry]). Either stops A12's whole consistency check, so
+ * nothing beside it is reported, measured beside a time zone and a version A12 refuses
+ * (`adapter.laws.CheckerFrameValueAgreementTest`).
+ */
+internal fun List<String?>.unbuildableCharacterRefusals(): List<String> = listOfNotNull(
+    when {
+        any { entry -> entry.orEmpty().any(Char::isSurrogate) } ->
+            "In the entry model, `content.modelConfig.supportedCharacters` holds an entry with a surrogate unit, " +
+                "and A12 cannot build a model from that, so no consistency verdict about it exists; a " +
+                "supplementary-plane character cannot be admitted by any entry"
+        else -> refusedEntry(this)?.let { entry ->
+            "In the entry model, `content.modelConfig.supportedCharacters` holds `$entry`, which is neither one " +
+                "character, a range `x-y` that runs upwards, nor one combined grapheme of at most three units, and " +
+                "A12 cannot build a model from that, so no consistency verdict about it exists"
+        }
+    },
+)
 
 /**
  * The first entry A12's charset reader refuses, or null when this checker can name none.

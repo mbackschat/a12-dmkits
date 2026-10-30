@@ -12,8 +12,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * Nothing here needs a condition parser: every row reads members A12 declares as structured JSON, which is
  * what makes this the family that can land before the checker owns a syntax layer.
  *
- * The model-level rows below — the model's own booleans, base year and locales — are joined by the entry's name,
- * time zone and version ([frameValueFindings]), which A12 judges as text in the same way.
+ * The model-level rows below — the model's own booleans, base year and locales — are joined by the entry's name and
+ * time zone ([frameValueFindings]), which A12 judges as text in the same way. Its version is judged by the same
+ * family at a stage of its own ([versionFindings]), because A12 asks it ahead of everything else.
  *
  * **The same laws hold on both kinds, including the one whose code name says otherwise.**
  * `MVK_RULE_NAME_INVALID` reads as a rule's law and rejects a computation too — the Kernel calls both "Rule"

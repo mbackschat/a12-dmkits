@@ -32,7 +32,12 @@ class SupportedCharactersTest {
     private val supplementary = "" + Char(0xd83d) + Char(0xde00)
 
     /** A model restricted to [definition], whose one enum field declares [values]. */
-    private fun report(definition: String?, vararg values: String) = checkRead(
+    private fun report(definition: String?, vararg values: String) = checkRead(source(definition, *values))
+
+    /** …for a restriction A12 builds no model from, which pre-empts every family, so the checker admits no fixture. */
+    private fun refused(definition: String, vararg values: String) = check(source(definition, *values))
+
+    private fun source(definition: String?, vararg values: String) =
         ModelSource(
             """
             {"header":{"modelVersion":"28.4.0","id":"shop","locales":[{"code":"en_US"}]},
@@ -46,8 +51,7 @@ class SupportedCharactersTest {
               ]}}
              ]}}}
             """.trimIndent(),
-        ),
-    )
+        )
 
     /**
      * This family's codes only.
@@ -144,9 +148,8 @@ class SupportedCharactersTest {
         // A whole pair as one entry too: two units, and still unbuilt (adapter.laws.CheckerEnumDeclarationStreamAgreementTest).
         for (definition in listOf("""["A-Z","$high"]""", """["A-Z","\uD83D\uDED2"]""", """["A-Z","\u0100-$lastHigh"]""",
                 """["\uD83D\uDE00-\uD83D\uDE4F"]""")) {
-            val report = report(definition, "beta", supplementary)
-            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }
-                .filter { it == CK_MODEL_NOT_BUILDABLE || it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }, definition)
+            val report = refused(definition, "beta", supplementary)
+            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }, definition)
             assertEquals(emptyList(), report.gaps.filter { it.reason.contains("NO enum value was judged") }, definition)
         }
     }
@@ -177,9 +180,8 @@ class SupportedCharactersTest {
     @Test
     fun aRefusedEntryIsReportedAsUnbuildable() {
         for (definition in listOf("""["Z-A"]""", """["ab"]""", """[""]""", """["A-Z","abcd"]""", """[true]""")) {
-            val report = report(definition, "beta")
-            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }
-                .filter { it == CK_MODEL_NOT_BUILDABLE || it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }, definition)
+            val report = refused(definition, "beta")
+            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }, definition)
             assertEquals(emptyList(), report.gaps.filter { it.reason.contains("NO enum value was judged") }, definition)
         }
     }
