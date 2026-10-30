@@ -315,6 +315,15 @@ The queue is SPEC-2026-10-29-04 and SPEC-2026-10-29-05 of a12-kernel-lean's ledg
 | **SS50** | SPEC-2026-10-29-05 | the derivation reconciled against the topology and collision captures | **done** — the gate equals their topology artifacts on all 554 messages; an independent replay written from the clause's prose predicts every full-validation `Ref*` coordinate there (96 of 96, three mutants of the hash, capacity and bucket rules each failing); on the collision capture it decides only the two controls, which match, and the identical-input rows again select both rows on this host. The interpreter keeps [IF376](INTERPRETER-FINDINGS.md#if376)'s first-match policy | IF376 | — |
 | **SS51** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-29d | — |
 
+### Spec-sync round of 2026-10-30b <a id="spec-sync-2026-10-30b"></a>
+
+The queue is SPEC-2026-10-30-02 of a12-kernel-lean's ledger at its commit `70adc180da20762a95576ba47c41e30d1463f639`: a yearless field copied as it is into a year-bearing Date target takes the declared Base Year. The acceptance asks us to reconcile the bare-copy store, the month-only completion to the first and the clears in our own record, and to claim nothing about a `DATEFRAGMENT` declaration, partial precision, a repeatable carrier or a DateTime target.
+
+| batch | entries / gaps | acceptance | state | evidence · commits | follow-ups |
+|---|---|---|---|---|---|
+| **SS56** | SPEC-2026-10-30-02 | the bare-copy store, the month-only completion and the clears reconciled in our own domain on both strategies and the interpreter | **done** — five yearless spellings into four year-bearing targets agree with the clause on both strategies and the interpreter, with no change to either engine; without a Base Year A12 and the checker refuse all twenty copies | `YearlessDateCopyDiffTest`, KF550 | — |
+| **SS57** | handback | one revision and a disposition per entry | **done** | the commit landing this row is the revision; the handback of 2026-10-30b | — |
+
 ### Spec-sync round of 2026-10-30a <a id="spec-sync-2026-10-30a"></a>
 
 The queue is SPEC-2026-10-30-01 of a12-kernel-lean's ledger at its commit `d3bd7f65dc286cbf0716fb243e785c80e2362008`: a model declaring a condition language other than `en_US` or `de_DE` is refused with no class for the two codes they measured, `zz` and the empty code. The acceptance asks us to reconcile the refusal's class in our record and claim no other code.
