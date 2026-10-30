@@ -9,11 +9,11 @@ import kotlin.test.assertTrue
  *
  * **Why a fourth value, when [CheckOutcome]'s own doc said none was coming.** That sentence tied a pass to
  * the coverage registry, which is the bar for claiming A12 would ACCEPT a model — a universal claim over
- * constraints the checker never implemented, and `MVK_INVALID_TIME_ZONE` is the measured witness that it
- * cannot be made. This value makes the weaker claim, and the weaker claim is decidable: the
+ * constraints the checker never implemented, and a character restriction whose combined graphemes overlap is the
+ * measured witness that it cannot be made (`adapter.laws.CheckerFrameValueAgreementTest`). This value makes the weaker claim, and the weaker claim is decidable: the
  * families are a finite enumerable set, so "all of them ran and none rejected" is a fact rather than an
  * extrapolation. It is deliberately NOT called `VALID` — `valid` already names the kernel's verdict on
- * dmtool's envelope, and the two disagree on exactly that timezone model, so one word would carry two
+ * dmtool's envelope, and the two disagree on exactly that model, so one word would carry two
  * contracts across our own surfaces (owner-decided 2026-09-18).
  *
  * **The denominator is [CheckFamily.entries], and that direction is the safe one.** A family added to the

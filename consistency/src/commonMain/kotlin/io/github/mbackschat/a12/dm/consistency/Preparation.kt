@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -165,8 +166,8 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     unusable rather than narrowing the set — A12's reader refuses the spelling outright, or, for the empty
  *     code, reads it and then cannot build the model (measured 2026-09-12, `MessageSlotRawShapeLawsTest`) —
  *     so they are carried rather than dropped, and the declaration-slot family reports them.
- * @param supportedCharacters the ENTRY model's `content.modelConfig.supportedCharacters`, verbatim and in
- *     declaration order, empty when the model declares none. The entry model's list is the one in play for
+ * @param supportedCharacters the ENTRY model's `content.modelConfig.supportedCharacters`, each entry the text A12
+ *     binds and `null` where that text is not known here, in declaration order, empty when the model declares none. The entry model's list is the one in play for
  *     the whole EXPANDED tree — a mounted model's enum values answer to the host's restriction, measured
  *     2026-09-13 (`SupportedCharactersDeclarationGateLawsTest`) — which is why it is carried on the model
  *     rather than looked up per declaration.
@@ -199,8 +200,10 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     locale declared twice or the empty code. From the entry itself: a locale declared twice, which A12 builds but
  *     cannot check, and a declaration with no `name` or a type definition whose `name` is `null`, an object or an array,
  *     which its reader refuses (KF644). From any of them, a frame member A12 cannot use ([frameDefects], KF650): one
- *     its reader cannot bind in every model, and one it needs for the check in the entry alone. The entry's own members and codes are [unbindableBaseYear], [unbindableBooleans] and
- *     [unreadableLocaleCodes].
+ *     its reader cannot bind in every model, and one it needs for the check in the entry alone; and from the entry, a
+ *     frame value A12 fails on before it judges it ([EntryFrameValues.refusals]). The entry's own members and codes are
+ *     [unbindableBaseYear], [unbindableBooleans] and [unreadableLocaleCodes].
+ * @param frameValues the entry's name, time zone and version as A12 reads them ([FrameValues]).
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -209,7 +212,7 @@ data class PreparedModel(
     val unsupportedConditionLanguage: String? = null,
     val declaredLocales: List<String> = emptyList(),
     val unreadableLocaleCodes: List<String> = emptyList(),
-    val supportedCharacters: List<String> = emptyList(),
+    val supportedCharacters: List<String?> = emptyList(),
     val hasBaseYear: Boolean = false,
     val unbindableBaseYear: String? = null,
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
@@ -226,6 +229,7 @@ data class PreparedModel(
     val typeDefinitionBodies: Map<String, JsonObject> = emptyMap(),
     val unbindableBooleans: List<String> = emptyList(),
     val reachedModelRefusals: List<String> = emptyList(),
+    val frameValues: FrameValues = FrameValues(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -477,6 +481,7 @@ fun prepare(
     }
     val definitions = readClosure(admitted, providers)
     val baseYear = (content?.get("modelInfo") as? JsonObject)?.get("baseYear")
+    val frame = (admitted.parsed as? JsonObject).entryFrameValues()
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = content.fieldRefByShortNameAllowed(),
@@ -488,7 +493,8 @@ fun prepare(
         hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
         unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,
-        reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals,
+        reachedModelRefusals = definitions.reachedModelRefusals + collector.readerRefusals + frame.refusals,
+        frameValues = frame.values,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = definitions.ids,
@@ -690,15 +696,27 @@ private fun readClosure(
 }
 
 /**
- * `content.modelConfig.supportedCharacters`, as declared.
+ * `content.modelConfig.supportedCharacters`, each entry as the text A12 binds it.
  *
  * Entries are returned verbatim, including any this checker cannot interpret: deciding what an entry MEANS
  * belongs to the family that judges characters, and dropping an unreadable one here would turn a restriction
- * the checker cannot read into a narrower one it can. An entry that is not a string becomes the empty string
- * for the same reason — it is a place in the list, and no reading admits it, so the restriction as a whole
- * stays unreadable rather than quietly losing a member.
+ * the checker cannot read into a narrower one it can. A12 binds a Boolean and a number as their text, so `true`
+ * is the entry `true` and `-0` the entry `0` (`adapter.laws.CheckerFrameValueAgreementTest`). An entry whose text is
+ * not known here is `null`: a number in exponent form, whose text depends on how A12's reader holds numbers, and an
+ * entry that is no scalar, which [frameDefects] reports. It is a place in the list that no reading admits, so the
+ * restriction as a whole stays unreadable rather than quietly losing a member.
  */
-private fun JsonObject?.declaredSupportedCharacters(): List<String> =
+private fun JsonObject?.declaredSupportedCharacters(): List<String?> =
     ((this?.get("modelConfig") as? JsonObject)?.get("supportedCharacters") as? JsonArray)
-        ?.map { (it as? JsonPrimitive)?.takeIf { entry -> entry.isString }?.content ?: "" }
+        ?.map { entry -> (entry as? JsonPrimitive)?.takeIf { it !is JsonNull }?.boundText() }
         ?: emptyList()
+
+/** A text, a Boolean and a number written without an exponent, as A12's reader binds them to a `String`. */
+private fun JsonPrimitive.boundText(): String? = when {
+    isString || booleanOrNull != null -> content
+    content == "-0" -> "0"
+    PLAIN_NUMBER.matches(content) -> content
+    else -> null
+}
+
+private val PLAIN_NUMBER = Regex("-?[0-9]+(\\.[0-9]+)?")

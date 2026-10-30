@@ -72,6 +72,9 @@ internal enum class ModelFact {
     /** Whether a base year is bound, and the text A12 cannot bind: one member, `content.modelInfo.baseYear`. */
     BASE_YEAR,
     SUPPORTED_CHARACTERS,
+
+    /** The entry's generated-code name, time zone and version ([FrameValues]). */
+    FRAME_VALUES,
     UNREADABLE_LOCALE_CODES,
     UNBINDABLE_BOOLEANS,
     TYPE_DEFINITIONS,

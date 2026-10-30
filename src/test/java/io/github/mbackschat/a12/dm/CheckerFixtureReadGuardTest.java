@@ -57,6 +57,7 @@ class CheckerFixtureReadGuardTest {
     private static final Map<String, Set<String>> ALLOWED = Map.of(
             "BasicSentenceTest.kt", Set.of("check(ModelSource(source))"),
             "CheckReadSupport.kt", Set.of("check(source)"),
+            "FrameValueFindingTest.kt", Set.of("check(ModelSource(json))"),
             "ConditionBindingTest.kt", Set.of("check(model(\"FieldFilled(Amount)\", language = \"fr_FR\"))",
                     "check(model(\"FieldFilled(Amount)\", unsupported))", "check(source)"),
             "ConsistencyCheckTest.kt", Set.of("check(ModelSource(\"{ not json\"))"),

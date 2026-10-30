@@ -307,8 +307,11 @@ public enum RkCode {
             "the document's modelVersion differs from the reference but is accepted by the kernel — tolerated, flagged for awareness.",
             "no action required; align the modelVersion if you want the note gone."),
     MODEL_VERSION_INCOMPATIBLE(Severity.ERROR, DiagnosticSource.KERNEL,
-            "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast.",
+            "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast. It is A12's sentence \"Version mismatch: Document model version is … and application version is ….\", drawn unless the version is `major.minor.patch` with the kernel's major and a minor and patch, read as one decimal, no greater than the kernel's (KERNEL-FINDINGS KF650); the portable checker names the sentence by this code too.",
             "load a model whose version is compatible with this kernel, or migrate the model."),
+    MODEL_VERSION_PATTERN(Severity.ERROR, DiagnosticSource.PORTABLE_CHECKER,
+            "A12's sentence \"Document model version … does not match proper version schema. Expected version is ….\": the document's modelVersion is not `major.minor.patch` in ASCII digits, which also draws `RK_MODEL_VERSION_INCOMPATIBLE`'s sentence (KERNEL-FINDINGS KF650), where the portable checker names the sentence by this code.",
+            "write the modelVersion as `major.minor.patch`, such as the version the kernel writes."),
 
     // --- internal tool failure (ERROR; INTERNAL) ------------------------------------------------
     INTERNAL_ERROR(Severity.ERROR, DiagnosticSource.INTERNAL,

@@ -281,6 +281,15 @@ class CorrectiveTest {
         """.trimIndent(),
     )
 
+    /**
+     * The frame values' codes, in a model of their own: an unknown time zone stops A12's entity walk before its
+     * ordering gates (`refusesTheEntityWalk`), which would silence codes [reachability] exists to reach.
+     */
+    private val frameReachability = ModelSource(
+        """{"header":{"modelVersion":"x","id":"frame","locales":[{"code":"en_US"}]},
+            "content":{"modelInfo":{"name":"model"},"modelConfig":{"timeZone":"x"},"modelRoot":{"rootGroups":[]}}}""",
+    )
+
     @Test
     fun aFindingWhoseCodeItsOwnerExplainsCarriesTheGuidance() {
         val finding = checkRead(reachability).findings.first { it.code == "MVK_INVALID_ENTITY" }
@@ -312,7 +321,7 @@ class CorrectiveTest {
     /** The complete projected vocabulary must be reachable; deleting the phase table removed its inert member. */
     @Test
     fun everyProjectedEntryIsReachable() {
-        val reported = checkRead(reachability).findings.map { it.code }.toSet()
+        val reported = (checkRead(reachability).findings + checkRead(frameReachability).findings).map { it.code }.toSet()
         assertEquals(
             emptySet(),
             KERNEL_CORRECTIVES.keys - reported,

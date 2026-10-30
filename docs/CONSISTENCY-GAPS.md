@@ -8,8 +8,7 @@
 
 ## 1. Open
 
-- **DG164 — a frame value A12 builds and then refuses by a class or sentence the checker does not state (opened 2026-10-29).** A12 draws `MVK_INVALID_NAME_4_GENERATED_CODE` on a `content.modelInfo` without a `name`, `MVK_INVALID_TIME_ZONE` on a `timeZone` it does not know (`"x"`, `5`, `true`), and [KF70](KERNEL-FINDINGS.md#kf70)'s version-mismatch sentence on a `modelVersion` that is not one (`"x"`, `5`, `true`) (the Kernel gate, `adapter.laws.CheckerModelFrameAgreementTest`; [KF650](KERNEL-FINDINGS.md#kf650)), and the checker reports each model valid. Settled by a family stating the generated-code name law, the accepted-zone-id contract and KF70's version rule; until then that test's `LEFT_TO_A12` pins the silence.
-- **DG165 — a supported-character entry that is neither one character nor a range (opened 2026-10-29).** A12 builds no model for `["ab"]`, `[""]` or `[true]`, the boolean bound as the text `true` (the Kernel gate, `adapter.laws.CheckerModelFrameAgreementTest`; [KF650](KERNEL-FINDINGS.md#kf650)), and the checker reports the model valid. The entry grammar behind the refusal is unmeasured beyond these rows: settled by a measured statement of it from the codegen's own reader, beside [KF560](KERNEL-FINDINGS.md#kf560)'s surrogate rows; until then `LEFT_TO_A12` pins the silence.
+_None open._
 
 ## 2. Out of scope
 

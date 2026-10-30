@@ -25,7 +25,7 @@ class CheckCellKeyTest {
     private fun prepared(
         locales: String = """[{"code":"en_US"}]""",
         modelConfig: String = "",
-        modelInfo: String = "",
+        modelInfo: String = """"modelInfo":{"name":"keys"},""",
         typeDefinitions: String = "",
         codeType: String = "StringType",
         second: String = "",
@@ -58,15 +58,16 @@ class CheckCellKeyTest {
         ModelFact.DECLARED_LOCALES to prepared(locales = """[{"code":"en_US"},{"code":"de_DE"}]"""),
         ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED to
             prepared(modelConfig = """"modelConfig":{"fieldRefByShortNameAllowed":true},"""),
-        ModelFact.BASE_YEAR to prepared(modelInfo = """"modelInfo":{"baseYear":2024},"""),
+        ModelFact.BASE_YEAR to prepared(modelInfo = """"modelInfo":{"name":"keys","baseYear":2024},"""),
         ModelFact.SUPPORTED_CHARACTERS to
             prepared(modelConfig = """"modelConfig":{"supportedCharacters":["A-Z"]},"""),
+        ModelFact.FRAME_VALUES to prepared(modelConfig = """"modelConfig":{"timeZone":"Europe/Berlin"},"""),
         // A code A12's own reader yields no locale KEY for. It moves the unreadable list and leaves
         // `declaredLocales` alone, which is what the isolation assertion below then confirms rather than
         // takes on trust.
         ModelFact.UNREADABLE_LOCALE_CODES to prepared(locales = """[{"code":"en_US"},{"code":"!!"}]"""),
         // A header flag A12's reader refuses. It moves no other fact: the member is read for nothing else.
-        ModelFact.UNBINDABLE_BOOLEANS to prepared(modelInfo = """"modelInfo":{"immutable":"tRUE"},"""),
+        ModelFact.UNBINDABLE_BOOLEANS to prepared(modelInfo = """"modelInfo":{"name":"keys","immutable":"tRUE"},"""),
         ModelFact.TYPE_DEFINITIONS to prepared(
             typeDefinitions =
                 """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",

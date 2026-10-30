@@ -73,6 +73,10 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "The condition (or computation) reads the VALUE of a field that declares noValueValidation (a raw-type string) — the kernel forbids every value use of such a field: comparisons, value lists, computations, even \$field.value\$ in a message. Test PRESENCE instead (FieldFilled / FieldNotFilled and the quantifiers work normally), or drop noValueValidation from the field (`field modify`) if its value must participate.",
         meaning = "MVK_INVALID_RAW_TYPE (\"It is not allowed to use a field which defines 'no value validation'\"): a noValueValidation field's value is never interned for evaluation — the kernel caches a pseudo value — so no rule or computation can read it. The only value-shaped construct it permits is the whole-condition `Length(f) > <constant>`, and that is a disguised max-length declaration, not an evaluated rule.",
     ),
+    "MVK_INVALID_TIME_ZONE" to Corrective(
+        fix = "Set modelConfig.timeZone to a nonblank Java time-zone id. Exact UTC, GMT, and Europe/Berlin are accepted by both the kernel and the interpreter-backed evaluator; another known Java id such as America/New_York is kernel-valid but the interpreter will refuse it. Omit the slot to use the UTC default.",
+        meaning = "The kernel resolves modelConfig.timeZone through java.util.TimeZone and rejects an explicit null, blank, or unknown/typo id that silently collapses to GMT. Absence is different: only a missing slot selects the UTC default.",
+    ),
     "MVK_NEG_CONDITION_IN_ITERATION" to Corrective(
         fix = "Guard the negative predicate with a positive existence check on the row: GroupFilled(<the repeatable group>) And <your negative condition> — so the rule fires only for rows that actually exist, not for the empty/absent repetitions. A negative presence predicate used as an iterating Or branch is not guarded by its sibling; rewrite that branch as a positively guarded And, or split it into a separate guarded rule.",
         meaning = "A condition the kernel reads as able to fire on the empty/non-existent repetitions of the iterated group needs a positive guard to scope it to real rows. The trigger is NOT the operator's name: FieldsNotCollectivelyFilled is negative and accepted, while NumberOfFilledFields(<group>) < 1 has no negation and is refused. Nor is it the condition's meaning: '< 1' is refused where the equivalent '<= 0' and '== 0' are accepted. The analysis is syntactic and kernel-owned, so add the guard rather than predicting the gate. This is a structural iteration law, not a restriction on RepetitionNotUnique composing as an ordinary leaf under a legal And/Or tree.",
@@ -200,6 +204,14 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     "RK_MEMBER_SIGNED" to Corrective(
         fix = "write a count of 1 or more (a fractional count may be 0), or -1 to declare no bound where the member admits it; a Number length admits no -1.",
         meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+    ),
+    "RK_MODEL_VERSION_INCOMPATIBLE" to Corrective(
+        fix = "load a model whose version is compatible with this kernel, or migrate the model.",
+        meaning = "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast. It is A12's sentence \"Version mismatch: Document model version is … and application version is ….\", drawn unless the version is `major.minor.patch` with the kernel's major and a minor and patch, read as one decimal, no greater than the kernel's (KERNEL-FINDINGS KF650); the portable checker names the sentence by this code too.",
+    ),
+    "RK_MODEL_VERSION_PATTERN" to Corrective(
+        fix = "write the modelVersion as `major.minor.patch`, such as the version the kernel writes.",
+        meaning = "A12's sentence \"Document model version … does not match proper version schema. Expected version is ….\": the document's modelVersion is not `major.minor.patch` in ASCII digits, which also draws `RK_MODEL_VERSION_INCOMPATIBLE`'s sentence (KERNEL-FINDINGS KF650), where the portable checker names the sentence by this code.",
     ),
     "RK_NAME_EMPTY" to Corrective(
         fix = "give it a non-empty `name`.",

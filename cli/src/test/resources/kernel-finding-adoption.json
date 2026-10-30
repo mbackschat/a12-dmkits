@@ -17566,6 +17566,77 @@
         }
       }
     },
+    "kf70": {
+      "sha256": "daadba1b243545e0f6435f69ef1ff910e314dfc52bb7ee32d5754f1ae2936ec6",
+      "task": "SS46",
+      "scope": {
+        "dmkits": [],
+        "checker": ["the version's two sentences"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": ["the version grid"],
+        "interpreter": [],
+        "dmtool-cli": ["the mismatch's code"],
+        "a12-kernel-lean": ["the version check's two sentences"]
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits write the version A12 writes and never judge one.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker states the pattern sentence as RK_MODEL_VERSION_PATTERN and the mismatch as RK_MODEL_VERSION_INCOMPATIBLE, reading the minor and patch as one decimal.",
+          "evidence": {
+            "the version's two sentences": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/FrameValueFindingTest.kt#eachValueIsJudgedAsA12JudgesItsText",
+              "witness": "An older minor and patch passes, a newer patch draws the mismatch alone, two parts draw both, and an overflowing major is no verdict, on both runtimes."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes the version A12 writes.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Export reads a model A12 admitted.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "A12's own sentences are the expected column of every version row.",
+          "evidence": {
+            "the version grid": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#theModelVersionIsJudgedAsA12ReadsIt",
+              "witness": "Nineteen versions, each the Kernel gate's sentences written out, and the checker's codes equal to them."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The version is the check's question; A12's runtime evaluates a model whatever its version (KF650).",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "dmtool's kernel engine codes A12's mismatch sentence as RK_MODEL_VERSION_INCOMPATIBLE, the code the checker states it by.",
+          "evidence": {
+            "the mismatch's code": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/ModelVersionPolicyTest.java#newerOrDifferentMajorFailsFastWithAStableCode",
+              "witness": "A newer version is refused with RK_MODEL_VERSION_INCOMPATIBLE and its fix."
+            }
+          }
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Their spec says only that the version check judges a scalar version (spec/01-data-model.md at ec50fd24); handed to the peer session in our letter of 2026-10-30b, and the adoption is theirs to report.",
+          "evidence": {}
+        }
+      }
+    },
     "kf283": {
       "sha256": "2b9425db4b8bc530714a8b282fe419b10fb73596d7b6f28704e7e70a05926003",
       "task": "SS54",
@@ -17591,19 +17662,21 @@
       }
     },
     "kf650": {
-      "sha256": "69964fb8bd78448874535c97ec2c46e7100b1528258b505b406876a0b6e0210a",
-      "task": "SS52",
+      "sha256": "8c694ed6e5c6d818be29abe767f8a97c5e3fa3d813fa305c8bcd2f82ce2311a5",
+      "task": "SS46",
       "scope": {
         "dmkits": [],
         "checker": [
           "each frame member as A12 binds it",
-          "the check-only shapes on the entry alone"
+          "the check-only shapes on the entry alone",
+          "the four values A12 judges by their text"
         ],
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
           "the Kernel gate on every frame row",
-          "the runtime with no check in front"
+          "the runtime with no check in front",
+          "the Kernel gate on every frame value"
         ],
         "interpreter": [
           "the members the reader cannot bind",
@@ -17613,7 +17686,8 @@
           "the interpreter verbs' refusal"
         ],
         "a12-kernel-lean": [
-          "the frame rows of our message of 2026-10-29"
+          "the frame rows of our message of 2026-10-29",
+          "the frame values of our letter of 2026-10-30b"
         ]
       },
       "consumers": {
@@ -17624,11 +17698,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "The checker reads the frame by the measured binding table and reports each member A12 cannot use as CK_MODEL_NOT_BUILDABLE, a check-only shape on the entry alone; a bare conditionLanguage declares its code.",
+          "basis": "The checker reads the frame by the measured binding table and reports each member A12 cannot use as CK_MODEL_NOT_BUILDABLE, a check-only shape on the entry alone; a bare conditionLanguage declares its code. It states the entry's generated-code name, time zone, version and character-entry refusals, leaving only an overlap of combined graphemes to a coverage gap.",
           "evidence": {
             "each frame member as A12 binds it": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerModelFrameAgreementTest.kt#everyFrameMemberIsReadAsA12ReadsIt",
-              "witness": "Every member absent and in six JSON kinds, the checker's classes equal to the Kernel gate's on each row not pinned to a named gap."
+              "witness": "Every member absent and in six JSON kinds, the checker's classes equal to the Kernel gate's on every row."
+            },
+            "the four values A12 judges by their text": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#aSupportedCharacterEntryIsReadAsA12ParsesIt",
+              "witness": "Twenty-seven character entries, each A12's class written out and the checker's equal to it; the name, version and time-zone grids are the class's sibling tests."
             },
             "the check-only shapes on the entry alone": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/WorkspaceReachedModelDiffTest.kt#aReachedModelsUnbindableFrameLeavesTheEntryUnbuilt",
@@ -17657,6 +17735,10 @@
             "the runtime with no check in front": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckOnlyFrameRuntimeDiffTest.kt#onlyAMissingVersionIsEvaluatedAndTheInterpreterRefusesTheOtherThreeAsTheKernelDoes",
               "witness": "The four check-only shapes beside a control on dynamic Groovy and generated Java, each Kernel failure named by the A12 class that throws."
+            },
+            "the Kernel gate on every frame value": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#theModelVersionIsJudgedAsA12ReadsIt",
+              "witness": "Nineteen versions, each the Kernel gate's class set written out as the expected column rather than copied from the run."
             }
           }
         },
@@ -17686,7 +17768,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Sent to the peer session on 2026-10-29; the peer's adoption is theirs to report.",
+          "basis": "The frame rows were sent to the peer session on 2026-10-29 and the frame values in our letter of 2026-10-30b; the peer's adoption is theirs to report.",
           "evidence": {}
         }
       }

@@ -328,13 +328,12 @@ internal fun TrackedFactBase.refusesTheEntityWalk(finding: Finding): Boolean = f
         finding.code in FIELD_MESSAGE_CODES && finding.at?.let { declarationAt(it)?.declaredKind } == DeclaredKind.FIELD
     )
 
-// `MVK_INVALID_TIME_ZONE` is left out because this checker states no time-zone class, so naming it would project a
-// corrective no report delivers (CorrectiveTest.everyProjectedEntryIsReachable). Name it once the checker states it.
 private val PRE_ORDERING_CODES = setOf(
     "MVK_PATH_INVALID", "MVK_PATHS_INCONSISTENT", "MVK_FIELD_WITH_CONTAINED_ENTITIES", "MVK_PARENT_ENTITY_MISSING",
     "MVK_MAX_VALUES_INVALID", "MVK_MAX_VALUES_INCONSISTENT", "MVK_FIELD_NO_PARENT",
     "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER", "MVK_DUPLICATE_DYNAMIC_ENUM",
     "MVK_NO_PROJECT_LANGUAGE_SETTINGS", "MVK_INVALID_NAME_4_GENERATED_CODE", "MVK_INVALID_PACKAGE_NAME_4_GENERATED_CODE",
+    "MVK_INVALID_TIME_ZONE",
 )
 
 private val FIELD_MESSAGE_CODES =

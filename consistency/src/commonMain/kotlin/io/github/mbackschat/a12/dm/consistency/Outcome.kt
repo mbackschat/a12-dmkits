@@ -50,11 +50,12 @@ enum class CheckOutcome {
      * **This is a pass, and it is the only one — scoped to what the checker verifies, never to A12.** The
      * claim is "nothing I can check is wrong", which is decidable because the families are a finite
      * enumerable set. It is deliberately NOT "A12 would accept this": that needs the coverage registry, and
-     * `MVK_INVALID_TIME_ZONE` is the measured witness that a model A12 rejects can pass every family here.
+     * a character restriction whose combined graphemes overlap is the measured witness that a model A12 rejects can
+     * pass every family here (`adapter.laws.CheckerFrameValueAgreementTest`).
      * A consumer may act on this; a consumer may not record it as A12 validation.
      *
      * Named `ALL_CHECKS_PASSED` rather than `VALID` because `valid` already names the kernel's verdict on
-     * dmtool's envelope, and the two disagree on exactly that timezone model — one word, two contracts
+     * dmtool's envelope, and the two disagree on exactly that model — one word, two contracts
      * (owner-decided 2026-09-18). Appended rather than slotted next to [NO_REJECTION] so no existing
      * constant's ordinal moves.
      */

@@ -95,7 +95,10 @@ class CodegenTierCodeDenominatorGuardTest {
             "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER",
             "MVK_INDEX_FIELD_NO_VALUE_VALIDATION",
             "MVK_INVALID_INDEX_FIELD",
+            // Arrived 2026-10-30 with the frame values A12 judges by their text (KF650).
+            "MVK_INVALID_NAME_4_GENERATED_CODE",
             "MVK_INVALID_SORT_FIELD",
+            "MVK_INVALID_TIME_ZONE",
             // Arrived 2026-09-16: GROUP_REPETITION_COUNT gained the lower half of the repeatability law it
             // had only held the upper half of, closing a measured false-pass route (KF221, extended).
             "MVK_MAX_VALUES_INVALID",

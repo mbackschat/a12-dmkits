@@ -40,24 +40,27 @@ import kotlinx.serialization.json.JsonPrimitive
  * halves otherwise: an entry holding a surrogate unit leaves A12 unable to build the model, which this family
  * reports as [CK_MODEL_NOT_BUILDABLE] and judges nothing further.
  *
+ * **An entry A12's charset reader refuses leaves no model either**, reported the same way ([refusedEntry]).
+ *
  * **What it leaves alone**, all of it under-reporting: a restriction carrying an entry this checker cannot
  * read as a singleton or an inclusive `x-y` range — a COMBINED grapheme (more than one code point) is a
  * legal entry that A12 tests by walking code-point SEQUENCES rather than characters, so a per-character
  * reading of it would refuse values A12 admits. That silence is published as a [CoverageGap].
  */
 internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
-    if (declaresSurrogate(supportedCharacters)) {
-        return listOf(
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                CK_MODEL_NOT_BUILDABLE,
-                "this model's `supportedCharacters` holds an entry with a surrogate unit, and A12 cannot build a " +
-                    "model from that, so no consistency verdict about it exists; a supplementary-plane character " +
-                    "cannot be admitted by any entry",
-                null,
-            ),
-        )
+    val unbuilt = when {
+        declaresSurrogate(supportedCharacters) ->
+            "this model's `supportedCharacters` holds an entry with a surrogate unit, and A12 cannot build a " +
+                "model from that, so no consistency verdict about it exists; a supplementary-plane character " +
+                "cannot be admitted by any entry"
+        else -> refusedEntry(supportedCharacters)?.let { entry ->
+            "this model's `supportedCharacters` holds `$entry`, which is neither one character, a range `x-y` that " +
+                "runs upwards, nor one combined grapheme of at most three units, and A12 cannot build a model from " +
+                "that, so no consistency verdict about it exists"
+        }
+    }
+    if (unbuilt != null) {
+        return listOf(Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, CK_MODEL_NOT_BUILDABLE, unbuilt, null))
     }
     val admitted = admittedRanges(supportedCharacters) ?: return emptyList()
     return defaultVariantFields().flatMap { field ->
@@ -77,7 +80,7 @@ internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
  * skip is declaration-level for the ordinary reason — a consumer needs to know which enum was left to A12.
  */
 internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
-    if (supportedCharacters.isEmpty() || declaresSurrogate(supportedCharacters)) {
+    if (supportedCharacters.isEmpty() || declaresSurrogate(supportedCharacters) || refusedEntry(supportedCharacters) != null) {
         return emptyList()
     }
     if (admittedRanges(supportedCharacters) == null) {
@@ -87,7 +90,8 @@ internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
                 reason = "this model restricts its characters with an entry this checker reads as neither a " +
                     "singleton nor an inclusive `x-y` range, so NO enum value was judged against it — A12 " +
                     "also admits a combined grapheme, whose membership test is a walk over code-point " +
-                    "sequences rather than a per-character one",
+                    "sequences rather than a per-character one, and a number written in exponent form is an " +
+                    "entry whose text this checker does not know",
             ),
         )
     }
@@ -112,12 +116,13 @@ private fun JsonElement.unreadableValue(): String? =
  * The two nulls are deliberately one answer: both mean "this family has nothing it may say about this
  * model". Distinguishing them would only matter if one of them justified a finding, and neither does.
  */
-private fun admittedRanges(declared: List<String>): List<CharRange>? {
+private fun admittedRanges(declared: List<String?>): List<CharRange>? {
     if (declared.isEmpty()) {
         return null
     }
     return declared.map { entry ->
         when {
+            entry == null -> return null
             entry.length == 3 && entry[1] == '-' && entry[0] <= entry[2] -> entry[0]..entry[2]
             entry.length == 1 -> entry[0]..entry[0]
             else -> return null
@@ -126,7 +131,33 @@ private fun admittedRanges(declared: List<String>): List<CharRange>? {
 }
 
 /** Whether an entry holds a surrogate unit, which leaves A12 unable to build the model (KF560). */
-private fun declaresSurrogate(declared: List<String>): Boolean = declared.any { entry -> entry.any(Char::isSurrogate) }
+private fun declaresSurrogate(declared: List<String?>): Boolean = declared.any { entry -> entry.orEmpty().any(Char::isSurrogate) }
+
+/**
+ * The first entry A12's charset reader refuses, or null when this checker can name none.
+ *
+ * `CharsetUtil` reads an entry of three units with `-` in the middle as a range, one unit as a character, and any
+ * other non-empty entry as a combined grapheme, admitted only when Java's `\X` finds fewer clusters than it has
+ * units; its validation then refuses a grapheme longer than three units. So the empty entry, a range running
+ * downwards, anything longer than three units, and two or three units that each [standsAlone] are refused, and every
+ * one of those refusals leaves the model unbuilt (KERNEL-FINDINGS KF650,
+ * `adapter.laws.CheckerFrameValueAgreementTest`). An entry of other characters is left to A12, since only a
+ * grapheme segmenter decides it, and so is an overlap between two combined graphemes.
+ */
+private fun refusedEntry(declared: List<String?>): String? = declared.filterNotNull().firstOrNull { entry ->
+    when {
+        entry.isEmpty() || entry.length > 3 -> true
+        entry.length == 3 && entry[1] == '-' -> entry[0] > entry[2]
+        else -> entry.length > 1 && entry.all { it.standsAlone() }
+    }
+}
+
+/**
+ * Whether this character is a grapheme cluster of its own beside any other such character: printable ASCII and
+ * U+00A0 to U+017F, none of which extends, joins or prepends under Unicode's segmentation.
+ * `SupportedCharacterEntryJvmTest` holds every pair of them to Java's `\X`.
+ */
+internal fun Char.standsAlone(): Boolean = this in ' '..'~' || this in '\u00A0'..'\u017F'
 
 /** The spelling this entry declares, or null when it spells no string `value`. */
 private fun JsonElement.declaredValue(): String? =

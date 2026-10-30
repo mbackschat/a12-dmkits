@@ -159,11 +159,29 @@ class SupportedCharactersTest {
         // code-point SEQUENCES, so a per-character reading of it would refuse values A12 admits. The
         // precomposed row above pins the other side of that boundary, where one code point IS read.
         actual["a restriction carrying a combined grapheme"] = codes("""["A-Z","$combined"]""", "beta")
-        actual["a reversed range"] = codes("""["Z-A"]""", "beta")
         actual["an empty restriction list"] = codes("""[]""", "beta")
-        actual["a non-string entry"] = codes("""[7]""", "beta")
+        // A12's text for a number in exponent form depends on how its reader holds numbers.
+        actual["a number in exponent form"] = codes("""[7e0]""", "beta")
         val expected = actual.keys.associateWith { emptyList<String>() }
         assertEquals(expected, actual, "an unreadable restriction leaves the whole model unjudged")
+    }
+
+    /** A Boolean or a plain number restricts as its text, as A12 binds it (`adapter.laws.CheckerFrameValueAgreementTest`). */
+    @Test
+    fun aNumberEntryRestrictsAsItsText() {
+        assertEquals(List(4) { invalid.single() }, codes("""[7]""", "beta"))
+        assertEquals(emptyList(), codes("""["a-z",7]""", "beta7"))
+    }
+
+    /** An entry A12's charset reader refuses leaves no model, so no enum value is judged against it. */
+    @Test
+    fun aRefusedEntryIsReportedAsUnbuildable() {
+        for (definition in listOf("""["Z-A"]""", """["ab"]""", """[""]""", """["A-Z","abcd"]""", """[true]""")) {
+            val report = report(definition, "beta")
+            assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code }
+                .filter { it == CK_MODEL_NOT_BUILDABLE || it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }, definition)
+            assertEquals(emptyList(), report.gaps.filter { it.reason.contains("NO enum value was judged") }, definition)
+        }
     }
 
     /**

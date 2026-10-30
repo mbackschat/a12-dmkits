@@ -18,9 +18,8 @@ import org.junit.jupiter.api.Test
  *
  * A member A12's reader cannot bind, and one its consistency check needs, both leave no verdict, which the checker
  * reports as `CK_MODEL_NOT_BUILDABLE`. A source with no text `header.id` or no `content` object the checker does not
- * admit at all: it reports no verdict and names why ([UNADMITTED]). The rows A12 answers with a class or sentence this
- * checker does not state are [LEFT_TO_A12], pinned silent, each naming where it is tracked. Own domain (an insurance
- * policy with a reference).
+ * admit at all: it reports no verdict and names why ([UNADMITTED]). The values A12 judges by their text are
+ * `CheckerFrameValueAgreementTest`'s rows. Own domain (an insurance policy with a reference).
  */
 class CheckerModelFrameAgreementTest {
 
@@ -40,12 +39,11 @@ class CheckerModelFrameAgreementTest {
         val observed = rows.mapValues { (_, json) -> a12(json) to ours(json) }
         assertEquals(observed.mapValues { (row, v) ->
             v.first to when (row) {
-                in LEFT_TO_A12 -> emptySet()
                 in UNADMITTED, in UNIDENTIFIED -> setOf(NOT_ADMITTED)
                 else -> v.first
             }
         }, observed, "as (A12, ours)")
-        assertEquals(emptyList<String>(), (LEFT_TO_A12 + UNADMITTED).filter { observed[it]?.first.isNullOrEmpty() }, "every row set aside is one A12 refuses")
+        assertEquals(emptyList<String>(), UNADMITTED.filter { observed[it]?.first.isNullOrEmpty() }, "every row set aside is one A12 refuses")
     }
 
     @Test
@@ -142,17 +140,5 @@ class CheckerModelFrameAgreementTest {
         /** No text `header.id` or no `content` object: A12 builds none of these, and the checker admits none. */
         val UNADMITTED = SHAPES.keys.filter { it != "{}" }.flatMap { listOf("/header $it", "/content $it") }.toSet() +
             setOf("/header {}", "/header/id {}", "/header/id []") + ROOTS.map { "root $it" }
-
-        /**
-         * Rows A12 answers with what this checker does not state: the generated-code name's class, the time zone's
-         * class and the version sentences (CONSISTENCY-GAPS DG164), and a character entry that is neither one grapheme
-         * nor a range, which the character family leaves as a coverage gap (DG165).
-         */
-        val LEFT_TO_A12 = setOf(
-            "/content/modelInfo {}", "/content/modelInfo/name absent",
-            "/content/modelConfig/timeZone \"x\"", "/content/modelConfig/timeZone 5", "/content/modelConfig/timeZone true",
-            "/header/modelVersion \"x\"", "/header/modelVersion 5", "/header/modelVersion true",
-            "supportedCharacters [\"ab\"]", "supportedCharacters [\"\"]", "supportedCharacters [true]",
-        )
     }
 }

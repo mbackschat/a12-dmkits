@@ -553,6 +553,23 @@ public final class io/github/mbackschat/a12/dm/consistency/FindingsKt {
 	public static final fun statusOf (Ljava/util/List;)Lio/github/mbackschat/a12/dm/consistency/ConsistencyStatus;
 }
 
+public final class io/github/mbackschat/a12/dm/consistency/FrameValues {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/FrameValues;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/FrameValues;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/FrameValues;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGeneratedCodeName ()Ljava/lang/String;
+	public final fun getModelVersion ()Ljava/lang/String;
+	public final fun getTimeZone ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class io/github/mbackschat/a12/dm/consistency/Impact {
 	public fun <init> (Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/DependencyOn;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/ImpactReason;)V
 	public final fun component1 ()Ljava/lang/String;
@@ -651,8 +668,8 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparationKt {
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
-	public fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)V
+	public synthetic fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component10 ()Ljava/util/List;
 	public final fun component11 ()Ljava/util/List;
@@ -660,6 +677,7 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun component13 ()Ljava/util/Map;
 	public final fun component14 ()Ljava/util/List;
 	public final fun component15 ()Ljava/util/List;
+	public final fun component16 ()Lio/github/mbackschat/a12/dm/consistency/FrameValues;
 	public final fun component2 ()Z
 	public final fun component3 ()Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;
 	public final fun component4 ()Ljava/lang/String;
@@ -668,8 +686,8 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Z
 	public final fun component9 ()Ljava/lang/String;
-	public final fun copy (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
+	public final fun copy (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getConditionLanguage ()Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;
 	public final fun getDeclaredLocales ()Ljava/util/List;
@@ -677,6 +695,7 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun getDiagnostics ()Ljava/util/List;
 	public final fun getElements ()Ljava/util/List;
 	public final fun getFieldRefByShortNameAllowed ()Z
+	public final fun getFrameValues ()Lio/github/mbackschat/a12/dm/consistency/FrameValues;
 	public final fun getHasBaseYear ()Z
 	public final fun getReachedModelRefusals ()Ljava/util/List;
 	public final fun getResolvableElements ()Ljava/util/List;

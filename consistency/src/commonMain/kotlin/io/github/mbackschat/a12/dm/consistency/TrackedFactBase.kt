@@ -366,10 +366,16 @@ internal class TrackedFactBase private constructor(
             return model.unbindableBaseYear
         }
 
-    val supportedCharacters: List<String>
+    val supportedCharacters: List<String?>
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS))
             return model.supportedCharacters
+        }
+
+    val frameValues: FrameValues
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.FRAME_VALUES))
+            return model.frameValues
         }
 
     val unreadableLocaleCodes: List<String>

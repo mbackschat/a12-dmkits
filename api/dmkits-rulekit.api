@@ -3105,6 +3105,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_NOT_NAMED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_PREPARATION_FAILED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_INCOMPATIBLE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_PATTERN
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_SKEW
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOUNT_NOT_EDITABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOVE_CHANGES_GROUP_EXPANSION
