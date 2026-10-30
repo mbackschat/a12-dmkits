@@ -79,8 +79,9 @@ class CheckerFrameValueAgreementTest {
             "version \"99999999999.0.0\"" to UNBUILT, "version \"2147483647.0.0\"" to INCOMPATIBLE,
             "version \"2147483648.0.0\"" to UNBUILT,
         ))
-        val unreadable = rows.getValue("version \"x\"")
-        assertEquals(a12(unreadable).toList(), rejectingCodes(unreadable), "the pattern's sentence first, as A12 states it")
+        val ordered = rows.filterValues { a12(it).size == 2 }.mapValues { (_, json) -> a12(json).toList() to rejectingCodes(json) }
+        assertEquals(ordered.mapValues { (_, a12AndOurs) -> a12AndOurs.first to a12AndOurs.first }, ordered,
+            "the pattern's sentence first, as A12 states it")
     }
 
     /** `NoMetaModelChecks.checkTimeZone`: `GMT`, an id of the JDK's registry exactly, or a custom offset up to `23:59`. */
@@ -181,10 +182,9 @@ class CheckerFrameValueAgreementTest {
     }
 
     /**
-     * A frame value beside another defect. A12's version rules run first and withhold nothing, so a version sentence
-     * comes before a computation cycle; the generated-code name and the time zone are judged by the code generation
-     * that also finds the cycle, and either withholds it. A refused or surrogate supported-character entry stops A12's
-     * whole check, so nothing beside it is reported.
+     * A frame value beside another defect. A version sentence is reported first and withholds nothing; the generated-code
+     * name and the time zone each withhold a computation cycle; a refused or surrogate supported-character entry stops
+     * A12's whole check, so nothing beside it is reported. Which step withholds the cycle is not traced (KF650).
      */
     @Test
     fun aFrameValueBesideAnotherDefectIsReportedAsA12ReportsIt() {
@@ -201,6 +201,7 @@ class CheckerFrameValueAgreementTest {
                 .fold(numbers) { model, computation -> TypedRules.inject(model, computation) }
         }
         val characters = "/content/modelConfig/supportedCharacters"
+        val broken = RuntimeLaws.withRule(base, "/Policy", "RRef", "../Ref", "REF", "FieldFilled(Nope)")
         val rows = linkedMapOf(
             "cycle" to cyclic,
             "cycle, version \"29.0.0\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("29.0.0")),
@@ -212,15 +213,24 @@ class CheckerFrameValueAgreementTest {
                 "/header/modelVersion", mapper.valueToTree("x")),
             "characters [surrogate], timeZone \"x\"" to edited(edited(characters, mapper.readTree("[\"\\ud83d\"]")),
                 "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+            "version \"29.0.0\", timeZone \"x\"" to edited(edited("/header/modelVersion", mapper.valueToTree("29.0.0")),
+                "/content/modelConfig/timeZone", mapper.valueToTree("x")),
+            "broken reference" to broken,
+            "broken reference, version \"29.0.0\"" to edited(broken, "/header/modelVersion", mapper.valueToTree("29.0.0")),
+            "broken reference, timeZone \"x\"" to edited(broken, "/content/modelConfig/timeZone", mapper.valueToTree("x")),
         )
         val cycle = setOf("MVK_ERROR_CALC_CYCLE")
         assertAgreement(rows, refused = mapOf(
             "cycle" to cycle, "cycle, version \"29.0.0\"" to INCOMPATIBLE + cycle, "cycle, timeZone \"x\"" to ZONE,
             "cycle, name \"xmlP\"" to NAME, "characters [\"ab\"], timeZone \"x\"" to UNBUILT,
             "characters [\"ab\"], version \"x\"" to UNBUILT, "characters [surrogate], timeZone \"x\"" to UNBUILT,
+            "version \"29.0.0\", timeZone \"x\"" to INCOMPATIBLE + ZONE, "broken reference" to ENTITY,
+            "broken reference, version \"29.0.0\"" to INCOMPATIBLE + ENTITY, "broken reference, timeZone \"x\"" to ENTITY + ZONE,
         ))
-        val versioned = rows.getValue("cycle, version \"29.0.0\"")
-        assertEquals(a12(versioned).toList(), rejectingCodes(versioned), "the version's sentence first, as A12 states it")
+        val ordered = rows.filterKeys { "version" in it && "characters" !in it }
+            .mapValues { (_, json) -> a12(json).toList() to rejectingCodes(json) }
+        assertEquals(ordered.mapValues { (_, a12AndOurs) -> a12AndOurs.first to a12AndOurs.first }, ordered,
+            "the version's sentence first, as A12 states it")
     }
 
     private fun assertAgreement(rows: Map<String, String>, refused: Map<String, Set<String>>) {
@@ -259,5 +269,6 @@ class CheckerFrameValueAgreementTest {
         val PATTERN = setOf("RK_MODEL_VERSION_PATTERN")
         val INCOMPATIBLE = setOf("RK_MODEL_VERSION_INCOMPATIBLE")
         val UNBUILT = setOf("CK_MODEL_NOT_BUILDABLE")
+        val ENTITY = setOf("MVK_INVALID_ENTITY")
     }
 }

@@ -103,8 +103,8 @@ private val A12_MAJOR = A12_PARTS[1].toInt()
 private val A12_MINOR = A12_PARTS[2].toDouble()
 
 /**
- * What the entry's generated-code name and time zone cost it, each refusal A12's own and raised by its code generation,
- * so either withholds a computation cycle beside it (`adapter.laws.CheckerFrameValueAgreementTest`).
+ * What the entry's generated-code name and time zone cost it, each refusal A12's own and either withholding a
+ * computation cycle beside it, as measured (`adapter.laws.CheckerFrameValueAgreementTest`).
  *
  * The generated-code name must not be empty and must not begin with `xml`, in any case (`NoMetaModelChecks`'s
  * name pattern; every character it escapes makes a valid name), drawing `MVK_INVALID_NAME_4_GENERATED_CODE`. The time
@@ -131,7 +131,7 @@ internal fun TrackedFactBase.frameValueFindings(): List<Finding> {
  * major is 28 and the minor and patch, read as one decimal, at most `4.0`, so `28.3.99` and `28.04.0` are compatible
  * and `28.4.1` is not. A text failing the pattern draws both, in that order, as A12 states both.
  *
- * A12 runs these rules ahead of every other and they withhold nothing, which is why they are asked at their own stage
+ * A12 states them first and they withhold nothing, which is why they are asked at their own stage
  * ([ModelStage.VERSION]). A major past Java's `int` never reaches them: A12's check throws on it, a refusal of the
  * preparation ([EntryFrameValues.refusals]) that pre-empts every finding.
  */

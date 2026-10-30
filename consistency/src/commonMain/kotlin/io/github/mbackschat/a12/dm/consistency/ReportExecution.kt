@@ -11,8 +11,8 @@ internal data class MessageFinding(
 
 internal enum class ModelStage {
     /**
-     * A12's two version rules: its FIRST consistency rules, separate from code generation, so their sentences precede
-     * every class and withhold none, a computation cycle included ([KERNEL-FINDINGS KF650]).
+     * A12's two version sentences, which its rule list asks first: they precede every class and withhold none, measured
+     * beside a computation cycle, a time zone and a missing field ([KERNEL-FINDINGS KF650]).
      */
     VERSION,
 

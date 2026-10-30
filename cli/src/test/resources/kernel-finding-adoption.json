@@ -17686,7 +17686,7 @@
       }
     },
     "kf650": {
-      "sha256": "44f4040d7dab47decf75e2d086c0a99c59d2c56e33e6c57e861281256262a661",
+      "sha256": "5aeb53818fd0883e4e606a234ae1b7a7e7a2739c236ce9fdae6cfa2b4bd7f0b7",
       "task": "SS46",
       "scope": {
         "dmkits": [],
@@ -17739,7 +17739,7 @@
             },
             "each value beside another defect": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerFrameValueAgreementTest.kt#aFrameValueBesideAnotherDefectIsReportedAsA12ReportsIt",
-              "witness": "A version sentence before a computation cycle, a name or time zone withholding it, and a refused or surrogate entry reported alone, in A12's order where it states two."
+              "witness": "A version sentence first beside a computation cycle, a time zone and a missing field, a name or time zone withholding the cycle, and a refused or surrogate entry reported alone, in A12's order where it states two."
             }
           }
         },
