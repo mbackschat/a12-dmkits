@@ -541,7 +541,7 @@ Two verified boundary rules sharpen this: the **error entity alone is not an anc
 
 ### Parallel iteration — joining two repeatable groups by key
 
-When a rule references two repeatable groups where neither is nested in the other, they are iterated **jointly, keyed by an Index Field** that must exist on each group and **share the same name and type**. This is an *outer join* over the index values: a group with no row for a given index value counts as "not specified" for that iteration.
+When a rule references two repeatable groups where neither is nested in the other, they are iterated **jointly, keyed by an Index Field** that must exist on each group under **the same name**, with types A12 pairs (`IFieldType.matchBaseType`): a String key pairs with a String or Custom key; Date, DateTime, Time and date-fragment keys pair with one another; two Numbers or two Enumerations pair whatever their scale or values; a mix across those families, such as a String with a Number or a Date with a date range, is `MVK_ERROR_FIELD_INVALID_INDEX_TYPE`. Admission is not matching: a String and a Custom key match on equal text, while no measured pair of two different temporal kinds matched, not even on the same day or clock time *(verified: [KF353](KERNEL-FINDINGS.md#kf353), locked by `ParallelIterationGateLawsTest`, `CustomTextKindRuntimeDiffTest` and `CrossKindTemporalJoinDiffTest`)*. This is an *outer join* over the index values: a group with no row for a given index value counts as "not specified" for that iteration.
 
 ```
 FieldsNotCollectivelyFilled(Demand/Units, Capacity/Units)   ;; iterated per shared Warehouse index value
