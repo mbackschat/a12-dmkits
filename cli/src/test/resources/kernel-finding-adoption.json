@@ -7198,17 +7198,20 @@
       }
     },
     "kf396": {
-      "sha256": "13a19219756a218ff9e69045e912d411fcaa1c7f467f9c2894683dbb1eb36a85",
+      "sha256": "40d73be9d9185e7bf12b7e8eea5bb70dfbf101cf0a48b82d81da3c45ebe6ea3b",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
           "a key-selected enumeration cell in a concatenation",
-          "addition beside an enumeration"
+          "addition beside an enumeration",
+          "concatenation over a custom field"
         ],
         "dmkits": [
           "a key-selected enumeration cell in a concatenation"
         ],
-        "interpreter": [],
+        "interpreter": [
+          "concatenation over a custom field"
+        ],
         "checker": [
           "a key-selected enumeration cell in a concatenation",
           "addition beside an enumeration"
@@ -7217,7 +7220,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "addition beside an enumeration"
+          "addition beside an enumeration",
+          "concatenation over a custom field"
         ]
       },
       "consumers": {
@@ -7232,6 +7236,10 @@
             "a key-selected enumeration cell in a concatenation": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/KeyedEnumerationConcatenationLawsTest.java#aKeyedEnumerationCellFollowsTheDirectReadsLabelLaw",
               "witness": "Remapped immediate refused under either key; braced, identity-labelled, unlabelled and first-filled admitted."
+            },
+            "concatenation over a custom field": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTextKindRuntimeDiffTest.kt#plusOverACustomFieldConcatenates",
+              "witness": "[Code] + \"x\" computes abx from ab on both kernel strategies."
             }
           }
         },
@@ -7246,9 +7254,14 @@
           }
         },
         "interpreter": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Static admission; the interpreter evaluates admitted models only.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The interpreter concatenates a Custom field with a text as A12 does.",
+          "evidence": {
+            "concatenation over a custom field": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTextKindRuntimeDiffTest.kt#plusOverACustomFieldConcatenates",
+              "witness": "The interpreter computes the kernel's abx."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
@@ -7281,11 +7294,15 @@
         },
         "a12-kernel-lean": {
           "state": "APPLIED",
-          "basis": "The peer accepted SPEC-2026-10-08-04 at 5472a915 after inspecting our committed locks at 62a2b930a, and dropped spec/06's external-validation-pending qualifier; the peer did not rerun them.",
+          "basis": "The peer accepted SPEC-2026-10-08-04 at 5472a915 after inspecting our committed locks at 62a2b930a, and dropped spec/06's external-validation-pending qualifier; the peer did not rerun them. The predefined-type row originates with the peer (SPEC-2026-10-31-02); its acceptance of our reconciliation is pending.",
           "evidence": {
             "addition beside an enumeration": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-08-04",
               "witness": "Identity labels, locale remapping, grouped/direct operand order and nested-group controls corroborated (KF396)."
+            },
+            "concatenation over a custom field": {
+              "reference": "a12-kernel-lean@a1ae9398bc36e22009dc700f0080aaf1db26fac4:spec/04-numbers-and-decimals.md#41-arithmetic-operand-kinds",
+              "witness": "spec/04 §4.1 states the peer's own row that + over a predefined type concatenates, which SPEC-2026-10-31-02 hands to us."
             }
           }
         }
@@ -7705,14 +7722,17 @@
       }
     },
     "kf353": {
-      "sha256": "8e82f55c99d84dcd7c311d64676cc26cdb04ef474c556d3912c9c9b2a7183812",
+      "sha256": "840ff2486f3c31a3e2a453d25e1fc6a3e8bab6b43bcc10a6ff17da466c1f0b4c",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
-          "filter-body parallel reach"
+          "filter-body parallel reach",
+          "cross-kind join runtime"
         ],
         "dmkits": [],
-        "interpreter": [],
+        "interpreter": [
+          "cross-kind join runtime"
+        ],
         "checker": [
           "filter-body parallel reach"
         ],
@@ -7720,7 +7740,8 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": [
-          "filter-body parallel reach"
+          "filter-body parallel reach",
+          "cross-kind join runtime"
         ]
       },
       "consumers": {
@@ -7731,6 +7752,10 @@
             "filter-body parallel reach": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerPostParseOrderAgreementTest.kt#aCapturedParallelReadReachesTheFilterBodyGate",
               "witness": "A captured read of the joint group in a filter body draws the parallel class."
+            },
+            "cross-kind join runtime": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CrossKindTemporalJoinDiffTest.kt#onlyTheSameKindPairWithEqualKeysFindsItsPartner",
+              "witness": "Date beside DateTime at midnight, a Time, a month fragment, and DateTime beside its clock time find no partner; Date beside Date joins."
             }
           }
         },
@@ -7740,9 +7765,14 @@
           "evidence": {}
         },
         "interpreter": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Static admission; the interpreter evaluates admitted models only.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The interpreter joins an admitted pair of different kinds as A12 does: a String and a Custom key by equal text, and no measured temporal pair of different kinds.",
+          "evidence": {
+            "cross-kind join runtime": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomTextKindRuntimeDiffTest.kt#aStringKeyMeetsACustomKeyOfTheSameText",
+              "witness": "A String and a Custom key of one text join on all three engines, and CrossKindTemporalJoinDiffTest agrees on every temporal row."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
@@ -7771,11 +7801,15 @@
         },
         "a12-kernel-lean": {
           "state": "APPLIED",
-          "basis": "The peer accepted SPEC-2026-10-09-03 at 5472a915 after inspecting our committed locks at b455738d8, and replaced spec/07's unmeasured captured-body clause with the measured reach; the peer did not rerun them.",
+          "basis": "The peer accepted SPEC-2026-10-09-03 at 5472a915 after inspecting our committed locks at b455738d8, and replaced spec/07's unmeasured captured-body clause with the measured reach; the peer did not rerun them. The cross-kind runtime rows originate with the peer (SPEC-2026-10-31-01); its acceptance of our reconciliation is pending.",
           "evidence": {
             "filter-body parallel reach": {
               "reference": "a12-kernel-lean@5472a9159a21050183df16c545510ca4b9925312:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-03",
               "witness": "Parse-time versus whole-rule precedence corroborated, including captured parallel bodies (KF353)."
+            },
+            "cross-kind join runtime": {
+              "reference": "a12-kernel-lean@a1ae9398bc36e22009dc700f0080aaf1db26fac4:spec/07-repetition-and-iteration.md#22-static-gates",
+              "witness": "spec/07 §2.2 states the peer's own cross-kind runtime rows, which SPEC-2026-10-31-01 hands to us."
             }
           }
         }

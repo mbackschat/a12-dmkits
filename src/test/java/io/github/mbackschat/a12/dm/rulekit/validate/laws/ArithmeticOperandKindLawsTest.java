@@ -29,7 +29,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * rows (KERNEL-FINDINGS KF396).
  *
  * <p><b>A custom-typed field is string-LIKE here</b>, which the operation-type map makes explicit — it sorts
- * {@code IStringType} and {@code IPredefinedType} into one STRING base type.
+ * {@code IStringType} and {@code IPredefinedType} into one STRING base type, and {@code IPredefinedType} is what the
+ * model mapper builds for every {@code CustomFieldType}, not a third kind.
  *
  * <p>Own domain (an e-commerce order).
  */
