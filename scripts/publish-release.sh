@@ -51,20 +51,8 @@ VER="${TAG#v}"
 ./scripts/check-release-gaps.sh
 ./scripts/update-code-statistics.sh --check --artifact dmtool
 
-# PERFORMANCE GATE — a breach STOPS the release (owner requirement, 2026-08-13).
-#
-# It runs HERE, locally, and that placement is the whole point: `TimingEnforcement.forAbsoluteAnchor` returns
-# GATED only in the isolated single-fork lane on a machine that is not shared, so a 1.65x anchor breach THROWS
-# here while the same breach on a hosted runner is only flagged. The nightly therefore cannot be the release
-# gate, and until now nothing in this script measured performance at all — a release could ship a regression
-# that every committed bar had already seen.
-#
-# It runs BEFORE the native build so a regression costs seconds, not a full native cycle, and it gets the
-# machine to itself (CLAUDE.md: a task carrying a timing assertion is never run beside anything else).
-#
-# The gate and its refusals live in their own script because every one of them is a REFUSAL, and a refusal is
-# shippable here only once its firing is tested. They could not be driven from inside this file — it builds
-# native images and pushes to a public mirror — and one of them was consequently broken on arrival.
+# RELEASE-SPEC §5a requires an asserted full pass for the measured inputs. The gate reuses sealed
+# evidence across staging/publication when those inputs match; a fresh run still needs an isolated machine.
 echo "0. performance gate (a breach stops the release)"
 ./scripts/release-perf-gate.sh
 
@@ -115,7 +103,7 @@ fi
 # ============================ stage : everything up to the reviewable draft ============================
 say "0. Preconditions"
 # `perf-results/` is excluded on purpose — the SAME rule perf-anchor.sh and PerfAnchors.headCommit already
-# apply, for the same reason: step 0 above runs the release perf gate, and a gate run ALWAYS leaves a new
+# apply, for the same reason: step 0 above checks the release perf gate, and a fresh run leaves a new
 # record file there (records are committed, never under build/). Counting that as dirt makes this script
 # structurally unable to get past its own precondition. It went unnoticed because no release ran between the
 # committed record tree (2026-08-11), the release perf gate (2026-08-13) and v0.13.0. Everything else must

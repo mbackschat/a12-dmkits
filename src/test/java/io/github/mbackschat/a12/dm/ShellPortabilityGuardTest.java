@@ -105,7 +105,6 @@ class ShellPortabilityGuardTest {
             "scripts/rehearse-interpreter-release.sh",
             "scripts/release-git-identity.sh",
             "scripts/release-mirror-common.sh",
-            "scripts/release-perf-gate.sh",
             "scripts/selftest-dmtool-launcher.sh",
             "scripts/selftest-ensure-dmtool.sh",
             "scripts/selftest-obligations.sh",

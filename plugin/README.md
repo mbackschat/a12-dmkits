@@ -321,7 +321,7 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 1269 | 198067 | 137223 | 38441 | 22403 |
+| Java | 1269 | 198066 | 137222 | 38441 | 22403 |
 | Kotlin | 1512 | 219892 | 164819 | 34985 | 20088 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
