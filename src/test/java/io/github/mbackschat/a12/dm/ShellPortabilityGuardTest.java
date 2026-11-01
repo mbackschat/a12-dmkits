@@ -116,7 +116,6 @@ class ShellPortabilityGuardTest {
             "scripts/selftest-test-evidence.sh",
             "scripts/smoke-interpreter-public-release.sh",
             "scripts/smoke-mcp-endpoint.sh",
-            "scripts/update-code-statistics.sh",
             "scripts/verify-build-cache.sh");
     private static final Pattern PATH_SELECTED_BASH =
             Pattern.compile("(?:new\\s+)?ProcessBuilder\\s*\\(\\s*\"bash\"");

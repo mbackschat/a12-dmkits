@@ -32,7 +32,7 @@
 set -u
 SCRIPT_DIR="$(CDPATH='' cd "$(dirname "$0")" && pwd)"
 
-VERSION="v0.13.0"
+VERSION="v0.14.0"
 REPO="mbackschat/a12-dmtool-releases"
 # Hook hosts provide plugin-specific data dirs, but a skill-launched shell is not a hook: current Codex does
 # not inject PLUGIN_DATA there. Its workspace sandbox also need not admit HOME. Fall back to the host's

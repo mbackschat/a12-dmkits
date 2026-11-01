@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
+## [0.14.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- **Choose the consistency engine explicitly.** `model check --engine portable` and `rule check --engine portable` run the bundled kernel-free checker. Portable checks disclose incomplete coverage and cannot certify a model valid; candidate checks distinguish newly introduced findings from existing ones. The kernel remains the default, with no automatic fallback.
+- **Evaluate `Today` and `Now` at the current or a pinned instant.** `model eval`, `rule eval`, and `model compute` accept `--clock`, interpreted in the model's time zone.
+- **Pipe JSON specifications into authoring commands with `-`.** The manifest also exposes each verb's input schema, and batch commands accept the verb spelling printed by the manifest.
+- **Author more of A12's declarations.** Computations can declare their owning group and rounding mode; Boolean and Confirm fields expose their stored values; date ranges expose their year interpretation. Root-level add operations accept `/` as their parent.
+- **Check rule messages before writing them.** Candidate checks retain authored error texts and report the kernel's message-checking verdict.
+
+### Changed
+
+- **BREAKING:** batch observation artifacts now use `schemaVersion: 2` and hash the complete authored candidate, including its messages. Version 1 and version 2 candidate hashes are not comparable; consumers must read the schema version before comparing identities.
+
+### Fixed
+
+- Runtime evaluation gains keyed-group aggregates, filters, fill quantifiers and message tokens, with corrections to required-field uncertainty, date ranges, numeric JSON conversion, custom validation, and computation results.
+- Read-back preserves scale-gate waivers and reports constructs it cannot faithfully type instead of publishing an altered condition.
+- Input, path, stdin and output failures return structured corrective diagnostics; error-field suggestions exclude fields read only in an unmarked filter body.
+- Schema round trips preserve group index references, and field-format guidance reflects the kernel's admitted formats.
+
+### Performance
+
+- Nested starred reads avoid sparse cross-products; sibling-group preparation, full-row partial relevance and repeated fill scans avoid repeated whole-document work. Error-field suggestions check their candidates in one kernel pass.
+
+### Compatibility and artifacts
+
+- Targets A12 Kernel `30.8.1` / A12 Tools `2025.06-ext5`. This release does not claim compatibility with a newer kernel line.
+- Native binaries for macOS arm64, Linux x64/arm64 and Windows x64, with `SHA256SUMS`, plus the Claude Code and Codex plugins. The standalone interpreter publishes separately at the same `0.14.0` version.
+
 ## [0.13.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added

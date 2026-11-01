@@ -43,7 +43,8 @@ class SourceStatisticsReleaseBoundaryTest {
 
     @Test
     void publicSourceStatisticsExcludeTheSiblingLeanProject() throws IOException {
-        String updater = read("scripts/update-code-statistics.sh");
+        String updater = read("scripts/update-code-statistics.sh")
+                + read("scripts/typescript/update-code-statistics.ts");
         assertFalse(updater.contains("A12_LEAN_REPO"));
         assertFalse(updater.contains("| Lean |"));
         for (String readme : List.of(

@@ -164,6 +164,7 @@ reason = "Deploys the hosted MCP endpoint"
 id = "build-tooling"
 match = [
   "gradle/*.gradle",
+  "**/gradle/*.gradle",
   "gradle.properties",
   "gradle/*.properties",
   "build.sh",

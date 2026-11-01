@@ -856,23 +856,7 @@ hostileEvidence.push(
 );
 
 // `Today` reads the pinned instant as wall time in the model's zone: 23:30 UTC on 3 February 2001 is the 4th in Berlin.
-const renewal = PreparedModel.loadExpandedJson(JSON.stringify({
-  header: {id: "renewal"},
-  content: {
-    modelConfig: {timeZone: "Europe/Berlin"},
-    modelRoot: {rootGroups: [{
-      type: "Group", id: "/Renewal", name: "Renewal",
-      Group: {elements: [
-        {type: "Field", id: "/Renewal/DueOn", name: "DueOn",
-          Field: {fieldType: {type: "DateType", DateType: {format: "yyyy-MM-dd"}}}},
-        {type: "Rule", id: "/Renewal/DueToday", name: "DueToday",
-          Rule: {errorEntityRelPath: "../DueOn", errorCode: "DUE_TODAY",
-            errorCondition: "FieldFilled(DueOn) And [DueOn] == Today", severity: "ERROR",
-            errorMessage: [{locale: "en_US", text: "The policy renews today."}]}},
-      ]},
-    }]},
-  },
-}));
+const renewal = PreparedModel.loadExpandedJson(model("renewal"));
 const renewalDue = renewal.documents.readDocument({Renewal: {DueOn: "2001-02-04"}});
 const pinnedCodes = (evaluationInstant: Date) => renewal.createInterpreter({evaluationInstant})
   .validateFull(renewalDue).findings.map(({code}) => code).join(",");

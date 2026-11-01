@@ -1843,14 +1843,10 @@ def externalTypeScriptConsumerBuildDir = rootProject.layout.buildDirectory.dir(
 def externalTypeScriptConsumerStoreDir = rootProject.layout.buildDirectory.dir(
     'interpreter-release/consumer-pnpm-store',
 )
-def externalTypeScriptConsumerModels = [
-    file('src/commonTest/resources/workspace-preparation/entries/permit-single.dm.json'),
-    file('src/commonTest/resources/workspace-preparation/shared/permit-section.dm.json'),
-    file('src/commonTest/resources/workspace-preparation/shared/inspection-checks.dm.json'),
-    file('src/commonTest/resources/workspace-preparation/shared/permit-types.dm.json'),
-    file('src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json'),
-    rootProject.file('examples/models/order-ruled.dm.json'),
-]
+def externalTypeScriptConsumerModels = ['entries/permit-single', 'shared/permit-section',
+    'shared/inspection-checks', 'shared/permit-types', 'self-contained/permit-basic', 'self-contained/renewal']
+    .collect { file("src/commonTest/resources/workspace-preparation/${it}.dm.json") } +
+    [rootProject.file('examples/models/order-ruled.dm.json')]
 def prepareExternalInterpreterTypeScriptConsumer = tasks.register(
     'prepareExternalInterpreterTypeScriptConsumer',
     Sync,

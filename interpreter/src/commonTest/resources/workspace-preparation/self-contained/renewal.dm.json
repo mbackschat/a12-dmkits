@@ -1,0 +1,66 @@
+{
+  "header" : {
+    "id" : "renewal",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "renewal",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Renewal",
+        "name" : "Renewal",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Renewal/DueOn",
+            "name" : "DueOn",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateType",
+                "DateType" : {
+                  "format" : "yyyy-MM-dd"
+                }
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Renewal/DueToday",
+            "name" : "DueToday",
+            "Rule" : {
+              "errorEntityRelPath" : "../DueOn",
+              "errorCode" : "DUE_TODAY",
+              "errorCondition" : "FieldFilled(DueOn) And [DueOn] == Today",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The policy renews today."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

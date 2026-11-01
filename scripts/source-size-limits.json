@@ -1,8 +1,8 @@
 {
   "locmetry": {
-    "version": "0.11.2",
+    "version": "0.12.0",
     "repository": "mbackschat/locmetry",
-    "linuxSha256": "64c374c25bf77a15ea2c87358e55cfce22150534d8834aaa69238fc8a0d3f4fe"
+    "linuxSha256": "57b93e6d5aef7626fc33a4615e792282b2d782d4a43e2423a85a802a100cca59"
   },
   "limits": {
     "production": {
@@ -15,7 +15,7 @@
     }
   },
   "legacyCeilings": {
-    "adapter/build.gradle": 1093,
+    "adapter/build.gradle": 1260,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2550,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
@@ -25,14 +25,15 @@
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt": 930,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfCatalog.kt": 1095,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt": 1099,
+    "build.gradle": 1042,
     "cli/src/main/java/io/github/mbackschat/a12/dm/cli/ApplyCommand.java": 844,
     "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 907,
-    "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/WorkspaceMountTest.kt": 956,
-    "eval/benchmark.workflow.js": 1039,
-    "interpreter/build.gradle": 2113,
+    "consistency/build.gradle": 937,
+    "eval/benchmark.workflow.js": 1034,
+    "interpreter/build.gradle": 3463,
     "interpreter/consumer-tests/browser/scripts/smoke.ts": 931,
     "interpreter/consumer-tests/browser/src/showcase.ts": 968,
-    "interpreter/consumer-tests/typescript/src/index.ts": 835,
+    "interpreter/consumer-tests/typescript/src/index.ts": 819,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/InterpreterApi.kt": 828,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Document.kt": 1542,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt": 1593,

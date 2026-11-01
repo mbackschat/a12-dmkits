@@ -224,8 +224,8 @@ The shipped product. Counted from `interpreter/src/commonMain/kotlin`, `interpre
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
-| TypeScript | 17 | 3762 | 3209 | 274 | 279 |
+| Kotlin | 143 | 34855 | 21943 | 9971 | 2941 |
+| TypeScript | 17 | 3794 | 3227 | 286 | 281 |
 
 ### Verification
 
@@ -233,8 +233,8 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 273 | 31371 | 24822 | 3068 | 3481 |
-| TypeScript | 14 | 3285 | 3103 | 50 | 132 |
+| Kotlin | 346 | 38009 | 29923 | 4020 | 4066 |
+| TypeScript | 15 | 3399 | 3178 | 75 | 146 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->

@@ -12,11 +12,11 @@ This package README is deliberately minimal so it cannot drift from the document
 
 ## Install
 
-Version `0.13.0` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.14.0` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.13.0/a12-interpreter-0.13.0.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.14.0/a12-interpreter-0.14.0.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.13.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.14.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## License
 

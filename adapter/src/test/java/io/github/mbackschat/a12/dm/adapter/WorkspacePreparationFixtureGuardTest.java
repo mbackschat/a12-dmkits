@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtures;
+import io.github.mbackschat.a12.dm.adapter.preparation.ClockConsumerFixture;
 import io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtures.FixtureDisposition;
 
 /**
@@ -38,6 +39,7 @@ class WorkspacePreparationFixtureGuardTest {
     void committedWorkspaceMatchesTheTypedAuthoringSurface() throws IOException {
         var directory = Path.of(System.getProperty(FIXTURE_DIR_PROPERTY));
         var expected = new LinkedHashMap<>(WorkspacePreparationFixtures.committedFiles());
+        expected.put("self-contained/renewal.dm.json", ClockConsumerFixture.renewal());
         expected.put("manifest.json", manifest());
 
         if (Boolean.getBoolean("workspace.preparation.fixtures.fix")) {
