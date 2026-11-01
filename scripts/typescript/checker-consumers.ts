@@ -1,3 +1,4 @@
+import { assertMavenOrigins } from './checker-release-core.ts';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -67,6 +68,11 @@ export async function smokeChecker(root: string, version: string, repository: st
     const command = await maven(root, env);
     run(command, ['--batch-mode', '--no-transfer-progress', '-s', settings, '-gs', settings,
         `-Dmaven.repo.local=${resolve(work, 'maven-home')}`, 'compile', 'exec:java'], env, java);
+    const origins: Record<string, string> = {};
+    for (const artifact of ['dm-consistency-jvm', 'dm-predicates-jvm']) {
+        origins[artifact] = await readFile(resolve(work, 'maven-home/io/github/mbackschat/a12/dm', artifact, version, '_remote.repositories'), 'utf8');
+    }
+    assertMavenOrigins(origins, version);
     console.log(`Checker ${phase} Gradle JVM/JS and Maven consumers passed`);
 }
 

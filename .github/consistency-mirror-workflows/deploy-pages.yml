@@ -1,0 +1,31 @@
+name: deploy pages
+run-name: Deploy checker Pages for ${{ github.ref_name }}
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require an immutable release tag
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          printf '%s\n' "$RELEASE_REF" | grep -Eq '^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$'
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment

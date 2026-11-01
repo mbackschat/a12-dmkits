@@ -13,22 +13,28 @@ A standalone, Kernel-free consistency checker for A12 **DocumentModels** — the
 
 ## Getting it
 
-**There is no public release yet, so `npm add a12-consistency` will not work and neither will a plain Maven coordinate.** The publish wiring exists and the *deploy* is deferred: [`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11 lists `dm-consistency` with the developer-library wave whose Central-or-mirror deploy has not happened, and unlike [`../interpreter`](../interpreter) and `dmtool` this module has no release mirror or publisher script of its own. Until then you build the artifact rather than declare a dependency.
+The Maven distribution uses the dedicated [checker release repository](https://github.com/mbackschat/a12-consistency-releases) and its GitHub Pages Maven repository. Add that repository alongside Maven Central:
 
-```sh
-./build.sh :consistency:packConsistencyNpmPackage   # → consistency/build/consumer-tests/pack/a12-consistency-<version>.tgz
-./build.sh :consistency:publishToMavenLocal         # → ~/.m2, as dm-consistency / dm-consistency-jvm
+```kotlin
+repositories {
+    maven("https://mbackschat.github.io/a12-consistency-releases/maven/")
+    mavenCentral()
+}
+dependencies {
+    implementation("io.github.mbackschat.a12.dm:dm-consistency:0.14.0")
+}
 ```
 
-Install the tarball by path — which is exactly what [`consumer-tests/node`](consumer-tests/node) does, so that project doubles as the worked example:
+Gradle uses the root coordinate's Kotlin Multiplatform metadata to select JVM or JS. Java/Maven consumers use `io.github.mbackschat.a12.dm:dm-consistency-jvm:0.14.0` with the same repository URL. These are two entry points to the same implementation; `dm-predicates` and its platform variants are published as the transitive dependency closure. JVM consumers need Java 21 or newer. The [standalone consumer projects](consumer-tests/) exercise both Gradle platform selection and direct Java/Maven use.
+
+**npm registry publication remains deferred.** Build and install the npm-compatible tarball locally:
 
 ```sh
-npm install /path/to/a12-consistency-<version>.tgz
+./build.sh :consistency:packConsistencyNpmPackage
+pnpm add /path/to/a12-consistency-0.14.0.tgz
 ```
 
-From Gradle, add `mavenLocal()` and depend on `io.github.mbackschat.a12.dm:dm-consistency:<version>`. That root coordinate is a Gradle-module marker rather than a jar — Gradle metadata redirects it to `dm-consistency-jvm`, which carries the classes — so a Maven-only consumer names `dm-consistency-jvm` directly.
-
-**When it does ship, the two artifacts will be the same checker, and that is checked rather than intended.** `:consistency:verifyCheckerArtifactIdentity` refuses a build where the staged npm version, the jar coordinate and the compiled `CHECKER_VERSION` constant disagree — so a receipt naming a version and the package carrying it cannot drift apart. The package declares **no runtime dependencies**, so installing it pulls nothing else.
+`:consistency:verifyCheckerArtifactIdentity` checks that the staged npm version, Maven version and compiled `CHECKER_VERSION` agree. The npm package declares no runtime dependencies. Maven consumers resolve the Kotlin runtime and the checker dependencies declared in the POMs.
 
 ## Preparing Maven publication
 
