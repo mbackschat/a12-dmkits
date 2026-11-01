@@ -215,8 +215,18 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 | developer jars + POM on the mirror Release | **v1** | + `publishToMavenLocal` for the maintainer/siblings; consume = install-with-POM (§8) |
 | **agent plugins** (Claude Code + Codex; skill + on-demand installer) | **v1** | both push to the mirror (Claude at root, Codex under `codex/`); the skill's on-demand installer plain-`curl`s the CLI binary from the mirror (§6) |
 | **JavaDoc HTML** + **LLM API doc** on the mirror Pages | planned | public URLs for human + agent API consumption (§11) |
-| **Homebrew** formula / **Scoop** manifest | planned | point at the public mirror assets — now unblocked (anonymous) |
+| **Homebrew** formula / **Scoop** manifest | **v1** | [Homebrew tap](https://github.com/mbackschat/homebrew-tap#dmtool) and [Scoop bucket](https://github.com/mbackschat/scoop-bucket#dmtool); checksum-pinned existing binaries and notices |
 | `curl \| sh` installer | planned | fetches from the mirror |
+
+### Package-manager publication
+
+After the binary release is public, run `scripts/run-typescript.sh "dmtool packages" scripts/typescript/dmtool-packages.ts X.Y.Z build/packages`. The [renderer](../scripts/typescript/dmtool-packages.ts) produces `dmtool.rb` and `dmtool.json` from the published stable release and its exact four-binary `SHA256SUMS` inventory; drafts, prereleases, missing or duplicate assets/checksums, and disagreements with available GitHub asset digests are refused. Its [source-adjacent tests](../scripts/typescript/dmtool-packages.test.ts) exercise those refusals and compare the platform inventory with [release-assets.sh](../scripts/release-assets.sh). It generates definitions only; it does not publish or replace any release asset.
+
+Homebrew installs the raw macOS ARM64 or Linux x64/ARM64 binary as `dmtool`; Scoop installs the Windows x64 binary with a `dmtool` shim. The macOS package requires **macOS 27 or later**, matching the 0.14.0 binary's `LC_BUILD_VERSION` minimum (owner-selected on 2026-11-01). The Linux packages retain the existing binaries' runtime requirements; they make no static-linking or broader distro-compatibility claim. Intel Mac, Windows ARM64, Windows plugin bootstrap, and Debian/RPM packages are outside this channel scope.
+
+Both definitions also pin a SHA-256-verified archive of the public mirror at the release tag's resolved commit. They install only `LICENSE`, `KERNEL-LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES`, and the complete `licenses/` tree from that archive under `share/dmtool`. Version updates are maintainer-generated together with this notice revision; no unattended update bot is implied by Scoop's `checkver` field.
+
+Copy the outputs to `Formula/dmtool.rb` in the existing [Homebrew tap](https://github.com/mbackschat/homebrew-tap) and `bucket/dmtool.json` in the existing [Scoop bucket](https://github.com/mbackschat/scoop-bucket). Run `brew audit --strict`, install/reinstall, and `brew test mbackschat/tap/dmtool`. The bucket's [Windows installation workflow](https://github.com/mbackschat/scoop-bucket/blob/main/.github/workflows/dmtool.yml) installs the manifest, exercises its shim and versioned manifest, verifies notice files, runs the native executable without Java on PATH, and uninstalls. Publish channel updates only after their applicable install checks pass. These checks qualify packaging; the binary's native release gates remain authoritative for CLI behavior.
 
 **Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC [§11](CLI-SPEC.md#packaging)) — mixed, per-artifact:**
 - **CLI native binaries → EUPL-1.2.** They embed the kernel, so each binary/release carries the kernel **LICENSE/NOTICE/THIRD_PARTY** + a source pointer (and **no "mgm A12" branding** — the `dmtool` name respects that).
