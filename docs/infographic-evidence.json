@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "productionSourcesSha256": "e674ca44bb1e0c98b8f42f0f1cf462024e265912fc518f622696322935a24ed3",
+  "artwork": [
+    {
+      "file": "assets/infographics/a12-dmkits-toolchain.avif",
+      "sha256": "5f11e57e60c0fa2a375403569035926c0d6afe036a0bba037dbbb47a99ccf047",
+      "promptSha256": "b022e1e5ab2066a40bfc870d8053ad49046b88d0cdf1aeb8df74c178cc4737b3"
+    },
+    {
+      "file": "assets/infographics/dmtool-model-workbench.avif",
+      "sha256": "baf6794ea055dcdeb87b9f8aa053de0830819fa0afd7a1062df443fcebac7095",
+      "promptSha256": "a93f8f4778e1539b6f5035241ed986dd34b6147d20a826a9f0b1cad2640fb41a"
+    },
+    {
+      "file": "assets/infographics/a12-interpreter-runtime.avif",
+      "sha256": "b24e66cab8acee4a37839f8c66a51adea02fd3663ffb9e4ed908cb02e25d59f3",
+      "promptSha256": "5cb2cd67db37218577f10ba66cb0d197c8fad3b83ef0fd73103fec5d4ee4437b"
+    },
+    {
+      "file": "assets/infographics/interpreter-vs-kernel.avif",
+      "sha256": "e88e562617585c940aa1a0d1570b35e78f268b60edf77746d15042cea7f45a60",
+      "promptSha256": "41247772f380beb8ea8603d488e47430547a7037e9b5377dbd66f8581dcc56d7"
+    },
+    {
+      "file": "assets/infographics/kotlin-graalvm-kernel-roles.avif",
+      "sha256": "03c18c693d6a846b2a73b28b836ec402aef5ac676bb22fcb656a1c579196fa98",
+      "promptSha256": "061a9b9c3a3a1872df6f27ab679b2176298ec4dc3b6ac95a08bbb01866bb309a"
+    },
+    {
+      "file": "assets/infographics/json-schema-document-model.avif",
+      "sha256": "077a50e4953196964ef98f09a3a6e8d9d4ffb929e69292ae7a22f991641ff769",
+      "promptSha256": "b419a9462b05fdc64ad852f66ce5e5bff1bf5b408eba69728708e9f988d1011a"
+    },
+    {
+      "file": "assets/infographics/semantic-model-diff.avif",
+      "sha256": "af08969fca0eca16180c342fd9b1a7c90cfb5b1d2be30fbaa6ce753c74316ad5",
+      "promptSha256": "4161ff64b39ab4830d412809f4dfbb40064c7b57663b200abe207e5936874a90"
+    },
+    {
+      "file": "assets/infographics/a12-consistency-checker.avif",
+      "sha256": "c3b250ac2ed6c72ddf364160a71334e937a90c304cdc48f4f485fb724ce6d3c9",
+      "promptSha256": "24bfa25151ff71ff71d49d0d25b4eb50acad3e2431491c88e377dd0fb6951e59"
+    }
+  ]
+}

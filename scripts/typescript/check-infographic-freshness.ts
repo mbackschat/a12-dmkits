@@ -220,4 +220,9 @@ for (const name of fs.readdirSync(path.join(ROOT, "assets/infographics"))) {
   if (!registeredAssets.has(relative)) fail(`canonical infographic is not registered in INFOGRAPHICS.md: ${relative}`);
 }
 
+try {
+  const { verifyEvidence } = require('./infographic-evidence.ts');
+  verifyEvidence(ROOT, JSON.parse(read(path.join(ROOT, 'docs/infographic-evidence.json'))));
+} catch (error) { fail(error instanceof Error ? error.message : String(error)); }
+
 console.log("infographic freshness: OK");

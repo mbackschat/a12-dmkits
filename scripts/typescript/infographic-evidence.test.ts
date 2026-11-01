@@ -1,0 +1,36 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const test = require('node:test');
+const { captureEvidence, verifyEvidence } = require('./infographic-evidence.ts');
+const { JAVA_SOURCES, KOTLIN_SOURCES } = require('./update-code-statistics.ts');
+
+test('accepted pixels, exact prompt and counted production sources must remain bound together', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'infographic-evidence-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const dir of [...JAVA_SOURCES, ...KOTLIN_SOURCES, 'assets/infographics', 'docs']) fs.mkdirSync(path.join(root, dir), { recursive: true });
+  const source = path.join(root, JAVA_SOURCES[0], 'Example.java'); fs.writeFileSync(source, 'class Example {}');
+  const image = path.join(root, 'assets/infographics/example.avif'); fs.writeFileSync(image, 'accepted pixels');
+  const doc = path.join(root, 'docs/INFOGRAPHICS.md');
+  const prompt = '## Infographic 1: Example\n<img src="../assets/infographics/example.avif">\n### Generation prompt\n\n```text\nExact claim\n```\n';
+  fs.writeFileSync(doc, prompt);
+  const evidence = captureEvidence(root);
+  assert.doesNotThrow(() => verifyEvidence(root, evidence));
+  fs.writeFileSync(source, 'class Example { int added; }');
+  assert.throws(() => verifyEvidence(root, evidence), /production source/);
+  fs.writeFileSync(source, 'class Example {}');
+  const script = path.join(root, KOTLIN_SOURCES[0], 'Example.kts');
+  fs.writeFileSync(script, 'val counted = 1');
+  assert.throws(() => verifyEvidence(root, evidence), /production source/);
+  fs.unlinkSync(script);
+  fs.writeFileSync(path.join(root, JAVA_SOURCES[0], '.Hidden.java'), 'class Ignored {}');
+  assert.doesNotThrow(() => verifyEvidence(root, evidence));
+  fs.writeFileSync(image, 'different pixels');
+  assert.throws(() => verifyEvidence(root, evidence), /accepted artwork/);
+  fs.writeFileSync(image, 'accepted pixels');
+  fs.writeFileSync(doc, prompt.replace('Exact claim', 'Different claim'));
+  assert.throws(() => verifyEvidence(root, evidence), /accepted artwork/);
+  fs.writeFileSync(doc, 'no registered poster');
+  assert.throws(() => captureEvidence(root), /empty/);
+});

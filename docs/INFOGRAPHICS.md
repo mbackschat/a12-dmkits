@@ -91,7 +91,7 @@ Each poster owns one question; repeated components provide context rather than r
 | JSON Schema and OpenAPI transcoding | [SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md), the executable [JSON Schema walkthrough](../examples/cli-jsonschema.md), `dmtool model import-jsonschema --help`, and `dmtool model export-jsonschema --help` | a supported dialect, mapping tier, structural mapping, synthesized-rule family, MappingProfile choice, report contract, export projection/carriage rule, or verification gate changes |
 | Structural semantic diff | [MODEL-REVIEW-SPEC.md](MODEL-REVIEW-SPEC.md), the executable [review walkthrough](../examples/cli-review.md), `dmtool model diff --help`, and `dmtool schema model diff` | an input mode, independently resolved baseline rule, change family, delta type, condition-edit classifier, refactor matcher, review-impact tier, or output view changes |
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
-| Consistency checker inputs, operations, reports, reuse, and availability | [CONSISTENCY-API.md](CONSISTENCY-API.md), [checker README](../consistency/README.md), and [RELEASE-SPEC.md](RELEASE-SPEC.md) §11 | checking scope, an operation's result contract, reuse boundaries, verdict semantics, runtime targets, or public-release status changes |
+| Consistency checker inputs, operations, reports, reuse, and availability | [CONSISTENCY-API.md](CONSISTENCY-API.md), [checker README](../consistency/README.md), and [RELEASE-SPEC.md](RELEASE-SPEC.md) §12 | checking scope, an operation's result contract, reuse boundaries, verdict semantics, runtime targets, or public-release status changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
 | Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), [RELEASE-SPEC.md](RELEASE-SPEC.md), and the generated root [Source statistics](../README.md#source-statistics) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, native-delivery decision, or Java/Kotlin production count changes |
 | Performance and resident memory | public [PERFORMANCE.md](../interpreter/public-release/PERFORMANCE.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-PERFORMANCE-RESULTS.md](INTERPRETER-PERFORMANCE-RESULTS.md) | a qualifying benchmark rerun changes any displayed number, machine/runtime identity, timing boundary, or eligibility rule |
@@ -719,8 +719,8 @@ Exact content:
 - Column header: "JAVA"
 - Column header: "KOTLIN"
 - Row label: "SIZE"
-- Java size: "50.3 kLOC"
-- Kotlin size: "34.9 kLOC"
+- Java size: "53.3 kLOC"
+- Kotlin size: "42.1 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
@@ -733,7 +733,7 @@ Exact content:
 - Row label: "RUNTIME"
 - Java runtime: "JVM • native dmtool"
 - Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
-- Bottom scope note: "Production code • Tokei • measured 2026-09-21"
+- Bottom scope note: "Production code • Tokei • measured 2026-11-01"
 - Bottom band title: "WHY THIS SPLIT SCALES"
 - Benefits heading: "PORTABILITY"
 - Benefits line: "Shared source per engine"
@@ -762,7 +762,7 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 50.3 kLOC and 34.9 kLOC in the largest type within the table.
+- Align equivalent cells exactly. Put 53.3 kLOC and 42.1 kLOC in the largest type within the table.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
 - Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
@@ -1124,7 +1124,7 @@ All capability statements below are documented in the current repository as of 2
 | Candidate edit → compares → introduced/resolved findings; draft → checked in → model context | [Edit checking](CONSISTENCY-API.md#checking-an-edit--checkedit-for-a-candidate-you-have-not-saved) and [draft checking](CONSISTENCY-API.md#checking-text-an-editor-has-not-saved--checkdraft); baseline defects do not become the edit's rejection. |
 | Impact analysis → identifies → affected declarations | [Impact report](CONSISTENCY-API.md#which-declarations-a-change-reaches--impactof-before-you-commit-to-it); affected does not mean invalid or behaviorally changed. |
 | Old snapshot + source update → creates → new snapshot; snapshot + draft → returns → draft report | [Snapshots](CONSISTENCY-API.md#holding-one-analysis-across-many-questions--snapshotof); source updates reuse unchanged parses, while draft checks reuse unaffected check results within their own snapshot. Do not imply check-result reuse across snapshots, automatic mutation, or a latency guarantee. |
-| Checker → runs on → JVM + JavaScript, independently of Kernel and Interpreter | [Module boundaries](../consistency/README.md); browser/Node/JVM are delivered repository-build consumer paths. Public release is pending, so no public package-install claim appears. |
+| Checker → runs on → JVM + JavaScript, independently of Kernel and Interpreter | [Module boundaries](../consistency/README.md); browser/Node/JVM are delivered repository-build consumer paths. Maven root, JVM and JS variants are publicly released; npm registry publication remains deferred. |
 | Scoped pass ≠ full A12 acceptance | [Status and outcome](CONSISTENCY-API.md#read-this-first-two-different-questions-and-only-one-of-them-has-a-pass); the example pair is `ALL_CHECKS_PASSED` + `INCONCLUSIVE` + `complete: false`, not the only possible result. The checker can also establish `INVALID`. |
 
 ### Generation prompt
@@ -1164,7 +1164,7 @@ ASSURANCE FOOTER, two side-by-side cards, no arrows:
 Left title "READ THE VERDICT". First row "INVALID: a rejection was established". Next put a framed example labeled "Example: all implemented checks passed", followed by "ALL_CHECKS_PASSED + INCONCLUSIVE" and "complete: false • inspect coverage gaps". This is an example pairing, not the only possible outcome. Do not use a green VALID badge or imply INCONCLUSIVE is a rejection.
 Right title "SEPARATE RESPONSIBILITIES". Three lines: "Checker: model declarations", "Interpreter: Document evaluation", "Kernel: full A12 acceptance". Add one compact bold boundary below: "Checker needs neither Kernel nor Interpreter".
 
-At the bottom edge, one small but readable availability line: "Repository builds available • public release pending".
+At the bottom edge, one small but readable availability line: "Maven: dm-consistency • JVM: dm-consistency-jvm".
 
 Avoid marketing slogans, promises of complete coverage, universal correctness, performance numbers, automatic saving, automatic Kernel fallback, or automatic Document evaluation. Do not claim structural checks for every model element. Do not turn impact into a defect verdict. Do not confuse an A12 Document with its DocumentModel. Do not show old and new snapshots as the same mutable object. Do not imply check-result reuse across different snapshots. All arrows must express only the four named relationships above. No duplicate text, extra status terms, tiny body paragraphs or decorative connectors.
 ```
@@ -1312,3 +1312,29 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-09-21 | Schema exchange and semantic diff | Clarified semantic boundaries; background-only corrections | Keep strict import's omission behavior and stock-validator carriage limit explicit. Diff evidence is structural, and impact is review priority. Reject translucent dark headers before export. |
 | 2026-09-21 | Toolchain and Interpreter runtime | Terminal review corrections | Make TOOLCHAIN OUTPUTS an unconnected summary, preserving the separate accepted-model input to the Interpreter. Label ModelWorkspace as finite collected sources: collection finishes before the immutable workspace exists. Re-exported both corrected masters through the same default quality gates. |
 | 2026-09-21 | A12 Consistency Checker | New consumer-facing architecture poster, built-in ImageGen generation and default-profile AVIF export | Show supplied sources, operations, operation-specific reports, separate snapshot-update/draft paths, and the scoped-pass versus full-acceptance boundary. Root and checker README previews use one canonical AVIF. Keep public-release status visible until the owning release record changes. |
+
+
+## Presentation refresh — 2026-11-01
+
+The checker Maven release is public. Its poster now names the two entry coordinates instead of saying publication is pending. The technology poster now shows 53.3 kLOC Java and 42.1 kLOC Kotlin, measured on 2026-11-01 using the same source directories as the statistics updater (53,331 and 42,055 production code lines). The 2026-08-17 performance study remains historical evidence; no performance run was needed or performed for this presentation change.
+
+The old preflight passed with stale stored source statistics. [Accepted infographic evidence](infographic-evidence.json) now binds the exact generation prompts to the inspected AVIF hashes and the production source fingerprint, using the statistics updater's own Java/Kotlin source lists. A source change requires fresh statistics and a count review; changing a prompt or pixels requires visual acceptance. The evidence guard deliberately does not claim to read raster text. After inspection, run `scripts/run-typescript.sh "infographic evidence" scripts/typescript/infographic-evidence.ts --record-reviewed`; it first refuses stale source statistics. [Source-adjacent tests](../scripts/typescript/infographic-evidence.test.ts) exercise source-only, pixel-only and prompt-only drift.
+
+Both edits used built-in ImageGen with the preceding decoded AVIF as reference. The complete prompts are retained below. Visual-only; OCR unavailable. Inspected all labels, dates, numbers, qualifiers and semantic edges at full resolution; checked opacity and reduced-size reading. The original composition and slight card shading remain. Export used the unmodified `web-compact` helper at unchanged dimensions. Checker: 78,658 bytes, DSSIM 0.00368096. Technology: 98,018 bytes, DSSIM 0.00552754. These measurements supersede the corresponding September asset measurements; that historical record remains intact.
+
+### Checker availability correction
+
+```text
+Edit this existing technical infographic. Change only the bottom availability line, currently "Repository builds available • public release pending", to exactly "Maven: dm-consistency • JVM: dm-consistency-jvm". Keep this line centered, readable, and in the same modest footer style. Preserve the complete 1536 × 1024 canvas, all six regions, every other word, all icons and colors, the four semantic arrows and their endpoints, the verdict example ALL_CHECKS_PASSED + INCONCLUSIVE with complete: false, and the fully opaque warm off-white background. Do not add a logo, a release version, an npm-install claim, new labels, or new arrows. The new footer names the now-published standard Maven entry coordinates; all other technical content is unchanged.
+```
+
+### Technology count correction
+
+```text
+Edit this existing technical infographic. Change only three text values in the KOTLIN vs JAVA table: replace "50.3 kLOC" with "53.3 kLOC"; replace "34.9 kLOC" with "42.1 kLOC"; replace "Production code • Tokei • measured 2026-09-21" with "Production code • Tokei • measured 2026-11-01". These are newly measured counts of the same production source-directory inventory. Preserve the complete 1024 × 1536 canvas, every other word, every technology role, platform, module name, both explicit compilation paths, icons, colors, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims. Preserve Java and Kotlin values in their correct columns.
+```
+
+| Refreshed image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
+|---|---|---|
+| a12-consistency-checker | `b26d7fb163143a42c1456f332b7973f30ac209dc1fb3236cbfa0b7c924602ade` | `c3b250ac2ed6c72ddf364160a71334e937a90c304cdc48f4f485fb724ce6d3c9` |
+| kotlin-graalvm-kernel-roles | `e0b666ae353e47a9a9afa2baf5516cf1d648eab59e528c3bbffc2fd5a23687fb` | `03c18c693d6a846b2a73b28b836ec402aef5ac676bb22fcb656a1c579196fa98` |

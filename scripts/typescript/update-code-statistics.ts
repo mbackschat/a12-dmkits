@@ -125,6 +125,12 @@ function artifacts(): Record<string, Artifact> {
   };
 }
 
+function measureSources(root: string, language: string, sources: string[]): Counts {
+  const report: Record<string, Counts> = JSON.parse(execFileSync("tokei", ["--output", "json", "--types", language, ...sources.map(relative => path.join(root, relative))],
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000 }));
+  return report[language] ?? {};
+}
+
 function render(root: string, artifact: Artifact): string {
   const output = [
     `<!-- source-statistics:${artifact.id}:start -->`, "## Source statistics", "",
@@ -135,9 +141,7 @@ function render(root: string, artifact: Artifact): string {
     output.push("", `### ${section.heading}`, "", `${section.introduction} Counted from ${paths.map(relative => `\`${relative}\``).join(", ")}.`, "",
       "| Language | Files | Lines | Code | Comments | Blanks |", "|---|---:|---:|---:|---:|---:|");
     for (const [language, sources] of Object.entries(section.sources)) {
-      const report: Record<string, Counts> = JSON.parse(execFileSync("tokei", ["--output", "json", "--types", language, ...sources.map(relative => path.join(root, relative))],
-        { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000 }));
-      const counts = report[language] ?? {};
+      const counts = measureSources(root, language, sources);
       const files = counts.reports?.length ?? 0;
       if (files === 0) continue;
       const code = counts.code ?? 0, comments = counts.comments ?? 0, blanks = counts.blanks ?? 0;
@@ -189,6 +193,8 @@ function main(args: string[]): number {
   if (check) console.log(`source statistics are current (${selected})`);
   return 0;
 }
+
+module.exports = { JAVA_SOURCES, KOTLIN_SOURCES, measureSources };
 
 if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }

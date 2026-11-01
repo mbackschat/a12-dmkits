@@ -12,7 +12,7 @@ function fixture(t: { after(callback: () => void): void }): string {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const relative of [
     "scripts/check-infographic-freshness.sh", "scripts/run-typescript.sh",
-    "scripts/typescript/check-infographic-freshness.ts", ".github/workflows/ci.yml",
+    "scripts/typescript/check-infographic-freshness.ts", "scripts/typescript/infographic-evidence.ts", "scripts/typescript/update-code-statistics.ts", ".github/workflows/ci.yml",
     "README.md", "docs/INFOGRAPHICS.md", "interpreter/public-release/PERFORMANCE.md",
   ]) {
     const target = path.join(root, relative);
@@ -32,6 +32,10 @@ function fixture(t: { after(callback: () => void): void }): string {
       fs.writeFileSync(target, "synthetic AVIF payload");
     }
   }
+  const { JAVA_SOURCES, KOTLIN_SOURCES } = require('./update-code-statistics.ts');
+  for (const dir of [...JAVA_SOURCES, ...KOTLIN_SOURCES]) fs.mkdirSync(path.join(root, dir), { recursive: true });
+  fs.writeFileSync(path.join(root, JAVA_SOURCES[0], 'Fixture.java'), 'class Fixture {}');
+  fs.writeFileSync(path.join(root, 'docs/infographic-evidence.json'), JSON.stringify(require('./infographic-evidence.ts').captureEvidence(root)));
   return root;
 }
 
@@ -50,6 +54,12 @@ test("AVIF previews and copies pass through Dash while local PNG masters are ign
 });
 
 for (const [name, change, diagnostic] of [
+  ["source-only drift", (root: string) => fs.appendFileSync(path.join(root, 'core/src/main/java/Fixture.java'), '\nclass Added {}'), "production source evidence"],
+  ["accepted-pixel drift", (root: string) => fs.appendFileSync(path.join(root, 'assets/infographics/a12-consistency-checker.avif'), 'changed'), "accepted artwork"],
+  ["accepted-prompt drift", (root: string) => {
+    const file = path.join(root, 'docs/INFOGRAPHICS.md');
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('```text\n', '```text\nChanged claim.\n'));
+  }, "accepted artwork"],
   ["missing canonical AVIF", (root: string) => fs.unlinkSync(path.join(root, "assets/infographics/a12-dmkits-toolchain.avif")), "missing canonical infographic"],
   ["drifted release copy", (root: string) => fs.writeFileSync(path.join(root, "plugin/assets/infographics/dmtool-model-workbench.avif"), "drift"), "has drifted"],
   ["unregistered AVIF", (root: string) => fs.writeFileSync(path.join(root, "assets/infographics/extra.avif"), "extra"), "not registered"],
