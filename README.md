@@ -1010,7 +1010,7 @@ edit.introduced;
 <!-- source-statistics:root:start -->
 ## Source statistics
 
-Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from this repository, using [`.locmetryrc`](.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) from this repository, using [`.locmetryrc`](.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 
@@ -1036,7 +1036,7 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
 | Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 50 | 7451 | 6369 | 597 | 485 |
+| TypeScript | 50 | 7453 | 6371 | 597 | 485 |
 
 ### Tooling
 

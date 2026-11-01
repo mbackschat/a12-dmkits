@@ -51,7 +51,9 @@ test("the public updater uses policy classifications, counts code separately, an
   const updated = run();
   assert.equal(updated.status, 0, updated.stderr);
   const output = fs.readFileSync(path.join(root, "README.md"), "utf8");
-  assert.match(output, /locmetry/);
+  for (const relative of ["README.md", "plugin/README.md", "interpreter/public-release/README.md"]) {
+    assert.match(fs.readFileSync(path.join(root, relative), "utf8"), /Measured with \[locmetry\]\(https:\/\/github\.com\/mbackschat\/locmetry\) from /, relative);
+  }
   assert.match(output, /\[`.locmetryrc`\]\(\.locmetryrc\)/);
   assert.doesNotMatch(output, /Counted from|Tokei/);
   assert.match(output, /\| Java \| 1 \| 3 \| 1 \| 1 \| 1 \|/);

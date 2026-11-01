@@ -216,7 +216,7 @@ The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. 
 <!-- source-statistics:interpreter-release:start -->
 ## Source statistics
 
-Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from the standalone interpreter, shared regex sources, TypeScript facade, and browser showcase, using [`.locmetryrc`](https://github.com/mbackschat/a12-interpreter-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) from the standalone interpreter, shared regex sources, TypeScript facade, and browser showcase, using [`.locmetryrc`](https://github.com/mbackschat/a12-interpreter-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 

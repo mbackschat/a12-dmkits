@@ -5,7 +5,7 @@ const { execFileSync } = require("node:child_process");
 
 type Counts = { code: number; comments: number; blanks: number; lines: number };
 type Source = { path: string; language: string; kind: string; purpose: string; category: string; counts: Counts };
-type Report = { metadata: { locmetry_version: string; coverage: { unrecognized: string[] } }; files: Source[] };
+type Report = { metadata: { coverage: { unrecognized: string[] } }; files: Source[] };
 type Section = "Production" | "Verification" | "Tooling";
 type Artifact = { id: string; target: string; description: string; modules?: string[]; sections: Section[] };
 
@@ -77,7 +77,7 @@ function render(report: Report, selected: string): string {
   const policy = selected === "root" ? ".locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
   const output = [
     `<!-- source-statistics:${artifact.id}:start -->`, "## Source statistics", "",
-    `Measured with [locmetry](https://github.com/mbackschat/locmetry) ${report.metadata.locmetry_version} from ${artifact.description}, using [\`.locmetryrc\`](${policy}). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.`,
+    `Measured with [locmetry](https://github.com/mbackschat/locmetry) from ${artifact.description}, using [\`.locmetryrc\`](${policy}). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.`,
   ];
   for (const section of artifact.sections) {
     output.push("", `### ${section}`, "", selected === "dmtool" && section === "Production" ? "Product implementation." : INTRODUCTIONS[section], "",

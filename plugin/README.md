@@ -303,7 +303,7 @@ The embedded Interpreter is the runtime engine behind dmtool's evaluation verbs.
 <!-- source-statistics:dmtool:start -->
 ## Source statistics
 
-Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from the dmtool modules and their verification sources, using [`.locmetryrc`](https://github.com/mbackschat/a12-dmtool-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) from the dmtool modules and their verification sources, using [`.locmetryrc`](https://github.com/mbackschat/a12-dmtool-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 
