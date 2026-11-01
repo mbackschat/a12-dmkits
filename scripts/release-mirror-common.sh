@@ -116,7 +116,7 @@ release_check_interpreter_mirror_allowlist() {
   fi
   while IFS= read -r relative; do
     case "$relative" in
-      README.md|PERFORMANCE.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
+      .locmetryrc|README.md|PERFORMANCE.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
         ;;
       assets/infographics/*.avif)
         ;;

@@ -1,9 +1,4 @@
 {
-  "locmetry": {
-    "version": "0.12.0",
-    "repository": "mbackschat/locmetry",
-    "linuxSha256": "57b93e6d5aef7626fc33a4615e792282b2d782d4a43e2423a85a802a100cca59"
-  },
   "limits": {
     "production": {
       "soft": 500,

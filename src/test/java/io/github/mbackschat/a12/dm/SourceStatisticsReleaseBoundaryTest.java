@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -7,10 +8,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-/** Keeps maintainer-only Tokei at the local publisher boundary, never in portable assembly. */
+/** Keeps maintainer-only locmetry at the local publisher boundary, never in portable assembly. */
 class SourceStatisticsReleaseBoundaryTest {
 
     private static final String DMTOOL_CHECK =
@@ -36,7 +39,7 @@ class SourceStatisticsReleaseBoundaryTest {
     }
 
     @Test
-    void portableAssemblersNeverRequireTheLocalTokeiUpdater() throws IOException {
+    void portableAssemblersDoNotRegenerateSourceStatistics() throws IOException {
         assertFalse(read("scripts/assemble-release-repo.sh").contains("update-code-statistics.sh"));
         assertFalse(read("scripts/assemble-interpreter-release-repo.sh").contains("update-code-statistics.sh"));
     }
@@ -54,6 +57,53 @@ class SourceStatisticsReleaseBoundaryTest {
                 "interpreter/public-release/README.md")) {
             assertFalse(read(readme).contains("| Lean |"), readme + " must not report Lean statistics");
         }
+    }
+
+    @Test
+    void dmtoolAssemblyPublishesTheCanonicalCountingPolicy(@TempDir Path temporary) throws Exception {
+        Path root = temporary.resolve("source");
+        Path kernel = temporary.resolve("a12-kernel");
+        Files.createDirectories(kernel);
+        for (String name : List.of("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES", "licenses/EUPL-1.2.txt")) {
+            write(kernel.resolve(name), "synthetic notice\n");
+        }
+        run(kernel, "git", "init", "-q");
+        run(kernel, "git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                "commit", "--allow-empty", "-qm", "Kernel 1.2.3");
+        for (var entry : Map.ofEntries(
+                Map.entry("build.gradle", "kernelVersion = '1.2.3'\na12Distribution = '2030.01'\n"),
+                Map.entry(".locmetryrc", read(".locmetryrc")),
+                Map.entry("plugin/README.md", "1.2.3 2030.01\n[Policy](.locmetryrc)\n"),
+                Map.entry("plugin/CHANGELOG.md", "1.2.3 2030.01\n"),
+                Map.entry("plugin/.claude-plugin/plugin.json", "{\"kernel\":\"1.2.3\",\"tools\":\"2030.01\"}"),
+                Map.entry("plugin-codex/.codex-plugin/plugin.json", "{}"),
+                Map.entry("plugin-codex/AGENTS.md", "Fixture guidance\n"),
+                Map.entry("plugin-codex/marketplace.json", "{}"),
+                Map.entry("examples/README.md", "Examples\n"),
+                Map.entry("examples/cli-example.md", "Example\n"),
+                Map.entry(".github/mirror-workflows/build-native.yml", "name: Fixture\n"),
+                Map.entry("scripts/gen-scenarios.sh", "#!/bin/sh\nprintf 'Scenarios\\n'\n"),
+                Map.entry("scripts/assemble-release-repo.sh", read("scripts/assemble-release-repo.sh"))).entrySet()) {
+            write(root.resolve(entry.getKey()), entry.getValue());
+        }
+        for (String directory : List.of("plugin-codex/skills", "examples/models")) {
+            Files.createDirectories(root.resolve(directory));
+        }
+        assertTrue(root.resolve("scripts/gen-scenarios.sh").toFile().setExecutable(true));
+        Path mirror = temporary.resolve("mirror");
+        run(root, "bash", root.resolve("scripts/assemble-release-repo.sh").toString(), mirror.toString());
+        assertEquals(read(".locmetryrc"), Files.readString(mirror.resolve(".locmetryrc")));
+    }
+
+    private static void write(Path file, String contents) throws IOException {
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, contents);
+    }
+
+    private static void run(Path directory, String... command) throws Exception {
+        Process process = new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(0, process.waitFor(), output);
     }
 
     private static boolean precedes(String text, String first, String second) {

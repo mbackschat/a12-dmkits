@@ -40,12 +40,12 @@ test("a policy without an entry for a held purpose is refused rather than exempt
 
 test("a report yields its source files' purpose and code lines, and nothing else", () => {
   const report = {
-    metadata: { locmetry_version: policy.locmetry.version },
+    metadata: { locmetry_version: "99.0.0" },
     files: [
       { path: "A.kt", kind: "source", purpose: "production", counts: { code: 7, comments: 3, blanks: 1, lines: 11 } },
       { path: "README.md", kind: "documentation", purpose: "production", counts: { code: 0, comments: 9, blanks: 0, lines: 9 } },
     ],
   };
-  assert.deepEqual(sourceRecords(report, policy.locmetry.version), [source("A.kt", "production", 7)]);
-  assert.throws(() => sourceRecords(report, "0.0.1"), /measured by locmetry .* pins 0\.0\.1/);
+  assert.deepEqual(sourceRecords(report), [source("A.kt", "production", 7)]);
+
 });

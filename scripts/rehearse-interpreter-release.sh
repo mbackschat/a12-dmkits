@@ -114,6 +114,7 @@ create_fixture() {
     "$STATE"
 
   cp "$ROOT/LICENSE" "$SOURCE/LICENSE"
+  cp "$ROOT/.locmetryrc" "$SOURCE/.locmetryrc"
   cp "$ROOT/interpreter/CHANGELOG.md" "$SOURCE/interpreter/CHANGELOG.md"
   cp -R "$ROOT/interpreter/public-release/." "$SOURCE/interpreter/public-release/"
   cp -R "$ROOT/.github/interpreter-mirror-workflows/." "$SOURCE/.github/interpreter-mirror-workflows/"

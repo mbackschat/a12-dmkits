@@ -303,28 +303,32 @@ The embedded Interpreter is the runtime engine behind dmtool's evaluation verbs.
 <!-- source-statistics:dmtool:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the sources linked into the dmtool artifact. Fixtures, generated output and build trees are excluded from every count.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from the dmtool modules and their verification sources, using [`.locmetryrc`](https://github.com/mbackschat/a12-dmtool-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 
-The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `consistency/src/commonMain/kotlin`, `consistency/src/jsMain/kotlin`, `predicates/src/commonMain/kotlin`, `interpreter-bridge/src/main/kotlin`, `consistency-gate/src/main/kotlin`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+Product implementation.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 524 | 79499 | 53331 | 18212 | 7956 |
-| Kotlin | 342 | 69858 | 42055 | 22442 | 5361 |
+| Java | 524 | 79499 | 53318 | 18212 | 7969 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
+| Kotlin | 343 | 69790 | 41801 | 22546 | 5443 |
+| TypeScript | 11 | 1813 | 1403 | 240 | 170 |
 
 ### Verification
 
-Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `adapter/src/testFixtures/java`, `interpreter/src/jvmTest/java`, `consistency-gate/src/test/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `consistency/src/commonTest/kotlin`, `predicates/src/commonTest/kotlin`, `interpreter-bridge/src/test/kotlin`, `consistency-gate/src/test/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`.
+Automated tests, laws, differentials, consumer checks, and their support code.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 1269 | 198066 | 137222 | 38441 | 22403 |
-| Kotlin | 1512 | 219892 | 164819 | 34985 | 20088 |
+| HTML | 4 | 101 | 56 | 45 | 0 |
+| Java | 1270 | 198131 | 137208 | 38472 | 22451 |
+| JavaScript | 12 | 1032 | 666 | 262 | 104 |
+| Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
+| TypeScript | 29 | 5260 | 4424 | 543 | 293 |
 
-Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
+Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->
 
 ## Changelog

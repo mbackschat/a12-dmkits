@@ -1010,40 +1010,52 @@ edit.introduced;
 <!-- source-statistics:root:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from this repository. Fixtures, generated output and build trees are excluded from every count.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from this repository, using [`.locmetryrc`](.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 
-The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `consistency/src/commonMain/kotlin`, `consistency/src/jsMain/kotlin`, `predicates/src/commonMain/kotlin`, `interpreter-bridge/src/main/kotlin`, `consistency-gate/src/main/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `consistency/showcase/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+Product implementation and examples.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 524 | 79499 | 53331 | 18212 | 7956 |
-| Kotlin | 342 | 69858 | 42055 | 22442 | 5361 |
+| CSS | 2 | 887 | 750 | 3 | 134 |
+| HTML | 2 | 347 | 335 | 0 | 12 |
+| Java | 524 | 79499 | 53318 | 18212 | 7969 |
+| JavaScript | 2 | 283 | 144 | 122 | 17 |
+| Kotlin | 343 | 69790 | 41801 | 22546 | 5443 |
 | TypeScript | 18 | 3867 | 3299 | 286 | 282 |
-| JavaScript | 1 | 107 | 72 | 25 | 10 |
 
 ### Verification
 
-Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `adapter/src/testFixtures/java`, `interpreter/src/jvmTest/java`, `consistency-gate/src/test/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `consistency/src/commonTest/kotlin`, `predicates/src/commonTest/kotlin`, `interpreter-bridge/src/test/kotlin`, `consistency-gate/src/test/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
+Automated tests, laws, differentials, consumer checks, and their support code.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 1269 | 198066 | 137222 | 38441 | 22403 |
-| Kotlin | 1512 | 219892 | 164819 | 34985 | 20088 |
-| TypeScript | 15 | 3399 | 3178 | 75 | 146 |
+| HTML | 4 | 101 | 56 | 45 | 0 |
+| Java | 1270 | 198131 | 137208 | 38472 | 22451 |
+| JavaScript | 12 | 1032 | 666 | 262 | 104 |
+| Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
+| Shell | 12 | 2508 | 1925 | 356 | 227 |
+| TypeScript | 50 | 7451 | 6369 | 597 | 485 |
 
 ### Tooling
 
-Build scripts, build-time generators, and the evaluation harness — neither shipped nor a check on what ships. Counted from `scripts/SourceProvenance.java`, `interpreter/consumer-tests/kotlin-jvm/build.gradle.kts`, `interpreter/consumer-tests/kotlin-jvm/settings.gradle.kts`, `interpreter/consumer-tests/kotlin-js/build.gradle.kts`, `interpreter/consumer-tests/kotlin-js/settings.gradle.kts`, `eval/benchmark.workflow.js`, `eval/gap-finder.workflow.js`, `interpreter/typescript/scripts`.
+Build, verification, release, deployment, and maintainer tooling.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
+| BASH | 2 | 360 | 223 | 123 | 14 |
+| CSS | 1 | 1 | 1 | 0 | 0 |
+| Groovy | 19 | 11349 | 8507 | 2421 | 421 |
+| HTML | 6 | 167 | 156 | 0 | 11 |
 | Java | 1 | 70 | 52 | 10 | 8 |
-| Kotlin | 4 | 90 | 81 | 0 | 9 |
-| JavaScript | 6 | 1838 | 1573 | 132 | 133 |
+| JavaScript | 5 | 1796 | 1512 | 157 | 127 |
+| Kotlin | 6 | 134 | 123 | 0 | 11 |
+| Python | 1 | 166 | 144 | 1 | 21 |
+| Shell | 62 | 6479 | 4651 | 1327 | 501 |
+| TypeScript | 27 | 3796 | 3225 | 306 | 265 |
 
-Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
+Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
 
 ---
@@ -1101,7 +1113,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos, and **[locmetry](https://github.com/mbackschat/locmetry)** at the version [`scripts/source-size-limits.json`](scripts/source-size-limits.json) pins (`brew install mbackschat/tap/locmetry`, then `brew pin locmetry` so an upgrade cannot outrun the pin), which the source-size guard counts code lines with. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the POSIX/TypeScript tooling boundary, Node, Java, locmetry, Gradle-home, hook, and local-Kernel state together.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos, and **[locmetry](https://github.com/mbackschat/locmetry)** at its latest release (`brew install mbackschat/tap/locmetry`; update with `brew update && brew upgrade locmetry`; never pin it), which the source-size guard counts code lines with. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the POSIX/TypeScript tooling boundary, Node, Java, locmetry, Gradle-home, hook, and local-Kernel state together.
 
 ### Maintainer agent setup (optional)
 
@@ -1153,7 +1165,7 @@ git config core.hooksPath .githooks
 
 The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files. It also refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run green since, and refuses any commit unless the repository-wide `leakGuardTest` lane has run green since. Those two evidence checks exist because `-Pfast` skips those lanes by design, so the inner loop cannot otherwise see them fail. The fourth refuses any commit when a test run of any lane, written since the newest staged change, recorded a failure, so a red run cannot be committed past because the command that ran it did not gate the commit. The `pre-push` hook runs the typed infographic freshness and CI-cost-ordering check through its stable shell launcher, then validates every GitHub Actions workflow with `actionlint`; it refuses when Node or `actionlint` is missing instead of claiming a check it could not perform. Native Git hooks make this neutral to the caller: terminal Git, an IDE, Claude Code, and Codex CLI all trigger the same gate.
 
-**The local hooks are the early half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart in the test and CI estate. `scripts/doctor.sh` reports both hook wiring and `actionlint` availability. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
+**The local hooks are the early half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart in the test and CI estate. `scripts/doctor.sh` reports both hook wiring and `actionlint` availability. Source statistics are intentionally not a push or CI concern: the maintainer-only locmetry updater is run locally, and each release publisher checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 

@@ -2,60 +2,120 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { measureRepository, selectSources, sectionOf } = require("./update-code-statistics.ts");
+const ROOT = path.resolve(__dirname, "../..");
 
-test("the public updater counts interpreter sources without checker or bridge sources and detects stale output", () => {
+function fixture(t: { after(callback: () => void): void }): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "source-statistics-"));
-  try {
-    for (const directory of ["scripts/typescript", "interpreter/public-release", "plugin", "tools"]) {
-      fs.mkdirSync(path.join(root, directory), { recursive: true });
-    }
-    for (const relative of ["scripts/update-code-statistics.sh", "scripts/run-typescript.sh", "scripts/typescript/update-code-statistics.ts"]) {
-      const source = path.resolve(__dirname, "../..", relative);
-      if (fs.existsSync(source)) fs.copyFileSync(source, path.join(root, relative));
-    }
-    const readme = path.join(root, "interpreter/public-release/README.md");
-    fs.writeFileSync(readme, "before\n<!-- source-statistics:interpreter-release:start -->\nstale\n<!-- source-statistics:interpreter-release:end -->\nafter\n");
-    fs.writeFileSync(path.join(root, "plugin/README.md"), "<!-- source-statistics:dmtool:start -->\nstale\n<!-- source-statistics:dmtool:end -->\n");
-    const counter = path.join(root, "tools/tokei");
-    fs.writeFileSync(counter, `#!${process.execPath}
-const args=process.argv.slice(2), i=args.indexOf('--types'), language=args[i+1], roots=args.slice(i+2);
-const code=roots.reduce((sum,p)=>sum+(p.includes('/consistency/')||p.includes('/consistency-gate/')||p.includes('/interpreter-bridge/')||p.includes('/predicates/')?100:1),0);
-process.stdout.write(JSON.stringify({[language]:{reports:roots.map(()=>({})),code,comments:0,blanks:0}}));
-`, { mode: 0o755 });
-    const run = (...args: string[]) => spawnSync(path.join(root, "scripts/update-code-statistics.sh"), args, {
-      encoding: "utf8", env: { ...process.env, PATH: `${path.join(root, "tools")}:${process.env.PATH}` }, timeout: 10_000,
-    });
-    const updated = run("--artifact", "interpreter");
-    assert.equal(updated.status, 0, updated.stderr);
-    const output = fs.readFileSync(readme, "utf8");
-    assert.match(output, /\| Kotlin \| 3 \| 3 \| 3 \| 0 \| 0 \|/);
-    assert.doesNotMatch(output, /consistency\/|consistency-gate\/|interpreter-bridge\/|predicates\//);
-    assert.match(output, /^before\n/);
-    assert.match(output, /\nafter\n$/);
-    assert.equal(run("--check", "--artifact", "interpreter").status, 0);
-    fs.writeFileSync(readme, output.replace("| Kotlin | 3 |", "| Kotlin | 999 |"));
-    const stale = fs.readFileSync(readme);
-    assert.equal(run("--check", "--artifact", "interpreter").status, 1);
-    assert.deepEqual(fs.readFileSync(readme), stale);
-    const dmtool = run("--artifact", "dmtool");
-    assert.equal(dmtool.status, 0, dmtool.stderr);
-    assert.match(fs.readFileSync(path.join(root, "plugin/README.md"), "utf8"), /\| Kotlin \| 8 \| 503 \| 503 \| 0 \| 0 \|/);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const relative of ["scripts/update-code-statistics.sh", "scripts/run-typescript.sh", "scripts/typescript/update-code-statistics.ts", ".locmetryrc"]) {
+    const target = path.join(root, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, relative), target);
+  }
+  const files = {
+    "build.gradle": "",
+    "core/build.gradle": "",
+    "interpreter/build.gradle": "",
+    "consistency/build.gradle": "",
+    "core/src/main/java/Product.java": "// explanation\nclass Product {}\n\n",
+    "interpreter/src/commonMain/kotlin/Product.kt": "class Product\n",
+    "shared-regex/src/Shared.kt": "class Shared\n",
+    "consistency/src/commonMain/kotlin/Checker.kt": "class Checker\n",
+    "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/KernelCorrectives.kt": "class Generated\n",
+    "interpreter/consumer-tests/browser/src/showcase.ts": "export const showcase = 1;\n",
+    "interpreter/src/commonTest/kotlin/ProductTest.kt": "class ProductTest\n",
+    "interpreter/src/commonTest/resources/fixture.json": '{"not": "source"}',
+    "scripts/typescript/doctor.ts": "const tool = 1;\n",
+    "scripts/typescript/doctor.test.ts": "const test = 1;\n",
+  };
+  for (const [relative, contents] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+    fs.writeFileSync(path.join(root, relative), contents);
+  }
+  for (const [relative, id] of [["README.md", "root"], ["plugin/README.md", "dmtool"], ["interpreter/public-release/README.md", "interpreter-release"]]) {
+    fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+    fs.writeFileSync(path.join(root, relative), `before\n<!-- source-statistics:${id}:start -->\nstale\n<!-- source-statistics:${id}:end -->\nafter\n`);
+  }
+  execFileSync("git", ["init", "-q", root]);
+  execFileSync("git", ["-C", root, "add", "."]);
+  fs.writeFileSync(path.join(root, "core/src/main/java/Untracked.java"), "class Untracked {}\n");
+  return root;
+}
+
+test("the public updater uses policy classifications, counts code separately, and preserves artifact boundaries", t => {
+  const root = fixture(t);
+  const run = (...args: string[]) => spawnSync("dash", [path.join(root, "scripts/update-code-statistics.sh"), ...args], { encoding: "utf8", timeout: 10_000 });
+  const updated = run();
+  assert.equal(updated.status, 0, updated.stderr);
+  const output = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  assert.match(output, /locmetry/);
+  assert.match(output, /\[`.locmetryrc`\]\(\.locmetryrc\)/);
+  assert.doesNotMatch(output, /Counted from|Tokei/);
+  assert.match(output, /\| Java \| 1 \| 3 \| 1 \| 1 \| 1 \|/);
+  assert.match(output, /\| Kotlin \| 3 \| 3 \| 3 \| 0 \| 0 \|/);
+  const interpreter = fs.readFileSync(path.join(root, "interpreter/public-release/README.md"), "utf8");
+  assert.match(interpreter, /\| Kotlin \| 2 \| 2 \| 2 \| 0 \| 0 \|/);
+  assert.match(interpreter, /https:\/\/github.com\/mbackschat\/a12-interpreter-releases\/blob\/main\/\.locmetryrc/);
+  assert.doesNotMatch(interpreter, /### Tooling/);
+  assert.match(output, /^before\n/); assert.match(output, /\nafter\n$/);
+  assert.equal(run("--check").status, 0);
+  fs.writeFileSync(path.join(root, "README.md"), output.replace("| Java | 1 |", "| Java | 999 |"));
+  const stale = fs.readFileSync(path.join(root, "README.md"));
+  assert.equal(run("--check").status, 1);
+  assert.deepEqual(fs.readFileSync(path.join(root, "README.md")), stale);
+  const report = measureRepository(root);
+  assert.deepEqual(selectSources(report, "interpreter", "Production").map((f: { path: string }) => f.path).sort(), ["interpreter/consumer-tests/browser/src/showcase.ts", "interpreter/src/commonMain/kotlin/Product.kt", "shared-regex/src/Shared.kt"]);
+  assert.equal(selectSources(report, "dmtool", "Production").length, 4);
+  for (const artifact of ["root", "interpreter", "dmtool"]) {
+    const examples = selectSources(report, artifact, "Production").filter((f: { category: string }) => f.category === "example");
+    assert.equal(examples.length, artifact === "dmtool" ? 0 : 1, artifact);
+  }
+  assert.ok(selectSources(report, "root", "Verification").some((f: { path: string }) => f.path.endsWith("doctor.test.ts")));
+  assert.ok(selectSources(report, "root", "Tooling").some((f: { path: string }) => f.path.endsWith("doctor.ts")));
+});
+
+test("tracked sources hidden by ignore policy fail instead of silently lowering the denominator", t => {
+  const root = fixture(t);
+  fs.writeFileSync(path.join(root, ".ignore"), "Product.java\n");
+  assert.throws(() => measureRepository(root), /unaccounted tracked files.*Product.java/s);
+});
+
+test("the live policy preserves generated files and separates test implementations from their runners", () => {
+  const report = measureRepository(ROOT);
+  const expected = [
+    ["consistency/consumer-tests/shared/parity/manifest.json", "test", "generated"],
+    ["consistency/showcase/scripts/verify.mjs", "test", "integration"],
+    ["consistency/showcase/scripts/verify-site.mjs", "test", "integration"],
+    ["scripts/rehearse-interpreter-release.sh", "test", "selftest"],
+    ["scripts/interpreter-release-rehearsal-host.sh", "test", "test-support"],
+    ["scripts/typescript/checker-release.ts", "production", "distribution"],
+    ["scripts/typescript/checker-presentation.ts", "production", "distribution"],
+    ["scripts/typescript/checker-consumers.ts", "production", "verification-tooling"],
+    ["scripts/typescript/source-size-warning.ts", "production", "verification-tooling"],
+    ["consistency/public-release/site/index.html", "production", "distribution"],
+    ["interpreter/public-release/index.html", "production", "distribution"],
+  ];
+  for (const [relative, purpose, category] of expected) {
+    const file = report.files.find((f: { path: string }) => f.path === relative);
+    assert.ok(file, relative); assert.deepEqual([file.purpose, file.category], [purpose, category], relative);
   }
 });
 
-test("invalid usage retains exit status two", () => {
+test("unclassified or unknown production source cannot disappear from the statistics", () => {
+  for (const [purpose, category] of [["other", "unclaimed"], ["production", "new-category"]]) {
+    assert.throws(() => sectionOf({ path: "missed.ts", kind: "source", purpose, category }), /missed.ts/);
+  }
+});
+
+test("invalid usage retains exit status two and help runs through Dash", () => {
   for (const args of [["--artifact", "unknown"], ["--unknown"], ["--artifact"]]) {
-    const run = spawnSync("dash", [path.resolve(__dirname, "../update-code-statistics.sh"), ...args], { encoding: "utf8", timeout: 10_000 });
+    const run = spawnSync("dash", [path.join(ROOT, "scripts/update-code-statistics.sh"), ...args], { encoding: "utf8", timeout: 10_000 });
     assert.equal(run.status, 2, run.stderr);
   }
-});
-
-test("the public path runs through Dash", () => {
-  const run = spawnSync("dash", [path.resolve(__dirname, "../update-code-statistics.sh"), "--help"], { encoding: "utf8", timeout: 10_000 });
+  const run = spawnSync("dash", [path.join(ROOT, "scripts/update-code-statistics.sh"), "--help"], { encoding: "utf8", timeout: 10_000 });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Usage: update-code-statistics/);
 });

@@ -38,6 +38,7 @@ class InterpreterReleaseMirrorAssemblerTest {
         assemble(inputs, firstMirror, firstAssets);
         assemble(inputs, secondMirror, secondAssets);
 
+        assertEquals(Files.readString(repoFile(".locmetryrc")), Files.readString(firstMirror.resolve(".locmetryrc")));
         assertEquals(treeDigests(firstMirror), treeDigests(secondMirror));
         assertEquals(treeDigests(firstAssets), treeDigests(secondAssets));
         assertTrue(Files.isRegularFile(firstMirror.resolve("site/showcase/index.html")));

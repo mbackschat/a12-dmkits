@@ -1,154 +1,99 @@
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
-type Counts = { reports?: unknown[]; code?: number; comments?: number; blanks?: number };
-type Sources = Record<string, string[]>;
-type Section = { heading: string; introduction: string; sources: Sources };
-type Artifact = { id: string; target: string; description: string; sections: Section[] };
+type Counts = { code: number; comments: number; blanks: number; lines: number };
+type Source = { path: string; language: string; kind: string; purpose: string; category: string; counts: Counts };
+type Report = { metadata: { locmetry_version: string; coverage: { unrecognized: string[] } }; files: Source[] };
+type Section = "Production" | "Verification" | "Tooling";
+type Artifact = { id: string; target: string; description: string; modules?: string[]; sections: Section[] };
 
-const JAVA_SOURCES: string[] = [
-  "core/src/main/java",
-  "rulekit/src/main/java",
-  "modelkit/src/main/java",
-  "edit/src/main/java",
-  "schemakit/src/main/java",
-  "adapter/src/main/java",
-  "cli/src/main/java"
-];
-const KOTLIN_INTERPRETER_SOURCES: string[] = [
-  "interpreter/src/commonMain/kotlin",
-  "interpreter/src/jvmMain/kotlin",
-  "interpreter/src/jsMain/kotlin"
-];
-const KOTLIN_SOURCES: string[] = [
-  ...KOTLIN_INTERPRETER_SOURCES,
-  "consistency/src/commonMain/kotlin",
-  "consistency/src/jsMain/kotlin",
-  "predicates/src/commonMain/kotlin",
-  "interpreter-bridge/src/main/kotlin",
-  "consistency-gate/src/main/kotlin"
-];
-const TYPESCRIPT_LIBRARY_SOURCES: string[] = [
-  "interpreter/typescript/src"
-];
-const TYPESCRIPT_SHOWCASE_SOURCES: string[] = [
-  "interpreter/consumer-tests/browser/src"
-];
-const JAVA_TEST_SOURCES: string[] = [
-  "src/test/java",
-  "schemakit/src/test/java",
-  "adapter/src/test/java",
-  "cli/src/test/java",
-  "src/noBackendTest/java",
-  "src/releaseGuardTest/java",
-  "adapter/src/kernelClosureConsumer/java",
-  "adapter/src/testFixtures/java",
-  "interpreter/src/jvmTest/java",
-  "consistency-gate/src/test/java",
-  "interpreter/consumer-tests/kotlin-jvm/src/main/java"
-];
-const KOTLIN_TEST_SOURCES: string[] = [
-  "adapter/src/test/kotlin",
-  "interpreter/src/commonTest/kotlin",
-  "interpreter/src/jvmTest/kotlin",
-  "interpreter/src/jsTest/kotlin",
-  "consistency/src/commonTest/kotlin",
-  "predicates/src/commonTest/kotlin",
-  "interpreter-bridge/src/test/kotlin",
-  "consistency-gate/src/test/kotlin",
-  "interpreter/consumer-tests/kotlin-jvm/src/main/kotlin",
-  "interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin"
-];
-const KOTLIN_INTERPRETER_TEST_SOURCES: string[] = [
-  "interpreter/src/commonTest/kotlin",
-  "interpreter/src/jvmTest/kotlin",
-  "interpreter/src/jsTest/kotlin",
-  "interpreter/consumer-tests/kotlin-jvm/src/main/kotlin",
-  "interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin"
-];
-const TOOLING_JAVA_SOURCES: string[] = [
-  "scripts/SourceProvenance.java"
-];
-const TOOLING_KOTLIN_SOURCES: string[] = [
-  "interpreter/consumer-tests/kotlin-jvm/build.gradle.kts",
-  "interpreter/consumer-tests/kotlin-jvm/settings.gradle.kts",
-  "interpreter/consumer-tests/kotlin-js/build.gradle.kts",
-  "interpreter/consumer-tests/kotlin-js/settings.gradle.kts"
-];
-const TOOLING_JAVASCRIPT_SOURCES: string[] = [
-  "eval/benchmark.workflow.js",
-  "eval/gap-finder.workflow.js",
-  "interpreter/typescript/scripts"
-];
-const PRODUCTION_JAVASCRIPT_SOURCES: string[] = [
-  "cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs"
-];
-const TYPESCRIPT_TEST_SOURCES: string[] = [
-  "interpreter/consumer-tests/typescript/src",
-  "interpreter/consumer-tests/browser/scripts"
-];
+// These are artifact boundaries; .locmetryrc alone decides a file's purpose and category within them.
+const ARTIFACTS: Record<string, Artifact> = {
+  root: { id: "root", target: "README.md", description: "this repository", sections: ["Production", "Verification", "Tooling"] },
+  dmtool: {
+    id: "dmtool", target: "plugin/README.md", description: "the dmtool modules and their verification sources",
+    modules: ["src", "core", "rulekit", "modelkit", "edit", "schemakit", "adapter", "cli", "interpreter", "consistency", "predicates", "interpreter-bridge", "consistency-gate", "shared-regex"],
+    sections: ["Production", "Verification"],
+  },
+  interpreter: {
+    id: "interpreter-release", target: "interpreter/public-release/README.md",
+    description: "the standalone interpreter, shared regex sources, TypeScript facade, and browser showcase",
+    modules: ["interpreter", "shared-regex"], sections: ["Production", "Verification"],
+  },
+};
+const INTRODUCTIONS: Record<Section, string> = {
+  Production: "Product implementation and examples.",
+  Verification: "Automated tests, laws, differentials, consumer checks, and their support code.",
+  Tooling: "Build, verification, release, deployment, and maintainer tooling.",
+};
 
-const production = (sources: Sources): Section => ({ heading: "Production", introduction: "The shipped product.", sources });
-const verification = (sources: Sources): Section => ({
-  heading: "Verification",
-  introduction: "Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts.",
-  sources,
-});
-
-function artifacts(): Record<string, Artifact> {
-  const product: Sources = { Java: JAVA_SOURCES, Kotlin: KOTLIN_SOURCES };
-  const verificationSources: Sources = { Java: JAVA_TEST_SOURCES, Kotlin: KOTLIN_TEST_SOURCES };
-  const typescript = [...TYPESCRIPT_LIBRARY_SOURCES, ...TYPESCRIPT_SHOWCASE_SOURCES];
-  return {
-    root: {
-      id: "root", target: "README.md", description: "this repository",
-      sections: [
-        production({ ...product, TypeScript: [...typescript, "consistency/showcase/src"], JavaScript: PRODUCTION_JAVASCRIPT_SOURCES }),
-        verification({ ...verificationSources, TypeScript: TYPESCRIPT_TEST_SOURCES }),
-        { heading: "Tooling", introduction: "Build scripts, build-time generators, and the evaluation harness — neither shipped nor a check on what ships.",
-          sources: { Java: TOOLING_JAVA_SOURCES, Kotlin: TOOLING_KOTLIN_SOURCES, JavaScript: TOOLING_JAVASCRIPT_SOURCES } },
-      ],
-    },
-    dmtool: {
-      id: "dmtool", target: "plugin/README.md", description: "the sources linked into the dmtool artifact",
-      sections: [production({ ...product, JavaScript: PRODUCTION_JAVASCRIPT_SOURCES }), verification(verificationSources)],
-    },
-    interpreter: {
-      id: "interpreter-release", target: "interpreter/public-release/README.md",
-      description: "the standalone interpreter library, TypeScript facade, and browser showcase",
-      sections: [
-        production({ Kotlin: KOTLIN_INTERPRETER_SOURCES, TypeScript: typescript }),
-        verification({ Kotlin: KOTLIN_INTERPRETER_TEST_SOURCES, TypeScript: TYPESCRIPT_TEST_SOURCES }),
-      ],
-    },
-  };
+function sectionOf(file: Source): Section | undefined {
+  if (file.kind !== "source" || file.category === "generated") return undefined;
+  switch (file.purpose) {
+    case "test": return "Verification";
+    case "other":
+      if (file.category !== "unclaimed") return undefined;
+      break;
+    case "production":
+      switch (file.category) {
+        case "implementation": case "example": case "plugin": return "Production";
+        case "build-tooling": case "verification-tooling": case "distribution": case "deployment":
+        case "tooling": case "agent-config": return "Tooling";
+      }
+  }
+  throw new Error(`source has no statistics section: ${file.path} (${file.purpose}/${file.category}); review .locmetryrc`);
 }
 
-function measureSources(root: string, language: string, sources: string[]): Counts {
-  const report: Record<string, Counts> = JSON.parse(execFileSync("tokei", ["--output", "json", "--types", language, ...sources.map(relative => path.join(root, relative))],
-    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000 }));
-  return report[language] ?? {};
+function measureRepository(root: string): Report {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "locmetry-statistics-"));
+  try {
+    // The size guard uses this same isolation: personal Git ignores must not change published counts.
+    const report: Report = JSON.parse(execFileSync(process.env.LOCMETRY ?? "locmetry", ["--root", root, "--no-user-config", "--files", "--format", "json"],
+      { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000, env: { ...process.env, HOME: home, XDG_CONFIG_HOME: home } }));
+    const tracked = new Set<string>(execFileSync("git", ["-C", root, "ls-files", "-z"], { encoding: "utf8" }).split("\0")
+      .filter((relative: string) => relative && relative !== ".locmetryrc" && !fs.lstatSync(path.join(root, relative)).isSymbolicLink()));
+    const seen = new Set([...report.files.map(file => file.path), ...report.metadata.coverage.unrecognized]);
+    const missing = [...tracked].filter(relative => !seen.has(relative));
+    if (missing.length) throw new Error(`unaccounted tracked files in locmetry report: ${missing.join(", ")}`);
+    report.files = report.files.filter(file => tracked.has(file.path));
+    for (const file of report.files) sectionOf(file);
+    return report;
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
 }
 
-function render(root: string, artifact: Artifact): string {
+function selectSources(report: Report, selected: string, section: Section): Source[] {
+  const artifact = ARTIFACTS[selected];
+  return report.files.filter(file => sectionOf(file) === section
+    && (!artifact.modules || artifact.modules.some(module => file.path.startsWith(`${module}/`)))
+    && !(selected === "dmtool" && section === "Production" && file.category === "example"));
+}
+
+function render(report: Report, selected: string): string {
+  const artifact = ARTIFACTS[selected];
+  const policy = selected === "root" ? ".locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
   const output = [
     `<!-- source-statistics:${artifact.id}:start -->`, "## Source statistics", "",
-    `Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from ${artifact.description}. Fixtures, generated output and build trees are excluded from every count.`,
+    `Measured with [locmetry](https://github.com/mbackschat/locmetry) ${report.metadata.locmetry_version} from ${artifact.description}, using [\`.locmetryrc\`](${policy}). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.`,
   ];
   for (const section of artifact.sections) {
-    const paths = Object.values(section.sources).flat().filter(relative => fs.existsSync(path.join(root, relative)));
-    output.push("", `### ${section.heading}`, "", `${section.introduction} Counted from ${paths.map(relative => `\`${relative}\``).join(", ")}.`, "",
+    output.push("", `### ${section}`, "", selected === "dmtool" && section === "Production" ? "Product implementation." : INTRODUCTIONS[section], "",
       "| Language | Files | Lines | Code | Comments | Blanks |", "|---|---:|---:|---:|---:|---:|");
-    for (const [language, sources] of Object.entries(section.sources)) {
-      const counts = measureSources(root, language, sources);
-      const files = counts.reports?.length ?? 0;
-      if (files === 0) continue;
-      const code = counts.code ?? 0, comments = counts.comments ?? 0, blanks = counts.blanks ?? 0;
-      output.push(`| ${language} | ${files} | ${code + comments + blanks} | ${code} | ${comments} | ${blanks} |`);
+    const languages = new Map<string, Counts & { files: number }>();
+    for (const file of selectSources(report, selected, section)) {
+      const total = languages.get(file.language) ?? { files: 0, lines: 0, code: 0, comments: 0, blanks: 0 };
+      total.files++;
+      for (const key of ["lines", "code", "comments", "blanks"] as const) total[key] += file.counts[key];
+      languages.set(file.language, total);
+    }
+    for (const [language, n] of [...languages].sort(([a], [b]) => a.localeCompare(b, "en"))) {
+      output.push(`| ${language} | ${n.files} | ${n.lines} | ${n.code} | ${n.comments} | ${n.blanks} |`);
     }
   }
-  output.push("", "Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.",
+  output.push("", "Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.",
     `<!-- source-statistics:${artifact.id}:end -->`);
   return output.join("\n");
 }
@@ -162,23 +107,24 @@ function main(args: string[]): number {
       case "--check": check = true; break;
       case "--artifact": selected = args[++index]; break;
       case "-h": case "--help":
-        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter]\n\nUpdate public README tables or compare them with fresh Tokei measurements. Requires local tokei.");
+        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter]\n\nUpdate public README tables or compare them with fresh locmetry measurements. Use the latest locmetry; .locmetryrc defines classification.");
         return 0;
       default: throw new UsageError(`unknown argument: ${args[index]}`);
     }
   }
-  const registry = artifacts();
-  if (selected !== "all" && !Object.hasOwn(registry, selected)) throw new UsageError(`artifact must be all, root, dmtool, or interpreter: ${selected}`);
+  if (selected !== "all" && !Object.hasOwn(ARTIFACTS, selected)) throw new UsageError(`artifact must be all, root, dmtool, or interpreter: ${selected}`);
   const root = path.resolve(__dirname, "../..");
+  const report = measureRepository(root);
   let failures = 0;
-  for (const artifact of selected === "all" ? Object.values(registry) : [registry[selected]]) {
+  for (const key of selected === "all" ? Object.keys(ARTIFACTS) : [selected]) {
+    const artifact = ARTIFACTS[key];
     const target = path.join(root, artifact.target), current = fs.readFileSync(target, "utf8");
     const start = `<!-- source-statistics:${artifact.id}:start -->`, end = `<!-- source-statistics:${artifact.id}:end -->`;
     const lines = current.split("\n"), first = lines.indexOf(start), last = lines.indexOf(end);
     if (first < 0 || last < first || lines.filter(line => line === start).length !== 1 || lines.filter(line => line === end).length !== 1) {
       throw new Error(`${artifact.target} must contain exactly one source-statistics block '${artifact.id}'`);
     }
-    const expected = render(root, artifact);
+    const expected = render(report, key);
     if (lines.slice(first, last + 1).join("\n") === expected) continue;
     if (check) {
       console.error(`stale source statistics: ${artifact.target}; run scripts/update-code-statistics.sh --artifact ${selected}`);
@@ -194,7 +140,7 @@ function main(args: string[]): number {
   return 0;
 }
 
-module.exports = { JAVA_SOURCES, KOTLIN_SOURCES, measureSources };
+module.exports = { measureRepository, selectSources, sectionOf };
 
 if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }

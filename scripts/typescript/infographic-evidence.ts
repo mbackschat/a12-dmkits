@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const { JAVA_SOURCES, KOTLIN_SOURCES, measureSources } = require('./update-code-statistics.ts');
+const { measureRepository, selectSources } = require('./update-code-statistics.ts');
 
 type Artwork = { file: string; sha256: string; promptSha256: string };
 type Evidence = { schema: number; productionSourcesSha256: string; artwork: Artwork[] };
@@ -10,12 +10,9 @@ const digest = (bytes: string | Buffer): string => createHash('sha256').update(b
 
 function captureEvidence(root: string): Evidence {
   const sources: [string, string][] = [];
-  for (const [language, directories] of [['Java', JAVA_SOURCES], ['Kotlin', KOTLIN_SOURCES]]) {
-    for (const report of measureSources(root, language, directories).reports ?? []) {
-      const relative = path.relative(root, report.name);
-      if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.lstatSync(report.name).isFile()) throw new Error(`invalid counted source: ${relative}`);
-      sources.push([relative, digest(fs.readFileSync(report.name))]);
-    }
+  for (const file of selectSources(measureRepository(root), 'root', 'Production')) {
+    if (!['Java', 'Kotlin'].includes(file.language)) continue;
+    sources.push([file.path, digest(fs.readFileSync(path.join(root, file.path)))]);
   }
   if (!sources.length) throw new Error('empty production source inventory');
   const specification = fs.readFileSync(path.join(root, 'docs/INFOGRAPHICS.md'), 'utf8');

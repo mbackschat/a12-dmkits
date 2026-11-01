@@ -313,7 +313,7 @@ class GateTierWiringTest {
     void infographicBehavioralGuardDeclaresItsCompleteLiveInputSet() throws IOException {
         String delivery = gradleTask(Files.readString(locate("build.gradle")), "deliveryGuardTest");
         for (String input : List.of(
-                "README.md",
+                ".locmetryrc", "README.md",
                 "docs/INFOGRAPHICS.md",
                 "interpreter/public-release/PERFORMANCE.md",
                 "plugin/README.md",

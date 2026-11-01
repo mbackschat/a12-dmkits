@@ -20,7 +20,6 @@ const HELD = ["production", "test"];
 
 type Limits = { soft: number; hard: number };
 type Policy = {
-  locmetry: { version: string };
   limits: Record<string, Limits>;
   legacyCeilings: Record<string, number>;
 };
@@ -30,12 +29,8 @@ type Report = {
   files: { path: string; kind: string; purpose: string; counts: { code: number } }[];
 };
 
-/** The source files of a full locmetry report, refusing one another locmetry version measured: counts differ by version. */
-function sourceRecords(report: Report, pinned: string): SourceRecord[] {
-  const measuredBy = report.metadata.locmetry_version;
-  if (measuredBy !== pinned) {
-    throw new Error(`the report was measured by locmetry ${measuredBy}, but scripts/source-size-limits.json pins ${pinned}`);
-  }
+/** The source-size policy is independent of the counter release; always run the latest locmetry. */
+function sourceRecords(report: Report): SourceRecord[] {
   return report.files.filter((file) => file.kind === "source")
     .map((file) => ({ path: file.path, purpose: file.purpose, code: file.counts.code }));
 }
@@ -79,13 +74,13 @@ function main(files: string[]): void {
     { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env: { ...process.env, HOME: home, XDG_CONFIG_HOME: home } });
   fs.rmdirSync(home);
   if (run.error !== undefined || run.status !== 0) {
-    console.error(`pre-commit: locmetry ${policy.locmetry.version} is not runnable here, so the source-size warning is skipped `
+    console.error(`pre-commit: locmetry is not runnable here, so the source-size warning is skipped `
       + "(leakGuardTest still needs it; install with: brew install mbackschat/tap/locmetry)");
     return;
   }
   let records: SourceRecord[];
   try {
-    records = sourceRecords(JSON.parse(run.stdout), policy.locmetry.version);
+    records = sourceRecords(JSON.parse(run.stdout));
   } catch (error) {
     console.error(`pre-commit: ${(error as Error).message}, so the source-size warning is skipped`);
     return;

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
  * script that was injecting. Both are cases below.
  *
  * <p>{@code HOME}, {@code ACTIONLINT}, {@code LOCMETRY} and {@code core.hooksPath} are faked; a fabricated machine
- * has the pinned locmetry unless a case says otherwise, so no verdict depends on the host. The repository root is the real
+ * has a runnable locmetry unless a case says otherwise, so no verdict depends on the host. The repository root is the real
  * one, because the script derives it from its own location, so the marker-missing branch is deliberately not
  * covered here — {@code BuildPerformancePolicyTest} asserts the marker's presence directly instead.
  *
@@ -156,9 +155,9 @@ class DoctorScriptTest {
         assertEquals(0, run.exitCode(), "an unwired clone is a warning, not a failure:\n" + run.output());
     }
 
-    /** The source-size guard cannot run without the pinned locmetry, so a missing or other version fails the doctor. */
+    /** A missing counter fails; a new release is accepted without updating a repository pin. */
     @Test
-    void aMissingOrUnpinnedLocmetryFailsTheDoctor(@TempDir Path home) throws Exception {
+    void aMissingLocmetryFailsButANewReleaseNeedsNoPolicyChange(@TempDir Path home) throws Exception {
         Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
         var missing = runDoctor(home, null, WIRED, null, home.resolve("missing-locmetry").toString());
         assertTrue(missing.output().contains("locmetry is unavailable, so leakGuardTest's source-size guard fails"),
@@ -166,16 +165,11 @@ class DoctorScriptTest {
         assertTrue(missing.output().contains("brew install mbackschat/tap/locmetry"), missing.output());
         assertEquals(1, missing.exitCode(), missing.output());
 
-        Path other = executable(home.resolve("other-locmetry"), "#!/bin/sh\necho \"locmetry 0.0.1\"\n");
-        var unpinned = runDoctor(home, null, WIRED, null, other.toString());
-        assertTrue(unpinned.output().contains("locmetry 0.0.1 is installed, but leakGuardTest's source-size guard pins "
-                + pinnedLocmetry()), unpinned.output());
-        assertEquals(1, unpinned.exitCode(), unpinned.output());
-    }
-
-    private static String pinnedLocmetry() throws IOException {
-        return new ObjectMapper().readTree(Files.readString(CHECKOUT.resolve("scripts/source-size-limits.json")))
-                .required("locmetry").required("version").asText();
+        Path other = executable(home.resolve("other-locmetry"), "#!/bin/sh\necho \"locmetry 99.0.0\"\n");
+        var available = runDoctor(home, null, WIRED, null, other.toString());
+        assertTrue(available.output().contains("locmetry 99.0.0 available"), available.output());
+        assertTrue(available.output().contains("always use the latest locmetry"), available.output());
+        assertEquals(0, available.exitCode(), available.output());
     }
 
     private record Run(String output, int exitCode) {}
@@ -220,7 +214,7 @@ class DoctorScriptTest {
             builder.environment().put("A12_NODE", node);
         }
         builder.environment().put("LOCMETRY", locmetry != null ? locmetry
-                : executable(home.resolve("locmetry"), "#!/bin/sh\necho \"locmetry " + pinnedLocmetry() + "\"\n").toString());
+                : executable(home.resolve("locmetry"), "#!/bin/sh\necho \"locmetry 99.0.0\"\n").toString());
 
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)

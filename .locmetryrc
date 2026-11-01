@@ -1,6 +1,6 @@
 # locmetry policy for a12-dmkits. Contract: `locmetry --schema config`; which entry decided a file: `locmetry explain <path>`.
 #
-# Purpose answers "is it maintained product, a check on the product, or neither"; category answers "what kind of code is it".
+# Purpose answers "is it maintained code, a test or its support, or neither"; category answers "what kind of code is it".
 # The component (kit, adapter, CLI, interpreter, checker) is the FOLDER axis, so `--show-folders` carries it and no
 # category repeats it. Locmetry decides purpose from paths alone, so every test category below rests on a directory
 # or a class-name convention that docs/TESTING-SPEC.md already names; an entry's `reason` cites it.
@@ -23,6 +23,7 @@ tooling = "Other maintainer tools: the dev launcher, doctor, gap minting, findin
 agent-config = "Agent harness settings and the CLAUDE.md / AGENTS.md instructions for agents working in this repository"
 documentation = "Maintained specs, findings, ledgers, guides and READMEs"
 # test
+test = "Other automated tests; this category does not imply unit-test isolation"
 accept-law = "Law tier 1: the real kernel accepts a condition or rejects it with the expected MVK code (validate/laws, via KernelLaws)"
 runtime-law = "Law tier 2: a valid rule fires or stays silent on real data under the kernel runtime (adapter laws, via RuntimeLaws)"
 differential = "The interpreter checked against the kernel runtime as the reference engine (*DiffTest)"
@@ -76,7 +77,6 @@ match = [
   "examples/**",
   "consistency/showcase/src/**",
   "consistency/showcase/{index.html,package.json,tsconfig.json}",
-  "consistency/public-release/**",
   "consistency/consumer-tests/node/ci-gate.mjs",
   "interpreter/consumer-tests/browser/{src,public}/**",
   "interpreter/consumer-tests/browser/{index.html,package.json,tsconfig.json,tsconfig.service-worker.json,README.md}",
@@ -141,16 +141,38 @@ category = "plugin"
 reason = "The distributed agent plugins; skill/ holds the canonical skills that scripts/sync-plugin-assets.sh copies into both"
 
 [[rules]]
+id = "showcase-checks"
+match = ["consistency/showcase/scripts/verify.mjs", "consistency/showcase/scripts/verify-site.mjs"]
+purpose = "test"
+category = "integration"
+reason = "These Playwright programs assert showcase behavior and public-site links, privacy, and responsive layout"
+
+[[rules]]
+id = "release-rehearsal"
+match = ["scripts/rehearse-interpreter-release.sh"]
+purpose = "test"
+category = "selftest"
+reason = "The rehearsal asserts publisher refusal and success paths against disposable local Git repositories"
+
+[[rules]]
+id = "release-test-host"
+match = ["scripts/interpreter-release-rehearsal-host.sh"]
+purpose = "test"
+category = "test-support"
+reason = "The filesystem-backed host is sourced only by the release rehearsal, not the production publisher"
+
+[[rules]]
 id = "distribution"
 match = [
   "scripts/{publish,assemble,rehearse,bump}-*.sh",
   "scripts/*release*.sh",
   "scripts/check-interpreter-release-repo.sh",
   "scripts/{ensure-dmtool,sync-plugin-assets,gen-scenarios}.sh",
-  "scripts/typescript/{sync-plugin-assets,gen-scenarios}.ts",
+  "scripts/typescript/{sync-plugin-assets,gen-scenarios,checker-release,checker-presentation}.ts",
   ".github/mirror-workflows/**",
   ".github/interpreter-mirror-workflows/**",
   "interpreter/public-release/**",
+  "consistency/public-release/**",
 ]
 purpose = "production"
 category = "distribution"
@@ -195,7 +217,7 @@ match = [
   "scripts/interpreter-{performance,footprint,delivery-footprint}.sh",
   "scripts/interpreter-delivery-footprint.init.gradle",
   "scripts/{mutant,test-evidence,obligations,contract-consumers,prepare-dmtool-source,check-handback}.sh",
-  "scripts/typescript/{verify-demos,test-evidence,mutant,gate-mutant-sweep,check-infographic-freshness,probe-verdicts,handback-check,commit-gaps}.ts",
+  "scripts/typescript/{verify-demos,test-evidence,mutant,gate-mutant-sweep,check-infographic-freshness,probe-verdicts,handback-check,commit-gaps,checker-consumers,source-size-warning}.ts",
   "eval/**",
   "probe/**",
 ]
@@ -242,8 +264,9 @@ reason = "Maintained Markdown: docs/, the root and module READMEs, changelogs"
 id = "consumer-project-tests"
 purpose = "test"
 match = ["consistency/consumer-tests/**", "interpreter/consumer-tests/**"]
+except = ["consistency/consumer-tests/shared/parity/**"]
 category = "integration"
-reason = "Test-named files inside the consumer projects (*.test.mjs, *.test.ts) that builtin:js-test-file decided"
+reason = "Consumer checks, including test-named files decided by built-in conventions; preserve the generated parity corpus category"
 
 [[refinements]]
 id = "script-module-tests"
@@ -258,7 +281,7 @@ purpose = "test"
 match = ["**/src/*[Tt]est/**", "**/src/testFixtures/**"]
 except = ["**/*{Test,Tests}.{java,kt}"]
 category = "test-support"
-reason = "JUnit and kotlin.test discover only *Test classes, so the rest of a test source set is harness, oracle or fixture code, and its resources are fixture data"
+reason = "The repository names test cases *Test or *Tests by convention; other test-source files are support, including the opt-in CorpusGenerator capture tool. This is not a JUnit discovery restriction"
 
 [[refinements]]
 id = "guards"

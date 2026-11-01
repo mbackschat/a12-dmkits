@@ -216,27 +216,31 @@ The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. 
 <!-- source-statistics:interpreter-release:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone interpreter library, TypeScript facade, and browser showcase. Fixtures, generated output and build trees are excluded from every count.
+Measured with [locmetry](https://github.com/mbackschat/locmetry) 0.12.0 from the standalone interpreter, shared regex sources, TypeScript facade, and browser showcase, using [`.locmetryrc`](https://github.com/mbackschat/a12-interpreter-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
 
 ### Production
 
-The shipped product. Counted from `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`.
+Product implementation and examples.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 143 | 34855 | 21943 | 9971 | 2941 |
+| CSS | 1 | 886 | 749 | 3 | 134 |
+| HTML | 1 | 333 | 321 | 0 | 12 |
+| Kotlin | 144 | 35631 | 22582 | 10041 | 3008 |
 | TypeScript | 17 | 3794 | 3227 | 286 | 281 |
 
 ### Verification
 
-Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
+Automated tests, laws, differentials, consumer checks, and their support code.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 346 | 38009 | 29923 | 4020 | 4066 |
+| Java | 2 | 166 | 145 | 2 | 19 |
+| JavaScript | 2 | 154 | 137 | 0 | 17 |
+| Kotlin | 346 | 38009 | 29880 | 4025 | 4104 |
 | TypeScript | 15 | 3399 | 3178 | 75 | 146 |
 
-Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
+Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->
 
 ## Release contents

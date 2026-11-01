@@ -720,7 +720,7 @@ Exact content:
 - Column header: "KOTLIN"
 - Row label: "SIZE"
 - Java size: "53.3 kLOC"
-- Kotlin size: "42.1 kLOC"
+- Kotlin size: "41.8 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
@@ -733,7 +733,7 @@ Exact content:
 - Row label: "RUNTIME"
 - Java runtime: "JVM • native dmtool"
 - Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
-- Bottom scope note: "Production code • Tokei • measured 2026-11-01"
+- Bottom scope note: "Production code • locmetry • measured 2026-11-01"
 - Bottom band title: "WHY THIS SPLIT SCALES"
 - Benefits heading: "PORTABILITY"
 - Benefits line: "Shared source per engine"
@@ -1318,7 +1318,7 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 
 The checker Maven release is public. Its poster now names the two entry coordinates instead of saying publication is pending. The technology poster now shows 53.3 kLOC Java and 42.1 kLOC Kotlin, measured on 2026-11-01 using the same source directories as the statistics updater (53,331 and 42,055 production code lines). The 2026-08-17 performance study remains historical evidence; no performance run was needed or performed for this presentation change.
 
-The old preflight passed with stale stored source statistics. [Accepted infographic evidence](infographic-evidence.json) now binds the exact generation prompts to the inspected AVIF hashes and the production source fingerprint, using the statistics updater's own Java/Kotlin source lists. A source change requires fresh statistics and a count review; changing a prompt or pixels requires visual acceptance. The evidence guard deliberately does not claim to read raster text. After inspection, run `scripts/run-typescript.sh "infographic evidence" scripts/typescript/infographic-evidence.ts --record-reviewed`; it first refuses stale source statistics. [Source-adjacent tests](../scripts/typescript/infographic-evidence.test.ts) exercise source-only, pixel-only and prompt-only drift.
+The old preflight passed with stale stored source statistics. [Accepted infographic evidence](infographic-evidence.json) now binds the exact generation prompts to the inspected AVIF hashes and the production source fingerprint, using the statistics updater's tracked Java/Kotlin Production selection under [`.locmetryrc`](../.locmetryrc). A source change requires fresh statistics and a count review; changing a prompt or pixels requires visual acceptance. The evidence guard deliberately does not claim to read raster text. After inspection, run `scripts/run-typescript.sh "infographic evidence" scripts/typescript/infographic-evidence.ts --record-reviewed`; it first refuses stale source statistics. [Source-adjacent tests](../scripts/typescript/infographic-evidence.test.ts) exercise source-only, pixel-only and prompt-only drift.
 
 Both edits used built-in ImageGen with the preceding decoded AVIF as reference. The complete prompts are retained below. Visual-only; OCR unavailable. Inspected all labels, dates, numbers, qualifiers and semantic edges at full resolution; checked opacity and reduced-size reading. The original composition and slight card shading remain. Export used the unmodified `web-compact` helper at unchanged dimensions. Checker: 78,658 bytes, DSSIM 0.00368096. Technology: 98,018 bytes, DSSIM 0.00552754. These measurements supersede the corresponding September asset measurements; that historical record remains intact.
 
@@ -1338,3 +1338,13 @@ Edit this existing technical infographic. Change only three text values in the K
 |---|---|---|
 | a12-consistency-checker | `b26d7fb163143a42c1456f332b7973f30ac209dc1fb3236cbfa0b7c924602ade` | `c3b250ac2ed6c72ddf364160a71334e937a90c304cdc48f4f485fb724ce6d3c9` |
 | kotlin-graalvm-kernel-roles | `e0b666ae353e47a9a9afa2baf5516cf1d648eab59e528c3bbffc2fd5a23687fb` | `03c18c693d6a846b2a73b28b836ec402aef5ac676bb22fcb656a1c579196fa98` |
+
+## Locmetry statistics correction — 2026-11-01
+
+The technology poster now reports 53.3 kLOC Java and 41.8 kLOC Kotlin, measured by locmetry 0.12.0 with [`.locmetryrc`](../.locmetryrc): tracked Production source, excluding generated code. This replaces the former Tokei directory inventory; the counter version records provenance and is not pinned. Built-in ImageGen changed the Kotlin value and counter label. The complete poster was visually checked against the preceding image, including unchanged labels, compilation paths and the checker boundary; no OCR was used.
+
+```text
+Edit this existing technical infographic. Change only two text values in the KOTLIN vs JAVA table: replace Kotlin "42.1 kLOC" with "41.8 kLOC"; replace "Production code • Tokei • measured 2026-11-01" with "Production code • locmetry • measured 2026-11-01". These are counts of tracked, non-generated production source under the repository .locmetryrc policy. Keep Java "53.3 kLOC" unchanged. Preserve the complete 1024 × 1536 canvas, every other word, every technology role, platform, module name, both explicit compilation paths, icons, colors, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims. Preserve Java and Kotlin values in their correct columns.
+```
+
+The `web-compact` export retained 1024 × 1536 pixels: 98,586 bytes, DSSIM 0.00573905. The decoded AVIF was checked at the README's 720-pixel width; the canonical image and both release copies are identical. The local PNG master remains ignored by Git.

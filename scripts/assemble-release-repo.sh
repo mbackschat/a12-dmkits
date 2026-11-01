@@ -30,6 +30,7 @@ mkdir -p "$DEST/licenses"
 #     never copied from the source repo, where AGENTS.md is a SYMLINK to the internal CLAUDE.md (dual-runtime,
 #     2026-07-09): a dereferencing `cp` of that symlink would ship the internal instructions into the mirror.
 rsync -a --exclude='assets/infographics/**/*.png' --exclude='assets/infographics/*.png' "$ROOT/plugin/" "$DEST/"
+cp "$ROOT/.locmetryrc" "$DEST/.locmetryrc"
 cat > "$DEST/AGENTS.md" << 'AGENTS_EOF'
 # AGENTS.md
 

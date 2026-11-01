@@ -154,6 +154,7 @@ render_versioned_source() {
 
 mkdir -p "$MIRROR_STAGE/.github/workflows" "$MIRROR_STAGE/site/api" "$MIRROR_STAGE/site/maven"
 render_versioned_source "$README_SOURCE" "$MIRROR_STAGE/README.md"
+cp "$ROOT/.locmetryrc" "$MIRROR_STAGE/.locmetryrc"
 # The README links PERFORMANCE.md as a sibling, so the mirror must carry it or that link 404s.
 render_versioned_source "$PERFORMANCE_SOURCE" "$MIRROR_STAGE/PERFORMANCE.md"
 # README assets are mutable presentation; replace them so prior PNG releases leave no masters behind.

@@ -73,8 +73,8 @@ class SourceFileSizeLimitGuardTest {
     /** One source file as locmetry measured it: its checkout-relative path, its purpose, and its code lines. */
     record SourceFile(String path, String purpose, int code) {}
 
-    /** The policy file, read once: the pinned locmetry version, the limits per kind, and the legacy ceilings. */
-    record Policy(String locmetryVersion, Map<Kind, Limits> limits, Map<String, Integer> legacyCeilings) {
+    /** The policy file, read once: the limits per kind and the legacy ceilings. */
+    record Policy(Map<Kind, Limits> limits, Map<String, Integer> legacyCeilings) {
 
         static Policy read(Path file) throws IOException {
             JsonNode root = JSON.readTree(Files.readString(file, StandardCharsets.UTF_8));
@@ -85,7 +85,7 @@ class SourceFileSizeLimitGuardTest {
             }
             Map<String, Integer> legacy = new LinkedHashMap<>();
             root.required("legacyCeilings").fields().forEachRemaining(e -> legacy.put(e.getKey(), e.getValue().asInt()));
-            return new Policy(root.required("locmetry").required("version").asText(), limits, legacy);
+            return new Policy(limits, legacy);
         }
     }
 
@@ -125,13 +125,8 @@ class SourceFileSizeLimitGuardTest {
         return found;
     }
 
-    /** The source files of a full locmetry report, refusing a report another locmetry version measured. */
-    static List<SourceFile> sourceFiles(JsonNode report, String pinnedVersion) {
-        String measuredBy = report.required("metadata").required("locmetry_version").asText();
-        if (!measuredBy.equals(pinnedVersion)) {
-            throw new IllegalStateException("the estate was measured by locmetry " + measuredBy + ", but " + POLICY
-                    + " pins " + pinnedVersion + ": install that version, or re-pin it and re-derive legacyCeilings");
-        }
+    /** The source files measured by locmetry; counter releases are never pinned by the size policy. */
+    static List<SourceFile> sourceFiles(JsonNode report) {
         List<SourceFile> files = new ArrayList<>();
         for (JsonNode file : report.required("files")) {
             if (file.required("kind").asText().equals("source")) {
@@ -189,7 +184,7 @@ class SourceFileSizeLimitGuardTest {
     /** The two entries are independent, which equal committed values cannot show, so this test makes them differ. */
     @Test
     void eachKindIsHeldToItsOwnEntryAndAnUnlistedPurposeToNone() {
-        Policy split = new Policy("0", Map.of(Kind.PRODUCTION, new Limits(10, 20), Kind.TEST, new Limits(30, 40)), Map.of());
+        Policy split = new Policy(Map.of(Kind.PRODUCTION, new Limits(10, 20), Kind.TEST, new Limits(30, 40)), Map.of());
         assertEquals(1, violations(split, List.of(new SourceFile("a/src/main/A.java", "production", 25))).size());
         assertEquals(List.of(), violations(split, List.of(new SourceFile("a/src/test/ATest.java", "test", 25))));
         assertEquals(1, violations(split, List.of(new SourceFile("a/src/test/ATest.java", "test", 41))).size());
@@ -209,7 +204,7 @@ class SourceFileSizeLimitGuardTest {
     }
 
     @Test
-    void aReportYieldsItsSourcesCodeLinesAndAnotherLocmetryVersionIsRefused() throws IOException {
+    void aReportYieldsItsSourcesCodeLinesWithoutPinningTheCounter() throws IOException {
         JsonNode report = JSON.readTree("""
                 {"metadata": {"locmetry_version": "1.2.3"}, "files": [
                   {"path": "A.kt", "kind": "source", "purpose": "production",
@@ -217,8 +212,8 @@ class SourceFileSizeLimitGuardTest {
                   {"path": "README.md", "kind": "documentation", "purpose": "production",
                    "counts": {"code": 0, "comments": 9, "blanks": 0, "lines": 9}}]}
                 """);
-        assertEquals(List.of(new SourceFile("A.kt", "production", 7)), sourceFiles(report, "1.2.3"));
-        assertThrows(IllegalStateException.class, () -> sourceFiles(report, "1.2.4"));
+        assertEquals(List.of(new SourceFile("A.kt", "production", 7)), sourceFiles(report));
+
     }
 
     /**
@@ -251,12 +246,12 @@ class SourceFileSizeLimitGuardTest {
         return Policy.read(CHECKOUT.resolve(POLICY));
     }
 
-    /** The real policy's version and limits over a fabricated legacy table, so the rule is proven on its numbers. */
+    /** The real policy's limits over a fabricated legacy table, so the rule is proven on its numbers. */
     private static Policy withLegacy(Policy real, Map<String, Integer> legacy) {
-        return new Policy(real.locmetryVersion(), real.limits(), legacy);
+        return new Policy(real.limits(), legacy);
     }
 
-    /** The tracked sources as the pinned locmetry measures them, read once per JVM: the guard's tests share one run. */
+    /** The tracked sources as locmetry measures them, read once per JVM: the guard's tests share one run. */
     record Estate(List<SourceFile> sources, List<String> unaccounted, Set<String> languages) {
 
         private static Estate measured;
@@ -284,9 +279,9 @@ class SourceFileSizeLimitGuardTest {
                 try {
                     run = command.start();
                 } catch (IOException cannotStart) {
-                    throw new IllegalStateException("locmetry " + policy.locmetryVersion() + " could not be started ("
+                    throw new IllegalStateException("locmetry could not be started ("
                             + cannotStart.getMessage() + "), and this guard counts code lines with it: install it with "
-                            + "`brew install mbackschat/tap/locmetry`, or from the release " + POLICY + " pins", cannotStart);
+                            + "`brew install mbackschat/tap/locmetry`; always use the latest release", cannotStart);
                 }
                 byte[] output = run.getInputStream().readAllBytes();
                 if (run.waitFor() != 0) {
@@ -300,7 +295,7 @@ class SourceFileSizeLimitGuardTest {
                 report.required("files").forEach(file -> {
                     if (file.required("kind").asText().equals("source")) languages.add(file.required("language").asText());
                 });
-                return new Estate(sourceFiles(report, policy.locmetryVersion()).stream()
+                return new Estate(sourceFiles(report).stream()
                         .filter(file -> trackedSet.contains(file.path())).toList(), SourceFileSizeLimitGuardTest.unaccounted(report, tracked), languages);
             } finally {
                 Files.deleteIfExists(errors);

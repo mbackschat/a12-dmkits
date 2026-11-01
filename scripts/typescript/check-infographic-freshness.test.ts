@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { spawnSync, execFileSync } = require("node:child_process");
 const test = require("node:test");
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -32,9 +32,12 @@ function fixture(t: { after(callback: () => void): void }): string {
       fs.writeFileSync(target, "synthetic AVIF payload");
     }
   }
-  const { JAVA_SOURCES, KOTLIN_SOURCES } = require('./update-code-statistics.ts');
-  for (const dir of [...JAVA_SOURCES, ...KOTLIN_SOURCES]) fs.mkdirSync(path.join(root, dir), { recursive: true });
-  fs.writeFileSync(path.join(root, JAVA_SOURCES[0], 'Fixture.java'), 'class Fixture {}');
+  fs.mkdirSync(path.join(root, 'core/src/main/java'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'core/build.gradle'), '');
+  fs.writeFileSync(path.join(root, 'core/src/main/java/Fixture.java'), 'class Fixture {}');
+  fs.copyFileSync(path.join(ROOT, '.locmetryrc'), path.join(root, '.locmetryrc'));
+  execFileSync('git', ['init', '-q', root]);
+  execFileSync('git', ['-C', root, 'add', '.']);
   fs.writeFileSync(path.join(root, 'docs/infographic-evidence.json'), JSON.stringify(require('./infographic-evidence.ts').captureEvidence(root)));
   return root;
 }

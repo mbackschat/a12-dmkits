@@ -713,7 +713,7 @@ tasks.register('deliveryGuardTest', Test) {
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
             'Codex evidence schema'   : file('scripts/codex-plugin-activation.schema.json'),
-            'source statistics'       : files('scripts/update-code-statistics.sh', 'scripts/typescript/update-code-statistics.ts'),
+            'source statistics'       : files('scripts/update-code-statistics.sh', 'scripts/typescript/update-code-statistics.ts', '.locmetryrc'),
             'dmtool publisher'        : file('scripts/publish-release.sh'),
             'interpreter publisher'   : file('scripts/interpreter-release-publisher-core.sh'),
             'dmtool assembler'        : file('scripts/assemble-release-repo.sh'),
@@ -1016,7 +1016,7 @@ tasks.register('interpreterReleaseGuardTest', Test) {
     classpath = sourceSets.releaseGuardTest.runtimeClasspath
     guardInputs(it, [
             'assembler'         : file('scripts/assemble-interpreter-release-repo.sh'),
-            'source statistics' : file('scripts/update-code-statistics.sh'),
+            'source statistics' : files('scripts/update-code-statistics.sh', '.locmetryrc'),
             'mirror checker'    : file('scripts/check-interpreter-release-repo.sh'),
             'asset names'       : file('scripts/interpreter-release-assets.sh'),
             'mirror helpers'    : file('scripts/release-mirror-common.sh'),
