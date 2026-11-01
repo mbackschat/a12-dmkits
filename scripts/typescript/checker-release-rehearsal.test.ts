@@ -21,7 +21,12 @@ const notFound = () => { process.stderr.write('(HTTP 404)'); process.exit(1); };
 function git(args) { const r = cp.spawnSync('git',args,{stdio:'pipe'}); if(r.status) {process.stderr.write(r.stderr);process.exit(r.status);} }
 if(args[0]==='api') {
  const endpoint=args.find(a=>a.startsWith(repo));
- if(endpoint===repo+'/pages') json({build_type:'workflow'});
+ if(endpoint===repo+'/environments/github-pages') json({deployment_branch_policy:{protected_branches:false,custom_branch_policies:true}});
+ else if(endpoint===repo+'/environments/github-pages/deployment-branch-policies') {
+  if(args.includes('POST')){state.allowedTag=args.find(a=>a.startsWith('name=')).slice(5);save();json({});}
+  else json({branch_policies:state.allowedTag?[{name:state.allowedTag,type:'tag'}]:[{name:'main',type:'branch'}]});
+ }
+ else if(endpoint===repo+'/pages') json({build_type:'workflow'});
  else if(endpoint===repo) { if(!state.repo)notFound(); json({name:'a12-consistency-releases'}); }
  else if(endpoint===repo+'/releases?per_page=100') json([state.release ? [state.release] : []]);
  else if(endpoint.includes('/releases/tags/')) notFound();
@@ -37,6 +42,7 @@ else if(args[0]==='release' && args[1]==='upload') {
  if(state.release.assets.some(a=>a.name===name))throw Error('replacement forbidden');
  const id=state.release.assets.length+1;fs.copyFileSync(args[3],path.join(home,'asset-'+id));state.release.assets.push({id,name});save();
 } else if(args[0]==='workflow' && args[1]==='run') {
+ if(state.allowedTag!==state.release.tag_name)throw Error('release tag is blocked by environment');
  if(args.at(-1)!==state.release.tag_name) throw Error('deployment must name release tag');
  state.events.push('deploy'); state.runAt=new Date().toISOString().replace(/\.\d{3}Z$/,'Z'); save();
 } else if(args[0]==='run' && args[1]==='list') {

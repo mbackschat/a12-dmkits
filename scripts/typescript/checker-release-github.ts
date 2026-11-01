@@ -113,6 +113,17 @@ async function deployPages(root: string, version: string, mirrorSha: string): Pr
     const current = api(root, endpoint) as { build_type: string } | undefined;
     if (!current) gh(root, ['api', '--method', 'POST', endpoint, '-f', 'build_type=workflow']);
     else if (current.build_type !== 'workflow') throw new Error('Pages is not configured for workflow deployment');
+    const environment = `repos/${repository}/environments/github-pages`;
+    const policy = (api(root, environment) as { deployment_branch_policy?: { protected_branches: boolean; custom_branch_policies: boolean } })?.deployment_branch_policy;
+    if (policy?.protected_branches) throw new Error('Pages permits protected branches only; tag deployment requires an explicit environment policy');
+    if (policy?.custom_branch_policies) {
+        const endpoint = `${environment}/deployment-branch-policies`;
+        const policies = api(root, endpoint) as { branch_policies: { name: string; type: string }[] };
+        // New Pages sites allowed only main in the first deployment (2026-11-01); authorize this immutable tag without changing other protections.
+        if (!policies.branch_policies.some(p => p.name === `v${version}` && p.type === 'tag')) {
+            gh(root, ['api', '--method', 'POST', endpoint, '-f', `name=v${version}`, '-f', 'type=tag']);
+        }
+    }
     const started = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
     gh(root, ['workflow', 'run', 'deploy-pages.yml', '--repo', repository, '--ref', `v${version}`]);
     const deadline = Date.now() + 600_000;
