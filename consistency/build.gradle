@@ -635,9 +635,8 @@ def generateCheckerIdentity = tasks.register('generateCheckerIdentity') {
     }
 }
 
-kotlin.sourceSets.commonMain.kotlin.srcDir(generatedIdentityDir)
-tasks.matching { it.name.startsWith('compileKotlin') || it.name.startsWith('compileCommonMainKotlinMetadata') }
-        .configureEach { dependsOn generateCheckerIdentity }
+// Every consumer, including source publications, must build the version source (Gradle publication validation).
+kotlin.sourceSets.commonMain.kotlin.srcDir(files(generatedIdentityDir).builtBy(generateCheckerIdentity))
 
 // Published for the reason `:predicates` is, and it is the same defect the same one line of reasoning caught
 // there: a shipped POM must not name a coordinate nothing publishes. Measured 2026-09-17 — this module had no
@@ -1395,3 +1394,5 @@ tasks.register('browserConsumerTest', Exec) {
     }
     outputs.upToDateWhen { false }
 }
+
+apply from: rootProject.file('gradle/checker-publication.gradle')

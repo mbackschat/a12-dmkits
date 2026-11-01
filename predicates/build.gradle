@@ -130,3 +130,5 @@ publishing {
         }
     }
 }
+
+apply from: rootProject.file('gradle/checker-publication.gradle')

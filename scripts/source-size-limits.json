@@ -28,7 +28,7 @@
     "build.gradle": 1042,
     "cli/src/main/java/io/github/mbackschat/a12/dm/cli/ApplyCommand.java": 844,
     "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 907,
-    "consistency/build.gradle": 937,
+    "consistency/build.gradle": 936,
     "eval/benchmark.workflow.js": 1034,
     "interpreter/build.gradle": 3463,
     "interpreter/consumer-tests/browser/scripts/smoke.ts": 931,

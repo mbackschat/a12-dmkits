@@ -30,6 +30,12 @@ From Gradle, add `mavenLocal()` and depend on `io.github.mbackschat.a12.dm:dm-co
 
 **When it does ship, the two artifacts will be the same checker, and that is checked rather than intended.** `:consistency:verifyCheckerArtifactIdentity` refuses a build where the staged npm version, the jar coordinate and the compiled `CHECKER_VERSION` constant disagree — so a receipt naming a version and the package carrying it cannot drift apart. The package declares **no runtime dependencies**, so installing it pulls nothing else.
 
+## Preparing Maven publication
+
+`./build.sh :consistency:verifyCheckerMavenPublication` creates a fresh Maven repository under `build/consistency-release/maven` with the checker and predicate dependency's root, JVM, and JS variants. The [publication guard](../scripts/typescript/checker-maven.ts) verifies the exact coordinate/version inventory, references, checksums, license metadata, generated identity source, and archive contents. It rejects local paths and unrelated archive packages; both JS libraries compile with relative debug paths. CI runs this artifact gate independently of the existing checker behavior tests.
+
+The [Gradle consumer](consumer-tests/maven-gradle) resolves the root `dm-consistency` coordinate on JVM and JS; the [Maven consumer](consumer-tests/maven-java) resolves `dm-consistency-jvm` directly. Run them with `scripts/run-typescript.sh "checker Maven consumers" scripts/typescript/checker-consumers.ts VERSION file:///absolute/path/to/build/consistency-release/maven local`. The [runner](../scripts/typescript/checker-consumers.ts) uses fresh dependency caches and no `mavenLocal()` or project substitution, reuses only the Gradle wrapper distribution, and checks the committed storefront and broken-reference fixtures. The source build's resolved wrapper, JDK 21, Node, Python 3, and network access to public dependency repositories are required. Apache Maven 3.9.9 is downloaded under `build/` and checked against its published SHA-512.
+
 ## Using it
 
 **Strings in, strings out, on every call.** The checker's Kotlin types are still moving, so exporting *them* would publish an ABI that changes under every consumer; a JSON string commits to the wire shape and to nothing else. **No call throws** — an unreadable source comes back as a report whose `diagnostics` explain the failure, so a caller wrapping it in `try`/`catch` will never see that branch.

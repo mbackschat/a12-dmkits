@@ -1,0 +1,46 @@
+// The checker and its predicate dependency share one public Maven estate; keep repository identity and
+// staging location together so a POM cannot send a consumer back to the unrelated dmtool binary mirror.
+def checkerRepository = 'https://github.com/mbackschat/a12-consistency-releases'
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            url = checkerRepository
+            scm {
+                url = "${checkerRepository}/tree/v${project.version}"
+                connection = "scm:git:${checkerRepository}.git"
+                tag = "v${project.version}"
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'checkerStaging'
+            url = rootProject.layout.buildDirectory.dir('consistency-release/maven')
+        }
+    }
+}
+
+// KLIB serializes source paths for debug information; Kotlin's documented relative-path base keeps
+// publication bytes independent of the maintainer's home directory: https://kotlinlang.org/docs/native-libraries.html#using-relative-paths-in-klibs
+tasks.named('compileKotlinJs') {
+    compilerOptions.freeCompilerArgs.add("-Xklib-relative-path-base=${rootProject.projectDir}")
+}
+
+def cleanStaging = rootProject.tasks.findByName('cleanCheckerMavenStaging') ?: rootProject.tasks.create('cleanCheckerMavenStaging', Delete) {
+    delete rootProject.layout.buildDirectory.dir('consistency-release/maven')
+}
+tasks.withType(org.gradle.api.publish.maven.tasks.PublishToMavenRepository).configureEach {
+    if (repository.name == 'checkerStaging') dependsOn cleanStaging
+}
+
+if (project.name == 'consistency') {
+    tasks.register('verifyCheckerMavenPublication', Exec) {
+        group = 'verification'
+        description = 'Stage all checker/predicate Maven variants and verify their complete public artifact inventory.'
+        dependsOn 'publishAllPublicationsToCheckerStagingRepository', ':predicates:publishAllPublicationsToCheckerStagingRepository'
+        commandLine rootProject.file('scripts/run-typescript.sh'), 'checker Maven inventory',
+                rootProject.file('scripts/typescript/checker-maven.ts'),
+                rootProject.layout.buildDirectory.dir('consistency-release/maven').get().asFile,
+                project.version.toString()
+    }
+}
