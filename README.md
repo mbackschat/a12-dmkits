@@ -1024,6 +1024,7 @@ Product implementation and examples.
 | JavaScript | 2 | 283 | 144 | 122 | 17 |
 | Kotlin | 343 | 69790 | 41801 | 22546 | 5443 |
 | TypeScript | 18 | 3867 | 3299 | 286 | 282 |
+| **Total** | **891** | **154673** | **99647** | **41169** | **13857** |
 
 ### Verification
 
@@ -1036,7 +1037,8 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
 | Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 50 | 7489 | 6405 | 597 | 487 |
+| TypeScript | 50 | 7497 | 6413 | 597 | 487 |
+| **Total** | **2878** | **430190** | **310942** | **75479** | **43769** |
 
 ### Tooling
 
@@ -1053,7 +1055,8 @@ Build, verification, release, deployment, and maintainer tooling.
 | Kotlin | 6 | 134 | 123 | 0 | 11 |
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
-| TypeScript | 27 | 3811 | 3240 | 306 | 265 |
+| TypeScript | 27 | 3814 | 3243 | 306 | 265 |
+| **Total** | **130** | **24336** | **18612** | **4345** | **1379** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->

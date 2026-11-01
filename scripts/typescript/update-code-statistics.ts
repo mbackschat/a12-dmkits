@@ -94,9 +94,12 @@ function render(report: Report, selected: string): string {
       for (const key of ["lines", "code", "comments", "blanks"] as const) total[key] += file.counts[key];
       languages.set(file.language, total);
     }
+    const total = { files: 0, lines: 0, code: 0, comments: 0, blanks: 0 };
     for (const [language, n] of [...languages].sort(([a], [b]) => a.localeCompare(b, "en"))) {
       output.push(`| ${language} | ${n.files} | ${n.lines} | ${n.code} | ${n.comments} | ${n.blanks} |`);
+      for (const key of ["files", "lines", "code", "comments", "blanks"] as const) total[key] += n[key];
     }
+    output.push(`| **Total** | **${total.files}** | **${total.lines}** | **${total.code}** | **${total.comments}** | **${total.blanks}** |`);
   }
   output.push("", "Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.",
     `<!-- source-statistics:${artifact.id}:end -->`);

@@ -51,11 +51,19 @@ test("the public updater uses policy classifications, counts code separately, an
   const updated = run();
   assert.equal(updated.status, 0, updated.stderr);
   const output = fs.readFileSync(path.join(root, "README.md"), "utf8");
-  for (const relative of ["README.md", "plugin/README.md", "interpreter/public-release/README.md"]) {
+  for (const relative of ["README.md", "plugin/README.md", "interpreter/public-release/README.md", "consistency/public-release/README.md"]) {
     assert.match(fs.readFileSync(path.join(root, relative), "utf8"), /Measured with \[locmetry\]\(https:\/\/github\.com\/mbackschat\/locmetry\) from /, relative);
+    for (const section of fs.readFileSync(path.join(root, relative), "utf8").split("### ").slice(1)) {
+      const rows = section.split("\n").filter(line => line.startsWith("| ")).slice(1)
+        .map(line => line.split("|").slice(1, -1).map(cell => cell.trim().replaceAll("**", "")));
+      const total = rows.pop();
+      assert.equal(total?.[0], "Total", relative);
+      assert.deepEqual(total.slice(1).map(Number), [1, 2, 3, 4, 5].map(column => rows.reduce((sum, row) => sum + Number(row[column]), 0)), relative);
+    }
   }
   assert.match(output, /\[`.locmetryrc`\]\(\.locmetryrc\)/);
   assert.doesNotMatch(output, /Counted from|Tokei/);
+  assert.match(output, /\| \*\*Total\*\* \| \*\*5\*\* \| \*\*7\*\* \| \*\*5\*\* \| \*\*1\*\* \| \*\*1\*\* \|/);
   assert.match(output, /\| Java \| 1 \| 3 \| 1 \| 1 \| 1 \|/);
   assert.match(output, /\| Kotlin \| 3 \| 3 \| 3 \| 0 \| 0 \|/);
   const interpreter = fs.readFileSync(path.join(root, "interpreter/public-release/README.md"), "utf8");

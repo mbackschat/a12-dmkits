@@ -102,6 +102,7 @@ Product implementation and examples.
 | JavaScript | 1 | 176 | 72 | 97 | 7 |
 | Kotlin | 185 | 31678 | 17870 | 11563 | 2245 |
 | TypeScript | 1 | 73 | 72 | 0 | 1 |
+| **Total** | **189** | **31942** | **18029** | **11660** | **2253** |
 
 ### Verification
 
@@ -114,6 +115,7 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | JavaScript | 10 | 878 | 529 | 262 | 87 |
 | Kotlin | 246 | 35808 | 26397 | 6555 | 2856 |
 | TypeScript | 14 | 1861 | 1246 | 468 | 147 |
+| **Total** | **275** | **38673** | **28252** | **7330** | **3091** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:checker-release:end -->
