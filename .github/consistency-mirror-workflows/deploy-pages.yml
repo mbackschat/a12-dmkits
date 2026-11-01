@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Require an immutable release tag
+      - name: Require an immutable release or presentation tag
         env:
           RELEASE_REF: ${{ github.ref }}
         run: |
-          printf '%s\n' "$RELEASE_REF" | grep -Eq '^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$'
+          printf '%s\n' "$RELEASE_REF" | grep -Eq '^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+|presentation-v[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]{40})$'
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

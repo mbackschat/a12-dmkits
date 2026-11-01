@@ -11,6 +11,8 @@ A standalone, Kernel-free consistency checker for A12 **DocumentModels** — the
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
+**[Try the browser showcase](https://mbackschat.github.io/a12-consistency-releases/showcase/)** · [Public API guide](https://mbackschat.github.io/a12-consistency-releases/guide.html) · [Showcase development](showcase/README.md)
+
 ## Getting it
 
 The Maven distribution uses the dedicated [checker release repository](https://github.com/mbackschat/a12-consistency-releases) and its GitHub Pages Maven repository. Add that repository alongside Maven Central:

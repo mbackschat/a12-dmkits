@@ -27,25 +27,25 @@ export function sourceIdentity(root: string, version: string): string {
     if (command(root, 'git', ['rev-parse', `consistency-v${version}^{commit}`]) !== source) throw new Error('HEAD must equal the immutable checker source tag');
     return source;
 }
-function githubIdentity(root: string): void {
+export function githubIdentity(root: string): void {
     if (command(root, 'git', ['config', 'user.email']) !== 'mbackschat@mail.de') throw new Error('GitHub push requires mbackschat@mail.de');
 }
-function equalInventory(expected: Record<string, string>, actual: Record<string, string>): void {
+export function equalInventory(expected: Record<string, string>, actual: Record<string, string>): void {
     if (JSON.stringify(Object.entries(expected).sort()) !== JSON.stringify(Object.entries(actual).sort())) throw new Error('published payload inventory differs from its sealed manifest');
 }
-async function anonymousBytes(url: string): Promise<Buffer> {
+export async function anonymousBytes(url: string): Promise<Buffer> {
     const response = await fetch(url, { signal: AbortSignal.timeout(60_000), headers: { 'Cache-Control': 'no-cache' } });
     if (!response.ok) throw new Error(`anonymous download failed: ${response.status} ${url}`);
     return Buffer.from(await response.arrayBuffer());
 }
 function digest(bytes: Buffer): string { return createHash('sha256').update(bytes).digest('hex'); }
 type Release = { draft: boolean; tag_name: string; assets: { id: number; name: string }[] };
-function getRelease(root: string, version: string): Release | undefined {
+export function getRelease(root: string, version: string): Release | undefined {
     // Tag lookup returned 404 for the initial draft; authenticated enumeration returned it (2026-11-01).
     const pages = JSON.parse(gh(root, ['api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp'])) as Release[][];
     return pages.flat().find(release => release.tag_name === `v${version}`);
 }
-function cloneMirror(root: string): string {
+export function cloneMirror(root: string): string {
     const mirror = resolve(root, 'build/consistency-release/mirror');
     rmSync(mirror, { recursive: true, force: true });
     gh(root, ['repo', 'clone', repository, mirror]);
@@ -54,12 +54,12 @@ function cloneMirror(root: string): string {
     assertMirrorTree(mirror);
     return mirror;
 }
-function releaseAssets(output: string, manifest: ReleaseManifest): Record<string, string> {
+export function releaseAssets(output: string, manifest: ReleaseManifest): Record<string, string> {
     const name = 'release-manifest.json';
     writeFileSync(resolve(output, name), JSON.stringify(manifest, null, 2) + '\n');
     return { ...manifest.assets, [name]: digest(readFileSync(resolve(output, name))) };
 }
-function verifyRelease(root: string, release: Release, expected: Record<string, string>, allowMissing = false): void {
+export function verifyRelease(root: string, release: Release, expected: Record<string, string>, allowMissing = false): void {
     const actual = Object.fromEntries(release.assets.map(asset => [asset.name, asset]));
     if (Object.keys(actual).some(name => !expected[name]) || (!allowMissing && Object.keys(actual).length !== Object.keys(expected).length)) throw new Error('unexpected or missing release assets');
     for (const [name, asset] of Object.entries(actual)) {
@@ -108,7 +108,8 @@ export async function stageChecker(root: string, receipt: Receipt): Promise<void
     verifyRelease(root, getRelease(root, receipt.version)!, assets);
     console.log(`Staged immutable ${tag}; ready for go-live`);
 }
-async function deployPages(root: string, version: string, mirrorSha: string): Promise<void> {
+export async function deployPagesTag(root: string, tag: string, mirrorSha: string): Promise<void> {
+    if (!/^(?:v\d+\.\d+\.\d+|presentation-v\d+\.\d+\.\d+-[a-f0-9]{40})$/.test(tag)) throw new Error('invalid Pages tag');
     const endpoint = `repos/${repository}/pages`;
     const current = api(root, endpoint) as { build_type: string } | undefined;
     if (!current) gh(root, ['api', '--method', 'POST', endpoint, '-f', 'build_type=workflow']);
@@ -120,12 +121,12 @@ async function deployPages(root: string, version: string, mirrorSha: string): Pr
         const endpoint = `${environment}/deployment-branch-policies`;
         const policies = api(root, endpoint) as { branch_policies: { name: string; type: string }[] };
         // New Pages sites allowed only main in the first deployment (2026-11-01); authorize this immutable tag without changing other protections.
-        if (!policies.branch_policies.some(p => p.name === `v${version}` && p.type === 'tag')) {
-            gh(root, ['api', '--method', 'POST', endpoint, '-f', `name=v${version}`, '-f', 'type=tag']);
+        if (!policies.branch_policies.some(p => p.name === tag && p.type === 'tag')) {
+            gh(root, ['api', '--method', 'POST', endpoint, '-f', `name=${tag}`, '-f', 'type=tag']);
         }
     }
     const started = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    gh(root, ['workflow', 'run', 'deploy-pages.yml', '--repo', repository, '--ref', `v${version}`]);
+    gh(root, ['workflow', 'run', 'deploy-pages.yml', '--repo', repository, '--ref', tag]);
     const deadline = Date.now() + 600_000;
     while (Date.now() < deadline) {
         const runs = JSON.parse(gh(root, ['run', 'list', '--repo', repository, '--workflow', 'deploy-pages.yml', '--json', 'databaseId,headSha,createdAt,status,conclusion', '--limit', '20'])) as { databaseId: number; headSha: string; createdAt: string; status: string; conclusion: string }[];
@@ -156,7 +157,7 @@ export async function goLiveChecker(root: string, version: string, runtime: Publ
     await promoteChecker({
         draft: release.draft,
         verifyDraft: async () => verifyRelease(root, release, assets),
-        deploy: () => deployPages(root, version, mirrorSha),
+        deploy: () => deployPagesTag(root, `v${version}`, mirrorSha),
         verifyPages: async () => {
             // Verify every advertised byte, including transitive artifacts and historical versions, before invoking consumers.
             for (const [name, hash] of Object.entries(manifest.site)) {

@@ -22,6 +22,8 @@ Three rules follow, and they generalize past numbers:
 - **Do not "play safe" by changing the encoding.** Quoting a number to protect its zeros looks safe and *is* a deviation: A12 emits `250.00` unquoted, so quoting breaks read→write identity on genuine A12 documents while fixing nothing (the loss it fears happens at parse time, upstream). Preserve fidelity by configuring the parser, never by re-encoding the value. A string is correct in exactly one place — a value the converter could not parse, which is A12's own pass-through.
 - **Oracle a format claim against the format's own implementation.** `A12NumberPlainFormTest` compares our lexical plain form against `java.math.BigDecimal.toPlainString` itself; it immediately caught a hand-derived edge case (`-0e5` is `0`, not `000000`). Specification prose is not the oracle when the real implementation is runnable.
 
+Checker public presentation updates use the dedicated [presentation publisher](docs/RELEASE-SPEC.md#checker-presentation), preserving existing library release identities. The [showcase](consistency/showcase/README.md) is a consumer of the packed JavaScript checker, separate from the browser test harness.
+
 ## Language
 
 English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.

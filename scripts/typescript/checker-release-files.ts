@@ -16,7 +16,7 @@ export function assertMirrorTree(mirror: string): void {
             const file = resolve(directory, entry), stat = lstatSync(file);
             if (stat.isSymbolicLink()) throw new Error(`unexpected mirror symlink: ${name}`);
             if (stat.isDirectory()) { visit(file, name + '/'); continue; }
-            if (!stat.isFile() || !/^(?:README\.md|LICENSE|\.github\/workflows\/deploy-pages\.yml|releases\/v\d+\.\d+\.\d+\.json|site\/index\.html|site\/maven\/io\/github\/mbackschat\/a12\/dm\/[^]+)$/.test(name)) throw new Error(`unexpected mirror file: ${name}`);
+            if (!stat.isFile() || !/^(?:README\.md|LICENSE|\.github\/workflows\/deploy-pages\.yml|releases\/v\d+\.\d+\.\d+\.json|presentations\/v\d+\.\d+\.\d+-[a-f0-9]{40}\.json|site\/(?:index|guide|privacy)\.html|site\/style\.css|site\/assets\/(?:a12-consistency-checker|kotlin-graalvm-kernel-roles)\.avif|site\/showcase\/(?:index\.html|assets\/[A-Za-z0-9_-]+\.(?:js|css))|site\/maven\/io\/github\/mbackschat\/a12\/dm\/[^]+)$/.test(name)) throw new Error(`unexpected mirror file: ${name}`);
         }
     }
     visit(mirror);

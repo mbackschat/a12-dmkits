@@ -74,6 +74,9 @@ reason = "parity/README.md: generated, never edited by hand; :consistency:syncCh
 id = "examples"
 match = [
   "examples/**",
+  "consistency/showcase/src/**",
+  "consistency/showcase/{index.html,package.json,tsconfig.json}",
+  "consistency/public-release/**",
   "consistency/consumer-tests/node/ci-gate.mjs",
   "interpreter/consumer-tests/browser/{src,public}/**",
   "interpreter/consumer-tests/browser/{index.html,package.json,tsconfig.json,tsconfig.service-worker.json,README.md}",

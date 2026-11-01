@@ -104,7 +104,7 @@ function artifacts(): Record<string, Artifact> {
     root: {
       id: "root", target: "README.md", description: "this repository",
       sections: [
-        production({ ...product, TypeScript: typescript, JavaScript: PRODUCTION_JAVASCRIPT_SOURCES }),
+        production({ ...product, TypeScript: [...typescript, "consistency/showcase/src"], JavaScript: PRODUCTION_JAVASCRIPT_SOURCES }),
         verification({ ...verificationSources, TypeScript: TYPESCRIPT_TEST_SOURCES }),
         { heading: "Tooling", introduction: "Build scripts, build-time generators, and the evaluation harness — neither shipped nor a check on what ships.",
           sources: { Java: TOOLING_JAVA_SOURCES, Kotlin: TOOLING_KOTLIN_SOURCES, JavaScript: TOOLING_JAVASCRIPT_SOURCES } },

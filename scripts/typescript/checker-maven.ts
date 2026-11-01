@@ -27,7 +27,7 @@ export function fileInventory(directory: string): Record<string, string> {
     return result;
 }
 
-function scanBytes(name: string, bytes: Buffer): void {
+export function scanBytes(name: string, bytes: Buffer): void {
     if (privateMarkers.test(bytes.toString('latin1'))) throw new Error(`private marker in publication: ${name}`);
 }
 

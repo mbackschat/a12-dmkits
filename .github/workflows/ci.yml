@@ -64,6 +64,9 @@ jobs:
         with:
           node-version: '24.20.0'
 
+      - name: Install Tokei for measured infographic evidence
+        run: cargo install tokei --version 15.0.0 --locked
+
       - name: Run repository TypeScript tool tests
         working-directory: a12-dmkits
         run: ./scripts/run-typescript.sh --test scripts/typescript/*.test.ts
@@ -76,7 +79,7 @@ jobs:
 
       # SourceFileSizeLimitGuardTest counts code lines with locmetry and refuses any version but the one the policy
       # pins, so the version and the Linux asset's checksum are read from that file. It downloads, so it runs after
-      # the offline preflights above and before the Gradle step whose root `test` needs it.
+      # the preflights above and before the Gradle step whose root `test` needs it.
       - name: Install the pinned locmetry
         working-directory: a12-dmkits
         run: |
@@ -196,6 +199,22 @@ jobs:
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
         run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:verifyInterpreterDependencies :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :verifyPublishedPomsResolveInRepoCoordinates :noBackendTest :consistency:verifyCheckerMavenPublication -PrunFuzz
+
+      - name: Set up pnpm for the checker showcase
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+
+      - name: Build and verify the checker showcase
+        working-directory: a12-dmkits
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          ./gradlew --no-daemon :consistency:packConsistencyNpmPackage
+          ./scripts/run-typescript.sh "checker showcase" scripts/typescript/checker-showcase.ts
+          cd build/consistency-showcase
+          pnpm run verify
+
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

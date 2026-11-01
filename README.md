@@ -1014,13 +1014,13 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from this repository
 
 ### Production
 
-The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `consistency/src/commonMain/kotlin`, `consistency/src/jsMain/kotlin`, `predicates/src/commonMain/kotlin`, `interpreter-bridge/src/main/kotlin`, `consistency-gate/src/main/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `consistency/src/commonMain/kotlin`, `consistency/src/jsMain/kotlin`, `predicates/src/commonMain/kotlin`, `interpreter-bridge/src/main/kotlin`, `consistency-gate/src/main/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `consistency/showcase/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | Java | 524 | 79499 | 53331 | 18212 | 7956 |
 | Kotlin | 342 | 69858 | 42055 | 22442 | 5361 |
-| TypeScript | 17 | 3794 | 3227 | 286 | 281 |
+| TypeScript | 18 | 3867 | 3299 | 286 | 282 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
 ### Verification
