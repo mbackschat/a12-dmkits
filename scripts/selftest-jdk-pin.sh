@@ -87,13 +87,13 @@ check "names GraalVM as the reason it refused" "yes" "$names_graal"
 check "tells the reader how to fix it" "yes" "$names_fix"
 
 echo "verify-graalvm-native.sh — the exact native-builder pin"
-native_home="$TMP/native-image"
+native_home="$TMP/native image"
 mkdir -p "$native_home/bin"
 cat > "$native_home/bin/native-image" <<'NATIVE_IMAGE'
 #!/bin/sh
-[ -z "${FAKE_NATIVE_IMAGE_FAILURE:-}" ] || exit 23
 printf '%s\n' "${FAKE_NATIVE_IMAGE_BANNER:?}"
 printf '%s\n' "${FAKE_GRAALVM_RUNTIME_BANNER:?}"
+[ -z "${FAKE_NATIVE_IMAGE_FAILURE:-}" ] || exit 23
 NATIVE_IMAGE
 chmod +x "$native_home/bin/native-image"
 graalvm_identity="$ROOT/gradle/graalvm-native.properties"
@@ -132,13 +132,34 @@ rm "$native_home/bin/native-image.cmd"
 
 # GraalVM's Windows distribution supplies native-image.cmd (getting-started/windows).
 mv "$native_home/bin/native-image" "$native_home/bin/native-image.cmd"
+chmod 644 "$native_home/bin/native-image.cmd"
+mkdir -p "$TMP/windows-bin"
+cat > "$TMP/windows-bin/cygpath" <<'CYGPATH'
+#!/bin/sh
+[ "$1" = '-w' ] || exit 31
+printf 'WIN:%s\n' "$2"
+CYGPATH
+cat > "$TMP/windows-bin/cmd.exe" <<'CMD'
+#!/bin/sh
+[ "$1" = /d ] && [ "$2" = /c ] && [ "$3" = call ] || exit 32
+[ "${MSYS2_ARG_CONV_EXCL:-}" = '*' ] || exit 33
+shift 3
+case "$1" in WIN:*) batch_path="${1#WIN:}" ;; *) exit 34 ;; esac
+shift
+exec sh "$batch_path" "$@"
+CMD
+chmod +x "$TMP/windows-bin/cygpath" "$TMP/windows-bin/cmd.exe"
+PATH="$TMP/windows-bin:$PATH"
+export PATH
 check "accepts the Windows launcher with the exact pinned builder" "accepted" "$(
   FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
     FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
     /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
 check "REFUSES a broken Windows launcher" "refused" "$(
-  FAKE_NATIVE_IMAGE_FAILURE=1 /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    FAKE_NATIVE_IMAGE_FAILURE=1 /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
 printf '#!/bin/sh\nexit 23\n' > "$native_home/bin/native-image"
 chmod +x "$native_home/bin/native-image"
@@ -164,7 +185,7 @@ mkdir -p "$TMP/windows-checkout/scripts" "$TMP/windows-checkout/gradle"
 cp "$verify_graalvm" "$TMP/windows-checkout/scripts/verify-graalvm-native.sh"
 printf 'graalvmVersion=%s\r\njavaVersion=%s\r\n' "$expected_graalvm_version" "$expected_java_version" > "$TMP/windows-checkout/gradle/graalvm-native.properties"
 check "accepts the same identity through CRLF checkout and output" "accepted" "$(
-  FAKE_NATIVE_IMAGE_BANNER="$(printf 'native-image %s fixture\r' "$expected_java_version")" \
+  FAKE_NATIVE_IMAGE_BANNER="$(printf 'native-image %s\r' "$expected_java_version")" \
     FAKE_GRAALVM_RUNTIME_BANNER="$(printf 'GraalVM Runtime Environment Oracle GraalVM %s+fixture\r' "$expected_graalvm_version")" \
     /bin/dash "$TMP/windows-checkout/scripts/verify-graalvm-native.sh" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
