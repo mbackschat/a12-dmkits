@@ -6,6 +6,12 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Performance
+
+- **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
+## [0.14.0]
+
 ### Added
 
 - **`Today` and `Now` evaluate through the published API.** `InterpreterConfiguration` takes an optional evaluation instant (`evaluationInstant`, a `Date` in TypeScript), read in the model's time zone; without one, each call reads the current instant, as the Kernel does. In TypeScript a `Date` from another realm is accepted. Rules using either constant used to be reported unsupported.
