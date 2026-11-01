@@ -40,7 +40,11 @@ async function anonymousBytes(url: string): Promise<Buffer> {
 }
 function digest(bytes: Buffer): string { return createHash('sha256').update(bytes).digest('hex'); }
 type Release = { draft: boolean; tag_name: string; assets: { id: number; name: string }[] };
-function getRelease(root: string, version: string): Release | undefined { return api(root, `repos/${repository}/releases/tags/v${version}`) as Release | undefined; }
+function getRelease(root: string, version: string): Release | undefined {
+    // Tag lookup returned 404 for the initial draft; authenticated enumeration returned it (2026-11-01).
+    const pages = JSON.parse(gh(root, ['api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp'])) as Release[][];
+    return pages.flat().find(release => release.tag_name === `v${version}`);
+}
 function cloneMirror(root: string): string {
     const mirror = resolve(root, 'build/consistency-release/mirror');
     rmSync(mirror, { recursive: true, force: true });

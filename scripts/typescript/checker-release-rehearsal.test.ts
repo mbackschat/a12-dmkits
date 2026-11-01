@@ -23,7 +23,8 @@ if(args[0]==='api') {
  const endpoint=args.find(a=>a.startsWith(repo));
  if(endpoint===repo+'/pages') json({build_type:'workflow'});
  else if(endpoint===repo) { if(!state.repo)notFound(); json({name:'a12-consistency-releases'}); }
- else if(endpoint.includes('/releases/tags/')) { if(!state.release)notFound(); json(state.release); }
+ else if(endpoint===repo+'/releases?per_page=100') json([state.release ? [state.release] : []]);
+ else if(endpoint.includes('/releases/tags/')) notFound();
  else if(endpoint.includes('/releases/assets/')) process.stdout.write(fs.readFileSync(path.join(home,'asset-'+endpoint.split('/').at(-1))));
  else throw Error('unexpected api '+args);
 } else if(args[0]==='repo' && args[1]==='create') {
