@@ -97,8 +97,8 @@ printf '%s\n' "${FAKE_GRAALVM_RUNTIME_BANNER:?}"
 NATIVE_IMAGE
 chmod +x "$native_home/bin/native-image"
 graalvm_identity="$ROOT/gradle/graalvm-native.properties"
-expected_graalvm_version="$(sed -n 's/^graalvmVersion=//p' "$graalvm_identity")"
-expected_java_version="$(sed -n 's/^javaVersion=//p' "$graalvm_identity")"
+expected_graalvm_version="$(sed -n 's/^graalvmVersion=//p' "$graalvm_identity" | tr -d '\r')"
+expected_java_version="$(sed -n 's/^javaVersion=//p' "$graalvm_identity" | tr -d '\r')"
 verify_graalvm="$ROOT/scripts/verify-graalvm-native.sh"
 
 check "accepts the exact pinned builder" "accepted" "$(
@@ -111,14 +111,62 @@ check "REFUSES the 25.0 LTS train" "refused" "$(
     FAKE_GRAALVM_RUNTIME_BANNER='GraalVM Runtime Environment Oracle GraalVM 25.0.4.1+fixture' \
     /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
-check "REFUSES the previous 25.3 patch" "refused" "$(
+check "REFUSES a different Java version with the correct GraalVM version" "refused" "$(
   FAKE_NATIVE_IMAGE_BANNER='native-image 25.0.4 fixture' \
-    FAKE_GRAALVM_RUNTIME_BANNER='GraalVM Runtime Environment Oracle GraalVM 25.3.4+fixture' \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
     /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
 check "REFUSES a broken native-image executable" "refused" "$(
   FAKE_NATIVE_IMAGE_BANNER='unused' FAKE_GRAALVM_RUNTIME_BANNER='unused' FAKE_NATIVE_IMAGE_FAILURE=1 \
     /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+
+printf '#!/bin/sh\nexit 23\n' > "$native_home/bin/native-image.cmd"
+chmod +x "$native_home/bin/native-image.cmd"
+check "prefers executable Unix launcher when both names exist" "accepted" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+rm "$native_home/bin/native-image.cmd"
+
+# GraalVM's Windows distribution supplies native-image.cmd (getting-started/windows).
+mv "$native_home/bin/native-image" "$native_home/bin/native-image.cmd"
+check "accepts the Windows launcher with the exact pinned builder" "accepted" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+check "REFUSES a broken Windows launcher" "refused" "$(
+  FAKE_NATIVE_IMAGE_FAILURE=1 /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+printf '#!/bin/sh\nexit 23\n' > "$native_home/bin/native-image"
+chmod +x "$native_home/bin/native-image"
+check "does not hide a broken executable Unix launcher behind the Windows fallback" "refused" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+chmod 644 "$native_home/bin/native-image"
+check "falls back when the unsuffixed launcher is not executable" "accepted" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+rm "$native_home/bin/native-image"
+check "REFUSES a wrong Windows GraalVM with the correct Java version" "refused" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER='GraalVM Runtime Environment Oracle GraalVM 25.3.4+fixture' \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+# A Windows checkout may use CRLF for the properties file as well as the launcher's output.
+mkdir -p "$TMP/windows-checkout/scripts" "$TMP/windows-checkout/gradle"
+cp "$verify_graalvm" "$TMP/windows-checkout/scripts/verify-graalvm-native.sh"
+printf 'graalvmVersion=%s\r\njavaVersion=%s\r\n' "$expected_graalvm_version" "$expected_java_version" > "$TMP/windows-checkout/gradle/graalvm-native.properties"
+check "accepts the same identity through CRLF checkout and output" "accepted" "$(
+  FAKE_NATIVE_IMAGE_BANNER="$(printf 'native-image %s fixture\r' "$expected_java_version")" \
+    FAKE_GRAALVM_RUNTIME_BANNER="$(printf 'GraalVM Runtime Environment Oracle GraalVM %s+fixture\r' "$expected_graalvm_version")" \
+    /bin/dash "$TMP/windows-checkout/scripts/verify-graalvm-native.sh" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
 )"
 
 echo

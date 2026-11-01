@@ -3,8 +3,8 @@ set -eu
 
 ROOT="$(CDPATH='' cd "$(dirname "$0")/.." && pwd)"
 IDENTITY="$ROOT/gradle/graalvm-native.properties"
-EXPECTED_GRAALVM="$(sed -n 's/^graalvmVersion=//p' "$IDENTITY")"
-EXPECTED_JAVA="$(sed -n 's/^javaVersion=//p' "$IDENTITY")"
+EXPECTED_GRAALVM="$(sed -n 's/^graalvmVersion=//p' "$IDENTITY" | tr -d '\r')"
+EXPECTED_JAVA="$(sed -n 's/^javaVersion=//p' "$IDENTITY" | tr -d '\r')"
 GRAAL_HOME="${1:-${GRAALVM_HOME:-}}"
 
 if [ -z "$EXPECTED_GRAALVM" ] || [ -z "$EXPECTED_JAVA" ]; then
@@ -18,6 +18,10 @@ if [ -z "$GRAAL_HOME" ]; then
 fi
 
 NATIVE_IMAGE="$GRAAL_HOME/bin/native-image"
+# GraalVM uses .cmd on Windows: https://www.graalvm.org/latest/getting-started/windows/
+if [ ! -x "$NATIVE_IMAGE" ] && [ -x "$NATIVE_IMAGE.cmd" ]; then
+  NATIVE_IMAGE="$NATIVE_IMAGE.cmd"
+fi
 if [ ! -x "$NATIVE_IMAGE" ]; then
   echo "verify-graalvm-native: no executable native-image at $NATIVE_IMAGE" >&2
   exit 1

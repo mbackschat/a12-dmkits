@@ -14,6 +14,7 @@ const PERFORMANCE_REPORTERS = new Set([
   "cli/native-capture-stamp.txt", "scripts/release-perf-gate.sh", "scripts/selftest-release-perf-gate.sh",
   "scripts/test-evidence.sh", "scripts/selftest-test-evidence.sh", "scripts/typescript/test-evidence.ts",
   "scripts/typescript/test-evidence.test.ts", "scripts/publish-release.sh",
+  "scripts/verify-graalvm-native.sh", "scripts/selftest-jdk-pin.sh",
 ]);
 function performanceInput(name: string): boolean {
   return !PERFORMANCE_REPORTERS.has(name) && !/^(perf-results|docs|src\/test)\//.test(name)

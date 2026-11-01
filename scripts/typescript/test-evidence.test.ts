@@ -44,6 +44,8 @@ test("a complete passing run is reusable across documentation, measurement and n
     f.write("adapter/README.md", "updated module documentation\n");
     f.write("perf-results/local/new.jsonl", "measurement history\n");
     f.write("cli/native-capture-stamp.txt", "new stamp\n");
+    f.write("scripts/verify-graalvm-native.sh", "native builder qualification only\n");
+    f.write("scripts/selftest-jdk-pin.sh", "builder qualification fixtures only\n");
     f.write("cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json", "{}\n");
     assert.equal(performanceInputs(f.root), before);
     assert.equal(verifyReleasePerformance(f.root, f.evidence).tests, 1);
@@ -52,7 +54,7 @@ test("a complete passing run is reusable across documentation, measurement and n
 });
 
 test("runtime, build configuration, anchor and test changes each invalidate evidence", () => {
-  for (const file of ["interpreter/src/commonMain/kotlin/Engine.kt", "build.gradle", "adapter/src/test/resources/perf/anchors.json", "adapter/src/test/kotlin/example/TimingTest.kt", "adapter/src/test/resources/new-fixture.json"]) {
+  for (const file of ["interpreter/src/commonMain/kotlin/Engine.kt", "build.gradle", "gradle/graalvm-native.properties", "adapter/src/test/resources/perf/anchors.json", "adapter/src/test/kotlin/example/TimingTest.kt", "adapter/src/test/resources/new-fixture.json"]) {
     const f = performanceFixture();
     try { f.record(); f.write(file, "changed\n"); assert.throws(() => verifyReleasePerformance(f.root, f.evidence), /inputs changed/); }
     finally { f.close(); }
