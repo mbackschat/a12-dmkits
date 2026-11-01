@@ -12,6 +12,7 @@ async function main(): Promise<void> {
     const root = process.cwd();
     const receiptPath = resolve(root, 'build/consistency-release/qualification.json');
     if (operation !== 'qualify') command(root, './scripts/check-release-gaps.sh', [], true);
+    command(root, './scripts/update-code-statistics.sh', ['--check', '--artifact', 'checker'], true);
     if (operation === 'qualify') {
         // Losing this build-local receipt is harmless: qualification recreates it; public tags and manifests retain release identity.
         rmSync(receiptPath, { force: true });

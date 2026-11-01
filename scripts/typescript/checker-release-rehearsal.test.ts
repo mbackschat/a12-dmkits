@@ -78,8 +78,12 @@ test('production publisher resumes uploads and go-live while refusing altered id
         run(root, 'git', ['config', 'user.email', 'mbackschat@mail.de']);
         writeFileSync(join(root, '.gitignore'), 'build/\n');
         writeFileSync(join(root, 'build.gradle'), "\nversion = '0.14.0'\n");
+        writeFileSync(join(root, '.locmetryrc'), readFileSync(resolve('.locmetryrc')));
+        mkdirSync(join(root, 'consistency/public-release'), { recursive: true });
+        writeFileSync(join(root, 'consistency/public-release/README.md'), readFileSync(resolve('consistency/public-release/README.md')));
         writeFileSync(join(root, 'LICENSE'), 'MIT License\n');
         mkdirSync(join(root, 'scripts')); mkdirSync(join(root, 'docs'));
+        writeFileSync(join(root, 'scripts/update-code-statistics.sh'), '#!/bin/sh\n[ \"$*\" = \"--check --artifact checker\" ] && [ \"${STATISTICS_STALE:-0}\" = 0 ]\n', { mode: 0o755 });
         writeFileSync(join(root, 'scripts/check-release-gaps.sh'), releaseGapScript, { mode: 0o755 });
         writeFileSync(join(root, 'docs/REHEARSAL-GAPS.md'), '## Open\n\n_None open._\n');
         mkdirSync(join(root, '.github/consistency-mirror-workflows'), { recursive: true });
@@ -95,9 +99,14 @@ test('production publisher resumes uploads and go-live while refusing altered id
         writeFileSync(join(root, 'build/consistency-release/qualification.json'), JSON.stringify(receipt));
         save({ fail: 'SHA256SUMS' });
         const publish = () => spawnSync(process.execPath, [publisher, 'stage', '0.14.0'], { cwd: root, env, encoding: 'utf8', timeout: 30_000 });
+        const stale = spawnSync(process.execPath, [publisher, 'stage', '0.14.0'], { cwd: root, env: { ...env, STATISTICS_STALE: '1' }, encoding: 'utf8', timeout: 30_000 });
+        assert.notEqual(stale.status, 0); assert.match(stale.stderr, /update-code-statistics/);
+        assert.equal(state().repo, undefined);
         let result = publish();
         assert.notEqual(result.status, 0); assert.match(result.stderr, /injected upload failure/);
         assert.equal(state().release.assets.length, 1);
+        assert.equal(run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'show', 'main:.locmetryrc']), readFileSync(resolve('.locmetryrc'), 'utf8').trim());
+        assert.match(run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'show', 'main:README.md']), /source-statistics:checker-release:start/);
         const first = readFileSync(join(home, 'asset-1'));
         const mirrorCommit = run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'rev-parse', 'main']);
         save({ ...state(), fail: null });

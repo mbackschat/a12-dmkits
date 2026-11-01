@@ -44,10 +44,12 @@ test('production presentation publisher preserves release bytes, resumes deploym
     for (const cwd of [root, seed]) {
         run(cwd, 'git', ['init', '-b', 'main']); run(cwd, 'git', ['config', 'user.email', 'mbackschat@mail.de']); run(cwd, 'git', ['config', 'user.name', 'Test']);
     }
+    cpSync(resolve('.locmetryrc'), resolve(root, '.locmetryrc'));
     cpSync(resolve('consistency/public-release'), resolve(root, 'consistency/public-release'), { recursive: true });
     cpSync(resolve('assets/infographics'), resolve(root, 'assets/infographics'), { recursive: true, filter: file => !file.endsWith('.png') });
     cpSync(resolve('.github/consistency-mirror-workflows'), resolve(root, '.github/consistency-mirror-workflows'), { recursive: true });
     mkdirSync(resolve(root, 'scripts')); writeFileSync(resolve(root, 'scripts/check-infographic-freshness.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    writeFileSync(resolve(root, 'scripts/update-code-statistics.sh'), '#!/bin/sh\n[ \"$*\" = \"--check --artifact checker\" ] && [ \"${STATISTICS_STALE:-0}\" = 0 ]\n', { mode: 0o755 });
     writeFileSync(resolve(root, '.gitignore'), 'build/\n');
     run(root, 'git', ['add', '.']); run(root, 'git', ['commit', '-m', 'fixture']); run(root, 'git', ['tag', 'consistency-v0.14.0']);
     run(root, 'git', ['remote', 'add', 'origin', 'https://github.com/mbackschat/a12-dmkits.git']);
@@ -67,6 +69,10 @@ test('production presentation publisher preserves release bytes, resumes deploym
     writeFileSync(driver, `import { refreshPresentation } from ${JSON.stringify(implementation)}; import {readFileSync} from 'node:fs'; import {resolve} from 'node:path';
 await refreshPresentation(${JSON.stringify(root)},'0.14.0',{build:()=>${JSON.stringify(showcase)},download:async url=>readFileSync(resolve(${JSON.stringify(root)},'build/consistency-release/mirror/site',new URL(url).pathname.replace('/a12-consistency-releases/','')))});`);
     const execute = () => spawnSync(process.execPath, [driver], { cwd: root, env, encoding: 'utf8', timeout: 30_000 });
+    const stale = spawnSync(process.execPath, [driver], { cwd: root, env: { ...env, STATISTICS_STALE: '1' }, encoding: 'utf8', timeout: 30_000 });
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /update-code-statistics/);
+    assert.deepEqual(JSON.parse(readFileSync(resolve(home, 'state.json'), 'utf8')).events, []);
     let result = execute(); assert.notEqual(result.status, 0); assert.match(result.stderr, /Pages run 1 failed/);
     let current = JSON.parse(readFileSync(resolve(home, 'state.json'), 'utf8')); current.fail = false; writeFileSync(resolve(home, 'state.json'), JSON.stringify(current));
     result = execute(); assert.equal(result.status, 0, result.stdout + result.stderr);

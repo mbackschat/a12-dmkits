@@ -26,6 +26,7 @@ export function assemblePresentation(root: string, mirror: string, showcase: str
     for (const name of ['README.md', 'site/index.html', 'site/guide.html', 'site/privacy.html', 'site/style.css']) {
         files[name] = Buffer.from(readFileSync(resolve(root, 'consistency/public-release', name), 'utf8').replaceAll('@VERSION@', version));
     }
+    files[".locmetryrc"] = readFileSync(resolve(root, ".locmetryrc"));
     for (const name of ['a12-consistency-checker', 'kotlin-graalvm-kernel-roles']) files[`site/assets/${name}.avif`] = readFileSync(resolve(root, `assets/infographics/${name}.avif`));
     files['.github/workflows/deploy-pages.yml'] = readFileSync(resolve(root, '.github/consistency-mirror-workflows/deploy-pages.yml'));
     for (const [name, bytes] of Object.entries(files)) scanBytes(name, bytes);

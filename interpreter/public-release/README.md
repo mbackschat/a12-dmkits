@@ -240,7 +240,7 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Kotlin | 346 | 38009 | 29880 | 4025 | 4104 |
 | TypeScript | 15 | 3399 | 3178 | 75 | 146 |
 
-Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.
+Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->
 
 ## Release contents

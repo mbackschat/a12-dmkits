@@ -1036,7 +1036,7 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
 | Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 50 | 7453 | 6371 | 597 | 485 |
+| TypeScript | 50 | 7489 | 6405 | 597 | 487 |
 
 ### Tooling
 
@@ -1053,9 +1053,9 @@ Build, verification, release, deployment, and maintainer tooling.
 | Kotlin | 6 | 134 | 123 | 0 | 11 |
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
-| TypeScript | 27 | 3796 | 3225 | 306 | 265 |
+| TypeScript | 27 | 3811 | 3240 | 306 | 265 |
 
-Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.
+Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
 
 ---

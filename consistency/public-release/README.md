@@ -86,6 +86,38 @@ The checker and Interpreter share portable predicate support. GraalVM provides n
 
 ![Kotlin, GraalVM and Kernel roles](https://mbackschat.github.io/a12-consistency-releases/assets/kotlin-graalvm-kernel-roles.avif)
 
+<!-- source-statistics:checker-release:start -->
+## Source statistics
+
+Measured with [locmetry](https://github.com/mbackschat/locmetry) from the portable checker, predicate dependency, shared regex sources, and browser showcase, using [`.locmetryrc`](https://github.com/mbackschat/a12-consistency-releases/blob/main/.locmetryrc). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.
+
+### Production
+
+Product implementation and examples.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| CSS | 1 | 1 | 1 | 0 | 0 |
+| HTML | 1 | 14 | 14 | 0 | 0 |
+| JavaScript | 1 | 176 | 72 | 97 | 7 |
+| Kotlin | 185 | 31678 | 17870 | 11563 | 2245 |
+| TypeScript | 1 | 73 | 72 | 0 | 1 |
+
+### Verification
+
+Automated tests, laws, differentials, consumer checks, and their support code.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| HTML | 4 | 101 | 56 | 45 | 0 |
+| Java | 1 | 25 | 24 | 0 | 1 |
+| JavaScript | 10 | 878 | 529 | 262 | 87 |
+| Kotlin | 246 | 35808 | 26397 | 6555 | 2856 |
+| TypeScript | 14 | 1861 | 1246 | 468 | 147 |
+
+Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
+<!-- source-statistics:checker-release:end -->
+
 ## License and privacy
 
 MIT. See [LICENSE](https://github.com/mbackschat/a12-consistency-releases/blob/main/LICENSE) and the [privacy notice](https://mbackschat.github.io/a12-consistency-releases/privacy.html). Release sources are included in the Maven publications. The source repository is private; this mirror is the public distribution and documentation surface.

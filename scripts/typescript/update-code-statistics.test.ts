@@ -35,7 +35,7 @@ function fixture(t: { after(callback: () => void): void }): string {
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
     fs.writeFileSync(path.join(root, relative), contents);
   }
-  for (const [relative, id] of [["README.md", "root"], ["plugin/README.md", "dmtool"], ["interpreter/public-release/README.md", "interpreter-release"]]) {
+  for (const [relative, id] of [["README.md", "root"], ["plugin/README.md", "dmtool"], ["interpreter/public-release/README.md", "interpreter-release"], ["consistency/public-release/README.md", "checker-release"]]) {
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
     fs.writeFileSync(path.join(root, relative), `before\n<!-- source-statistics:${id}:start -->\nstale\n<!-- source-statistics:${id}:end -->\nafter\n`);
   }
@@ -120,4 +120,23 @@ test("invalid usage retains exit status two and help runs through Dash", () => {
   const run = spawnSync("dash", [path.join(ROOT, "scripts/update-code-statistics.sh"), "--help"], { encoding: "utf8", timeout: 10_000 });
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Usage: update-code-statistics/);
+});
+
+
+test("checker statistics include its predicate dependency and shared sources without interpreter code", t => {
+  const root = fixture(t);
+  for (const relative of ["predicates/build.gradle", "predicates/src/commonMain/kotlin/Predicate.kt", "consistency/src/commonTest/kotlin/CheckerTest.kt"]) {
+    fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+    fs.writeFileSync(path.join(root, relative), "class Fixture\n");
+    execFileSync("git", ["-C", root, "add", relative]);
+  }
+  const run = spawnSync("dash", [path.join(root, "scripts/update-code-statistics.sh"), "--artifact", "checker"], { encoding: "utf8", timeout: 10_000 });
+  assert.equal(run.status, 0, run.stderr);
+  const report = measureRepository(root);
+  assert.deepEqual(selectSources(report, "checker", "Production").map(f => f.path).sort(), ["consistency/src/commonMain/kotlin/Checker.kt", "predicates/src/commonMain/kotlin/Predicate.kt", "shared-regex/src/Shared.kt"]);
+  const output = fs.readFileSync(path.join(root, "consistency/public-release/README.md"), "utf8");
+  assert.match(output, /a12-consistency-releases\/blob\/main\/\.locmetryrc/);
+  assert.match(output, /\| Kotlin \| 3 \| 3 \| 3 \| 0 \| 0 \|/);
+  assert.match(output, /### Verification/);
+  assert.doesNotMatch(output, /Tokei|Counted from|locmetry\) \d/);
 });

@@ -29,6 +29,7 @@ export async function refreshPresentation(root: string, version: string, operati
     const sourceRelease = command(root, 'git', ['rev-parse', `${sourceTag}^{commit}`]);
     assertPresentationChanges(command(root, 'git', ['diff', '--name-only', '-z', sourceTag]).split('\0').filter(Boolean));
     command(root, './scripts/check-infographic-freshness.sh', [], true);
+    command(root, './scripts/update-code-statistics.sh', ['--check', '--artifact', 'checker'], true);
     const release = getRelease(root, version);
     if (!release || release.draft) throw new Error('presentation refresh requires an already public release');
     const mirror = cloneMirror(root);

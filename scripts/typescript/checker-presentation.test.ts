@@ -18,6 +18,8 @@ test('presentation refresh preserves release and Maven identities and admits onl
     const result = assemblePresentation(root, mirror, showcase, '0.14.0', 'a'.repeat(40));
     assert.deepEqual(protectedInventory(mirror), before); assertMirrorTree(mirror);
     assert.ok(result.site['showcase/assets/index-abc123.js']);
+    assert.deepEqual(readFileSync(resolve(mirror, '.locmetryrc')), readFileSync(resolve(root, '.locmetryrc')));
+    assert.match(readFileSync(resolve(mirror, 'README.md'), 'utf8'), /source-statistics:checker-release:start/);
     assert.match(readFileSync(resolve(mirror, 'README.md'), 'utf8'), /dm-consistency:0.14.0/);
     assert.ok(!readFileSync(resolve(mirror, 'site/index.html'), 'utf8').includes('@VERSION@'));
     writeFileSync(resolve(showcase, 'assets/source.map'), ['', 'Users', 'private', 'source'].join('/'));
@@ -38,7 +40,7 @@ test('every assembled carrier is scanned before any mirror file is written', t =
     const source = resolve(temp, 'source'), mirror = resolve(temp, 'mirror'), showcase = resolve(temp, 'showcase');
     mkdirSync(mirror); mkdirSync(resolve(showcase, 'assets'), { recursive: true });
     writeFileSync(resolve(showcase, 'index.html'), 'showcase'); writeFileSync(resolve(showcase, 'assets/index-demo.js'), 'console.log("demo")');
-    for (const name of ['consistency/public-release', 'assets/infographics', '.github/consistency-mirror-workflows']) cpSync(resolve(root, name), resolve(source, name), { recursive: true, filter: file => !file.endsWith('.png') });
+    for (const name of ['.locmetryrc', 'consistency/public-release', 'assets/infographics', '.github/consistency-mirror-workflows']) cpSync(resolve(root, name), resolve(source, name), { recursive: true, filter: file => !file.endsWith('.png') });
     const carriers = ['consistency/public-release/README.md', 'consistency/public-release/site/guide.html', 'assets/infographics/a12-consistency-checker.avif', '.github/consistency-mirror-workflows/deploy-pages.yml'];
     for (const name of carriers) {
         const file = resolve(source, name), original = readFileSync(file);

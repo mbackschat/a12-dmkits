@@ -17,6 +17,11 @@ const ARTIFACTS: Record<string, Artifact> = {
     modules: ["src", "core", "rulekit", "modelkit", "edit", "schemakit", "adapter", "cli", "interpreter", "consistency", "predicates", "interpreter-bridge", "consistency-gate", "shared-regex"],
     sections: ["Production", "Verification"],
   },
+  checker: {
+    id: "checker-release", target: "consistency/public-release/README.md",
+    description: "the portable checker, predicate dependency, shared regex sources, and browser showcase",
+    modules: ["consistency", "predicates", "shared-regex"], sections: ["Production", "Verification"],
+  },
   interpreter: {
     id: "interpreter-release", target: "interpreter/public-release/README.md",
     description: "the standalone interpreter, shared regex sources, TypeScript facade, and browser showcase",
@@ -74,7 +79,7 @@ function selectSources(report: Report, selected: string, section: Section): Sour
 
 function render(report: Report, selected: string): string {
   const artifact = ARTIFACTS[selected];
-  const policy = selected === "root" ? ".locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
+  const policy = selected === "root" ? ".locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : selected === "checker" ? "a12-consistency-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
   const output = [
     `<!-- source-statistics:${artifact.id}:start -->`, "## Source statistics", "",
     `Measured with [locmetry](https://github.com/mbackschat/locmetry) from ${artifact.description}, using [\`.locmetryrc\`](${policy}). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.`,
@@ -93,7 +98,7 @@ function render(report: Report, selected: string): string {
       output.push(`| ${language} | ${n.files} | ${n.lines} | ${n.code} | ${n.comments} | ${n.blanks} |`);
     }
   }
-  output.push("", "Maintainers regenerate these tables with the latest locmetry; both release publishers compare them with fresh counts before any public mutation.",
+  output.push("", "Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.",
     `<!-- source-statistics:${artifact.id}:end -->`);
   return output.join("\n");
 }
@@ -107,12 +112,12 @@ function main(args: string[]): number {
       case "--check": check = true; break;
       case "--artifact": selected = args[++index]; break;
       case "-h": case "--help":
-        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter]\n\nUpdate public README tables or compare them with fresh locmetry measurements. Use the latest locmetry; .locmetryrc defines classification.");
+        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter|checker]\n\nUpdate public README tables or compare them with fresh locmetry measurements. Use the latest locmetry; .locmetryrc defines classification.");
         return 0;
       default: throw new UsageError(`unknown argument: ${args[index]}`);
     }
   }
-  if (selected !== "all" && !Object.hasOwn(ARTIFACTS, selected)) throw new UsageError(`artifact must be all, root, dmtool, or interpreter: ${selected}`);
+  if (selected !== "all" && !Object.hasOwn(ARTIFACTS, selected)) throw new UsageError(`artifact must be all, root, dmtool, interpreter, or checker: ${selected}`);
   const root = path.resolve(__dirname, "../..");
   const report = measureRepository(root);
   let failures = 0;
