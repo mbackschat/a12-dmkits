@@ -1,18 +1,61 @@
-# Kernel 31.1.0 upgrade — change analysis & update plan (PROPOSAL)
+# Kernel 31.1.1 upgrade (2026.06-ext1) — change analysis & plan (PROPOSAL, executing)
 
-**Status:** PROPOSAL, 2026-07-17. **Recommended disposition: DEFER** — finish current work on 30.8.1 and fold this bump into the kernel-decoupling program (as its V1→V2 Stage 5) rather than run it now as a standalone migration; rationale + re-open triggers in §10. This is the concrete instance of the [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.0` bump: it inventories what upstream changed and lays out the phased realignment for when the bump happens. Nothing here is executed — the kernel checkouts were **fetched, not pulled**, and no pins were bumped.
+**Status:** PROPOSAL, **executing since 2026-11-02** on the owner's directive. This is the concrete instance of the [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.1` bump. The source audit was written 2026-07-17 against 31.1.0 (2026.06-ext0), with a disposition of DEFER. It was retargeted 2026-11-02 to **31.1.1 (2026.06-ext1)**, the release the sibling `a12-kernel` checkout now carries, which per the project rule makes it this project's version. **§0's work-item table is the state carrier**: each landing updates its row in the same commit. Once every row is done, the durable contracts graduate to their owning specs and this doc is archived.
 
-Primary sources: the upstream [kernel migration instructions](https://github.com/mgm-tp/a12-kernel/blob/f10b9203822cd2a2d86bacccfa1ace615606b3c8/documentation/dev/index.adoc#L522-L606), the exact [kernel `30.8.1…31.1.0` comparison](https://github.com/mgm-tp/a12-kernel/compare/cb66e51fa7ab90b650698f861bf670754e2e1e66...f10b9203822cd2a2d86bacccfa1ace615606b3c8), and the exact [metamodel comparison](https://github.com/mgm-tp/a12-kernel-mm/compare/d4ec70fcd80f89a6d84071e085a990a9884e38ef...f7ea1796f0f124c89fc877a6e4e49c42e963293b). Both fetched releases are one squashed commit directly on top of the pinned release: kernel `cb66e51…f10b920` is 1,335 files, +19,833/−42,057; metamodel `d4ec70f…f7ea179` is 89 files, +26,966/−3,094. Generated `/delombok/` and `build/` output was excluded from the source analysis.
+Primary sources:
+- The upstream kernel migration instructions: `a12-kernel` `eec9134:documentation/dev/index.adoc`, section "2026.06".
+- The [kernel `30.8.1…31.1.0` comparison](https://github.com/mgm-tp/a12-kernel/compare/cb66e51fa7ab90b650698f861bf670754e2e1e66...f10b9203822cd2a2d86bacccfa1ace615606b3c8) plus the ext1 delta `f10b920…eec9134`.
+- The [metamodel comparison](https://github.com/mgm-tp/a12-kernel-mm/compare/d4ec70fcd80f89a6d84071e085a990a9884e38ef...f7ea1796f0f124c89fc877a6e4e49c42e963293b).
 
-Neither repository publishes Git tags or GitHub Release objects. That does **not** mean there is no authored changelog: `a12-kernel` now carries detailed in-repository migration instructions, which are the primary change list; the full source and metamodel diffs corroborate them and reveal the internal changes the guide intentionally does not cover. Research used fetch-only sibling refs plus detached temporary clones at the two new commits; the sibling worktrees were not pulled, switched, merged, rebased, or otherwise changed.
+Each kernel release is one squashed commit directly on top of the previous one:
+
+| commit | release | kernel |
+|---|---|---|
+| `cb66e51` | 2025.06-ext5 | 30.8.1 |
+| `f10b920` | 2026.06-ext0 | 31.1.0 |
+| `eec9134` | 2026.06-ext1 | 31.1.1 |
+
+Ext1 uses the ext0 metamodels (`a12-kernel-mm` `f7ea179`), as pinned by `a12-kernel-bootstrap`'s `releases/2026.06-ext1.json`. Generated `/delombok/` and `build/` output is excluded from every source read here.
 
 ## Bottom line
 
-This is a **major-version and model-format migration, not a pin bump.** `30.8.1` (2025.06-ext5) → **`31.1.0` (2026.06-ext0)** is a new annual line; the old line is preserved upstream as branch `release/2025.06` (our current pin). The upgrade raises the minimum/latest document-model format from **28.4.0 to 29.4.0**, so all **65 committed JSON models** plus inline fixtures and authoring defaults must migrate. It also carries hard compile breaks across `:adapter` main/test source sets, a kernel module rename/consolidation (`kernel-*` → `kernel-internal-*` + deletions), a Jackson 2 → 3 move inside the kernel, one new DSL operator (`SumOfTerms`), two constraint relaxations that contradict currently-green laws, and an include-config/alias restructure spanning `core`, `modelkit`, `edit`, CLI, fixtures, and demos. JDK stays **21**.
+This is a **major-version and model-format migration, not a pin bump.** It brings:
+- A mandatory document-model migration from **28.4.0 to 29.4.0**, including an include/reference restructure.
+- Hard compile breaks across `:adapter` main and test source sets: V1 documents, variants, `expand`, the deprecated extension registries.
+- A kernel module rename (`kernel-*` → `kernel-internal-*`) and Jackson 2 → 3 inside the kernel.
+- One new DSL operator, `SumOfTerms`, and two constraint relaxations that contradict laws we currently keep green.
 
-Effort shape: **multi-session** — this doc's work-item table is the state carrier across those sessions ([`../CLAUDE.md`](../CLAUDE.md) "This session does the work"). There is also a prerequisite in a sibling repo: [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap) must be updated first, or 31.1.0 never reaches `mavenLocal` and nothing here builds.
+JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is done: 31.1.1 is in `mavenLocal`.
 
-This is exactly the scenario [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) was written for — quiet tolerance at runtime, **loud detection at build time**. This audit also found several guardians that are one-way or scan a hardcoded source set; Phase 4 strengthens those before treating their failures as a complete worklist.
+## 0 · Decisions and work items
+
+### Owner decisions (2026-11-02)
+
+| # | question | decision |
+|---|---|---|
+| D1 | version support | **31.1.1 / DM 29.4.0 is the single floor**, with no dual support. The last 30.8.1 revision is the local annotated tag `kernel-30.8.1-final` (`7b1892c65`). |
+| D2 | include-expansion oracle (kernel `expand` removed, A12K-4021) | The kernel-free `ModelReader`'s parity test compares against the remaining `a12internal` `CombinationModelService` expansion, **behind one adapter port**. |
+| D3 | include identity in our API/CLI | **`includeConfig.reference` is the only identity.** Alias-based input fails fast with a corrective diagnostic; there is no tool-local alias. |
+| D4 | a12-kernel-lean | **Migrate together.** Letter A was sent 2026-11-02. The probe tooling moves first, their probe models are migrated by the kernel on request, and one verdict-delta letter is sent per batch, with the release announced before it is published. |
+| D5 | kernel TypeScript runtime | A **separate follow-up** after this upgrade. Here, only correct the docs that still call it blocked. |
+| D6 | releases | **Release at the end, gated.** All gates pass and the drop-in certificate is re-run on 31.1.1; the release step gets a cold review; the peer letter goes out first; the owner confirms once more before `--go-live`. |
+| D7 | CLAUDE.md | Update only the version mentions (release, kernel, A12 Tools installation label). |
+
+### Work items (the state carrier)
+
+| id | item | status |
+|---|---|---|
+| W0 | Bootstrap 31.1.1 into `mavenLocal` (sibling `a12-kernel-bootstrap`) | done (sibling, before 2026-11-02) |
+| W1 | Retarget this proposal; record D1–D7 | done 2026-11-02 |
+| W2 | Build wiring + `:adapter` compile on 31.1.1. Probe tooling (`kernelProbe`, `probeDifferential`) ported first and announced to a12-kernel-lean. V2 document materializer, variants removed, the D2 expansion port, custom-extension API, Jackson 3. | open — held until a12-kernel-lean answers Letter A's question 1 (final 30.8.1 measurements) |
+| W3 | DM 28.4 → 29.4 migration of every committed fixture through the kernel's own migrator. The D3 include redesign. Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's probe models on request. | open |
+| W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | open |
+| W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | open |
+| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | open |
+| W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | open |
+| W8 | Gated release (D6) | open |
+
+Each of W3–W6 ends with a verdict-delta letter to a12-kernel-lean (D4).
 
 ---
 
@@ -20,42 +63,39 @@ This is exactly the scenario [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) was written 
 
 ### Version streams
 
-| stream | 30.8.1 (now) | 31.1.0 (new) | where we pin it |
+| stream | 30.8.1 (2025.06-ext5) | 31.1.1 (2026.06-ext1) | where we pin it |
 |---|---|---|---|
-| `kernelVersion` (main line) | 30.8.1 | **31.1.0** | `build.gradle:78`, `adapter/build.gradle:36` |
-| distribution label | 2025.06-ext5 | **2026.06-ext0** | `build.gradle:83`, native Windows smoke expectations |
-| document-model format | 28.4.0 | **29.4.0** | `core/ModelFormat.java`, 65 committed JSON models, inline fixtures |
-| runtime-api (hardcoded) | 32.3.4 | **33.0.2** | `adapter/build.gradle:101` |
-| customfieldtype-api (test) | 28.2.0 | **29.0.2** | `adapter/build.gradle:124` |
-| a12-base (kernel pin) | 29.3.0 | **30.0.0** | transitive; the public base source release is 30.0.1 |
-| runtime artifact id | `…runtime-30-8` | `…runtime-31-1` | transitive only — safe |
-| Jackson (kernel-internal) | 2.x `com.fasterxml` | **3.1.2 `tools.jackson`** | not pinned directly |
-| CI bootstrap cache | `kernel-30.8.1-base-29.3.0` | **kernel/base 31/30 key** | `.github/workflows/ci.yml`, `.github/workflows/nightly-performance.yml`, mirror native workflow |
+| `kernelVersion` | 30.8.1 | **31.1.1** | `build.gradle:78` **and** `adapter/build.gradle:41`. The duplicate pin goes in W2. |
+| distribution label | 2025.06-ext5 | **2026.06-ext1** | `build.gradle:83`; native smoke expectation `.github/mirror-workflows/build-native.yml:194` |
+| document-model format | 28.4.0 | **29.4.0** | `core/ModelFormat.java`, committed JSON fixtures, inline fixtures, authoring defaults |
+| `kernel-core-runtime-api` | 32.3.4 | **33.0.2** | `adapter/build.gradle:120` |
+| `kernel-core-customfieldtype-api` (test) | 28.2.0 | **29.0.2** | `adapter/build.gradle:162` |
+| a12-base | 29.3.0 | **30.0.2** | transitive |
+| runtime artifact | `kernel-core-runtime-30-8` | `kernel-core-runtime-31-1` | `adapter/build.gradle:142` (test) |
+| Jackson (kernel-internal) | 2.x `com.fasterxml` | **3.2.1 `tools.jackson`** (3.1.2 at ext0) | not pinned directly |
+| CI bootstrap cache | `kernel-30.8.1-base-29.3.0` | a kernel/base 31.1.1/30.0.2 key | `.github/workflows/ci.yml`, `nightly-performance.yml`, the mirror native workflow |
 
-### Module rename / delete / stable map (the backbone of the build-file change)
+### Module rename / delete / stable map
 
-The kernel renamed most Gradle projects `kernel-*` → `kernel-internal-*` (physical dirs unchanged) and, since publishing uses the project name with no artifact-id override, the published Maven artifact IDs change. This is source-confirmed; exact coordinate names and publication are no longer open questions.
+The kernel renamed most Gradle projects `kernel-*` → `kernel-internal-*`, and since publishing uses the project name, the Maven artifact IDs changed (source-confirmed). Kernel 31's `kernel-md-facade` now **exports, at compile scope,** the model, builder, serializer and runtime-executor modules. The sibling `a12-kernel-demo` builds against that single dependency at 31.1.1 (its `e7ca3af`). So the default for W2 is **the facade as the one coordinate**. A direct `kernel-internal-*` dependency stays only where it states a compile-time contract the facade does not export.
 
-| adapter dependency (30.8.1) | 31.1.0 fate |
+| adapter dependency (30.8.1) | 31.1.1 fate |
 |---|---|
-| `kernel-md-facade` | **stable name** (version bump only) |
-| `kernel-md-serializer` | **stable name** (version bump only) |
-| `kernel-core-tool-api` | → **`kernel-internal-core-tool-api`** |
-| `kernel-core-parsetree-api` | → **`kernel-internal-core-parsetree-api`** |
-| `kernel-core-facade` | → **`kernel-internal-core-facade`** |
-| `kernel-core-calc` | → **`kernel-internal-core-calc`** |
-| `kernel-md-model` | → **`kernel-internal-md-model`** |
-| `kernel-md-runtime-api` | → **`kernel-internal-md-runtime-api`** |
-| `kernel-md-runtime-service` | → **`kernel-internal-md-runtime-service`** |
-| `kernel-md-a12internal` | **DELETED** — the `DocumentModel` class moved to new **`kernel-md-documentmodel`** |
-| `kernel-md-document-api` | **DELETED** — the entire V1 document API is retired (use `md.document.apiV2`) |
-| `kernel-core-runtime-api` | stable name, **version 32.3.4 → 33.0.2**; now an `includeBuild` in the kernel |
-| `kernel-core-customfieldtype-api` | stable name, **version 28.2.0 → 29.0.2** |
-| (`IProblemReporter`) | its module moved `kernel-core-base-utils` → **`kernel-internal-base-utils`**, same Java package |
+| `kernel-md-facade`, `kernel-md-serializer` | stable names |
+| `kernel-core-tool-api` → `kernel-internal-core-tool-api`; `kernel-core-parsetree-api` → `kernel-internal-core-parsetree-api`; `kernel-core-facade` → `kernel-internal-core-facade`; `kernel-core-calc` → `kernel-internal-core-calc`; `kernel-md-model` → `kernel-internal-md-model`; `kernel-md-runtime-api` → `kernel-internal-md-runtime-api`; `kernel-md-runtime-service` → `kernel-internal-md-runtime-service` | renamed |
+| `kernel-md-a12internal` | **deleted**: `DocumentModel` moved to **`kernel-md-documentmodel`** |
+| `kernel-md-document-api` | **deleted**: the V1 document API is retired (A12K-3684); use `md.document.apiV2` |
+| `kernel-core-runtime-api`, `kernel-core-customfieldtype-api` | stable names, new versions (above) |
+| `IProblemReporter` | its module moved `kernel-core-base-utils` → `kernel-internal-base-utils`, same package |
 
-New modules: **`kernel-md-documentmodel`** (holds the model classes and migration API) and `kernel-md-workspace-converter`. Seven of our direct old coordinates rename to `kernel-internal-*`; the other changes are stable names, removals, or replacement modules.
+**Design signal.** The `kernel-internal-*` naming declares those modules unstable. Using the facade simplifies coordinates, but it does **not** make our source coupling public. The parse-tree, formatter, reference-rewrite and calculation-read capabilities we use have only `internal`/`a12internal` APIs. So the achievable target is one stable coordinate plus a confined internal source boundary in `:adapter`.
 
-**Design signal to escalate (see §10):** the `kernel-internal-*` renaming is a deliberate statement that these are internal and unstable. Upstream recommends `kernel-md-facade` (and its BOM) as the single Java dependency, and the facade exposes the required internal artifacts transitively. That can simplify Gradle coordinates, but it does **not** make our source coupling public: the parse-tree, formatter, reference-rewrite, and calculation-read capabilities we use still have only `internal`/`a12internal` APIs. The achievable decision is therefore “one stable aggregate coordinate plus a confined internal source boundary,” not a public-only rewrite unless capabilities are dropped or upstream adds replacements.
+### The ext0 → ext1 delta (31.1.0 → 31.1.1)
+
+`git diff --name-only f10b920 eec9134` lists 44 files, mostly licences, notices, package versions, docs and the TS codemod. Eleven are `.java`/`.ts` source outside tests, all read (2026-11-02):
+- **Value conversion now receives the configured custom-field-type factory.** `ConversionService`, `ValidationData`, `LowKernelApiUtils`, `DataDocumentConversionUtils` and `DataTransferServiceAdapter` thread `ICustomFieldTypeFactory` into `metaField.convert`/`convertFromBasicType`. This is the one runtime delta. Its observable effect is unmeasured (W5). Re-run `adapter.laws.CustomFieldTypeSpiInvocationLawsTest`.
+- **Include/mapping resolution:** `UnexpandedModelResolverImpl` now parses the header and accepts the `runtime_mapping_precompfragment_document` model type (constant moved to `MappingModelService`, used by `HandlePrecompAndOtherFragments`). `StructuralMappingModelService` loses an unused field. This is relevant to D2's port.
+- `facade.ts` gains one JSDoc comment. Jackson moves to 3.2.1 and base to 30.0.2.
 
 ---
 
@@ -63,243 +103,204 @@ New modules: **`kernel-md-documentmodel`** (holds the model classes and migratio
 
 ### One new operator — `SumOfTerms` / `SummeVonTermen`
 
-A new **set operation** (parse-tree `ISetOpOperation`, enum `SetOpOperationName.SumOfTerms("SummeVonTermen")`; lexer terminal `SUMME_VON_TERMEN`).
+A new **set operation** (parse tree `ISetOpOperation`, enum `SetOpOperationName`, lexer terminal `SUMME_VON_TERMEN`; EN `SumOfTerms`, DE `SummeVonTermen`, re-verified at `eec9134`).
 
-- **Keywords:** EN `SumOfTerms`, DE `SummeVonTermen`.
-- **Syntax / arity:** `SumOfTerms(<iterationGroup*>, <term>)` — arg 1 is a starred repeatable **group** path; arg 2 is an arbitrary numeric **term** evaluated per iteration. Registered as an `einfacheOperation`, so it is usable anywhere a number-valued operation is (rule conditions and computations). **Returns NUMBER.**
-- **Semantics:** "for each repetition the value of an iterating term is calculated, then those values are summed." Distinct from `SumOfProducts`, which is hard-wired to the product of exactly two repeatable *fields*; `SumOfTerms` sums *any* term over an explicitly-starred group.
-- **Checker constraints** (`CheckSetOperOpImpl` + `CheckSetExpressionUtil`): iteration entity must be a group, repeatable + wildcarded on its lowest level, no semantic index; term must be numeric, may not contain application-conditions / `RepetitionNotUnique` / a `Mit` filter / a nested `SumOfTerms`; the lowest wildcard level **must** be iterated (stricter than the `Mit` filter); no `$` outer iteration inside the term; rejected entirely in H-models.
-- **No kernel BA-doc example exists** — the only kernel prose is the parser-web tooltip (which even has a DE-title copy-paste bug: it shows `SummeVonProdukten(...)`). Our catalog example will be our own (license-safe), verified through the tool.
+- **Syntax / arity:** `SumOfTerms(<iterationGroup*>, <term>)`. Argument 1 is a starred repeatable group path; argument 2 is a numeric term evaluated per iteration. It is usable wherever a number-valued operation is, and **returns NUMBER**.
+- **Checker constraints** (July source read of `CheckSetOperOpImpl` + `CheckSetExpressionUtil`, to be re-measured in W6):
+  - The iteration entity must be a group, repeatable and wildcarded on its lowest level, with no semantic index.
+  - The term must be numeric and may not contain application conditions, `RepetitionNotUnique`, a `Mit` filter or a nested `SumOfTerms`.
+  - The lowest wildcard level must be iterated.
+  - No `$` outer iteration inside the term.
+  - The operator is rejected entirely in H-models.
+- **No A12 example exists** (searched 2026-11-02): 0 hits in the 121 document models of the A12 Tools 2026.06-ext1 workspaces, in the kernel documentation (including `documentation/_merged/kernel-ba.md`) and in the metamodels. The only A12 prose is the editor's built-in help (EN "For each repetition, the value of an iterating term is calculated and then those values are summed up."); its DE title still reads `SummeVonProdukten(_Pfad_, _Term_)`. The one worked example is the sibling `a12-kernel-demo`'s timesheet computation, `SumOfTerms(Days*, [Hours] * [Rate] + [Km] * 0.30)`, which the license rule lets us adapt. The demo's prose about empty fields and empty rows is a hypothesis until W6 measures it on both kernel strategies.
 
-For this project, support is an **atomic typed vertical slice**: a typed `GroupRef`/numeric-expression authoring API, renderer/reference/explanation support, adapter read-back for `ISetOpOperation`, catalog EN+DE metadata and examples, interpreter parse/evaluation/relevance support, and dynamic-Java/interpreter differentials. A catalog-only entry would falsely advertise a construct the typed API cannot author and the interpreter cannot execute. The empty-iteration result must be observed against both kernel strategies; it must not be inferred from `SumOfProducts`.
+Support is an **atomic typed vertical slice**: typed authoring, renderer/reference/explanation, adapter read-back for `ISetOpOperation`, catalog EN+DE, interpreter parse/evaluate/relevance, and differentials. A catalog-only entry would advertise a construct the typed API cannot author and the interpreter cannot execute. The empty-iteration result must be observed against both kernel strategies, never inferred from `SumOfProducts`.
 
-### Two constraint *relaxations* (previously-invalid conditions now validate)
+### Two constraint *relaxations*
 
-These are the subtle, high-value findings — they contradict laws we currently lock green:
+These contradict laws we currently keep green. Source-verified at `eec9134` (0 hits for the removed checks; `cb66e51`: `CheckVergleichsBedingungImpl` 5, `CheckEntityListenUtils` 1, `CheckOperationImpl` 3). Neither is measured yet.
 
-1. **Enum comparisons — compatibility checks fully removed.** Comparing two enums with mismatched display/value maps, or an enum-with-display-values against a string / a texts-less enum, **was** rejected (`MVK_INVALID_COMPARE_ENUM_TO_ENUM` / `MVK_INVALID_COMPARE_ENUM_TO_STRING`) and **is now allowed**. (`CheckVergleichsBedingungImpl` lost `checkEnumVsEnum`/enum-vs-string; `CheckEntityListenUtils` lost the display-value machinery.)
-2. **`+` concatenation with display-value enums — restriction removed.** `CheckOperationImpl.checkWithoutDisplayValues` deleted; `MVK_NO_STRING_OR_NUMBER_FOR_ADD` still exists for the genuine mismatch case.
+1. **Enum comparisons:** the compatibility checks are removed. `MVK_INVALID_COMPARE_ENUM_TO_ENUM` / `…_TO_STRING` no longer exist.
+2. **`+` with display-value enums:** `CheckOperationImpl.checkWithoutDisplayValues` is deleted. `MVK_NO_STRING_OR_NUMBER_FOR_ADD` remains for the genuine mismatch.
 
-### Not a change (corrections to first-glance reads)
+### Not a change
 
-- **`INumberOfRootGroupsOperation` is not new** and is **H-model-only** — it already existed at 30.8.1 (`AnzahlAngegebenerVordrucke`), outside the A12-model DSL we target. The only 31.1.0 delta is a grammar comment + a `toString()` fix.
-- **`OperationType.NUMBER` gaining `"VkBigDecimal"`** is a codegen helper for the `SumOfTerms` typed lambda — no DSL/type-system behavior change.
-- **No A12-model keyword was removed or renamed.** No public parse-tree API type moved package. The `_30_8`→`_31_1` churn is only in `kernel-rt` resource paths.
+- `INumberOfRootGroupsOperation` is not new and is H-model-only.
+- `OperationType.NUMBER` gaining `"VkBigDecimal"` is a codegen helper for `SumOfTerms`.
+- No A12-model keyword was removed or renamed. No public parse-tree type moved package.
 
 ---
 
 ## 3 · Error codes & consistency categories (ledger surface)
 
-### Consistency categories — two enums changed
+Re-derived 2026-11-02 by diffing the enum constants at `cb66e51` and `eec9134`.
 
-- **`BasicDocumentModelConsistencyCategory`** (`SerializerTierParityTest`): **+1** `LOCALIZED_TEXT_UNIQUENESS_CRITERION_NULL_PROBLEM` (16 → 17).
-- **`DocumentModelCategory`**: **+10** `DOCUMENT_MODEL_UNIQUENESS_CRITERION_*` (fields-empty / not-found / not-required / repeatable / transient / missing-error-text / invalid-error-text / invalid-error-text-parameter / duplicate-name / empty-name), **−2** number min/max (`DOCUMENT_MODEL_NUMBER_{MAX,MIN}_VALUE_EXCEEDED`). Backed by a new `DocumentUniquenessCriteriaRule` and the deletion of `NumberFieldValueLimitRule`. This removes those two **model-consistency category checks**; it does not remove runtime validation of declared numeric bounds.
-
-### MVK codes (`ParserErrorTypesEnum`) — the `MvkLedgerTest` + enricher surface
-
-- **Removed (3):** `MVK_INVALID_COMPARE_ENUM_TO_STRING`, `MVK_INVALID_COMPARE_ENUM_TO_ENUM`, `MVK_INVALID_UNSPECIFIED_TYPE`.
-- **Renamed (3)** — the filter→set-expression family (ties to the grammar `Mit`-filter refactor):
-  - `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` → `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION`
-  - `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` → `MVK_INVALID_ITERATION_IN_SET_EXPRESSION`
-  - `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` → `MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED`
-- **Added (2):** `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED`, `MVK_NO_ITERATION_FOR_LOWEST_WILDCARD`.
-- **⚠ Silent-semantics-drift trap:** `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` **kept its name but changed meaning** — its old "unrestricted asterisk at lowest repetition" meaning migrated to the new `…REPEATABLE_LEVEL_REQUIRED`; the old name now carries a weaker "lowest level must specify an asterisk" (used by `SumOfTerms`). A ledger keyed only on the name will carry a stale meaning.
-- **Also:** `MVK_RULE_TEST_NO_DEFAULT_VALUE` deleted with its `TestRuleErrorType` enum; errortext `FIELD_INVALID_PREFIX` → `FIELD_ERRORTEXT_WRONG`, removed `NO_VORDRUCKNAME_IN_H`.
-
-### a12-base 29.3.0 → 30.0.0 — notification machinery moved out of the kernel
-
-`RankedNotification`, `Severity`, `ConsistencyCategory`, `ConsistencyProblem`, and `Problem` now come from `com.mgmtp.a12.model.notification.*` / `…consistency.*` (a12-base), not kernel-owned implementations; the old model-migration base module was removed. The fetched a12-base source confirms `Severity` is unchanged (`INFO`, `WARNING`, `ERROR`), so our severity mapping needs no semantic change.
+- **`BasicDocumentModelConsistencyCategory`:** +1 `LOCALIZED_TEXT_UNIQUENESS_CRITERION_NULL_PROBLEM`.
+- **`DocumentModelCategory`:**
+  - **−2** `DOCUMENT_MODEL_NUMBER_{MAX,MIN}_VALUE_EXCEEDED`. These are model-consistency category checks only; runtime validation of declared bounds remains.
+  - **+10** `DOCUMENT_MODEL_UNIQUENESS_CRITERION_*`: `DUPLICATE_NAME`, `EMPTY_NAME`, `FIELD_NOT_FOUND`, `FIELD_NOT_REQUIRED`, `FIELD_REPEATABLE`, `FIELD_TRANSIENT`, `FIELDS_EMPTY`, `INVALID_ERROR_TEXT`, `INVALID_ERROR_TEXT_PARAMETER`, `MISSING_ERROR_TEXT`.
+- **MVK codes (`ParserErrorTypesEnum`, 176 → 175 constants):**
+  - **Gone:** `MVK_INVALID_COMPARE_ENUM_TO_ENUM`, `MVK_INVALID_COMPARE_ENUM_TO_STRING`, `MVK_INVALID_UNSPECIFIED_TYPE`, `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`, `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED`.
+  - **New:** `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION`, `MVK_INVALID_ITERATION_IN_SET_EXPRESSION`, `MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED`, `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED`, `MVK_NO_ITERATION_FOR_LOWEST_WILDCARD`.
+  - The source comments pair the three filter codes with the three set-expression codes (same sentence, generalized from "Filterbedingung" to "bei '%s'"). That pairing is a reading, to be measured in W4.
+- **⚠ Silent-semantics-drift trap:** `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` **kept its name and changed meaning**. Its old message ("…ein uneingeschränkter Stern…") moved to the new `…REPEATABLE_LEVEL_REQUIRED`, and the old name now says "für die unterste Ebene ein Stern". A ledger keyed only on the name carries a stale meaning.
+- **Also gone** (July source read): `MVK_RULE_TEST_NO_DEFAULT_VALUE` with its `TestRuleErrorType`. In errortext, `FIELD_INVALID_PREFIX` → `FIELD_ERRORTEXT_WRONG`, and `NO_VORDRUCKNAME_IN_H` is removed.
+- **a12-base 29.3.0 → 30.0.2:** `RankedNotification`, `Severity`, `ConsistencyCategory`, `ConsistencyProblem` and `Problem` come from a12-base `com.mgmtp.a12.model.notification.*` / `…consistency.*`. `Severity` keeps `INFO`/`WARNING`/`ERROR`, so our severity mapping is unaffected.
 
 ---
 
-## 4 · Adapter API breaks (`:adapter` — the real work)
+## 4 · Adapter API breaks (`:adapter` — W2)
 
-Dominant themes: a kernel-wide **V1-document + runtime-variant retirement**, removal of deprecated extension registries, expansion API removal, and module consolidation. The compile-break surface is broader than production `KernelAdapter`: it includes the shared `RuntimeLaws` oracle and the Kotlin differential tests.
+The dominant theme is the kernel-wide **V1-document + runtime-variant retirement**, plus removal of deprecated extension registries and of expansion. The break surface includes the shared `RuntimeLaws` oracle and the Kotlin differential tests, not only `KernelAdapter`. Today 89 `:adapter` source files import `com.mgmtp.*` (2026-11-02, `git grep -l 'import com\.mgmtp\.' -- '*.java' '*.kt'`).
 
-### Certain Java compile breaks
+1. **V1 document API removed:** `KernelAdapter` and `RuntimeLaws` build V1 `IDocument`s. The md custom-condition differentials implement the V1-shaped method. All move to `DocumentV2` and `DocumentPointer`/`DocumentMultiPointer`.
+2. **`DocumentServiceFactory.createDocumentFactory()` removed**, as are `createDocumentV1V2Converter()`, `IDocumentV1V2Converter` and `ofDocumentV1`.
+3. **Runtime variant APIs removed:** `getMvkServiceForModel` loses the variant parameter, `extractUsedVariants` disappears, and `getVariant()` overrides fail. Serialized `modelInfo.variant` is unaffected: `DocumentModelInfo.variant` still exists at `eec9134`.
+4. **`IDocumentModelService.expand` removed** (A12K-4021). It affects `KernelAdapter`, `KernelConsistencyOracle`, `KernelModelOracle`, `RuntimeLaws` and `CorpusModelPreparer`. Per **D2**, our differential uses `CombinationModelService` behind one adapter port.
+5. **Deprecated custom-extension services removed** (A12K-4106, A12K-4079): `PredefinedTypeValidityDiffTest`'s static `CustomFieldTypeService` moves to an `ICustomFieldTypeFactory` passed through `DocumentProcessingConfig`.
+6. `IDocumentModelMigrator#getOldestSupportedSourceVersion` → `getFirstSupportedSourceVersion` (A12K-3856), if we call it.
 
-1. **V1 document API removed** — `KernelAdapter` and `RuntimeLaws` build V1 `IDocument` instances; `CustomConditionDiffTest` and `PartialValidationCustomConditionDiffTest` implement the old V1-shaped md custom-condition method. All must move to `DocumentV2`, `DocumentPointer`/`DocumentMultiPointer`, and the V2 condition signature.
-2. **`DocumentServiceFactory.createDocumentFactory()` removed** — 31.1.0 exposes only `createDocumentV2Serializer()` + `createDmAwareDocService(String)`.
-3. **`createDocumentV1V2Converter()` / `IDocumentV1V2Converter` / `ofDocumentV1` removed** — no V1→V2 bridge remains.
-4. **Runtime variant APIs removed** — `DocumentModelService.getMvkServiceForModel(model, variant, reporter)` becomes the two-argument form; `IDocumentModelService.extractUsedVariants` disappears; `getVariant()` overrides fail in `KernelAdapter` and `RuntimeLaws`. This does **not** remove serialized `content.modelInfo.variant`, which still exists in 31.1.0; it removes `variantFilter`, `variantErrorMessages`, and runtime/codegen variant selection.
-5. **`IDocumentModelService.expand(model, resolver)` removed** — affected code includes `KernelAdapter`, `KernelConsistencyOracle`, `KernelModelOracle`, `RuntimeLaws`, and `CorpusModelPreparer`. The official migration instruction says to use **A12 Workspace Conversion**; the new workspace converter is `a12internal` and operates on a workspace, while an `a12internal` static `CombinationModelService.expand` utility remains with a new resolver/params/`Optional` contract. Choosing between workspace conversion, our already-parity-locked kernel-free expansion, or another internal dependency is a design decision, not a mechanical method swap.
-6. **Deprecated custom-extension services removed** — `PredefinedTypeValidityDiffTest` still uses the static `CustomFieldTypeService`; port it to an `ICustomFieldTypeFactory` passed through `DocumentProcessingConfig`, as newer differential tests already do. The md `ICustomCondition` V1/default overload is gone; its required check method is V2-shaped.
+The root fix for items 1–2 is **one shared, model-aware V2 document materializer** used by production evaluation and `RuntimeLaws`. It must preserve explicit-empty placement and convert external values through `createDmAwareDocService(modelId)`. Two independent rewrites would open a semantic-drift seam. `EvalDocSeamLawsTest` is the direct canary.
 
-The root fix for items 1–3 is one shared, model-aware **V2 document materializer** used by production evaluation and `RuntimeLaws`. It must create groups/fields via immutable V2 APIs, preserve explicit-empty placement semantics, and convert external values through `createDmAwareDocService(modelId)` so numbers, dates, enums, and custom types have the same internal representation in every route. Two independent rewrites would create a semantic-drift seam. `EvalDocSeamLawsTest`—nested rows, evaluation, computation, empty placement, invalid paths—is the direct canary; `KernelAdapterBootstrapTest` alone does not exercise the document seam.
-
-### Non-breaking but notable
-
-- **`IMVK_Service`** dropped super-interfaces `ICodeGeneratorService` + `IChangeRuleSupport` (both deleted), but every call we make resolves through retained parents → **no break**.
-- **`MoveSupportDM.changePathReferencesForMove`** — signature unchanged, but now **also rewrites Document Uniqueness Criteria** on a move (more references rewritten; relevant to `ReferenceRewriter` + `ReferenceRewriteTest`).
-- **New set-op AST node** — `ASTVisitor` gained default-bodied `visit(ISetOpOperation)`, so `ConditionConverter`'s anonymous visitor still compiles, but it has **no handling for the new node** → `SumOfTerms` won't round-trip until added.
-- **`IDocumentRtService`** removed deprecated V1/`Locale` overloads — we already use the `DocumentProcessingConfig` V2 forms, so runtime *calls* survive.
-- **Core custom-condition SPI** (`kernel-core-runtime-api`'s `ICustomCondition`, `IData`, `IIdentifier`) is unchanged despite the 32.3.4→33.0.2 bump, so `KernelCustomConditions` remains source-compatible. The separate **md document-layer** `ICustomCondition` ABI changed to V2 as described above.
-- **Computation read surface** (`ICalculationService.extractCalculationInfo`, `ICalculationInfo`, `IWithComparisonOperation`) **fully unchanged**.
-- **Dynamic configuration** adds default `modelCodeHashProvider` and `considerNotInD`; neither is a compile break, but both belong in the mandatory customization-surface audit.
+**Non-breaking but notable:**
+- `IMVK_Service` lost two super-interfaces, but every call we make resolves through the remaining parents.
+- `MoveSupportDM.changePathReferencesForMove` now also rewrites Document Uniqueness Criteria.
+- `ASTVisitor` gained a default `visit(ISetOpOperation)`, so `ConditionConverter` still compiles but drops `SumOfTerms` until W6.
+- The core custom-condition SPI (`ICustomCondition`, `IData`, `IIdentifier`) is unchanged.
+- The computation read surface is unchanged.
+- Dynamic configuration adds default `modelCodeHashProvider` and `considerNotInD`; both belong in the customization-surface audit (W5).
 
 ---
 
-## 5 · Runtime semantics (RT-ledger + interpreter differential)
+## 5 · Runtime semantics (RT-ledger + interpreter differential — W5)
 
-`kernel-core-runtime`: ~203 renamed files, **155 pure `_30_8`→`_31_1` churn**, 48 with real body changes. The adapter/interpreter don't import the internal runtime packages, so the rename is not a compile break (one stale doc comment in `RtSemanticsLedgerTest.java:26`).
-
-- **Genuinely new: 1 class** — `SetOperation` (`@FunctionalInterface`), the runtime hook for `SumOfTerms`.
-- **Removed:** `ComparisonOperator` enum, `ResultNoTestId`; six date/number utils **relocated** to `kernel-conversion-java` (source of much import churn).
-- **⚠ Theme A — date/time reimplemented `java.util.Calendar` → `java.time`** (`RuntimeController`, `BedingungsOperatorHelper`, `FormatDefinitionDatum[Bereich]`). The custom **year/month diff with leap-year / 28-Feb edge cases** was rewritten on `java.time`. **Highest differential-drift risk** — re-run the interpreter's date-arithmetic laws (`../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/DateMath.kt`) against the 31.1.0 oracle.
-- **Theme B — behavior-preserving refactor churn:** immutability, German→English renames (`hatVorzeichen`→`signAllowed`, `getJahresinterpretation`→`getInterpretationOfYear`), switch-expression modernization; the number formal-error classification rewrite warrants an equivalence spot-check.
-- **`ValidationCommand`** dropped the deprecated `Map<String,ICustomCondition>` validation overloads → callers must use `ICustomConditionFactory`.
-- **`kernel-md-runtime-service`:** `CustomConditionWrapper` split into `…MdToVk` + new `…VkToMd`; **`DocumentModelCodeGenerator` removed** — the dynamic Groovy-codegen path was restructured (`DocumentDynamicRtService` now drives compilation via `modelProvider.getGeneratedCodeAccessFactory(id).getCalculator()`). **Flag for interpreter codegen-strategy parity** and any adapter assumption about the codegen entry point.
+- **Genuinely new:** `SetOperation` (`@FunctionalInterface`), the runtime hook for `SumOfTerms`.
+- **⚠ Date/time reimplemented from `java.util.Calendar` to `java.time`** (`RuntimeController`, `BedingungsOperatorHelper`, `FormatDefinitionDatum[Bereich]`), including the year/month difference with its leap-year and 28-Feb edge cases. **This is the highest differential-drift risk.** Re-run the interpreter's date laws (`DateMath.kt`).
+- **Behaviour-preserving refactor churn:** immutability, German→English renames, switch modernization. The number formal-error classification rewrite needs an equivalence spot-check.
+- **`kernel-md-runtime-service`:** `DocumentModelCodeGenerator` was removed and the dynamic Groovy path restructured (`DocumentDynamicRtService` now goes through `getGeneratedCodeAccessFactory(id).getCalculator()`). Flag this for the codegen-strategy parity check.
+- **ext1:** custom-field-type factory in value conversion (§1).
+- **Jackson 3** inside the kernel may change the Document JSON number stages (parse configuration, read stringification, write emission; [KF1](KERNEL-FINDINGS.md#kf1)). They were measured on Jackson 2 and must be re-measured.
 
 ---
 
 ## 6 · Metamodels (`a12-kernel-mm` — schema/constraint oracle)
 
-The same 15 logical metamodel directories remain, but JSON artifacts grow **59 → 75** because eight directories gain current/previous `a12types` variants. Canonical rules are **547 → 544** and computations remain 6. Many model package versions rise (for example Field 13.9→14.7, Group 12.4→13.1, Combination 2.9→2.13, Mapping 4.9→4.15, and SMM field-type checks 2.4→3.2).
+The same 15 logical metamodel directories remain. JSON artifacts grow **59 → 75**, because eight directories gain current/previous `a12types` variants. Canonical rules go **547 → 544**; computations stay at 6.
 
-- **⚠ MM_Group_1 — include config restructured (highest impact for us).** The metamodel's editor-facing structure calls its nested flag `excludeValidationRules`, but that is **not the serialized DM-JSON key**. Kernel `Group.IncludeConfig` and the migrator serialize `includeConfig: { reference, includeLevel, excludeRules, excludeComputations }`. The old mount `modelAlias` becomes the referenced model ID directly; the matching header `modelReferences[].alias` is deleted or ignored. Constraint validators rename `A12_MODEL_ALIAS_*` → `A12_MODEL_REFERENCE_*`, and `A12_MODEL_ALIAS_DIFFERENT_TYPE_DEFINITION_MODE` disappears.
-- **Alias semantics, not just JSON nesting, change.** Our include API and CLI currently treat the persisted alias as a logical handle. The migration must deliberately define `include list/read/rename/set-reference` behavior when kernel identity is now the direct `includeConfig.reference`. A tool-local alias may remain for ergonomics only if its persistence and lookup rules are explicit; it can no longer masquerade as the kernel's stored identity.
-- **`Unspecified` is removed** across the field/common/typedef/check metamodels. The 29.1→29.2 migrator converts it to `String` with `_take_reference_configuration`; `INT_INVALID_ATTR_UNSPECIFIED_TYPES` and the related MVK code disappear.
-- **`STRING_TYPE_TEMPLATE_REFERENCE_2` and `StringType.templateReference` are removed.** A project source sweep found no production dependency on that capability, so this is a verification item rather than an expected implementation break.
-- **CT_SELECTION correction:** the canonical `a12` variant still has the same ten rule names; its validations were **not** removed. The new `none` variant has zero. The actual schema addition is `AutoCompleteProps.allowAddingNewItems`, propagated across selection models, plus new build-variant metadata.
-- **Exact metamodel rule removals:** `MM_Common_v2` drops `MVK_UNSPECIFIED_TYPE_NO_CODEGEN`; `MM_SMM_FieldTypeChecks_1` drops `INT_INVALID_ATTR_UNSPECIFIED_TYPES`; `MM_Group_1` has a net −1 as alias validation becomes reference validation. `KernelMmReadCoverageTest`'s `>=545` floor and “of 547” wording will therefore fail and must be re-baselined from executed results.
-- **No `SumOfTerms` occurrence exists in the 31.1 metamodel corpus.** The real-corpus sweep cannot serve as coverage for the new operator; dedicated own-domain models and laws are mandatory.
+- **⚠ MM_Group_1: include config restructured.** It serializes as `includeConfig: { reference, includeLevel, excludeRules, excludeComputations }`, and the mount alias indirection is gone. **A12-written evidence (2026-11-02):**
+
+  | A12 Tools workspaces | document models | include objects |
+  |---|---|---|
+  | 2025.06-ext5 | 107, all 28.4.0 | 100 `modelAlias` |
+  | 2026.06-ext1 | 121, all 29.4.0 | 0 `modelAlias`; 101 `includeConfig` with key sets `{reference}` ×100 and `{reference, excludeRules}` ×1 |
+
+  No ext1 file carries `includeLevel`, so its absent-default must be measured. These workspaces are the **shape reference for W3** (research only, never committed).
+- **`Unspecified` is removed.** The 29.1→29.2 migrator converts it to `String` with `_take_reference_configuration`.
+- **`STRING_TYPE_TEMPLATE_REFERENCE_2` / `StringType.templateReference` removed.** We have no production consumer; W4 verifies this.
+- **`AutoCompleteProps.allowAddingNewItems`** is added. Read/preserve is required; typed authoring is a separate product choice.
+- `KernelMmReadCoverageTest`'s `>=545` floor and its "of 547" wording will fail. Re-baseline from executed results only.
 
 ---
 
 ## 7 · Cross-cutting
 
-- **Jackson 2 → 3.** The kernel moved to `tools.jackson` (3.1.2); `jackson-annotations` stays 2.x. We keep our **own** Jackson 2 (`com.fasterxml.jackson:2.18.2`) in `core`/`cli` for DM-JSON and exchange only **strings** with the kernel (never `JsonNode` across the boundary) — distinct root packages, so they coexist. **Real cost: native-image reflection metadata** (kernel POJOs now under `tools.jackson.*`), not a boundary break.
-- **JDK 21 unchanged** — no toolchain change.
-- **Document-model format 28.4.0 → 29.4.0 is mandatory.** Upstream declares both the minimum compatible and latest model version as 29.4.0. Our 65 committed JSON models are all 28.4.0: 14 under `adapter`, 21 under `cli`, 7 under `corpus`, 16 under `examples`, and 7 under root `src`. `core/ModelFormat.VERSION`, inline Java/Kotlin fixtures, version-command captures, and `DocumentModelDraft`'s authored default also carry 28.4.0.
-- **The migration chain is substantive:** 28.4→28.5 adds optional `modelInfo.packet`; 28.5→28.6 adds document uniqueness criteria; 28.6→29.0 restructures includes and removes alias indirection; 29.0→29.1 strips `variantFilter` and `variantErrorMessages`; 29.1→29.2 converts `Unspecified` to `String` with `_take_reference_configuration`; 29.2→29.3 adds CDM query-root references; 29.3→29.4 removes field-type annotations.
-- **Do not rely on implicit migration at our serializer boundary.** The upstream guide says existing models are migrated automatically, but the public `IDocumentModelSerializer.deserialize` implementation directly maps JSON and does not invoke `IDocumentModelMigrator`; migration is exposed separately through the facade API/CLI. Our direct-deserialization paths must explicitly migrate inputs or require 29.4.0 before deserialization. A 31.1-backed golden must prove migrated JSON preserves every include/reference/exclusion and that old flat include fields cannot be silently dropped.
-- **Runtime variant removal is narrower than `modelInfo.variant`.** All 65 models contain `modelInfo.variant`, and the field remains in the 31.1 model API. Only one active fixture contains `variantFilter`; migrate it and retire/reframe `VariantFilterPreservationTest`, the interpreter's null-variant filtering code/tests, and `InterpreterRealModelDiffTest.variantFilterOnlyRuleIsDroppedLikeKernel`.
-- **Corpus provenance changes.** The runtime-service coordinate/implementation identity changes, and `CorpusEngines.KERNEL_VERSION` and every committed case still say 30.8.1. Corpus outputs must be regenerated by the corpus capture path (`CorpusGenerator`)—not hand-edited—and reviewed across Groovy dynamic, Java static, and interpreter engines.
-- **CI cache keys are part of the pin.** Both CI workflows embed `a12-kernel-30.8.1-base-29.3.0`; leaving them stale can restore a cache with no 31.1 artifacts and make bootstrap behavior misleading.
+- **Document-model format 28.4.0 → 29.4.0 is mandatory**, with minimum and latest both at 29.4.0. **Footprint (2026-11-02):**
+
+  | measure | command | count |
+  |---|---|---|
+  | JSON files carrying the quoted string `"28.4.0"` | `git grep -l '"28\.4\.0"' -- '*.json'` | **141**: `interpreter` 48, `corpus` 23, `cli` 22, `examples` 19, `adapter` 14, `consistency` 8, root `src` 7 |
+  | non-JSON files mentioning `28.4.0` | | 226 |
+  | files mentioning `30.8.1` | | 238 |
+
+  The July audit counted 65 models.
+- **The migration chain** (CL): 28.4→28.5 `packet`; 28.5→28.6 uniqueness criteria; 28.6→29.0 include restructure; 29.0→29.1 strips `variantFilter`/`variantErrorMessages`; 29.1→29.2 `Unspecified` → `String`; 29.2→29.3 CDM query-root references; 29.3→29.4 removes field-type annotations.
+- **Don't rely on implicit migration at our serializer boundary.** The public `IDocumentModelSerializer.deserialize` maps JSON directly and does not invoke `IDocumentModelMigrator` (July source read). Direct-deserialization paths must migrate explicitly or require 29.4.0. A golden test proves migrated JSON keeps every include, reference and exclusion.
+- **Variant data in fixtures:** two committed files carry `variantFilter` (`cli/src/test/resources/models/order-variant.dm.json`, `adapter/src/test/resources/checker-near-miss/harvested-report-checks.json`). Retire or reframe `VariantFilterPreservationTest`, the interpreter's null-variant filtering and `InterpreterRealModelDiffTest.variantFilterOnlyRuleIsDroppedLikeKernel`.
+- **Jackson 2 → 3.** We keep our own Jackson 2 in `core`/`cli` and exchange only strings with the kernel. The distinct root packages coexist. The real cost is native-image reflection metadata.
+- **Corpus provenance:** `CorpusEngines.KERNEL_VERSION` and every committed case say 30.8.1. Regenerate through `CorpusGenerator`, never by hand.
+- **CI cache keys are part of the pin** (§1).
+
+### Surfaces the July audit did not cover
+
+| surface | impact |
+|---|---|
+| **`:consistency`** (the Kotlin Multiplatform portable checker; its JS package is published) | Its `CheckFamily` verdicts are measured 30.8.1 verdicts. The enum relaxations and the filter→set-expression codes move them. The checker-silence guards (`checkerSilenceGuardTest`) are the detector; re-measure each affected `validate.laws` grid and then its mirror (W4). |
+| **Interpreter compatibility claim** (`interpreter/public-release/README.md` "Semantics target… 30.8.1") | Re-earned only by re-running the drop-in certificate on 31.1.1 (W8). |
+| **a12-kernel-lean** (its stated primary goal was 30.8.1 conformance; it measures through our `kernelProbe`/`probeDifferential`) | Handled by D4. Probe tooling moves first in W2. |
+| **Kernel TypeScript runtime** (`kernel-core-runtime-ts` and the other four kernel packages, 31.1.1, built as npm tarballs by the bootstrap) | Lifts the blocker named in [BUILD-ENVIRONMENT](BUILD-ENVIRONMENT.md) "Offline and bootstrap limits" and [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Why code-generator JS/TS is not yet measured". The kernel-JS evidence strategy is a follow-up (D5); W7 corrects those two docs. |
+| **A12 Tools 2026.06-ext1 workspaces** (machine-local path; `-Da12.corpus1.dir=…/workspaces`) | 121 document models at 29.4.0 replace the ext5 corpus of 107 for the opt-in real-corpus sweeps. They are the W3 shape reference (§6). |
 
 ---
 
 ## 8 · rulekit impact map (current detection → gap → required fix)
 
-Several current guardians are intentionally one-way. The upgrade would expose that they detect additions but not stale removals, or scan a hardcoded set that omits a newly-added enum class. Guardian hardening is part of the migration, not optional cleanup.
+Several guardians detect additions but not stale removals, or scan a hardcoded set. Hardening them is part of the migration (W4).
 
 | surface | current detection / gap | required fix |
 |---|---|---|
-| model format 28.4→29.4 | `ModelVersionPolicyTest`, `VersionVerbTest`, `VersionMentionFreshnessTest`; no migration golden | migrate all 65 JSON models + inline/default versions through the kernel migrator; add before/after preservation and direct-serializer rejection/loss guards |
-| V1 document + removed extension APIs | Java/Kotlin compilation, but the Java `-Xlint:removal` ratchet missed stale Kotlin `CustomFieldTypeService` use | compile main/test Kotlin+Java; add a forbidden-removed-API source guard across every kernel-facing source set; port one shared V2 materializer |
-| new `SumOfTerms` construct | `KernelConstructParityTest` hardcodes known enum classes, so new `SetOpOperationName` is invisible; reverse keyword parity may be the only failure | make construct-class discovery/exact inventory exhaustive, then land the complete typed/catalog/read-back/interpreter/differential slice |
-| enum-comparison relaxation | `EnumComparabilityLawsTest` currently asserts the old errors fire | flip to accepted laws; update the contradicted [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) finding and catalog gotcha |
-| `+` with display-value enum relaxation | N7 invalid examples may assert the old rejection | re-probe and update only the affected invalid example/finding; retain the genuine type-mismatch case |
-| filter→set-expression code renames | N7 examples plus source strings | rename catalog, [MVK-LEDGER.md](MVK-LEDGER.md), `FieldListRef`, `CustomConditionRef`, diagnostics, and tests |
-| removed/renamed/split MVK codes | `MvkLedgerTest` detects live codes missing from the ledger but not stale ledger codes | make live-kernel ∪ metamodel-code equality exact in both directions, then realign entries and meanings |
-| consistency category changes | `SerializerTierParityTest` scans only `BasicDocumentModelConsistencyCategory` and does not cover `DocumentModelCategory` | retain exact Basic coverage and add an exact DocumentModel-category ledger/guardian, including uniqueness criteria and the two retired structural categories |
-| removed variant/accessor slots | `SlotParityTest` detects unclassified live accessors but not orphaned classifications | make slot equality bidirectional; remove runtime variant slots while retaining `modelInfo.variant` |
-| include/reference restructure | core/modelkit/edit/CLI suites exist; `KernelMmIntegrationTest` is kernel-free and cannot prove 31.1 deserialization/expansion | migrate the full authoring/refactor surface; add a real-kernel deserialize→expand→consistency gate and preservation laws for both exclusion flags and include levels |
-| metamodel corpus 59→75 / rules 547→544 | `KernelMmReadCoverageTest` has a `>=545` floor and stale “547” wording | run all 75 files, keep the 15-model canonical chooser explicit, then re-baseline counts and [WORKSPACE-CORPUS-ANALYSIS.md](WORKSPACE-CORPUS-ANALYSIS.md) |
-| document uniqueness criteria | `ReferenceRewriteTest` has no criterion fixture | add read/preserve/index/where-used coverage and gate rename/move/delete so criteria cannot retain dangling paths |
-| runtime `_31_1`, dates, codegen | RT ledger plus differential suites | reclassify runtime resources; run focused date laws, `KernelJavaBaselineDiffTest`, `JavaStaticPartialBaselineDiffTest`, then the tri-engine fuzz/corpus lanes |
-| corpus provenance | `CorpusSchemaGuardTest`, `CorpusReplayTest` | bump identity anchors, regenerate the committed corpus through its authoring tool (`CorpusGenerator`), inspect semantic diffs, replay all three engines |
-| source-based guardians | default sibling paths point at the still-30.8.1 worktree | run against an explicit 31.1 tree (`-Da12.kernel.src.dir` / `-Da12.kernel.mm.dir` or equivalent); fail if a requested source root resolves to the wrong revision |
-| running version/floor | `KernelVersionTest` is INFO-only by design | choose single 31.1 floor vs explicit dual adapters/fixture sets; re-stamp catalog and distribution/version surfaces |
-| native reflection/resources | release-time native gate | recapture first, rebuild, then validate Jackson 3/new kernel types/i18n and run the native no-crash battery |
+| model format 28.4→29.4 | `ModelVersionPolicyTest`, `VersionVerbTest`, `VersionMentionFreshnessTest`; no migration golden | migrate fixtures + inline/default versions through the kernel migrator; add preservation and direct-serializer loss guards |
+| V1 document + removed extension APIs | compilation; the Java `-Xlint:removal` ratchet misses Kotlin | compile every source set; add a removed-API source guard across Java **and** Kotlin; one V2 materializer |
+| new `SumOfTerms` construct | `KernelConstructParityTest` hardcodes known enum classes, so `SetOpOperationName` is invisible | make construct-class discovery exhaustive, then land W6 |
+| enum-comparison / `+` relaxations | `EnumComparabilityLawsTest` and N7 invalid examples assert the old errors | flip to accepted laws after measuring; update the contradicted finding and catalog gotcha |
+| filter → set-expression codes | N7 examples plus source strings | rename across catalog, [MVK-LEDGER.md](MVK-LEDGER.md), `FieldListRef`, `CustomConditionRef`, diagnostics, tests |
+| removed / renamed / re-meant MVK codes | `MvkLedgerTest` is one-way | exact two-way equality, then realign entries **and meanings** (§3 trap) |
+| consistency categories | `SerializerTierParityTest` scans only the Basic enum | add an exact `DocumentModelCategory` ledger/guardian |
+| removed variant/accessor slots | `SlotParityTest` is one-way | make it two-way; keep `modelInfo.variant` |
+| include/reference restructure (D3) | `KernelMmIntegrationTest` is kernel-free | migrate the authoring/refactor surface; real-kernel deserialize→expand→consistency gate; preservation laws for both exclusion flags and include levels |
+| expansion oracle (D2) | parity was against kernel `expand` | port to `CombinationModelService`; prove recursive include/type-def behaviour and failure atomicity |
+| document uniqueness criteria | `ReferenceRewriteTest` has no criterion fixture | read/preserve/index/where-used; rename/move/delete rewrite or refuse |
+| portable checker | `checkerSilenceGuardTest` | re-measure affected grids against 31.1.1, then the mirror |
+| metamodel corpus 59→75 / rules 547→544 | `KernelMmReadCoverageTest` floor | re-baseline from execution |
+| runtime: dates, codegen, conversion, Jackson 3 | RT ledger + differentials | focused date laws, `KernelJavaBaselineDiffTest`, `JavaStaticPartialBaselineDiffTest`, custom-field-type laws, Document JSON number locks, then tri-engine fuzz/corpus |
+| corpus provenance | `CorpusSchemaGuardTest`, `CorpusReplayTest` | bump anchors, regenerate via `CorpusGenerator`, replay all three engines |
+| source-based guardians | default sibling paths | must scan the `eec9134` tree; fail if a requested source root resolves to a different revision |
+| running version / floor (D1) | `KernelVersionTest` (INFO-only) | re-stamp `verifiedAgainst` and the version surfaces |
+| native reflection/resources | release-time native gate | re-capture first, rebuild, run the no-crash battery |
 
 ---
 
-## 9 · Update plan (phased)
+## 9 · Update plan
 
-### Phase 0 — Prerequisite: `a12-kernel-bootstrap` (sibling repo)
+The work items in §0 carry state; this section carries the method.
 
-31.1.0 is not in `mavenLocal`; nothing here builds until the bootstrap kit can publish the fetched release and its public-source dependency closure.
+**W2 — build wiring + adapter.** Start with probe tooling, so a12-kernel-lean regains a 31.1.1 oracle as early as possible. Collapse the two `kernelVersion` pins into one and use the facade coordinate (§1). Use `:adapter:compileJava`, `:adapter:compileTestJava` and `:adapter:compileTestKotlin` as the deliberate red inventory. Green `EvalDocSeamLawsTest` first, then `KernelAdapterBootstrapTest`, the `RuntimeLaws` consumers, both custom-condition differentials and `PredefinedTypeValidityDiffTest`.
 
-- Fetch/review `a12-base` 30.x and `a12-devtools` first. Kernel pins base **30.0.0** while the public base release commit identifies itself as 30.0.1; publishing that source with `-Pversion=30.0.0` must be deliberate and verified. Base now needs build-utilities 0.3.1 and its build still uses the JDK 25 toolchain while emitting Java 21 bytecode.
-- In `bootstrap.sh`, move kernel 30.8.1→31.1.0 and base 29.3.0→30.0.0. Remove deleted base projects (`base-parent`, `model-migration-api`) from `BASE_MODULES`.
-- Replace the old kernel module list with the exact 31.1 settings inventory: renamed `kernel-internal-*`, runtime `31-1`, `kernel-md-documentmodel`, workspace converter if needed, and no V1 document/service or other deleted projects.
-- Rebase or retire `patches/a12-kernel-mm.patch`. Its version patch and build-logic dependencies hardcode old pins and deleted `kernel-md-typed-accessor-gen`; 31 merges the generator/migrator CLIs into `kernel-md-facade`. Update mm runtime API `33.0.2`, runtime `31-1`, base `30.0.0`, and the `a12types` publication path.
-- Publish and verify the full facade dependency closure from an empty isolated Gradle/Maven cache, not only the facade POM. The artifact IDs are source-known; this step proves the OSS bootstrap graph actually resolves.
+**W3 — model format + includes.** Run every committed 28.4 fixture through the 31.1.1 migrator into a scratch tree, inspect the structural diff, then update the fixtures, inline fixtures, `ModelFormat.VERSION`, authoring defaults, demos and version captures. A migration golden covers an include, both exclusion flags, both include levels, an `Unspecified` field, a variant filter and a field-type annotation. Redesign include authoring around `includeConfig.reference` (D3):
+- **Sweep:** `DmKeys`, `ModelReader`, `DocumentModelDraft`/`ModelDocument`, `MountOptions`/`IncludeLevel`, `IncludeEditor`, `StructureRefactor`, safety/where-used, the CLI include/apply/refactor verbs, schemas/help, tests and demos.
+- **Alias input** gets a corrective diagnostic.
+- **Lock** with refactor refusal laws.
 
-### Phase 1 — Build wiring
+Add uniqueness criteria to read/preserve/reference indexing. Then offer the same migration for a12-kernel-lean's probe models (D4).
 
-Decide the support policy before changing fixtures. **Recommended:** make 31.1/DM 29.4 the single supported floor when this proposal executes. A floor+latest matrix over one source tree is not a free carry-forward: kernel 30 expects model major 28, kernel 31 expects major 29, and the Java APIs/artifact IDs are source-incompatible. Dual support would require separate adapter/source or compatibility layers and version-specific model fixtures; build that only for an explicit consumer requirement.
+**W4 — guardians + contract realignment.** Make construct, MVK, slot, Basic and DocumentModel category inventories exact in both directions **before** updating their expected data. Then follow the failures through §8. Every flipped law is a verdict-delta row for a12-kernel-lean.
 
-Then update the root and adapter kernel pins (prefer one source of truth over the current duplicate), distribution label, runtime/custom-field API pins, `ModelFormat.VERSION`, CI/bootstrap cache keys, native Windows smoke expectations, catalog/corpus identity anchors, and version snapshots. Prefer the stable `kernel-md-facade` aggregate coordinate where it supplies the dependency graph; keep any direct internal dependency only when it documents a compile-time source contract the aggregate cannot make public. Drop the V1 document module and repoint `DocumentModel` to `kernel-md-documentmodel`.
+**W5 — runtime requalification.** Run the focused date suites (`DateDifferenceDiffTest`, `DateArithmeticDiffTest`, `DateArithmeticLawsTest`, `DateFunctionsOverDateTimeDiffTest`, `OmittedYearDateDiffTest`), the Java-static baselines and the tri-engine fuzz lane. Re-audit every interpreter customization point (locale, clock/date/timezone, custom conditions, custom field types, charset, the new dynamic-config defaults) and every finding with a re-open-on-upgrade trigger (`mandatoryGroup`, multi-select `uniqueValue`, custom-ref error entities, computation rounding, the SumOfProducts acceptance edge). A changed fact lands in [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) first. Regenerate the corpus.
 
-Use `:adapter:compileJava`, `:adapter:compileTestJava`, and `:adapter:compileTestKotlin` as the intentional red inventory before implementation. This catches main, oracle, and Kotlin breaks instead of treating `KernelAdapter` as the whole surface.
+**W6 — `SumOfTerms`.** Land the §2 slice. Read [interpreter/CLAUDE.md](../interpreter/CLAUDE.md) first and keep the clean-room boundary. Probe both kernel strategies before fixing empty/no-row behaviour.
 
-### Phase 2 — Adapter compile (the core rewrite)
+**W7 — surfaces + native.** Version surfaces (README, CLAUDE.md per D7, plugin, `--version`), docs index, the two "TS runtime blocked" docs, the KERNEL-UPGRADE runbook. Re-capture native config, rebuild, run the native gate.
 
-Build one adapter-internal, model-aware V2 materializer and use it from `KernelAdapter` and `RuntimeLaws`. Port both md custom-condition differentials to V2 pointers/documents; replace the static custom-field-type service with per-call factories; remove all `getVariant` overrides and `extractUsedVariants`; update `getMvkServiceForModel`; retain `modelInfo.variant`.
+**W8 — gated release (D6).** The full gate, the drop-in certificate on 31.1.1, a cold review of the release step, the a12-kernel-lean letter, release-repository assembly for the 31.1.1 EUPL notices, then the owner's confirmation before `--go-live`.
 
-Resolve expansion explicitly. Preferred after the decoupling program: feed the adapter the already-parity-locked kernel-free expansion behind its SPI and keep the upstream workspace/internal converter out of consumer code. If that cannot preserve the kernel combination/include contract, isolate the workspace converter or `CombinationModelService` behind one adapter port and document why the internal dependency remains.
-
-Green `EvalDocSeamLawsTest` first, then `KernelAdapterBootstrapTest`, the affected `RuntimeLaws` consumers, both custom-condition differentials, and `PredefinedTypeValidityDiffTest`. Add a guard covering removed APIs in Java **and Kotlin** kernel-facing source sets.
-
-### Phase 3 — Document-model 29.4 migration + include redesign
-
-Run every committed 28.4 model through the 31.1 migrator API/CLI into a reviewable temporary tree, inspect the structural diff, then update the 65 owned fixtures, all inline fixtures, `ModelFormat.VERSION`, authoring defaults, demos, and version captures. Do not mechanically change only the version string. Add a migration golden containing an include, both exclusion flags, both include levels, an `Unspecified` field, a variant filter, and a field-type annotation; prove the expected 29.4 transformations and round-trip stability.
-
-Redesign include authoring around `includeConfig.reference` with serialized `excludeRules`/`excludeComputations`/`includeLevel`. Sweep `DmKeys`, `ModelReader`, `DocumentModelDraft`/`ModelDocument`, `MountOptions`/`IncludeLevel`, `IncludeEditor`, `StructureRefactor`, safety/where-used code, CLI include/apply/refactor verbs, schemas/help, tests, and user demos. Define whether a CLI logical alias survives separately from kernel persistence. Lock rename vs set-reference, both exclusion flags, SINGLE_RG/MODEL_ROOT, pure load/save preservation, expansion parity, and refactor refusal.
-
-Add document uniqueness criteria to structural read/preserve and reference indexing. Rename/move/delete must either rewrite every criterion path safely or refuse before mutation. Migrate the one `variantFilter` fixture and remove kernel-31 parity claims for a feature the new format strips; any retained legacy input migration belongs at an explicit legacy boundary.
-
-### Phase 4 — Guardian hardening + contract realignment
-
-Make construct, MVK, slot, Basic consistency, and DocumentModel consistency inventories exact in both directions before updating their expected data; add a real-kernel metamodel compatibility gate; require source guardians to identify the revision they scan. Then follow the resulting failures through the §8 map: filter→set-expression code renames, enum/add relaxation-law flips, category/slot removals, RT `_31_1` classification, and `verifiedAgainst`.
-
-Run the 75-file metamodel read sweep and retain an explicit 15-canonical-model result. Re-baseline rule/file counts only from execution. Verify `StringType.templateReference` removal has no production consumer and add `AutoCompleteProps.allowAddingNewItems` to the structure capability decision: read/preserve is required; typed authoring is a separate product choice.
-
-### Phase 5 — `SumOfTerms` + interpreter parity
-
-Land `SumOfTerms` as the atomic typed slice described in §2: typed authoring/navigation, renderer/reference/explanation/usage support, adapter read-back, catalog EN+DE with own-domain valid/invalid examples, interpreter parser/evaluator/relevance, and model-shrinker awareness. Probe both kernel strategies before specifying empty/no-row behavior. Cover multiple rows, arbitrary arithmetic terms, nested repetition scope, forbidden nested/filter/outer iteration, partial validation, and computation use.
-
-Read [interpreter/CLAUDE.md](../interpreter/CLAUDE.md) before this phase and preserve the clean-room boundary: learn behavior from source and the oracle, then write an original Kotlin implementation.
-
-### Phase 6 — Semantic requalification + corpus
-
-Re-run the focused date suites (`DateDifferenceDiffTest`, `DateArithmeticDiffTest`, `DateArithmeticLawsTest`, `DateFunctionsOverDateTimeDiffTest`, `OmittedYearDateDiffTest`) against 31.1.0. Requalify the restructured Java/static codegen path with `KernelJavaBaselineDiffTest` and `JavaStaticPartialBaselineDiffTest`, then the tri-engine fuzz lane.
-
-Re-audit every interpreter customization point on the new kernel—locale, clock/date/timezone, custom conditions, custom field validators, charset, and the new dynamic-config defaults—and every finding with an explicit “re-open on kernel upgrade” trigger: `mandatoryGroup`, multi-select `uniqueValue`, custom-ref error entities, computation rounding, and the SumOfProducts acceptance edge. Record any changed fact in [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) first and lock it in the appropriate law tier.
-
-Bump `CorpusEngines.KERNEL_VERSION`, regenerate the corpus through its authoring tool, review semantic diffs rather than editing JSON by hand, then run schema guards and JVM/JS replays for Groovy dynamic, Java static, and interpreter strategies.
-
-### Phase 7 — Full gate, native image, docs, and release plumbing
-
-At the strategic checkpoint, run the project wrapper's full JVM/KMP suite, fuzz/corpus gates, and [`scripts/verify-demos.sh`](../scripts/verify-demos.sh). Update [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md), [KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md), [TESTING-SPEC.md](TESTING-SPEC.md), [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md), API/CLI specs and guide snippets, README/CLAUDE/plugin/version surfaces, examples, and the docs index in the same feature commits that change their contracts.
-
-Before any native build, re-capture native configuration, rebuild, and run the native gate/no-crash battery for Jackson 3, new kernel types, and resources. Re-run the release-repository assembly for 31.1.0 EUPL notices. Once all gates pass, graduate durable contracts to their owning specs and archive/delete this proposal per the documentation lifecycle.
+The prerequisite in the sibling [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap) is done (W0). Nothing here changes it.
 
 ### Completion gates
 
-- No active authored model or fixture remains at 28.4.0; any deliberately retained legacy input is named as a migration test and never reaches the 31.1 serializer un-migrated.
-- No V1 document, removed runtime-variant, static custom-extension, deleted module, or `_30_8` runtime API remains in main/test kernel-facing sources.
-- Include/reference round trips preserve reference, level, and both exclusion flags; rename/move/delete cannot leave a dangling include or uniqueness-criterion path.
-- Construct/MVK/slot/consistency guardians are bidirectionally exact and demonstrably scan the 31.1 source revisions.
-- Dynamic kernel, Java-static kernel, interpreter JVM, and interpreter JS agree on the migrated corpus and new `SumOfTerms` laws, except for explicitly reviewed and documented divergences.
-- The full build, demos, corpus guards, native gate, version surfaces, and release-notice assembly are green.
+- No active fixture remains at 28.4.0. Any retained legacy input is a named migration test.
+- No V1 document, removed variant API, static custom-extension, deleted module or `_30_8` runtime API remains in kernel-facing sources.
+- Include round trips preserve reference, level and both exclusion flags. Rename/move/delete cannot leave a dangling include or uniqueness-criterion path.
+- The construct, MVK, slot and consistency guardians are exact in both directions and scan `eec9134`.
+- Dynamic-Groovy, Java-static, interpreter JVM and interpreter JS agree on the migrated corpus and the `SumOfTerms` laws, except for reviewed, documented divergences.
+- Full build, demos, corpus guards, native gate, version surfaces and release-notice assembly are green.
 
----
+## 10 · Disposition history
 
-## 10 · Recommendation & decision points
+On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, nothing was blocked on 30.8.1, and folding the V1→V2 rewrite into [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md)'s Stage 5 would do it once. That disposition was superseded on **2026-11-02** by the owner's directive to migrate to the release the sibling checkout now carries. Decoupling Stage 5 is still unbuilt, so the V1→V2 rewrite lands directly in `:adapter` under W2.
 
-**Recommended disposition (2026-07-17): DEFER — do not upgrade now.** There is no forcing function (30.8.1 is maintained upstream as `release/2025.06`), and 31.1.0 adds nothing the project needs — one operator (`SumOfTerms`) no consumer is asking for, plus two constraint *relaxations* (§2) that would only make our catalog/laws loosen. **No open gap is blocked on 30.8.1** (checked across every `-GAPS` ledger). Against that near-zero benefit, upgrading now is largely **throwaway work**: the biggest cost is the adapter V1→V2 rewrite (§4), which [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md) already plans as its **Stage 5** — do decoupling first and that rewrite happens once, behind the SPI ports, turning 31.1.0 into a confined `:adapter` change instead of a cross-cutting migration touching 65 kernel-importing files. Deferring also avoids the gratuitous date-arithmetic differential risk (§5, Theme A) taken with no driver.
+## 11 · Open build-time confirmations
 
-**Scope qualification from this audit:** decoupling confines the Java kernel-API churn, including the V1→V2 rewrite, but it cannot make the **whole** bump adapter-only. The mandatory DM 28.4→29.4 migration, persisted include/reference redesign, catalog/guardian realignment, `SumOfTerms` interpreter work, corpus recapture, and native metadata remain cross-cutting. That larger true cost strengthens the defer recommendation; it also means the eventual Stage 5 must execute Phases 3–7 here rather than treating the version bump as only an adapter change.
-
-**Suggested sequence:** (1) run the decoupling program to the master gate; (2) then execute this bump as decoupling Stage 5 (V1→V2) + a version bump behind the boundary — this proposal is the ready worklist for that moment, and the build-time guardians (§8) make the realignment mechanical.
-
-**Re-open triggers (upgrade sooner if):** a consumer needs `SumOfTerms` or another 31.x-only capability; decoupling lands (do it immediately as Stage 5 — best timing); a **32.x** release ships (don't let the gap stretch to two annual lines); or a security/correctness fix lands in the 31.x line that 30.8.1 doesn't get (none today).
-
-The three maintainer calls this disposition resolves:
-
-1. **Internal-module strategy.** Keep binding `:adapter` to `kernel-internal-*` (accept the instability the rename declares), or re-plumb onto only the public aggregates (`kernel-md-facade`/`kernel-md-serializer`/`kernel-md-documentmodel`)? — *Recommended:* re-plumb behind the SPI, i.e. let the decoupling program own this; don't decide it standalone. Only relevant once Phase 2 runs.
-2. **Timing / scope.** Full migration now, or track 31.1.0 while staying on 30.8.1? — *Recommended:* **defer** (above); when it runs, it spans several sessions with this doc's work-item table as the state carrier.
-3. **`SumOfTerms` priority.** Ship in this bump (catalog + interpreter) or catalog-only first? — *Recommended:* ship with the eventual bump; no reason to front-run it while deferred.
-
-## 11 · Open decisions and build-time confirmations
-
-- **Migration boundary:** confirm with the built 31.1 facade that explicit `IDocumentModelMigrator` output for our models is byte/structure-stable after deserialize→serialize, and prove what the direct serializer does with an old flat include. Source shows deserialization itself does not invoke the migrator, so “try the old fixture and see” is a loss-detection test, not the migration plan.
-- **Expansion route:** choose the decoupled kernel-free expansion, A12 Workspace Conversion, or the remaining `a12internal` `CombinationModelService`; prove recursive include/type-def behavior and failure atomicity with the same parity fixtures.
-- **Version support:** ratify the recommended single 31.1/DM 29.4 floor, or fund separate source/fixture compatibility for 30.8 + 31.1. Do not promise a matrix over one incompatible model/API tree.
-- **Include CLI identity:** decide whether the user-facing alias remains as tool-local metadata/locator, is replaced by the direct reference, or is removed. Kernel persistence no longer supplies an alias.
-- **Bootstrap provenance:** confirm that publishing the public a12-base 30.0.1 source under the kernel-required 30.0.0 version is reproducible and that the rebuilt mm `a12types`/facade-generator closure resolves from an empty cache.
-- **`SumOfTerms` behavior:** measure empty/no-row, partial-validation, and nested-iteration semantics against both dynamic and Java-static kernel strategies before fixing the catalog facets or interpreter law.
-- **Runtime drift:** determine whether the `java.time` rewrite, number formal-error refactor, or codegen restructuring produces observable differences in the focused laws and regenerated corpus.
+- **Migration boundary:** confirm that explicit `IDocumentModelMigrator` output for our fixtures is stable after deserialize→serialize, and what the direct serializer does with an old flat include (a loss-detection test, not the plan).
+- **Expansion port (D2):** prove that `CombinationModelService` reproduces the include/type-def contract, including failure atomicity, on the existing parity fixtures.
+- **`includeLevel` default:** no A12-written ext1 file carries it. Measure absent vs explicit.
+- **`SumOfTerms` semantics:** empty/no-row, partial validation and nested iteration on both kernel strategies.
+- **Runtime drift:** whether the `java.time` rewrite, the number formal-error refactor, the codegen restructure, the ext1 conversion change or Jackson 3 produce observable differences.
