@@ -16532,3 +16532,47 @@ The second row separates the fold from "only a written wildcard counts", the thi
 Every `testIDNummer` row of the retained custom-type matrix now equals its `PROJECT_REJECT` row with the code renamed. The assembly collision itself survives on another trigger ([KF666](#kf666)).
 
 *Locked by:* `adapter.laws.CustomTestRangeLawsTest` (its retained modern and mode observations) and `ComputationDiagnosticAssemblyLawsTest`.
+
+## §9 supplement — kernel 31.1.1's `SumOfTerms` adds its term over every row of its iteration entity, counting an invalid term as an empty row and the unfilled capacity as unspecified; partial validation decides it only when every row is relevant as a whole (Kernel gate + runtime, differential on both strategies + source-read, kernel 31.1.1, 2026-11-03) <a id="kf670"></a>
+
+> Fold: pending — a new operator; folds into §9 when the canonical prose gains `SumOfTerms`.
+
+`SumOfTerms(<group*>, <term>)` evaluates `<term>` once per row of the starred group and returns the sum, a NUMBER usable wherever a number operation is, in a rule or a computation. [KF656](#kf656) holds what it asks of the iteration entity; this entry holds what it asks of the term, and what it evaluates to. No A12 model, document or BA example uses the operator.
+
+**The term** (`rule check`, the kernel itself). Each refusal sits beside an admitted row that differs from it in one element of the term:
+
+| term, iteration entity `Claims*` unless named | A12 (31.1.1) |
+|---|---|
+| `[Claims/Amount]`; `[Claims/Amount] + [Address/Zip]` (a non-repeatable group); `Sum(Claims/Parts*/Qty)` (an aggregate below the wildcard) | admitted |
+| `[Claims/Status]` (a string) | `MVK_NO_NUMBER` |
+| `[Claims/Amount] + [Vehicles/Value]` (another repeatable group) | `MVK_INVALID_ITERATION_IN_SET_EXPRESSION` |
+| `[Claims/Amount] + [Claims/Amount For "C1"]` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
+| `[$Claims/Amount]` | `MVK_INVALID_OUTER_ITERATION` |
+| `[Claims/Amount] + NumberOfFilledFields(Vehicles*/Value Having …)`, against the same aggregate unfiltered (admitted) | `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` |
+| `NumberOfFilledGroups(Claims/Parts* Having …)`, a filter its own check refuses | `MVK_NO_WILDCARD`: the inner filter answers first |
+| a nested `SumOfTerms` | `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` |
+| `Claims*/Parts*` with `[Claims/Parts/Qty] * [Claims/Parts/Price]` / with `[Claims/Amount]` | admitted / `MVK_NO_ITERATION_FOR_LOWEST_WILDCARD` |
+| `Claims/Parts*`, the rule iterating `Claims` / not iterating it | admitted / `MVK_NO_WILDCARD` |
+| `Address*` (a starred non-repeatable group) | `MVK_INVALID_WILDCARD` |
+
+`CheckSetExpressionUtil.checkNoDisallowedConstructsInSetExpression` also names an application condition and `RepetitionNotUnique`. Both reach an operation only inside a `Having` filter, and draw the same code as the filter: over the operation productions of `GrammarOnly_ConditionParser.g4` at `eec9134` (lines 200–640, through `entitySpec`), `grep -n -i bedingung` finds one non-comment reference to a condition, the `Mit` filter of `entitySpec`.
+
+**What it evaluates to** (the dynamic-Groovy anchor and generated Java agree on every row; capacity 4, rows `(Amount, Reserve)`, term `[Amount] + [Reserve]`):
+
+| document | reading |
+|---|---|
+| `(30,10)`, `(50,20)` | 110: `> 100` fires an OMISSION error; over `(30,10)`, `(50,20.5)` the computed value is `110.5` |
+| all four rows `(30,10)` | 160: the same rules fire a VALUE error |
+| no row | 0: `== 0` and `< 50` fire OMISSION errors; the computed value is `0` |
+| `(30, empty)` | `< 50` fires an OMISSION error |
+| `(30,10)` beside `(50,0)`, or beside a row holding only a status, under `[Amount] / [Reserve]` | 3: `> 1` fires; the dividing row counts as empty |
+| a malformed amount in one row | no rule decides and the computation assigns nothing |
+| a malformed field in one row that no term reads | every rule decides as though it were absent |
+| `Having [Status] == "open"`, an open `150` beside a closed `10` | 150: `> 100` fires |
+| `Claims*/Parts*` / `Claims/Parts*` in a rule iterating `Claims` | every part of every claim / the parts of the current claim |
+
+The capacity row is the one that tells the two readings of OMISSION apart. The source-read mechanism (`RuntimeController.summeVonTermen` at `eec9134`) agrees: a sum that visited fewer rows than the iterator counts adds an unspecified number, and a term whose value is invalid is added as one. A malformed cell the term reads stays unknown and suppresses the rule, as `SumOfProducts` does on any malformed cell (`adapter.laws.SumOfProductsDiffTest`); an invalid *term* does not.
+
+**Partial validation** decides a term sum only when every row of the iteration entity, over the whole capacity, is relevant as a whole: the group pointer on any row (`[1,0]`) or on every declared row, or every field the group holds, including fields no term reads. The term's own fields over any row are not enough, and neither are the two filled rows. A plain `Sum(Claims*/Amount)` over the same document, the liveness control, splits from it twice: it is decided by its own field over any row, and it is NOT decided by group pointers on every declared row.
+
+*Locked by:* `validate.laws.SumOfTermsTermLawsTest` and `SumOfTermsIterationEntityLawsTest` (admission); `adapter.laws.SumOfTermsRuntimeLawsTest` (runtime, both strategies, with the `Sum` control).

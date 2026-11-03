@@ -1,0 +1,114 @@
+package io.github.mbackschat.a12.dm.rulekit.validate.laws;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+
+/**
+ * KERNEL-FINDINGS KF670 — what kernel 31.1.1 asks of {@code SumOfTerms}' TERM, and where the operator composes. The
+ * iteration-entity half is {@link SumOfTermsIterationEntityLawsTest}.
+ *
+ * <p>Every refusal row is paired with an admitted row that differs from it in one element of the term, so a row
+ * cannot be refused for a reason it does not name. Own domain (insurance claims).
+ */
+class SumOfTermsTermLawsTest {
+
+    private static final String POLICY = DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US")
+            .rootGroup("Policy", p -> p
+                    .stringField("Holder", f -> { })
+                    .numberField("Total", n -> n.fractionDigits(2))
+                    .group("Address", a -> a.numberField("Zip", n -> n.fractionDigits(0)))
+                    .group("Vehicles", v -> v.repeatable(2).numberField("Value", n -> n.fractionDigits(0)))
+                    .group("Claims", c -> c.repeatable(3).indexField("ClaimRef")
+                            .stringField("ClaimRef", f -> { })
+                            .stringField("Status", f -> { })
+                            .numberField("Amount", n -> n.fractionDigits(2))
+                            .group("Parts", pp -> pp.repeatable(4)
+                                    .numberField("Qty", n -> n.fractionDigits(0))
+                                    .numberField("Price", n -> n.fractionDigits(2)))))
+            .build().toJson();
+
+    private static String atPolicy(String condition) {
+        return KernelLaws.verdictModel(POLICY, "/Policy", "../Holder", "FieldFilled(Holder) And " + condition);
+    }
+
+    @Test
+    void theTermIsANumberThatIteratesOnlyTheIterationEntitysPath() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("control: one field of the iteration entity",
+                atPolicy("SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("a string term", atPolicy("SumOfTerms(Claims*, [Claims/Status]) > 0"));
+        actual.put("a term that also reads an unrelated repeatable group",
+                atPolicy("SumOfTerms(Claims*, [Claims/Amount] + [Vehicles/Value]) > 0"));
+        actual.put("a term that also reads a non-repeatable group",
+                atPolicy("SumOfTerms(Claims*, [Claims/Amount] + [Address/Zip]) > 0"));
+        actual.put("a term with a semantic index",
+                atPolicy("SumOfTerms(Claims*, [Claims/Amount] + [Claims/Amount For \"C1\"]) > 0"));
+        actual.put("a term read through the outer marker", atPolicy("SumOfTerms(Claims*, [$Claims/Amount]) > 0"));
+        actual.put("a term holding a filtered aggregate the filter's own check admits", atPolicy(
+                "SumOfTerms(Claims*, [Claims/Amount] + NumberOfFilledFields(Vehicles*/Value Having [Vehicles/Value] > 1)) > 0"));
+        actual.put("a term holding a filtered aggregate the filter's own check refuses", atPolicy(
+                "SumOfTerms(Claims*, NumberOfFilledGroups(Claims/Parts* Having [Claims/Parts/Qty] > 1)) > 0"));
+        actual.put("a term holding the same aggregate unfiltered", atPolicy(
+                "SumOfTerms(Claims*, [Claims/Amount] + NumberOfFilledFields(Vehicles*/Value)) > 0"));
+        actual.put("a term holding an unfiltered aggregate below the wildcard",
+                atPolicy("SumOfTerms(Claims*, Sum(Claims/Parts*/Qty)) > 0"));
+        actual.put("a term holding a nested SumOfTerms",
+                atPolicy("SumOfTerms(Claims*, SumOfTerms(Claims/Parts*, [Claims/Parts/Qty])) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("control: one field of the iteration entity", KernelLaws.ADMITTED);
+        expected.put("a string term", "MVK_NO_NUMBER");
+        expected.put("a term that also reads an unrelated repeatable group", "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
+        expected.put("a term that also reads a non-repeatable group", KernelLaws.ADMITTED);
+        expected.put("a term with a semantic index", "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
+        expected.put("a term read through the outer marker", "MVK_INVALID_OUTER_ITERATION");
+        expected.put("a term holding a filtered aggregate the filter's own check admits",
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
+        expected.put("a term holding a filtered aggregate the filter's own check refuses", "MVK_NO_WILDCARD");
+        expected.put("a term holding the same aggregate unfiltered", KernelLaws.ADMITTED);
+        expected.put("a term holding an unfiltered aggregate below the wildcard", KernelLaws.ADMITTED);
+        expected.put("a term holding a nested SumOfTerms", "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void aNestedIterationEntityIsIteratedAtItsLowestLevel() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("both levels starred, the term iterates both",
+                atPolicy("SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty] * [Claims/Parts/Price]) > 0"));
+        actual.put("both levels starred, the term iterates only the upper",
+                atPolicy("SumOfTerms(Claims*/Parts*, [Claims/Amount]) > 0"));
+        actual.put("the upper level iterated by the rule",
+                KernelLaws.verdictModel(POLICY, "/Policy", "../Claims/Amount",
+                        "FieldFilled(Claims/Amount) And SumOfTerms(Claims/Parts*, [Claims/Parts/Qty]) > 10"));
+        actual.put("the upper level neither starred nor iterated by the rule",
+                atPolicy("SumOfTerms(Claims/Parts*, [Claims/Parts/Qty]) > 10"));
+        actual.put("a starred non-repeatable group", atPolicy("SumOfTerms(Address*, [Address/Zip]) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("both levels starred, the term iterates both", KernelLaws.ADMITTED);
+        expected.put("both levels starred, the term iterates only the upper", "MVK_NO_ITERATION_FOR_LOWEST_WILDCARD");
+        expected.put("the upper level iterated by the rule", KernelLaws.ADMITTED);
+        expected.put("the upper level neither starred nor iterated by the rule", "MVK_NO_WILDCARD");
+        expected.put("a starred non-repeatable group", "MVK_INVALID_WILDCARD");
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void aComputationMayAssignATermSum() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a computation of a term sum", KernelLaws.computationVerdict(POLICY, new DraftComputation("/Policy",
+                "TotalOfClaims", "../Total", null,
+                List.of(new DraftComputation.Alternative(null, "SumOfTerms(Claims*, [Claims/Amount] * 2)")))));
+
+        assertEquals(Map.of("a computation of a term sum", KernelLaws.ADMITTED), actual);
+    }
+}

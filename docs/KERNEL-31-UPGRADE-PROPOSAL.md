@@ -52,7 +52,7 @@ JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is d
 | W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | open |
 | W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | done 2026-11-03 — see the W4 batches below |
 | W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | in progress — every batch below is done except W5-perf |
-| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | open |
+| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | kernel laws done ([KF670](KERNEL-FINDINGS.md#kf670)); typed surface, interpreter and checker open |
 | W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | in progress — version surfaces (the CI and native workflows included) and docs done 2026-11-03; the native re-capture and gate run with W8 |
 | W8 | Gated release (D6) | open |
 
@@ -341,5 +341,4 @@ On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, n
 - **Migration boundary:** confirm that explicit `IDocumentModelMigrator` output for our fixtures is stable after deserialize→serialize, and what the direct serializer does with an old flat include (a loss-detection test, not the plan).
 - **Expansion port (D2):** prove that `CombinationModelService` reproduces the include/type-def contract, including failure atomicity, on the existing parity fixtures.
 - **`includeLevel` default:** no A12-written ext1 file carries it. Measure absent vs explicit.
-- **`SumOfTerms` semantics:** empty/no-row, partial validation and nested iteration on both kernel strategies.
 - **Runtime drift:** whether the `java.time` rewrite, the number formal-error refactor, the codegen restructure, the ext1 conversion change or Jackson 3 produce observable differences.

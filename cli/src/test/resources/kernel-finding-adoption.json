@@ -23810,6 +23810,74 @@
           "evidence": {}
         }
       }
+    },
+    "kf670": {
+      "sha256": "3a7702df3c6eb77528e3e1bf0aec79de97fc62bdcc7613f650b15b6dc00eea2e",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "the runtime matrix",
+          "partial validation"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies are read on one model per row and asserted equal before the expected readings are compared (KF670).",
+          "evidence": {
+            "the runtime matrix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#aTermSumOverRowsComparesAndAssigns",
+              "witness": "Capacity, invalid-term, malformed-cell, filter and nested rows on both strategies."
+            },
+            "partial validation": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#partialValidationNeedsEveryRowOfTheCapacityRelevantAsAWhole",
+              "witness": "Whole-row relevance against the plain Sum control."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The typed rulekit surface does not author SumOfTerms.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "The interpreter reports a SumOfTerms rule unsupported rather than evaluating it (TermSumRefusalTest).",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not reported yet.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
