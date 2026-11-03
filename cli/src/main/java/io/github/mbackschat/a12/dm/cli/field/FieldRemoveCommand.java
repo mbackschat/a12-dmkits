@@ -54,7 +54,8 @@ final class FieldRemoveCommand extends BaseCommand {
     String name;
 
     @Option(names = "--cascade",
-            description = "also remove the rules/computations that reference the field (else a referenced field is refused)")
+            description = "also remove the rules/computations that reference the field (else a referenced field is refused); "
+                    + "a field a document uniqueness criterion names is refused even so")
     boolean cascade;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

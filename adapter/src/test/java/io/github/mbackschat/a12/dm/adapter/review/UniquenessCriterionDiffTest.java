@@ -15,7 +15,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 /**
  * A removed field that a document uniqueness criterion of the base names is a removed referenced element, as for a
  * rule reader (KERNEL-FINDINGS KF671). The head drops the criterion too, since A12 refuses a criterion over a missing
- * field, so only the base can show the referrer. Own domain (insurance policies).
+ * field, so only the base can show the referrer. The control {@code Holder} is required like a criterion field
+ * and named by none. Own domain (insurance policies).
  */
 class UniquenessCriterionDiffTest {
 
@@ -24,7 +25,7 @@ class UniquenessCriterionDiffTest {
         String base = withCriteria(DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p
                         .stringField("PolicyNo", f -> f.required())
-                        .field("Holder", FieldKind.STRING)
+                        .stringField("Holder", f -> f.required())
                         .field("Product", FieldKind.STRING))
                 .build().toJson(), criterion("PolicyKey", "Taken", "/Policy/PolicyNo"));
         String head = DocumentModelDraft.named("policy").locale("en_US")

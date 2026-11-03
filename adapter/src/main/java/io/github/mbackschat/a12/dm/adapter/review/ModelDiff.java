@@ -175,7 +175,7 @@ public final class ModelDiff {
         Map<String, Map<String, String>> headFields = FieldDiffProjector.project(headState);
         match(ElementKind.FIELD, baseFields, headFields,
                 (change, id, deltas) -> FieldDiffProjector.reasons(change, id, deltas,
-                        baseState.referrers(), headState.referrers(), baseState.criteria()), changes);
+                        baseState.referrers(), headState.referrers(), baseState.adapter().uniquenessCriteria()), changes);
         Map<String, Map<String, String>> baseGroups = GroupDiffProjector.project(baseState);
         Map<String, Map<String, String>> headGroups = GroupDiffProjector.project(headState);
         match(ElementKind.GROUP, baseGroups, headGroups,

@@ -23926,7 +23926,7 @@
       }
     },
     "kf671": {
-      "sha256": "716fcfeb0362a75700126ff62f49574983d8a6cf7c05e284841f2de2ae06f292",
+      "sha256": "03e1745630400e256cefe21111d4d318701e23f37c801a0a304c152adcd8e948",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -23938,7 +23938,9 @@
         ],
         "interpreter": [],
         "checker": [],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "referrers"
+        ],
         "json-schema-import": [],
         "json-schema-export": [],
         "a12-kernel-lean": []
@@ -23975,22 +23977,27 @@
         },
         "checker": {
           "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "basis": "The checker has no criterion family, so A12's criterion refusals pass it silently (CONSISTENCY-GAPS DG177).",
           "evidence": {}
         },
         "dmtool-cli": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "where-used, model usage, model report and model diff count a criterion as a referrer of the fields it names, and field and group removal refuse on one even under --cascade, because A12 refuses a criterion over a missing field (KF671).",
+          "evidence": {
+            "referrers": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/UniquenessCriterionVerbsTest.java#removingAFieldOrGroupACriterionNamesIsRefusedEvenWithCascade",
+              "witness": "Field and group removal with and without --cascade, against the controls in whatNoCriterionNamesIsStillRemoved."
+            }
+          }
         },
         "json-schema-import": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no criterion: a JSON Schema constrains one document, and a criterion constrains values across documents.",
           "evidence": {}
         },
         "json-schema-export": {
           "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "basis": "Export drops a model's criteria and reports none omitted (SCHEMAKIT-GAPS DG178).",
           "evidence": {}
         },
         "a12-kernel-lean": {

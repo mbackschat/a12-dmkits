@@ -17,7 +17,7 @@
     },
     "documentUniquenessCriteria": {
       "type": "object",
-      "description": "field path → the names of the document uniqueness criteria that name it, listing only the fields a criterion names; a criterion is addressed by its name, since A12 gives it no path",
+      "description": "field path → the names of the document uniqueness criteria that name it, for every field a criterion names, a mounted field included; a criterion is addressed by its name, since A12 gives it no path",
       "additionalProperties": {
         "type": "array",
         "items": { "type": "string", "description": "a criterion's name" }

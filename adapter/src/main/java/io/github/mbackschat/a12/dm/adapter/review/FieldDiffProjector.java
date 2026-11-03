@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.adapter.UniquenessCriteria;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
@@ -32,14 +33,15 @@ final class FieldDiffProjector {
 
     static List<String> reasons(ModelDiff.ChangeKind change, String id, List<ModelDiff.Delta> deltas,
             Map<String, Set<String>> baseReferrers, Map<String, Set<String>> headReferrers,
-            Map<String, Set<String>> baseCriteria) {
+            UniquenessCriteria baseCriteria) {
         List<String> reasons = new ArrayList<>();
         switch (change) {
             case ADDED -> reasons.add("STRUCTURE_ADDED");
             case REMOVED -> {
                 reasons.add("STRUCTURE_REMOVED");
-                // a uniqueness criterion names the field too; removing it leaves the model invalid (KF671)
-                if (hasReaders(baseReferrers, id) || baseCriteria.containsKey(id)) {
+                // a base uniqueness criterion naming the field went with it, so a constraint on stored documents
+                // was dropped (KF671)
+                if (hasReaders(baseReferrers, id) || baseCriteria.byField().containsKey(id)) {
                     reasons.add("REFERENCED_ELEMENT_REMOVED");
                 }
             }

@@ -279,13 +279,14 @@ The library's entry points (what a developer or the CLI calls):
 
 The kernel is the **validity oracle**, but most of its rich read APIs are in the unstable `a12internal` tier. `:adapter` is the *only* unit that touches them, and it exists to convert the kernel's world into dmkits' own types.
 
-**What it provides** (`adapter` package, 12 files):
+**What it provides** (`adapter` package):
 
 | Capability | Class(es) | Returns (dmkits type) |
 |---|---|---|
 | read a stored rule back to the typed AST | `KernelAdapter.read` → `ConditionConverter` | `ReadResult.Converted(Condition)` or `ReadResult.Opaque(text, reason)` |
 | read a computation | `ReadComputation`, `ComputedField` | dmkits records |
 | `where-used` (exact) | `KernelAdapter.whereUsed` / `whereUsedInComputations` | `Set<String>` full names |
+| document uniqueness criteria by field | `KernelAdapter.uniquenessCriteria()` → `UniquenessCriteria` | field → criterion names |
 | reference rewriting (rename/move) | `ReferenceRewriter` (wraps the kernel's `MoveSupportDM`) | rewritten DM-JSON |
 | runtime evaluation (does a rule FIRE on data?) | `KernelAdapter.evaluate` | `EvalResult` / `RuleTestOutcome` / `ComputeResult` |
 

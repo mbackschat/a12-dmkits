@@ -45,7 +45,8 @@ final class GroupRemoveCommand extends BaseCommand {
     String group;
 
     @Option(names = "--cascade",
-            description = "also remove the rules/computations that reference the group (else a referenced group is refused)")
+            description = "also remove the rules/computations that reference the group (else a referenced group is refused); "
+                    + "a group holding a field a document uniqueness criterion names is refused even so")
     boolean cascade;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

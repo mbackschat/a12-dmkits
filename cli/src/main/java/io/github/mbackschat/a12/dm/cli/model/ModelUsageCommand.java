@@ -21,8 +21,8 @@ import picocli.CommandLine.Mixin;
 
 /**
  * {@code dmtool model usage} — the model-wide usage/audit read (FEATURE-GAPS G9): in ONE call, the
- * {@code field → reading-rules/computations} map for <b>every</b> field, plus the set of fields no
- * rule or computation reads. The maintainer/audit staple ("which fields are unreferenced?", "what
+ * {@code field → reading-rules/computations} map for <b>every</b> field, the document uniqueness criteria naming
+ * each field, plus the set of fields no rule, computation or criterion uses. The maintainer/audit staple ("which fields are unreferenced?", "what
  * constrains this field?") that previously meant looping {@code where-used} over every field by hand.
  *
  * <p>Seeded by the kernel's {@code getDirectlyReferencedEntities} (so it works even on conditions rulekit reads
@@ -34,7 +34,7 @@ import picocli.CommandLine.Mixin;
  * A read op: the payload rides the envelope's {@code data} (shape: {@code model-usage.schema}).
  */
 @Command(name = "usage", mixinStandardHelpOptions = true,
-        description = "Model-wide usage audit: every field's reading rules/computations (including reach through an ancestor group) + the unreferenced set, in `data`.")
+        description = "Model-wide usage audit: every field's reading rules/computations (including reach through an ancestor group), the document uniqueness criteria naming each field, + the unreferenced set, in `data`.")
 final class ModelUsageCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -59,6 +59,8 @@ final class ModelUsageCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode usage = data.putObject("usage");
             ObjectNode criteriaUsage = data.putObject("documentUniquenessCriteria");
+            // every field a criterion names, a mounted one included: the criteria come from the expanded model (KF671)
+            criteria.forEach((field, names) -> new TreeSet<>(names).forEach(criteriaUsage.putArray(field)::add));
             ArrayNode unreferenced = data.putArray("unreferenced");
             for (String field : fields) {
                 // reachability, NOT exactness: a group operand expands recursively to every field below it, so a
@@ -67,11 +69,7 @@ final class ModelUsageCommand extends BaseCommand {
                 Set<String> referrers = new TreeSet<>(KernelAdapter.referrersReaching(byEntity, field));
                 ArrayNode arr = usage.putArray(field);
                 referrers.forEach(arr::add);
-                Set<String> naming = new TreeSet<>(criteria.getOrDefault(field, Set.of()));
-                if (!naming.isEmpty()) {
-                    naming.forEach(criteriaUsage.putArray(field)::add);
-                }
-                if (referrers.isEmpty() && naming.isEmpty()) {
+                if (referrers.isEmpty() && !criteria.containsKey(field)) {
                     unreferenced.add(field);
                 }
             }

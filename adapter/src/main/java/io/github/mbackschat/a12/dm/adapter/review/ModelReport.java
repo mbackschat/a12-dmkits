@@ -103,7 +103,7 @@ public final class ModelReport {
     /** The model's header facts — its identity card (J1). */
     public record Identity(String id, String modelType, String modelVersion, List<String> locales) {}
 
-    /** The fields no rule or computation reads — the dead-field audit headline. (The full field→referrers map is `model usage`.) */
+    /** The fields no rule, computation or uniqueness criterion uses — the dead-field audit headline. (The full field→referrers map is `model usage`.) */
     public record Usage(List<String> unreferenced) {}
 
     /** Why a rule fires — constant across ALL rules, so the report carries it ONCE at the top (not per rule). */

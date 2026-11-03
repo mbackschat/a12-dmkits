@@ -16631,9 +16631,9 @@ Only the `absoluteOrRelativeToNextRepAncestor` requiredness counts as required. 
 | a criterion in an included model, at `SINGLE_RG` or `MODEL_ROOT` | admitted; the expanded model carries no criterion |
 | an entry criterion naming a mounted field | admitted, kept |
 | an entry and an included criterion of one name | admitted; only the entry's is kept |
-| `group extract` of the group holding a criterion's field | the parent admitted with its criteria; the sub-model, which received copies, refused alone for every copied field it lacks |
+| `group extract` of the group holding a criterion's field, with the parent's criteria copied into the sub-model | the parent admitted with its criteria; the sub-model refused alone for every copied field it lacks |
 
-So expansion keeps only the entry model's criteria, and a criterion copied into an included model does nothing but make that model invalid on its own.
+So expansion keeps only the entry model's criteria, and a criterion copied into an included model does nothing but make that model invalid on its own. Our `group extract` therefore copies none since 2026-11-03, and its output sub-model is admitted (the row's lock re-inserts the copies to keep A12's verdict measured).
 
 **Who reads a criterion** (source-read at `eec9134`). `git grep -il documentUniquenessCriteri` over the kernel's main sources, excluding `build/` and `delombok/`, gives 29 files: the model and its API, the walker and visitors, the consistency rule `DocumentUniquenessCriteriaRule`, the serializer, move support, the model joiners, the combination coordinates and a downgrade migration step. None is in the runtime or the codegen, so no rule, computation or document validation evaluates a criterion; the kernel checks only its declaration.
 

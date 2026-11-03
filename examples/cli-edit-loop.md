@@ -9,7 +9,7 @@ The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this dem
 
 ## where-used — what depends on a field
 
-Before you touch a field, see what references it. `where-used` reports the rules **and** computations that read an entity — so you know the blast radius of a change. The entity is **positional** — like `rule read <path>` — with the model as the `-m` context (`--entity` stays as the explicit alias); the referrers ride the result envelope's `data`, like every read (its model-wide sibling is `model usage`).
+Before you touch a field, see what references it. `where-used` reports the rules **and** computations that read an entity, and the document uniqueness criteria that name a field — so you know the blast radius of a change. The entity is **positional** — like `rule read <path>` — with the model as the `-m` context (`--entity` stays as the explicit alias); the referrers ride the result envelope's `data`, like every read (its model-wide sibling is `model usage`).
 
 ```bash
 dmtool -m examples/models/subscription-computed.dm.json \

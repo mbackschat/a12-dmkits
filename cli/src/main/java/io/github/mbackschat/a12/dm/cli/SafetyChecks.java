@@ -405,26 +405,64 @@ public final class SafetyChecks {
     }
 
     /**
-     * The RK_REFERENCED refusal for safe-delete: the referrers in {@code data.referencedBy}, with a fix. A document
-     * uniqueness criterion naming the target replaces the fix, since {@code --cascade} removes rules and computations
-     * only and A12 refuses a criterion naming a missing field (KF671).
+     * What still references a removal target: the rules and computations by full name, and the document uniqueness
+     * criteria by name, since A12 gives a criterion no path (KF671). Built through {@link #builder()}, because the
+     * three name sets share one type and a positional call would swap them silently; an unset set is empty.
      */
-    public static Refusal referencedBy(String target, Set<String> rules, Set<String> computations,
-            Set<String> criteria, String fix) {
+    public record Referrers(Set<String> rules, Set<String> computations, Set<String> criteria) {
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** The fluent construction path; {@link #build()} is the only caller of the canonical constructor. */
+        public static final class Builder {
+            private Set<String> rules = Set.of();
+            private Set<String> computations = Set.of();
+            private Set<String> criteria = Set.of();
+
+            public Builder rules(Set<String> names) {
+                rules = names;
+                return this;
+            }
+
+            public Builder computations(Set<String> names) {
+                computations = names;
+                return this;
+            }
+
+            public Builder criteria(Set<String> names) {
+                criteria = names;
+                return this;
+            }
+
+            public Referrers build() {
+                return new Referrers(rules, computations, criteria);
+            }
+        }
+    }
+
+    /**
+     * The RK_REFERENCED refusal for safe-delete: the referrers in {@code data.referencedBy}, with a fix. A document
+     * uniqueness criterion naming the target, or a field below it, replaces the fix, since {@code --cascade} removes
+     * rules and computations only and A12 refuses a criterion naming a missing field (KF671).
+     */
+    public static Refusal referencedBy(String target, Referrers referrers, String fix) {
         ObjectNode data = MAPPER.createObjectNode();
         ObjectNode referencedBy = data.putObject("referencedBy");
         ArrayNode ruleArray = referencedBy.putArray("rules");
-        rules.forEach(ruleArray::add);
+        referrers.rules().forEach(ruleArray::add);
         ArrayNode computationArray = referencedBy.putArray("computations");
-        computations.forEach(computationArray::add);
+        referrers.computations().forEach(computationArray::add);
         ArrayNode criterionArray = referencedBy.putArray("documentUniquenessCriteria");
-        criteria.forEach(criterionArray::add);
-        String effectiveFix = criteria.isEmpty() ? fix
-                : "take " + target + " out of the document uniqueness criteria " + String.join(", ", criteria)
-                        + " first; --cascade removes only rules and computations, never a criterion";
+        referrers.criteria().forEach(criterionArray::add);
+        String effectiveFix = referrers.criteria().isEmpty() ? fix
+                : "first remove from the document uniqueness criteria " + String.join(", ", referrers.criteria())
+                        + " every field they name at or below " + target
+                        + "; --cascade removes only rules and computations, never a criterion";
+        int count = referrers.rules().size() + referrers.computations().size() + referrers.criteria().size();
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_REFERENCED"),
-                target + " is referenced by " + (rules.size() + computations.size() + criteria.size())
-                        + " element(s); removing it would dangle them",
+                target + " is referenced by " + count + " element(s); removing it would dangle them",
                 Diagnostic.Where.path(target), Optional.of(effectiveFix), Optional.empty());
         return new Refusal(target + " is referenced — refusing to remove", data, diagnostic);
     }

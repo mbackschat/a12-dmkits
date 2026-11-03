@@ -66,7 +66,8 @@ public final class FieldRemoval {
         computations.removeAll(rules);
         // a criterion refuses even under --cascade, which removes rules and computations only (KF671)
         if (!cascade || !criteria.isEmpty()) {
-            return new Plan(Optional.of(SafetyChecks.referencedBy(field, rules, computations, criteria,
+            return new Plan(Optional.of(SafetyChecks.referencedBy(field,
+                    SafetyChecks.Referrers.builder().rules(rules).computations(computations).criteria(criteria).build(),
                     reachHint(byEntity, field, fixHint))), List.of(), List.of());
         }
         return new Plan(Optional.empty(), List.copyOf(rules), List.copyOf(computations));

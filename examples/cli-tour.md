@@ -333,7 +333,7 @@ dmtool -m examples/models/order-ruled.dm.json model read
 
 ## model usage — the whole-model audit
 
-Where `rule read` / `model read` render conditions, `model usage` answers the **maintainer's** question across the whole model at once: which rules or computations reference each field — and, the headline, which fields **nothing** references. One call replaces a `where-used`-per-field loop. The payload rides `data` (`usage` maps every field to its referrers; `unreferenced` is the subset with none); projected here to the *referenced* fields plus a count of the rest.
+Where `rule read` / `model read` render conditions, `model usage` answers the **maintainer's** question across the whole model at once: which rules or computations reference each field — and, the headline, which fields **nothing** references. One call replaces a `where-used`-per-field loop. The payload rides `data` (`usage` maps every field to its referrers, `documentUniquenessCriteria` the fields a uniqueness criterion names; `unreferenced` is the subset with neither); projected here to the *referenced* fields plus a count of the rest.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model usage \

@@ -25,11 +25,11 @@ import picocli.CommandLine.Parameters;
  * (G11) — consistent with {@code rule read <path>} / {@code field read <path>}. {@code --entity} stays as
  * the explicit alias. The pre-G11 {@code where-used <model> --entity=…} form (model passed positionally)
  * self-corrects to the new shape. The referrers payload ({@code entity}, {@code rules}, {@code computations},
- * {@code count}) rides the <b>result envelope</b>'s {@code data} (its sibling aggregate read is {@code model
+ * {@code documentUniquenessCriteria}, {@code count}) rides the <b>result envelope</b>'s {@code data} (its sibling aggregate read is {@code model
  * usage}); the shape is published as {@code where-used.schema}.
  */
 @Command(name = "where-used", mixinStandardHelpOptions = true,
-        description = "List the rules and computations whose condition directly references a given field or group.")
+        description = "List the rules and computations whose condition directly references a given field or group, and the document uniqueness criteria naming a field.")
 final class WhereUsedCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

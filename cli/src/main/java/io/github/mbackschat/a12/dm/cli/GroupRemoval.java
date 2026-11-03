@@ -57,7 +57,9 @@ public final class GroupRemoval {
             return new Plan(Optional.empty(), List.of(), List.of());
         }
         if (!cascade || !criteria.isEmpty()) {
-            return new Plan(Optional.of(SafetyChecks.referencedBy(group, rules, computations, criteria, fixHint)),
+            return new Plan(Optional.of(SafetyChecks.referencedBy(group,
+                    SafetyChecks.Referrers.builder().rules(rules).computations(computations).criteria(criteria).build(),
+                    fixHint)),
                     List.of(), List.of());
         }
         return new Plan(Optional.empty(), List.copyOf(rules), List.copyOf(computations));
