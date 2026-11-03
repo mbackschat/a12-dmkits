@@ -49,7 +49,7 @@ JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is d
 | W1 | Retarget this proposal; record D1–D7 | done 2026-11-02 |
 | W2 | Build wiring + `:adapter` compile on 31.1.1. Probe tooling (`kernelProbe`, `probeDifferential`) ported first and announced to a12-kernel-lean. V2 document materializer, variants removed, the D2 expansion port, custom-extension API, Jackson 3. | done 2026-11-03, landed with W3a |
 | W3a | Format floor: `ModelFormat.VERSION` 29.4.0, authoring emits the 29.x include shape, the D3 reference-only include redesign, every committed fixture migrated. | done 2026-11-03 |
-| W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | W3b-1 measured ([KF671](KERNEL-FINDINGS.md#kf671)): admission classes and move-support rewrite. Open: W3b-2, criteria as referrers for the delete gate, where-used, usage and the dead-field report, and extract-as-include not copying the parent's criteria; the probe-request migration offer. |
+| W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | W3b-1 done; W3b-2a and W3b-2b open, see the W3b batches below; the probe-request migration offer open. |
 | W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | done 2026-11-03 — see the W4 batches below |
 | W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | in progress — every batch below is done except W5-perf |
 | W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | done: kernel laws, typed surface, adapter read-back, interpreter and portable checker ([KF670](KERNEL-FINDINGS.md#kf670)) |
@@ -93,6 +93,17 @@ Each of W3–W6 ends with a verdict-delta letter to a12-kernel-lean (D4). Their 
 | W5-sparse | hypothesis: repetition traversal changed with the runtime service's data path (`DocumentIDataWrapper` and `EntityInstanceConverter` were deleted) | `SparseFilteredAggregate`, `SparseFilteredFill`, `SparseMembershipTraversal`, `SparseOverlapPolicy`, `FilterCacheScope`, `FilterMissingSlot`, `DenseUniquenessPrefix`, `ComputeTargetSubgroupScope`, `PartialGroupCountRelevance`, `PartialDeclaredListExtent`, `ClassificationEnablementGrid` | done 2026-11-03 |
 | W5-msg | message rendering and field-owned error texts | `MessageParameterRow`, `FieldConstraintFormal`, `CustomTestRange`, `ComputationDiagnosticAssembly` | done 2026-11-03 |
 | W5-perf | performance scenario fingerprints drifted with the fixture migration | `ScenarioInventory` | open — the anchors are refreshed on an idle machine before the release |
+
+
+**W3b batches.** A12 names a criterion only by `IDocumentUniquenessCriterion.getName()` and lists its fields with `getFieldFullNames()`. It has no path, so criteria get their own field-keyed index, read from the expanded `IDocumentModel` the adapter already holds, beside the rule and computation referrers. Mixing names into those path-keyed sets would invent an address A12 does not have.
+
+| batch | mechanism | acceptance (oracle) | state |
+|---|---|---|---|
+| W3b-1 | admission classes and move-support rewrite | `DocumentUniquenessCriterionLawsTest`, `UniquenessCriterionRewriteTest` ([KF671](KERNEL-FINDINGS.md#kf671)) | done 2026-11-03 |
+| W3b-2a | three kernel measurements before the design: `field remove` on a criterion field today; whether expansion carries an included model's criteria and rebases them, and whether an entry criterion may name a mounted field; whether the sub-model of `group extract` is refused for the copied parent criteria | one laws class, `checkConsistency` on each result | open |
+| W3b-2b | criteria as referrers. `where-used` lists them under `documentUniquenessCriteria`; `field remove` and `group remove` refuse with `RK_REFERENCED` naming them, `--cascade` included, since no verb edits a criterion; the `model report` dead-field set, `model usage` and the `model diff` read-by flag count them; rename and move report the criteria they rewrote; `group extract` copies no parent criterion and refuses when one names a field it moves | does-fire refusal tests (CLI-SPEC §6 gate), CLI tests, schema examples, `checkConsistency` on every refactor result; one cold review before landing | open |
+
+Excluded, each a gap row when W3b-2b lands: authoring criteria through the kits (`DocumentModelDraft`), a `model diff` criterion kind, a `model info` count, a portable checker family for the criterion classes (silent is the safe direction), JSON Schema carriage, and a pre-edit gate for `field modify` (the kernel already refuses an optional or transient criterion field in A12's sentence).
 
 Outside the batches: 31.1.1 states a duplicate element id codelessly ("The id [..] of element on path .. is not unique: Used by [..]"); the checker reports it as `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](KERNEL-FINDINGS.md#kf661)).
 
