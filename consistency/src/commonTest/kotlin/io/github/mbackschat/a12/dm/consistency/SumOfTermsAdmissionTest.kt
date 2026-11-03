@@ -34,7 +34,9 @@ class SumOfTermsAdmissionTest {
      * The term carrier: `Holder`, `Total`, a non-repeatable `Address { Zip }`, `Vehicles[2] { Value }`, and
      * `Claims[3] { ClaimRef (index), Status, Amount, Assessment { Score }, Parts[4] { Qty, Price } }`.
      */
-    private fun policy(errorField: String, condition: String): ModelSource = ModelSource(
+    private fun policy(errorField: String, condition: String): ModelSource = policyWith(rule(errorField, condition))
+
+    private fun policyWith(member: String): ModelSource = ModelSource(
             """
             {"header":{"modelVersion":"29.4.0","id":"policy-sum-of-terms-term","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
@@ -60,7 +62,7 @@ class SumOfTermsAdmissionTest {
                     {"type":"Field","id":"f9","name":"Price","Field":{"fieldType":{"type":"NumberType"}}}
                   ]}}
                 ]}},
-                ${rule(errorField, condition)}
+                $member
               ]}}
              ]}}}
             """.trimIndent(),
@@ -69,6 +71,11 @@ class SumOfTermsAdmissionTest {
     private fun rule(errorField: String, condition: String): String =
         """{"type":"Rule","id":"r0","name":"Probe","Rule":{"errorCondition":"${condition.replace("\"", "\\\"")}",""" +
             """"errorEntityRelPath":"../$errorField","errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
+
+    private fun computation(target: String, operation: String): String =
+        """{"type":"Computation","id":"c0","name":"Probe","Computation":{"computedFieldRelPath":"../$target",""" +
+            """"computationAlternatives":[{"operation":"$operation"}],""" +
+            """"errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
 
     private fun codes(source: ModelSource): List<String> =
         checkRead(source).findings.filter { it.category == FindingCategory.A12_CONSTRAINT }.map { it.code }
@@ -181,6 +188,18 @@ class SumOfTermsAdmissionTest {
             "the error field in another repeatable group" to listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
             "the error field in the upper level of a nested iteration" to listOf("MVK_ERROR_FIELD_NOT_REFERENCED"),
             "the error field in the lower level of a nested iteration" to listOf(),
+        ), actual)
+    }
+
+    @Test
+    fun aComputationMayAssignATermSum() {
+        val actual = linkedMapOf(
+            "a term sum" to codes(policyWith(computation("Total", "SumOfTerms(Claims*, [Claims/Amount] * 2)"))),
+            "a term that does not iterate" to codes(policyWith(computation("Total", "SumOfTerms(Claims*, 5)"))),
+        )
+        assertEquals(linkedMapOf(
+            "a term sum" to listOf(),
+            "a term that does not iterate" to listOf("MVK_NO_ITERATION_FOR_LOWEST_WILDCARD"),
         ), actual)
     }
 

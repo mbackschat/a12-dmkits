@@ -169,7 +169,11 @@ class SumOfTermsTermLawsTest {
         actual.put("a computation of a term sum", KernelLaws.computationVerdict(POLICY, new DraftComputation("/Policy",
                 "TotalOfClaims", "../Total", null,
                 List.of(new DraftComputation.Alternative(null, "SumOfTerms(Claims*, [Claims/Amount] * 2)")))));
+        actual.put("a computation of a term that does not iterate", KernelLaws.computationVerdict(POLICY,
+                new DraftComputation("/Policy", "TotalOfClaims", "../Total", null,
+                        List.of(new DraftComputation.Alternative(null, "SumOfTerms(Claims*, 5)")))));
 
-        assertEquals(Map.of("a computation of a term sum", KernelLaws.ADMITTED), actual);
+        assertEquals(Map.of("a computation of a term sum", KernelLaws.ADMITTED,
+                "a computation of a term that does not iterate", "MVK_NO_ITERATION_FOR_LOWEST_WILDCARD"), actual);
     }
 }

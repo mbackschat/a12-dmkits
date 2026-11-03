@@ -16557,6 +16557,7 @@ Every `testIDNummer` row of the retained custom-type matrix now equals its `PROJ
 | `Claims*/Parts` (a repeatable group below the star left unstarred) / `Claims*/Assessment` (a non-repeatable one) | `MVK_NO_WILDCARD` / `MVK_GROUP_NOT_REPEATABLE` |
 | `Claims* For "C1"` (a semantic index on the iteration entity) | `MVK_SEMANTIC_INDEX_AND_WILDCARD`: the entity's own gate answers first |
 | `Claims*/Parts*` with `[Claims/Parts/Qty] + Sum(Claims*/Parts/Price)` (a level the term iterates below a star it writes) | `MVK_NO_WILDCARD` |
+| a computation of `[Claims/Amount] * 2` / of `5` | admitted / `MVK_NO_ITERATION_FOR_LOWEST_WILDCARD` |
 
 **The error field** (`rule check`, the error field `Total` read nowhere else). A read inside the term is never the rule's own reference to it: `[Claims/Amount] + [Total]` is `MVK_ERROR_FIELD_NOT_REFERENCED`, as is an unmarked read inside the iteration's filter, while the filter read marked `[$Total]` is admitted, as in any filter body ([KF488](#kf488)). The iteration entity is the rule's reference to the group it names, and to nothing above it: an error field inside `Claims` that no term reads is admitted under `Claims*`, while under `Claims*/Parts*` an error field in `Parts` is admitted and one in `Claims` is `MVK_ERROR_FIELD_NOT_REFERENCED`, as is one in another repeatable group. *Corrected 2026-11-03:* this read "the starred group itself is the rule's reference", which one row under a single-level entity could not tell apart from "a repeatable error field is exempt".
 
