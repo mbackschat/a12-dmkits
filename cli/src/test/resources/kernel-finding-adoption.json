@@ -23924,6 +23924,76 @@
           "evidence": {}
         }
       }
+    },
+    "kf671": {
+      "sha256": "e6fc11c0d82dc57a6aa86d2ae7e5ca844a0a2034da215dcee6297212da8d0e2f",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "move support"
+        ],
+        "dmkits": [
+          "admission"
+        ],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Every rename and move runs A12's move support, which carries the criterion's fields and text parameters along (KF671).",
+          "evidence": {
+            "move support": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/UniquenessCriterionRewriteTest.java#aRenameOrMoveOfACriterionFieldRewritesItsFieldsAndItsText",
+              "witness": "A field renamed, a field moved into a group and the root renamed, against the unchanged control."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "The loader delegates criterion admission to A12 and reports its sentences unchanged (KF671).",
+          "evidence": {
+            "admission": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DocumentUniquenessCriterionLawsTest.java#whatACriterionAsksOfItsNameFieldsAndText",
+              "witness": "Every refusal class against two admitted controls, one member changed per row."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not reported yet.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

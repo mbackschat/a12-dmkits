@@ -16598,3 +16598,31 @@ The capacity row is the one that tells the two readings of OMISSION apart. The s
 **Where A12 asks the admission classes** (source-read at `eec9134`, each consequence measured above). The iteration entity's kind, repeatability and lowest star, the term's disallowed constructs, its per-level walk and its number check run as the operation closes (`CheckSetOperOpImpl.check`), so a class the arguments' own specs draw while they are read answers first, and every post-parse class, the error field's among them, answers after. The term shares ONE parser flag with a `Having` body (`initSetExpression` at either body's start, `resetSetExpression` at either's end, `GrammarOnly_ConditionParser.g4`), and a spec is not walked against the rule while it is on. That is why an unstarred read of the iteration group is admitted in the term, and why a filtered aggregate in the term is walked against the rule after its own filter clears the flag: `NumberOfFilledGroups(Claims/Parts* Having …)` draws `MVK_NO_WILDCARD` where the unfiltered `Sum(Claims/Parts*/Qty)` is admitted.
 
 *Locked by:* `validate.laws.SumOfTermsTermLawsTest` and `SumOfTermsIterationEntityLawsTest` (admission and the error-field reference); `consistency.SumOfTermsAdmissionTest` (the portable checker on every admission row); `adapter.laws.SumOfTermsRuntimeLawsTest` and `SumOfTermsShapesRuntimeLawsTest` (runtime and message references, both strategies, with the `Sum` control and the interpreter asserted equal on every row); `adapter.SumOfTermsReadBackTest` (the typed read-back of every iteration shape).
+
+## §12 supplement — kernel 31.1.1 admits a document uniqueness criterion only over required, persisted, non-repeatable fields named by full path, and its move support rewrites the criterion's fields and text with the model (Kernel gate + move support, measured + source-read, kernel 31.1.1, 2026-11-03) <a id="kf671"></a>
+
+> Fold: pending — new to §12; a model-level declaration no validation path evaluates.
+
+DM 28.6 added `content.documentUniquenessCriteria`: a named list of fields whose values no two stored documents may share, with an error text per locale. Each refusal row below differs from an admitted control in one member of one criterion. All but one class reach us as a sentence with no class key:
+
+| row | A12's verdict |
+|---|---|
+| one required field, its text naming it as `$/Policy/PolicyNo.value$`; two required fields; no criteria | admitted |
+| empty name | `A Document Uniqueness Criterion must have a name.` |
+| empty field list | `… 'PolicyKey': Must specify at least one field.` |
+| unknown field, a group, or a relative path (`PolicyNo`) | `… The field '<as written>' does not exist in the Document Model.` |
+| optional field, or one required only with its parent | `… The field '…' is not set as required.` |
+| field in a repeatable group | `… is repeatable.` |
+| transient field | `… is transient.` |
+| no error text for the model locale | `… No error text was specified for locale 'en_US'.` |
+| two criteria of one name | `… Name is not unique in the Document Model.`, once per criterion |
+| text parameter naming a field outside the criterion, or the criterion's own field relatively | `… Invalid error text parameter for locale 'en_US'. Only fields referenced in the Criterion are allowed.` |
+| unterminated `$` parameter | `… The error text contains an incorrect number of $ characters. [WRONG_NUMBER_OF_DOLLARS]` |
+
+Only the `absoluteOrRelativeToNextRepAncestor` requiredness counts as required. A parameter may name its field with or without `.value`.
+
+**Move support** (`MoveSupportDM.changePathReferencesForMove`, which `ReferenceRewriter` runs before every field or group rename and move) rewrites a criterion's field list and every `$path$` parameter of its text: a renamed field, a field moved into a group, and a renamed root all come back consistent.
+
+**Who reads a criterion** (source-read at `eec9134`). `git grep -il documentUniquenessCriteri` over the kernel's main sources, excluding `build/` and `delombok/`, gives 29 files: the model and its API, the walker and visitors, the consistency rule `DocumentUniquenessCriteriaRule`, the serializer, move support, the model joiners, the combination coordinates and a downgrade migration step. None is in the runtime or the codegen, so no rule, computation or document validation evaluates a criterion; the kernel checks only its declaration.
+
+*Locked by:* `validate.laws.DocumentUniquenessCriterionLawsTest` (admission) and `adapter.UniquenessCriterionRewriteTest` (move support).
