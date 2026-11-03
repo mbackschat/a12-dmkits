@@ -174,7 +174,7 @@
       },
       "diagnostics": [
         {
-          "severity": "WARNING",
+          "severity": "ERROR",
           "source": "PRECHECK",
           "code": "RK_REFERENCED",
           "summary": "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
