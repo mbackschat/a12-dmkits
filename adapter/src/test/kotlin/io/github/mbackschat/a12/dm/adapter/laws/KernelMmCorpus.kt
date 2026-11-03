@@ -20,7 +20,8 @@ import kotlin.io.path.writeText
  * Each file is migrated alone, because the variants of one metamodel (`a12-`, `codegen-`, `-previous`) share
  * a `header.id` and none references another model (both read from the 75 files at `f7ea179`). The migrated
  * tree mirrors the original's relative paths under a temporary directory and is built once per test JVM;
- * a file the migrator refuses is left out, which the vacuity assertions of the sweeps already guard.
+ * a file the migrator refuses is left out, and [KernelMmCorpusTest] fails naming it, since the sweeps' own vacuity
+ * assertions only see an empty corpus.
  */
 object KernelMmCorpus {
 

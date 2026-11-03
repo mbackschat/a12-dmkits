@@ -629,9 +629,17 @@ class IncludeAssemblyTest {
         ).forEach(::assertInvalidIncludeMount)
     }
 
+    /**
+     * Local elements beside an `includeConfig` are replaced by the included content, as A12 31.1.1 builds the group
+     * (KF651, `adapter.WorkspaceIncludeStructureKernelTest`), so the shadowed mount prepares exactly as the fixture
+     * without them, whose expansion the matrix above checks against the kernel's reader.
+     */
     @Test
-    fun rejectsKernelAcceptedShadowMountsExplicitly() {
-        assertInvalidIncludeMount(invalidShadowMount())
+    fun localElementsBesideAMountAreReplacedByTheIncludedContent() {
+        val caseId = "imported-typedef-nested-single"
+        val (entryModelId, sources) = shadowMount(caseId)
+
+        assertEquals(expectedStructure(caseId), WorkspaceIncludeAssembler.assemble(admit(sources), entryModelId).root.preparedStructure())
     }
 
     @Test
@@ -988,8 +996,7 @@ class IncludeAssemblyTest {
         return entryModelId to sources
     }
 
-    private fun invalidShadowMount(): Pair<String, Map<String, String>> {
-        val caseId = "imported-typedef-nested-single"
+    private fun shadowMount(caseId: String): Pair<String, Map<String, String>> {
         val entryModelId = WorkspacePreparationFixtureJson.entryModelId(caseId)
         val sources = fixtureSources(caseId).toMutableMap()
         val localElement = Json.parseToJsonElement(sources.getValue("inspection-checks"))
@@ -1018,13 +1025,8 @@ class IncludeAssemblyTest {
             }
             rootGroup.replacing("Group", rootBody.replacing("elements", JsonArray(elements)))
         }
-        sources[entryModelId] = entry.replacing(
-            "content",
-            content.replacing(
-                "modelRoot",
-                modelRoot.replacing("rootGroups", JsonArray(rootGroups)),
-            ),
-        ).toString()
+        val rewritten = content.replacing("modelRoot", modelRoot.replacing("rootGroups", JsonArray(rootGroups)))
+        sources[entryModelId] = entry.replacing("content", rewritten).toString()
         return entryModelId to sources
     }
 

@@ -122,9 +122,13 @@ class KernelDocsFoldContractTest {
         Set<String> tasks = Pattern.compile("(?m)^\\| \\*\\*([A-Z][A-Z0-9-]*)\\*\\* \\|")
                 .matcher(Files.readString(Path.of("../docs/CONFORMANCE-PLAN.md"))).results()
                 .map(m -> m.group(1)).collect(java.util.stream.Collectors.toSet());
+        var bodies = findingBodies(Files.readString(KERNEL_FINDINGS));
         inventory.reviews().forEach((id, review) -> {
             if (review != null) consumerReviewProblems(review, tasks, KernelDocsFoldContractTest::localTestReferenceResolves)
                     .forEach(problem -> problems.add(id + ": " + problem));
+            if (review != null && review.consumers() != null && bodies.containsKey(id)) {
+                namedLockProblems(bodies.get(id), review).forEach(problem -> problems.add(id + ": " + problem));
+            }
         });
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
         System.out.println("Finding review inventory: " + inventory.legacy().size()
@@ -154,6 +158,27 @@ class KernelDocsFoldContractTest {
         var ownerless = new FindingInventory("baseline", baseline.legacy(), Map.of(
                 "kf1", new FindingReview(findingRevisions(revised).get("kf1"), " ", Map.of(), Map.of())));
         assertTrue(findingInventoryProblems(revised, ownerless, pin).stream().anyMatch(p -> p.contains("task")));
+    }
+
+    @Test
+    void aBasisRestingOnTheNamedLockMustCiteALockTheFindingNames() {
+        String body = "## A fact <a id=\"kf1\"></a>\n\n*Locked by:* `laws.NamedLawsTest`.";
+        var cited = new TreeMap<String, ConsumerEvidence>();
+        cited.put("the fact", new ConsumerEvidence("adapter/src/test/java/laws/NamedLawsTest.java#fires", "witness"));
+        var named = new ConsumerReview(ReviewState.APPLIED, "Locked by the test this finding names.", cited);
+        assertEquals(List.of(), namedLockProblems(body, review(Consumer.ADAPTER, named)));
+
+        var elsewhere = new TreeMap<String, ConsumerEvidence>();
+        elsewhere.put("the fact", new ConsumerEvidence("adapter/src/test/java/laws/OtherLawsTest.java#fires", "witness"));
+        var unnamed = new ConsumerReview(ReviewState.APPLIED, "Locked by the test this finding names.", elsewhere);
+        assertTrue(namedLockProblems(body, review(Consumer.ADAPTER, unnamed)).stream().anyMatch(p -> p.contains("OtherLawsTest")));
+
+        var ownBasis = new ConsumerReview(ReviewState.APPLIED, "A consumer-specific lock reads every row.", elsewhere);
+        assertEquals(List.of(), namedLockProblems(body, review(Consumer.ADAPTER, ownBasis)));
+    }
+
+    private static FindingReview review(Consumer consumer, ConsumerReview disposition) {
+        return new FindingReview("sha", "K31", Map.of(), Map.of(consumer, disposition));
     }
 
     @Test
@@ -402,23 +427,51 @@ class KernelDocsFoldContractTest {
     }
 
     private static Map<String, String> findingRevisions(String markdown) {
+        Map<String, String> revisions = new TreeMap<>();
+        findingBodies(markdown).forEach((id, body) -> revisions.put(id, sha256(body)));
+        return revisions;
+    }
+
+    /** Each finding's text, its heading through the line before the next heading, by its KF anchor. */
+    private static Map<String, String> findingBodies(String markdown) {
         String normalized = markdown.replace("\r\n", "\n");
         var headings = Pattern.compile("^#{2,3} .+$", Pattern.MULTILINE).matcher(normalized).results().toList();
         if (headings.isEmpty()) throw new IllegalArgumentException("no kernel findings found");
         var anchor = Pattern.compile(".* <a id=\"(kf[1-9][0-9]*)\"></a>");
-        Map<String, String> revisions = new TreeMap<>();
+        Map<String, String> bodies = new TreeMap<>();
         for (int i = 0; i < headings.size(); i++) {
             var heading = headings.get(i);
             var id = anchor.matcher(heading.group());
             if (!id.matches()) throw new IllegalArgumentException("finding needs a canonical KF anchor: " + heading.group());
             int end = i + 1 < headings.size() ? headings.get(i + 1).start() : normalized.length();
-            String revision = sha256(normalized.substring(heading.start(), end).stripTrailing());
-            if (revisions.putIfAbsent(id.group(1), revision) != null) {
+            if (bodies.putIfAbsent(id.group(1), normalized.substring(heading.start(), end).stripTrailing()) != null) {
                 throw new IllegalArgumentException("duplicate finding " + id.group(1));
             }
         }
-        return revisions;
+        return bodies;
     }
+
+    /**
+     * A basis that rests on "the test this finding names" is a claim about the finding's text, so every lock it cites
+     * must be one the finding names. 109 bases used that sentence when it was found to carry no check (DG172,
+     * counted 2026-11-03); whether the named lock covers every claim of the body is a reading, not a match.
+     */
+    private static List<String> namedLockProblems(String findingBody, FindingReview review) {
+        List<String> problems = new ArrayList<>();
+        review.consumers().forEach((consumer, disposition) -> {
+            if (disposition == null || disposition.basis() == null || !disposition.basis().contains(NAMED_LOCK_BASIS)) return;
+            disposition.evidence().forEach((surface, evidence) -> {
+                String file = evidence.reference().split("#", -1)[0];
+                String lock = file.substring(file.lastIndexOf('/') + 1).replaceFirst("\\.(java|kt)$", "");
+                if (!findingBody.contains(lock)) {
+                    problems.add(consumer + "/" + surface + ": the basis cites the lock this finding names, but it names no " + lock);
+                }
+            });
+        });
+        return problems;
+    }
+
+    private static final String NAMED_LOCK_BASIS = "the test this finding names";
 
     private static String legacyFindingsDigest(FindingInventory inventory) {
         var text = new StringBuilder(inventory.baselineRevision()).append('\n');

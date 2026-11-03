@@ -644,15 +644,9 @@ internal fun classifyGroup(
         )
     }
     val reference = includedReference(config, source, path)
-    // A12 mounts the included content and discards the group's own elements without a notification (KF651).
-    // Portable preparation refuses instead of discarding authored content.
-    if (!elements.isNullOrEmpty()) {
-        throw invalidIncludeMount(
-            source.source.modelId,
-            path,
-            "a group cannot combine includeConfig with local elements",
-        )
-    }
+    // Any local elements are dropped: A12 mounts the included content in their place (KF651), and so do the kits'
+    // reader and the portable checker. Authoring cannot create the shape, since the kits refuse a child added to a
+    // mount (RK_MOUNT_NOT_EDITABLE, IF463).
     val exclusions = IncludeExclusions.from(
         excludeRules = includeExclusionFlag(config, "excludeRules", source, path),
         excludeComputations = includeExclusionFlag(config, "excludeComputations", source, path),
