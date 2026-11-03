@@ -1,11 +1,11 @@
 # Kernel-upgrade runbook — when a12-kernel(-mm) changes
 
-rulekit pins one kernel (`30.8.1` today) and never reimplements its truth — the kernel is the oracle (N3). Every place rulekit encodes a kernel assumption is guarded by a CI test against the pinned kernel, so a kernel change surfaces as a **precise, actionable test failure** rather than silent drift. This is the deliberate split behind F11: **quiet tolerance at runtime, loud detection at build time.** A user running against a newer kernel sees at most a gentle advisory (never a false "corrupt"); the *maintainer* gets a hard failure the moment an encoded assumption diverges. This doc is the procedure for realigning when that happens.
+rulekit pins one kernel (`ext.kernelVersion` in the root `build.gradle`, the single pin every module reads) and never reimplements its truth — the kernel is the oracle (N3). Every place rulekit encodes a kernel assumption is guarded by a CI test against the pinned kernel, so a kernel change surfaces as a **precise, actionable test failure** rather than silent drift. This is the deliberate split behind F11: **quiet tolerance at runtime, loud detection at build time.** A user running against a newer kernel sees at most a gentle advisory (never a false "corrupt"); the *maintainer* gets a hard failure the moment an encoded assumption diverges. This doc is the procedure for realigning when that happens.
 
 ## The procedure
 
-1. **Bump the pin.** Update `kernelVersion` in `build.gradle` *and* `adapter/build.gradle` (and republish via the sibling `a12-kernel-bootstrap` if the new version isn't in `mavenLocal`).
-2. **Run everything.** `./gradlew test` (core + adapter). Core guardians fail fast; the adapter canary is the N8 pin+canary for the unstable internal surface.
+1. **Bump the pin.** Update `ext.kernelVersion` and, in lockstep, `ext.a12Distribution` in the root `build.gradle`; `adapter/build.gradle` reads the former. Republish via the sibling `a12-kernel-bootstrap` if the new version is not in `mavenLocal`. The version is whatever the sibling `../a12-kernel` checkout carries, never one found elsewhere on the machine (CLAUDE.md, "Test & sample document models").
+2. **Run the lanes.** The checkpoint set in CLAUDE.md "Build": `:cli:check`, root `:test`, `:adapter:test`, `:interpreter:check`, `:schemakit:test`, `:interpreter-bridge:check`, `:consistency:check`. Core guardians fail fast; the adapter canary is the N8 pin+canary for the unstable internal surface.
 3. **Read failures by class → act** using the coupling map below. Each guardian failure names exactly what changed and the realignment.
 4. **Re-stamp the floor.** Update the catalog's `verifiedAgainst` (in `operators.json`) to the new version once green — that is the F11 verification floor the runtime skew advisory compares against. Set `sinceKernel` on any newly-added operator entries.
 5. **Sweep docs.** Record any new kernel fact in `KERNEL-FINDINGS.md`, note rulekit's treatment in `KERNEL-INTEGRATION-NOTES.md`, and (if the bump is a design observation worth keeping) add a finding to `API-FINDINGS.md` — in the same change (docs travel with the code).
@@ -53,3 +53,24 @@ You cannot conjure a future kernel, but the **negative-control rehearsals** prov
 - **Newer kernel version** → `KernelVersionTest#aNewerRunningKernelYieldsOneAdvisoryInfo` (inject a fake runtime version → the advisory fires, INFO-only).
 
 When a *second* kernel version actually publishes, add the CI version matrix (build/test against floor + latest) — the standing detector that runs every guardian against both, recorded as the F11 carry-forward.
+
+## A major-release migration — the playbook
+
+A patch bump is the procedure above. A major release (a new A12 distribution with a DM format change, renamed modules, new operators) also changes shapes the guardians assume, so it runs as a planned migration. The 31.1.1 migration's record is [its proposal](KERNEL-31-UPGRADE-PROPOSAL.md).
+
+1. **Tag the last verified revision first** (`kernel-<old>-final`). Every later "what changed since the old kernel" question (findings, adoption records, peer letters) is a diff against that tag. Without it, the base is a guess.
+2. **Write the change analysis as a proposal whose work-item table carries the state.** Partition by mechanism, and order the partitions so each one unblocks the next:
+   - build wiring plus the probe tooling (a12-kernel-lean measures through `kernelProbe`/`probeDifferential`, so they get their oracle back first);
+   - model format and includes;
+   - guardian realignment;
+   - runtime requalification;
+   - new operators;
+   - surfaces plus native;
+   - the gated release.
+3. **Use the compile errors as the first denominator.** `:adapter:compileJava`, `:adapter:compileTestJava` and `:adapter:compileTestKotlin` against the new kernel list every API break. Fix them before any behaviour work.
+4. **Migrate fixtures with A12's own migrator, never by hand.** Use `DocumentModelServiceFactory().createDocumentModelMigrator(null)`, the call `adapter.laws.KernelMmCorpus` makes. Diff each migrated model against its original, and re-express a changed shape only through what the migrator wrote (CLAUDE.md, "NEVER invent a shape A12 already defines").
+5. **Make every inventory guardian exact in both directions before updating its expected data.** That covers the construct, MVK, slot, consistency-category and RT-semantics ledgers. Otherwise a removed member reads as still covered.
+6. **Amend findings in place.** A measured change to an existing kernel fact is a `Corrected <date> (kernel <new>)` note in its `KF` entry, beside the 30.8-era record it qualifies. Re-pin the entry's review hash in `kernel-finding-adoption.json`.
+7. **Send one verdict-delta letter per batch** ([A12-KERNEL-LEAN-HANDBACK](A12-KERNEL-LEAN-HANDBACK.md)). Before calling the series complete, sweep every finding added or amended since the tag against the sent letters, by id and by the finding a correction cites, and send what is uncarried. Record per finding in `kernel-finding-adoption.json` the letter that carries it. A bulk "reported" basis is a claim nobody can point at: on 2026-11-03, 28 of 75 records the migration commit had marked reported appeared in no letter.
+8. **Re-capture what is captured, not merely re-run it.** That means the conformance corpus (`meta.kernelVersion` moves with it), the native reflection metadata before any native rebuild ([NATIVE-IMAGE-GRAALVM](NATIVE-IMAGE-GRAALVM.md) §5.1), the perf anchors on an idle machine, and the catalog's `verifiedAgainst`.
+9. **Run one simplification pass and one cold review over the whole migration range before the release.** A migration accretes duplicated construction, stale comments and dead overloads behind green tests. Its reviews were per slice, so nothing else looks across the range.
