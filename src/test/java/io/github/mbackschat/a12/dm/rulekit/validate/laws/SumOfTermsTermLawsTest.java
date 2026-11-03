@@ -134,6 +134,35 @@ class SumOfTermsTermLawsTest {
         assertEquals(expected, actual);
     }
 
+    /**
+     * The arms of the term walk the grid above does not reach: a semantic index on the iteration entity, a level
+     * the term iterates below a star it writes itself, and the error field outside the iteration group or around
+     * a nested one. The error-field rows separate "the iteration group is the reference" from "a repeatable error
+     * field is exempt", and show the group referenced is the one the entity NAMES, its lowest level.
+     */
+    @Test
+    void theRemainingArmsOfTheIterationAndTermWalk() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a semantic index on the iteration entity",
+                atPolicy("SumOfTerms(Claims* For \"C1\", [Claims/Amount]) > 0"));
+        actual.put("an iterated level below a star the term writes", atPolicy(
+                "SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty] + Sum(Claims*/Parts/Price)) > 0"));
+        actual.put("the error field in another repeatable group", KernelLaws.verdictModel(POLICY, "/Policy",
+                "../Vehicles/Value", "SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("the error field in the upper level of a nested iteration", KernelLaws.verdictModel(POLICY,
+                "/Policy", "../Claims/Status", "SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty]) > 0"));
+        actual.put("the error field in the lower level of a nested iteration", KernelLaws.verdictModel(POLICY,
+                "/Policy", "../Claims/Parts/Price", "SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty]) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a semantic index on the iteration entity", "MVK_SEMANTIC_INDEX_AND_WILDCARD");
+        expected.put("an iterated level below a star the term writes", "MVK_NO_WILDCARD");
+        expected.put("the error field in another repeatable group", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("the error field in the upper level of a nested iteration", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("the error field in the lower level of a nested iteration", KernelLaws.ADMITTED);
+        assertEquals(expected, actual);
+    }
+
     @Test
     void aComputationMayAssignATermSum() {
         Map<String, String> actual = new LinkedHashMap<>();

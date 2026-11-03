@@ -154,6 +154,10 @@ internal val WIRING_MODEL = ModelSource(
           "errorCondition":"FieldFilled(Price) And SumOfProducts(Pallets*/PalletQty, Crates*/CrateQty) > 0",
           "errorEntityRelPath":"../Price",
           "errorCode":"C35","errorMessage":[{"locale":"en_US","text":"x"}]}},
+        {"type":"Rule","id":"r193","name":"TermReadingNoRow","Rule":{
+          "errorCondition":"FieldFilled(Price) And SumOfTerms(Pallets*, 5) > 0",
+          "errorEntityRelPath":"../Price",
+          "errorCode":"C193","errorMessage":[{"locale":"en_US","text":"x"}]}},
         {"type":"Rule","id":"r36","name":"OverBudgetSelector","Rule":{
           "errorCondition":"FieldFilled(Price) And Min([Amount], 1, 2) > 0",
           "errorEntityRelPath":"../Price",

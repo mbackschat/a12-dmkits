@@ -23812,7 +23812,7 @@
       }
     },
     "kf670": {
-      "sha256": "edafd46e406ba066f737ea383d6d54499d412116b22496c7e5eed8c4698d8344",
+      "sha256": "5b1f37db3bf2ac6afb57a2a4a4a595dead5a23df5ad87a396f96c408d3036983",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -23827,7 +23827,9 @@
           "the runtime matrix",
           "the JavaScript target"
         ],
-        "checker": [],
+        "checker": [
+          "the admission grid"
+        ],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -23877,9 +23879,14 @@
           }
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The checker reads SumOfTerms as a catalog function but states none of its admission classes.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The checker reads a SumOfTerms term on the set-expression flag A12 shares with a filter body and states the operation's classes as it closes (KF670).",
+          "evidence": {
+            "the admission grid": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/SumOfTermsAdmissionTest.kt#theTermIsANumberThatIteratesOnlyTheIterationEntitysPath",
+              "witness": "Every admission and error-field row the kernel laws measured, admitted and refused, on the laws' own fixtures."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",

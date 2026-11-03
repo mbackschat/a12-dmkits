@@ -405,6 +405,13 @@ enum class CheckFamily {
     SUM_OF_PRODUCTS_OPERANDS,
 
     /**
+     * What `SumOfTerms` asks of its iteration entity and its term as the operation closes: a starred repeatable
+     * group, and a number term that iterates that group's own level and no other repeatable one. One constant for
+     * nine codes because A12 asks them in one operator's chain and their ORDER is the law (KF656, KF670).
+     */
+    SUM_OF_TERMS_OPERANDS,
+
+    /**
      * That one numeric operand-list `Min`/`Max` call lists at most one literal. Per CALL and never
      * flattened: a literal inside a nested call or inside arithmetic belongs to that operand and not to the
      * outer budget, so a family counting literals over the text would refuse two shapes A12 admits.

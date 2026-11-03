@@ -53,7 +53,9 @@ internal fun TrackedFactBase.filteredOperandContributions(
     if (execution == null) return emptyList()
     val group = element.path.substringBeforeLast('/')
     val anchor = iterationScopeOf(element.declaredReference(), group)
-    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().mapNotNull { entry ->
+    // A `SumOfTerms` iteration entity is no filtered OPERAND: A12 admits a filtered group there (KF656), and
+    // what else it asks of that entity is unmeasured, so the chain says nothing about it rather than guess.
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().filterNot { it.iteration }.mapNotNull { entry ->
         val entity = execution.entitiesByStart[entry.start] ?: return@mapNotNull null
         val span = execution.carrier.semanticSpan(entity.start, entity.end) ?: return@mapNotNull null
         val spec = FilteredSpec(normalizedPath(entry.path), entry.indexed, entry.indexKey, span)

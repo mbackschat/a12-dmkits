@@ -78,7 +78,9 @@ internal fun TrackedFactBase.operandScopeContributions(element: TrackedDeclarati
     val group = element.path.substringBeforeLast('/')
     if (!(target == group || target.startsWith("$group/"))) return emptyList()
     return entityContributions(element, EntityCheck.ADDRESS) { entity, span ->
-        if (entity.indexKey || entity.inFilter && !entity.outerMarked) return@entityContributions null
+        // A term's read is addressed by its iteration entity's row (KERNEL-FINDINGS KF670), and what it may read
+        // beyond that entity is the term's own question, not this walk's.
+        if (entity.indexKey || entity.inFilter && !entity.outerMarked || entity.inTerm) return@entityContributions null
         val written = entity.writtenPath
         if (isRuleContext(written, conditionLanguage)) return@entityContributions null
         levelClassOf(written, group, anchor, element, entity.filtered, entity.indexed)

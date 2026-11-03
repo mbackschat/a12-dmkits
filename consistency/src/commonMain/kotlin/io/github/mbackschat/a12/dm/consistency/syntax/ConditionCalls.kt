@@ -267,10 +267,12 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
 }
 
 /**
- * [text] with every region A12 reads as a filter condition blanked IN PLACE, one space per character.
+ * [text] with every region A12 reads as a set expression — a filter condition or a `SumOfTerms` term — blanked
+ * IN PLACE, one space per character.
  *
- * A12's `inFilterCondition` is ONE boolean, set as a `Having` body begins and cleared as ANY body ends
- * (`Lenient_ConditionParser.initFilterCondition` / `resetFilterCondition`, source-read). So a body is not one
+ * A12's `inSetExpression` is ONE boolean, set as a `Having` body or a term begins and cleared as ANY such body
+ * ends (`Lenient_ConditionParser.initSetExpression` / `resetSetExpression` at eec9134, source-read; 30.8.1 named
+ * them `initFilterCondition` / `resetFilterCondition`). So a body is not one
  * region: once a filter nested in it ends, the rest of the outer body is read as the rule's own text. An
  * unstarred read of the filtered level draws `MVK_NO_WILDCARD` written after a nested filter and nothing
  * written before one (`adapter.laws.CheckerFilterBodyAgreementTest`, [KERNEL-FINDINGS KF486]).
@@ -284,7 +286,10 @@ internal fun clausedOperandsIn(text: String, language: ConditionLanguage): List<
 internal fun withoutFilterConditions(text: String, language: ConditionLanguage): String {
     val filter = OPERATOR_SPELLINGS[language]?.get(OperatorId.HAVING) ?: return text
     val bodies = clausedOperandsIn(text, language).flatMap { operand -> operand.clauses }.filter { it.keyword == filter }
-    val switches = bodies.flatMap { listOf(it.at to true, it.at + it.text.length to false) }.sortedBy { it.first }
+        .map { it.at until it.at + it.text.length }
+    // A `SumOfTerms` term rides the same flag (KERNEL-FINDINGS KF670): its specs are not the rule's either.
+    val switches = (bodies + termBodiesIn(text, language))
+        .flatMap { listOf(it.first to true, it.last + 1 to false) }.sortedBy { it.first }
     val blanked = text.toCharArray()
     var since: Int? = null
     switches.forEach { (at, on) ->
@@ -317,6 +322,31 @@ internal fun rulesOwnReadsIn(text: String, language: ConditionLanguage): String 
     (bases + markedReferenceSpansIn(text).map { it.start until it.end })
         .forEach { range -> range.forEach { restored[it] = text[it] } }
     return restored.concatToString()
+}
+
+/**
+ * The characters of every `SumOfTerms` term in [text]: its second argument, from after the separating `,` to
+ * the closing `)`, or to the end of a text that never closes it. Found by POSITION off the delimiters alone, as
+ * [clausedOperandsIn] finds its operands, so a text that does not parse has its terms set aside too.
+ */
+internal fun termBodiesIn(text: String, language: ConditionLanguage): List<IntRange> {
+    val operator = OPERATOR_SPELLINGS[language]?.get(OperatorId.SUM_OF_TERMS) ?: return emptyList()
+    val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
+    val terms = mutableListOf<IntRange>()
+    // One entry per open delimiter: for a term sum's `(`, where its term starts once the `,` is read (-1 before).
+    val open = mutableListOf<Int?>()
+    tokens.forEachIndexed { index, token ->
+        if (token.kind != TokenKind.PUNCTUATION) return@forEachIndexed
+        when (token.text) {
+            in OPENING_DELIMITERS ->
+                open += if (token.text == "(" && tokens.getOrNull(index - 1)?.text == operator) -1 else null
+            in CLOSING_DELIMITERS -> open.removeLastOrNull()?.takeIf { it >= 0 }
+                ?.let { terms += it until token.start }
+            "," -> if (open.lastOrNull() == -1) open[open.lastIndex] = token.end
+        }
+    }
+    open.filterNotNull().filter { it >= 0 }.forEach { terms += it until text.length }
+    return terms
 }
 
 /**

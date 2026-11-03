@@ -198,6 +198,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
     enum entry STRING_SLOT_BINDING // io.github.mbackschat.a12.dm.consistency/CheckFamily.STRING_SLOT_BINDING|null[0]
     enum entry STRING_TYPE_PARAMETERS // io.github.mbackschat.a12.dm.consistency/CheckFamily.STRING_TYPE_PARAMETERS|null[0]
     enum entry SUM_OF_PRODUCTS_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.SUM_OF_PRODUCTS_OPERANDS|null[0]
+    enum entry SUM_OF_TERMS_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.SUM_OF_TERMS_OPERANDS|null[0]
     enum entry SUPPRESSED_WARNINGS // io.github.mbackschat.a12.dm.consistency/CheckFamily.SUPPRESSED_WARNINGS|null[0]
     enum entry TABLE_ENUM_OPERAND // io.github.mbackschat.a12.dm.consistency/CheckFamily.TABLE_ENUM_OPERAND|null[0]
     enum entry TEMPORAL_AGGREGATE_OPERANDS // io.github.mbackschat.a12.dm.consistency/CheckFamily.TEMPORAL_AGGREGATE_OPERANDS|null[0]

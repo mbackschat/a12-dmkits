@@ -424,6 +424,8 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     for (entity in recognition.entities) {
         val inBody = bodies.any { entity.site.start in it }
         if (inBody != entity.inFilter) return null
+        // A term's reads iterate its own entity, not the rule (KERNEL-FINDINGS KF670); the entity itself is kept.
+        if (entity.inTerm) continue
         // `RuleGroup` is the declaring group, iterating where it repeats (KERNEL-FINDINGS KF611); a starred one is
         // refused earlier (`MVK_INVALID_WILDCARD_FOR_RULEGROUP`) and stays unresolved here.
         val written = entity.writtenPath

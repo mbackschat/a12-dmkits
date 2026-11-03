@@ -387,6 +387,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     condition(CheckFamily.OUTER_MARKER_POSITION) { base, at -> base.outerMarkerContributions(at) },
     condition(CheckFamily.GROUP_CONDITION_WILDCARD) { base, at -> base.groupWildcardContributions(at) },
     condition(CheckFamily.SUM_OF_PRODUCTS_OPERANDS) { base, at -> base.sumOfProductsContributions(at) },
+    condition(CheckFamily.SUM_OF_TERMS_OPERANDS) { base, at -> base.sumOfTermsContributions(at) },
     condition(CheckFamily.OPERAND_LIST_CONSTANT_BUDGET) { base, at -> base.operandListConstantContributions(at) },
     condition(CheckFamily.SEMANTIC_INDEX_STRUCTURE) { base, at -> base.semanticIndexStructureContributions(at) },
     condition(CheckFamily.SEMANTIC_INDEX_KEY) { base, at -> base.semanticIndexKeyContributions(at) },

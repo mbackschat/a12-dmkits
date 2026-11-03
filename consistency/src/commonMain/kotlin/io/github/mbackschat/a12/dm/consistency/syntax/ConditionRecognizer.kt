@@ -24,6 +24,16 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     private val openings = mutableListOf<Int>()
     private var cursor = 0
     private var filterActive = false
+    // A `SumOfTerms` term is read once per row of its iteration entity, so its reads are that entity's rather
+    // than the rule's (KERNEL-FINDINGS KF670). A12 keeps the term and a filter body on ONE flag
+    // (`inSetExpression`, set by `initSetExpression` at either body's start), and either body's end clears it
+    // (`resetSetExpression`, `GrammarOnly_ConditionParser.g4` `setOperOp` and `entitySpec`, source-read at
+    // eec9134). So a filter ending inside a term hands the rest of the term to the rule, as a nested filter
+    // does to its outer body (KF486), and a term ending inside a filter body does the same to that body.
+    private var termActive = false
+    // Set for exactly one entity: the iteration entity a `SumOfTerms` names first, whose filter A12 admits on a
+    // group (KF656). Consumed by that entity, so nothing inside its filter inherits it.
+    private var iterationSlot = false
     private var tree: ConditionNode? = null
 
     fun recognize(entry: SyntaxEntry): Recognition = recognize {
@@ -310,6 +320,13 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                     }
                     else -> when (slot) {
                         Slot.OPERATION -> operation()
+                        Slot.ITERATION -> { iterationSlot = true; entity() }
+                        Slot.TERM -> {
+                            termActive = true
+                            operation()
+                            termActive = false
+                            filterActive = false
+                        }
                         Slot.DIGITS -> digits()
                         Slot.DAY -> {
                             if (identity(peek()) !in DAY_MARKERS) fail(SyntaxFailureKind.MATCH)
@@ -405,6 +422,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
     }
 
     private fun entity(reference: Boolean = true, indexKey: Boolean = false) {
+        val iterates = iterationSlot.also { iterationSlot = false }
         val pathStart = cursor
         val firstToken = peek() ?: fail(SyntaxFailureKind.DECISION)
         val start = firstToken.start
@@ -472,7 +490,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
         if (identity(peek()) == OperatorId.HAVING) {
             val keyword = take()
             peek()
-            val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey)
+            val entry = SyntaxSite.FilterEntry(start, keyword.end, path, indexed, indexKey, iterates)
             sites += entry
             filterActive = true
             condition()
@@ -481,18 +499,20 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
             filtered = true
             // KF486: finishing a nested filter clears the flag instead of restoring its parent.
             filterActive = false
+            termActive = false
         }
         completed(SyntaxSite.Kind.ENTITY, start, record = reference)
         if (reference) entities += RecognizedEntity(sites.last() as SyntaxSite.Completion,
-            path, indexKey, filterActive, indexed, filtered, category)
+            path, indexKey, filterActive, indexed, filtered, category, termActive)
     }
 
     private fun scopeFollows(): Boolean =
         isText("@") && peek(1)?.text == spellings[OperatorId.FROM_SCOPE]?.removePrefix("@")
 
     private class RecognitionStop(val failure: ShapeFailure) : RuntimeException()
-    /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`). */
-    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, DATE_OR_VALUE_AS_DATE, COMPONENT, STRING }
+    /** [RANGE] is a range endpoint's source: an entity or the base-year terminal (`datumBereichAngabe`).
+     *  [ITERATION] and [TERM] are `SumOfTerms`' two arguments: an entity spec, and an operation read per row. */
+    private enum class Slot { ENTITY, RANGE, OPERATION, DIGITS, DAY, DATE, DATE_OR_VALUE_AS_DATE, COMPONENT, STRING, ITERATION, TERM }
 
     /** The one kind a value list holds. */
     private enum class ValueKind { TEXT, NUMBER, READ, ENTITY }
@@ -543,6 +563,7 @@ internal class ConditionRecognizer(private val source: String, language: Conditi
                 put(id, listOf(Slot.ENTITY, Slot.DIGITS, Slot.DIGITS))
             for (id in listOf(OperatorId.ABS, OperatorId.MAX, OperatorId.MIN)) put(id, listOf(Slot.OPERATION))
             put(OperatorId.VALUE_AS_DATE, listOf(Slot.ENTITY, Slot.DAY))
+            put(OperatorId.SUM_OF_TERMS, listOf(Slot.ITERATION, Slot.TERM))
             for (id in listOf(OperatorId.ADD_YEARS, OperatorId.ADD_MONTHS, OperatorId.ADD_DAYS, OperatorId.ADD_HOURS, OperatorId.ADD_MINUTES, OperatorId.ADD_SECONDS))
                 put(id, listOf(Slot.DATE_OR_VALUE_AS_DATE, Slot.OPERATION))
         }

@@ -120,6 +120,10 @@ class CheckFamilyWiringTest {
         // four gates and the only one reachable without a second defect in the same reference.
         CheckFamily.SUM_OF_PRODUCTS_OPERANDS to
             ("MVK_DIFFERENT_GROUPS" to "/Catalog/UnparallelProducts"),
+        // A constant term reads no row of its starred group, the last of the operation's own questions and the
+        // one a single declaration reaches without first tripping a spec's class (KERNEL-FINDINGS KF670).
+        CheckFamily.SUM_OF_TERMS_OPERANDS to
+            ("MVK_NO_ITERATION_FOR_LOWEST_WILDCARD" to "/Catalog/TermReadingNoRow"),
         // Two literals in ONE call. The nesting that would make the same two legal is the family's own
         // discriminator and lives in its mirror; here the row only has to trigger the family.
         CheckFamily.OPERAND_LIST_CONSTANT_BUDGET to

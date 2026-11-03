@@ -25,6 +25,8 @@ internal data class RecognizedEntity(
     val indexed: Boolean,
     val filtered: Boolean,
     val category: Token?,
+    /** Whether a `SumOfTerms` term holds it, so its row is the term's iteration entity's (KF670). */
+    val inTerm: Boolean = false,
 ) {
     /** Whether the `$` outer marker opens the path. */
     val outerMarked: Boolean get() = path.first().text == OUTER_MARKER
@@ -38,8 +40,9 @@ internal interface ConditionSite
 /** Source coordinates identify occurrences; recognition order is independent of editor spans. */
 internal sealed interface SyntaxSite : ConditionSite {
     data class Completion(val kind: Kind, val start: Int, val end: Int) : SyntaxSite
+    /** [iteration] marks the filter of a `SumOfTerms` iteration entity, which may filter a group (KF656). */
     data class FilterEntry(val start: Int, val end: Int, val path: List<Token>,
-        val indexed: Boolean, val indexKey: Boolean) : SyntaxSite
+        val indexed: Boolean, val indexKey: Boolean, val iteration: Boolean = false) : SyntaxSite
     data class FilterExit(val entry: FilterEntry, val end: Int) : SyntaxSite
     data class Operation(val shape: OperationShape) : SyntaxSite
     data class Comparison(val shape: ComparisonShape) : SyntaxSite

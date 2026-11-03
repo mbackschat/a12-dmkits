@@ -52,7 +52,7 @@ JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is d
 | W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | open |
 | W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | done 2026-11-03 — see the W4 batches below |
 | W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | in progress — every batch below is done except W5-perf |
-| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | kernel laws, typed surface, adapter read-back and interpreter done ([KF670](KERNEL-FINDINGS.md#kf670)); checker open |
+| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | done: kernel laws, typed surface, adapter read-back, interpreter and portable checker ([KF670](KERNEL-FINDINGS.md#kf670)) |
 | W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | in progress — version surfaces (the CI and native workflows included) and docs done 2026-11-03; the native re-capture and gate run with W8 |
 | W8 | Gated release (D6) | open |
 
