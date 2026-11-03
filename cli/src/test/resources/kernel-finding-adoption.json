@@ -24002,7 +24002,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not reported yet.",
+          "basis": "Reported in the kernel 31.1.1 migration letters; no receipt yet.",
           "evidence": {}
         }
       }
