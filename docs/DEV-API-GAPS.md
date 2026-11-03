@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG174 — the committed conformance-corpus models have drifted from what `CorpusGenerator` writes** (found 2026-11-03, kernel-31 corpus requalification). A `-PrunCorpusCapture` run rewrote 21 of `corpus/models/*.json` (a `LineTotal` field, real rule message texts, rules moved after the fields), which re-seeded both fuzz cases and would move every `conformance-frontier/accepted.tsv` digest, while all 32 curated expectations stayed byte-identical. No guard compares the generator's output with the committed tree, so the drift surfaces only at the next re-capture, mixed into a kernel upgrade's characterization diff. Settle by re-capturing once, regenerating the frontier ledger in the same change, and adding a guard that fails when the generator's models differ from the committed ones.
+_None open._
 
 ## 3. Adjacent but out of scope
 

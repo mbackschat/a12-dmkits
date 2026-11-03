@@ -38,27 +38,6 @@
                         "repeatability": 1,
                         "elements": [
                             {
-                                "type": "Rule",
-                                "id": "/Order/CodeEquals",
-                                "name": "CodeEquals",
-                                "Rule": {
-                                    "errorEntityRelPath": "../ProductCode",
-                                    "errorCode": "CODE_EQ",
-                                    "errorCondition": "[ProductCode] == \"ABC\"",
-                                    "severity": "ERROR",
-                                    "errorMessage": [
-                                        {
-                                            "locale": "en_US",
-                                            "text": "x"
-                                        },
-                                        {
-                                            "locale": "de_DE",
-                                            "text": "x"
-                                        }
-                                    ]
-                                }
-                            },
-                            {
                                 "type": "Field",
                                 "id": "/Order/CustomerName",
                                 "name": "CustomerName",
@@ -113,6 +92,20 @@
                                     "fieldType": {
                                         "type": "NumberType",
                                         "NumberType": {
+                                            "maxFractionalDigits": 2
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Field",
+                                "id": "/Order/LineTotal",
+                                "name": "LineTotal",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "NumberType",
+                                        "NumberType": {
+                                            "minFractionalDigits": 2,
                                             "maxFractionalDigits": 2
                                         }
                                     }
@@ -476,6 +469,23 @@
                                             "rangeSeparator": "/"
                                         }
                                     }
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Order/CodeEquals",
+                                "name": "CodeEquals",
+                                "Rule": {
+                                    "errorEntityRelPath": "../ProductCode",
+                                    "errorCode": "CODE_EQ",
+                                    "errorCondition": "[ProductCode] == \"ABC\"",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "The product code must be ABC."
+                                        }
+                                    ]
                                 }
                             }
                         ]

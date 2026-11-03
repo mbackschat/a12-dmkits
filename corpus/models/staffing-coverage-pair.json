@@ -37,27 +37,6 @@
                         "repeatability": 1,
                         "elements": [
                             {
-                                "type": "Rule",
-                                "id": "/Staffing/CoverPair",
-                                "name": "CoverPair",
-                                "Rule": {
-                                    "errorEntityRelPath": "../Demand/Headcount",
-                                    "errorCode": "COVER_PAIR",
-                                    "errorCondition": "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)",
-                                    "severity": "ERROR",
-                                    "errorMessage": [
-                                        {
-                                            "locale": "en_US",
-                                            "text": "x"
-                                        },
-                                        {
-                                            "locale": "de_DE",
-                                            "text": "x"
-                                        }
-                                    ]
-                                }
-                            },
-                            {
                                 "type": "Field",
                                 "id": "/Staffing/PlanName",
                                 "name": "PlanName",
@@ -131,6 +110,23 @@
                                                     }
                                                 }
                                             }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Staffing/CoverPair",
+                                "name": "CoverPair",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Demand/Headcount",
+                                    "errorCode": "COVER_PAIR",
+                                    "errorCondition": "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "Demand and supply must be planned together per department."
                                         }
                                     ]
                                 }

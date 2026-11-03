@@ -24,16 +24,30 @@ class CorpusGenerator {
 
     @Test
     fun generateCorpus() {
-        val families = CorpusScenarios.all()
-
-        val casesDir = CorpusFiles.casesDir()
-        for (family in families) {
-            val file = casesDir.resolve(family.dir).resolve("${family.case.meta.id}.json")
+        val tree = CorpusTree.render()
+        val root = CorpusFiles.corpusRoot()
+        for ((relative, text) in tree) {
+            val file = root.resolve(relative)
             Files.createDirectories(file.parent)
-            Files.writeString(file, CaseJson.write(family.case) + "\n")
+            Files.writeString(file, text)
         }
+        println("corpus: wrote ${tree.size} file(s) under $root")
+    }
+}
 
-        // Dedupe the referenced models by name → one file per distinct model, referenced by all its cases.
+/**
+ * What [CorpusGenerator] writes, by corpus-root-relative path: one case file per [CorpusScenarios] family and one model
+ * file per distinct model name. [CorpusSchemaGuardTest] compares it with the committed tree, so a generator
+ * change that would move the corpus fails where it is made rather than at the next kernel upgrade's re-capture.
+ */
+object CorpusTree {
+
+    fun render(): Map<String, String> {
+        val families = CorpusScenarios.all()
+        val tree = sortedMapOf<String, String>()
+        for (family in families) {
+            tree["cases/${family.dir}/${family.case.meta.id}.json"] = CaseJson.write(family.case) + "\n"
+        }
         val models = LinkedHashMap<String, String>()
         for (family in families) {
             val existing = models.put(family.model.name, family.model.json)
@@ -41,12 +55,7 @@ class CorpusGenerator {
                 "two different models share the name '${family.model.name}' — a model name must map to one content"
             }
         }
-        val modelsDir = CorpusFiles.modelsDir()
-        Files.createDirectories(modelsDir)
-        for ((name, json) in models) {
-            Files.writeString(modelsDir.resolve("$name.json"), json + "\n")
-        }
-
-        println("corpus: wrote ${families.size} case(s) under $casesDir and ${models.size} model(s) under $modelsDir")
+        models.forEach { (name, json) -> tree["models/$name.json"] = json + "\n" }
+        return tree
     }
 }

@@ -37,27 +37,6 @@
                         "repeatability": 1,
                         "elements": [
                             {
-                                "type": "Rule",
-                                "id": "/Cart/QtyOrder",
-                                "name": "QtyOrder",
-                                "Rule": {
-                                    "errorEntityRelPath": "../Lines/Qty",
-                                    "errorCode": "QTY_ORDER",
-                                    "errorCondition": "MaxValue(Lines*/Qty Having CurrentRepetition(Lines) < CurrentRepetition($Lines)) >= [Lines/Qty]",
-                                    "severity": "ERROR",
-                                    "errorMessage": [
-                                        {
-                                            "locale": "en_US",
-                                            "text": "x"
-                                        },
-                                        {
-                                            "locale": "de_DE",
-                                            "text": "x"
-                                        }
-                                    ]
-                                }
-                            },
-                            {
                                 "type": "Group",
                                 "id": "/Cart/Lines",
                                 "name": "Lines",
@@ -173,6 +152,23 @@
                                                     }
                                                 ]
                                             }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Cart/QtyOrder",
+                                "name": "QtyOrder",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Lines/Qty",
+                                    "errorCode": "QTY_ORDER",
+                                    "errorCondition": "MaxValue(Lines*/Qty Having CurrentRepetition(Lines) < CurrentRepetition($Lines)) >= [Lines/Qty]",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "Line quantities must increase from line to line."
                                         }
                                     ]
                                 }

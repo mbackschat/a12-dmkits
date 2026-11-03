@@ -362,7 +362,7 @@ class A12ParseTraceTest {
         }
         val report = File("build/parse-trace/syntax.tsv").apply { parentFile.mkdirs() }
         report.writeText(differences.joinToString("\n"))
-        assertEquals(9063, compared + censored)
+        assertEquals(9162, compared + censored)
         assertTrue(compared > 1000)
         assertTrue(censored > 100)
         assertEquals(emptyList<String>(), differences.take(20), "${differences.size} differences in ${report.path}")

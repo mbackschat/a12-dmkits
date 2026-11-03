@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import java.nio.file.Files
 import kotlin.io.path.exists
+import kotlin.io.path.extension
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
@@ -21,7 +22,8 @@ import kotlin.io.path.readText
  * op's expectation key is present. The standalone-model invariants also hold: every `modelRef` resolves against
  * the corpus root, every model file under `models/` loads via the kernel-free [ModelLoader], and no model file is
  * orphaned (a model lands with its first referencing case). Also checks `corpus/case.schema.json` exists and stays
- * consistent with the shape the code enforces (a no-rot cross-check without a JSON-schema runtime).
+ * consistent with the shape the code enforces (a no-rot cross-check without a JSON-schema runtime). And the
+ * committed `cases` and `models` trees are exactly what [CorpusGenerator] writes.
  */
 class CorpusSchemaGuardTest {
 
@@ -107,5 +109,29 @@ class CorpusSchemaGuardTest {
                 assertTrue(Regex("""^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$""").matches(it)) { "malformed clock: $it" }
             }
         }
+    }
+
+    /**
+     * Every file [CorpusTree] renders is committed byte for byte, and no committed file is one it does not render.
+     * Without this the two drift apart silently: 21 models had (DG174, 2026-11-03), so the next re-capture mixed that
+     * drift into a kernel upgrade's characterization diff, re-seeded both fuzz cases and moved 55 frontier digests.
+     * Rendering re-captures every case on the pinned kernel.
+     */
+    @Test
+    fun theCommittedCorpusIsWhatTheGeneratorWrites() {
+        val generated = CorpusTree.render()
+        val root = CorpusFiles.corpusRoot()
+        val committed = listOf(CorpusFiles.casesDir(), CorpusFiles.modelsDir()).flatMap { dir ->
+            Files.walk(dir).use { paths -> paths.filter { Files.isRegularFile(it) && it.extension == "json" }.toList() }
+        }.associate { root.relativize(it).toString() to it.readText() }
+
+        val drift = (generated.keys + committed.keys).sorted().filter { generated[it] != committed[it] }.map { path ->
+            when {
+                path !in committed -> "$path: rendered, not committed"
+                path !in generated -> "$path: committed, not rendered"
+                else -> "$path: differs"
+            }
+        }
+        assertEquals(emptyList<String>(), drift, "re-capture with -PrunCorpusCapture (corpus/README.md) and commit the diff")
     }
 }

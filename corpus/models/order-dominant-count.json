@@ -38,27 +38,6 @@
                         "repeatability": 1,
                         "elements": [
                             {
-                                "type": "Rule",
-                                "id": "/Order/DominantCount",
-                                "name": "DominantCount",
-                                "Rule": {
-                                    "errorEntityRelPath": "../Items/Count",
-                                    "errorCode": "DOMINANT_COUNT",
-                                    "errorCondition": "FieldFilled(Items/Count) And [Items/Count] > Sum(Items*/Count Having CurrentRepetition(Items) != CurrentRepetition($Items))",
-                                    "severity": "ERROR",
-                                    "errorMessage": [
-                                        {
-                                            "locale": "en_US",
-                                            "text": "x"
-                                        },
-                                        {
-                                            "locale": "de_DE",
-                                            "text": "x"
-                                        }
-                                    ]
-                                }
-                            },
-                            {
                                 "type": "Field",
                                 "id": "/Order/CustomerName",
                                 "name": "CustomerName",
@@ -113,6 +92,20 @@
                                     "fieldType": {
                                         "type": "NumberType",
                                         "NumberType": {
+                                            "maxFractionalDigits": 2
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Field",
+                                "id": "/Order/LineTotal",
+                                "name": "LineTotal",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "NumberType",
+                                        "NumberType": {
+                                            "minFractionalDigits": 2,
                                             "maxFractionalDigits": 2
                                         }
                                     }
@@ -476,6 +469,23 @@
                                             "rangeSeparator": "/"
                                         }
                                     }
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Order/DominantCount",
+                                "name": "DominantCount",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Items/Count",
+                                    "errorCode": "DOMINANT_COUNT",
+                                    "errorCondition": "FieldFilled(Items/Count) And [Items/Count] > Sum(Items*/Count Having CurrentRepetition(Items) != CurrentRepetition($Items))",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "One item line outweighs all the others combined."
+                                        }
+                                    ]
                                 }
                             }
                         ]

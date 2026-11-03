@@ -37,27 +37,6 @@
                         "repeatability": 1,
                         "elements": [
                             {
-                                "type": "Rule",
-                                "id": "/Staffing/OverDemand",
-                                "name": "OverDemand",
-                                "Rule": {
-                                    "errorEntityRelPath": "../Demand/Headcount",
-                                    "errorCode": "OVER_DEMAND",
-                                    "errorCondition": "[Demand/Headcount] > [Supply/Headcount]",
-                                    "severity": "ERROR",
-                                    "errorMessage": [
-                                        {
-                                            "locale": "en_US",
-                                            "text": "x"
-                                        },
-                                        {
-                                            "locale": "de_DE",
-                                            "text": "x"
-                                        }
-                                    ]
-                                }
-                            },
-                            {
                                 "type": "Field",
                                 "id": "/Staffing/PlanName",
                                 "name": "PlanName",
@@ -131,6 +110,23 @@
                                                     }
                                                 }
                                             }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Staffing/OverDemand",
+                                "name": "OverDemand",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Demand/Headcount",
+                                    "errorCode": "OVER_DEMAND",
+                                    "errorCondition": "[Demand/Headcount] > [Supply/Headcount]",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "A department demands more headcount than its supply covers."
                                         }
                                     ]
                                 }

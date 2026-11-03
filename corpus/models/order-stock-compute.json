@@ -99,6 +99,20 @@
                             },
                             {
                                 "type": "Field",
+                                "id": "/Order/LineTotal",
+                                "name": "LineTotal",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "NumberType",
+                                        "NumberType": {
+                                            "minFractionalDigits": 2,
+                                            "maxFractionalDigits": 2
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Field",
                                 "id": "/Order/BackorderQuantity",
                                 "name": "BackorderQuantity",
                                 "Field": {

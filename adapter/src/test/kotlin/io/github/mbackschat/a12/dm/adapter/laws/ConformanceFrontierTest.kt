@@ -223,9 +223,9 @@ class ConformanceFrontierTest {
         strategies.write("strategies")
         File(OUTPUT, "summary.txt").writeText("seeds=$seeds examined=$examined accepted=${accepted.size} " +
             "documents=$documents groovyMessages=$groovyMessages\n")
-        assertEquals(139, seeds)
-        assertEquals(9362, examined)
-        assertEquals(346, accepted.size)
+        assertEquals(140, seeds)
+        assertEquals(9462, examined)
+        assertEquals(348, accepted.size)
         assertEquals(accepted.size * 5, documents + unavailableDocuments, "every admitted input reaches all scenarios")
         assertEquals(accepted.size, accepted.map { it.substringBefore('\t') }.distinct().size)
         assertTrue(groovyMessages > 0, "the normative engine emitted no signature across the population")

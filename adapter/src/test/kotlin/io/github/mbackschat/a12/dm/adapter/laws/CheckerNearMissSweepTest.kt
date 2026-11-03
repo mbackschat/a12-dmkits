@@ -309,7 +309,7 @@ class CheckerNearMissSweepTest {
         val fixed = HarvestedSyntaxPopulation.fixedRows()
         val catalog = HarvestedSyntaxPopulation.catalogRows()
         assertEquals(77, fixed.size)
-        assertEquals(324, catalog.size, "T1's live catalog denominator; re-harvest when its source changes")
+        assertEquals(328, catalog.size, "T1's live catalog denominator; re-harvest when its source changes")
         assertEquals(26, fixed.count { it.originalModel != null })
         val rows = fixed + catalog
         assertEquals(rows.size, rows.map { it.id }.distinct().size)
@@ -350,7 +350,7 @@ class CheckerNearMissSweepTest {
             compare(row.id, row.model())
             row.originalModel?.let { compare("${row.id}:original", it) }
         }
-        assertEquals(427, compared, "401 hosted rows and all 26 original models reach both oracles")
+        assertEquals(431, compared, "405 hosted rows and all 26 original models reach both oracles")
         val directory = File("build/checker-harvest").apply { mkdirs() }
         File(directory, "actual.tsv").writeText(render(clusters))
         File(directory, "examples.tsv").writeText(examples.joinToString("\n"))

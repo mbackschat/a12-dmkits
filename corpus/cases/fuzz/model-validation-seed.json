@@ -19,72 +19,66 @@
         "M": {
             "G1": [
                 {
-                    "Key1": "K0",
-                    "N1": 86,
+                    "Key1": "K2",
+                    "N1": 81,
                     "G2": [
                         {
-                            "Key2": "K1",
-                            "N2": null,
+                            "Key2": "K0",
+                            "N2": 87,
                             "G3": [
                                 {
-                                    "Key3": null,
-                                    "N3": 66
+                                    "Key3": "K0",
+                                    "N3": 96
                                 },
                                 {
                                     "Key3": "K1",
-                                    "N3": 63
-                                }
-                            ]
-                        },
-                        {
-                            "Key2": "K2",
-                            "N2": null
-                        }
-                    ]
-                },
-                {
-                    "Key1": null,
-                    "N1": 45,
-                    "G2": [
-                        {
-                            "Key2": "K1",
-                            "N2": 42,
-                            "G3": [
-                                {
-                                    "Key3": null,
-                                    "N3": null
+                                    "N3": 74
                                 }
                             ]
                         },
                         {
                             "Key2": null,
-                            "N2": 4,
-                            "G3": [
-                                {
-                                    "Key3": "K0",
-                                    "N3": 41
-                                },
-                                {
-                                    "Key3": "K2",
-                                    "N3": 66
-                                },
-                                {
-                                    "Key3": "K2",
-                                    "N3": 82
-                                }
-                            ]
+                            "N2": 97
                         },
                         {
-                            "Key2": "K2",
-                            "N2": null,
+                            "Key2": null,
+                            "N2": 7,
                             "G3": [
                                 {
-                                    "Key3": "K1",
-                                    "N3": 64
+                                    "Key3": "K0",
+                                    "N3": 57
+                                },
+                                {
+                                    "Key3": "K2",
+                                    "N3": 53
+                                },
+                                {
+                                    "Key3": null,
+                                    "N3": 68
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Key1": null,
+                    "N1": 88,
+                    "G2": [
+                        {
+                            "Key2": "K2",
+                            "N2": 57,
+                            "G3": [
+                                {
+                                    "Key3": "K2",
+                                    "N3": 49
                                 },
                                 {
                                     "Key3": "K0",
-                                    "N3": 66
+                                    "N3": 71
+                                },
+                                {
+                                    "Key3": null,
+                                    "N3": 20
                                 }
                             ]
                         }
@@ -98,13 +92,12 @@
     },
     "expected": [
         "AG|OMISSION_ERROR|/M[1]/G1[1]/G2[1]/G3[1]/N3",
-        "AG|OMISSION_ERROR|/M[1]/G1[2]/G2[2]/G3[1]/N3",
-        "AG|OMISSION_ERROR|/M[1]/G1[2]/G2[3]/G3[1]/N3",
-        "mandatoryField|OMISSION_ERROR|/M[1]/G1[1]/G2[1]/G3[1]/Key3",
-        "mandatoryField|OMISSION_ERROR|/M[1]/G1[2]/G2[1]/G3[1]/Key3",
-        "mandatoryField|OMISSION_ERROR|/M[1]/G1[2]/G2[2]/Key2",
-        "mandatoryField|OMISSION_ERROR|/M[1]/G1[2]/Key1",
-        "uniqueIndex|VALUE_ERROR|/M[1]/G1[2]/G2[2]/G3[2]/Key3",
-        "uniqueIndex|VALUE_ERROR|/M[1]/G1[2]/G2[2]/G3[3]/Key3"
+        "AG|OMISSION_ERROR|/M[1]/G1[1]/G2[3]/G3[1]/N3",
+        "AG|OMISSION_ERROR|/M[1]/G1[2]/G2[1]/G3[1]/N3",
+        "mandatoryField|OMISSION_ERROR|/M[1]/G1[1]/G2[2]/Key2",
+        "mandatoryField|OMISSION_ERROR|/M[1]/G1[1]/G2[3]/G3[3]/Key3",
+        "mandatoryField|OMISSION_ERROR|/M[1]/G1[1]/G2[3]/Key2",
+        "mandatoryField|OMISSION_ERROR|/M[1]/G1[2]/G2[1]/G3[3]/Key3",
+        "mandatoryField|OMISSION_ERROR|/M[1]/G1[2]/Key1"
     ]
 }
