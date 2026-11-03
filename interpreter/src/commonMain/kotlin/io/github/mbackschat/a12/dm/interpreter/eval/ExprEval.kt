@@ -70,12 +70,6 @@ private val MEMOIZED_STAR_AGGREGATES = setOf(
     FunctionOp.NUMBER_OF_FILLED_GROUPS,
 )
 
-/** A validation-call cache key for a starred aggregate value and the exact star scopes it ranges over. */
-internal data class AggregateMemoKey(
-    val expression: Expr.Func,
-    val scopePrefixes: List<List<Int>>,
-)
-
 /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
 private val DIGITS = Regex("""\d+""")
 
@@ -1113,15 +1107,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
  * multiplicity from A12 repetition-list lengths (which contain one index for every path segment).
  */
 private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?): AggregateMemoKey? {
-    if (computeMode) return null
     if (op !in MEMOIZED_STAR_AGGREGATES) return null
-    // Under partial validation the count asks its [GroupCountGate] inside the fold, keyed by the gate's own
-    // bound prefix; the memo key derives its prefix separately, so the two are not assumed to coincide there.
-    if (op == FunctionOp.NUMBER_OF_FILLED_GROUPS && groupCountGate != null) return null
     val stars = f.args.map { it as? Expr.Star ?: return null }
-    if (stars.any { it.having != null || it.outer }) return null
-    val scopes = stars.map { star -> starScopePrefix(ctxOf(star), star) }
-    return AggregateMemoKey(f, scopes)
+    return scopeInvariantMemoKey(f, stars, asksGroupCountGate = op == FunctionOp.NUMBER_OF_FILLED_GROUPS)
 }
 
 /**

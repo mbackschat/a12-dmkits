@@ -409,7 +409,9 @@ private fun Interpreter.filledGroupCountFill(f: Expr.Func): Fill {
  * the filtered-combiner blanket [fill] gives other filtered operands: a filter that keeps every row leaves the sum
  * fixed (measured on both kernel strategies, `adapter.laws.SumOfTermsRuntimeLawsTest`).
  */
-private fun Interpreter.termSumFill(e: Expr.TermSum): Fill {
+private fun Interpreter.termSumFill(e: Expr.TermSum): Fill = perTermSumScope(e, scopeMemo?.termSumFills) { termSumFillOverRows(e) }
+
+private fun Interpreter.termSumFillOverRows(e: Expr.TermSum): Fill {
     val both = Fill.of(canGrow = true, canShrink = true)
     val rows = termSumRows(e) ?: return both
     var canGrow = false

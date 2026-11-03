@@ -47,7 +47,24 @@ internal fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  * adds nothing either, and a row whose presence or term is unknown leaves the sum unknown. Partial validation asks the
  * group-count gate first, because A12 iterates the group itself here as it does for `NumberOfFilledGroups`.
  */
-internal fun Interpreter.termSum(e: Expr.TermSum): Val {
+internal fun Interpreter.termSum(e: Expr.TermSum): Val = perTermSumScope(e, scopeMemo?.aggregates) { termSumOverRows(e) }
+
+/**
+ * [compute] once for every row of [e]'s scope, through [memo], under the key a starred `Sum` gets
+ * ([scopeInvariantMemoKey]): the term reads only its own iteration row, since the plan audit refuses a `$` there, so
+ * the sum depends on its scope alone. A per-row rule otherwise re-reads every row once per row
+ * (`RowInvariantStarReaderPerfTest`).
+ */
+internal inline fun <T : Any> Interpreter.perTermSumScope(
+    e: Expr.TermSum,
+    memo: MutableMap<AggregateMemoKey, T>?,
+    compute: () -> T,
+): T {
+    val key = memo?.let { scopeInvariantMemoKey(e, listOf(e.iteration), asksGroupCountGate = true) }
+    return if (memo == null || key == null) compute() else memo.getOrPut(key, compute)
+}
+
+private fun Interpreter.termSumOverRows(e: Expr.TermSum): Val {
     var sum = DEC_ZERO
     for (row in termSumRows(e) ?: return Val.Unknown) {
         when (groupPresence(row, e.iteration.path).fillProduct) {

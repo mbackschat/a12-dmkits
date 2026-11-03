@@ -12,11 +12,12 @@ import org.junit.jupiter.params.provider.EnumSource
 
 /**
  * Perf gate — a row-invariant star reader in a per-row rule stays **linear** (INTERPRETER-FINDINGS IF411). Each line
- * reads a value every line reads alike: a count, the first filled amount, or whether any line has a note.
+ * reads a value every line reads alike: a count, the first filled amount, a term sum, or whether any line has a note.
  * `rowInvariantAggregateStaysSubQuadratic` holds the same shape for `Sum`; one lane per reader here, because
  * each reaches its cells through its own path, and a reader re-read for every line costs O(lines) per line.
  *
- * Every amount is 1 and no line has a note, so no condition holds and nothing fires.
+ * Every amount is 1 and no line has a note, so no condition holds and nothing fires, except under
+ * [Reader.SUM_OF_TERMS_FIRING], where every line's amount is below the term sum.
  */
 @Tag("perf")
 class RowInvariantStarReaderPerfTest {
@@ -33,6 +34,13 @@ class RowInvariantStarReaderPerfTest {
         }),
         FILL_QUANTIFIER({ m ->
             m.num(AMOUNT).filled().and(Dsl.atLeastOneFieldFilled(m.flatten("$LINES*/Note")))
+        }),
+        SUM_OF_TERMS({ m ->
+            m.num(AMOUNT).filled().and(m.num(AMOUNT).gt(Dsl.sumOfTerms(m.flattenGroup("$LINES*"), lineAmount(m))))
+        }),
+        /** The one reader that fires on every line, so each fired comparison also asks the term sum's direction. */
+        SUM_OF_TERMS_FIRING({ m ->
+            m.num(AMOUNT).filled().and(m.num(AMOUNT).lt(Dsl.sumOfTerms(m.flattenGroup("$LINES*"), lineAmount(m))))
         }),
     }
 
@@ -77,6 +85,9 @@ class RowInvariantStarReaderPerfTest {
     }
 
     private companion object {
+        /** A line's own amount, the term `SumOfTerms` reads in each line. */
+        fun lineAmount(m: BoundModel) = m.groupAt(LINES).orElseThrow().num("Amount").asNumber()
+
         const val N = 1000
         const val MAX = 100_000
         const val LINES = "/Quote/Lines"
