@@ -26,7 +26,10 @@ public record SumOfTerms(GroupListRef iteration, Optional<Condition> filter, Cal
         Objects.requireNonNull(iteration, "iteration");
         Objects.requireNonNull(filter, "filter");
         Objects.requireNonNull(term, "term");
-        // The kernel refuses a term of any other kind (MVK_NO_NUMBER, validate.laws.SumOfTermsTermLawsTest); the
+        // The kernel refuses a term that is not like a number (`CheckOpUtils.checkOpIsLikeANumber`, source-read at
+        // eec9134; measured for a string term, MVK_NO_NUMBER, validate.laws.SumOfTermsTermLawsTest). That check
+        // also admits a base year; a bare base-year term, which this refuses as a DATE, the kernel refuses in its
+        // iteration walk first, as a term that reads no row of its group (same test). The
         // factories take a NumberExpr, so only a hand-built record reaches this.
         if (term.kind() != ValueKind.NUMBER) {
             throw new IllegalArgumentException("SumOfTerms takes a number term; " + term + " is " + term.kind());

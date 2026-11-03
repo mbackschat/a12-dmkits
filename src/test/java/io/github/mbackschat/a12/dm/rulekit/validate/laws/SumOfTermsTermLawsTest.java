@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -160,6 +161,29 @@ class SumOfTermsTermLawsTest {
         expected.put("the error field in another repeatable group", "MVK_ERROR_FIELD_NOT_REFERENCED");
         expected.put("the error field in the upper level of a nested iteration", "MVK_ERROR_FIELD_NOT_REFERENCED");
         expected.put("the error field in the lower level of a nested iteration", KernelLaws.ADMITTED);
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * A base year is like a number to the term's type check (`CheckOpUtils.checkOpIsLikeANumber`), so whether a
+     * base-year term is admitted is decided by the iteration walk, which a bare one cannot satisfy. Measured on a
+     * model that declares a base year, so `MVK_NO_BASE_YEAR` cannot answer first.
+     */
+    @Test
+    void aBaseYearTermIsDecidedByTheIterationWalk() {
+        String model = ModelDrafts.policyClaims(2024).toJson();
+        Function<String, String> verdict = condition -> KernelLaws.verdictModel(model, "/Policy", "../Holder",
+                "FieldFilled(Holder) And " + condition);
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("control: one field of the iteration entity", verdict.apply("SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("a bare base year", verdict.apply("SumOfTerms(Claims*, BaseYear) > 0"));
+        actual.put("a base year beside a field of the iteration entity",
+                verdict.apply("SumOfTerms(Claims*, [Claims/Amount] + BaseYear) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("control: one field of the iteration entity", KernelLaws.ADMITTED);
+        expected.put("a bare base year", "MVK_NO_ITERATION_FOR_LOWEST_WILDCARD");
+        expected.put("a base year beside a field of the iteration entity", KernelLaws.ADMITTED);
         assertEquals(expected, actual);
     }
 

@@ -23812,20 +23812,23 @@
       }
     },
     "kf670": {
-      "sha256": "b205d6a85054206acadc994d79a110b4ba7e8d50c825fdba3bad3cb53e7d4460",
+      "sha256": "4ff9728d2f840787d2df9eb6feb1f4ba5680de6955045a70481bf3e814b72afe",
       "task": "K31",
       "scope": {
         "adapter": [
           "the runtime matrix",
           "partial validation",
-          "message references"
+          "message references",
+          "the remaining shapes"
         ],
         "dmkits": [
-          "the typed term sum"
+          "the typed term sum",
+          "the typed read-back"
         ],
         "interpreter": [
           "the runtime matrix",
-          "the JavaScript target"
+          "the JavaScript target",
+          "the remaining shapes"
         ],
         "checker": [
           "the admission grid"
@@ -23851,6 +23854,10 @@
             "message references": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#aTermSumMessageNamesItsOperands",
               "witness": "The term's and the filter's fields at the any-row index, and a field no term reads named nowhere."
+            },
+            "the remaining shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsShapesRuntimeLawsTest.kt#whatGroovyReports",
+              "witness": "A count, an aggregate and a non-repeatable read in the term, a $ read in the filter, an error field in the iteration group, an erroneous row, a filter verdict unknown and a row beyond the capacity."
             }
           }
         },
@@ -23861,6 +23868,10 @@
             "the typed term sum": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#sumOfTermsSnippet",
               "witness": "The plain and filtered forms render as A12 spells them and the kernel admits both."
+            },
+            "the typed read-back": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/SumOfTermsReadBackTest.java#everyIterationShapeReadsBackAsAuthored",
+              "witness": "A stored plain, filtered, nested and rule-iterated term sum each reads back to the condition it was authored as."
             }
           }
         },
@@ -23875,6 +23886,10 @@
             "the JavaScript target": {
               "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TermSumEvaluationTest.kt#aTermSumOverTheWholeCapacityIsAValueError",
               "witness": "The capacity, invalid-term and malformed-cell rows on JVM and JavaScript."
+            },
+            "the remaining shapes": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsShapesRuntimeLawsTest.kt#theThreeEnginesObserveEveryDocumentAlike",
+              "witness": "Every remaining-shape document read by the interpreter beside both strategies, references and outcomes included."
             }
           }
         },

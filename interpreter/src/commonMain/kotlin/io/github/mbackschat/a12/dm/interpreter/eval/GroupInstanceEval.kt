@@ -86,8 +86,9 @@ private fun countedGroup(state: GroupPresenceState): Int? = when (state.fillProd
     Tri.UNKNOWN -> null
 }
 
-/** A sub-interpreter rooted at one row [rc] of a `SumOfTerms` iteration, where the term is read. It keeps the
- *  enclosing `$` environment and the scope memo, because A12 refuses the marker anywhere in a term (KF670) and
- *  every row of the iteration shares the term's aggregate scopes. */
+/** A sub-interpreter rooted at one row [rc] of a `SumOfTerms` iteration, where the term is read. It shares the
+ *  enclosing scope memo with every row: each entry is keyed by the row prefix of the scope it ranges over
+ *  ([AggregateMemoKey], `FillScopeMemoKey`), so an aggregate the term reads, such as a `Sum` over every part
+ *  of the row's claim, still gets one entry per row (`adapter.laws.SumOfTermsShapesRuntimeLawsTest`). */
 internal fun Interpreter.termRowInterp(rc: EvalContext): Interpreter =
     selectedRowInterp(rc).also { row -> scopeMemo?.let(row::sharingScopeMemo) }

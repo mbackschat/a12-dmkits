@@ -226,8 +226,8 @@ internal class PreparedEvaluationPlan(
                 requireOuterAllowed(expr.outer, outerAllowed)
                 expr.having?.let { auditCond(it, outerAllowed = true) }
             }
-            // A12 refuses a `$` read, a filter and a nested term sum inside the term (KERNEL-FINDINGS KF670), so the
-            // term is audited as a plain number operation over its row.
+            // The term refuses only the `$` marker here. A12 refuses a filter and a nested term sum inside it before
+            // any document is read (KERNEL-FINDINGS KF670), so a model that reaches this audit holds neither.
             is Expr.TermSum -> {
                 auditExpr(expr.iteration, outerAllowed, starAllowed = true)
                 auditExpr(expr.term, outerAllowed = false, starAllowed = true)

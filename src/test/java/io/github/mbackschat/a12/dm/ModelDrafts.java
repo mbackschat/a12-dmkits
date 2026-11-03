@@ -164,7 +164,16 @@ public final class ModelDrafts {
      * ({@code validate.laws.SumOfTermsTermLawsTest}, the catalog's claim probes).
      */
     public static DocumentModelDraft policyClaims() {
-        return DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US")
+        return policyClaims(DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US"));
+    }
+
+    /** {@link #policyClaims()} with a declared base year, for a term that reads {@code BaseYear}. */
+    public static DocumentModelDraft policyClaims(int baseYear) {
+        return policyClaims(DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US").baseYear(baseYear));
+    }
+
+    private static DocumentModelDraft policyClaims(DocumentModelDraft.Builder named) {
+        return named
                 .rootGroup("Policy", p -> p
                         .stringField("Holder", f -> { })
                         .numberField("Total", n -> n.fractionDigits(2))

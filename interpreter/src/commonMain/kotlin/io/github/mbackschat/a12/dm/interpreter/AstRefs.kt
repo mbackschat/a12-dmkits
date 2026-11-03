@@ -208,6 +208,7 @@ private val FILLED_COUNTS = setOf(FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp
 private fun countsFilled(expr: Expr): Boolean = when (expr) {
     is Expr.Func -> FunctionOp.byName(expr.name) in FILLED_COUNTS || expr.args.any(::countsFilled)
     is Expr.Arith -> countsFilled(expr.left) || countsFilled(expr.right)
+    is Expr.TermSum -> countsFilled(expr.term)
     else -> false
 }
 
@@ -228,10 +229,14 @@ private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<Message
         messageReferences(it, expr.bindDepth, excludeRepetitionNotUniqueKeys = false)
     } ?: emptyList()) + MessageReference.Wildcard(expr.path, expr.bindDepth)
     // The term's own fields at the iteration's any-row, never the iteration group whole: a field of the group no
-    // term reads is named nowhere (KF670, `SumOfTermsRuntimeLawsTest`).
+    // term reads is named nowhere (KF670, `SumOfTermsRuntimeLawsTest`). An aggregate in the term opens the
+    // iteration's levels as well, since no row of them is bound while the term is read
+    // (`SumOfTermsShapesRuntimeLawsTest`).
     is Expr.TermSum -> (expr.iteration.having?.let {
         messageReferences(it, expr.iteration.bindDepth, excludeRepetitionNotUniqueKeys = false)
-    } ?: emptyList()) + messageReferences(expr.term, expr.iteration.bindDepth)
+    } ?: emptyList()) + messageReferences(expr.term, expr.iteration.bindDepth).map {
+        if (it is MessageReference.Wildcard) it.copy(bindDepth = minOf(it.bindDepth, expr.iteration.bindDepth)) else it
+    }
     is Expr.Func -> if (FunctionOp.byName(expr.name) == FunctionOp.CURRENT_REPETITION) emptyList()
         else expr.args.flatMap { messageReferences(it, wildcardBindDepth) }
     is Expr.Arith -> messageReferences(expr.left, wildcardBindDepth) + messageReferences(expr.right, wildcardBindDepth)
@@ -455,8 +460,12 @@ private val SMALL_SIDE_COUNTS = setOf(
     FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS, FunctionOp.NUMBER_OF_DIFFERENT_VALUES,
 )
 
+// A12 asks both questions with one walk that enters a `SumOfTerms` term and no filter (`FeldOperationUtil`,
+// source-read at eec9134), so a count in the term counts and one in the iteration filter does not
+// (`adapter.laws.SumOfTermsShapesRuntimeLawsTest`).
 private fun containsCount(expr: Expr): Boolean = when (expr) {
     is Expr.Func -> FunctionOp.byName(expr.name) in SMALL_SIDE_COUNTS || expr.args.any(::containsCount)
     is Expr.Arith -> containsCount(expr.left) || containsCount(expr.right)
+    is Expr.TermSum -> containsCount(expr.term)
     else -> false
 }
