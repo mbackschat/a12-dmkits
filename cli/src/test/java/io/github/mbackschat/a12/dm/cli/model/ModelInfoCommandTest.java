@@ -46,8 +46,8 @@ class ModelInfoCommandTest {
         Files.writeString(movie,
                 DocumentModelDraft.named("Product_Movie").locale("en_US")
                         .annotation("superTypes", "Product_Base")
-                        .include("base", "Product_Base")
-                        .rootGroup("Movie", g -> g.field("RuntimeMinutes", FieldKind.NUMBER)).build().toJson());
+                        .rootGroup("Movie", g -> g.field("RuntimeMinutes", FieldKind.NUMBER)
+                                .mount("Base", "Product_Base")).build().toJson());
         return movie;
     }
 
@@ -68,7 +68,7 @@ class ModelInfoCommandTest {
         assertFalse(data.path("modelVersion").asText().isBlank(), "identity carries the model version");
         assertEquals("Product_Base", data.path("superTypes").path(0).asText());
         // the include cross-resolves to the sibling file (default -w/--workspace = the model's folder)
-        assertEquals("base", data.path("includes").path(0).path("alias").asText());
+        assertEquals("Product_Base", data.path("includes").path(0).path("ref").asText());
         assertEquals("Product_Base.dm.json", data.path("includes").path(0).path("resolvedPath").asText());
     }
 

@@ -42,7 +42,6 @@ class CheckerElementPathSentenceAgreementTest {
 
     private data class Row(
         val names: Map<At, String>,
-        val only: At? = null,
         val slash: Boolean = false,
         val computation: Boolean = true,
     )
@@ -74,10 +73,6 @@ class CheckerElementPathSentenceAgreementTest {
         for ((label, name) in linkedMapOf("an xml prefix" to "xmlCode", "an underscore" to "_Code", "a digit" to "0Code")) {
             put("a group led by $label under a bad group", Row(mapOf(At.PART to "Codeé", At.BIN to name)))
         }
-        put("a bad group above a rule deleted at the default variant", Row(mapOf(At.PART to "Codeé"), only = At.CHECK))
-        put("a bad group above a field deleted at the default variant", Row(mapOf(At.PART to "Codeé"), only = At.SLOT))
-        put("a bad field deleted at the default variant", Row(mapOf(At.SLOT to "Slo-t"), only = At.SLOT))
-        put("a bad group above a computation deleted at the default variant", Row(mapOf(At.PART to "Codeé"), only = At.FILL))
         for (at in listOf(At.ROOT, At.PART, At.CODE)) for (name in listOf("Co/-de", "-Co/de")) {
             put("${at.name.lowercase()} named $name", Row(mapOf(at to name), slash = true))
         }
@@ -115,9 +110,6 @@ class CheckerElementPathSentenceAgreementTest {
                 listOf("$PATH@/C${"o".repeat(59)}\u00A0", "$ROOT_ALPHABET@/C${"o".repeat(59)}\u00A0") +
                 listOf("Part", "Part/Bin", "Part/Bin/Check", "Part/Bin/Fill", "Part/Bin/Label", "Part/Bin/Slot",
                     "Part/Code", "Part/Sibling", "Reference").map { "$GROUP@/C${"o".repeat(59)}\u00A0/$it" },
-            "a bad group above a rule deleted at the default variant" to listOf("$PATH@/Order/Codeé") +
-                listOf("/Order/Codeé", "/Order/Codeé/Bin", "/Order/Codeé/Bin/Fill", "/Order/Codeé/Bin/Label",
-                    "/Order/Codeé/Bin/Slot", "/Order/Codeé/Code", "/Order/Codeé/Sibling").map { "$GROUP@$it" },
         ).mapValues { (_, classes) -> classes.sorted() }, observed.filterKeys { it in PINNED }.mapValues { it.value.first })
         // A name carrying `/` is left to A12: the checker's verdict stays the coded class, and it states no sentence.
         for ((label, verdict) in observed.filterKeys { rows.getValue(it).slash }) {
@@ -150,11 +142,6 @@ class CheckerElementPathSentenceAgreementTest {
     private fun model(row: Row): String {
         val tree = mapper.readTree(base)
         if (!row.computation) (tree.at(At.BIN.pointer + "/Group/elements") as ArrayNode).remove(3)
-        row.only?.let { at ->
-            val element = tree.at(at.pointer) as ObjectNode
-            (element.path(element.path("type").asText()) as ObjectNode).putObject("variantFilter")
-                .put("filterType", "ONLY").putArray("variants").add("Wholesale")
-        }
         // Renamed bottom-up, so each pointer still names the element it named in the drafted tree.
         for ((at, name) in row.names.entries.sortedByDescending { it.key.pointer.length }) {
             (tree.at(at.pointer) as ObjectNode).put("name", name)
@@ -186,7 +173,6 @@ class CheckerElementPathSentenceAgreementTest {
         val ATTACHED = Regex("^(?:Group|Field|Rule) with path '([^']*)': ")
         val PINNED = setOf("control", "root with an accent", "root with a leading digit", "part with a leading umlaut",
             "part with an inner umlaut", "code with an inner umlaut", "code with a leading digit",
-            "part with a trailing space", "root with 61 characters", "root with 60 characters and a trailing no-break space",
-            "a bad group above a rule deleted at the default variant")
+            "part with a trailing space", "root with 61 characters", "root with 60 characters and a trailing no-break space")
     }
 }

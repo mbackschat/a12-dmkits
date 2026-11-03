@@ -2,10 +2,14 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
+import com.mgmtp.a12.model.repository.FaultException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
@@ -159,7 +163,6 @@ class CalendarTargetCompletionDiffTest {
         "policy-overflow" to (policy to policyDocument("9999-12-15", 1, "9999-12", "9999")),
         "billing-floor-year" to (billing to billingDocument("10", "10-15", "1583")),
         "billing-after-floor" to (billing to billingDocument("12", "12-31", "1584")),
-        "plan-base-2023" to (plan2023 to planDocument),
         "plan-base-2024" to (plan2024 to planDocument),
     )
 
@@ -174,6 +177,97 @@ class CalendarTargetCompletionDiffTest {
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() {
         for ((name, pair) in documents) DocumentDifferential.assertAgree(pair.first, mapOf(name to pair.second))
+    }
+
+    /**
+     * A leap attempt into a month-day target under a non-leap Base Year draws two formal diagnostics on one pointer on
+     * kernel 31.1.1 — the re-completed `02-29-2023` is `datumFormatFalsch` and the attempt is `berechnungsWertFehler` —
+     * so the computation fails result assembly on both kernel strategies and on the interpreter (KERNEL-FINDINGS
+     * KF666). The control, Base Year 2024 on the same model, is `plan-base-2024` above.
+     */
+    @Test
+    fun aLeapAttemptUnderANonLeapBaseYearFailsTheWholeComputation() {
+        assertFailsAssembly(plan2023, planDocument)
+    }
+
+    /**
+     * The carriers of that failure: every day-month format, on a Date and on a date fragment, fails assembly on all
+     * three engines, while a year-carrying target stores the same value. A date range cannot reach the case. Copying a
+     * full range into a day-month one is refused statically, and a day-month source holding `02-29` fails its own
+     * format check first, so the computation never sees a value; under Base Year 2024 that same copy stores.
+     */
+    @Test
+    fun everyDayMonthTargetFailsAssemblyAndNoDateRangeReachesIt() {
+        for (kind in CycleKind.entries) {
+            for (format in listOf("MM-dd", "MMdd", "dd.MM.", "ddMM")) {
+                assertFailsAssembly(leapInto(format, kind), """{"Plan":{}}""")
+            }
+        }
+        DocumentDifferential.assertAgree(leapInto("yyyy-MM-dd", CycleKind.DATE), mapOf("year-carrying" to """{"Plan":{}}"""))
+        assertEquals("VALUE|2024-02-29",
+            DocumentDifferential.kernel(leapInto("yyyy-MM-dd", CycleKind.DATE), """{"Plan":{}}""", dynamic = true).outcomes["Cycle"])
+
+        assertEquals(listOf("MVK_INVALID_COMPARE_TO_DATE_RANGE"),
+            MessageParameterProbes.kernel(rangeCopy(2023, sourceFormat = "yyyy-MM-dd")))
+        val sourceFails = rangeCopy(2023, sourceFormat = "MM-dd")
+        val leapWindow = """{"Plan":{"Rows":[{"Window":"02-29/03-01"}]}}"""
+        DocumentDifferential.assertAgree(sourceFails, mapOf("leap window" to leapWindow))
+        val observed = DocumentDifferential.kernel(sourceFails, leapWindow, dynamic = true)
+        assertEquals(emptyMap<String, String>(), observed.outcomes)
+        assertEquals(listOf("datumBereichFormatFalsch|VALUE_ERROR|/Plan[1]/Rows[1]/Window"),
+            observed.operandErrors.map { it.toString().substringBefore("|ref=") })
+        assertEquals("VALUE|02-29/03-01",
+            DocumentDifferential.kernel(rangeCopy(2024, sourceFormat = "MM-dd"), leapWindow, dynamic = true).outcomes["Cycle"])
+    }
+
+    private fun assertFailsAssembly(model: String, document: String) {
+        for (dynamic in listOf(true, false)) {
+            val failure = assertThrows(FaultException::class.java) {
+                DocumentDifferential.kernel(model, document, dynamic = dynamic)
+            }
+            val cause = generateSequence(failure as Throwable) { it.cause }.last()
+            assertEquals(IllegalStateException::class.java, cause.javaClass, "dynamic=$dynamic")
+            assertTrue(cause.message!!.startsWith("Duplicate key PartiallyKnownDocumentMultiPointerImpl[/Plan/Cycle, [1, 1]]"),
+                "dynamic=$dynamic: ${cause.message}")
+        }
+        val interpreted = assertThrows(IllegalStateException::class.java) { DocumentDifferential.interpreter(model, document) }
+        assertEquals("Duplicate computation diagnostic at A12PartiallyKnownMultiPointer[/Plan/Cycle, [1, 1]]: " +
+            "berechnungsWertFehler and datumFormatFalsch", interpreted.message)
+    }
+
+    /** The `Cycle` target's declared type. */
+    private enum class CycleKind { DATE, FRAGMENT }
+
+    /** `29.02.2024` computed into a `Cycle` target of [format] under Base Year 2023. */
+    private fun leapInto(format: String, kind: CycleKind): String {
+        val base = DocumentModelDraft.named("plan-cycle-carrier").locale("en_US").baseYear(2023)
+            .rootGroup("Plan") { p ->
+                when (kind) {
+                    CycleKind.DATE -> p.dateField("Cycle") { it.format(format) }
+                    CycleKind.FRAGMENT -> p.dateFragmentField("Cycle") { it.fragmentFormat(format) }
+                }
+            }.build().toJson()
+        val session = EditSession.read(base)
+        val p = session.group("/Plan")
+        val target = when (kind) {
+            CycleKind.DATE -> p.date("Cycle").field()
+            CycleKind.FRAGMENT -> p.dateFragment("Cycle").field()
+        }
+        return TypedRules.inject(session.toJson(), p.computation(target) {
+            it.name("CycleComp").calc(Dsl.dateValue("29.02.2024").expression()).message(Dsl.en("Check the plan.")).build()
+        })
+    }
+
+    /** The first filled `MM-dd` window copied into a `MM-dd` range target, from rows of [sourceFormat]. */
+    private fun rangeCopy(baseYear: Int, sourceFormat: String): String {
+        val base = DocumentModelDraft.named("plan-window-carrier").locale("en_US").baseYear(baseYear)
+            .rootGroup("Plan") { p ->
+                p.dateRangeField("Cycle") { it.format("MM-dd").separator("/") }
+                p.group("Rows") { rows -> rows.repeatable(5).dateRangeField("Window") { it.format(sourceFormat).separator("/") } }
+            }.build().toJson()
+        val operation = RuntimeLaws.render("/Plan",
+            Dsl.firstFilledDateRange(BoundModel.ofJson(base).flatten("/Plan/Rows*/Window")).expression())
+        return RuntimeLaws.withComputation(base, "/Plan", "CycleComp", "../Cycle", operation)
     }
 
     /**
@@ -200,18 +294,15 @@ class CalendarTargetCompletionDiffTest {
             "a two-component Date takes the Base Year and meets the floor" to
                 run("billing-floor-year").outcomes["FoundingDay"],
             "a shift returns it to the floor" to run("billing-floor-year").outcomes["FoundingNext"],
-            "a leap attempt into month-day under a non-leap Base Year is errored" to
-                run("plan-base-2023").outcomes["Cycle"],
-            "the leap attempt's dependent is poisoned" to run("plan-base-2023").outcomes["CycleMonth"],
             "under a leap Base Year it stores" to run("plan-base-2024").outcomes["Cycle"],
             "a year-component guard reads the stored year-only target" to run("plan-base-2024").outcomes["Fee"],
             "a presence guard reads it too" to run("plan-base-2024").outcomes["Seats"],
         )
         assertEquals(linkedMapOf(
-            "a five-digit year reaches the target as an errored attempt" to "ERRORED|10000-12-15",
+            "a five-digit year reaches the target as an errored attempt" to "ERRORED|+10000-12-15",
             "its dependent is poisoned" to "CLEARED",
-            "a year-month target renders its attempt in its own components" to "ERRORED|10000-01",
-            "a year target renders its attempt in its own components" to "ERRORED|10000",
+            "a year-month target renders its attempt in its own components" to "ERRORED|+10000-01",
+            "a year target renders its attempt in its own components" to "ERRORED|+10000",
             "a five-digit result orders after its source" to listOf("RenewalAfterStart|VALUE_ERROR|/Policy[1]/Start"),
             "and not before it" to emptyList<String>(),
             "under Base Year 1583 only month-day and year values meet the floor" to
@@ -219,8 +310,6 @@ class CalendarTargetCompletionDiffTest {
             "a month-only shift stays a value" to "VALUE|11",
             "a two-component Date takes the Base Year and meets the floor" to "ERRORED|1583-10-15",
             "a shift returns it to the floor" to "VALUE|1583-10-16",
-            "a leap attempt into month-day under a non-leap Base Year is errored" to "ERRORED|02-29",
-            "the leap attempt's dependent is poisoned" to "CLEARED",
             "under a leap Base Year it stores" to "VALUE|02-29",
             "a year-component guard reads the stored year-only target" to "VALUE|7",
             "a presence guard reads it too" to "VALUE|3",

@@ -15,13 +15,14 @@ import org.junit.jupiter.api.Test;
 /**
  * KERNEL-FINDINGS §13 — three gates on the rule-message surface that a UNIFORM reading gets wrong, each
  * measured against a within-model twin differing in one variable: the template's character repertoire is the
- * BMP and not ASCII, the field-membership gate is skipped by two name-position forms, and the value suffix has
+ * BMP and not ASCII, the field-membership gate is skipped by the form-line suffix, and the value suffix has
  * a second gate on the referenced field's DECLARATION.
  *
  * <p><b>Why each of the three refuses a legal model if read uniformly.</b> An ASCII template bound refuses
  * Greek, Cyrillic and CJK message text the kernel admits. A membership rule stated without exception refuses
- * two admitted forms — and the exception is not a quirk of the fixture: `checkVordruckzeile` /
- * `checkVordruckname` call only `checkValidFieldName`, never the membership check the plain form goes through.
+ * an admitted form — and the exception is not a quirk of the fixture: `checkVordruckzeile` calls only
+ * `checkValidFieldName`, never the membership check the plain form goes through. Its sibling `Vordruckname` did the
+ * same until kernel 31.1.1 removed it from the parameter grammar (source-read at {@code eec9134}, [KF657]).
  * And a value suffix gated only on the non-starred reference misses the declaration gate entirely.
  *
  * <p>Reported by a12-kernel-lean's `SPEC-2026-09-07-12`; re-derived here on our own fixtures, since a peer's
@@ -84,8 +85,10 @@ class RuleMessageAdmissionGateLawsTest {
     }
 
     /**
-     * The two form-line suffixes skip field membership. One condition, one field, three suffixes — so the
-     * plain form's `INVALID_FIELD` and the two admissions differ in exactly the suffix.
+     * The form-line suffix skips field membership. One condition, one field, three suffixes — so the plain form's
+     * `INVALID_FIELD` and the admission differ in exactly the suffix. The retired `Vordruckname` is no longer a
+     * keyword on kernel 31.1.1, so `Adjuster.Vordruckname` lexes as one dotted name that names nothing and draws
+     * `INVALID_ENTITY` on a field and a group alike ([KF657]); on 30.8.1 it was admitted like `Vordruckzeile`.
      */
     @Test
     void theTwoFormLineSuffixesSkipTheFieldMembershipGateThePlainFormMeets() {
@@ -100,14 +103,14 @@ class RuleMessageAdmissionGateLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("plain — the membership control", "INVALID_FIELD");
         expected.put("Vordruckzeile", ADMITTED);
-        expected.put("Vordruckname", ADMITTED);
+        expected.put("Vordruckname", "INVALID_ENTITY");
         // Skipping MEMBERSHIP is not skipping every gate: `checkValidFieldName` still asks whether the
-        // parameter resolved to a FIELD, which is the only check these two forms do make (added 2026-09-15).
+        // parameter resolved to a FIELD, which is the only check the form-line suffix makes (added 2026-09-15).
         expected.put("Vordruckzeile on a GROUP", "INVALID_FIELD_IN_PARAMETER");
-        expected.put("Vordruckname on a GROUP", "INVALID_FIELD_IN_PARAMETER");
+        expected.put("Vordruckname on a GROUP", "INVALID_ENTITY");
 
         assertEquals(expected, verdicts,
-                "a checker enforcing membership uniformly across name-position forms refuses two admitted ones");
+                "a checker enforcing membership uniformly across name-position forms refuses an admitted one");
     }
 
     /**

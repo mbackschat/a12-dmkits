@@ -22,7 +22,7 @@ public final class UnresolvedReferenceException extends RuntimeException {
         this.reference = reference;
     }
 
-    /** The unresolved reference — the include alias / type-definition import id that could not be resolved. */
+    /** The unresolved reference — the included or type-definition-importing model id that could not be resolved. */
     public String reference() {
         return reference;
     }

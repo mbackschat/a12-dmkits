@@ -16,6 +16,12 @@ internal enum class ModelStage {
      */
     VERSION,
 
+    /**
+     * A12's id sentences, which its rule list asks right after the version sentences and before code generation; they
+     * withhold nothing, because the rule that states them is not the one that builds ([KERNEL-FINDINGS KF661]).
+     */
+    IDENTITY,
+
     DECLARATION, METAMODEL, GENERATION,
 
     /**
@@ -95,45 +101,53 @@ internal fun TrackedFactBase.selectDeclarations(
     return ordered.flatMap { selectDeclaration(it.key, byOwner[it.key].orEmpty()) }
 }
 
+/**
+ * The computations A12's converter leaves out because their computed field names nothing ([KERNEL-FINDINGS KF652]):
+ * an empty `computedFieldRelPath`, or one that resolves to nothing the model as read declares. Only their target's
+ * own sentence is reported, and their basic sentences; every other finding about them is withheld.
+ *
+ * Withheld here rather than left out of the declaration view ([ConversionDrops]) because the cause is a body member
+ * and a resolution, which the declaration-set shape that view is charged as does not cover. Two targets are not
+ * among them, because each leaves no model at all: one the reader's path arithmetic refuses, and one the converter
+ * itself left out ([Reference.Undeclared.leftOutByConversion]).
+ */
+internal fun TrackedFactBase.withheldComputations(): Set<DeclarationKey> = declarations()
+    .filter { it.declaredKind == DeclaredKind.COMPUTATION }
+    .filter { computation ->
+        val reference = computation.declaredReference() ?: return@filter false
+        reference.written.isEmpty() || (reference.target as? Reference.Undeclared)?.leftOutByConversion == false
+    }
+    .mapTo(mutableSetOf()) { it.key }
+
 /** Cells hold local outcomes; every report re-enters the outer stages against the current model. */
 internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding> {
+    val withheld = facts.withheldComputations()
     val local = cells.values.flatMap { it.contributions }
-    val suppressed = facts.variantFilterSuppressed()
-    // A computed target that names nothing fails while A12 converts the computation, which it never does for
-    // one an `ONLY` filter suppresses, so that failure is lifted there ([KERNEL-FINDINGS KF626]). A path the
-    // reader itself refuses is not: it fails before any filter applies ([KF643]).
+        .filterNot { it is OwnedFinding && it.owner in withheld }
+        .filterNot { it is ModelFinding && it.stage != ModelStage.BASIC && it.finding.code !in CONVERTER_SENTENCE_CODES &&
+            withheld.any { key -> key.path == it.finding.at } }
     val targets = facts.declarations().flatMap { element ->
         val reference = element.declaredReference() ?: return@flatMap emptyList()
-        val lifted = element.declaredKind == DeclaredKind.COMPUTATION && element.path in suppressed &&
-            !reference.refusedByTheReader
-        if (lifted) emptyList() else reference.findings().map { DeclarationFinding(element.key, DeclarationStage.TARGET, it) }
+        reference.findings().map { DeclarationFinding(element.key, DeclarationStage.TARGET, it) }
     }
-    val conditions = selectedConditions(facts).map {
+    val conditions = selectedConditions(facts).filterNot { it.owner in withheld }.map {
         DeclarationFinding(it.owner, DeclarationStage.CONDITION, it.finding)
     }
     val declarations = facts.selectDeclarations(local.filterIsInstance<OwnedFinding>()
         .filterNot { it is ConditionFinding } + targets + conditions)
     val computations = facts.declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }
         .mapTo(mutableSetOf()) { it.key }
-    fun visible(finding: Finding): Boolean =
-        finding.code in VARIANT_BLIND_CODES || finding.at == null || finding.at !in suppressed
     val reported = local.filterIsInstance<ModelFinding>()
     // A12's ordering gates run only on a model its earlier entity walk admitted (KERNEL-FINDINGS KF589).
-    val walkRefused = local.any { visible(it.finding) && facts.refusesTheEntityWalk(it.finding) }
+    val walkRefused = local.any { facts.refusesTheEntityWalk(it.finding) }
     val model = if (walkRefused) reported.filterNot { it.finding.code in ORDERING_GATE_CODES } else reported
     val selected = (model.filter { it.stage == ModelStage.DECLARATION } +
         declarations.filter { it.owner in computations } +
         model.filter { it.stage == ModelStage.METAMODEL } +
-        declarations.filterNot { it.owner in computations }).map { it.finding }.filter(::visible)
-    fun staged(stage: ModelStage) = model.filter { it.stage == stage }.map { it.finding }.filter(::visible)
-    val judged = if (selected.any { it.justifiesRejection }) selected else selected + staged(ModelStage.GENERATION)
-    return staged(ModelStage.VERSION) + judged + staged(ModelStage.BASIC)
+        declarations.filterNot { it.owner in computations }).map { it.finding }
+    fun staged(stage: ModelStage) = model.filter { it.stage == stage }.map { it.finding }
+    // A12's converter states its sentences and checks on, so they withhold nothing later (KERNEL-FINDINGS KF652).
+    val judged = if (selected.any { it.justifiesRejection && it.code !in CONVERTER_SENTENCE_CODES }) selected
+    else selected + staged(ModelStage.GENERATION)
+    return staged(ModelStage.VERSION) + staged(ModelStage.IDENTITY) + judged + staged(ModelStage.BASIC)
 }
-
-/**
- * The codes a variant filter never takes away: a source A12 cannot READ is refused before any filter runs, and
- * A12's basic sentences are stated over the model as read ([KERNEL-FINDINGS KF579], [KF626]). A model that reads
- * and then fails to build is a different tier, and a filter deleting the failing declaration does lift it, so
- * each family judging a conversion-tier failure asks [deletesAtDefaultVariant] or suppression itself.
- */
-internal val VARIANT_BLIND_CODES = setOf(CK_MODEL_NOT_BUILDABLE) + BASIC_SENTENCE_CODES

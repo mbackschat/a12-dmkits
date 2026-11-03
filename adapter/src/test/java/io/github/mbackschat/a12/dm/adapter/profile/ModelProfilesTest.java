@@ -29,7 +29,7 @@ class ModelProfilesTest {
     void resolvesIncludedModelsThroughTheKernelFreeResolver() {
         String included = model("pricelist", "Pricelist", "Currency");
         EditSession session = EditSession.read(model("catalog", "Catalog", "StoreName"));
-        session.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        session.mount("/Catalog", "Retail", "pricelist");
         ModelResolver resolver = id -> "pricelist".equals(id) ? included : null;
 
         var profile = ModelProfileJson.read(ModelProfiles.extract(session.toJson(), resolver));

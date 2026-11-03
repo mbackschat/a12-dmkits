@@ -6,9 +6,13 @@ import org.junit.jupiter.api.Test
 import java.util.Locale
 
 /**
- * Two acceptance cells of a12-kernel-lean SPEC-2026-10-26-21 and -27 ([KERNEL-FINDINGS KF633], [KF634]): an odd-length
- * token of a DateRange with an empty separator is a formal error, and a pattern holding an escaped backslash
- * before `p` is refused by the consistency check, as the checker refuses it.
+ * Two acceptance cells of a12-kernel-lean SPEC-2026-10-26-21 and -27 ([KERNEL-FINDINGS KF633], [KF634]), requalified
+ * on kernel 31.1.1: a DateRange declared with an empty separator, and a pattern holding an escaped backslash before
+ * `p`, which the consistency check refuses as the checker refuses it.
+ *
+ * On 30.8.1 the first cell locked KF633's odd-length token, a formal error because an empty separator split the text
+ * in half. On 31.1.1 the empty separator reads as `/` (KERNEL-FINDINGS KF658), so every unseparated token lacks its
+ * separator and the cell now locks that, on all three engines.
  *
  * Own domain (a tour season).
  */
@@ -19,10 +23,10 @@ class DateRangeOddTokenFormalDiffTest {
             .dateRangeField("Season") { it.format("MM").separator("") } }
         .build().toJson()
 
-    /** A `MM` range with no separator splits its text in half, so only an even length can be two months. */
+    /** An empty separator is the slash, so a token without one lacks its separator whatever its length. */
     @Test
-    fun anOddLengthTokenIsAFormalErrorOnAllThreeEngines() {
-        val values = listOf("061", "06109", "6", "0609")
+    fun anUnseparatedTokenLacksItsSeparatorOnAllThreeEngines() {
+        val values = listOf("061", "06109", "6", "0609", "06/09")
         val dynamicEngine = RuntimeLaws.kernelEngine(model)
         val staticEngine = RuntimeLaws.kernelJavaEngine(model)
         val kernel = values.associateWith { v ->
@@ -32,8 +36,9 @@ class DateRangeOddTokenFormalDiffTest {
         val interpreted = values.associateWith { v -> DocumentDifferential.interpreterMessages(model, season(v)).map { it.code } }
         assertEquals(kernel, static, "static Java")
         assertEquals(kernel, interpreted, "the interpreter")
-        val wrongFormat = listOf("datumBereichFormatFalsch")
-        assertEquals(linkedMapOf("061" to wrongFormat, "06109" to wrongFormat, "6" to wrongFormat, "0609" to emptyList()), kernel)
+        val missing = listOf("datumBereichTrennerFehlt")
+        assertEquals(linkedMapOf("061" to missing, "06109" to missing, "6" to missing, "0609" to missing,
+            "06/09" to emptyList()), kernel)
     }
 
     private fun season(value: String) = """{"Tour":{"Ref":"R","Season":"$value"}}"""

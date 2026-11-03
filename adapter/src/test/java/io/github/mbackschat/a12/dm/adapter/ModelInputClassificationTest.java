@@ -100,8 +100,8 @@ class ModelInputClassificationTest {
 
     @Test
     void malformedResolvedModelsRetainTheReferenceIdentity() {
-        var resolver = KernelResolvers.of(reference -> "{\"header\":");
-        var failure = assertThrows(ModelInputException.class, () -> resolver.getDocumentModel("external"));
+        var resolver = KernelResolvers.unexpanded(reference -> "{\"header\":");
+        var failure = assertThrows(ModelInputException.class, () -> resolver.resolve("external"));
         assertTrue(failure.getMessage().contains("external"), failure::getMessage);
     }
 
@@ -114,8 +114,7 @@ class ModelInputClassificationTest {
     @Test
     void aResolverDefectKeepsItsIdentity() {
         String json = DocumentModelDraft.named("host").locale("en_US")
-                .include("child", "external")
-                .rootGroup("Root", root -> root.mount("Child", "child")).build().toJson();
+                .rootGroup("Root", root -> root.mount("Child", "external")).build().toJson();
         NullPointerException defect = new NullPointerException("unexpected resolver defect");
         assertSame(defect, assertThrows(NullPointerException.class,
                 () -> KernelModelPreparation.expand(json, reference -> { throw defect; })));

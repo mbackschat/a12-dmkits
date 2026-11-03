@@ -30,20 +30,17 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  * declaration names.
  *
  * <p><b>The denominator is DERIVED, not assembled.</b> {@code FieldtypeDeserializer.deriveFieldtype} is one
- * {@code switch} over the {@code type} discriminator with thirteen cases and a {@code default} that raises,
- * so the admitted set is exactly those thirteen names and nothing else can be inferred into it. <i>Source:</i>
- * {@code kernel-md/kernel-md-serializer/…/serialization/FieldtypeDeserializer.java}, kernel {@code 30.8.1},
- * read 2026-09-13. That enumeration is what makes an "unknown type name" row safe to state as a law rather
- * than as a probe of the handful of names someone happened to try.
+ * {@code switch} over the {@code type} discriminator with twelve cases and a {@code default} that raises,
+ * so the admitted set is exactly those twelve names and nothing else can be inferred into it. <i>Source:</i>
+ * {@code kernel-md/kernel-md-serializer/…/serialization/FieldtypeDeserializer.java}, kernel {@code 31.1.1}
+ * ({@code a12-kernel} eec9134), re-read 2026-11-02. {@code UnspecifiedType} left the switch in 31.1, so it is a
+ * name A12 no longer reads. That enumeration is what makes an "unknown type name" row safe to state as a law
+ * rather than as a probe of the handful of names someone happened to try.
  *
- * <p><b>The split the source predicts, and the reason this grid exists.</b> Five of the thirteen cases guard
- * the body — {@code if (typeNode == null) …builder().build()} — and the other eight dereference it behind a
- * {@code // typeNode is never null} comment. A comment is not a guard, so the prediction is that the body is
- * OPTIONAL on those five and FATAL to omit on the other eight. It is a source reading and stays a hypothesis
- * until this grid runs: the two halves are indistinguishable from any single type, and the one row that
- * existed before this class ({@code GroupOrderingFieldTypeLawsTest}'s "a type discriminator naming a body
- * that is absent") sat on {@code StringType} — a guarded case — so it measured one side of a split it could
- * not see.
+ * <p><b>The body is optional on every type in 31.1.1.</b> Each case builds the type from its defaults when the
+ * body member is absent ({@code DateRangeType.builder().format("")}, {@code EnumerationType…values(List.of())},
+ * …), so a missing body draws what an empty one draws, row for row (KERNEL-FINDINGS KF654). On 30.8.1 eight of the
+ * thirteen dereferenced the missing body and refused the source.
  *
  * <p>Own domain (the shared order fixture).
  */
@@ -54,11 +51,10 @@ class FieldTypeBindingLawsTest {
     /** A type name the kernel does not declare, so any carrier that READS the member is refused. */
     private static final String UNBINDABLE_TYPE = "{\"type\":\"NotAType\",\"NotAType\":{}}";
 
-    /** The thirteen names {@code deriveFieldtype} switches on, in source order. */
+    /** The twelve names {@code deriveFieldtype} switches on, in source order. */
     private static final List<String> DECLARED_TYPES = List.of(
             "StringType", "NumberType", "DateType", "DateTimeType", "DateRangeType", "DateFragmentType",
-            "EnumerationType", "TimeType", "TypeDefType", "CustomFieldType", "ConfirmType", "BooleanType",
-            "UnspecifiedType");
+            "EnumerationType", "TimeType", "TypeDefType", "CustomFieldType", "ConfirmType", "BooleanType");
 
     /**
      * The ENVELOPE around the discriminator: what a {@code fieldType} that is not a usable object does.
@@ -109,12 +105,10 @@ class FieldTypeBindingLawsTest {
     /**
      * Every declared type name carrying an empty body — the control half of the body-optional split.
      *
-     * <p>Every one of the thirteen BINDS here, which is what makes this the control: no row is unreadable, so
-     * the unreadable rows in the paired test below are attributable to the missing body and to nothing else.
-     * What the row then says about the model is a separate question and the verdicts fan out — five types
-     * need members an empty body does not supply and leave the model unbuildable, and {@code UnspecifiedType}
-     * binds and draws a consistency code of its own. Neither is a binding failure, and a checker that treated
-     * them as one would report the reader's refusal for a model A12 read perfectly well.
+     * <p>Every one of the twelve BINDS here: no row is unreadable. What the row then says about the model is a
+     * separate question and the verdicts fan out — some types need members an empty body does not supply. None
+     * is a binding failure, and a checker that treated them as one would report the reader's refusal for a model
+     * A12 read perfectly well.
      */
     @Test
     void everyDeclaredTypeBindsWithAnEmptyBody() {
@@ -132,11 +126,13 @@ class FieldTypeBindingLawsTest {
         expected.put("TimeType", KernelLaws.ADMITTED);
         expected.put("ConfirmType", KernelLaws.ADMITTED);
         expected.put("BooleanType", KernelLaws.ADMITTED);
-        // These four carry a member A12 constructs from and an empty body has none — read, then refused
+        // These two carry a member A12 constructs from and an empty body has none — read, then refused
         // BEFORE any declaration is judged.
         expected.put("DateFragmentType", KernelLaws.NOT_BUILDABLE);
         expected.put("EnumerationType", KernelLaws.NOT_BUILDABLE);
-        expected.put("TypeDefType", KernelLaws.NOT_BUILDABLE);
+        // A type definition reference naming nothing is a converter sentence on 31.1.1, beside the basic one
+        // (KERNEL-FINDINGS KF652); 30.8.1 did not build the model.
+        expected.put("TypeDefType", KernelLaws.REFUSED_CODELESS);
         // …and the fifth is a DIFFERENT tier, which the harness could not tell apart until 2026-09-15: A12
         // judges the declaration and states the verdict in prose, `"The date range format is invalid."`, so
         // the model is built and refused rather than never built. A grid that collapses the two reports one
@@ -145,45 +141,29 @@ class FieldTypeBindingLawsTest {
         // A verdict, not a build refusal: its own class key carries no `MVK_` prefix, which the harness
         // dropped until it started reading the class off the notification.
         expected.put("CustomFieldType", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
-        // Bound, built, and then REFUSED by a consistency check, like the row above.
-        expected.put("UnspecifiedType", "MVK_UNSPECIFIED_TYPE_NO_CODEGEN");
         assertEquals(sortedByName(expected), sortedByName(actual),
                 "every declared field type with an empty body present");
     }
 
     /**
-     * Every declared type name with the body member ABSENT — the half the source says splits five from eight.
+     * Every declared type name with the body member ABSENT, paired row by row with the grid above.
      *
-     * <p>This is the discriminating grid. Paired row by row with the one above, it varies exactly one thing —
-     * whether the body member is written — so a difference between the two cannot be the type itself.
+     * <p>It varies exactly one thing, whether the body member is written, and on 31.1.1 no row differs: the
+     * deserializer builds a missing body from the type's defaults. On 30.8.1 eight of the thirteen refused it.
      */
     @Test
-    void onlyTheGuardedTypesBindWithoutTheirBody() {
+    void aMissingBodyDrawsWhatAnEmptyOneDraws() {
         Map<String, String> actual = new LinkedHashMap<>();
         for (String type : DECLARED_TYPES) {
             actual.put(type, verdictWith("{\"type\":\"" + type + "\"}"));
         }
 
-        Map<String, String> expected = new LinkedHashMap<>();
-        // The five cases that guard the null and fall back to a default instance. All five BIND — which is
-        // the claim under test; `UnspecifiedType` then draws its own consistency code, exactly as it does
-        // with a body present, so the code is a property of the type and not of the omission.
-        expected.put("StringType", KernelLaws.ADMITTED);
-        expected.put("NumberType", KernelLaws.ADMITTED);
-        expected.put("ConfirmType", KernelLaws.ADMITTED);
-        expected.put("BooleanType", KernelLaws.ADMITTED);
-        expected.put("UnspecifiedType", "MVK_UNSPECIFIED_TYPE_NO_CODEGEN");
-        // The eight that dereference the body behind a comment claiming it is never null.
-        expected.put("DateType", KernelLaws.UNREADABLE);
-        expected.put("DateTimeType", KernelLaws.UNREADABLE);
-        expected.put("DateRangeType", KernelLaws.UNREADABLE);
-        expected.put("DateFragmentType", KernelLaws.UNREADABLE);
-        expected.put("EnumerationType", KernelLaws.UNREADABLE);
-        expected.put("TimeType", KernelLaws.UNREADABLE);
-        expected.put("TypeDefType", KernelLaws.UNREADABLE);
-        expected.put("CustomFieldType", KernelLaws.UNREADABLE);
-        assertEquals(sortedByName(expected), sortedByName(actual),
-                "every declared field type with its body member absent");
+        Map<String, String> emptyBody = new LinkedHashMap<>();
+        for (String type : DECLARED_TYPES) {
+            emptyBody.put(type, verdictWith("{\"type\":\"" + type + "\",\"" + type + "\":{}}"));
+        }
+        assertEquals(sortedByName(emptyBody), sortedByName(actual),
+                "every declared field type with its body member absent, against the same with an empty body");
     }
 
     /**
@@ -194,13 +174,11 @@ class FieldTypeBindingLawsTest {
      * as unloadable, which is the one direction that cannot be caught downstream. The rows use the type name
      * A12 does NOT have, so a carrier that DID read the member would be unreadable and unmistakable.
      *
-     * <p><b>What this measures turns out to be a law about CARRIERS, not about this member.</b> A group
-     * silently drops a member it does not declare while a field and a rule refuse one, and the
-     * {@code notAMemberA12Declares} rows are what separate those two readings: a spelling that is nonsense
-     * everywhere parts the carriers exactly as {@code fieldType} does. Two undeclared member names per
-     * carrier, because one could not tell "refuses undeclared members" from "refuses that one spelling".
-     * The denominator is three of the element kinds — the computation carrier is not measured here, so the
-     * law is stated for Group, Field and Rule and claims nothing beyond them.
+     * <p><b>What this measures is a law about CARRIERS, not about this member.</b> On kernel 31.1.1 every carrier
+     * passes over a member it does not declare — a group, a field and a rule alike — where 30.8.1's field and rule
+     * refused one (KERNEL-FINDINGS KF654). The nonsense rows separate that reading from one about {@code fieldType}
+     * itself, two names per carrier so the answer is not about one spelling. The computation carrier is not
+     * measured here, so the law is stated for Group, Field and Rule and claims nothing beyond them.
      */
     @Test
     void aFieldTypeOnAnElementThatIsNotAFieldIsIgnored() {
@@ -225,20 +203,16 @@ class FieldTypeBindingLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("on a FIELD — the control that proves the fragment is refusable", KernelLaws.UNREADABLE);
-        // A GROUP drops a member it does not declare, so `fieldType` means nothing there and a checker
-        // scanning every element would refuse a model A12 loads.
+        // Every carrier passes over a member it does not declare, so `fieldType` means nothing off a field and a
+        // checker scanning every element would refuse a model A12 loads.
         expected.put("on a group", KernelLaws.ADMITTED);
-        // A RULE refuses one — and the nonsense rows below show that is the CARRIER's strictness rather than
-        // anything about this member, so the checker's silence here under-reports a general law and not a
-        // `fieldType` one. Measured on three of the element kinds with two undeclared member names each;
-        // the computation carrier is NOT measured, so the law as stated covers Group, Field and Rule.
-        expected.put("on a rule", KernelLaws.UNREADABLE);
+        expected.put("on a rule", KernelLaws.ADMITTED);
         expected.put("a nonsense member on a group", KernelLaws.ADMITTED);
-        expected.put("a nonsense member on a rule", KernelLaws.UNREADABLE);
+        expected.put("a nonsense member on a rule", KernelLaws.ADMITTED);
         expected.put("a second nonsense member on a group", KernelLaws.ADMITTED);
-        expected.put("a second nonsense member on a rule", KernelLaws.UNREADABLE);
-        expected.put("a nonsense member on a field", KernelLaws.UNREADABLE);
-        expected.put("a second nonsense member on a field", KernelLaws.UNREADABLE);
+        expected.put("a second nonsense member on a rule", KernelLaws.ADMITTED);
+        expected.put("a nonsense member on a field", KernelLaws.ADMITTED);
+        expected.put("a second nonsense member on a field", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "a fieldType written on an element that is not a field");
     }
 
@@ -283,12 +257,9 @@ class FieldTypeBindingLawsTest {
         expected.put("EnumerationType with one value", KernelLaws.ADMITTED);
         expected.put("DateFragmentType with a fragment format", KernelLaws.ADMITTED);
         expected.put("CustomFieldType with a name", KernelLaws.ADMITTED);
-        // NOT a positive control, and kept because it names a class this checker does not cover: an `id`
-        // naming no declared type definition refuses A12's READER. A buildable `TypeDefType` needs a type
-        // definition the model declares, so this type has no positive row here and the checker's silence
-        // about a dangling id is an under-report the report's gap now names. Why the reader refuses rather
-        // than failing to build is unmeasured.
-        expected.put("TypeDefType with an id", KernelLaws.UNREADABLE);
+        // NOT a positive control: the wire member is `typeDefinitionId`, so `id` is an unknown member the reader
+        // passes over, and the reference is then empty — a converter sentence beside the basic one (KF652, KF654).
+        expected.put("TypeDefType with an id", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "the five types with a body supplying what they construct from");
     }
 
@@ -322,14 +293,13 @@ class FieldTypeBindingLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("naming a DECLARED type definition", KernelLaws.ADMITTED);
-        // A dangling reference is read and then fails to BUILD — not the reader refusal an earlier probe
-        // recorded. That probe wrote the member as `id`, so what it measured was an unknown member.
-        expected.put("naming nothing, with a type definition declared", KernelLaws.NOT_BUILDABLE);
-        expected.put("naming nothing, with none declared", KernelLaws.NOT_BUILDABLE);
-        // An unknown member on a fieldType body refuses the reader, which is the field carrier's strictness
-        // measured elsewhere in this class and not anything about type definitions.
-        expected.put("the reference written as `id` instead", KernelLaws.UNREADABLE);
-        expected.put("no reference member at all", KernelLaws.NOT_BUILDABLE);
+        // A dangling reference is read and stated by the converter on 31.1.1 (KERNEL-FINDINGS KF652); 30.8.1 did
+        // not build the model.
+        expected.put("naming nothing, with a type definition declared", KernelLaws.REFUSED_CODELESS);
+        expected.put("naming nothing, with none declared", KernelLaws.REFUSED_CODELESS);
+        // `id` is an unknown member the reader passes over (KF654), so the reference is empty, as when absent.
+        expected.put("the reference written as `id` instead", KernelLaws.REFUSED_CODELESS);
+        expected.put("no reference member at all", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "what a TypeDefType's typeDefinitionId must name");
     }
 
@@ -391,28 +361,24 @@ class FieldTypeBindingLawsTest {
     }
 
     /**
-     * The one type that is refused for BEING itself, on a second carrier and in a second multiplicity.
+     * {@code UnspecifiedType}, which kernel 31.1.1's reader no longer declares, on a root and a nested field and
+     * twice.
      *
-     * <p>The grids above measure it twice on one root field, which cannot tell "this type is refused" from
-     * "this FIELD is refused" — the axis every row of those grids holds constant. A field nested one level
-     * down answers the carrier question, and a model carrying two of them answers whether the verdict is the
-     * model's or each field's, which is what decides whether a checker reports once or per declaration.
+     * <p>On 30.8.1 it bound and drew {@code MVK_UNSPECIFIED_TYPE_NO_CODEGEN} once per declaration; on 31.1.1 it is a
+     * type name the deserializer's {@code default} refuses, wherever it stands (KERNEL-FINDINGS KF654).
      */
     @Test
-    void theUnspecifiedTypeIsRefusedOnEveryCarrierAndPerField() {
+    void theRetiredUnspecifiedTypeIsUnreadableOnEveryCarrier() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("a ROOT field — the control the grids already hold", verdictWithUnspecified(0));
+        actual.put("a ROOT field", verdictWithUnspecified(0));
         actual.put("a NESTED field", verdictWithUnspecifiedNested());
         actual.put("TWO unspecified root fields", verdictWithUnspecified(1));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        String noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN";
-        expected.put("a ROOT field — the control the grids already hold", noCodegen);
-        expected.put("a NESTED field", noCodegen);
-        // The verdict repeats per declaration rather than once for the model: a second offender neither
-        // silences the first nor changes the class.
-        expected.put("TWO unspecified root fields", noCodegen + "," + noCodegen);
-        assertEquals(expected, actual, "the unspecified type is refused per declaration, on either carrier");
+        expected.put("a ROOT field", KernelLaws.UNREADABLE);
+        expected.put("a NESTED field", KernelLaws.UNREADABLE);
+        expected.put("TWO unspecified root fields", KernelLaws.UNREADABLE);
+        assertEquals(expected, actual, "the retired unspecified type, on either carrier");
     }
 
     /** The order fixture with `CustomerName` retyped as unspecified, plus [extra] more such root fields. */

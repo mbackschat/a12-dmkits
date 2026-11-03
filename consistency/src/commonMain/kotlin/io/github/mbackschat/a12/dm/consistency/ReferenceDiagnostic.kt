@@ -41,8 +41,12 @@ fun Reference.asFinding(
     }
     val explain = when (this) {
         is Reference.Resolved -> return null
-        is Reference.Undeclared ->
+        is Reference.Undeclared -> if (leftOutByConversion) {
+            "`$candidate` is declared, but A12's converter leaves that declaration out, so nothing there remains in " +
+                "the model it checks"
+        } else {
             "no declared element matches `$candidate`, and no model-wide field short name resolved it"
+        }
         is Reference.Ambiguous ->
             "the short name `$name` is carried by ${candidates.size} fields — " +
                 "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
@@ -59,13 +63,10 @@ fun Reference.asFinding(
 /**
  * A rejection A12 issues with no code of its own, because it never reaches a verdict about the model.
  *
- * Five measured inputs reach it (2026-09-13), on two different tiers, and the code deliberately covers both
- * because a consumer acts on them identically — the model is unusable, and nothing else in the report is
- * A12's word about it. The model **is not built**: a computation whose computed field is missing (the Kernel
- * reports the bare text "The computed field \"…\" was not found." from
- * `ValidationModelConverter.getComputationStatement`, with no error type), a computation whose computed field
- * names a GROUP — A12 has a key for that one and never reaches it, the builder refusing first
- * ([KERNEL-FINDINGS KF329]) — or a rule whose error target climbs past the root
+ * The measured inputs reach it on two different tiers, and the code deliberately covers both because a consumer
+ * acts on them identically — the model is unusable, and nothing else in the report is A12's word about it. The
+ * model **is not built**: a computation whose computed field names a GROUP — A12 has a key for that one and never
+ * reaches it, the builder refusing first ([KERNEL-FINDINGS KF329]) — or a rule whose error target climbs past the root
  * (`ElementPathUtils.absPath` raises an `IndexOutOfBoundsException` during deserialization). Or the source **is not read at all**: an `errorMessage` entry without a string `locale`
  * and `text`, or a locale code A12's parser refuses on either the header or the message side — each raises
  * `ModelInputException` before any rule is examined (measured 2026-09-12, `MessageSlotRawShapeLawsTest`).
@@ -95,7 +96,15 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     // `MVK_MISSING_ERROR_FIELD` A12 draws beside it. An above-root one never reaches a check at all.
     ReferenceRole.ERROR_TARGET ->
         if (outcome is Reference.AboveRoot || outcome is Reference.IllegalRelPath) CK_MODEL_NOT_BUILDABLE else ERROR_FIELD_MISSING
-    ReferenceRole.COMPUTED_TARGET -> CK_MODEL_NOT_BUILDABLE
+    // A computed field that names nothing is a sentence of A12's converter, which then checks the model without the
+    // computation ([KERNEL-FINDINGS KF652]). One the reader's path arithmetic refuses leaves no model at all, and so
+    // does one the converter left out: A12's reader found it, so the computation is kept with no target, and the
+    // calculation check that follows cannot run on it.
+    ReferenceRole.COMPUTED_TARGET -> when {
+        outcome is Reference.AboveRoot || outcome is Reference.IllegalRelPath -> CK_MODEL_NOT_BUILDABLE
+        outcome is Reference.Undeclared && outcome.leftOutByConversion -> CK_MODEL_NOT_BUILDABLE
+        else -> RK_COMPUTED_FIELD_NOT_FOUND
+    }
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "MVK_TOO_MANY_PARENT_GROUPS"
@@ -150,10 +159,11 @@ internal fun DeclaredReference.findings(): List<Finding> {
         )
     }
     // An empty path walks no step and so "resolves" to the computation itself, where A12's converter finds no
-    // computed field at all ([KERNEL-FINDINGS KF626]).
+    // computed field at all and states so ([KERNEL-FINDINGS KF652]).
     if (role == ReferenceRole.COMPUTED_TARGET && written.isEmpty()) {
-        return listOf(a12Error(CK_MODEL_NOT_BUILDABLE, declaredAt,
-            "`computedFieldRelPath` is empty, so this computation names no computed field and A12 cannot build the model"))
+        return listOf(a12Error(RK_COMPUTED_FIELD_NOT_SPECIFIED, declaredAt,
+            "`computedFieldRelPath` is empty, so A12 states \"The computed field was not specified.\" and checks the " +
+                "model without this computation"))
     }
     val finding = target.asFinding(role, declaredAt) ?: return emptyList()
     return if (finding.code == ERROR_FIELD_MISSING) {

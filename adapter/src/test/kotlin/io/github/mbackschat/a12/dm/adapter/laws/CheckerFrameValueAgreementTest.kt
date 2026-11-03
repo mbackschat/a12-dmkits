@@ -57,24 +57,24 @@ class CheckerFrameValueAgreementTest {
             "name \"  _xmlb\" branch \"xmlb\"" to NAME, "name \"_\" branch \"\"" to NAME, "name \"xml_v1\" branch \"v1\"" to NAME,
             "name \"xmlP\" branch \" \"" to NAME, "name null branch \"v1\"" to UNBUILT,
             "name \"  \"" to NAME, "name \"XML\\u0130\"" to NAME, "name \"xml\\u0130\\u0130_b\" branch \"b\"" to NAME,
-            // Lower-cased, each U+0130 is two units, so the index A12 cuts the original name at lies past its end.
-            "name \"\\u0130\\u0130\\u0130_b\" branch \"b\"" to UNBUILT,
+            // `İİİ_b` is admitted: kernel 31.1.1 removes `_b` by a case-blind end match on the original name, where
+            // 30.8.1 cut it at an index from the lower-cased one, two units per U+0130, past its end, and threw.
         ))
     }
 
-    /** `VersionChecker`: a major of 28 and a minor and patch, read as one decimal, at most `4.0`; ASCII digits only. */
+    /** `VersionChecker`: a major of 29 and a minor and patch, read as one decimal, at most `4.0`; ASCII digits only. */
     @Test
     fun theModelVersionIsJudgedAsA12ReadsIt() {
-        val texts = listOf("28.4.0", "28.0.0", "28.3.99", "28.4.00", "28.04.0", "028.4.0", "28.4.0000000000000000001", "28.4.1",
-            "29.0.0", "27.9.9", "28.5", "x", "28.4.0 ", "٢٨.4.0", "28.4.0.0", "-28.4.0", "99999999999.0.0", "2147483647.0.0", "2147483648.0.0")
+        val texts = listOf("29.4.0", "29.0.0", "29.3.99", "29.4.00", "29.04.0", "029.4.0", "29.4.0000000000000000001", "29.4.1",
+            "30.0.0", "28.9.9", "29.5", "x", "29.4.0 ", "٢٩.4.0", "29.4.0.0", "-29.4.0", "99999999999.0.0", "2147483647.0.0", "2147483648.0.0")
         val rows = linkedMapOf<String, String>()
         texts.forEach { rows["version \"$it\""] = edited("/header/modelVersion", mapper.valueToTree(it)) }
         listOf("5", "true").forEach { rows["version $it"] = edited("/header/modelVersion", mapper.readTree(it)) }
         val both = PATTERN + INCOMPATIBLE
         assertAgreement(rows, refused = mapOf(
-            "version \"28.4.1\"" to INCOMPATIBLE, "version \"29.0.0\"" to INCOMPATIBLE, "version \"27.9.9\"" to INCOMPATIBLE,
-            "version \"28.5\"" to both, "version \"x\"" to both, "version \"28.4.0 \"" to both, "version \"٢٨.4.0\"" to both,
-            "version \"28.4.0.0\"" to both, "version \"-28.4.0\"" to both, "version 5" to both, "version true" to both,
+            "version \"29.4.1\"" to INCOMPATIBLE, "version \"30.0.0\"" to INCOMPATIBLE, "version \"28.9.9\"" to INCOMPATIBLE,
+            "version \"29.5\"" to both, "version \"x\"" to both, "version \"29.4.0 \"" to both, "version \"٢٩.4.0\"" to both,
+            "version \"29.4.0.0\"" to both, "version \"-29.4.0\"" to both, "version 5" to both, "version true" to both,
             // The major overflows Java's `int`, which A12 parses it into, so its check throws.
             "version \"99999999999.0.0\"" to UNBUILT, "version \"2147483647.0.0\"" to INCOMPATIBLE,
             "version \"2147483648.0.0\"" to UNBUILT,
@@ -84,11 +84,14 @@ class CheckerFrameValueAgreementTest {
             "the pattern's sentence first, as A12 states it")
     }
 
-    /** `NoMetaModelChecks.checkTimeZone`: `GMT`, an id of the JDK's registry exactly, or a custom offset up to `23:59`. */
+    /**
+     * `NoMetaModelChecks.checkTimeZone`: `GMT`, an id of the JDK's registry exactly, or a custom offset up to `23:59`.
+     * The empty zone is admitted on kernel 31.1.1, read as the absent one by the expand copy (KERNEL-FINDINGS KF658).
+     */
     @Test
     fun theTimeZoneIsJudgedAsTheJdkKnowsIt() {
-        val known = listOf("UTC", "GMT", "Europe/Berlin", "EST", "Etc/GMT+5", "GMT+1", "GMT+01:00", "GMT+0", "GMT+00:00", "GMT-0130")
-        val unknown = listOf("utc", "europe/berlin", "x", "GMT+24", "UTC+1", "", " ", "GMT ", "Z", "+01:00")
+        val known = listOf("UTC", "GMT", "Europe/Berlin", "EST", "Etc/GMT+5", "GMT+1", "GMT+01:00", "GMT+0", "GMT+00:00", "GMT-0130", "")
+        val unknown = listOf("utc", "europe/berlin", "x", "GMT+24", "UTC+1", " ", "GMT ", "Z", "+01:00")
         val rows = linkedMapOf<String, String>()
         (known + unknown).forEach { rows["timeZone \"$it\""] = edited("/content/modelConfig/timeZone", mapper.valueToTree(it)) }
         listOf("5", "true").forEach { rows["timeZone $it"] = edited("/content/modelConfig/timeZone", mapper.readTree(it)) }
@@ -158,11 +161,11 @@ class CheckerFrameValueAgreementTest {
     fun anIncludedModelsValuesAreNeverAsked() {
         val component = DocumentModelDraft.named("component").locale("en_US")
             .rootGroup("Component") { c -> c.stringField("Description") {} }.build().toJson()
-        val permit = DocumentModelDraft.named("permit").locale("en_US").include("component", "component")
+        val permit = DocumentModelDraft.named("permit").locale("en_US")
             .rootGroup("Permit") { p -> p.mount("Details", "component") }.build().toJson()
         val edits = listOf(
             null to null, "/content/modelInfo/name" to "\"xmlC\"", "/content/modelInfo/name" to "\"\"",
-            "/header/modelVersion" to "\"x\"", "/header/modelVersion" to "\"29.0.0\"",
+            "/header/modelVersion" to "\"x\"", "/header/modelVersion" to "\"30.0.0\"",
             "/content/modelConfig/timeZone" to "\"x\"", "/content/modelConfig/supportedCharacters" to "[\"ab\"]",
         )
         val observed = edits.associate { (pointer, value) ->
@@ -204,7 +207,7 @@ class CheckerFrameValueAgreementTest {
         val broken = RuntimeLaws.withRule(base, "/Policy", "RRef", "../Ref", "REF", "FieldFilled(Nope)")
         val rows = linkedMapOf(
             "cycle" to cyclic,
-            "cycle, version \"29.0.0\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("29.0.0")),
+            "cycle, version \"30.0.0\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("30.0.0")),
             "cycle, timeZone \"x\"" to edited(cyclic, "/content/modelConfig/timeZone", mapper.valueToTree("x")),
             "cycle, name \"xmlP\"" to edited(cyclic, "/content/modelInfo/name", mapper.valueToTree("xmlP")),
             "characters [\"ab\"], timeZone \"x\"" to edited(edited(characters, mapper.readTree("[\"ab\"]")),
@@ -213,21 +216,21 @@ class CheckerFrameValueAgreementTest {
                 "/header/modelVersion", mapper.valueToTree("x")),
             "characters [surrogate], timeZone \"x\"" to edited(edited(characters, mapper.readTree("[\"\\ud83d\"]")),
                 "/content/modelConfig/timeZone", mapper.valueToTree("x")),
-            "version \"29.0.0\", timeZone \"x\"" to edited(edited("/header/modelVersion", mapper.valueToTree("29.0.0")),
+            "version \"30.0.0\", timeZone \"x\"" to edited(edited("/header/modelVersion", mapper.valueToTree("30.0.0")),
                 "/content/modelConfig/timeZone", mapper.valueToTree("x")),
             "broken reference" to broken,
-            "broken reference, version \"29.0.0\"" to edited(broken, "/header/modelVersion", mapper.valueToTree("29.0.0")),
+            "broken reference, version \"30.0.0\"" to edited(broken, "/header/modelVersion", mapper.valueToTree("30.0.0")),
             "broken reference, timeZone \"x\"" to edited(broken, "/content/modelConfig/timeZone", mapper.valueToTree("x")),
             "cycle, version \"x\"" to edited(cyclic, "/header/modelVersion", mapper.valueToTree("x")),
             "broken reference, name \"xmlP\"" to edited(broken, "/content/modelInfo/name", mapper.valueToTree("xmlP")),
         )
         val cycle = setOf("MVK_ERROR_CALC_CYCLE")
         assertAgreement(rows, refused = mapOf(
-            "cycle" to cycle, "cycle, version \"29.0.0\"" to INCOMPATIBLE + cycle, "cycle, timeZone \"x\"" to ZONE,
+            "cycle" to cycle, "cycle, version \"30.0.0\"" to INCOMPATIBLE + cycle, "cycle, timeZone \"x\"" to ZONE,
             "cycle, name \"xmlP\"" to NAME, "characters [\"ab\"], timeZone \"x\"" to UNBUILT,
             "characters [\"ab\"], version \"x\"" to UNBUILT, "characters [surrogate], timeZone \"x\"" to UNBUILT,
-            "version \"29.0.0\", timeZone \"x\"" to INCOMPATIBLE + ZONE, "broken reference" to ENTITY,
-            "broken reference, version \"29.0.0\"" to INCOMPATIBLE + ENTITY, "broken reference, timeZone \"x\"" to ENTITY + ZONE,
+            "version \"30.0.0\", timeZone \"x\"" to INCOMPATIBLE + ZONE, "broken reference" to ENTITY,
+            "broken reference, version \"30.0.0\"" to INCOMPATIBLE + ENTITY, "broken reference, timeZone \"x\"" to ENTITY + ZONE,
             "cycle, version \"x\"" to PATTERN + INCOMPATIBLE + cycle, "broken reference, name \"xmlP\"" to ENTITY + NAME,
         ))
         val ordered = rows.filterKeys { "version" in it && "characters" !in it }

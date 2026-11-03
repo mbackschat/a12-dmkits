@@ -41,7 +41,6 @@ public class io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException ex
   public ConsistencyCheckFailedException(java.lang.String, java.lang.Throwable)
 
 public final class io.github.mbackschat.a12.dm.core.DmKeys
-  public static final java.lang.String ALIAS
   public static final java.lang.String ANNOTATIONS
   public static final java.lang.String BASE_YEAR
   public static final java.lang.String CODE
@@ -56,12 +55,16 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ERROR_CONDITION
   public static final java.lang.String ERROR_ENTITY_REL_PATH
   public static final java.lang.String ERROR_MESSAGE
+  public static final java.lang.String EXCLUDE_COMPUTATIONS
+  public static final java.lang.String EXCLUDE_RULES
   public static final java.lang.String EXTERNAL_DESCRIPTION
   public static final java.lang.String FIELD_REF_BY_SHORT_NAME_ALLOWED
   public static final java.lang.String FIELD_TYPE
   public static final java.lang.String HEADER
   public static final java.lang.String ID
   public static final java.lang.String INCLUDE
+  public static final java.lang.String INCLUDE_CONFIG
+  public static final java.lang.String INCLUDE_LEVEL
   public static final java.lang.String INDEX_FIELD_NAME
   public static final java.lang.String INTERNAL_DESCRIPTION
   public static final java.lang.String LABEL
@@ -126,6 +129,14 @@ public interface io.github.mbackschat.a12.dm.core.HasEntityPath
   public default boolean isInside(io.github.mbackschat.a12.dm.core.HasEntityPath)
   public default boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.HasEntityPath)
 
+public enum io.github.mbackschat.a12.dm.core.IncludeLevelBinding
+  public static final io.github.mbackschat.a12.dm.core.IncludeLevelBinding MODEL_ROOT
+  public static final io.github.mbackschat.a12.dm.core.IncludeLevelBinding SINGLE_RG
+  public static final io.github.mbackschat.a12.dm.core.IncludeLevelBinding UNREADABLE
+  public static io.github.mbackschat.a12.dm.core.IncludeLevelBinding ofParsedMember(java.lang.String, boolean)
+  public static io.github.mbackschat.a12.dm.core.IncludeLevelBinding valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.IncludeLevelBinding[] values()
+
 public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_ADDITIONAL_CHECK_INVALID
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_AMOUNT_INT_PART_MISSING
@@ -160,7 +171,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DIFFERENT_NO_VALUE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DIFFERENT_ROOT_GROUPS
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DIFFERENT_YES_VALUE
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION
+  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DISPLAY_VALUES_DUPLICATE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DISPLAY_VALUES_MISSING
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_DISPLAY_VALUES_NOT_ALLOWED
@@ -228,8 +239,6 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INTERNAL_VALUE_MISSING
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_DEC_PLACES
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_ENUM_TO_ENUM
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_ENUM_TO_STRING
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_TO_CONST
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_TO_DATE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_COMPARE_TO_DATE_RANGE
@@ -246,7 +255,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_DIGIT_FOR_ROUNDING
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_ENTITY
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_INTERVAL
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_ITERATION_IN_FILTER_CONDITION
+  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_ITERATION_IN_SET_EXPRESSION
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_LENGTH_OF_RAW_TYPE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_NUMBER_FOR_EXP
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_OUTER_ITERATION
@@ -273,7 +282,6 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_TYPE_FOR_COMPARISON
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_TYPE_FOR_TOLERANCE_OP
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_UNSPECIFIED_TYPE
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_WILDCARD
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_WILDCARD_FOR_RULEGROUP
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_INVALID_WILDCARD_REL
@@ -339,6 +347,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_FIELDS_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_GROUPS_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_INDEX_FIELD
+  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_ITERATION_FOR_LOWEST_WILDCARD
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_ITERATION_FOR_WILDCARD
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_NUMBER
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_NO_NUMBER_FOR_CALC
@@ -361,7 +370,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_OPTIONAL_DATE_TYPE_INVALID
-  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED
+  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_PARALLEL_ITERATION_INVALID
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_PARALLEL_ITERATION_NOT_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_PARAMSIZE_INVALID1
@@ -429,6 +438,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_VARYING_TYPES_NOT_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_WILDCARDS_REQUIRED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED
+  public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_WRONG_DATE_FORMAT_FOR_OP
   public static final io.github.mbackschat.a12.dm.core.KernelCode MVK_YES_NO_INVALID

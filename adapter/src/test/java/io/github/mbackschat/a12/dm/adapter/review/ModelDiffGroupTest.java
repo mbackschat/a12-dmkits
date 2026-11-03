@@ -29,8 +29,11 @@ class ModelDiffGroupTest {
             .rootGroup("Address", address -> address.field("City", FieldKind.STRING))
             .build().toJson();
 
-    private static final ModelResolver RESOLVER = reference -> "shared-address".equals(reference)
-            ? SHARED_MODEL : null;
+    private static final ModelResolver RESOLVER = reference -> switch (reference) {
+        case "shared-address" -> SHARED_MODEL;
+        case "postal-address" -> SHARED_MODEL.replace("\"shared-address\"", "\"postal-address\"");
+        default -> null;
+    };
 
     @Test
     void detectsGroupAdditionAndRemovalWithoutAChildrenSummaryDelta() {
@@ -81,14 +84,14 @@ class ModelDiffGroupTest {
     }
 
     @Test
-    void detectsMountAliasAndEveryMountOption() {
-        String base = mountedHost("primary", MountOptions.single());
-        String head = mountedHost("fallback", MountOptions.repeatable(3)
+    void detectsTheMountedModelAndEveryMountOption() {
+        String base = mountedHost("shared-address", MountOptions.single());
+        String head = mountedHost("postal-address", MountOptions.repeatable(3)
                 .excludingRules().excludingComputations().asModelRoot());
 
         ElementChange mount = groupChange(ModelDiff.between(base, head, RESOLVER), "/Order/Address");
-        assertEquals("primary", delta(mount, "mount.alias").before());
-        assertEquals("fallback", delta(mount, "mount.alias").after());
+        assertEquals("shared-address", delta(mount, "mount.reference").before());
+        assertEquals("postal-address", delta(mount, "mount.reference").after());
         assertEquals("1", delta(mount, "repeatability").before());
         assertEquals("3", delta(mount, "repeatability").after());
         assertEquals("false", delta(mount, "mount.excludeRules").before());
@@ -162,14 +165,13 @@ class ModelDiffGroupTest {
                 .build().toJson();
     }
 
-    private static String mountedHost(String mountedAlias, MountOptions options) {
+    private static String mountedHost(String mountedModel, MountOptions options) {
         var document = io.github.mbackschat.a12.dm.modelkit.ModelDocument.read(
                 DocumentModelDraft.named("orders").locale("en_US")
                         .rootGroup("Order", order -> order.field("Number", FieldKind.STRING))
                         .build().toJson());
-        return document.addInclude("primary", "shared-address")
-                .addInclude("fallback", "shared-address")
-                .mount("/Order", "Address", mountedAlias, options)
+        return document
+                .mount("/Order", "Address", mountedModel, options)
                 .toJson();
     }
 

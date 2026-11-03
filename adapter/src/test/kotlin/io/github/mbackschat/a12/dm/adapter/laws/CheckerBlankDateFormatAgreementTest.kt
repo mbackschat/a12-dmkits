@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test
  */
 class CheckerBlankDateFormatAgreementTest {
 
-    private data class Row(val type: String, val member: String, val format: String?, val deleted: Boolean = false)
+    private data class Row(val type: String, val member: String, val format: String?)
 
     @Test
     fun theCheckerStatesA12sBuildVerdictOnEveryRow() {
@@ -51,7 +51,7 @@ class CheckerBlankDateFormatAgreementTest {
     /** A12 builds a definition's type as the field's; the checker reads none and says so at the field. */
     @Test
     fun aTypeDefinitionsBlankFormatIsLeftToA12WithAGapAtTheField() {
-        val json = typeDefinitionModel("""{"format":""}""")
+        val json = typeDefinitionModel("""{"format":" "}""")
         assertEquals(listOf(UNBUILT), kernel(json))
         val report = check(ModelSource(json))
         assertEquals(emptyList<String>(), report.findings.filter { it.justifiesRejection }.map { it.code })
@@ -89,7 +89,6 @@ class CheckerBlankDateFormatAgreementTest {
         val field = newField(root)
         val body = field.putObject("fieldType").put("type", row.type).putObject(row.type)
         row.format?.let { body.put(row.member, it) }
-        if (row.deleted) field.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Broker")
         return mapper.writeValueAsString(root)
     }
 
@@ -117,13 +116,14 @@ class CheckerBlankDateFormatAgreementTest {
             for (type in TYPES_WITH_FORMAT) {
                 put("$type, format absent", Row(type, "format", null))
                 for ((name, blank) in BLANKS) put("$type, format $name", Row(type, "format", blank))
-                put("$type, format empty, deleted by the default variant", Row(type, "format", "", deleted = true))
             }
             put("DateFragmentType, formatOfFragment empty", Row("DateFragmentType", "formatOfFragment", ""))
         }
 
         val EXPECTED: Map<String, List<String>> = ROWS.mapValues { (_, row) ->
-            if (row.format == null || row.deleted) emptyList() else listOf(UNBUILT)
+            // An empty `format` reads as an absent one on kernel 31.1.1 (KF584, corrected); the fragment type's required
+            // `formatOfFragment` is the row that keeps the empty string from being read as absent everywhere.
+            if (row.format == null || row.format.isEmpty() && row.member == "format") emptyList() else listOf(UNBUILT)
         }
     }
 }

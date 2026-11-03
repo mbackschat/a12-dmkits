@@ -90,22 +90,21 @@ public sealed interface ElementDraft
     }
 
     /**
-     * An include mount: a group with no inline elements that carries {@code modelAlias}; on expand the
-     * kernel mounts the referenced model's content here (the {@code alias} resolves via the header's
-     * {@code modelReferences}). KERNEL-FINDINGS §10. The {@link MountOptions} carry {@code repeatability}
-     * (&gt; 1 = a repeatable sub-form, FEATURE-GAPS) and the rule/computation exclusions.
+     * An include mount: a group whose {@code includeConfig.reference} names the included model; on expand A12
+     * mounts that model's content here (KF651). The {@link MountOptions} carry {@code repeatability}
+     * (&gt; 1 = a repeatable sub-form, FEATURE-GAPS), the include level and the rule/computation exclusions.
      */
-    record Mount(String name, String alias, MountOptions options, List<Annotation> annotations)
+    record Mount(String name, String reference, MountOptions options, List<Annotation> annotations)
             implements ElementDraft {
 
         /** A single (non-repeatable) mount, including the model's rules and computations. */
-        public Mount(String name, String alias, List<Annotation> annotations) {
-            this(name, alias, MountOptions.single(), annotations);
+        public Mount(String name, String reference, List<Annotation> annotations) {
+            this(name, reference, MountOptions.single(), annotations);
         }
 
         /** A mount of {@code repeatability} rows, including the model's rules and computations. */
-        public Mount(String name, String alias, int repeatability, List<Annotation> annotations) {
-            this(name, alias, MountOptions.repeatable(repeatability), annotations);
+        public Mount(String name, String reference, int repeatability, List<Annotation> annotations) {
+            this(name, reference, MountOptions.repeatable(repeatability), annotations);
         }
     }
 

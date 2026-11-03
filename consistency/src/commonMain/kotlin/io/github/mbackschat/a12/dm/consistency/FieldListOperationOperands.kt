@@ -210,7 +210,7 @@ private fun TrackedFactBase.matchedTypeOf(field: TrackedDeclaration): MatchedTyp
     FieldType.DATE_RANGE -> dateRangeFormatOf(field)?.let { MatchedType(MatchedBase.DATE_RANGE, it) }
     FieldType.DATE, FieldType.DATE_FRAGMENT, FieldType.TIME, FieldType.DATE_TIME ->
         temporalFormatOf(field)?.let { MatchedType(MatchedBase.DATETIME, it) }
-    FieldType.TYPE_DEF, FieldType.UNSPECIFIED -> null
+    FieldType.TYPE_DEF -> null
 }
 
 /**

@@ -49,7 +49,7 @@ class NumberBoundRoundingTest {
     @Test
     void aStoredModelWithRoundedEqualBoundsStaysInspectable() {
         var document = ModelDocument.read("""
-                {"header":{"id":"policy","modelType":"document","modelVersion":"28.4.0",
+                {"header":{"id":"policy","modelType":"document","modelVersion":"29.4.0",
                   "locales":[{"code":"en_US"}]},
                  "content":{"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[

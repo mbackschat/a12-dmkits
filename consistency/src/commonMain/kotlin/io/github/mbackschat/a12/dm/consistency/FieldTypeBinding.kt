@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * A field's original type binding and the checks that require its default-variant declaration.
+ * A field's original type binding and the checks on the type it binds.
  *
  * A `fieldType` A12 cannot bind refuses the source outright: no diagnostic, no code, the model simply does
  * not load, so a clean report about it would present silence as a verdict. Measured across the whole
@@ -42,18 +42,17 @@ internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
         } else {
             unbindableFieldType(field, declared, declaredTypeDefinitionIds)
         }
-        val booleanFindings = unbindableBooleanMembers(field)
+        val memberFindings = unbindableBooleanMembers(field) + unbindableIntMembers(field)
         // A source A12 cannot read reaches no verdict, so a range is judged only beside a type and members that bind.
-        val rangeFindings = if (typeFinding == null && booleanFindings.isEmpty()) dateRangeFindings(field) else emptyList()
-        listOfNotNull(typeFinding) + rangeFindings + booleanFindings
+        val rangeFindings = if (typeFinding == null && memberFindings.isEmpty()) dateRangeFindings(field) else emptyList()
+        listOfNotNull(typeFinding) + rangeFindings + memberFindings
     }
 
 /**
  * The primitive `boolean` members of one field declaration that A12's reader cannot bind as written.
  *
  * Jackson binds every such member with one law ([configFlag]; [KERNEL-FINDINGS KF569]), and a spelling it has
- * no binding for refuses the whole source, so the field's variant filter never runs — a field the default
- * variant deletes is refused the same way (`adapter.laws.CheckerDeclarationAdmissionAgreementTest`, measured on
+ * no binding for refuses the whole source (`adapter.laws.CheckerDeclarationAdmissionAgreementTest`, measured on
  * every member below on both carriers).
  */
 private fun unbindableBooleanMembers(field: TrackedDeclaration): List<Finding> {
@@ -68,6 +67,23 @@ private fun unbindableBooleanMembers(field: TrackedDeclaration): List<Finding> {
     return onField + onType.orEmpty()
 }
 
+/**
+ * The integer members of one field declaration's type body that A12's reader cannot bind as written
+ * ([KERNEL-FINDINGS KF593], `adapter.laws.FieldTypeIntMemberBindingDiffTest`). A primitive `int` also cannot hold a
+ * value an `Integer` reads as no value, which on kernel 31 leaves no model.
+ */
+private fun unbindableIntMembers(field: TrackedDeclaration): List<Finding> {
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
+    val type = declared.namedFieldType() ?: return emptyList()
+    val body = type.bodyIn(declared) ?: return emptyList()
+    return type.integerMembers.mapNotNull { member ->
+        val value = body[member.name] ?: return@mapNotNull null
+        if (member.binds(value)) return@mapNotNull null
+        unbindable(field, "`${type.wire}.${member.name}` holds `$value`, which A12 cannot bind as a whole number — " +
+            "write an integer")
+    }
+}
+
 private fun unbindableMember(field: TrackedDeclaration, owner: JsonObject, member: String, spelled: String) =
     if (owner.unbindableFlag(member)) {
         unbindable(
@@ -79,9 +95,9 @@ private fun unbindableMember(field: TrackedDeclaration, owner: JsonObject, membe
     }
 
 /**
- * The primitive `boolean` members each type's body declares — enumerated from kernel `30.8.1`'s
- * `kernel-md-a12internal` classes (`fieldtypes.*`), which `FieldtypeDeserializer` binds with `treeToValue`.
- * Exhaustive, so a type added to [FieldType] has to say whether it carries any.
+ * The primitive `boolean` members each type's body declares — enumerated from the `a12internal.fieldtypes` classes
+ * (re-derived on kernel 31.1.1, `kernel-md-documentmodel` at eec9134), which `FieldtypeDeserializer` binds with
+ * `treeToValue`. Exhaustive, so a type added to [FieldType] has to say whether it carries any.
  */
 internal val FieldType.booleanMembers: List<String>
     get() = when (this) {
@@ -90,7 +106,34 @@ internal val FieldType.booleanMembers: List<String>
         FieldType.DATE, FieldType.DATE_RANGE, FieldType.DATE_FRAGMENT -> listOf("youngerThan1900Check")
         FieldType.ENUMERATION -> listOf("alphabeticalSorting")
         FieldType.DATE_TIME, FieldType.TIME, FieldType.TYPE_DEF, FieldType.CUSTOM_FIELD, FieldType.CONFIRM,
-        FieldType.BOOLEAN, FieldType.UNSPECIFIED,
+        FieldType.BOOLEAN,
+        -> emptyList()
+    }
+
+/** One integer member of a type body, and whether its Java type is the primitive `int` or a boxed `Integer`. */
+internal data class IntegerMember(val name: String, val primitive: Boolean) {
+    /** Whether A12's reader binds [value] to this member, so the model can be built. */
+    fun binds(value: JsonElement): Boolean {
+        val scalar = value as? JsonPrimitive ?: return false
+        return if (primitive) scalar.bindJavaPrimitiveInt() != null else scalar.bindJavaInt() != JavaIntBinding.Unbindable
+    }
+}
+
+/**
+ * The `int` and `Integer` members each type's body declares, enumerated as [booleanMembers] is. With
+ * `Group.repeatability` and `modelInfo.baseYear` they are every integer member of the model classes.
+ */
+internal val FieldType.integerMembers: List<IntegerMember>
+    get() = when (this) {
+        FieldType.NUMBER -> listOf(
+            IntegerMember("minFractionalDigits", primitive = true), IntegerMember("maxFractionalDigits", primitive = true),
+            IntegerMember("minLength", primitive = false), IntegerMember("maxLength", primitive = false),
+            IntegerMember("maxIntegerDigits", primitive = false),
+        )
+        FieldType.STRING, FieldType.CUSTOM_FIELD ->
+            listOf(IntegerMember("minLength", primitive = false), IntegerMember("maxLength", primitive = false))
+        FieldType.DATE, FieldType.DATE_RANGE, FieldType.DATE_FRAGMENT, FieldType.ENUMERATION, FieldType.DATE_TIME,
+        FieldType.TIME, FieldType.TYPE_DEF, FieldType.CONFIRM, FieldType.BOOLEAN,
         -> emptyList()
     }
 
@@ -108,7 +151,7 @@ private val FIELD_BOOLEAN_MEMBERS = listOf("global", "transient")
  * "examined, nothing found" for a declaration the family declined to judge.
  */
 internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
-    defaultVariantFields().mapNotNull { field ->
+    fieldDeclarations().mapNotNull { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
         when (declared.namedFieldType()) {
             FieldType.DATE_RANGE -> {
@@ -142,26 +185,10 @@ private fun JsonObject.unmeasuredRangePair(): String? {
 }
 
 /**
- * Whether `FieldtypeDeserializer.deriveFieldtype`'s case for this type guards a missing body.
- *
- * `true` means the case reads `if (typeNode == null) …builder().build()` and binds without the body; `false`
- * means it dereferences the body behind a `// typeNode is never null` comment, which is a claim rather than
- * a guard — and the measurement confirms all eight of those refuse the reader when the body is absent.
- * Source-read of kernel `30.8.1`, 2026-09-13; the split is measured row by row against its control grid.
- */
-private val FieldType.guardsItsBody: Boolean
-    get() = when (this) {
-        FieldType.STRING, FieldType.NUMBER, FieldType.CONFIRM, FieldType.BOOLEAN, FieldType.UNSPECIFIED -> true
-        FieldType.DATE, FieldType.DATE_TIME, FieldType.DATE_RANGE, FieldType.DATE_FRAGMENT, FieldType.ENUMERATION,
-        FieldType.TIME, FieldType.TYPE_DEF, FieldType.CUSTOM_FIELD,
-        -> false
-    }
-
-/**
  * One field's `fieldType`, judged as A12's reader binds it.
  *
- * The order mirrors the reader's own: the member must be an object, that object must carry a `type` the
- * deserializer switches on, and a case that does not guard its body must find one.
+ * The order mirrors the reader's own: the member must be an object, and that object must carry a `type` the
+ * deserializer switches on. A missing body is built from the type's defaults ([FieldType.bodyIn]).
  */
 private fun unbindableFieldType(
     field: TrackedDeclaration,
@@ -185,28 +212,9 @@ private fun unbindableFieldType(
             "`fieldType` names the type `$discriminator`, which A12 does not declare — the vocabulary is " +
                 "case-sensitive and holds exactly: ${FieldType.entries.map { it.wire }.sorted().joinToString(", ")}",
         )
-    val body = declared[discriminator]
-    if (!type.guardsItsBody && body == null) {
-        return unbindable(
-            field,
-            "`fieldType` names `$discriminator` but carries no `$discriminator` body, which that type " +
-                "reads without checking",
-        )
-    }
+    val body = type.bodyIn(declared)
     if (type == FieldType.TYPE_DEF) {
         return unresolvedTypeDefinition(field, declaredTypeDefinitionIds)
-    }
-    // KF494/KF498: reader failures above survive filtering; the following type checks do not.
-    if (field.body.deletesAtDefaultVariant()) return null
-    // The one type refused for BEING itself: it binds like any other and A12 then has no code to generate
-    // for it, in both body spellings, on a root and a nested field, and once per declaration rather than
-    // once for the model (`FieldTypeBindingLawsTest`). So the verdict is the type's, not the body's, and
-    // nothing about the body can lift it.
-    if (type == FieldType.UNSPECIFIED) {
-        return sentence(field, "MVK_UNSPECIFIED_TYPE_NO_CODEGEN",
-            "this field declares `UnspecifiedType`, which A12 reads and then refuses because it can " +
-                "generate no validation code for it — the declaration needs a real type, and no member of " +
-                "the body changes this")
     }
     // Check the required member rather than body emptiness: optional members do not satisfy it (KF308).
     // KF498 measures the filter-sensitive absent-member carriers; explicit null remains unjudged.
@@ -228,22 +236,43 @@ private fun unbindableFieldType(
                 "type from where an omitted `$defaulted` takes the default",
         )
     }
+    if (type == FieldType.STRING) {
+        (body as? JsonObject)?.hintEntryLacking()?.let { member ->
+            // A12's reader binds a hint entry's `locale` and `values` as non-null; each absent one leaves no model,
+            // where an empty one builds (`adapter.laws.CheckerEmptyMemberAgreementTest`).
+            return unbuildable(field, "a `hintList` entry declares no `$member`, which A12's reader requires")
+        }
+    }
+    if (type == FieldType.ENUMERATION && (body as? JsonObject)?.categoryNamedNull() == true) {
+        // A12's reader binds a category's `name` as non-null: "name is marked non-null but is null" (measured,
+        // `adapter.laws.CheckerEmptyMemberAgreementTest`), where an absent name reaches the converter as none.
+        return unbuildable(field, "a `categories` entry writes `name` as `null`, which A12's reader refuses to bind")
+    }
+    if (type == FieldType.ENUMERATION && (body as? JsonObject)?.categoryTokenNotScalar() == true) {
+        // A12's reader binds each category token as a string and refuses an object or an array there, where a number
+        // or a boolean binds as its text (measured, `adapter.laws.CheckerCategoryTokenAgreementTest`).
+        return unbuildable(field, "a category's `values` holds an object or an array, and A12 reads each token as a string")
+    }
     return (body as? JsonObject)?.repeatedBuildKey(type)?.let { (list, key, value) ->
-        unbuildable(field, "`$list` holds two entries whose `$key` is `$value`, and A12 keys that list by `$key` " +
+        val written = if (value.isEmpty()) "absent or empty" else "`$value`"
+        unbuildable(field, "`$list` holds two entries whose `$key` is $written, and A12 keys that list by `$key` " +
             "while it builds the type")
     }
 }
 
 /**
  * The lists A12's converter collects into a map keyed by one member, so two entries sharing that key leave the
- * model unbuilt — `Collectors.toMap` refusing the duplicate, whatever the entries' other members hold. A field the
- * default variant deletes is never converted, so it builds ([KERNEL-FINDINGS KF626]). Only the String type's hint
- * list was measured among the types that carry one.
+ * model unbuilt — `Collectors.toMap` refusing the duplicate, whatever the entries' other members hold. Only the
+ * String type's hint list was measured among the types that carry one.
  */
 private enum class KeyedBuildList(val type: FieldType, val list: String, val key: String) {
-    /** The categories, keyed by name as written. */
+    /**
+     * The categories, keyed by name as written, an absent and an empty name being one key: kernel 31.1.1's expand copy
+     * omits the empty one, so both reach the map as `null` ([KERNEL-FINDINGS KF658], measured as "Duplicate key null"
+     * by `adapter.laws.CheckerEmptyMemberAgreementTest`).
+     */
     CATEGORIES(FieldType.ENUMERATION, "categories", "name") {
-        override fun keyOf(entry: JsonObject): String? = entry.string(key)
+        override fun keyOf(entry: JsonObject): String? = if (key in entry) entry.string(key) else ""
     },
 
     /**
@@ -266,11 +295,23 @@ private enum class KeyedBuildList(val type: FieldType, val list: String, val key
     }
 }
 
+/** The first member, `locale` or `values`, that an object entry of this body's `hintList` omits. */
+private fun JsonObject.hintEntryLacking(): String? = (this["hintList"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+    .firstNotNullOfOrNull { entry -> listOf("locale", "values").firstOrNull { it !in entry } }
+
+/** Whether a category entry of this enumeration body writes its `name` as JSON `null`. */
+private fun JsonObject.categoryNamedNull(): Boolean =
+    (this["categories"] as? JsonArray).orEmpty().any { (it as? JsonObject)?.get("name") is JsonNull }
+
+/** Whether a category entry of this enumeration body holds an object or an array among its tokens. */
+private fun JsonObject.categoryTokenNotScalar(): Boolean = (this["categories"] as? JsonArray).orEmpty()
+    .any { category -> ((category as? JsonObject)?.get("values") as? JsonArray).orEmpty().any { it is JsonObject || it is JsonArray } }
+
 /** The first `(list, key, value)` whose key two collected entries of a [KeyedBuildList] share, as first written. */
 private fun JsonObject.repeatedBuildKey(type: FieldType): Triple<String, String, String>? {
     val keyed = KeyedBuildList.of(type) ?: return null
     val collected = (this[keyed.list] as? JsonArray).orEmpty().mapNotNull { entry ->
-        (entry as? JsonObject)?.let { e -> keyed.keyOf(e)?.let { it to checkNotNull(e.string(keyed.key)) } }
+        (entry as? JsonObject)?.let { e -> keyed.keyOf(e)?.let { it to (e.string(keyed.key) ?: "") } }
     }
     val repeated = collected.groupBy({ it.first }, { it.second }).values.firstOrNull { it.size > 1 } ?: return null
     return Triple(keyed.list, keyed.key, repeated.first())
@@ -291,12 +332,13 @@ private fun JsonObject.repeatedBuildKey(type: FieldType): Triple<String, String,
  *
  * **An ABSENT `rangeSeparator` is `/`**, the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`
  * pre-initialised by `DateRangeTypeBuilder`, and measured as such on a format `/` admits and one it does
- * not. An explicit `""` is a different declaration with admitted pairs of its own, so the two cannot be
- * folded. A member that is present and not a string, and a value carrying a supplementary character (which A12
- * answers with its charset sentence alone, KF551), are left to A12.
+ * not. **An EMPTY member is an absent one**, for the format and the separator alike: kernel 31.1.1's expand step
+ * copies the model through A12's own serializer, which omits an empty string, so the copy reads the member's
+ * default ([KERNEL-FINDINGS KF658]; raw `checkConsistency` without the copy still refuses `(yyyy-MM-dd, "")`). A
+ * blank member is not empty and stays as written. A member that is present and not a string, and a value carrying
+ * a supplementary character (which A12 answers with its charset sentence alone, KF551), are left to A12.
  */
 private fun dateRangeFindings(field: TrackedDeclaration): List<Finding> {
-    if (field.body.deletesAtDefaultVariant()) return emptyList()
     val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
     if (declared.namedFieldType() != FieldType.DATE_RANGE) return emptyList()
     val body = FieldType.DATE_RANGE.bodyIn(declared) ?: return emptyList()
@@ -328,10 +370,13 @@ private fun dateRangeFindings(field: TrackedDeclaration): List<Finding> {
     return listOfNotNull(separatorFinding, formatFinding)
 }
 
-/** The member as A12 reads it, [absent] when it is omitted, or null for a present non-string nobody has measured. */
+/**
+ * The member as A12 reads it — [absent] when it is omitted or empty, since the expand copy omits an empty string
+ * (KF658) — or null for a present non-string nobody has measured.
+ */
 private fun JsonObject.rangeMember(name: String, absent: String): String? = when (val declared = this[name]) {
     null -> absent
-    is JsonPrimitive -> declared.takeIf { it.isString }?.content
+    is JsonPrimitive -> declared.takeIf { it.isString }?.content?.ifEmpty { absent }
     else -> null
 }
 
@@ -347,33 +392,26 @@ private fun sentence(field: TrackedDeclaration, code: String, explain: String) =
  * dangling-reference law ([KERNEL-FINDINGS KF308], corrected). It was settled against a shipped model, which
  * is the only oracle for a wire name.
  *
- * On unfiltered fields both failures are classified as load/build refusals: `EntityReferenceResolverVisitor.visitField`
- * resolves the id and deliberately sets the reference to null when it cannot, so the source loads and the
- * model then fails to build — measured for a dangling reference, for an absent member, and against a
- * declared-definition control that is ADMITTED.
+ * A reference that resolves to nothing is a sentence of A12's converter on kernel 31.1.1, "Typedefinition with id
+ * '…' could not be found.", whether the id is absent, empty or names a definition `content.typeDefinitions` does
+ * not declare. `EntityReferenceResolverVisitor.visitField` leaves the reference unset, and the converter states it
+ * and types the field as a plain `StringType` so the check goes on, so a rule naming the field is still admitted
+ * ([KERNEL-FINDINGS KF652], `adapter.laws.CheckerConverterSentenceAgreementTest`; 30.8.1 left no model).
  */
 private fun unresolvedTypeDefinition(
     field: TrackedDeclaration,
     declaredTypeDefinitionIds: Set<String>,
 ): Finding? {
-    val deleted = field.body.deletesAtDefaultVariant()
     val named = field.boundTypeDefinitionId()
-        // A deleted field's absent id is left to A12's basic sentence, its only refusal there (KF498, KF626).
-        ?: return if (deleted && field.typeDefinitionIdIsAbsent()) {
-            null
-        } else {
-            unbuildable(
-                field,
-                "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
-                    "resolve",
-            )
-        }
-    if (deleted || named in declaredTypeDefinitionIds) {
+    if (named != null && named in declaredTypeDefinitionIds) {
         return null
     }
-    return unbuildable(
+    return sentence(
         field,
-        "`fieldType` names the type definition `$named`, which `content.typeDefinitions` does not declare",
+        RK_TYPE_DEFINITION_NOT_FOUND,
+        (named?.let { "`fieldType` names the type definition `$it`, which `content.typeDefinitions` does not declare" }
+            ?: "`fieldType` names `TypeDefType` without a usable `typeDefinitionId`") +
+            ", so A12 states that it could not be found and checks the field as a plain String",
     )
 }
 
@@ -464,10 +502,11 @@ private val REQUIRED_BODY_MEMBER = mapOf(
 /**
  * The member each date type defaults when it is absent and refuses to construct from when it is blank.
  *
- * The three builders pre-initialise `format`, so an omitted member is the type's default and draws nothing; a
- * present string Java's `isBlank` accepts — the em space included, the no-break space not — leaves the model
- * unbuilt, and on a field the default variant deletes it does not (`adapter.laws.CheckerBlankDateFormatAgreementTest`,
- * [KERNEL-FINDINGS KF584]). A present member that is not a string was never measured, so it is not judged.
+ * The three builders pre-initialise `format`, so an omitted member is the type's default and draws nothing, and so
+ * is an EMPTY one on kernel 31.1.1, whose expand copy omits an empty string ([KERNEL-FINDINGS KF658]); a non-empty
+ * string Java's `isBlank` accepts — the em space included, the no-break space not — leaves the model unbuilt
+ * (`adapter.laws.CheckerBlankDateFormatAgreementTest`, [KERNEL-FINDINGS KF584]). A present member that is not a
+ * string was never measured, so it is not judged.
  */
 private val DEFAULTED_BUILD_MEMBER = mapOf(
     FieldType.DATE to "format",
@@ -475,9 +514,9 @@ private val DEFAULTED_BUILD_MEMBER = mapOf(
     FieldType.TIME to "format",
 )
 
-/** Whether this body holds [member] as a string A12's construction reads as blank. */
+/** Whether this body holds [member] as a non-empty string A12's construction reads as blank. */
 private fun JsonObject.holdsBlank(member: String): Boolean =
-    (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.content?.isA12Blank() == true
+    (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.content?.let { it.isNotEmpty() && it.isA12Blank() } == true
 
 /**
  * The types whose absent member A12 answers with a CLASS rather than a silent build refusal.
@@ -493,13 +532,16 @@ private val VERDICT_FOR_ABSENT_MEMBER = mapOf(FieldType.CUSTOM_FIELD to "CUSTOM_
  * Whether this body leaves the member A12 builds from unusable, which is not the same as absent.
  *
  * A string member is judged on its CONTENT: an empty and a blank `name` both draw the custom type's class
- * exactly as no `name` does, so testing for the key alone stays silent on two models A12 refuses. Any other
- * shape — a number, an array, an object — is judged on presence only, because a member present but not a
- * string is a shape nobody has run and guessing could refuse a model A12 takes.
+ * exactly as no `name` does, so testing for the key alone stays silent on two models A12 refuses. An EMPTY array
+ * is absent too: kernel 31.1.1's expand copy omits it, and `values: []` leaves the model unbuilt as no `values`
+ * does ([KERNEL-FINDINGS KF658], `adapter.laws.CheckerEmptyMemberAgreementTest`). Any other shape — a number, a
+ * non-empty array, an object — is judged on presence only, because a member present in such a shape is one nobody
+ * has run and guessing could refuse a model A12 takes.
  */
 private fun JsonObject.lacks(member: String): Boolean = when (val declared = this[member]) {
     null -> true
     is JsonPrimitive -> declared.isString && declared.content.isA12Blank()
+    is JsonArray -> declared.isEmpty()
     else -> false
 }
 
@@ -554,12 +596,12 @@ private val PROBED_RANGE_SEPARATORS = setOf("/", "-", ".", "", " - ", ":", "_")
 // answer, entry for entry. A pair named elsewhere in this file does not count as carried.
 private val ADMITTED_RANGE_SEPARATORS = mapOf(
     "MM" to setOf("", "/"),
-    "MM-dd" to setOf("/"),
+    "MM-dd" to setOf("", "/"),
     "dd.MM" to setOf("-"),
     "dd.MM.yyyy" to setOf("-"),
-    "yyyy" to setOf("/"),
-    "yyyy-MM" to setOf("/"),
-    "yyyy-MM-dd" to setOf("/"),
+    "yyyy" to setOf("", "/"),
+    "yyyy-MM" to setOf("", "/"),
+    "yyyy-MM-dd" to setOf("", "/"),
     "HH:mm:ss" to emptySet(),
     "MMdd" to emptySet(),
     "ddMM" to emptySet(),

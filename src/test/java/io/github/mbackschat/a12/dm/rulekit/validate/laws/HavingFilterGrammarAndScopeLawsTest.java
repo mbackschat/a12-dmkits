@@ -56,7 +56,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     private static final String ADMITTED = "admitted";
     private static final String NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD";
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
-    private static final String INVALID_ITERATION_IN_FILTER = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION";
+    private static final String INVALID_ITERATION_IN_FILTER = "MVK_INVALID_ITERATION_IN_SET_EXPRESSION";
 
     private static final String CATALOG = "/Catalog";
     private static final String LINES = "/Catalog/Lines";
@@ -288,7 +288,7 @@ class HavingFilterGrammarAndScopeLawsTest {
      * </ul>
      *
      * <p><b>The narrow account holds, and the refusal is a THIRD code neither account predicted.</b> This row
-     * draws {@code MVK_INVALID_ITERATION_IN_FILTER_CONDITION} — the filter-scope gate, whose meaning our record
+     * draws {@code MVK_INVALID_ITERATION_IN_SET_EXPRESSION} — the filter-scope gate, whose meaning our record
      * already held for a FIELD reference (`KF §9`, "why `$` exists") and which turns out to receive a group
      * operand too — not the {@code MVK_NO_WILDCARD} the two other unbound positions draw (the marked form in a
      * filter, and an unmarked operand outside any filter, both in

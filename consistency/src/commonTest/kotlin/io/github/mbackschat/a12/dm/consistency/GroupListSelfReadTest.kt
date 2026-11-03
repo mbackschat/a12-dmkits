@@ -57,7 +57,7 @@ class GroupListSelfReadTest {
     """.trimIndent()
 
     private fun fleet(inFleet: String = "", inHub: String = "", inBays: String = ""): String = """
-        {"header":{"modelVersion":"28.4.0","id":"fleet","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"fleet","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Fleet","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}},

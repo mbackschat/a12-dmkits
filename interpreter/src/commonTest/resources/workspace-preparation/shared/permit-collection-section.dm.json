@@ -2,19 +2,17 @@
   "header" : {
     "id" : "permit-collection-section",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "checklist",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "permit-collection-checklist"
     }, {
-      "alias" : "permit-collection-shared-types",
       "modelType" : "document",
       "purpose" : "typeDefinitions",
       "reference" : "permit-collection-shared-types"
@@ -60,7 +58,9 @@
             "name" : "Checklist",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "checklist"
+              "includeConfig" : {
+                "reference" : "permit-collection-checklist"
+              }
             }
           } ]
         }

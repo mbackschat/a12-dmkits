@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.rt.a12internal.ValidationMode
+import com.mgmtp.a12.kernel.core.rt.a12internal.custom.ICustomConditionFactory
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel
 import com.mgmtp.a12.kernel.md.rt.a12internal.service.DocumentRtService
@@ -15,8 +16,8 @@ import java.util.Locale
 internal class CustomTestRangeOracle(private val service: DocumentRtService, private val model: IDocumentModel) {
     fun hasUniqueEntities(): Boolean {
         val metadata = service.getMetaModel(model).getValue(
-            com.mgmtp.a12.kernel.core.rt._30_8.internal.util.IMetaKeysInternal.MODEL_METADATAVALIDIERUNG,
-        ) as com.mgmtp.a12.kernel.core.rt._30_8.internal.core.IMetaDataValidierung
+            com.mgmtp.a12.kernel.core.rt._31_1.internal.util.IMetaKeysInternal.MODEL_METADATAVALIDIERUNG,
+        ) as com.mgmtp.a12.kernel.core.rt._31_1.internal.core.IMetaDataValidierung
         return metadata.hasUniqueEntities()
     }
 
@@ -29,7 +30,7 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
     ): Map<String, Any> {
         val result = DocumentValidationResultImpl()
         val data = LowKernelApiUtils.createData(document, service.getMetaModel(model), Locale.US, result,
-            IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id))
+            IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id), fieldTypes)
         val config = ValidationMode().apply {
             language = Locale.US
             validationType = mode
@@ -43,11 +44,12 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
                 "incorrect" to incorrect.map { it.toString() }.sorted())
             false
         }
-        val conditions = mapOf("ObserveMembership" to observer)
+        // Kernel 31 dropped the validators' condition-map parameter; conditions now ride the mode's factory.
+        config.setCustomConditionFactory(ICustomConditionFactory.fromMap(mapOf("ObserveMembership" to observer)))
         val validator = service.getValidator(model)
-        if (relevant == null) validator.validateAll(data, conditions, result, config)
+        if (relevant == null) validator.validateAll(data, result, config)
         else validator.validatePartlyWith3ValueLogic(data,
-            DocumentPointerConverter.convertToIIdentifierSet(RuntimeLaws.relevantPointers(relevant)), conditions, result, config)
+            DocumentPointerConverter.convertToIIdentifierSet(RuntimeLaws.relevantPointers(relevant)), result, config)
         return mapOf("messages" to messages(result.messages), "membership" to observations)
     }
 
@@ -59,13 +61,14 @@ internal class CustomTestRangeOracle(private val service: DocumentRtService, pri
     ): List<List<Any>> {
         val result = DocumentValidationResultImpl()
         val data = LowKernelApiUtils.createData(document, service.getMetaModel(model), Locale.US, result,
-            IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id))
+            IdentifierToStringForValidation(Locale.US, null, { model }, model.header.id), null)
         val config = ValidationMode().apply {
             language = Locale.US
             validationType = ValidationMode.ValidationType.fullExamination
             ruleType = ValidationMode.RuleType.ALL
+            setCustomConditionFactory(ICustomConditionFactory.fromMap(conditions))
         }
-        service.getValidator(model).validateAll(data, conditions, result, config)
+        service.getValidator(model).validateAll(data, result, config)
         return messages(result.messages)
     }
 

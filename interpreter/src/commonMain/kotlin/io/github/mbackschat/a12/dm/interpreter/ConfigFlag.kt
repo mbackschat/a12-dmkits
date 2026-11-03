@@ -35,26 +35,31 @@ private val FALSE_SPELLINGS = setOf("false", "False", "FALSE")
  * resolves goes unresolved here. It also truncates a fractional number, evaluating a model the kernel will
  * not load, affirmatively for `1.5`.
  *
- * **Nor is it the rule that governs `excludeRules`/`excludeComputations`**, which reach a custom
- * deserializer's `JsonNode.booleanValue()` and are false for every non-Boolean (KF3). The kernel has two
- * boolean-reading paths and which one a member takes is per-member, so this function is applied only where
- * the POJO path is measured: `fieldRefByShortNameAllowed` (`ShortNameFlagSpellingLawsTest`), and `Field.global`
- * plus the field types' `boolean` members (`adapter.laws.BooleanMemberBindingDiffTest`, IF404).
+ * It is measured on `fieldRefByShortNameAllowed` (`ShortNameFlagSpellingLawsTest`), on `Field.global` plus the field
+ * types' `boolean` members (`adapter.laws.BooleanMemberBindingDiffTest`, IF404), and on DM 29.4 on a mount's
+ * `includeConfig.excludeRules`/`excludeComputations` (KF651), whose DM 28 custom reader (KF3) is gone.
+ *
+ * An absent member is the default, OFF; an explicit JSON `null`, like the empty, blank and `null` texts, is
+ * UNREADABLE on kernel 31.1.1, whose Jackson 3 refuses null for a primitive (measured 2026-11-02; 30.8.1 read
+ * them as OFF).
  */
 internal fun configFlag(value: JsonElement?): ConfigFlag {
-    if (value == null || value is JsonNull) {
+    if (value == null) {
         return ConfigFlag.OFF
+    }
+    if (value is JsonNull) {
+        return ConfigFlag.UNREADABLE
     }
     val primitive = value as? JsonPrimitive ?: return ConfigFlag.UNREADABLE
     val text = primitive.content
     if (primitive.isString) {
-        // Trimmed as Java's `String.trim` trims (U+0000–U+0020 only), and the empty, blank or `null` text is the
-        // type's default (KF569, measured on this member and on `StringType.noValueValidation`). This copy is
-        // held to the same rows as `:predicates`' `a12BooleanOfString`, which the interpreter may not depend on.
+        // Trimmed as Java's `String.trim` trims (U+0000–U+0020 only) (KF569, measured on this member and on
+        // `StringType.noValueValidation`). This copy is held to the same rows as `:predicates`'
+        // `a12BooleanOfString`, which the interpreter may not depend on.
         val trimmed = text.javaTrimmed()
         return when {
             trimmed in TRUE_SPELLINGS -> ConfigFlag.ON
-            trimmed in FALSE_SPELLINGS || trimmed.isEmpty() || trimmed == "null" -> ConfigFlag.OFF
+            trimmed in FALSE_SPELLINGS -> ConfigFlag.OFF
             else -> ConfigFlag.UNREADABLE
         }
     }

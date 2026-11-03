@@ -72,40 +72,37 @@ class DateRangeFormalDiffTest {
     }
 
     /**
-     * The one declaration that reaches the kernel's SPLIT-IN-THE-MIDDLE branch. `DateUtil.splitStringBySeparator`
-     * halves the value when the declared separator is empty, and exactly one `(format, separator)` pair makes
-     * that reachable: `MM` + `""` (the allowlist keys on the concatenation `format + separator + format`, so
-     * `MMMM` is admitted while every other format's doubled form is refused — measured 2026-08-19). Splitting
-     * such a value on the empty string instead shreds it per character and reports a well-formed month pair as
-     * malformed, so the branch needs its own row rather than an argument that it cannot occur.
+     * An EMPTY declared separator, through the interpreter's loader: kernel 31.1.1 reads it as `/`, because its
+     * expand copy omits an empty member (KERNEL-FINDINGS KF658), so `0609` lacks its separator and `06/09` is a pair.
      *
-     * **Both interpreter routes run: the hand-built [ModelDef] AND the same model through [ModelLoader].** The
-     * hand-built definition tests the evaluator; only the loaded one tests whether a declared `""` separator
-     * SURVIVES being read, and it did not — the loader folded it into null, so the range lost its config and
-     * the formal check silently found "nothing to check" (IF306). A declaration-level defect is invisible to a
-     * row that declares the state it is meant to read.
+     * On kernel 30.8.1 this row locked the split-in-the-middle branch of `DateUtil.splitStringBySeparator`, which
+     * `MM` + `""` reached, and found IF306 there: the loader folded `""` into null. The branch is still in the
+     * kernel's runtime class and in the interpreter's evaluator, but no stored model reaches it on 31.1.1, so the
+     * hand-built [ModelDef] route that exercised it alone has no kernel counterpart left to agree with.
      */
     @Test
-    fun anEmptySeparatorSplitsInTheMiddleLikeTheKernel() {
+    fun anEmptySeparatorReadsAsTheSlashLikeTheKernel() {
         val pairModel = DocumentModelDraft.named("month-pair").locale("en_US")
             .rootGroup("Season") { season ->
                 season.dateRangeField("MonthPair") { it.format("MM").separator("") }
             }.build().toJson()
         val path = "/Season/MonthPair"
-        val pairDef = ModelDef(
-            listOf(FieldDef(path, Kind.DATE_RANGE, format = "MM", rangeSeparator = "")), emptyList())
         val loadedDef = ModelLoader.load(pairModel)
-
-        for (value in listOf("0609", "0606", "0906", "06", "06x9", "1309")) {
+        val observed = listOf("0609", "06/09", "09/06", "06", "06x9", "13/09").associateWith { value ->
             val kDoc = RuntimeLaws.doc().group("/Season", 1).field(path, value, 1, 1)
-            val kSigs = RuntimeLaws.messages(pairModel, kDoc).map { "${it.code()}|${it.field()}" }.sorted()
-            for ((route, def) in listOf("declared" to pairDef, "loaded" to loadedDef)) {
-                val iDoc = def.newDocument().group("/Season", 1).field(path, value, 1, 1)
-                val iSigs = DmInterpreter(def).validateFull(iDoc).map { "${it.code}|${it.errorPath}" }.sorted()
-                assertEquals(kSigs, iSigs,
-                    "empty-separator range formal signatures must match the kernel ($route, $value)")
-            }
+            val kSigs = RuntimeLaws.messages(pairModel, kDoc).map { it.code() }.sorted()
+            val iDoc = loadedDef.newDocument().group("/Season", 1).field(path, value, 1, 1)
+            kSigs to DmInterpreter(loadedDef).validateFull(iDoc).map { it.code }.sorted()
         }
+        assertEquals(observed.mapValues { (_, sigs) -> sigs.first to sigs.first }, observed, "(value → kernel, interpreter)")
+        assertEquals(linkedMapOf(
+            "0609" to listOf(MISSING), "06/09" to emptyList(), "09/06" to listOf("datumBereichNichtGueltig"),
+            "06" to listOf(MISSING), "06x9" to listOf(MISSING), "13/09" to listOf("datumBereichFormatFalsch"),
+        ), observed.mapValues { it.value.first }, "the kernel's own answer")
+    }
+
+    private companion object {
+        const val MISSING = "datumBereichTrennerFehlt"
     }
 
     @Test

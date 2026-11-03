@@ -25,7 +25,7 @@ class TypeScriptBridgeUnparseableModelTest {
 
     private companion object {
         val GERMAN_MODEL_WITH_AN_ENGLISH_RULE = """
-            {"header":{"id":"policy","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+            {"header":{"id":"policy","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"policy"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},
               "modelRoot":{"rootGroups":[{"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
                {"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},

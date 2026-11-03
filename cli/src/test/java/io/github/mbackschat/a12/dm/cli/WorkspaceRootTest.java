@@ -30,8 +30,7 @@ class WorkspaceRootTest {
         Path lib = Files.createDirectory(tmp.resolve("lib"));
         Path sub = app.resolve("Sub.dm.json");
         Files.writeString(sub, DocumentModelDraft.named("Sub").locale("en_US")
-                .include("base", "Base")
-                .rootGroup("S", g -> g.field("X", FieldKind.STRING)).build().toJson());
+                .rootGroup("S", g -> g.field("X", FieldKind.STRING).mount("Base", "Base")).build().toJson());
         Files.writeString(lib.resolve("Base.dm.json"), DocumentModelDraft.named("Base").locale("en_US")
                 .rootGroup("B", g -> g.field("Y", FieldKind.STRING)).build().toJson());
 

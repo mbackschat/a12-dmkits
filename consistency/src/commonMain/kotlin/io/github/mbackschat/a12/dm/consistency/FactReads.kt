@@ -18,18 +18,11 @@ package io.github.mbackschat.a12.dm.consistency
 internal sealed interface FactRead {
 
     /**
-     * The declaration set's shape: every declaration's path, name, kind, id, origin and whether the default
-     * variant deletes it — and no body.
+     * The declaration set's shape: every declaration's path, name, kind, id and origin — and no body.
      *
      * Recorded once however many declarations the family then visits, because the shape is one value and a
-     * family that iterates depends on all of it.
-     *
-     * **The variant filter is in the SHAPE deliberately, and it is the crux the design record names.** The
-     * resolvable set is `elements` minus what the default variant deletes, and that predicate reads a body
-     * member — so tracking it as content would give every reader of the resolvable set a dependency on every
-     * body, which is the collapse this alphabet exists to prevent. A `variantFilter` decides which
-     * declarations EXIST for resolution, which is structural; and no keystroke in a condition changes one, so
-     * the shape stays stable across exactly the edits reuse is for.
+     * family that iterates depends on all of it. No keystroke in a condition changes it, so the shape stays
+     * stable across exactly the edits reuse is for.
      */
     data object DeclarationSetShape : FactRead
 

@@ -120,8 +120,9 @@ class InvalidModelLoadDiagnosticTest {
                 new DeclarationCase("reserved-dotted", "vk_vk.Bad", "\"CODE\"", 1, false,
                         List.of(kernelNotice(null, "vk_vk.Bad"))),
                 new DeclarationCase("null-reserved", "vk_vkProbe", "null", 2, null, List.of()),
+                // Kernel 31.1.1 states an empty name and an empty code as converter sentences and checks on (KF652).
                 new DeclarationCase("empty-blank", "", "\"\"", 1, false,
-                        List.of(kernelNotice(null, null))),
+                        List.of(kernelNotice(null, null), kernelNotice(null, null), kernelNotice(null, null))),
                 new DeclarationCase("underscore", "_Rule", "\"CODE\"", 1, false,
                         List.of(kernelNotice(null, "_Rule"))),
                 new DeclarationCase("hyphen-code", "Ordinary", "\"A-B\"", 1, false,
@@ -132,8 +133,9 @@ class InvalidModelLoadDiagnosticTest {
                         List.of(kernelNotice(missing, "Ordinary"))),
                 new DeclarationCase("nbsp-code", "Ordinary", "\"\\u00a0\"", 1, false,
                         List.of(kernelNotice(null, "Ordinary"))),
+                // Kernel 31.1.1 reads a rule with no code and then cannot build the model (KF654).
                 new DeclarationCase("absent-code", "Ordinary", null, 1, false,
-                        List.of(kernelNotice(missing, "Ordinary"), kernelNotice(null, null))));
+                        List.of(kernelNotice(null, null))));
         assertEquals(12, rows.size());
         for (DeclarationCase row : rows) {
             Path model = dir.resolve(row.id() + ".dm.json");
@@ -155,7 +157,7 @@ class InvalidModelLoadDiagnosticTest {
             }
             assertEquals(multiset(expected), multiset(notices(envelope)), row.id() + ": " + result.out());
             for (JsonNode diagnostic : envelope.path("diagnostics")) {
-                assertEquals("empty-blank".equals(row.id()), diagnostic.path("summary").asText()
+                assertEquals("absent-code".equals(row.id()), diagnostic.path("summary").asText()
                         .startsWith("the kernel could not build this model:"), result::out);
             }
         }
@@ -171,7 +173,7 @@ class InvalidModelLoadDiagnosticTest {
     private static Path invalidModel(Path dir) throws Exception {
         Path m = dir.resolve("bad.json");
         Files.writeString(m, """
-                { "header": { "id": "bad", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "bad", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": [ { "code": "en_US" } ], "labels": [], "annotations": [], "modelReferences": [] },
                   "content": {
                     "modelInfo": { "name": "bad", "variant": "cockpit", "revision": "r", "immutable": false },
@@ -230,7 +232,6 @@ class InvalidModelLoadDiagnosticTest {
     @Test
     void strictReaderPreservesAnUnresolvedIncludeAsTheCentralDomainRejection(@TempDir Path dir) throws Exception {
         String json = DocumentModelDraft.named("host").locale("en_US")
-                .include("missing-library", "missing-library")
                 .rootGroup("Host", host -> host.mount("Missing", "missing-library"))
                 .build().toJson();
         Path model = dir.resolve("host.json");

@@ -25,7 +25,7 @@ class PreparationTest {
     private fun preparedRoots(rootGroups: String): PreparedModel = prepared(model(rootGroups))
 
     private fun model(rootGroups: String, modelConfig: String = "") =
-        """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
+        """{"header":{"modelVersion":"29.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
 
     private val twoLevel = model(
         """
@@ -164,21 +164,26 @@ class PreparationTest {
     }
 
     /**
-     * `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
-     * descended into — the one failure that genuinely hides children, and it says so rather than passing.
+     * `type` names the envelope, so a declaration missing it cannot be descended into — the one failure that
+     * genuinely hides children, and it says so rather than passing. A missing `name` no longer does: kernel
+     * 31.1.1 reads it as the empty name and places the subtree beneath it (KF652), which the converter then
+     * states and leaves out.
      */
     @Test
-    fun aDeclarationMissingItsTypeOrNameCannotBeDescendedInto() {
-        listOf(
+    fun aDeclarationMissingItsTypeCannotBeDescendedIntoButOneMissingItsNameCan() {
+        val untyped = preparedRoots(
             """{"id":"/Order","name":"Order","Group":{"elements":[
               {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}]}}""",
+        )
+        assertEquals(emptyList(), untyped.elements.map { it.path })
+        assertEquals(listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED), untyped.diagnostics.map { it.code })
+
+        val nameless = preparedRoots(
             """{"type":"Group","id":"/Order","Group":{"elements":[
               {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}]}}""",
-        ).forEach { rootGroup ->
-            val prepared = preparedRoots(rootGroup)
-            assertEquals(emptyList(), prepared.elements.map { it.path }, rootGroup)
-            assertEquals(listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED), prepared.diagnostics.map { it.code })
-        }
+        )
+        assertEquals(listOf("/", "//Code"), nameless.elements.map { it.path })
+        assertEquals(emptyList(), nameless.diagnostics)
     }
 
     /** The nearest derived path locates a broken declaration, so a nested failure is not reported at the root. */
@@ -187,7 +192,7 @@ class PreparationTest {
         val prepared = preparedRoots(
             """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
               {"type":"Group","id":"/Order/Lines","name":"Lines","Group":{"elements":[
-                {"type":"Field","id":"/Order/Lines/Qty"}
+                {"id":"/Order/Lines/Qty","name":"Qty"}
               ]}}
             ]}}""",
         )
@@ -273,8 +278,8 @@ class PreparationTest {
     @Test
     fun aMemberOfTheWrongJsonTypeIsDiagnosedRatherThanRaised() {
         listOf(
-            """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":{}}}}""",
-            """{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[7]}}}""",
+            """{"header":{"modelVersion":"29.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":{}}}}""",
+            """{"header":{"modelVersion":"29.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
             model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
         ).forEach { json ->
@@ -294,7 +299,7 @@ class PreparationTest {
      */
     @Test
     fun aModelWithNoRootGroupsPreparesEmptyWithoutRaising() {
-        listOf("""{"header":{"modelVersion":"28.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"}}}""", model("")).forEach { json ->
+        listOf("""{"header":{"modelVersion":"29.4.0","id":"m","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"}}}""", model("")).forEach { json ->
             val prepared = prepared(json)
             assertEquals(emptyList(), prepared.elements, json)
             assertEquals(emptyList(), prepared.diagnostics, json)

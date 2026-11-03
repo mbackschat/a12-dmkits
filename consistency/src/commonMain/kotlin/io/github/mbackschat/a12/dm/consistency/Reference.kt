@@ -40,8 +40,17 @@ sealed interface Reference {
      * (`rulekit.validate.laws.ReferenceSegmentGateOrderLawsTest`). It is carried here rather than derived
      * from [candidate] because only the resolver knows which roots the model declares; counting separators
      * instead named the wrong class on every absolute path whose missing root had a child.
+     *
+     * [leftOutByConversion] says that the model as read DOES declare [candidate], and A12's converter then leaves
+     * that declaration out ([KERNEL-FINDINGS KF652]): a blank name, a later child of a shared name's subtree, or
+     * anything beneath either. A12's reader resolves the reference and its converter finds nothing there, which
+     * an error field survives as a missing one and a computed field does not survive at all.
      */
-    data class Undeclared(val candidate: String, val rootUnresolved: Boolean = false) : Reference
+    data class Undeclared(
+        val candidate: String,
+        val rootUnresolved: Boolean = false,
+        val leftOutByConversion: Boolean = false,
+    ) : Reference
 
     /** Several fields carry the short [name], so the model-wide fallback cannot choose between them. */
     data class Ambiguous(val name: String, val candidates: List<String>) : Reference
@@ -310,13 +319,6 @@ private fun PreparedModel.resolve(
     // index; and one provider mounted at two points is two separate indexes, so the second copy must not make
     // the first ambiguous. Keying on the authoring model instead got both cases wrong, in the direction that
     // rejects a model A12 accepts — measured 2026-09-12 through `ModelLoader.loadAndCheck` on both shapes.
-    // The variant deletion is honoured at ONE site — [PreparedModel.fieldPathsByShortName] is built from
-    // `resolvableElements` — so neither arm below can stop honouring it. That property used to rest on
-    // naming the list once and narrowing it, because a two-arm `if` let one arm keep the deletion while the
-    // other dropped it, and a mutant doing exactly that survived every control here (2026-09-13); the
-    // provider-bound arm needs a mounted model with its own flag on to be reached at all. The control it
-    // lacked now exists (`ShortNameFallbackScopeTest`) and kills that mutant, and the index makes the
-    // divergence unrepresentable rather than merely measured.
     // A MODEL_ROOT mount places several prefixes and is still ONE instance, so the denominator is the union
     // of what this mount placed rather than a single subtree.
     val named = fieldPathsByShortName[name].orEmpty()
@@ -488,8 +490,7 @@ internal fun TrackedDeclaration.declaredFieldType(): FieldType? =
  * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
  *
  * An allow-list rather than the complement of `NumberType`, for the same reason [PLAINLY_NON_TEMPORAL_TYPES]
- * is one: the complement would sweep in an unresolvable type definition and `UnspecifiedType`, whose type this reader cannot
- * know, and refusing those would be an over-rejection. Every member is measured — the six
+ * is one: the complement would sweep in an unresolvable type definition, whose type this reader cannot know, and refusing those would be an over-rejection. Every member is measured — the six
  * non-temporal ones in this family's own grid, the four temporal ones behind a number leader in
  * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`, and the custom one on all five carriers that ask
  * the question separately in `rulekit.validate.laws.CustomFieldTypeOperandLawsTest`.
@@ -849,7 +850,7 @@ internal fun TrackedFactBase.addressedTargetsOf(
  * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.
  *
  * `FieldUtils.isLikeString` admits `IStringType` and `IPredefinedType`, our `StringType` and `CustomFieldType`;
- * this is the allow-list of the rest, so a typedef or an unspecified type is left unjudged. Two families ask
+ * this is the allow-list of the rest, so an unresolvable typedef is left unjudged. Two families ask
  * it of two different kernel methods that each call that one predicate.
  */
 internal val PLAINLY_NON_STRING_TYPES = setOf(
@@ -863,8 +864,8 @@ internal val PLAINLY_NON_STRING_TYPES = setOf(
 /**
  * The declared types this reader is CERTAIN are not TEMPORAL at all, every member measured.
  *
- * An allow-list rather than the complement of [TEMPORAL_DECLARED_TYPES], so an unresolvable type definition or an
- * `UnspecifiedType` — whose type this checker cannot know — is left unjudged rather than
+ * An allow-list rather than the complement of [TEMPORAL_DECLARED_TYPES], so an unresolvable type definition — whose
+ * type this checker cannot know — is left unjudged rather than
  * refused, which would be the one direction this checker may not take. Two families ask it: the shared date
  * ARGUMENT slot, whose kind gate stops here, and `ValueAsDate`, which adds the temporal kinds back because
  * its own gate wants one precision rather than one interface.

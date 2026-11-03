@@ -71,7 +71,7 @@ class IterationGuardTest {
          * `And FieldFilled(Claims/ClaimId)` is conjoined (`dmtool model check`, 2026-10-22).
          */
         private val UNGUARDED_NEGATIVE = """
-            {"header":{"id":"policy-claims","modelType":"document","modelVersion":"28.4.0","locales":[{"code":"en_US"}],"labels":[],"annotations":[],"modelReferences":[]}
+            {"header":{"id":"policy-claims","modelType":"document","modelVersion":"29.4.0","locales":[{"code":"en_US"}],"labels":[],"annotations":[],"modelReferences":[]}
             ,"content":{"modelInfo":{"name":"policy-claims","variant":"cockpit","revision":"Arbeitsversion","immutable":false},"modelConfig":{"decimalSeparator":".","timeZone":"Europe/Berlin","conditionLanguage":{"code":"en_US"},"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
              {"type":"Group","id":"/Policy","name":"Policy","Group":{"repeatability":1,"elements":[
              {"type":"Field","id":"/Policy/PolicyNumber","name":"PolicyNumber","Field":{"fieldType":

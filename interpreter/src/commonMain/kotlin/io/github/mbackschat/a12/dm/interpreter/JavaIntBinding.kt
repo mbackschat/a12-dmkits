@@ -1,14 +1,15 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.model.A12_DECIMAL_SCALES
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * How A12's reader binds one JSON member to a Java `int` or `Integer` (KERNEL-FINDINGS KF590, KF591, KF593).
+ * How A12's reader binds one JSON member to a Java `Integer` (KERNEL-FINDINGS KF590, KF591, KF593); a primitive
+ * `int` member reads through [bindJavaPrimitiveInt] instead.
  *
- * Text is read after Java's `trim`: the empty text and `null`, in that exact case, bind to no value, which an `int`
- * member holds as 0; any other text binds through `Integer.parseInt`, so a decimal digit of any script counts and a
+ * Text is read after Java's `trim`: the empty text and `null`, in that exact case, bind to no value; any other text binds through `Integer.parseInt`, so a decimal digit of any script counts and a
  * fraction or an exponent does not. A JSON number binds when its exact value lies within `Int`'s range, and then
  * truncated toward zero, so `2147483647.5` binds nothing while `1e1` is 10. A Boolean, an object and an array never
  * bind (`RepeatabilityTextReadingDiffTest`).
@@ -33,14 +34,22 @@ internal fun JsonElement?.bindJavaInt(): JavaIntBinding {
 }
 
 /**
+ * [bindJavaInt] for a member A12 declares as a primitive `int` rather than an `Integer`. Kernel 31 reads through
+ * Jackson 3, which refuses a null for a primitive, so a value that binds NO value as an `Integer` — the empty text,
+ * the text `null`, a JSON null — leaves A12 with no model instead of a 0 (KERNEL-FINDINGS KF593, corrected
+ * 2026-11-02). The bound value, or null where A12's reader cannot bind the member.
+ */
+internal fun JsonElement.bindJavaPrimitiveInt(): Int? = (bindJavaInt() as? JavaIntBinding.Bound)?.value
+
+/**
  * A JSON number lexeme's value truncated toward zero, or null when the exact value lies outside `Int`'s range, its
- * `BigDecimal` scale leaves `Int` (`RepeatabilityTextReadingDiffTest`), or the lexeme is no JSON number at all.
+ * `BigDecimal` scale leaves [A12_DECIMAL_SCALES] (`RepeatabilityTextReadingDiffTest`), or the lexeme is no JSON number at all.
  */
 internal fun String.jsonNumberAsJavaIntOrNull(): Int? {
     val match = JSON_NUMBER_PARTS.matchEntire(this) ?: return null
     val (sign, integerPart, fractionPart, exponentPart) = match.destructured
     val exponent = if (exponentPart.isEmpty()) 0L else exponentPart.asciiLongOrNull() ?: return null
-    if (fractionPart.length - exponent !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) return null
+    if (fractionPart.length - exponent !in A12_DECIMAL_SCALES) return null
     val all = integerPart + fractionPart
     val digits = all.trimStart('0')
     if (digits.isEmpty()) return 0

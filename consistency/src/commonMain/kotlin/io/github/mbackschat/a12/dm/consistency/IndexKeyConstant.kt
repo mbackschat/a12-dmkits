@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 
 /**
  * Whether A12's value validation of this index field admits the non-empty, already-decoded [constant], or
@@ -17,8 +16,8 @@ import kotlinx.serialization.json.intOrNull
  * `adapter.laws.CheckerIndexKeyConstantAgreementTest` ([KERNEL-FINDINGS KF481]).
  *
  * Unjudged, and therefore safe to under-report: a constant meeting its length bounds beside a declared String
- * pattern outside [KeyPattern]'s represented Java-to-JS domain; a table-backed enumeration, whose values a model does
- * not carry; an unresolvable type definition, an unspecified field, and a constant holding a CR on another type. A
+ * pattern outside [KeyPattern]'s represented Java-to-JS domain; an unresolvable type definition, and a constant
+ * holding a CR on another type. A
  * type-defined field is judged by its definition's type and body ([KERNEL-FINDINGS KF602]). The authored-token boundary decodes the key before length and pattern
  * checks (DG102-E2 kernel population); this validator must not normalize that value a second time.
  */
@@ -35,8 +34,8 @@ internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, cons
     return when (type) {
         FieldType.STRING -> typeBody?.stringAdmits(constant)
         FieldType.NUMBER -> numberShapeAdmits(
-            minFraction = maxOf(typeBody?.declaredInt("minFractionalDigits") ?: 0, 0),
-            maxFraction = typeBody?.declaredInt("maxFractionalDigits") ?: 0,
+            minFraction = maxOf(typeBody?.boundInt("minFractionalDigits") ?: 0, 0),
+            maxFraction = typeBody?.boundInt("maxFractionalDigits") ?: 0,
             constant = constant,
         )
         FieldType.BOOLEAN -> constant == TRUE || constant == FALSE
@@ -50,7 +49,7 @@ internal fun TrackedFactBase.admitsIndexConstant(field: TrackedDeclaration, cons
             if (format == null || separator == null) null else dateRangeShapeAdmits(format, separator, constant)
         }
         FieldType.CUSTOM_FIELD -> typeBody?.stringAdmits(constant)
-        FieldType.TYPE_DEF, FieldType.UNSPECIFIED -> null
+        FieldType.TYPE_DEF -> null
     }
 }
 
@@ -61,7 +60,7 @@ private const val FALSE = "false"
 /** A String body declaring no length and no pattern, or none at all, admits every non-empty constant. */
 private fun JsonObject?.constrainsNoString(): Boolean {
     val string = this ?: return true
-    return LENGTH_MEMBERS.none { (string.declaredInt(it) ?: 0) > 0 } && string.declaredText("pattern").isNullOrEmpty()
+    return LENGTH_MEMBERS.none { (string.boundInt(it) ?: 0) > 0 } && string.declaredText("pattern").isNullOrEmpty()
 }
 
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
@@ -71,8 +70,8 @@ private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
  * meet both, so a pattern outside [KeyPattern]'s represented domain leaves unjudged only a constant whose length is met. The length counts UTF-16 units, as `String.length()` does, while the pattern uses Java's whole-region matcher.
  */
 private fun JsonObject.stringAdmits(constant: String): Boolean? {
-    val max = declaredInt("maxLength")?.takeIf { it > 0 }
-    val min = declaredInt("minLength")?.takeIf { it > 0 }
+    val max = boundInt("maxLength")?.takeIf { it > 0 }
+    val min = boundInt("minLength")?.takeIf { it > 0 }
     if ((max != null && constant.length > max) || (min != null && constant.length < min)) {
         return false
     }
@@ -81,11 +80,11 @@ private fun JsonObject.stringAdmits(constant: String): Boolean? {
 }
 
 /**
- * An enumeration without a table admits exactly the tokens its values declare, in their case and never a label
- * ([KERNEL-FINDINGS KF479], `IEnumerationType.isValueApplicable`).
+ * An enumeration admits exactly the tokens its values declare, in their case and never a label
+ * ([KERNEL-FINDINGS KF479], `IEnumerationType.isValueApplicable`). A `tableName` beside them is read past (KF654).
  */
 private fun TrackedFactBase.enumerationAdmits(field: TrackedDeclaration, constant: String): Boolean? {
-    val enumeration = enumerationBodyOf(field)?.takeIf { it["tableName"] == null } ?: return null
+    val enumeration = enumerationBodyOf(field) ?: return null
     return enumeration.declaredEnumValues()?.takeIf { it.isNotEmpty() }?.let { constant in it }
 }
 
@@ -188,7 +187,6 @@ private const val COMPONENT_CHARS = "dMyHms"
 /** The characters a Java pattern reads as syntax; the dot is absent because A12 escapes it. */
 private const val REGEX_SYNTAX = "\\^$|?*+()[]{}"
 
-private fun JsonObject.declaredInt(member: String): Int? = (this[member] as? JsonPrimitive)?.intOrNull
 
 private fun JsonObject.declaredText(member: String): String? =
     (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

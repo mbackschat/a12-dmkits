@@ -47,7 +47,6 @@ class CheckerOrderingNameSentenceAgreementTest {
         val orderField: String = "Channel",
         val note: String = "Note",
         val noValueValidation: Boolean = false,
-        val deleted: Boolean = false,
         val archiveRepeatability: Int? = null,
     )
 
@@ -73,10 +72,7 @@ class CheckerOrderingNameSentenceAgreementTest {
             row.sorts.forEach { sorts.addObject().put("name", it).put("order", "ASC") }
         }
         val fields = items.path("elements") as ArrayNode
-        val sku = (fields[0] as ObjectNode).put("name", row.field).put("id", "/Order/Items/${row.field}")
-        if (row.deleted) {
-            (sku.path("Field") as ObjectNode).putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Broker")
-        }
+        (fields[0] as ObjectNode).put("name", row.field).put("id", "/Order/Items/${row.field}")
         (fields[1] as ObjectNode).put("name", row.note).put("id", "/Order/Items/${row.note}")
         return mapper.writeValueAsString(tree)
     }
@@ -102,8 +98,10 @@ class CheckerOrderingNameSentenceAgreementTest {
         const val PATH = "MVK_PATH_INVALID"
         const val SENTENCE = "RK_FIELD_NAME_ALPHABET"
         const val INDEX_OUTSIDE = "MVK_INVALID_INDEX_FIELD"
-        val ATTACHED = Regex("^(?:Group|Field|Rule|Computation) with path '([^']*)': ")
+        // A basic sentence names its element by id, and the drafted model's ids are its paths.
+        val ATTACHED = Regex("^(?:Group|Field|Rule|Computation) with (?:path|id) '([^']*)': ")
         val NBSP_NAME = "Sk" + Char(0x00A0) + "u"
+        val EM_SPACE = Char(0x2003).toString()
         val BAD = listOf(NBSP_NAME, "Sk-u", "Sku.1")
         // Names the field pattern admits beside ones it refuses, and a 61-character name (KF580's characters).
         val MORE = listOf("Ské", "S".repeat(61), "1Sku", "Ns:Sku", "Sku.a", "Sku.value")
@@ -130,11 +128,16 @@ class CheckerOrderingNameSentenceAgreementTest {
                 // Whether a refused name withholds the duplicate verdict when the repeated name is a sound one.
                 Row("Sku", sorts = listOf("Sku", "Sku", "Sk-u"), note = "Sk-u"),
                 Row("Sku", sorts = listOf("Sku", "Sku", "Qty", "Sk-u"), note = "Sk-u"),
+                // Kernel 31.1.1 keeps the last segment wherever the spelling lands, unless it lands on a group
+                // (KF653): empty, blank and em-space names, climbs to the root, and spellings landing on nothing.
+                Row("Sku", index = ""), Row("Sku", index = "   "), Row("Sku", index = EM_SPACE),
+                Row("Sku", index = "../../Sku"), Row("Sku", index = "Items/Sku"), Row("Sku", index = "Missing"),
+                Row("Sku", index = ".."), Row("Sku", sorts = listOf("")), Row("Sku", sorts = listOf("   ")),
+                Row("Sku", sorts = listOf("\t")), Row("Sku", sorts = listOf(EM_SPACE)), Row("Sku", sorts = listOf("   ", "\t")),
+                Row("Sku", sorts = listOf("../../Sku")), Row("Sku", sorts = listOf("Missing")), Row("Sku", sorts = listOf("..")),
                 // Multiplicity: a repeated spelling, and a bad name beyond the three entries A12 holds.
                 Row("Sk-u", sorts = listOf("Sk-u", "Sk-u")),
                 Row("Sk-u", sorts = listOf("Note", "Qty", "Lot", "Sk-u")),
-                // The landed field deleted at the default variant.
-                Row("Sk-u", index = "Sk-u", deleted = true), Row("Sk-u", sorts = listOf("Sk-u"), deleted = true),
             ) + (BAD + MORE).flatMap { bad ->
                 listOf(
                     Row(bad), Row(bad, index = bad), Row("Sku", index = bad),

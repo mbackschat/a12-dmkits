@@ -15,8 +15,7 @@ import org.junit.jupiter.api.Test
  * (KERNEL-FINDINGS KF648).
  *
  * The four carriers are the three date kinds' `format` and a fragment's `formatOfFragment`, all answering alike;
- * a type definition carries its format to the field that uses it and is not judged unused. An `ONLY` filter the
- * default variant does not pass lifts the sentence. The refused formats sampled here are members of
+ * a type definition carries its format to the field that uses it and is not judged unused. The refused formats sampled here are members of
  * [TEMPORAL-FORMAT-VOCABULARY]'s Refused table, so the whole-set claim rests on the guard that derives it, while
  * every ADMITTED format is a row, because a format wrongly carried in the set is the one error that over-rejects.
  *
@@ -39,23 +38,19 @@ class CheckerTemporalFormatAgreementTest {
         val actual = linkedMapOf<String, Pair<Set<String>, Set<String>>>()
         val expected = linkedMapOf<String, Pair<Set<String>, Set<String>>>()
         for ((field, member) in CARRIERS) for (format in REFUSED_SAMPLE + ADMITTED + OUTSIDE_THE_UNIVERSE) {
-            for (filtered in listOf(false, true)) {
-                val root = mapper.readTree(base) as ObjectNode
-                val element = field(root, field)
-                element.withObject("/fieldType/${member.first}").put(member.second, format)
-                if (filtered) element.onlyUnderAnotherVariant()
-                val row = "$field `$format`${if (filtered) " ONLY" else ""}"
-                actual[row] = verdicts(root.toString())
-                val refused = !filtered && format !in ADMITTED
-                expected[row] = setOfIf(refused) to setOfIf(refused && format !in OUTSIDE_THE_UNIVERSE)
-            }
+            val root = mapper.readTree(base) as ObjectNode
+            field(root, field).withObject("/fieldType/${member.first}").put(member.second, format)
+            val row = "$field `$format`"
+            actual[row] = verdicts(root.toString())
+            val refused = format !in ADMITTED
+            expected[row] = setOfIf(refused) to setOfIf(refused && format !in OUTSIDE_THE_UNIVERSE)
         }
         assertEquals(expected, actual, "as (A12, ours)")
     }
 
     @Test
     fun aTypeDefinitionCarriesItsFormatToTheFieldThatUsesIt() {
-        val actual = listOf("unused", "kept", "ONLY").associateWith { use ->
+        val actual = listOf("unused", "kept").associateWith { use ->
             val root = mapper.readTree(base) as ObjectNode
             (root.path("content") as ObjectNode).putArray("typeDefinitions").addObject().put("id", "ClockType")
                 .put("name", "ClockType").put("revision", "1")
@@ -63,13 +58,12 @@ class CheckerTemporalFormatAgreementTest {
             if (use != "unused") {
                 val element = field(root, "At")
                 element.putObject("fieldType").put("type", "TypeDefType").putObject("TypeDefType").put("typeDefinitionId", "ClockType")
-                if (use == "ONLY") element.onlyUnderAnotherVariant()
             }
             verdicts(root.toString())
         }
         val drawn = setOfIf(true) to setOfIf(true)
         val none = setOfIf(false) to setOfIf(false)
-        assertEquals(mapOf("unused" to none, "kept" to drawn, "ONLY" to none), actual, "as (A12, ours)")
+        assertEquals(mapOf("unused" to none, "kept" to drawn), actual, "as (A12, ours)")
     }
 
     private fun verdicts(json: String): Pair<Set<String>, Set<String>> =
@@ -81,10 +75,6 @@ class CheckerTemporalFormatAgreementTest {
     private fun field(root: ObjectNode, name: String): ObjectNode =
         (root.path("content").path("modelRoot").path("rootGroups").get(0).path("Group").path("elements") as ArrayNode)
             .single { it.path("name").asText() == name }.path("Field") as ObjectNode
-
-    private fun ObjectNode.onlyUnderAnotherVariant() {
-        putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium")
-    }
 
     private companion object {
         const val DATE_FORMAT = "RK_DATE_FORMAT_INVALID"

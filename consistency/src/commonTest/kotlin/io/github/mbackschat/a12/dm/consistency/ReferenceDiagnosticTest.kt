@@ -91,7 +91,7 @@ class ReferenceDiagnosticTest {
      */
     @Test
     fun anUnbuildableModelCarriesTheCheckersOwnCode() {
-        val finding = Reference.Undeclared("/Order/Nope")
+        val finding = Reference.AboveRoot("../../../Nope")
             .asFinding(ReferenceRole.COMPUTED_TARGET, at = "/Order/Comp")
 
         assertEquals(CK_MODEL_NOT_BUILDABLE, finding?.code)

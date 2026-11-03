@@ -10,9 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 /** The complete result of formally checking one cell. */
 internal sealed interface FormalResult {
     data object Valid : FormalResult
-    /** The reserved test-range result reports a finding without excluding the value (SPEC-2026-10-10-12). */
-    data class Reported(val rejection: CustomTypeRejection) : FormalResult
-    data class Invalid(val failure: FormalFailure, val reportedRejection: CustomTypeRejection? = null) : FormalResult
+    data class Invalid(val failure: FormalFailure) : FormalResult
     data class Unsupported(val reason: String) : FormalResult
 }
 
@@ -199,7 +197,7 @@ internal class FormalResultCache(
 
     fun failureAt(path: String, reps: List<Int>, ctx: EvalContext): FormalFailure? =
         when (val result = resultAt(path, reps, ctx)) {
-            FormalResult.Valid, is FormalResult.Reported -> null
+            FormalResult.Valid -> null
             is FormalResult.Invalid -> result.failure
             is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
         }
@@ -208,7 +206,7 @@ internal class FormalResultCache(
      *  repetitions, so no synthetic row context is needed for a filled cell. */
     fun failureAt(path: String, reps: List<Int>, raw: String): FormalFailure? =
         when (val result = resultAt(path, reps, raw)) {
-            FormalResult.Valid, is FormalResult.Reported -> null
+            FormalResult.Valid -> null
             is FormalResult.Invalid -> result.failure
             is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
         }

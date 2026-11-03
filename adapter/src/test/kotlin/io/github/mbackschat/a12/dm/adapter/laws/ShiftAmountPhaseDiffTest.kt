@@ -27,7 +27,7 @@ import org.junit.jupiter.api.TestInstance
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ShiftAmountPhaseDiffTest {
     private companion object {
-        const val GAP = "31.03.2024T02:30:00"
+        const val GAP = "29.02.1500T10:00:00"
     }
 
     private val seeds = mapOf("GapAmountHour" to "99", "GapAmountNext" to "99", "ClockAmountHour" to "99",

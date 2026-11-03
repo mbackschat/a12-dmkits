@@ -141,13 +141,11 @@ public final class ReadPayloads {
         return data;
     }
 
-    /** Every declared include as the same alias/reference pair list on standalone and embedded reads. */
+    /** Every included model, by the reference that is its identity (KF651), on standalone and embedded reads. */
     public static ObjectNode includeList(ModelDocument doc) {
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode includes = data.putArray("includes");
-        doc.includes().forEach(include -> includes.addObject()
-                .put("alias", include.alias())
-                .put("reference", include.reference()));
+        doc.includes().forEach(include -> includes.addObject().put("reference", include.reference()));
         return data;
     }
 

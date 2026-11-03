@@ -20,7 +20,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 **Scheme: SemVer** (`MAJOR.MINOR.PATCH`, tag `vMAJOR.MINOR.PATCH`). The project version is the project's **own** release identity; the upstream kernel is recorded as **compatibility metadata**, never folded into the version string. (CalVer-keyed-to-upstream was considered and rejected — it re-collapses the two identities and erases the library's break-signal; full rationale in the plan's D9, summarized in §13.)
 
 - **0.x** while the public library API stabilizes; **`1.0.0`** when it does. MAJOR = breaking API change, MINOR = additive, PATCH = fixes.
-- **The compatibility key is the kernel semver** (currently `30.8.1`; the A12 Tools distribution label `2025.06-ext5` is a secondary human tag). It is already encoded where consumers look:
+- **The compatibility key is the kernel semver** (currently `31.1.1`; the A12 Tools distribution label `2026.06-ext1` is a secondary human tag). It is already encoded where consumers look:
   - CLI → baked into `version.properties` as `kernelBuiltAgainst`; the same generated resource stamps the full Git `sourceRevision` and `sourceState` (`CLEAN`/`DIRTY`), all surfaced by `--version` / `manifest.version`.
   - library → the kits are **kernel-free** (decoupling Stage 3), so their published POMs declare **no** kernel dependency; the kernel-compat key rides the CLI surface + the release title/notes, not a library POM coordinate.
   - → therefore **no separate `project-release.yaml`** (a third, drift-prone source), and **no `release/YYYY.MM` maintenance branches** (premature, and against the no-self-branching rule).

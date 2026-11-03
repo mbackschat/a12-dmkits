@@ -81,11 +81,12 @@ class ComputeDocVerbTest {
     }
 
     @Test
-    void customCallbacksRetainRawInputReservedCascadeAndSingleInvocation(@TempDir Path dir) throws Exception {
+    void customCallbacksRetainRawInputCascadeAndSingleInvocation(@TempDir Path dir) throws Exception {
         Path model = customModel(dir);
         Path document = customDocument(dir);
         Files.writeString(document, Files.readString(document).replace("stale", ""));
         Path js = Files.createDirectory(dir.resolve("validators"));
+        // testIDNummer is an ordinary rejection since kernel 31.1.1 dropped its reservation (KERNEL-FINDINGS KF669).
         for (String source : java.util.List.of("ACCEPT", "REJECT", "testIDNummer")) {
             for (String target : java.util.List.of("ACCEPT", "REJECT", "testIDNummer")) {
                 Files.writeString(js.resolve("SourceType.js"), validator("A\r\r\nB", source));
@@ -95,12 +96,14 @@ class ComputeDocVerbTest {
                 assertEquals(0, result.code(), () -> source + "/" + target + ": " + result.out() + result.err());
                 JsonNode copy = computedFor(result.out(), "Parcel/Copy");
                 JsonNode size = computedFor(result.out(), "Parcel/Size");
-                assertEquals(source.equals("REJECT") ? "cleared" : target.equals("ACCEPT") ? "value" : "error",
+                boolean sourceRejects = !source.equals("ACCEPT");
+                boolean targetRejects = !target.equals("ACCEPT");
+                assertEquals(sourceRejects ? "cleared" : targetRejects ? "error" : "value",
                         copy.path("outcome").asText(), result::out);
-                boolean readable = !source.equals("REJECT") && !target.equals("REJECT");
+                boolean readable = !sourceRejects && !targetRejects;
                 assertEquals(readable ? "value" : "cleared", size.path("outcome").asText(), result::out);
                 if (readable) assertEquals("4", size.path("value").asText(), result::out);
-                if (!source.equals("REJECT")) assertEquals("A\r\nB", copy.path("value").asText(), result::out);
+                if (!sourceRejects) assertEquals("A\r\nB", copy.path("value").asText(), result::out);
                 assertTrue(MAPPER.readTree(result.out()).path("data").path("unsupported").isMissingNode(), result::out);
             }
         }

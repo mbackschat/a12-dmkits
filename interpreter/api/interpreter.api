@@ -518,9 +518,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency {
 	public final fun component3 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
 	public final fun component4 ()Ljava/lang/String;
 	public final fun component5 ()Ljava/lang/String;
-	public final fun component6 ()Ljava/lang/String;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getAlias ()Ljava/lang/String;
 	public final fun getDiagnosticLabel ()Ljava/lang/String;
 	public final fun getFromModelId ()Ljava/lang/String;
 	public final fun getPurpose ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
@@ -782,9 +780,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep {
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun component4 ()Ljava/lang/String;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getAlias ()Ljava/lang/String;
 	public final fun getFromModelId ()Ljava/lang/String;
 	public final fun getPurpose ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
 	public final fun getToModelId ()Ljava/lang/String;

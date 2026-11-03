@@ -110,18 +110,23 @@ data class DeclaredElement(
      */
     internal val declaredKind: DeclaredKind? = DeclaredKind.of(kind)
 
-    /** The model this group mounts, when it declares one — `Group.modelAlias`. */
-    val modelAlias: String?
-        get() = (body?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
+    /**
+     * The model this group mounts, when it declares one: `Group.includeConfig.reference`, as A12 reads a scalar's
+     * text ([KERNEL-FINDINGS KF651]).
+     */
+    val includedReference: String?
+        get() = ((body?.get("includeConfig") as? JsonObject)?.get("reference") as? JsonPrimitive)?.contentOrNull
 
     /**
      * The kind's payload as A12 binds it, and absent when A12's own reader refuses to bind it at all.
      *
-     * The three cases are NOT two. An omitted envelope is legal — the Kernel default-constructs the element,
-     * so every member simply reads as absent, which is an EMPTY object here rather than a refusal. A present
-     * envelope that is not an object is a binding failure: the source never loads, so no member of it may be
-     * judged and a family that reads `null` as "the member is missing" would publish a verdict about a model
-     * A12 never examined.
+     * The cases are NOT two. A Group's missing or `null` envelope is an empty group, as kernel 31.1.1 reads it
+     * ([KERNEL-FINDINGS KF3], `adapter.ElementBodyReadingDiffTest`), so every member reads as absent. Any other
+     * kind's omitted envelope reads as an EMPTY object too, and here that is a reading, not A12's: kernel 31.1.1
+     * refuses it, and the checker reaches the same verdict through the members it then finds missing (measured for
+     * a Field by the same test). A present envelope that is not an object is a binding failure: the source never
+     * loads, so no member of it may be judged and a family that reads `null` as "the member is missing" would
+     * publish a verdict about a model A12 never examined.
      *
      * Every family that judges MEMBERS must therefore read this rather than casting `declaration[kind]`,
      * which collapses the legal case onto the refused one.
@@ -130,6 +135,7 @@ data class DeclaredElement(
         get() = when (val envelope = declaration[kind]) {
             null -> EMPTY_BODY
             is JsonObject -> envelope
+            JsonNull -> EMPTY_BODY.takeIf { declaredKind == DeclaredKind.GROUP }
             else -> null
         }
 }
@@ -143,7 +149,16 @@ private val EMPTY_BODY = JsonObject(emptyMap())
  * analysis does not have, so reporting every reference into them as undeclared would reject a model A12
  * accepts. Each one becomes a coverage gap and suspends the reference families instead.
  */
-data class UnexpandedMount(val at: String, val alias: String, val reason: String)
+data class UnexpandedMount(
+    val at: String,
+    /** The model the mount names, absent when A12 can read no model id from it. */
+    val reference: String?,
+    val reason: String,
+) {
+    /** The mount as a coverage gap's reason opens. */
+    internal val described: String
+        get() = reference?.let { "this group mounts `$it`" } ?: "this group's mount names no model A12 can read"
+}
 
 /**
  * An admitted source's declarations, in declaration order — the fact base every later phase reads.
@@ -195,9 +210,9 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     family reports each as [CK_MODEL_NOT_BUILDABLE].
  * @param reachedModelRefusals what leaves A12 unable to build or check the entry from a model it reads, one complete
  *     sentence each naming that model ([KERNEL-FINDINGS KF594], `adapter.WorkspaceReachedModelDiffTest`). From an
- *     included model or a type-definition library: a model-level member its reader cannot bind, a locale code it
- *     cannot parse, an entry locale it does not declare, or a library's root group; from an included model also a
- *     locale declared twice or the empty code. From the entry itself: a locale declared twice, which A12 builds but
+ *     included model or a type-definition library: a model-level member its reader cannot bind, or a locale code it
+ *     cannot parse; from an included model also an entry locale it does not declare, a locale declared twice, or the
+ *     empty code. From the entry itself: a locale declared twice, which A12 builds but
  *     cannot check, and a declaration with no `name` or a type definition whose `name` is `null`, an object or an array,
  *     which its reader refuses (KF644). From any of them, a frame member A12 cannot use ([frameDefects], KF650): one
  *     its reader cannot bind in every model, and one it needs for the check in the entry alone; and from the entry, a
@@ -232,55 +247,40 @@ data class PreparedModel(
     val frameValues: FrameValues = FrameValues(),
 ) {
     /**
-     * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
-     * variant.
-     *
-     * **`ONLY` is a DELETION, and the deletion is uniform across all three carriers even though what it
-     * costs is not.** `ValidationModelConverter` walks one loop asking `fieldIsAcceptedByVariantFilter`,
-     * `computationIsAcceptedByVariantFilter` and `ruleIsAcceptedByVariantFilter` of the elements in turn, and
-     * keeps only those accepted. Deleting a rule or computation removes its own verdicts, which is why that
-     * reads from the outside as a suppression ([KF299]); deleting a FIELD removes a referent other
-     * declarations need, so A12 then says MORE about the model rather than less ([KERNEL-FINDINGS] KF305,
-     * `rulekit.validate.laws.FieldVariantFilterLawsTest`). One mechanism, two consequences — so this list
-     * models the mechanism and lets each consequence fall out.
-     *
-     * Narrowing this to fields would be modelling the consequence instead, and it is unobservable either way:
-     * a reference targets a field or a group, never a rule, and a group carries no `variantFilter` at all.
-     * The uniform rule is kept because it is the one that is true.
-     *
-     * **It keys on the filter TYPE alone**, measured on the field carrier rather than inherited from the
-     * rule's: naming the default variant, an empty list and an absent `variants` member all leave the element
-     * deleted, because `filterAcceptsVariant` computes its match under a `variant != null` guard that is
-     * false at the default variant for every list. Any OTHER spelling — an unknown type, a non-string, an
-     * absent one — leaves the element visible here, which under-reports a model A12 cannot build and is the
-     * safe direction.
-     *
-     * Derived, so it is deliberately outside `equals`/`copy`, and computed once because the resolvers call it
-     * per reference.
+     * The declarations A12's converter leaves out of the model it checks ([KERNEL-FINDINGS KF652]), computed once
+     * per model because the fact base's views and report assembly both ask it.
      */
-    val resolvableElements: List<DeclaredElement> = elements.filterNot { it.isDeletedAtDefaultVariant() }
+    internal val conversionDrops: ConversionDrops by lazy { conversionDrops(declarationsByKey) }
 
     /**
-     * [resolvableElements] keyed by path, so resolving a reference is a lookup rather than a scan.
+     * The declarations the converter keeps, keyed by path, so resolving a reference is a lookup rather than a scan.
      *
-     * **FIRST occurrence wins, which is the behaviour it replaces.** A model may declare two elements at one
-     * path — A12 refuses it, and this checker has to report on it rather than fail — and every call site this
-     * index replaced asked `firstOrNull`/`any`. `associateBy` keeps the LAST, so it would have changed which
-     * duplicate a family reads. Nothing measured that difference, which is exactly why it is not introduced.
+     * **FIRST occurrence wins.** Of two children with one name, A12's converter keeps the first and leaves the
+     * later one out ([KERNEL-FINDINGS KF652]), so a reference resolves to the first; a declaration beneath a dropped
+     * one is not there to resolve to.
      *
      * Lazy because a model that never resolves a reference should not pay for the map, and because the whole
      * point is that it is built once per [PreparedModel] rather than per reference.
      */
     internal val resolvableByPath: Map<String, DeclaredElement> by lazy {
-        val byPath = LinkedHashMap<String, DeclaredElement>(resolvableElements.size)
-        resolvableElements.forEach { element -> byPath.getOrPut(element.path) { element } }
+        val byPath = LinkedHashMap<String, DeclaredElement>(elements.size)
+        declarationsByKey.forEach { (key, element) ->
+            if (key !in conversionDrops.dropped) byPath.getOrPut(element.path) { element }
+        }
         byPath
+    }
+
+    /** Every path the model as read declares and A12's converter leaves out, held by no kept declaration. */
+    internal val leftOutPaths: Set<String> by lazy {
+        conversionDrops.dropped.mapNotNullTo(HashSet()) { key ->
+            declarationsByKey.getValue(key).path.takeUnless { it in resolvableByPath }
+        }
     }
 
     /**
      * Every declaration's body keyed by path, for the cell store's per-path comparison ([CheckCell]).
      *
-     * A LIST per path, and unfiltered by the variant deletion, because this index answers a different
+     * A LIST per path, because this index answers a different
      * question from [resolvableByPath]: that one resolves a reference and so keeps one element per path,
      * while this one has to reproduce what a family could have READ at a path. A model may declare two
      * elements there — A12 refuses it and this checker reports on it rather than failing — so keeping the
@@ -305,16 +305,12 @@ data class PreparedModel(
     }
 
     /**
-     * Each original declaration's shape and default-variant membership, without other body content.
-     *
-     * R4-V0's twin control moves the filter between equal paths: the surviving path list stays equal,
-     * but the tracked default-variant view returns a different declaration. Carrying each deletion bit
-     * preserves that distinction without making unrelated content invalidate shape-only cells.
+     * Each original declaration's shape, without body content.
      *
      * Memoized because cell validation compares this value repeatedly (PreparedModelDerivedValueTest).
      */
     internal val declarationSetShape: Any by lazy {
-        elements.map { listOf(it.path, it.name, it.kind, it.id, it.origin, it.body.deletesAtDefaultVariant()) }
+        elements.map { listOf(it.path, it.name, it.kind, it.id, it.origin) }
     }
 
     /**
@@ -388,13 +384,12 @@ data class PreparedModel(
      * `fieldRefByShortNameAllowed` on, so it is a gated path rather than a hot one on every model — no timing
      * claim rides on this.
      *
-     * Values keep `resolvableElements` order, because the fallback reports an AMBIGUITY by listing the paths
-     * it found and a report's order should not depend on a map's. Built from `resolvableElements`, so the
-     * variant deletion is honoured here once instead of in each of the fallback's two arms.
+     * Values keep declaration order, because the fallback reports an AMBIGUITY by listing the paths it found
+     * and a report's order should not depend on a map's.
      */
     internal val fieldPathsByShortName: Map<String, List<String>> by lazy {
         val byName = LinkedHashMap<String, MutableList<String>>()
-        resolvableElements.forEach { element ->
+        elements.forEach { element ->
             if (element.declaredKind == DeclaredKind.FIELD) {
                 byName.getOrPut(element.path.substringAfterLast('/')) { mutableListOf() } += element.path
             }
@@ -412,21 +407,6 @@ data class PreparedModel(
      * callers and left the per-caller LOOKUP linear, which is the same mistake one layer down.
      */
     internal val declaredReferenceByDeclaration: Map<DeclarationKey, DeclaredReference> by lazy { computeDeclaredReferences() }
-}
-
-/** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */
-private fun DeclaredElement.isDeletedAtDefaultVariant(): Boolean = body.deletesAtDefaultVariant()
-
-/**
- * Whether a declaration with this body is one A12's converter deletes from the default-variant element container,
- * which every check inside code generation reads ([PreparedModel.resolvableElements] carries the measurement).
- * One predicate for every reader, so the reference resolver and a family walking declarations cannot disagree
- * about which elements A12 examines there.
- */
-internal fun JsonObject?.deletesAtDefaultVariant(): Boolean {
-    val filter = this?.get("variantFilter") as? JsonObject ?: return false
-    val type = filter["filterType"] as? JsonPrimitive ?: return false
-    return type.isString && type.content == "ONLY"
 }
 
 /**
@@ -580,6 +560,17 @@ private fun JsonObject.unbindableTypeDefinitionBooleans(): List<String> {
     }
 }
 
+/** The integer members of one `content.typeDefinitions` entry's type body that A12's reader cannot bind. */
+private fun JsonObject.unbindableTypeDefinitionIntegers(): List<String> {
+    val declared = this["fieldType"] as? JsonObject ?: return emptyList()
+    val type = declared.namedFieldType() ?: return emptyList()
+    val body = type.bodyIn(declared) ?: return emptyList()
+    return type.integerMembers.mapNotNull { member ->
+        val value = body[member.name] ?: return@mapNotNull null
+        "`${type.wire}.${member.name}` holds `$value`".takeUnless { member.binds(value) }
+    }
+}
+
 /**
  * One walk over every model the entry reaches, the entry included: the type definitions they declare, and what
  * leaves A12 unable to build or check the entry ([PreparedModel.reachedModelRefusals], KF594). A model reached by
@@ -593,6 +584,7 @@ private fun readClosure(
     val ids = mutableSetOf<String>()
     val bodies = mutableMapOf<String, JsonObject>()
     val ambiguous = mutableSetOf<String>()
+    val firstDefinitions = mutableMapOf<String, Pair<String, JsonObject>>()
     val entryIds = mutableSetOf<String>()
     val unbindable = mutableListOf<String>()
     val reachedRefusals = mutableListOf<String>()
@@ -605,7 +597,6 @@ private fun readClosure(
     }
     fun unbuilt(sentence: String) = "$sentence. A12 reads every model the entry reaches before it builds the entry, " +
         "so the entry model never loads"
-    val libraries = linkedSetOf<String>()
     val includes = linkedSetOf<String>()
     val visited = mutableSetOf(entry.modelId)
     val pending = ArrayDeque(listOf(entry))
@@ -630,11 +621,6 @@ private fun readClosure(
             reachedRefusals += declared.unreadable.filter { it.isNotEmpty() }.map {
                 unbuilt("In the model `${source.modelId}`, `header.locales` declares `$it`, which A12 cannot use as a locale")
             }
-            val uncovered = entryLocales - declared.keys.toSet()
-            if (uncovered.isNotEmpty()) {
-                reachedRefusals += unbuilt("The model `${source.modelId}` does not declare the entry model's locale " +
-                    "${uncovered.joinToString(", ")}, so A12 does not expand it")
-            }
         }
         val definitions = (content?.get("typeDefinitions") as? JsonArray)
             ?.filterIsInstance<JsonObject>().orEmpty()
@@ -652,14 +638,32 @@ private fun readClosure(
                 reachedRefusals += definition.typeDefinitionTextRefusals().map {
                     "In the `content.typeDefinitions` entry ${definition["id"]}, $it, so A12's reader refuses the source and the model never loads"
                 }
+                // Measured on the entry's own definitions, referenced or not (KF593); an included model's stay
+                // unjudged, which only under-reports.
+                reachedRefusals += definition.unbindableTypeDefinitionIntegers().map {
+                    "In the `content.typeDefinitions` entry ${definition["id"]}, $it, which A12's reader cannot bind as " +
+                        "a whole number, so the model never loads"
+                }
             }
             val id = (definition["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: continue
-            // A12's expansion refuses a repeated id, the empty one included, and builds no model (KF647).
+            // Two of the entry's own definitions sharing an id, the empty one included, leave A12 unable to build
+            // the model its consistency check runs on (KF647, corrected for kernel 31.1.1).
             if (isEntry) {
                 if (id in entryIds) {
-                    reachedRefusals += "The `content.typeDefinitions` id `$id` is declared twice, which A12's expansion refuses, so the model never loads"
+                    reachedRefusals += "The `content.typeDefinitions` id `$id` is declared twice, so A12 cannot build " +
+                        "the model its consistency check runs on"
                 }
                 entryIds += id
+            }
+            // A definition another model already supplied must equal it: kernel 31.1.1's expansion refuses one that
+            // differs (KF647). Only a member both write differently is judged, since an explicit default and an
+            // absent member bind alike and telling them apart needs every type's defaults.
+            val earlier = firstDefinitions[id]
+            if (earlier == null) {
+                firstDefinitions[id] = source.modelId to definition
+            } else if (earlier.first != source.modelId && earlier.second.conflictsWith(definition)) {
+                reachedRefusals += unbuilt("The type definition id `$id` comes from `${earlier.first}` and from " +
+                    "`${source.modelId}` with different contents, which A12's expansion refuses")
             }
             ids += id
             if (id in ambiguous) continue
@@ -674,33 +678,73 @@ private fun readClosure(
             ?.filterIsInstance<JsonObject>()
             ?.forEach { reference ->
                 val referenced = reference.scalarText("reference") ?: return@forEach
-                when (reference.scalarText("purpose")) {
-                    "typeDefinitions" -> libraries += referenced
-                    "include" -> includes += referenced
+                if (reference.scalarText("purpose") == "include") {
+                    includes += referenced
                 }
                 if (visited.add(referenced)) {
                     providers[referenced]?.let { pending += it }
                 }
             }
     }
-    for (library in libraries) {
-        val content = providers[library]?.content
-        val rootGroups = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray
-        if (!rootGroups.isNullOrEmpty()) {
-            reachedRefusals += unbuilt("The type-definition library `$library` declares a root group, so A12 cannot " +
-                "expand the import")
-        }
-    }
-    // An included model's locales are gathered into one map keyed by locale, which a repeat breaks and the empty
-    // code, read as no locale, breaks too; a library is expanded without that map.
+    // An included model must declare every entry locale, and its locales are gathered into one map keyed by locale,
+    // which a repeat breaks and the empty code, read as no locale, breaks too. A type-definition library is held to
+    // none of this, nor refused for a root group, on kernel 31.1.1: 31.1.0 removed the compatibility check that
+    // refused both (`DocumentModelExpandSanityChecks`, measured by `adapter.WorkspaceReachedModelDiffTest`).
     for (include in includes) {
-        val declared = providers[include]?.header.declaredLocales()
+        // An include nothing resolves is the unresolved-reference pass's to report, not a locale defect.
+        val declared = (providers[include] ?: continue).header.declaredLocales()
+        val uncovered = entryLocales - declared.keys.toSet()
+        if (uncovered.isNotEmpty()) {
+            reachedRefusals += unbuilt("The included model `$include` does not declare the entry model's locale " +
+                "${uncovered.joinToString(", ")}, so A12 does not expand it")
+        }
         if (declared.repeated.isNotEmpty() || "" in declared.unreadable) {
             reachedRefusals += unbuilt("The included model `$include` declares a locale twice or an empty locale " +
                 "code, so A12 cannot expand the include")
         }
     }
-    return ClosureReading(ids, bodies, unbindable, reachedRefusals)
+    // An empty id reaches A12's expansion as `null` (KF658), and adding a reached model's definition compares every id
+    // the entry already holds, so the expansion fails (KF647, measured with an imported library).
+    if ("" in entryIds && entry.expands() && ids.size > entryIds.size) {
+        reachedRefusals += "A `content.typeDefinitions` entry has an empty `id`, and A12 cannot add another model's " +
+            "definitions beside it, so the model never loads"
+    }
+    // A12 rewrites the definitions sorted by id only when it expands the entry, which an import, a mount or an
+    // include reference makes it do; a self-contained model keeps its declaration order (KF647, kernel 31.1.1's
+    // `DocumentModelExpandService`). Kotlin compares strings by UTF-16 code unit, as Java does.
+    return ClosureReading(if (entry.expands()) ids.sorted().toSet() else ids, bodies, unbindable, reachedRefusals)
+}
+
+/** Whether A12 expands this model: a header reference that includes or imports, or a group that mounts one. */
+private fun Admission.Admitted.expands(): Boolean {
+    val references = (header?.get("modelReferences") as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
+    fun JsonElement.mounts(): Boolean = when (this) {
+        is JsonObject -> ((this["Group"] as? JsonObject)?.get("includeConfig") is JsonObject) || values.any { it.mounts() }
+        is JsonArray -> any { it.mounts() }
+        else -> false
+    }
+    return references.any { it.scalarText("purpose") in EXPANDING_PURPOSES } || content?.mounts() == true
+}
+
+private val EXPANDING_PURPOSES = setOf("include", "typeDefinitions")
+
+/**
+ * Whether two type definitions sharing an id write different values in one member, or in one member of their field
+ * type's body, or declare different field types — each a difference A12's member-by-member equality sees.
+ */
+private fun JsonObject.conflictsWith(other: JsonObject): Boolean {
+    fun JsonElement.bound(): Any? = (this as? JsonPrimitive)?.let { if (it.isString) it.content else it.boundText() ?: it.content } ?: this
+    fun Map<String, JsonElement>.conflictsIn(peer: Map<String, JsonElement>): Boolean =
+        keys.intersect(peer.keys).any { getValue(it).bound() != peer.getValue(it).bound() }
+    if (filterKeys { it != "fieldType" }.conflictsIn(other.filterKeys { it != "fieldType" })) return true
+    val type = this["fieldType"] as? JsonObject
+    val peerType = other["fieldType"] as? JsonObject
+    if (type == null || peerType == null) return false
+    val discriminator = type.string("type")
+    if (discriminator != peerType.string("type")) return true
+    val body = discriminator?.let { type[it] } as? JsonObject
+    val peerBody = discriminator?.let { peerType[it] } as? JsonObject
+    return body != null && peerBody != null && body.conflictsIn(peerBody)
 }
 
 /**

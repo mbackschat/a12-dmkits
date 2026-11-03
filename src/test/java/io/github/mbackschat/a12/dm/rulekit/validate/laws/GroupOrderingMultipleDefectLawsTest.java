@@ -94,13 +94,15 @@ class GroupOrderingMultipleDefectLawsTest {
     }
 
     /**
-     * The order's tail: a member naming nothing, which stops the BUILD rather than drawing a member code.
+     * The order's tail: a member naming nothing. On 30.8.1 it stopped the BUILD and withheld the other member's
+     * verdict; on 31.1.1 it is the member's own code, and the other member is judged beside it (KERNEL-FINDINGS
+     * KF653).
      *
-     * <p>Its own test because the buildability tier is the variable it moves, and a row inside the grids
+     * <p>Its own test because the buildability tier was the variable it moved, and a row inside the grids
      * above would move that as well as the member.
      */
     @Test
-    void anUnresolvableOrderingNameStopsTheBuildAndTheOtherMembersVerdict() {
+    void anUnresolvableOrderingNameDrawsItsCodeBesideTheOtherMembersVerdict() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("an unresolvable index alone", ordering(false, "NoSuchField"));
         actual.put("an unresolvable sort field alone", ordering(false, null, "NoSuchField"));
@@ -110,14 +112,13 @@ class GroupOrderingMultipleDefectLawsTest {
                 ordering(true, "Sku", "NoSuchField"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("an unresolvable index alone", KernelLaws.NOT_BUILDABLE);
-        expected.put("an unresolvable sort field alone", KernelLaws.NOT_BUILDABLE);
-        // No member code survives the tier change, in either direction — so an unresolvable name withholds
-        // the other member's verdict as well, and a checker pairing across this boundary would be measuring
-        // buildability rather than the member it meant to vary.
-        expected.put("an unresolvable index beside an OPAQUE sort field", KernelLaws.NOT_BUILDABLE);
-        expected.put("an opaque index beside an unresolvable sort field", KernelLaws.NOT_BUILDABLE);
-        assertEquals(expected, actual, "an unresolvable ordering name stops the build");
+        expected.put("an unresolvable index alone", "MVK_INVALID_INDEX_FIELD");
+        expected.put("an unresolvable sort field alone", "MVK_INVALID_SORT_FIELD");
+        expected.put("an unresolvable index beside an OPAQUE sort field",
+                "MVK_INVALID_INDEX_FIELD," + SORT_TYPE + "," + OPAQUE_STRING);
+        expected.put("an opaque index beside an unresolvable sort field",
+                INDEX_TYPE + ",MVK_INVALID_SORT_FIELD," + OPAQUE_STRING);
+        assertEquals(expected, actual, "an unresolvable ordering name beside the other member");
     }
 
     /** Rides along in every opaque row: the field this test makes defective trips the string-type law too. */

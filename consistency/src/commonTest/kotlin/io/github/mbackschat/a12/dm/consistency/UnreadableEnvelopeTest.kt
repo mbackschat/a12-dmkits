@@ -7,11 +7,11 @@ import kotlin.test.assertIs
 /**
  * A declaration whose envelope A12's reader cannot bind draws EXACTLY ONE finding, from ONE family.
  *
- * Eight families read `DeclaredElement.body`, and every one of them has to decide what a `null` means. Six
- * answer with silence and two report [unreadableEnvelope], which reads from any single call site as an
- * inconsistency and is the convention this test exists to pin: the tier is a property of the ELEMENT, not of
- * each member, so one reporter per element kind is the whole correct answer and the other six staying quiet
- * is what keeps a single defect from drawing six codes at one path.
+ * Several families read `DeclaredElement.body`, and every one of them has to decide what a `null` means. One per
+ * element kind reports [unreadableEnvelope] (the rule, the computation and the group families) and the rest answer
+ * with silence, which reads from any single call site as an inconsistency and is the convention this test exists to
+ * pin: the tier is a property of the ELEMENT, not of each member, so one reporter per element kind is the whole
+ * correct answer and the others staying quiet is what keeps a single defect from drawing several codes at one path.
  *
  * Without this, the convention lived only in whichever family a reader happened to open first. A count is
  * what states it, because it fails in both directions — a silent family that starts reporting, and the one
@@ -22,7 +22,7 @@ class UnreadableEnvelopeTest {
     /** Every envelope below is present and is a STRING, the shape A12's reader refuses outright. */
     private val source = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -42,25 +42,24 @@ class UnreadableEnvelopeTest {
         val expected = mapOf<String?, List<String>>(
             "/Catalog/BadRule" to listOf(CK_MODEL_NOT_BUILDABLE),
             "/Catalog/BadCalc" to listOf(CK_MODEL_NOT_BUILDABLE),
+            "/Catalog/BadGroup" to listOf(CK_MODEL_NOT_BUILDABLE),
         )
         assertEquals(
             expected,
             byPath,
-            "an unbindable envelope is one finding per declaration — six families read the same null and " +
-                "report nothing, so that a single defect does not arrive as six codes at one path",
+            "an unbindable envelope is one finding per declaration — the other families read the same null and " +
+                "report nothing, so that a single defect does not arrive as several codes at one path",
         )
     }
 
     /**
-     * A GROUP's unbindable envelope is reported by nobody, and that is the measured state rather than a
-     * decision: no family owns the group carrier at this tier. It is silence, which is the safe direction —
-     * the model is genuinely unloadable, so the omission understates rather than misreports — and the report
-     * says so through the same gap that covers every unjudged container member.
+     * A GROUP's `null` envelope is not unbindable: kernel 31.1.1 reads it as an empty group, as it reads a missing one
+     * ([KERNEL-FINDINGS KF3], `adapter.ElementBodyReadingDiffTest`), so it draws nothing from this tier.
      */
     @Test
-    fun aGroupsUnbindableEnvelopeIsNotYetReported() {
-        val report = checkRead(source)
-        assertEquals(emptyList(), report.findings.filter { it.at == "/Catalog/BadGroup" }.map { it.code })
+    fun aGroupsNullEnvelopeIsAnEmptyGroup() {
+        val withNull = ModelSource(source.json.replace(""""Group":"not an object"""", """"Group":null"""))
+        assertEquals(emptyList(), checkRead(withNull).findings.filter { it.at == "/Catalog/BadGroup" }.map { it.code })
     }
 
     /** The control: the same model with every envelope an object draws none of these findings. */
@@ -68,7 +67,7 @@ class UnreadableEnvelopeTest {
     fun aBindableEnvelopeDrawsNothingFromThisTier() {
         val sound = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},

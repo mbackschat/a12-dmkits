@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.adapter.KernelExpansionFixture
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -48,15 +49,9 @@ object CorpusModelPreparer {
      *  `TypeDefType` refs preserved; includes folded, imported typedefs embedded). */
     fun prepareKernelJson(rawJson: String, resolver: ModelResolver): String {
         val serializer = FACTORY.createDocumentModelSerializer()
-        val service = FACTORY.createDocumentModelService()
-        val model = serializer.deserialize(StringReader(rawJson))
-        // Inline kernel-resolver bridge (the core ReferenceResolvers.of bridge moved into :adapter behind the
-        // ConsistencyOracle port at kernel-decoupling stage 3; this preparer is in the .laws subpackage and
-        // just needs a one-off kernel resolver for expand).
-        service.expand(model) { ref ->
-            val json = resolver.resolve(ref) ?: throw IllegalStateException("unresolved reference: $ref")
-            serializer.deserialize(StringReader(json))
-        }
+        // The backend's own expansion port (KernelResolvers.expand, through the test fixture), so the corpus
+        // kernel legs expand exactly as production does.
+        val model = KernelExpansionFixture.expanded(rawJson, resolver)
         val sw = StringWriter()
         val errors = mutableListOf<RankedNotification>()
         serializer.serialize(model, sw) { n -> if (n.severity == Severity.ERROR) errors.add(n) }

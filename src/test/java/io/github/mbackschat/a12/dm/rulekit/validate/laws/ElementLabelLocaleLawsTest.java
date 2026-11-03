@@ -17,9 +17,9 @@ import io.github.mbackschat.a12.dm.Fixtures;
 /**
  * KERNEL-FINDINGS §8 — which locales a FIELD's or a GROUP's display label owes, if any.
  *
- * <p>[KF321] measured the same question for an enumeration's VALUE labels, where the law is "started and not
- * finished": once any value answers a DECLARED locale, every value owes every declared locale, and labels
- * written only for an undeclared locale are admitted. Our builder applies that law to element labels too, by
+ * <p>[KF321] measured the same question for an enumeration's VALUE labels on kernel 30.8.1, where the law was
+ * "started and not finished": once any value answered a DECLARED locale, every value owed every declared locale,
+ * and labels written only for an undeclared locale were admitted (31.1.1 refuses those, KF655). Our builder applies that law to element labels too, by
  * analogy and with the analogy written into its comment — which is the shape this project treats as a defect
  * until measured, because a refusal broader than its basis makes a legal model unauthorable AND unreadable.
  *

@@ -34,7 +34,7 @@ class ReportEvidenceAsymmetryTest {
     private static Path kernelInvalid(Path dir) throws Exception {
         Path model = dir.resolve("bad.json");
         Files.writeString(model, """
-                { "header": { "id": "bad", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "bad", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": [ { "code": "en_US" } ], "labels": [], "annotations": [], "modelReferences": [] },
                   "content": {
                     "modelInfo": { "name": "bad", "variant": "cockpit", "revision": "r", "immutable": false },

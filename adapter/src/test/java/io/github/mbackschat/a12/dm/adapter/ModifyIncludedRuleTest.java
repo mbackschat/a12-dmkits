@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,7 +52,6 @@ class ModifyIncludedRuleTest {
     private static DocumentModelDraft storefront() {
         return DocumentModelDraft.named("storefront").locale("en_US")
                 .typeDef("Sku", t -> t.string(s -> s.maxLength(12)))
-                .include("pricelist", "pricelist")
                 .rootGroup("Storefront", s -> s
                         .field("StoreName", FieldKind.STRING)
                         .typedefField("ProductSku", "Sku")
@@ -94,7 +94,7 @@ class ModifyIncludedRuleTest {
         // write-back (F8 #3) over an include model — replaceCondition re-binds with the resolver,
         // re-expands the include, and re-validates; a broken include would throw here
         BoundModel applied = model.replaceCondition(RULE, modified);
-        assertTrue(applied.toJson().contains("\"modelAlias\" : \"pricelist\""),
+        assertFalse(ModelDocument.read(applied.toJson()).mountsOfInclude("pricelist").isEmpty(),
                 "the include reference survives a modify that now also touches a typedef field");
         assertFalse(applied.toJson().contains("/Pricelist/ListPrice"),
                 "included content must not be inlined into the base on write-back");

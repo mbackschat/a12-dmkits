@@ -109,7 +109,8 @@ class MessageGroupEventAgreementTest {
             row("named-group-turning-point", "..$rootWord", reads = Reads.KEYWORD_NESTED)
 
             // The ten words are the complete localized message LexerTerminals bundle in kernel 30.8.1;
-            // the quoting-exempt set is GrammarOnly_ErrorTextParameterParser.nameWithoutDot.
+            // the quoting-exempt set is GrammarOnly_ErrorTextParameterParser.nameWithoutDot. Kernel 31.1.1 dropped
+            // `Vordruckname` from both (KERNEL-FINDINGS KF657); as a child segment it answers as any name does.
             val reserved = when (language) {
                 ConditionLanguage.EN -> listOf("RuleGroup", "For", "BaseYear")
                 ConditionLanguage.DE -> listOf("RegelKontext", "Fuer", "Referenzjahr")

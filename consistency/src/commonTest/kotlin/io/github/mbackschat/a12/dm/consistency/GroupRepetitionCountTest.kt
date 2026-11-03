@@ -21,7 +21,7 @@ class GroupRepetitionCountTest {
     private fun codes(root: String = "", nested: String = ""): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{$root"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -102,9 +102,9 @@ class GroupRepetitionCountTest {
         // Below the floor A12's reader refuses the source, so naming a class would claim a verdict it never
         // reached — the same honest report the ceiling's overflow row makes.
         expected["a nested group one below that floor"] = listOf(CK_MODEL_NOT_BUILDABLE)
-        // KF221 measures an explicit `null` drawing the class with the *greater than 0* wording, so it is
-        // the same defect as `0` and NOT the absent key, which simply means non-repeatable.
-        expected["an explicit null count"] = listOf(invalid, notPositive, invalid)
+        // An explicit `null` is NOT the absent key, which simply means non-repeatable: on kernel 31 the primitive
+        // `int` cannot hold it, so A12's reader leaves no model (KF221, corrected 2026-11-02).
+        expected["an explicit null count"] = listOf("CK_MODEL_NOT_BUILDABLE")
         // …and the text form is coerced by A12 and admitted, so a reader that refused it would diverge.
         expected["the count as TEXT, which A12 coerces"] = emptyList()
         assertEquals(expected, actual, "a group's repetition count against A12's floor")

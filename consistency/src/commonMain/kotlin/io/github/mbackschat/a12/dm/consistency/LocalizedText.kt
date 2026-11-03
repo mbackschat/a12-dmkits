@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonObject
  * and a scalar or an empty list yields nothing and binds an empty map. Each entry must be an object whose
  * `locale` and `text` are both JSON strings, the locale in a spelling A12's parser accepts; any other entry
  * refuses the source, and so does a `null` member. A refused source leaves no model, so the verdict is
- * [CK_MODEL_NOT_BUILDABLE] wherever the member sits, a declaration the default variant deletes included.
+ * [CK_MODEL_NOT_BUILDABLE] wherever the member sits.
  */
 
 /** The entries A12 reads from a localized-text [member]: a list's elements or an object's values. */
@@ -38,7 +38,7 @@ internal fun localizedTextRefusal(member: JsonElement?): String? {
         body.string("text") ?: return "holds an entry without a string `text`"
         // The empty code is the one A12 READS without producing a locale, so it binds and covers nothing.
         if (locale.isNotEmpty() && localeKeyOrNull(locale) == null) {
-            return "names `$locale`, a locale code A12's parser refuses"
+            return "names `$locale`, a locale code A12 cannot build a model with"
         }
     }
     return null

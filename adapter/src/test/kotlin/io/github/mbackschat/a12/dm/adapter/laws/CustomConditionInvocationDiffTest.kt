@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
@@ -45,12 +47,11 @@ class CustomConditionInvocationDiffTest {
         for (fires in listOf(false, true)) {
             val observed = mutableListOf<Pair<String, Map<String, String>>>()
             val callback = object : ICustomCondition {
-                override fun check(document: IDocument, relevant: Set<IEntityInstance>?,
-                    formallyIncorrect: Set<IEntityInstance>, errorEntity: IEntityInstance): Boolean {
+                override fun check(document: DocumentV2, relevant: Set<out DocumentMultiPointer>?,
+                    formallyIncorrect: Set<DocumentPointer>, errorEntity: PartiallyKnownDocumentMultiPointer): Boolean {
                     assertEquals(null, relevant)
-                    assertEquals(emptySet<IEntityInstance>(), formallyIncorrect)
-                    val fields = document.entityInstances.filterIsInstance<com.mgmtp.a12.kernel.md.document.api.IFieldInstance>()
-                        .mapNotNull { field -> field.value.orElse(null)?.let { kPointer(field) to it.toString() } }
+                    assertEquals(emptySet<DocumentPointer>(), formallyIncorrect)
+                    val fields = document.filledFields().map { (pointer, value) -> kPointer(pointer) to value.toString() }
                     assertEquals(9, fields.size)
                     observed += kPointer(errorEntity) to fields.toMap()
                     return fires
@@ -106,7 +107,13 @@ class CustomConditionInvocationDiffTest {
     private fun withRule(group: String, name: String, errorRel: String, code: String, condition: Condition): String =
         RuntimeLaws.withRule(base, group, name, errorRel, code, render(group, condition))
 
-    private fun kPointer(entity: IEntityInstance): String =
+    private fun kPointer(entity: DocumentPointer): String =
+        "${entity.path}@${entity.repetitions.joinToString(",")}"
+
+    private fun kPointer(entity: DocumentMultiPointer): String =
+        "${entity.path}@${entity.repetitions.joinToString(",")}"
+
+    private fun kPointer(entity: PartiallyKnownDocumentMultiPointer): String =
         "${entity.path}@${entity.repetitions.joinToString(",")}"
 
     private fun iPointer(pointer: CustomConditionFieldPointer): String =
@@ -132,10 +139,10 @@ class CustomConditionInvocationDiffTest {
         val expectedError = "$CHECK_ERROR@1,2,1"
         val kernelCondition = object : ICustomCondition {
             override fun check(
-                document: IDocument,
-                relevant: Set<IEntityInstance>?,
-                formallyIncorrect: Set<IEntityInstance>,
-                errorEntity: IEntityInstance,
+                document: DocumentV2,
+                relevant: Set<out DocumentMultiPointer>?,
+                formallyIncorrect: Set<DocumentPointer>,
+                errorEntity: PartiallyKnownDocumentMultiPointer,
             ): Boolean =
                 relevant == null &&
                     formallyIncorrect.mapTo(HashSet(), ::kPointer) == expectedFormal &&
@@ -184,10 +191,10 @@ class CustomConditionInvocationDiffTest {
         val expectedRelevant = setOf("$ROOT_ERROR@0,0")
         val kernelCondition = object : ICustomCondition {
             override fun check(
-                document: IDocument,
-                relevant: Set<IEntityInstance>?,
-                formallyIncorrect: Set<IEntityInstance>,
-                errorEntity: IEntityInstance,
+                document: DocumentV2,
+                relevant: Set<out DocumentMultiPointer>?,
+                formallyIncorrect: Set<DocumentPointer>,
+                errorEntity: PartiallyKnownDocumentMultiPointer,
             ): Boolean =
                 relevant?.mapTo(HashSet(), ::kPointer) == expectedRelevant &&
                     formallyIncorrect.isEmpty() &&
@@ -248,10 +255,10 @@ class CustomConditionInvocationDiffTest {
         )
         val kernelCondition = object : ICustomCondition {
             override fun check(
-                document: IDocument,
-                relevant: Set<IEntityInstance>?,
-                formallyIncorrect: Set<IEntityInstance>,
-                errorEntity: IEntityInstance,
+                document: DocumentV2,
+                relevant: Set<out DocumentMultiPointer>?,
+                formallyIncorrect: Set<DocumentPointer>,
+                errorEntity: PartiallyKnownDocumentMultiPointer,
             ): Boolean = true
         }
         val interpreterCondition = CustomCondition { _, _, _, _ -> true }

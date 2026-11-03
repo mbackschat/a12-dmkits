@@ -24,8 +24,6 @@ class FilterBodyComparisonTest {
             "[Claims/Cause] == [Claims/Urgent]" to "MVK_INVALID_COMPARE_TO_YESNO",
             "[Claims/Notes] < [Claims/Units]" to "MVK_INVALID_TYPE_FOR_COMPARISON",
             "\"a\" == 1" to "MVK_INVALID_COMPARE_TO_CONST",
-            "[Claims/Tier] == [Claims/Notes]" to "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "[Claims/Tier] == [Claims/TierConflict]" to "MVK_INVALID_COMPARE_ENUM_TO_ENUM",
             "[Claims/Units] DiffersWithToleranceRange1 True" to "MVK_INVALID_TYPE_FOR_TOLERANCE_OP",
             "[Claims/Units] == True" to "MVK_INCONSISTENT_TYPES_COMPARED",
             "[Claims/Units] == [Claims/Paid]" to "MVK_INVALID_COMPARE_DEC_PLACES",
@@ -49,7 +47,7 @@ class FilterBodyComparisonTest {
             // A nested filter is walked with the body and refused by the construct gate after it; an unstarred
             // nested operand is read once its own filter has cleared A12's one filter flag, as the rule's read.
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION",
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] > 5) > 0) > 0" to
@@ -67,11 +65,13 @@ class FilterBodyComparisonTest {
     @Test
     fun whereTheFilterChainRaisesAroundItsBody() {
         val rows = linkedMapOf(
-            "NumberOfFilledGroups(Claims* Having [Claims/Notes] < [Claims/Units]) > 0" to NO_GROUPS,
-            "NumberOfFilledGroups(Claims* Having [NoSuchField] == \"x\") > 0" to NO_GROUPS,
-            "NumberOfFilledGroups(Claims* Having [Claims/Units] + ) > 0" to NO_GROUPS,
-            "Sum(Claims*/Paid For Insured Having [Insured/Name] < [Insured/Count]) > 0" to NO_GROUPS,
-            "Sum(Claims*/Paid Having [Parties/Name] == \"x\") > 0" to "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+            "NumberOfFilledGroups(Claims* Having [Claims/Units] > 5) > 0" to NO_GROUPS,
+            "NumberOfFilledGroups(Claims* Having [Claims/Notes] < [Claims/Units]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
+            "NumberOfFilledGroups(Claims* Having [NoSuchField] == \"x\") > 0" to "MVK_INVALID_ENTITY",
+            "NumberOfFilledGroups(Claims* Having [Claims/Units] + ) > 0" to "MVK_UNEXPECTED_TOKEN",
+            "Sum(Claims*/Paid For Insured Having [Insured/Name] == \"x\") > 0" to NO_GROUPS,
+            "Sum(Claims*/Paid For Insured Having [Insured/Name] < [Insured/Count]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
+            "Sum(Claims*/Paid Having [Parties/Name] == \"x\") > 0" to "MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
             "Sum(Claims*/Paid Having [Parties/Name] < [Parties/Count]) > 0" to "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Claims*/Paid Having [Parties/Name] == [Parties/Count]) > 0" to "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING",
             "Sum(Claims*/Paid Having [Parties/Count] == [Claims/Paid]) > 0" to "MVK_INVALID_COMPARE_DEC_PLACES",
@@ -82,7 +82,7 @@ class FilterBodyComparisonTest {
             // A filter an index key owns is walked against the key, while the key is parsed and so ahead of
             // the key's own star class.
             "Sum(Orders*/Units For Parties*/Name Having [Orders/Note] == \"x\") > 0" to
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
             "Sum(Orders*/Units For Parties*/Name Having [Orders/Note] < [Orders/Units]) > 0" to
                 "MVK_INVALID_TYPE_FOR_COMPARISON",
             "Sum(Orders*/Units For Reference Having [Orders/Note] == \"x\") > 0" to "MVK_WILDCARDS_REQUIRED",
@@ -106,7 +106,7 @@ class FilterBodyComparisonTest {
             "Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > [\$Claims/Units]) > 0) > 0" to
                 "MVK_NO_WILDCARD",
             "Sum(Claims*/Paid Having [\$Reference] == \"x\" And Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0" to
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION",
         )
         assertEquals(fromTheRoot, fromTheRoot.keys.associateWith { classes(it) }, "a marked read, from the root")
 
@@ -114,12 +114,12 @@ class FilterBodyComparisonTest {
         val insideAClaim = linkedMapOf(
             "Sum(Parties*/Count Having [\$Claims/Notes] == \"x\") > 0" to "MVK_NO_ITERATION_FOR_WILDCARD",
             "Sum(Parties*/Count Having [Claims/Notes] == \"x\" And [\$Claims/Notes] == \"x\") > 0" to
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
             "Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note]) > 0" to "MVK_ERROR_FIELD_NO_INDEX",
             "Sum(Parties*/Count Having [Orders/Note] == \"y\" And [\$Orders/Note For \"A\"] == \"x\") > 0" to
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
             "Sum(Parties*/Count Having Sum(Parties*/Count Having [Parties/Name] == [\$Claims/Notes]) > 0) > 0" to
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION",
         )
         assertEquals(insideAClaim, insideAClaim.keys.associateWith { classes(it, "Claims/Notes") },
             "a marked read, from a rule iterating Claims")
@@ -136,7 +136,7 @@ class FilterBodyComparisonTest {
 
     /** The claims policy of the laws test. */
     private fun model(condition: String, target: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -149,14 +149,6 @@ class FilterBodyComparisonTest {
                 "NumberType":{"maxFractionalDigits":2}}}},
               {"type":"Field","id":"f5","name":"Cause","Field":{"fieldType":{"type":"EnumerationType",
                 "EnumerationType":{"values":[{"value":"FIRE"},{"value":"WATER"}]}}}},
-              {"type":"Field","id":"f6","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",
-                "EnumerationType":{"values":[
-                  {"value":"BASIC","label":[{"locale":"en_US","text":"Basic cover"}]},
-                  {"value":"PLUS","label":[{"locale":"en_US","text":"Plus cover"}]}]}}}},
-              {"type":"Field","id":"f7","name":"TierConflict","Field":{"fieldType":{"type":"EnumerationType",
-                "EnumerationType":{"values":[
-                  {"value":"BASIC","label":[{"locale":"en_US","text":"Budget cover"}]},
-                  {"value":"PLUS","label":[{"locale":"en_US","text":"Plus cover"}]}]}}}},
               {"type":"Field","id":"f8","name":"Urgent","Field":{"fieldType":{"type":"BooleanType"}}},
               {"type":"Field","id":"f9","name":"Settled","Field":{"fieldType":{"type":"ConfirmType"}}},
               {"type":"Field","id":"f10","name":"Reported","Field":{"fieldType":{"type":"DateType",

@@ -18,15 +18,12 @@ import org.junit.jupiter.api.Test
  * The deserializer loops over the member's entries and demands a `locale` and a `text`, each a JSON string, the
  * locale in a spelling its parser accepts, so a `null` text refuses the source, as does a number, a missing key or
  * an entry that is not an object. The member's own shape was the open question, since the descriptions bind
- * through `ElementDeserializer` and the rest through Jackson's property binding; it behaves alike on all twelve
- * carriers: a scalar, an empty list or an object of entries binds, and `null` refuses. Every row runs twice, the
- * second time with each element removed from the default variant, because the reader refuses before any filter.
+ * through `ElementDeserializer` and the rest through Jackson's property binding; it behaves alike on all eleven
+ * carriers: a scalar, an empty list or an object of entries binds, and `null` refuses.
  *
  * A12's column is asserted, not copied: every row builds the model, and the set of shapes that leave none is
  * pinned. Elsewhere a row may draw a class of its own (all three values labelled alike repeat a display value; a
  * rule or string type without a usable message lacks one), and the checker must name exactly that class.
- * `variantErrorMessages` binds each of its values the same way, so a single entry written as an object, whose
- * values are strings, is refused while an object OF entries binds.
  *
  * Own domain (an insurance policy with a status, a reference and a list of insured items).
  */
@@ -49,14 +46,10 @@ class CheckerLocalizedTextShapeAgreementTest {
     fun aLocalizedTextShapeTheReaderRefusesLeavesNoModel() {
         val actual = MEMBERS.flatMap { (member, locate) ->
             SHAPES.flatMap { (shape, value) ->
-                listOf(false, true).map { filtered ->
-                    val root = mapper.readTree(base) as ObjectNode
-                    val elements = Elements(root)
-                    locate(elements, value(JsonNodeFactory.instance))
-                    if (filtered) elements.removeEveryElementFromTheDefaultVariant()
-                    val json = root.toString()
-                    "$member · $shape${if (filtered) " · ONLY" else ""}" to (a12Verdict(json) to ourVerdict(json))
-                }
+                val root = mapper.readTree(base) as ObjectNode
+                locate(Elements(root), value(JsonNodeFactory.instance))
+                val json = root.toString()
+                listOf("$member · $shape" to (a12Verdict(json) to ourVerdict(json)))
             }
         }.toMap()
         assertEquals(actual.mapValues { (row, _) -> row.split(" · ")[1] in REFUSED },
@@ -90,13 +83,6 @@ class CheckerLocalizedTextShapeAgreementTest {
         fun group(name: String): ObjectNode = element(name).path("Group") as ObjectNode
         fun enumBody(): ObjectNode = field("Status").path("fieldType").path("EnumerationType") as ObjectNode
         fun rule(): ObjectNode = element("RefCheck").path("Rule") as ObjectNode
-
-        /** An `ONLY` filter on every element's body, which A12 applies only after its reader has run. */
-        fun removeEveryElementFromTheDefaultVariant() {
-            for (body in listOf(field("Ref"), field("Status"), group("Items"), rule())) {
-                body.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium")
-            }
-        }
     }
 
     private companion object {
@@ -156,7 +142,6 @@ class CheckerLocalizedTextShapeAgreementTest {
                     .putObject("fieldType").put("type", "StringType").putObject("StringType")
             },
             "a rule's error message" to { e, v -> e.rule().set<JsonNode>("errorMessage", v) },
-            "a rule's variant error message" to { e, v -> e.rule().withObject("/variantErrorMessages").set<JsonNode>("premium", v) },
             "a string type's error message" to { e, v ->
                 e.field("Ref").withObject("/fieldType/StringType").put("pattern", "[A-Z]+").set<JsonNode>("errorMessage", v)
             },

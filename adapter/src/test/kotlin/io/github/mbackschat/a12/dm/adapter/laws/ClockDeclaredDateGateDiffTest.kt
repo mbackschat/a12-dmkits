@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -174,36 +173,30 @@ class ClockDeclaredDateGateDiffTest {
     /**
      * **And the other half of that 2×2 names no model at all, which makes it a SCHEMA fact.**
      * `youngerThan1900Check` is a property of the **`DateType` declaration object**; the kernel's `TimeType` and
-     * `DateTimeType` carry `format` (and annotations) and nothing else — read from kernel source at 30.8.1, the
-     * primary oracle for a signature question. So "a TIME field declared `yyyy-MM-dd` with the guard set" is
-     * unrepresentable rather than refused.
+     * `DateTimeType` carry `format` (and annotations) and nothing else — read from kernel source, the primary oracle
+     * for a signature question. So "a TIME field declared `yyyy-MM-dd` with the guard set" is unrepresentable rather
+     * than refused.
      *
-     * Source reading leaves one link open, and this attacks it: would the DM-JSON path carry the key into a
-     * `TimeType` anyway, making it declarable-but-inert? It would not, and the refusal is one layer earlier than
-     * a consistency message — the kernel's own DESERIALIZER rejects the property, naming `TimeType` and the key
-     * in its reference chain. So the shape does not reach a gate that could be inert.
+     * Source reading leaves one link open, and this attacks it: does the DM-JSON path carry the key into a `TimeType`
+     * anyway, making it declarable-but-inert? On kernel 30.8.1 the deserializer refused the property. Kernel 31.1.1
+     * reads past a member a type does not declare ([KF654](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf654)),
+     * so the injected model is admitted and judged exactly as the model without the key, on all three engines: the
+     * key never reaches a gate.
      */
     @Test
-    fun theGuardIsNotDeclarableOnATimeField() {
+    fun aGuardInjectedIntoATimeFieldIsReadPast() {
         val timeOnly = DocumentModelDraft.named("guard-on-time").locale("en_US")
             .rootGroup("Voyage") { v -> v.timeField("BoardingClock") { it.format(CLOCK_FORMAT) } }
             .build().toJson()
-        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(timeOnly),
-            "the un-injected TIME model must be admitted, or the injection below proves nothing")
-
         val injected = timeOnly.replace(
             Regex("(\"TimeType\"\\s*:\\s*\\{)"), "$1\"youngerThan1900Check\":true,")
         assertFalse(injected == timeOnly, "the injection must have applied, or this measures nothing")
-        assertTrue(injected.contains("youngerThan1900Check"), "and must be present in the bytes")
 
-        // Asserted on the message CONTENT rather than on an exception class: the thrower is a kernel-internal
-        // deserialization detail, while "it names this property on this type" is the claim.
-        val refusal = assertThrows(Exception::class.java) { RuntimeLaws.consistencyMessages(injected) }
-        val reported = generateSequence<Throwable>(refusal) { it.cause }.mapNotNull { it.message }.joinToString(" | ")
-        assertTrue(reported.contains("youngerThan1900Check") && reported.contains("TimeType"),
-            "the kernel must not silently accept a DateType-only property inside a TimeType — if this ever "
-                + "stops naming both, the guard may have become declarable-but-inert on a TIME field and the "
-                + "schema claim above needs restating as a behavioural one. Got: $reported")
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(injected))
+        for (clock in listOf("10:00:00", "25:00:00")) {
+            val cell = "/Voyage/BoardingClock" to clock
+            assertEquals(triCodes(timeOnly, cell), triCodes(injected, cell), "the stored clock $clock")
+        }
     }
 
     // ---- the instruments ----

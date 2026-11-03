@@ -297,11 +297,10 @@ public final class StructuralKernelFix {
                             + "`--add-locale` and the per-value label top-ups in ONE `apply` so the single terminal "
                             + "gate sees a consistent model.",
                     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified "
-                            + "together\") is armed by the PRESENCE of a label entry for a declared locale, not by "
-                            + "coverage: once any value carries one, every value owes a nonblank text for every "
-                            + "declared locale. Labels written only for an UNDECLARED locale are accepted, and every "
-                            + "text blank is refused, so neither \"is the locale covered\" nor \"is any label there\" "
-                            + "describes it (measured 2026-09-13, KERNEL-FINDINGS KF321). A value that carries no "
+                            + "together\") is armed by the PRESENCE of a label entry, in any locale, not by coverage: a "
+                            + "value that carries one owes a nonblank text for every declared locale, so a label "
+                            + "written only for an UNDECLARED locale arms it too, and a blank text is refused "
+                            + "(KERNEL-FINDINGS KF321, KF655). A value that carries no "
                             + "`labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.")),
             Map.entry(KernelCode.MVK_INVALID_TIME_ZONE, new Hint(
                     "Set modelConfig.timeZone to a Java time-zone id, spelled exactly, or a GMT offset such as "
@@ -436,9 +435,9 @@ public final class StructuralKernelFix {
                             + "between same-component spellings, and a TRAILING one counts — `dd.MM.` with the closing dot IS "
                             + "admitted where `dd.MM` is not); DATERANGE the FORMAT "
                             + "AND SEPARATOR are allowlisted as a PAIR, "
-                            + "and exactly EIGHT are admitted — `dd.MM.yyyy`+`-`, `yyyy-MM-dd`+`/`, `yyyy`+`/`, "
-                            + "`yyyy-MM`+`/`, `MM`+`/`, `MM-dd`+`/`, `MM`+`` (the empty separator, which halves "
-                            + "the stored value), and `dd.MM`+`-`; swapping the separator is always refused "
+                            + "and exactly TWELVE pairs are admitted — `dd.MM.yyyy`+`-`, `dd.MM`+`-`, and `yyyy-MM-dd`, "
+                            + "`yyyy`, `yyyy-MM`, `MM`, `MM-dd` each with `/` or with the empty separator, which "
+                            + "kernel 31.1.1 reads as `/`; swapping the separator is always refused "
                             + "(`MM`+`-`, `dd.MM.yyyy`+`/`), no format takes `.`, `yyyyMM` is a legal DATE "
                             + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; and DATEFRAGMENT "
                             + "admits the same thirteen, measured as its own domain rather than inherited. The "
@@ -449,6 +448,40 @@ public final class StructuralKernelFix {
                             + "kind, so a cross-kind spelling is admitted. See `schema field add`.",
                     "The kernel validates a date/time field's declared format against a fixed allowed set (the same "
                             + "regardless of locale) and rejects anything else with a message but no MVK_ code."));
+        }
+        return missingReference(m);
+    }
+
+    /**
+     * Kernel 31.1.1 reads a model missing a required member and then fails to build it (KERNEL-FINDINGS KF654).
+     * Its words name at most a null Java variable, so the adapter appends the stored member it found absent
+     * ({@code KernelModelInput.namingAbsentMember}), and the corrective keys on that text, which is ours and
+     * reads the same on the JVM and the native image.
+     */
+    private static Optional<Hint> missingReference(String lowerCaseMessage) {
+        if (!lowerCaseMessage.startsWith("the kernel could not build this model:")) {
+            return Optional.empty();
+        }
+        String explain = "The kernel read the model but could not build it, because a required member is absent.";
+        if (lowerCaseMessage.contains("(missing required errorentityrelpath on element")) {
+            return Optional.of(new Hint("A rule names no error field: give it `errorEntityRelPath`, the path of the "
+                    + "field or group its error attaches to, relative to the rule's group.", explain));
+        }
+        if (lowerCaseMessage.contains("(missing required errorcode on element")) {
+            return Optional.of(new Hint("A rule has no `errorCode`: give it the code its error is reported under.",
+                    explain));
+        }
+        if (lowerCaseMessage.contains("(missing required computedfieldrelpath on element")) {
+            return Optional.of(new Hint("A computation names no computed field: give it `computedFieldRelPath`, the "
+                    + "path of the field it writes, relative to the computation's group.", explain));
+        }
+        if (lowerCaseMessage.contains("(missing required sortfields[].name on element")) {
+            return Optional.of(new Hint("A group's `sortFields` entry names no field: give every entry a `name`, a "
+                    + "field of that group, or remove the entry.", explain));
+        }
+        if (lowerCaseMessage.contains("(missing required id on the header)")) {
+            return Optional.of(new Hint("The model's header has no `id`: give `header.id` the model's identifier.",
+                    explain));
         }
         return Optional.empty();
     }

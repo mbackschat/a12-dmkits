@@ -156,7 +156,7 @@ class IndexFieldBaseTypeLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("marked, into the keyed Invoices", "MVK_ERROR_FIELD_NO_INDEX");
         expected.put("marked, into the unkeyed filtered group", "MVK_NO_WILDCARD");
-        expected.put("unmarked, into the keyed Invoices", "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+        expected.put("unmarked, into the keyed Invoices", "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
         expected.put("marked, into the fixed Summary", KernelLaws.ADMITTED);
         expected.put("a filter on its own group — control", KernelLaws.ADMITTED);
         expected.put("the keyed read, outside any filter", "MVK_ERROR_FIELD_NO_INDEX");

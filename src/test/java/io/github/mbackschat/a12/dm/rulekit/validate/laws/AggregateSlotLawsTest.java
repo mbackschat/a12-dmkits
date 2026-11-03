@@ -94,7 +94,7 @@ class AggregateSlotLawsTest {
         expected.put("a leaf naming the iterated level", KernelLaws.ADMITTED);
         expected.put("a bare CustomCondition", "MVK_NO_ITERATION_FOR_WILDCARD");
         expected.put("the iterated level AND a CustomCondition",
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
         expected.put("a STARRED operand", "MVK_NO_WILDCARDS_ALLOWED");
         expected.put("an OUTER field and nothing iterated", "MVK_NO_ITERATION_FOR_WILDCARD");
         // The two rows the single-code spelling could not hold: BOTH other gates pre-empt the construct gate,

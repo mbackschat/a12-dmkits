@@ -32,7 +32,7 @@ class CheckCellKeyTest {
     ): PreparedModel {
         val source = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"keys","locales":$locales},
+            {"header":{"modelVersion":"29.4.0","id":"keys","locales":$locales},
              "content":{$modelConfig$modelInfo$typeDefinitions
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -160,7 +160,7 @@ class CheckCellKeyTest {
         // members are free, and the cell key carries only the path.
         fun model(kind: String) = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"kinds","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"kinds","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -202,11 +202,16 @@ class CheckCellKeyTest {
         )
     }
 
+    /**
+     * Of two declarations at one path, A12's converter keeps the first and leaves the later one out (KF652), so the
+     * later one is scheduled for no cell and its verdict never reaches the report. Each twin carries a defect of a
+     * DIFFERENT family, so the report shows which one was judged.
+     */
     @Test
-    fun twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport() {
+    fun theLaterOfTwoDeclarationsAtOnePathGetsNoCellAndOnlyTheFirstIsJudged() {
         val source = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"twins","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"twins","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -224,30 +229,14 @@ class CheckCellKeyTest {
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
         val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
 
-        // The key's ORDINAL half, which the row above does not reach: a path is not unique, so a
-        // per-declaration key made of the path alone would collide — and the dispatcher keys its cells in a
-        // MAP, so a collision does not merely lose reuse, it drops one of the two declarations from the
-        // report entirely. Two cells at the twinned path is the precondition; the codes below are the
-        // consequence a reader cares about.
         val atTwin = schedule(tracked)
             .filter { it.key.producer is CheckProducer.PerDeclaration && it.key.at?.path == TWIN }
-            .groupBy { it.key.producer }
         assertTrue(atTwin.isNotEmpty(), "no family is keyed per declaration, so this row is vacuous")
-        assertEquals(
-            emptyList(),
-            atTwin.filterValues { cells -> cells.map { it.key }.toSet().size != 2 }
-                .map { (_, cells) -> cells.first().key.producer.completes },
-            "two declarations at one path must key two distinct cells for each per-declaration family",
-        )
+        assertEquals(setOf<Int?>(0), atTwin.mapTo(mutableSetOf()) { it.key.at?.amongSamePath }, "only the first twin is scheduled")
 
-        // Each twin carries a defect of a DIFFERENT family, so the pair cannot pass by reporting one
-        // declaration twice: a collapsed key would drop whichever code the surviving cell does not make.
         val reported = checkRead(source).findings.filter { it.at == TWIN }.map { it.code }.toSet()
-        assertEquals(
-            emptyList(),
-            listOf("MVK_INCOMPLETE_INPUT", "MVK_UNEXPECTED_TOKEN").filterNot { it in reported },
-            "both twins' condition verdicts must reach the report, which carried $reported",
-        )
+        assertEquals(setOf("MVK_INCOMPLETE_INPUT", RK_CHILD_NAME_DUPLICATE), reported,
+            "the first twin's verdict and the converter's sentence about the second")
     }
 
     @Test

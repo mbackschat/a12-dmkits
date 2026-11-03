@@ -431,7 +431,9 @@ public final class ModelIndex {
             return Optional.empty();
         }
         JsonNode bound = number.path(key);
-        if (bound.isMissingNode() || bound.isNull()) {
+        // An empty text is no bound: kernel 31.1.1's expand copy omits it, so A12 checks the model without one
+        // (KERNEL-FINDINGS KF658, adapter.laws.CheckerEmptyMemberAgreementTest).
+        if (bound.isMissingNode() || bound.isNull() || bound.isTextual() && bound.asText().isEmpty()) {
             return Optional.empty();
         }
         // The kernel returns the bound at the AUTHORED literal's exact scale (it keeps the literal verbatim, not

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputReasonCode
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import com.mgmtp.a12.kernel.md.document.api.services.DocumentSerializationException
 import com.mgmtp.a12.kernel.md.serializer.document.internal.service.serialization.DocumentJsonAndXmlDeserializationInfoImpl
@@ -58,12 +59,14 @@ class A12JsonIngressDiffTest {
         val expected = """{"Parcel":{"Sibling":"kept"}}"""
         val entries = listOf(
             "known-group-scalar" to "\"Lines\":7", "known-group-null" to "\"Lines\":null",
-            "known-group-empty-array" to "\"Lines\":[]", "known-group-null-array" to "\"Lines\":[null]",
+            "known-group-empty-array" to "\"Lines\":[]",
             "known-field-object" to "\"Amount\":{}", "known-field-empty-array" to "\"Amount\":[]",
-            "known-field-null-array" to "\"Amount\":[null]", "known-field-object-array" to "\"Amount\":[{}]",
+            "known-field-object-array" to "\"Amount\":[{}]",
             "unknown-scalar" to "\"Unexpected\":7", "unknown-object" to "\"Unexpected\":{}",
-            "unknown-empty-array" to "\"Unexpected\":[]", "unknown-null-array" to "\"Unexpected\":[null]",
-            "unknown-object-array" to "\"Unexpected\":[{}]",
+            "unknown-empty-array" to "\"Unexpected\":[]", "unknown-object-array" to "\"Unexpected\":[{}]",
+            // An object the model does not read as a group is never walked, so an array inside it is not checked.
+            "unknown-object-array-holding-null" to "\"Unexpected\":[{\"Tiers\":[null]}]",
+            "known-field-object-holding-null" to "\"Amount\":{\"Tiers\":[null]}",
         )
         assertEquals(entries.size, entries.map { it.first }.distinct().size)
         for ((label, entry) in entries) {
@@ -71,10 +74,23 @@ class A12JsonIngressDiffTest {
             assertEquals(expected, RuntimeLaws.jsonIngress(json, input).rewritten(), "$label kernel")
             assertEquals(expected, documents.encodeDocument(documents.readDocument(input)), "$label interpreter")
         }
-        for (value in listOf("{}", "[]", "\"P-1\"", "7")) {
+        // Kernel 31.1.1: an array member of an object A12 reads as a group holds only objects, whatever the model
+        // says the member is; 30.8.1 dropped the stray element (KERNEL-FINDINGS KF664).
+        val refusing = listOf(
+            "\"Lines\":[null]", "\"Lines\":[{\"Note\":\"a\"},null]", "\"Lines\":[7]", "\"Lines\":[\"x\"]",
+            "\"Lines\":[[]]", "\"Amount\":[null]", "\"Sibling\":[null]", "\"Unexpected\":[null]",
+            "\"Lines\":[{\"Note\":[null]}]",
+        ).map { """{"Parcel":{"Sibling":"kept",$it}}""" } + """{"id":[null],"Parcel":{"Sibling":"kept"}}"""
+        for (input in refusing) {
+            assertThrows(DocumentSerializationException::class.java, { RuntimeLaws.jsonIngress(json, input) }, input)
+            assertEquals(DocumentInputReasonCode.MALFORMED_JSON,
+                assertThrows(DocumentInputError::class.java, { documents.readDocument(input) }, input)
+                    .diagnostics.single().reasonCode, input)
+        }
+        for (value in listOf("{}", "[]", "[{}]", "\"P-1\"", "7")) {
             val input = """{"id":$value,"Parcel":{"Sibling":"kept"}}"""
             val output = when (value) {
-                "{}", "[]" -> expected
+                "{}", "[]", "[{}]" -> expected
                 "7" -> """{"id":"7","Parcel":{"Sibling":"kept"}}"""
                 else -> """{"id":"P-1","Parcel":{"Sibling":"kept"}}"""
             }

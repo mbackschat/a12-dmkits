@@ -26,6 +26,12 @@ import java.util.TimeZone
  * that does not: `31.03.2024T02:30:00` names a wall time Europe/Berlin skips entirely — the 2024 transition
  * moves 02:00 straight to 03:00 — while under a UTC default the same text is an ordinary instant.
  *
+ * **Kernel 31.1.1 split the two halves (KERNEL-FINDINGS KF665).** The static verdict on the gap label still
+ * follows the JVM default, but the runtime now resolves a gap wall time forward by the gap, so the gap label
+ * computes `03:30`. The label with no instant at runtime is now the Julian leap day `29.02.1500T10:00:00`: its
+ * calendar fallback is refused under Europe/Berlin and admitted under UTC, so a UTC default admits the model and
+ * the declared zone then fails the constant on every row.
+ *
  * **Why this test moves a JVM global, and why that is safe here.** The static half's claim is precisely that the
  * verdict depends on `TimeZone.getDefault()`, so it cannot be measured without varying it; `:adapter` disables
  * JUnit parallelism inside every fork (`junit.jupiter.execution.parallel.enabled=false`), so nothing else runs
@@ -55,6 +61,10 @@ class DateTimeConstantZoneSplitDiffTest {
 
         /** A wall time Europe/Berlin has no instant for: 2024-03-31 goes 02:00 → 03:00. */
         const val GAP_LABEL = "31.03.2024T02:30:00"
+
+        /** A label Europe/Berlin cannot read at runtime: 1500 has no February 29 in the proleptic calendar, and the
+         *  zone refuses the Julian fallback that UTC accepts (KERNEL-FINDINGS KF665). */
+        const val JULIAN_LABEL = "29.02.1500T10:00:00"
 
         /** The control label — an ordinary instant in every zone under test. */
         const val ORDINARY_LABEL = "05.03.2024T12:30:00"
@@ -104,6 +114,7 @@ class DateTimeConstantZoneSplitDiffTest {
 
     private val gapModel = modelFor(GAP_LABEL)
     private val ordinaryModel = modelFor(ORDINARY_LABEL)
+    private val julianModel = modelFor(JULIAN_LABEL)
 
     /**
      * The declared zone is the fact both halves rest on, so it is read out of the model bytes rather than
@@ -112,7 +123,7 @@ class DateTimeConstantZoneSplitDiffTest {
      */
     @Test
     fun bothModelsDeclareTheBerlinZoneTheClaimIsAbout() {
-        for ((label, json) in listOf("gap" to gapModel, "ordinary" to ordinaryModel)) {
+        for ((label, json) in listOf("gap" to gapModel, "ordinary" to ordinaryModel, "julian" to julianModel)) {
             assertTrue(Regex("\"timeZone\"\\s*:\\s*\"Europe/Berlin\"").containsMatchIn(json),
                 "$label model must declare Europe/Berlin, or neither half of this file measures a zone split")
         }
@@ -141,8 +152,8 @@ class DateTimeConstantZoneSplitDiffTest {
 
     /**
      * Under the admitting JVM default the model loads, and the runtime then applies the DECLARED zone: the
-     * ordinary label computes its instant per row while the gap label produces no computed outcome at all and
-     * one addressed formal operand error per instantiated row.
+     * ordinary label computes its instant per row, the gap label the wall time one gap later, and the Julian label
+     * produces no computed outcome at all and one addressed formal operand error per instantiated row.
      */
     @Test
     fun underAnAdmittingJvmDefaultTheRuntimeStillJudgesTheLabelAgainstTheDeclaredZone() = underDefault(UTC) {
@@ -156,24 +167,34 @@ class DateTimeConstantZoneSplitDiffTest {
             "the control must carry no operand finding, or the gap row's finding says nothing")
 
         val gap = RuntimeLaws.computeWithFormalErrors(gapModel, document(gapModel))
-        assertEquals(emptyMap<String, String>(), gap.outcomes().associate { it.pointer() to signature(it) },
+        assertEquals(
+            (1..ROWS).associate { row -> pointer(row) to "VALUE|2024-03-31T03:30:00" },
+            gap.outcomes().associate { it.pointer() to signature(it) },
+            "the gap label resolves forward by the gap, once per row",
+        )
+        assertEquals(emptyList<String>(), gap.formalErrorsInOperands().map { "${it.code()}@${it.field()}" },
+            "and carries no operand finding")
+
+        val julian = RuntimeLaws.computeWithFormalErrors(julianModel, document(julianModel))
+        assertEquals(emptyMap<String, String>(), julian.outcomes().associate { it.pointer() to signature(it) },
             "an unresolvable wall label yields NO computed outcome — not a cleared one and not an errored one")
         assertEquals(
             (1..ROWS).map { row -> "berechnungsWertFehler@${pointer(row)}|VALUE_ERROR" },
-            gap.formalErrorsInOperands().map { "${it.code()}@${it.field()}|${it.type().name}" }.sorted(),
+            julian.formalErrorsInOperands().map { "${it.code()}@${it.field()}|${it.type().name}" }.sorted(),
             "the refusal rides the operand-error channel, addressed per in-capacity row",
         )
     }
 
     /**
-     * Both kernel strategies agree on both labels, and the interpreter agrees on the RESOLVABLE one — which is
+     * Both kernel strategies agree on every label, and the interpreter agrees on the RESOLVABLE ones — which is
      * the half the literal-typing fix bought: before it, the interpreter stored the German text raw and flagged
      * every constant errored, whatever the zone (`adapter.laws.DateConstantTargetPolicyDiffTest` records the
-     * same defect on the DATE carrier).
+     * same defect on the DATE carrier). The unresolvable label's outcome channel differs by the compute-granularity
+     * projection, compared on a seeded target below.
      */
     @Test
-    fun bothKernelStrategiesAgreeAndTheInterpreterMatchesTheResolvableLabel() = underDefault(UTC) {
-        for ((label, model) in listOf("ordinary" to ordinaryModel, "gap" to gapModel)) {
+    fun bothKernelStrategiesAgreeAndTheInterpreterMatchesTheResolvableLabels() = underDefault(UTC) {
+        for ((label, model) in listOf("ordinary" to ordinaryModel, "gap" to gapModel, "julian" to julianModel)) {
             val groovy = outcomes(model)
             val engine = RuntimeLaws.kernelJavaEngine(model)
             val static = engine.compute(engine.instance(document(model)))
@@ -182,6 +203,8 @@ class DateTimeConstantZoneSplitDiffTest {
         }
         assertEquals(interpreterOutcomes(ordinaryModel), outcomes(ordinaryModel),
             "ordinary label — interpreter vs normative dynamic-Groovy")
+        assertEquals(interpreterOutcomes(gapModel), outcomes(gapModel),
+            "gap label — interpreter vs normative dynamic-Groovy")
     }
 
     /**
@@ -202,19 +225,19 @@ class DateTimeConstantZoneSplitDiffTest {
      */
     @Test
     fun theUnresolvableLabelIsANoValueOperandErrorOnBothEstates() = underDefault(UTC) {
-        val kernel = RuntimeLaws.computeWithFormalErrors(gapModel, document(gapModel))
+        val kernel = RuntimeLaws.computeWithFormalErrors(julianModel, document(julianModel))
         assertEquals(emptyMap<String, String>(), kernel.outcomes().associate { it.pointer() to signature(it) },
             "the kernel gives an unresolvable wall label no computed outcome at all")
 
         val expected = (1..ROWS).map { row -> "$COMPUTED_VALUE_ERROR@${pointer(row)}" }
         assertEquals(expected, kernel.formalErrorsInOperands().map { "${it.code()}@${it.field()}" }.sorted(),
             "the kernel's own operand channel, addressed per in-capacity row")
-        assertEquals(expected, interpreterOperandSignatures(gapModel, FRESH_DOC),
+        assertEquals(expected, interpreterOperandSignatures(julianModel, FRESH_DOC),
             "the whole of IG147: our PUBLIC report must name the same code at the same cells")
 
         assertEquals(
             (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
-            interpreterResults(gapModel, FRESH_DOC),
+            interpreterResults(julianModel, FRESH_DOC),
             "report-all keeps one no-value outcome per instance — never a stored attempt",
         )
     }
@@ -227,7 +250,7 @@ class DateTimeConstantZoneSplitDiffTest {
      */
     @Test
     fun aSeededTargetIsClearedByBothEstatesForAnUnresolvableLabel() = underDefault(UTC) {
-        val kernel = RuntimeLaws.computeWithFormalErrors(gapModel, seededDocument())
+        val kernel = RuntimeLaws.computeWithFormalErrors(julianModel, seededDocument())
         assertEquals(
             (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
             kernel.outcomes().associate { it.pointer() to signature(it) },
@@ -235,13 +258,13 @@ class DateTimeConstantZoneSplitDiffTest {
         )
         assertEquals(
             (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
-            interpreterResults(gapModel, SEEDED_DOC),
+            interpreterResults(julianModel, SEEDED_DOC),
             "interpreter vs dynamic-Groovy on the outcome channel, unprojected",
         )
     }
 
-    /** The RESOLVABLE label on the same seeded document — the control proving the clear above is the gap label's
-     *  doing and not something the seed causes on its own. */
+    /** The RESOLVABLE label on the same seeded document — the control proving the clear above is the Julian
+     *  label's doing and not something the seed causes on its own. */
     @Test
     fun aSeededTargetKeepsItsComputedValueForTheResolvableLabel() = underDefault(UTC) {
         assertEquals(

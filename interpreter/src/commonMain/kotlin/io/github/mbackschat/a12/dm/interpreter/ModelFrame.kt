@@ -90,7 +90,8 @@ private fun nonNull(name: String, bind: Bind, members: List<FrameMember> = empty
  * The frame, from the measured grid. The members other readers own are left out: a locale entry
  * ([declaredLocaleCodes]), a type definition, an element, and the base year and three `boolean`s
  * ([unbindableModelMember]). A `null` time zone A12 refuses as well, and the time-zone reader owns it, refusing it with
- * `InvalidModelTimeZoneException` as it refuses an empty or blank one (`ModelTimeZoneTest`).
+ * `InvalidModelTimeZoneException` as it refuses a blank one, while an empty one is the absent UTC default on kernel
+ * 31.1.1 (`ModelTimeZoneTest`, KERNEL-FINDINGS KF658).
  */
 private val FRAME = listOf(
     FrameMember("header", Bind.OBJECT, required = true, nullable = false, members = listOf(

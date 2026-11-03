@@ -32,18 +32,19 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 /**
  * What A12's check of a field type's OWN message asks beyond its characters, and which messages it reaches.
  *
- * <p>{@code FieldErrortextChecker} (source-read, kernel {@code 30.8.1}) asks, in order and stopping at the first
- * that fails: whether UTF-16 encodes the text, the two character gates of {@link ErrorTextCharacterGateLawsTest},
- * an odd {@code $} count, and that every part between two {@code $} is {@code field} or {@code field.value}
- * ({@code Feld}, {@code Feld.Wert} in a German condition language). {@code FieldUtils.getErrorText} hands it a
- * String type's and an Enumeration type's {@code errorMessage}, one declared locale at a time. Each row here
- * puts one of those claims to the Kernel, and they held: the gates answer in that order, the parameter names
- * follow the CONDITION language rather than the message's locale, the locales are asked in their declared order
- * and the first that fails is the only one reported, a String message is judged with or without a pattern, and
- * neither a required field's message nor a text for an undeclared locale is reached. The parts between two
- * {@code $} are Java's {@code split}, so an empty pair at the very end names no parameter; the later of two
- * entries for one locale is the one examined; and a field whose path A12's alphabet refuses, its own name's or an
- * enclosing group's, is never reached at all ({@code NoMetaModelChecks.checkEntity} returns before it).
+ * <p>{@code NoMetaModelChecks.checkFieldErrorText} (source-read, kernel {@code 31.1.1} at {@code eec9134}) hands
+ * a String type's and an Enumeration type's {@code errorMessage} to {@code FehlertextUtil}, one declared locale at
+ * a time, which asks in order and stopping at the first that fails: the three character gates of
+ * {@link ErrorTextCharacterGateLawsTest} (line break, encoding, {@code \p{C}}), an odd {@code $} count, and that
+ * every non-empty part between two {@code $} is {@code field} or {@code field.value} ({@code Feld},
+ * {@code Feld.Wert} in a German condition language). Each row here puts one of those claims to the Kernel, and
+ * they held: the parameter names follow the CONDITION language rather than the message's locale, every declared
+ * locale's finding is reported in declared order, an empty {@code $$} pair is skipped wherever it stands, a
+ * String message is judged with or without a pattern, and neither a required field's message nor a text for an
+ * undeclared locale is reached. The later of two entries for one locale is the one examined, and a field whose
+ * path A12's alphabet refuses, its own name's or an enclosing group's, is never reached at all
+ * ({@code NoMetaModelChecks.checkEntity} returns before it). On {@code 30.8.1} only the first failing locale was
+ * reported and an empty pair named a parameter unless it ended the text (KERNEL-FINDINGS KF657).
  *
  * <p>Own domain (insurance claims).
  */
@@ -96,7 +97,7 @@ class FieldTypeMessageTextLawsTest {
         expected.put("an odd dollar count", "WRONG_NUMBER_OF_DOLLARS");
         expected.put("$Field$, the wrong case", "INVALID_PARAMETER");
         expected.put("the field's own name", "INVALID_PARAMETER");
-        expected.put("an empty pair", "INVALID_PARAMETER");
+        expected.put("an empty pair", KernelLaws.ADMITTED);
         expected.put("the German spelling in an English model", "INVALID_PARAMETER");
         expected.put("a non-ASCII letter in the name", "INVALID_PARAMETER");
         expected.put("a tab beside an odd dollar count", "INVALID_CHARACTERS");
@@ -130,24 +131,19 @@ class FieldTypeMessageTextLawsTest {
         actual.put("a tab in an undeclared locale's message", inAnUndeclaredLocale("a\tb"));
         actual.put("an empty pattern message", edited(patterned(f -> f.pattern("[A-Z]+", "capitals only"), "en_US"),
                 fieldType -> ((ObjectNode) fieldType.path("StringType").path("errorMessage").get(0)).put("text", "")));
-        actual.put("a tab on a field an ONLY filter deletes", editedCode(
-                patterned(f -> f.pattern("[A-Z]+", "a\tb"), "en_US"),
-                field -> field.putObject("variantFilter").put("filterType", "ONLY")));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("both locales defective", "INVALID_CHARACTERS");
+        expected.put("both locales defective", "INVALID_CHARACTERS,INVALID_LINEBREAK");
         expected.put("the second locale alone defective", "INVALID_CHARACTERS");
         expected.put("the enum's invalid-value message, a tab", "INVALID_CHARACTERS");
         expected.put("the enum's invalid-value message, a wrong name", "INVALID_PARAMETER");
         expected.put("the enum's invalid-value message, $field$", KernelLaws.ADMITTED);
         expected.put("a required field's message, a tab", KernelLaws.ADMITTED);
-        expected.put("both locales defective, declared the other way round", "INVALID_LINEBREAK");
+        expected.put("both locales defective, declared the other way round", "INVALID_LINEBREAK,INVALID_CHARACTERS");
         expected.put("a message with no pattern, a tab", "INVALID_CHARACTERS,MVK_ERROR_MESSAGE_AND_NO_PATTERN");
         expected.put("a tab in an undeclared locale's message", KernelLaws.ADMITTED);
         // An empty text is not a message at all: A12 names the pattern-message pairing, not a character gate.
         expected.put("an empty pattern message", "MVK_ERROR_MESSAGE_AND_PATTERN_INVALID");
-        // The filter deletes the field before A12's element walk reaches it ([KF305]), so its message is never asked.
-        expected.put("a tab on a field an ONLY filter deletes", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which field messages the checker reaches");
     }
 
@@ -188,8 +184,8 @@ class FieldTypeMessageTextLawsTest {
                 .pattern("[A-Z]+", "a\tb").patternMessage("de_DE", "a\nb"), "en_US", "de_DE"), FieldTypeMessageTextLawsTest::reversed));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("de_DE declared first, the en_US entry written first", "INVALID_LINEBREAK");
-        expected.put("en_US declared first, the de_DE entry written first", "INVALID_CHARACTERS");
+        expected.put("de_DE declared first, the en_US entry written first", "INVALID_LINEBREAK,INVALID_CHARACTERS");
+        expected.put("en_US declared first, the de_DE entry written first", "INVALID_CHARACTERS,INVALID_LINEBREAK");
         assertEquals(expected, actual, "which order the locales are asked in");
     }
 
@@ -218,7 +214,7 @@ class FieldTypeMessageTextLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an empty pair at the end", KernelLaws.ADMITTED);
         expected.put("an empty pair alone", KernelLaws.ADMITTED);
-        expected.put("an empty pair at the start", "INVALID_PARAMETER");
+        expected.put("an empty pair at the start", KernelLaws.ADMITTED);
         expected.put("two parameters back to back", KernelLaws.ADMITTED);
         expected.put("a lone low surrogate", "WRONG_ENCODING");
         // The later entry for one locale replaces the earlier, so only the second row's tab is examined.

@@ -36,7 +36,7 @@ class ComputationPreconditionLanguageFeatureLawsTest {
 
     private static final String PROHIBITED = "MVK_ERROR_INVALID_LANGUAGE_FEATURE";
 
-    private static final String IN_A_FILTER = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION";
+    private static final String IN_A_FILTER = "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION";
 
     @Test
     void whichPredicatesAComputationPreconditionMayNotUse() {
@@ -73,7 +73,7 @@ class ComputationPreconditionLanguageFeatureLawsTest {
 
     /**
      * Inside a filter body neither predicate reaches the calculation module: the filter's own gate answers
-     * with {@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}, on a rule, a precondition and an operation
+     * with {@code MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION}, on a rule, a precondition and an operation
      * alike, so a checker reading the whole precondition for the two keywords would name the wrong class there.
      * The body naming the filtered level is the control that the filter is otherwise admitted on each carrier.
      */

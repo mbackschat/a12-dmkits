@@ -10,6 +10,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -73,7 +74,6 @@ class ExtractAsIncludeProbeTest {
     /** The base model that mounts {@code shipping} and adds a rule reaching into the mount. */
     private static BoundModel composed() {
         BoundModel base = BoundModel.ofJson(DocumentModelDraft.named("order").locale("en_US")
-                .include("shipping", "shipping")
                 .rootGroup("Order", o -> o
                         .field("OrderDate", FieldKind.DATE)
                         .mount("Shipping", "shipping"))
@@ -100,7 +100,7 @@ class ExtractAsIncludeProbeTest {
                 () -> "the parent rule must resolve as a referrer of the included field, got: " + usingPostal);
 
         // separation: the sub-model is never inlined into the base on write-back.
-        assertTrue(composed.toJson().contains("\"modelAlias\" : \"shipping\""),
+        assertFalse(ModelDocument.read(composed.toJson()).mountsOfInclude("shipping").isEmpty(),
                 "the include mount must survive");
         assertFalse(composed.toJson().contains("/Shipping/Country"),
                 "included content must stay in the sub-model, not be inlined into the base");

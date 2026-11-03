@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +73,6 @@ public final class DocumentModelDraft {
 
     private final String id;
     private final List<String> locales;
-    private final List<Include> includes;
     private final List<TypeDefDecl> typeDefs;
     private final List<ElementDraft.Group> rootGroups;
     private final Integer baseYear;
@@ -90,7 +90,6 @@ public final class DocumentModelDraft {
     private DocumentModelDraft(Builder b) {
         this.id = b.id;
         this.locales = List.copyOf(b.locales);
-        this.includes = List.copyOf(b.includes);
         this.typeDefs = List.copyOf(b.typeDefs);
         this.rootGroups = List.copyOf(b.rootGroups);
         this.baseYear = b.baseYear;
@@ -105,8 +104,6 @@ public final class DocumentModelDraft {
     private record TypeDefDecl(String id, FieldTypeSpec type, List<ElementDraft.Annotation> annotations,
             Map<String, String> internalDescription, Map<String, String> externalDescription) {}
 
-    /** A header include: {@code alias} (used by mount groups) → {@code reference} (the included model id). */
-    private record Include(String alias, String reference) {}
 
     /** Start a draft for the model with this id (also its info name). */
     public static Builder named(String id) {
@@ -145,19 +142,18 @@ public final class DocumentModelDraft {
         labels.forEach((loc, text) -> labelArr.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
         ArrayNode annoArr = header.putArray(DmKeys.ANNOTATIONS);
         annotations.forEach(a -> annoArr.addObject().put(DmKeys.NAME, a.name()).put(DmKeys.VALUE, a.value()));
-        checkMountReferences();
         ArrayNode refs = header.putArray(DmKeys.MODEL_REFERENCES);
-        for (Include inc : includes) {
+        // A12 resolves a mount by its includeConfig alone and ignores these entries (KF651), but A12 Tools and the
+        // kernel migrator write one per distinct mounted model, without alias, so the draft writes that shape.
+        for (String reference : mountedReferences()) {
             refs.addObject()
-                    .put(DmKeys.ALIAS, inc.alias())
                     .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
                     .put(DmKeys.PURPOSE, "include")
-                    .put(DmKeys.REFERENCE, inc.reference());
+                    .put(DmKeys.REFERENCE, reference);
         }
         for (String importRef : typeDefImports) {
             // a type-def import: purpose "typeDefinitions" (kernel PURPOSE_4_ONLY_TYPE_DEFS) — merged by id, not mounted
             refs.addObject()
-                    .put(DmKeys.ALIAS, importRef)
                     .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
                     .put(DmKeys.PURPOSE, "typeDefinitions")
                     .put(DmKeys.REFERENCE, importRef);
@@ -273,7 +269,7 @@ public final class DocumentModelDraft {
         return node;
     }
 
-    /** An include mount: a group carrying {@code modelAlias} and <b>no</b> inline elements (§10). */
+    /** An include mount: a group carrying {@code includeConfig} and <b>no</b> inline elements (KF651). */
     // package-private: reused by ModelDocument (M10+ include editing)
     static ObjectNode mountNode(ElementDraft.Mount mount, String parentPath) {
         ObjectNode node = MAPPER.createObjectNode();
@@ -284,17 +280,17 @@ public final class DocumentModelDraft {
         ObjectNode body = node.putObject(ElementType.GROUP.wireName());
         MountOptions options = mount.options();
         body.put(DmKeys.REPEATABILITY, options.repeatability());
-        body.put(DmKeys.MODEL_ALIAS, mount.alias());
-        // includeLevel sits on the mount group beside modelAlias; omit SINGLE_RG (the kernel default-absent, A12K-3234)
+        ObjectNode include = body.putObject(DmKeys.INCLUDE_CONFIG);
+        include.put(DmKeys.REFERENCE, mount.reference());
+        // the defaults (SINGLE_RG, nothing excluded) are left absent, as the migrator writes them (KF651)
         if (options.includeLevel() == IncludeLevel.MODEL_ROOT) {
-            body.put("includeLevel", "MODEL_ROOT");
+            include.put(DmKeys.INCLUDE_LEVEL, "MODEL_ROOT");
         }
-        // rule/computation exclusions sit on the mount group beside modelAlias (metamodel MM_Group)
         if (options.excludeRules()) {
-            body.put("excludeRules", true);
+            include.put(DmKeys.EXCLUDE_RULES, true);
         }
         if (options.excludeComputations()) {
-            body.put("excludeComputations", true);
+            include.put(DmKeys.EXCLUDE_COMPUTATIONS, true);
         }
         return node;
     }
@@ -526,9 +522,9 @@ public final class DocumentModelDraft {
             case FieldTypeSpec.ConfirmSpec c -> storedValues(fieldType, "ConfirmType",
                     c.customTrueValue(), c.customFalseValue());
             case FieldTypeSpec.EnumSpec e -> {
-                // The enum-VALUE label law is armed by an entry for a DECLARED locale, not by any entry at
-                // all: labels written solely for an undeclared locale are accepted (KERNEL-FINDINGS KF321),
-                // so reading `anyMatch(labels not empty)` as the trigger refused a model the kernel takes.
+                // The builder refuses only once a value answers a DECLARED locale. On kernel 31.1.1 a label
+                // for an undeclared locale labels the value too (KERNEL-FINDINGS KF655), and A12 refuses that
+                // model; leaving it to A12 under-reports, where widening the trigger needs its own measurement.
                 boolean labelled = e.values().stream()
                         .anyMatch(v -> locales.stream().anyMatch(v.labels()::containsKey));
                 if (labelled) {
@@ -750,7 +746,6 @@ public final class DocumentModelDraft {
 
         private final String id;
         private final List<String> locales = new ArrayList<>();
-        private final List<Include> includes = new ArrayList<>();
         private final List<TypeDefDecl> typeDefs = new ArrayList<>();
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
         private final Map<String, String> labels = new LinkedHashMap<>();
@@ -809,16 +804,10 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        /** Declare an include: {@code alias} (used by {@code mount(name, alias)}) → {@code reference} (the included model id). */
-        public Builder include(String alias, String reference) {
-            includes.add(new Include(alias, reference));
-            return this;
-        }
-
         /**
          * Import the type definitions of another model ({@code purpose: "typeDefinitions"}): its type-defs
          * merge into this model's namespace by id, so a {@code typedefField} may reference an imported id.
-         * Unlike {@link #include}, an import is not mounted — it contributes no structure.
+         * Unlike a {@link GroupBuilder#mount mount}, an import contributes no structure.
          */
         public Builder importTypeDefs(String reference) {
             typeDefImports.add(reference);
@@ -1175,23 +1164,24 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        /** Mount an included model here: a group named {@code name} that mounts the include {@code alias}. */
-        public GroupBuilder mount(String name, String alias) {
-            return mount(name, alias, 1);
+        /** Mount the model {@code reference} names here, as a group named {@code name}. */
+        public GroupBuilder mount(String name, String reference) {
+            return mount(name, reference, 1);
         }
 
         /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows). */
-        public GroupBuilder mount(String name, String alias, int repeatability) {
-            return mount(name, alias, MountOptions.repeatable(repeatability));
+        public GroupBuilder mount(String name, String reference, int repeatability) {
+            return mount(name, reference, MountOptions.repeatable(repeatability));
         }
 
         /**
          * Mount an included model with explicit {@link MountOptions} — repeatability plus whether to
          * exclude the included model's rules / computations on expand. E.g.
-         * {@code mount("Prices", "catalog", MountOptions.single().excludingRules())}.
+         * {@code mount("Prices", "catalog", MountOptions.single().excludingRules())}. The header include entry
+         * is written for every distinct mounted model; there is nothing to declare separately.
          */
-        public GroupBuilder mount(String name, String alias, MountOptions options) {
-            elements.add(new ElementDraft.Mount(name, alias, options, List.of()));
+        public GroupBuilder mount(String name, String reference, MountOptions options) {
+            elements.add(new ElementDraft.Mount(name, reference, options, List.of()));
             return this;
         }
 
@@ -1462,7 +1452,7 @@ public final class DocumentModelDraft {
     private void checkTypeDefReferences() {
         // Imports and mounted includes both contribute to the assembly-wide type-definition namespace. Without
         // the referenced sources this draft knows only the local subset, so the resolver-backed gate owns the check.
-        if (!typeDefImports.isEmpty() || !includes.isEmpty()) {
+        if (!typeDefImports.isEmpty() || !mountedReferences().isEmpty()) {
             return;
         }
         Set<String> declared = new HashSet<>();
@@ -1487,25 +1477,20 @@ public final class DocumentModelDraft {
         }
     }
 
-    /** Referential integrity: every mount's {@code alias} must match a declared {@code include}. */
-    private void checkMountReferences() {
-        Set<String> aliases = new HashSet<>();
-        includes.forEach(i -> aliases.add(i.alias()));
-        rootGroups.forEach(g -> checkMountReferences(g, aliases));
+    /** Every model a mount of this draft names, once each, in document order. */
+    private Set<String> mountedReferences() {
+        Set<String> mounted = new LinkedHashSet<>();
+        rootGroups.forEach(g -> collectMountReferences(g, mounted));
+        return mounted;
     }
 
-    private static void checkMountReferences(ElementDraft.Group group, Set<String> aliases) {
+    private static void collectMountReferences(ElementDraft.Group group, Set<String> references) {
         for (ElementDraft element : group.elements()) {
             switch (element) {
-                case ElementDraft.Group sub -> checkMountReferences(sub, aliases);
-                case ElementDraft.Field field -> { /* fields carry no mount alias */ }
-                case ElementDraft.Rule rule -> { /* rules carry no mount alias */ }
-                case ElementDraft.Mount mount -> {
-                    if (!aliases.contains(mount.alias())) {
-                        throw new IllegalStateException("mount '" + mount.name()
-                                + "' references undeclared include alias '" + mount.alias() + "'");
-                    }
-                }
+                case ElementDraft.Group sub -> collectMountReferences(sub, references);
+                case ElementDraft.Field field -> { /* fields mount nothing */ }
+                case ElementDraft.Rule rule -> { /* rules mount nothing */ }
+                case ElementDraft.Mount mount -> references.add(mount.reference());
             }
         }
     }

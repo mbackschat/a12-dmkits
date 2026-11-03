@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** Comparison arms consume child results once; KF382–KF387 settle their order and direct-read boundaries. */
@@ -137,12 +136,11 @@ private fun OperationAnalysis.comparisonFinding(
         if (enumeration.type != OperationType.Enumeration) continue
         val constant = (partner.domainConstant as? WrittenConstant.Text)?.value ?: continue
         val (owner, values) = enumeration.categoryDomain?.let { "the category" to it }
-            ?: enumeration.typedBy?.let { field -> facts.enumerationBodyOf(field)?.declaredEnumValues()?.let { "`${field.path}`" to it } }
+            ?: enumeration.typedBy?.let { field -> facts.enumerationBodyOf(field)?.lookupDomain(null)?.let { "`${field.path}`" to it } }
             ?: continue
         if (constant !in values) return problem("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
             "$owner declares ${values.joinToString { "`$it`" }}, and `$constant` is none of them — compare against a stored value, not its display label")
     }
-    displayDefect(left, right)?.let { (code, reason) -> return problem(code, reason) }
     val number = left.numeric ?: right.numeric ?: return null
     val partnerValue = if (left.numeric != null) right else left
     if (partnerValue.constant is WrittenConstant.BooleanConstant) return problem("MVK_INCONSISTENT_TYPES_COMPARED",
@@ -160,44 +158,6 @@ private fun OperationAnalysis.comparisonFinding(
     }
     return problem(SUPPRESSIBLE,
         "`${comparison.left}` carries ${x ?: "an undetermined number of"} fractional digits and `${comparison.right}` carries ${y ?: "an undetermined number of"}; round one side to the other's scale, or compare with `<` / `>`")
-}
-
-/**
- * KF407's label comparison between two declarations in declared locales. Two Enumerations are compared by type
- * whatever is written around them; a text takes part only as an immediate field read, so a braced text partner
- * is outside the gate while a braced Enumeration is not (SPEC-2026-10-09-02).
- */
-private fun OperationAnalysis.displayDefect(left: OperationValue, right: OperationValue): Pair<String, String>? {
-    val a = left.typedBy ?: return null
-    val b = right.typedBy ?: return null
-    fun labels(value: OperationValue, field: TrackedDeclaration): Map<String, Map<String, String>>? {
-        if (facts.effectiveFieldType(field) == FieldType.STRING) return if (value.field != null) emptyMap() else null
-        val body = facts.enumerationBodyOf(field) ?: return null
-        if (body["tableName"] != null) return null
-        val values = body["values"] as? JsonArray ?: return null
-        val entries = values.map { it as? JsonObject ?: return null }
-        return facts.declaredLocales.associateWith { locale -> entries.associate { entry ->
-            val token = entry.string("value") ?: return null
-            val label = localizedTextEntries(entry["label"])
-                .lastOrNull { it.string("locale")?.let(::localeKeyOrNull) == locale }?.string("text")
-            token to (label ?: token)
-        } }
-    }
-    val here = labels(left, a) ?: return null
-    val there = labels(right, b) ?: return null
-    fun displayed(labels: Map<String, Map<String, String>>) = labels.values.any { it.any { (token, label) -> token != label } }
-    if (displayed(here) != displayed(there)) return "MVK_INVALID_COMPARE_ENUM_TO_STRING" to
-        "`${a.path}` and `${b.path}` disagree about display values; compare two declarations that both label their values or neither does"
-    if (!displayed(here)) return null
-    for (locale in facts.declaredLocales) {
-        val x = here[locale] ?: continue
-        val y = there[locale] ?: continue
-        val reverse = y.entries.associate { (token, label) -> label to token }
-        if (x.any { (token, label) -> y[token]?.let { it != label } == true || reverse[label]?.let { it != token } == true })
-            return "MVK_INVALID_COMPARE_ENUM_TO_ENUM" to
-                "`${a.path}` and `${b.path}` have conflicting token/display mappings in `$locale` — use the same mappings"
-    }
-    return null
 }
 
 /**

@@ -95,7 +95,7 @@ class RangeOperandGatesTest {
 
     /** An e-commerce catalogue mirroring the laws test's carrier. */
     private fun model(probe: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"catalog-range","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog-range","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -108,7 +108,7 @@ class RangeOperandGatesTest {
               "CustomFieldType":{"name":"SupplierCode"}}}},
             {"type":"Field","id":"f5","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"BRONZE"},{"value":"GOLD"}],
-              "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}},
+              "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}},
             {"type":"Field","id":"f6","name":"UnitCount","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f7","name":"Perishable","Field":{"fieldType":{"type":"BooleanType"}}},
             {"type":"Field","id":"f8","name":"Acknowledged","Field":{"fieldType":{"type":"ConfirmType"}}},

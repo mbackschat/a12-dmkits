@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
@@ -98,8 +100,8 @@ class CustomConditionCallCountDiffTest {
         val calls = HashMap<String, Int>()
         val kernelConditions = carrier.conditions.keys.associateWith { name ->
             object : ICustomCondition {
-                override fun check(document: IDocument, relevant: Set<IEntityInstance>?,
-                        formallyIncorrect: Set<IEntityInstance>, errorEntity: IEntityInstance): Boolean {
+                override fun check(document: DocumentV2, relevant: Set<out DocumentMultiPointer>?,
+                        formallyIncorrect: Set<DocumentPointer>, errorEntity: PartiallyKnownDocumentMultiPointer): Boolean {
                     calls.merge(name, 1, Int::plus); return answer
                 }
             } as ICustomCondition

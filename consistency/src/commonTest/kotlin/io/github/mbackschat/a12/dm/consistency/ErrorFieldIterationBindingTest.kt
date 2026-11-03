@@ -114,7 +114,7 @@ class ErrorFieldIterationBindingTest {
 
     /** An insurance policy whose claims repeat, with one rule at the fixed root. */
     private fun policy(errorField: String, condition: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"repeatability":1,"elements":[
             {"type":"Field","id":"f0","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
@@ -140,7 +140,7 @@ class ErrorFieldIterationBindingTest {
 
     /** A fleet whose vehicles are the repeatable root, reporting on the plate. */
     private fun fleet(condition: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"fleet","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"fleet","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Vehicles","Group":{"repeatability":50,"elements":[
             {"type":"Field","id":"f0","name":"Plate","Field":{"fieldType":{"type":"StringType"}}},
@@ -161,7 +161,7 @@ class ErrorFieldIterationBindingTest {
             "errorEntityRelPath":"../$errorField","errorCode":"C0","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         fun placed(level: String) = if (at == level) ",$rule" else ""
         return """
-            {"header":{"modelVersion":"28.4.0","id":"region","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"region","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Region","Group":{"repeatability":1,"elements":[
                 {"type":"Group","id":"g1","name":"Branch","Group":{"repeatability":1,"elements":[

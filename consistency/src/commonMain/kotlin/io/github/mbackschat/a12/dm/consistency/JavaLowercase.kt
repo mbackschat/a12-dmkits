@@ -12,3 +12,11 @@ package io.github.mbackschat.a12.dm.consistency
  * measured cases on both targets.
  */
 internal expect fun String.javaLowercase(): String
+
+/**
+ * Whether this text ends with [suffix] as Java's `String.regionMatches(true, …)` compares it, char by char: equal, or
+ * equal after upper-casing both, or after lower-casing those. Commons Lang's `Strings.CI.removeEnd`, which kernel 31.1.1
+ * cuts a generated-code name with, compares this way (KERNEL-FINDINGS KF650). A per-char simple mapping, unlike
+ * [javaLowercase]'s full one, so `ß` stays one unit; a platform call on each target for the same reason.
+ */
+internal expect fun String.javaEndsWithIgnoringCase(suffix: String): Boolean

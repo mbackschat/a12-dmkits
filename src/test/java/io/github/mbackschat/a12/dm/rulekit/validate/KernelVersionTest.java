@@ -49,7 +49,7 @@ class KernelVersionTest {
     void theRealRuntimeMatchesTheCatalogFloor() {
         // Sanity: in this build the kernel on the classpath IS the verified floor, so no skew fires.
         KernelVersion v = KernelVersion.current(OperatorCatalog.load().verifiedAgainst());
-        assertEquals(Optional.of("30.8.1"), v.runtime(), "Package.getImplementationVersion() reads the kernel jar");
+        assertEquals(Optional.of("31.1.1"), v.runtime(), "Package.getImplementationVersion() reads the kernel jar");
         assertFalse(v.isSkewed());
     }
 }

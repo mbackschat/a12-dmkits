@@ -24,7 +24,7 @@ class IndexChainTest {
      */
     private fun claim(itemsKey: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"claims","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"claims","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[
             {"type":"Rule","id":"r0","name":"ItemCovered","Rule":{

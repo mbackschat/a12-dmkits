@@ -12,13 +12,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.provesPresence
 
 /** A key binds the condition's field/key pair and its index field, not every sibling (KF412). */
 internal fun TrackedFactBase.messageKeyDefect(path: String, key: MessageKey, element: TrackedDeclaration): MessageCompletion {
-    if (key.entity?.ruleGroup == true) return MessageCompletion.Refused("MVK_INTERNAL_ERROR")
     val keyword = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
         ?: return MessageCompletion.Declined
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    val spec = key.literal?.let { "\"$it\"" } ?: key.entity?.let {
-        (resolveMessageEntity(group, it.written.replace("'", ""), element.origin) as? Reference.Resolved)?.path
-    } ?: return MessageCompletion.Declined
+    val spec = keySpec(key, group, element) ?: return MessageCompletion.Declined
     val written = element.body?.let { conditionTexts(element.kind, it) }.orEmpty()
         .flatMap { (_, text) -> semanticIndexUsesIn(text, conditionLanguage, keyword) }
         .mapNotNull { boundPair(it, group, element) }.toSet()
@@ -40,9 +37,7 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
     val uses = semanticIndexUsesIn(text, conditionLanguage, keyword)
     if (uses.isEmpty()) return MessageCompletion.Refused("INVALID_GROUP")
     val group = element.path.substringBeforeLast('/')
-    val spec = key.literal?.let { "\"$it\"" } ?: key.entity?.let {
-        (resolveMessageEntity(group, it.written.replace("'", ""), element.origin) as? Reference.Resolved)?.path
-    } ?: return MessageCompletion.Declined
+    val spec = keySpec(key, group, element) ?: return MessageCompletion.Declined
     fun matches(pair: BoundPair) = pair.keySpec == spec &&
         (pair.valuePath == named || pair.valuePath.startsWith("$named/"))
     val pairs = uses.map { boundPair(it, group, element) ?: return MessageCompletion.Declined }
@@ -62,6 +57,19 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
     }
     return if (proven) MessageCompletion.Accepted else MessageCompletion.Refused("INVALID_USE_OF_SEMANTIC_INDEX")
 }
+
+/**
+ * The SPEC a message key asks `tryGetFor` for: a literal quoted, an entity by its resolved path, and `RuleGroup` as the
+ * rule's own group, or null for an entity this reader cannot resolve. Kernel 31.1.1 resolves `RuleGroup` like any
+ * entity (`FullChecks_ErrorTextParameterParser.getSemanticIndexSpec`), so it meets the ordinary key gate, where 30.8.1
+ * raised an internal error while resolving it (KERNEL-FINDINGS KF663, `adapter.laws.MessageParameterDecoderAgreementTest`
+ * rows R02 and F5g).
+ */
+private fun TrackedFactBase.keySpec(key: MessageKey, group: String, element: TrackedDeclaration): String? =
+    key.literal?.let { "\"$it\"" } ?: key.entity?.let {
+        if (it.ruleGroup) group
+        else (resolveMessageEntity(group, it.written.replace("'", ""), element.origin) as? Reference.Resolved)?.path
+    }
 
 /** An indexed read reduced to what `tryGetFor` keys on: the resolved value path and the key's SPEC. */
 internal data class BoundPair(val valuePath: String, val keySpec: String)

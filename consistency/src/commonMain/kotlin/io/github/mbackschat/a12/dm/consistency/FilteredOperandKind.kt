@@ -9,12 +9,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  *
  * The operand must be a field (`MVK_NO_GROUPS_ALLOWED`), then must carry a wildcard (`MVK_WILDCARDS_REQUIRED`),
  * then must carry no semantic index (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`), and the filter BODY is [fieldValueReadOperandFindings]' subject, so the two
- * families partition the construct. **The two classes here are raised at two different points.** The kind is
- * asked by the parser as it reads the `Having` keyword (`initFilterCondition`, the grammar's action on
- * `'Mit'` in `GrammarOnly_ConditionParser.g4`), so a group draws it ahead of anything its body holds; the
- * wildcard by `CheckEntitySpecImpl.checkFilterCondition` once the whole spec, body included, is read, so a
- * class the body draws is raised first (`rulekit.validate.laws.FilterBodyComparisonLawsTest
- * .whereTheFilterChainRaisesAroundItsBody`).
+ * families partition the construct. **Both classes are raised once the whole spec, body included, is read**,
+ * by `CheckEntitySpecImpl.checkFilterCondition`, the kind first: a class the body draws is raised ahead of
+ * either, and so is whatever the iteration walk and the `$` check answer for the spec itself
+ * (`rulekit.validate.laws.FilterBodyComparisonLawsTest.whereTheFilterChainRaisesAroundItsBody`). Kernel 30.8.1
+ * asked the kind as the parser read the `Having` keyword, ahead of the body; 31.1.1 moved it, and admits a
+ * filtered group only as the iteration entity of `SumOfTerms` ([KERNEL-FINDINGS KF656]).
  *
  * **Which spec a filter belongs to is the grammar's, and it is not always the operand.** A12's semantic-index
  * key is an `entitySpec` of its own, which takes a `Having`, so a filter written after an entity key filters
@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, measured 2026-09-25).
  *
  * **The star is not a variable on the kind defect, which the code's own name argues against.** A group
- * operand draws the kind class starred or not.
+ * operand draws the kind class starred or not, wherever the iteration walk lets the chain reach it.
  *
  * **An unstarred FIELD operand draws this class exactly when the ITERATION gate has nothing to say.** The
  * first measurement of it was taken on a rule that does not iterate, where A12's iteration gate outruns the
@@ -53,37 +53,28 @@ internal fun TrackedFactBase.filteredOperandContributions(
     if (execution == null) return emptyList()
     val group = element.path.substringBeforeLast('/')
     val anchor = iterationScopeOf(element.declaredReference(), group)
-    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().flatMap { entry ->
-        val kindSpan = execution.carrier.semanticSpan(entry.start, entry.end) ?: return@flatMap emptyList()
-        val entity = execution.entitiesByStart[entry.start]
-        val span = entity?.let { execution.carrier.semanticSpan(it.start, it.end) } ?: kindSpan
-        val spec = FilteredSpec(normalizedPath(entry.path), entry.indexed, entry.indexKey, kindSpan, span)
-        buildList {
-            specFinding(spec, group, anchor, element, kindSpan.member, beforeBody = true)?.let {
-                add(ConditionFinding(element.key, entry, it))
-            }
-            if (entity != null) {
-                specFinding(spec, group, anchor, element, span.member, beforeBody = false)?.let {
-                    add(ConditionFinding(element.key, EntityCheckSite(entity, EntityCheck.FILTER), it))
-                }
-            }
+    return execution.recognition.sites.filterIsInstance<SyntaxSite.FilterEntry>().mapNotNull { entry ->
+        val entity = execution.entitiesByStart[entry.start] ?: return@mapNotNull null
+        val span = execution.carrier.semanticSpan(entity.start, entity.end) ?: return@mapNotNull null
+        val spec = FilteredSpec(normalizedPath(entry.path), entry.indexed, entry.indexKey, span)
+        specFinding(spec, group, anchor, element)?.let {
+            ConditionFinding(element.key, EntityCheckSite(entity, EntityCheck.FILTER), it)
         }
     }
 }
 
 /**
  * The spec one `Having` filters: the path it names, whether a semantic index of its own sits between it and
- * the filter, whether it is an index KEY, and the characters of its two productions.
+ * the filter, whether it is an index KEY, and the characters of its production.
  *
- * [kindSpan] ends at the `Having` keyword, where the parser asks the kind. [span] is `checkEntitySpec`'s,
- * raised once the whole spec, filter included, is read; a key's spec opens at the key, so its span nests inside
- * the index it keys and report assembly places the key's class first where the two end together.
+ * [span] is `checkEntitySpec`'s, raised once the whole spec, filter included, is read; a key's spec opens at the
+ * key, so its span nests inside the index it keys and report assembly places the key's class first where the two
+ * end together.
  */
 private class FilteredSpec(
     val path: String?,
     val indexed: Boolean,
     val key: Boolean,
-    val kindSpan: TextSpan,
     val span: TextSpan,
 )
 
@@ -109,9 +100,8 @@ private fun TrackedFactBase.specFinding(
     declaringGroup: String,
     anchor: TargetAnchor?,
     element: TrackedDeclaration,
-    member: String,
-    beforeBody: Boolean,
 ): Finding? {
+    val member = spec.span.member
     val path = spec.path ?: return null
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
@@ -119,13 +109,15 @@ private fun TrackedFactBase.specFinding(
     }
     val whose = if (spec.key) "the index key `$path` — a `Having` after `For` filters the key" else "`$path`"
     if (isGroupPath(resolved.path)) {
-        if (!beforeBody) return null
+        if (OUTER_MARKER in path || !iterationWalkSilent(spec, path, declaringGroup, anchor, element)) {
+            return null
+        }
         return finding(
             "MVK_NO_GROUPS_ALLOWED",
             "in `$member`: `Having` filters $whose, which is the group `${resolved.path}` — the filter " +
                 "selects rows by a FIELD of the repetition, so name a field of that group instead",
             element.path,
-            spec.kindSpan,
+            spec.span,
         )
     }
     // A starred spec filtered after its own string key meets `checkNoSemanticIndex`, the chain's third gate, once
@@ -133,7 +125,7 @@ private fun TrackedFactBase.specFinding(
     // own gate, and that earlier-closing class is the one report assembly keeps; a star below it is admitted by
     // the index (KF351), so the filter's gate is what answers, whatever the body reads (KERNEL-FINDINGS KF568).
     if (spec.indexed && '*' in path && isFieldPath(resolved.path)) {
-        if (beforeBody || spec.key) return null
+        if (spec.key) return null
         return finding(
             "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
             "in `$member`: `Having` filters `$path`, which a semantic index already narrows to one row of a " +
@@ -143,16 +135,14 @@ private fun TrackedFactBase.specFinding(
             spec.span,
         )
     }
-    if (beforeBody || OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
+    if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path)) {
         return null
     }
     // The iteration gate runs at the top of the same method and answers for the whole reference, so this
     // gate is only reached where that walk has nothing to say — the condition measured on all three
     // iteration carriers rather than read off the chain's written order. An index addresses one row, so an
     // indexed spec leaves that walk nothing to say (measured on the string-key row).
-    if (anchor == null || (!spec.indexed && levelClassOf(path, declaringGroup, anchor, element) != null)) {
-        return null
-    }
+    if (!iterationWalkSilent(spec, path, declaringGroup, anchor, element)) return null
     val repair = if (spec.key) {
         "a semantic index names one row and a filter selects several, so keep the one you mean"
     } else {
@@ -165,6 +155,15 @@ private fun TrackedFactBase.specFinding(
         spec.span,
     )
 }
+
+/** Whether the iteration walk at the top of `checkEntitySpec` lets the filter chain be reached for [spec]. */
+private fun TrackedFactBase.iterationWalkSilent(
+    spec: FilteredSpec,
+    path: String,
+    declaringGroup: String,
+    anchor: TargetAnchor?,
+    element: TrackedDeclaration,
+): Boolean = anchor != null && (spec.indexed || levelClassOf(path, declaringGroup, anchor, element) == null)
 
 private fun TrackedFactBase.isGroupPath(path: String): Boolean =
     declarationAt(path, DeclaredKind.GROUP) != null

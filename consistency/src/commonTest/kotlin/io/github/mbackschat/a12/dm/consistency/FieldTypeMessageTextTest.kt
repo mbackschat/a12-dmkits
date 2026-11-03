@@ -43,7 +43,8 @@ class FieldTypeMessageTextTest {
             "an odd dollar count" to listOf(DOLLARS),
             "\$Field\$, the wrong case" to listOf(PARAMETER),
             "the field's own name" to listOf(PARAMETER),
-            "an empty pair" to listOf(PARAMETER),
+            // An empty part is skipped wherever it stands on kernel 31.1.1 (KERNEL-FINDINGS KF657).
+            "an empty pair" to none,
             "the German spelling in an English model" to listOf(PARAMETER),
             // The gates are ordered, so the tab answers and the dollar count beside it is never asked.
             "a tab beside an odd dollar count" to listOf(CHARACTERS),
@@ -77,13 +78,14 @@ class FieldTypeMessageTextTest {
                 codes(model(patterned(en("capitals only"), "fr_FR" to "a${TAB}b"))),
         )
         val expected = linkedMapOf(
-            "both locales defective" to listOf(CHARACTERS),
+            // Every declared locale reports, in declared order (KERNEL-FINDINGS KF657).
+            "both locales defective" to listOf(CHARACTERS, LINE_BREAK),
             "the second locale alone defective" to listOf(CHARACTERS),
             "the enum's invalid-value message, a tab" to listOf(CHARACTERS),
             "the enum's invalid-value message, a wrong name" to listOf(PARAMETER),
             "the enum's invalid-value message, \$field\$" to none,
             "a required field's message, a tab" to none,
-            "both locales defective, declared the other way round" to listOf(LINE_BREAK),
+            "both locales defective, declared the other way round" to listOf(LINE_BREAK, CHARACTERS),
             // Judged with no pattern beside it, and reported with the pairing class STRING_PATTERN_MESSAGE owns.
             "a message with no pattern, a tab" to listOf(CHARACTERS, "MVK_ERROR_MESSAGE_AND_NO_PATTERN"),
             "a tab in an undeclared locale's message" to none,
@@ -103,8 +105,8 @@ class FieldTypeMessageTextTest {
                 codes(model(patterned(*deFirst), locales = listOf("en_US", "de_DE"))),
         )
         val expected = linkedMapOf(
-            "de_DE declared first, the en_US entry written first" to listOf(LINE_BREAK),
-            "en_US declared first, the de_DE entry written first" to listOf(CHARACTERS),
+            "de_DE declared first, the en_US entry written first" to listOf(LINE_BREAK, CHARACTERS),
+            "en_US declared first, the de_DE entry written first" to listOf(CHARACTERS, LINE_BREAK),
         )
         assertEquals(expected, actual, "which order the locales are asked in")
     }
@@ -125,33 +127,13 @@ class FieldTypeMessageTextTest {
         val expected = linkedMapOf(
             "an empty pair at the end" to none,
             "an empty pair alone" to none,
-            "an empty pair at the start" to listOf(PARAMETER),
+            "an empty pair at the start" to none,
             "two parameters back to back" to none,
             "a lone low surrogate" to setOf("WRONG_ENCODING", RK_UNSUPPORTED_CHARACTER),
             "two en_US entries, the first defective" to none,
             "two en_US entries, the second defective" to listOf(CHARACTERS),
         )
         assertEquals<Map<String, Any>>(expected, actual, "how the text is cut, and which entry is examined")
-    }
-
-    /**
-     * A12's code generation checks the element container it builds for the default variant, from which an `ONLY`
-     * filter deletes the field ([KERNEL-FINDINGS] KF490, KF305), so the deleted field's message is never asked.
-     * The kernel row is `rulekit.validate.laws.FieldTypeMessageTextLawsTest`'s "a tab on a field an ONLY filter
-     * deletes"; the unfiltered control keeps the fixture able to fail.
-     */
-    @Test
-    fun aFieldAnOnlyFilterDeletesIsNeverJudged() {
-        val tabbed = patterned(en("a${TAB}b"))
-        val actual = linkedMapOf(
-            "unfiltered, the control" to codes(model(tabbed)),
-            "deleted by an ONLY filter" to codes(model(tabbed, variantFilter = "ONLY")),
-        )
-        val expected = linkedMapOf(
-            "unfiltered, the control" to listOf(CHARACTERS),
-            "deleted by an ONLY filter" to none,
-        )
-        assertEquals(expected, actual, "a field A12 deletes at the default variant")
     }
 
     /**
@@ -330,11 +312,10 @@ class FieldTypeMessageTextTest {
         field: String = "Code",
         requiredMessage: String? = null,
         extra: JsonObject? = null,
-        variantFilter: String? = null,
     ): String = buildJsonObject {
         putJsonObject("header") {
             put("id", "claims-field-messages")
-            put("modelVersion", "28.4.0")
+            put("modelVersion", "29.4.0")
             putJsonArray("locales") { locales.forEach { addJsonObject { put("code", it) } } }
         }
         putJsonObject("content") {
@@ -360,7 +341,6 @@ class FieldTypeMessageTextTest {
                                     put("name", field)
                                     putJsonObject("Field") {
                                         put("fieldType", type)
-                                        variantFilter?.let { putJsonObject("variantFilter") { put("filterType", it) } }
                                         requiredMessage?.let { text ->
                                             putJsonObject("requirednessConfig") {
                                                 put("mode", "absoluteOrRelativeToNextRepAncestor")

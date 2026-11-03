@@ -27,11 +27,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  *
  * | what the body carries | class |
  * |---|---|
- * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+ * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_SET_EXPRESSION` |
  * | iteration of a level below one the same spec stars | `MVK_NO_WILDCARD` |
  * | a SEMANTIC INDEX | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
  * | no level is one the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
- * | a nested filter, `RepetitionNotUnique` or `CustomCondition`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+ * | a nested filter, `RepetitionNotUnique` or `CustomCondition`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` |
  *
  * **The construct gate runs LAST, so it is reachable only from a filter that is otherwise legal** — every
  * class above pre-empts it, measured on both of the shapes that violate two gates at once. That ordering is
@@ -154,11 +154,11 @@ private fun withoutSpans(text: String, spans: List<ReferenceSpan>): String {
 
 /** The four gates of the filter walk, in the order A12 asks them. */
 private enum class FilterGate(val code: String) {
-    INVALID_ITERATION("MVK_INVALID_ITERATION_IN_FILTER_CONDITION"),
+    INVALID_ITERATION("MVK_INVALID_ITERATION_IN_SET_EXPRESSION"),
     ITERATION_BELOW_A_STAR("MVK_NO_WILDCARD"),
     INDEX_NOT_ALLOWED("MVK_SEMANTIC_INDEX_NOT_ALLOWED"),
     NO_ITERATION("MVK_NO_ITERATION_FOR_WILDCARD"),
-    DISALLOWED_CONSTRUCT("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"),
+    DISALLOWED_CONSTRUCT("MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"),
 }
 
 /** The gate this filter fails, what the author wrote there, and the level it iterates where the gate has one. */

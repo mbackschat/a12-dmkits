@@ -61,6 +61,7 @@ class CheckerFixtureReadGuardTest {
             "ConditionBindingTest.kt", Set.of("check(model(\"FieldFilled(Amount)\", language = \"fr_FR\"))",
                     "check(model(\"FieldFilled(Amount)\", unsupported))", "check(source)"),
             "ConsistencyCheckTest.kt", Set.of("check(ModelSource(\"{ not json\"))"),
+            "ElementNameReachTest.kt", Set.of("check(source)"),
             "OutcomeAllChecksPassedTest.kt", Set.of("check(ModelSource(UNSUPPORTED_LANGUAGE))"),
             "ParityCorpusTest.kt", Set.of("check(sources[0])"),
             "ReportJsonTest.kt", Set.of("check(ModelSource(json))"),

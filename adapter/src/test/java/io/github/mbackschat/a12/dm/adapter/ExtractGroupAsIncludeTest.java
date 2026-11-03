@@ -53,7 +53,7 @@ class ExtractGroupAsIncludeTest {
         String subModel = base.extractGroupAsInclude("/Order/Shipping", "shipping");
         String baseJson = base.toJson();
 
-        assertTrue(baseJson.contains("\"modelAlias\" : \"shipping\""), "the base now mounts the sub-model");
+        assertFalse(ModelDocument.read(baseJson).mountsOfInclude("shipping").isEmpty(), "the base now mounts the sub-model");
         assertFalse(baseJson.contains("\"name\" : \"City\""), "Shipping's fields moved out of the base");
         assertTrue(subModel.contains("CityNeedsZip"), "the internal rule travelled into the sub-model");
         assertFalse(baseJson.contains("CityNeedsZip"), "...and left the base");
@@ -85,7 +85,7 @@ class ExtractGroupAsIncludeTest {
         ModelDocument inlined = ModelDocument.read(base.toJson()).inlineInclude("shipping", subModel);
         String inlinedJson = inlined.toJson();
 
-        assertFalse(inlinedJson.contains("modelAlias"), "the mount became a real group");
+        assertFalse(inlinedJson.contains("includeConfig"), "the mount became a real group");
         assertTrue(inlined.includes().isEmpty(), "the header reference is gone");
         assertTrue(inlined.fieldPaths().contains("/Order/Shipping/Zip"), "the field is inline under the group again");
         assertTrue(inlinedJson.contains("CityNeedsZip"), "the subtree's own rule came back");

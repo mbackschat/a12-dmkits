@@ -48,7 +48,8 @@ class ComputedTargetKindTest {
         expected["computed field | a field inside a fixed group"] = emptyList()
         // ONE finding, not two: the target A12 also refuses on the build tier, already named by the
         // reference family. This family adds nothing there, which is what keeps a single cause single.
-        expected["computed field | a path that resolves to nothing"] = listOf(notBuildable)
+        // A12's converter states this one and checks on without the computation (KF652).
+        expected["computed field | a path that resolves to nothing"] = listOf(RK_COMPUTED_FIELD_NOT_FOUND)
         expected["error target | a sibling FIELD — the control"] = emptyList()
         // The rows that keep the two slots apart. A12 admits a group error target, so a checker applying the
         // computation's law to both would refuse a legal model — twice, once per group kind.
@@ -114,7 +115,7 @@ class ComputedTargetKindTest {
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"rental","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"rental","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Rental","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},

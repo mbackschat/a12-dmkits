@@ -83,7 +83,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      * Narrows this list to the repetitions where {@code filter} holds ({@code … Having <filter>}).
      * The kernel forbids certain constructs inside a filter condition (KERNEL-SEMANTICS §9): the
      * representable ones — {@code RepetitionNotUnique}, {@code CustomCondition}, and a nested
-     * {@code Having} — are pre-checked here ({@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}); the
+     * {@code Having} — are pre-checked here ({@code MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION}); the
      * semantic index is also pre-checked with its own {@code MVK_SEMANTIC_INDEX_NOT_ALLOWED} code; parallel
      * iteration stays kernel-delegated. All four refusals are kernel-verified (the semantic-index group forms
      * by {@code SemanticIndexSlotLawsTest}, the others by {@code AggregateSlotLawsTest}).
@@ -140,7 +140,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
     }
 
     private static void forbidden(String what) {
-        throw Refusals.of(KernelCode.MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION,
+        throw Refusals.of(KernelCode.MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION,
                 "a filter condition may not contain " + what);
     }
 

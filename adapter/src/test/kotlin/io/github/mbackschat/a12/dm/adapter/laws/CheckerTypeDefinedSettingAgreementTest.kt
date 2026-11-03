@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Test
 
 /**
  * A field typed through a TYPE DEFINITION, against its plain twin, on every gate that reads a SETTING of the type as
- * well as the type itself: an enumeration's domain, labels and categories, a date's format and precision, a range's
- * format and year interpretation, a number's scale, a string's length and pattern (KERNEL-FINDINGS KF602).
+ * well as the type itself: an enumeration's domain and categories, a date's format and precision, a range's
+ * format and year interpretation, a number's scale, a string's length and pattern (KERNEL-FINDINGS KF602). An
+ * enumeration's labels gate no operation on kernel 31.1.1 (KF655), so their rows are admitted controls.
  *
  * The within-model control of [CheckerTypeDefinedOperandKindAgreementTest], one row per reader: A12 answers each
  * twin as its plain field, so it reads a definition's settings as the field's own, and a reader that held the
@@ -139,8 +140,9 @@ class CheckerTypeDefinedSettingAgreementTest {
             // An enumeration's domain, labels and categories.
             "comparison, a constant outside the domain" to
                 Probe("[Tier] == \"NOPE\"", "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON"),
-            "comparison, display labels against a text" to Probe("[Note] == [Labelled]", "MVK_INVALID_COMPARE_ENUM_TO_STRING"),
-            "addition, display labels" to Probe("[Labelled] + [Note] == \"x\"", "MVK_NO_STRING_OR_NUMBER_FOR_ADD"),
+            // Kernel 31.1.1 reads no display label for a comparison, an addition or a computation (KERNEL-FINDINGS KF655).
+            "comparison, display labels against a text" to Probe("[Note] == [Labelled]"),
+            "addition, display labels" to Probe("[Labelled] + [Note] == \"x\""),
             "addition, no display labels" to Probe("[Tier] + [Note] == \"x\""),
             "value in fields, a constant outside the domain" to
                 Probe("NumberOfValueInFields(\"NOPE\" In Tier, Note) > 0", CONSTANT_FOR_ENUMERATION),
@@ -163,7 +165,7 @@ class CheckerTypeDefinedSettingAgreementTest {
             "message, a single-valued index" to
                 Probe("FieldFilled(Approval/Sole)", on = "Approval/Remark", message = "Approval \$index(Sole).value\$ needs a note."),
             "computation, a wider source" to Probe("[Wider]", "MVK_ERROR_INVALID_ENUM_CALCULATION", target = "Tier"),
-            "computation, a labelled source" to Probe("[Labelled]", "MVK_INVALID_COMPARE_ENUM_TO_STRING", target = "Tier"),
+            "computation, a labelled source" to Probe("[Labelled]", target = "Tier"),
             // A date's format and precision.
             "read, a partial date" to Probe("[Partial] == [Exact]", INVALID_DATE_TYPE),
             "shift, a partial date" to Probe("[Exact] > AddDays(Partial, 1)", INVALID_DATE_TYPE),

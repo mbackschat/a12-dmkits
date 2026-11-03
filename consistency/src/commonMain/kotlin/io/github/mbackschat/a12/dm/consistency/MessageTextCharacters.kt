@@ -4,20 +4,22 @@ package io.github.mbackschat.a12.dm.consistency
  * That an error message's TEXT carries no control character.
  *
  * The cheapest check on this surface — no model resolution at all, only the text — and one of the few whose
- * whole law is a character predicate. A12 splits it in two: a line break draws `INVALID_LINEBREAK` and every
- * other control character draws `INVALID_CHARACTERS` ([KERNEL-FINDINGS KF337],
+ * whole law is a character predicate. A12 asks three questions: a line break draws `INVALID_LINEBREAK`, a lone
+ * surrogate `WRONG_ENCODING`, and every other control character `INVALID_CHARACTERS` ([KERNEL-FINDINGS KF337],
  * `rulekit.validate.laws.MessageTextControlCharacterLawsTest`).
  *
- * **The two gates are ORDERED, not independent, and that is the whole implementation.** A text carrying both
+ * **The gates are ORDERED, not independent, and that is the whole implementation.** A text carrying both
  * a line break and a tab draws the line-break class ALONE — the tab beside it draws nothing — so a reader
  * reporting each kind it finds would name a verdict A12 did not give, on exactly the text an author is most
- * likely to produce by pasting. One finding per message, line breaks first, is what matches.
+ * likely to produce by pasting. One finding per message, in A12's order, is what matches.
  *
- * **The two sets are A12's own predicates, not the ISO control blocks.** A line break is LF, CR, U+2028 or
- * U+2029 (`FehlertextUtil.checkLineSeparators`); every other character is judged by `\p{C}` ([isUnicodeOther]),
- * which also takes format characters, private use and unassigned code points, and a lone surrogate
- * (`rulekit.validate.laws.ErrorTextCharacterGateLawsTest`). The line separators are not `\p{C}` and NEL
- * U+0085 is not a line break, so a checker merging the two sets names the wrong class on both. A repertoire
+ * **The sets are A12's own predicates, not the ISO control blocks.** A line break is LF, CR, U+2028 or
+ * U+2029; the encoding question refuses a lone surrogate, which UTF-16 cannot encode; every other character is
+ * judged by `\p{C}` ([isUnicodeOther]), which also takes format characters, private use and unassigned code
+ * points (`rulekit.validate.laws.ErrorTextCharacterGateLawsTest`). A lone surrogate is in `\p{C}` too, so the
+ * ORDER is what names it: kernel 31.1.1 asks the encoding before `\p{C}` on every carrier, where 30.8.1's rule
+ * checker asked `\p{C}` first ([KERNEL-FINDINGS KF657]). The line separators are not `\p{C}` and NEL
+ * U+0085 is not a line break, so a checker merging the sets names the wrong class on both. A repertoire
  * restriction is a different law with a different carrier: the charset refusal of a supplementary character
  * carries no class at all ([modelTextRepertoireFindings]), and `\p{C}` judges that character as ONE code
  * point, so a pair outside the category draws nothing here.
@@ -40,29 +42,47 @@ private fun TrackedDeclaration.messageTextFinding(message: AuthoredMessage): Fin
         FindingSeverity.ERROR,
         refusal.code,
         "in `errorMessage`${message.localeKey?.let { " for `" + it + "`" } ?: ""}: the text carries " +
-            (if (refusal.isLineBreak) "the line break" else "the control or format character") +
-            " U+${refusal.codePoint.hex()}, which A12 refuses — an error message is one line of printable text",
+            refusal.describe() + ", which A12 refuses — an error message is one line of printable text",
         path,
     )
 }
 
-/** Which of A12's two ordered character gates refuses a text, and the code point that decided it. */
-internal data class CharacterRefusal(val isLineBreak: Boolean, val codePoint: Int) {
-    val code: String get() = if (isLineBreak) "INVALID_LINEBREAK" else "INVALID_CHARACTERS"
+/** A12's three character gates, in the order it asks them. */
+internal enum class CharacterGate(val code: String) {
+    LINE_BREAK("INVALID_LINEBREAK"),
+    ENCODING("WRONG_ENCODING"),
+    CONTROL("INVALID_CHARACTERS"),
+}
+
+/** Which of A12's ordered character gates refuses a text, and the code point that decided it. */
+internal data class CharacterRefusal(val gate: CharacterGate, val codePoint: Int) {
+    val code: String get() = gate.code
+
+    /** What the text carries, for a finding's explanation. */
+    fun describe(): String = when (gate) {
+        CharacterGate.LINE_BREAK -> "the line break U+${codePoint.hex()}"
+        CharacterGate.ENCODING -> "the lone surrogate U+${codePoint.hex()}, which UTF-16 cannot encode"
+        CharacterGate.CONTROL -> "the control or format character U+${codePoint.hex()}"
+    }
 }
 
 /**
- * A12's two character gates asked in order, or null when the text passes both.
+ * A12's three character gates asked in order, or null when the text passes all three.
  *
  * Shared by every carrier that meets them — a rule's and a computation's message here, a field type's own
- * message in [fieldTypeMessageTextFindings] — so the order and the two sets have one statement. The line-break
- * gate is keyed on the KIND present, not on the first offending character, which is why it is asked of the
- * whole text before the other.
+ * message in [fieldTypeMessageTextFindings] — because kernel 31.1.1 asks both through one helper,
+ * `FehlertextUtil.checkErrorTextAndExtractParameters` (source-read at `eec9134`), so the order and the sets have
+ * one statement. Each gate is keyed on the KIND present, not on the first offending character, which is why
+ * each is asked of the whole text before the next.
  */
 internal fun String.characterRefusal(): CharacterRefusal? {
-    firstOrNull { it.isA12LineBreak() }?.let { return CharacterRefusal(isLineBreak = true, it.code) }
-    return javaCodePoints().firstOrNull(::isUnicodeOther)?.let { CharacterRefusal(isLineBreak = false, it) }
+    firstOrNull { it.isA12LineBreak() }?.let { return CharacterRefusal(CharacterGate.LINE_BREAK, it.code) }
+    javaCodePoints().firstOrNull { it in LONE_SURROGATES }?.let { return CharacterRefusal(CharacterGate.ENCODING, it) }
+    return javaCodePoints().firstOrNull(::isUnicodeOther)?.let { CharacterRefusal(CharacterGate.CONTROL, it) }
 }
+
+/** A code point `javaCodePoints` yields only for a surrogate no partner completes. */
+private val LONE_SURROGATES = 0xD800..0xDFFF
 
 /**
  * Whether A12's character gate refuses this text, which withholds every other class read out of it.

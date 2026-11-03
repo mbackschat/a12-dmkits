@@ -40,10 +40,10 @@ class SumOfProductsOperandsTest {
         // The owning-group gate runs first, so this pair never reaches the repeatable-level one.
         expected["no repeatable level, DIFFERENT owning groups"] = listOf("MVK_DIFFERENT_GROUPS")
         expected["two starred levels"] = listOf("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED")
-        expected["a filtered operand"] = listOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+        expected["a filtered operand"] = listOf("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
         // The filter beats the multi-star, because the restriction is read at the LOWEST level first.
         expected["a filtered operand that also stars two levels"] =
-            listOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+            listOf("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
         // …but the operands are asked in order, so a left operand's two stars answer before a right one's filter
         // (`rulekit.validate.laws.SumOfProductsLawsTest`, cold review 2026-10-21).
         expected["the filter on the right, after a left operand starring two levels"] =
@@ -97,7 +97,7 @@ class SumOfProductsOperandsTest {
      * plain fields — every shape the four laws separate, on one model so no row moves a second variable.
      */
     private fun model(operands: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"basket","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"basket","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
@@ -128,7 +128,7 @@ class SumOfProductsOperandsTest {
     private companion object {
         val OWNED = setOf(
             "MVK_DIFFERENT_GROUPS",
-            "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+            "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
             "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED",
             "MVK_REPEATABLE_LEVEL_REQUIRED",
         )

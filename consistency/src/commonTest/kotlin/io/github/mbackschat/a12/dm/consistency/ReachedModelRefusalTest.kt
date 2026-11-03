@@ -37,27 +37,31 @@ class ReachedModelRefusalTest {
         assertEquals(emptyList(), refusals(addr = "", lib = ""))
     }
 
-    /** The entry also declares `de_DE`, which each reached model in turn leaves out; a superset is the control. */
+    /**
+     * The entry also declares `de_DE`, which each reached model in turn leaves out; a superset is the control. Only the
+     * included model is refused: kernel 31.1.1 expands a type-definition library whatever locales it declares
+     * (`adapter.WorkspaceReachedModelDiffTest`).
+     */
     @Test
-    fun aReachedModelMissingAnEntryLocaleRefusesTheEntry() {
+    fun anIncludedModelMissingAnEntryLocaleRefusesTheEntry() {
         val both = """[{"code":"en_US"},{"code":"de_DE"}]"""
         val observed = listOf("addr", "lib").associateWith { narrow ->
             refusals(addr = "", lib = "", entryLocales = both,
                 addrLocales = if (narrow == "addr") ENGLISH else both, libLocales = if (narrow == "lib") ENGLISH else both)
         }
         assertEquals(mapOf(
-            "addr" to listOf("The model `addr` does not declare the entry model's locale de_DE, so A12 does not expand it"),
-            "lib" to listOf("The model `lib` does not declare the entry model's locale de_DE, so A12 does not expand it"),
+            "addr" to listOf("The included model `addr` does not declare the entry model's locale de_DE, so A12 does not expand it"),
+            "lib" to emptyList(),
         ), observed)
         val superset = """[{"code":"en_US"},{"code":"de_DE"},{"code":"fr_FR"}]"""
         assertEquals(emptyList(), refusals(addr = "", lib = "", entryLocales = both, addrLocales = superset, libLocales = superset))
     }
 
-    /** A library declares no root group; one, even empty, is refused. The include keeps its own root group. */
+    /** A library's root group refuses nothing on kernel 31.1.1, which expands the import whatever root groups it holds. */
     @Test
-    fun aTypeDefinitionLibraryWithARootGroupRefusesTheEntry() {
+    fun aTypeDefinitionLibraryWithARootGroupRefusesNothing() {
         assertEquals(
-            listOf("The type-definition library `lib` declares a root group, so A12 cannot expand the import"),
+            emptyList(),
             refusals(addr = "", lib = "", libRoots = """[{"type":"Group","id":"t0","name":"Types","Group":{"elements":[]}}]"""),
         )
     }
@@ -110,20 +114,20 @@ class ReachedModelRefusalTest {
 
     private fun order(locales: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":$locales,"modelReferences":[
-           {"alias":"addr","modelType":"document","purpose":"include","reference":"addr"},
-           {"alias":"lib","modelType":"document","purpose":"typeDefinitions","reference":"lib"}]},
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":$locales,"modelReferences":[
+           {"modelType":"document","purpose":"include","reference":"addr"},
+           {"modelType":"document","purpose":"typeDefinitions","reference":"lib"}]},
          "content":{"modelInfo":{"name":"order"},"modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
              {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"OrderCode"}}}},
-             {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr","elements":[]}}
+             {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"addr"},"elements":[]}}
            ]}}]}}}
         """.trimIndent(),
     )
 
     private fun address(edit: String, locales: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"addr","locales":$locales},
+        {"header":{"modelVersion":"29.4.0","id":"addr","locales":$locales},
          "content":{$edit"modelRoot":{"rootGroups":[
            {"type":"Group","id":"a0","name":"Address","Group":{"elements":[
              {"type":"Field","id":"a1","name":"Street","Field":{"fieldType":{"type":"StringType"}}}]}}]}}}
@@ -132,7 +136,7 @@ class ReachedModelRefusalTest {
 
     private fun library(edit: String, locales: String, roots: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"lib","locales":$locales},
+        {"header":{"modelVersion":"29.4.0","id":"lib","locales":$locales},
          "content":{$edit"typeDefinitions":[{"id":"OrderCode","name":"OrderCode","fieldType":{"type":"StringType"}}],
           "modelRoot":{"rootGroups":$roots}}}
         """.trimIndent(),

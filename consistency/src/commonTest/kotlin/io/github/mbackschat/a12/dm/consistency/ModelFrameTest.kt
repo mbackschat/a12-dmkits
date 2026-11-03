@@ -41,6 +41,6 @@ class ModelFrameTest {
     }
 
     private fun frame(content: String, modelInfo: Boolean = true): String =
-        """{"header":{"id":"policy","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+        """{"header":{"id":"policy","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
            "content":{${if (modelInfo) """"modelInfo":{"name":"policy"},""" else ""}$content}}"""
 }

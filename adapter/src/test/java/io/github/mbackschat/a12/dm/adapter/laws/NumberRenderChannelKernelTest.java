@@ -226,18 +226,17 @@ class NumberRenderChannelKernelTest {
 
     // ── Channel 6: is a `pattern` even declarable on a NumberType? ───────────────────────────────────
 
-    /** {@code NumberType} has no {@code pattern} property, and A12's model deserializer REJECTS the key outright —
-     *  so there is no pattern channel on a NUMBER field to render text for. */
+    /** {@code NumberType} has no {@code pattern} property, so there is no pattern channel on a NUMBER field to render
+     *  text for. Kernel 31.1.1's reader reads an unknown member past, so A12 drops the key on its own round trip; 30.8.1's
+     *  rejected it outright. Either way the declaration A12 keeps carries no pattern. */
     @Test
     void aPatternIsNotPartOfTheNumberTypeSoTheChannelDoesNotExist() {
         String patched = MODEL.replace("\"maxFractionalDigits\": 2\n                    }",
                 "\"maxFractionalDigits\": 2,\n                      \"pattern\": \"250\"\n                    }");
         assertNotEquals(MODEL, patched, "the probe fixture patch must land");
         assertTrue(patched.contains("\"pattern\": \"250\""), "the probe fixture patch must land");
-        Throwable thrown = Assertions.assertThrows(RuntimeException.class,
-                () -> RuntimeLaws.modelRoundTrip(patched));
-        assertTrue(String.valueOf(thrown.getCause()).contains("pattern"),
-                "the kernel's model reader must name the rejected key: " + thrown.getCause());
+        assertEquals(0, count(RuntimeLaws.modelRoundTrip(patched), "\"pattern\""),
+                "A12 keeps no pattern on a NumberType");
     }
 
     // ── the fixture's own preconditions: the declarations we probe must actually BIND ────────────────

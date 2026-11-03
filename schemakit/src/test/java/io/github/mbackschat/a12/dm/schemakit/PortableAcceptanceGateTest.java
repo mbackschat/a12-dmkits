@@ -46,7 +46,7 @@ class PortableAcceptanceGateTest {
      */
     private static String unresolvableErrorTarget() {
         return """
-            {"header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+            {"header":{"id":"orders","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"orders"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},

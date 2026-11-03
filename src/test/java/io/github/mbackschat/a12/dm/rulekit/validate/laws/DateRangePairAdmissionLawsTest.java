@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
  * WHICH tier refuses a DATERANGE whose {@code (format, rangeSeparator)} pair A12 does not allowlist, and
  * what an ABSENT separator means in stored JSON.
  *
- * <p>{@link TemporalFormatVocabularyGuardTest} derives the eight admitted pairs and publishes them in
+ * <p>{@link TemporalFormatVocabularyGuardTest} derives the admitted pairs and publishes them in
  * {@code docs/TEMPORAL-FORMAT-VOCABULARY.md}, but it asks the kernel a boolean: admitted, or not. A consumer
  * that wants to SAY something about a refused pair needs the tier as well, because the four tiers are
  * different claims — a reader refusal means A12 never examined the declaration, a build failure means it
@@ -84,9 +84,10 @@ class DateRangePairAdmissionLawsTest {
      * 2026-09-13) — and the pair of rows measures that rather than trusting it: omission behaves like an
      * explicit {@code /} on both a format {@code /} admits and one it does not.
      *
-     * <p>The EMPTY separator is the row that keeps the default reading honest. {@code ""} is a declarable
-     * value with admitted pairs of its own, so "absent" and "empty" are different declarations; a reader
-     * treating omission as the empty string would get the last two rows exactly backwards.
+     * <p>The EMPTY separator rows keep the default reading honest from the other side. On kernel 31.1.1 A12's
+     * expand copy drops an empty member and reads it back as the default (KERNEL-FINDINGS KF658), so {@code ""}
+     * answers exactly as omission does: admitted with the ISO format, refused with the German one. On 30.8.1 it
+     * was a declaration of its own, and {@code MM} admits it either way.
      */
     @Test
     void anAbsentSeparatorIsTheKernelsDefaultAndNotTheEmptyOne() {
@@ -95,6 +96,8 @@ class DateRangePairAdmissionLawsTest {
         actual.put("German, separator omitted", range("{\"format\":\"dd.MM.yyyy\"}"));
         actual.put("ISO with an explicit empty separator",
                 range("{\"format\":\"yyyy-MM-dd\",\"rangeSeparator\":\"\"}"));
+        actual.put("German with an explicit empty separator",
+                range("{\"format\":\"dd.MM.yyyy\",\"rangeSeparator\":\"\"}"));
         actual.put("month with an explicit empty separator", range("{\"format\":\"MM\",\"rangeSeparator\":\"\"}"));
         actual.put("month, separator omitted", range("{\"format\":\"MM\"}"));
 
@@ -103,11 +106,12 @@ class DateRangePairAdmissionLawsTest {
         // The discriminator for "omission means `/`": the same omission on a format `/` is not admitted
         // with, and it draws the same prose sentence as an explicit mismatching separator.
         expected.put("German, separator omitted", KernelLaws.REFUSED_CODELESS);
-        expected.put("ISO with an explicit empty separator", KernelLaws.REFUSED_CODELESS);
-        // …and the discriminator for "the empty separator is a declaration rather than a missing one".
+        expected.put("ISO with an explicit empty separator", KernelLaws.ADMITTED);
+        expected.put("German with an explicit empty separator", KernelLaws.REFUSED_CODELESS);
+        // The German pair is the discriminator for "empty reads as `/`" against "empty became admitted".
         expected.put("month with an explicit empty separator", KernelLaws.ADMITTED);
         // `MM` is admitted with BOTH the empty separator and `/`, so this row cannot separate the two
-        // readings — it is here because a consumer must not read the two rows above as "empty is refused".
+        // readings — it is here because a consumer must not read "empty is the default" as "empty is refused".
         expected.put("month, separator omitted", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "an omitted rangeSeparator is the kernel's `/` default");
     }

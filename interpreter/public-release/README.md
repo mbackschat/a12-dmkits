@@ -34,7 +34,7 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 
 The package does not author models, render forms, persist Documents, provide a virtual filesystem, or bundle Kernel code. Kernel-shaped TypeScript and JVM drop-in adapters are separate, later compatibility products.
 
-**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
+**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 31.1.1**, as shipped in the **A12 Tools 2026.06-ext1** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
 
 <p align="center">
   <a href="assets/infographics/a12-interpreter-runtime.avif">
@@ -226,9 +226,9 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 1 | 886 | 749 | 3 | 134 |
 | HTML | 1 | 333 | 321 | 0 | 12 |
-| Kotlin | 144 | 35631 | 22582 | 10041 | 3008 |
-| TypeScript | 17 | 3794 | 3227 | 286 | 281 |
-| **Total** | **163** | **40644** | **26879** | **10330** | **3435** |
+| Kotlin | 145 | 35592 | 22498 | 10071 | 3023 |
+| TypeScript | 17 | 3789 | 3222 | 286 | 281 |
+| **Total** | **164** | **40600** | **26790** | **10360** | **3450** |
 
 ### Verification
 
@@ -238,9 +238,9 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 |---|---:|---:|---:|---:|---:|
 | Java | 2 | 166 | 145 | 2 | 19 |
 | JavaScript | 2 | 154 | 137 | 0 | 17 |
-| Kotlin | 346 | 38009 | 29880 | 4025 | 4104 |
-| TypeScript | 15 | 3399 | 3178 | 75 | 146 |
-| **Total** | **365** | **41728** | **33340** | **4102** | **4286** |
+| Kotlin | 346 | 38084 | 29895 | 4078 | 4111 |
+| TypeScript | 15 | 3384 | 3164 | 75 | 145 |
+| **Total** | **365** | **41788** | **33341** | **4155** | **4292** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->

@@ -12,50 +12,39 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Both kernel strategies lock the `DifferenceInDays` calendar-step separator. The interpreter participates
- * on its supported Berlin/UTC profile; Pacific/Apia remains kernel evidence for the deliberately refused
- * wider Java time-zone domain.
+ * Both kernel strategies lock `DifferenceInDays` as kernel 31.1.1 computes it: complete days between the two
+ * model-zone WALL CLOCKS (`ChronoUnit.DAYS.between` on `ZonedDateTime`, KERNEL-FINDINGS KF665). The Berlin rows are
+ * where the 30.8.1 stateful `Calendar` day loop answered differently, so each one separates the two accounts. The
+ * interpreter participates on its supported Berlin/UTC profile; Pacific/Apia remains kernel evidence for the
+ * deliberately refused wider Java time-zone domain.
  */
 class CalendarStepDifferenceInDaysDiffTest {
 
+    /** 30.8.1 counted 1, -1, 1 and 2 on the first, third, fourth and sixth rows: its day step landed at 01:30. */
     @Test
     fun berlinPartialGapLandingTriChecks() {
         val fixture = fixture("Europe/Berlin")
-        assertDifference(fixture, "2024-03-30T02:30:00", "2024-03-31T01:45:00", 1, true)
+        assertDifference(fixture, "2024-03-30T02:30:00", "2024-03-31T01:45:00", 0, true)
         assertDifference(fixture, "2024-03-30T02:30:00", "2024-03-31T01:29:59", 0, true)
-        assertDifference(fixture, "2024-03-31T01:45:00", "2024-03-30T02:30:00", -1, true)
+        assertDifference(fixture, "2024-03-31T01:45:00", "2024-03-30T02:30:00", 0, true)
         assertDifference(fixture, "2024-03-30T02:30:00", "2024-03-31T03:30:00", 1, true)
-        assertDifference(fixture, "2024-03-30T02:30:00", "2024-04-01T02:00:00", 2, true)
+        // The gap endpoint resolves to 03:30, past 02:30.
+        assertDifference(fixture, "2024-03-30T02:30:00", "2024-03-31T02:30:00", 1, true)
+        assertDifference(fixture, "2024-03-30T02:30:00", "2024-04-01T02:00:00", 1, true)
     }
 
-    /**
-     * SPEC-2026-07-29-01's named composite: the whole-year seed lands its candidate through the legacy YEAR
-     * helper, and each subsequent day step uses its OWN current instant as the source — so a seed landing that
-     * falls in the spring gap changes the carried clock and the total is 369, not the naive 370.
-     */
+    /** SPEC-2026-07-29-01's composite: 30.8.1's whole-year seed landed in the spring gap and counted 369. */
     @Test
-    fun theWholeYearSeedCompositeIsThreeHundredSixtyNine() {
+    fun theWholeYearSeedCompositeIsThePlainWallClockCount() {
         val fixture = fixture("Europe/Berlin")
-        assertDifference(fixture, "2023-04-01T02:30:00", "2024-04-05T02:30:00", 369, true)
+        assertDifference(fixture, "2023-04-01T02:30:00", "2024-04-05T02:30:00", 370, true)
     }
 
-    /**
-     * The long spring-gap separator for the YEAR arm (a12-kernel-lean SPEC-2026-07-29-01). The 21-year
-     * candidate's landing falls in the 2024 spring gap, and the two rival resolutions put it on opposite sides
-     * of the later endpoint (2024-03-31T03:00 = 01:00Z):
-     *
-     *  - sign-independent compute-time resolution → the **post-gap** label 03:30 (01:30Z), which is AFTER the
-     *    endpoint, so the 21-year candidate is rejected and the count is **7670**;
-     *  - the direction-selected forward resolution → the **pre-gap** label 01:30 (00:30Z), which admits the
-     *    candidate and freezes the seed one day high, giving **7671**.
-     *
-     * Unlike the one-year overlap construction, the day loop cannot self-correct here: it only ever adds, so an
-     * admitted-but-overshooting seed is unrecoverable. That is what makes this a real discriminator.
-     */
+    /** a12-kernel-lean SPEC-2026-07-29-01's long candidate: 30.8.1 rejected its 21-year seed and counted 7670. */
     @Test
-    fun theLongSpringGapYearCandidateSeparatesTheTwoResolutions() {
+    fun theLongSpringGapCandidateIsThePlainWallClockCount() {
         val fixture = fixture("Europe/Berlin")
-        assertDifference(fixture, "2003-03-31T02:30:00", "2024-03-31T03:00:00", 7670, true)
+        assertDifference(fixture, "2003-03-31T02:30:00", "2024-03-31T03:00:00", 7671, true)
     }
 
     @Test
@@ -66,13 +55,14 @@ class CalendarStepDifferenceInDaysDiffTest {
         assertDifference(fixture, "2024-06-16T12:00:00", "2024-06-15T12:00:00", -1, true)
     }
 
+    /** Apia skipped 2011-12-30 entirely; the wall-clock count spans the missing date, where 30.8.1 counted one day. */
     @Test
     fun apiaWholeDateSkipAgreesAcrossBothKernelStrategies() {
         val fixture = fixture("Pacific/Apia")
-        assertDifference(fixture, "2011-12-29T12:00:00", "2011-12-31T12:00:00", 1, false)
-        assertDifference(fixture, "2011-12-29T12:00:00", "2011-12-31T11:59:59", 0, false)
-        assertDifference(fixture, "2011-12-31T12:00:00", "2011-12-29T12:00:00", -1, false)
-        assertDifference(fixture, "2011-12-29T12:00:00", "2012-01-01T12:00:00", 2, false)
+        assertDifference(fixture, "2011-12-29T12:00:00", "2011-12-31T12:00:00", 2, false)
+        assertDifference(fixture, "2011-12-29T12:00:00", "2011-12-31T11:59:59", 1, false)
+        assertDifference(fixture, "2011-12-31T12:00:00", "2011-12-29T12:00:00", -2, false)
+        assertDifference(fixture, "2011-12-29T12:00:00", "2012-01-01T12:00:00", 3, false)
     }
 
     private fun assertDifference(
@@ -144,9 +134,9 @@ class CalendarStepDifferenceInDaysDiffTest {
         const val OBSERVED = "$ROOT/ObservedAt"
         const val COMPARED = "$ROOT/ComparedAt"
         const val CODE_PREFIX = "CALENDAR_DAYS_"
-        // 368..370 bracket SPEC-2026-07-29-01's whole-year-seed composite, so the fixture can DISCRIMINATE
-        // the value rather than merely fail to match one candidate.
-        val EXPECTED_VALUES = listOf(-1, 0, 1, 2, 368, 369, 370, 7670, 7671)
+        // Each row's neighbours are rules too (368..370, 7670/7671), so the fixture DISCRIMINATES the value rather
+        // than merely failing to match one candidate.
+        val EXPECTED_VALUES = listOf(-2, -1, 0, 1, 2, 3, 368, 369, 370, 7670, 7671)
 
         val BASE: String = DocumentModelDraft.named("itinerary").locale("en_US")
             .rootGroup("Itinerary") { group ->

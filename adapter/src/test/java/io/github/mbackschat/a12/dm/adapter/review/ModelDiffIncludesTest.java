@@ -29,7 +29,7 @@ class ModelDiffIncludesTest {
     private static String mountedCatalog() {
         EditSession s = EditSession.read(DocumentModelDraft.named("catalog").locale("en_US")
                 .rootGroup("Catalog", c -> c.field("StoreName", FieldKind.STRING)).build().toJson(), RESOLVER);
-        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        s.mount("/Catalog", "Retail", "pricelist");
         return s.toJson();
     }
 

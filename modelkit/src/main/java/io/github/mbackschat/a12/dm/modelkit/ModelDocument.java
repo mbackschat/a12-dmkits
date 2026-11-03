@@ -7,10 +7,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -184,31 +186,41 @@ public final class ModelDocument {
         return this;
     }
 
-    /** The directly-declared model includes (header {@code modelReferences} with {@code purpose: "include"},
-     *  or a blank/absent purpose — the classic default), in document order. <b>Transitive</b> includes the
-     *  kernel adds are excluded here — read those via {@link #transitiveIncludes()}. */
+    /** The models this one includes, each once, in document order: every header {@code modelReferences} entry
+     *  with {@code purpose: "include"} (or a blank/absent purpose), then any mounted model no entry names. A12
+     *  resolves a mount by its {@code includeConfig.reference} alone (KF651), so a mount the header omits is an
+     *  include all the same. <b>Transitive</b> entries are read via {@link #transitiveIncludes()}. */
     public List<Include> includes() {
-        List<Include> out = new ArrayList<>();
+        Set<String> references = new LinkedHashSet<>();
         for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
-            String purpose = r.path(DmKeys.PURPOSE).asText();
-            if (INCLUDE_PURPOSE.equals(purpose) || purpose.isEmpty()) {
-                out.add(new Include(r.path(DmKeys.ALIAS).asText(), r.path(DmKeys.REFERENCE).asText()));
+            if (isIncludeEntry(r)) {
+                references.add(r.path(DmKeys.REFERENCE).asText());
             }
         }
-        return out;
+        walk((path, node, isGroup) -> {
+            if (isGroup) {
+                mountReference(node.path(ElementType.GROUP.wireName())).ifPresent(references::add);
+            }
+        });
+        return references.stream().map(Include::new).toList();
     }
 
-    /** The <b>transitive</b> includes (header {@code modelReferences} with {@code purpose: "transitiveInclude"})
-     *  the kernel records for includes pulled in via another include — distinct from the author's direct
+    /** The <b>transitive</b> includes (header {@code modelReferences} with {@code purpose: "transitiveInclude"}),
+     *  which older kernels recorded for includes pulled in via another include — distinct from the author's direct
      *  {@link #includes()} (DG6/A12K-3234). */
     public List<Include> transitiveIncludes() {
         List<Include> out = new ArrayList<>();
         for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
             if (TRANSITIVE_INCLUDE_PURPOSE.equals(r.path(DmKeys.PURPOSE).asText())) {
-                out.add(new Include(r.path(DmKeys.ALIAS).asText(), r.path(DmKeys.REFERENCE).asText()));
+                out.add(new Include(r.path(DmKeys.REFERENCE).asText()));
             }
         }
         return out;
+    }
+
+    private static boolean isIncludeEntry(JsonNode reference) {
+        String purpose = reference.path(DmKeys.PURPOSE).asText();
+        return INCLUDE_PURPOSE.equals(purpose) || purpose.isEmpty();
     }
 
     /**
@@ -226,26 +238,13 @@ public final class ModelDocument {
         return out;
     }
 
-    /** Direct authored includes and type-definition imports, grouped by purpose and keyed by alias. */
-    public Map<ReferencePurpose, Map<String, String>> authoredReferences() {
-        Map<ReferencePurpose, Map<String, String>> references = new java.util.EnumMap<>(ReferencePurpose.class);
-        for (ReferencePurpose purpose : ReferencePurpose.values()) {
-            references.put(purpose, new LinkedHashMap<>());
-        }
-        for (JsonNode reference : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
-            String wirePurpose = reference.path(DmKeys.PURPOSE).asText();
-            ReferencePurpose purpose = switch (wirePurpose) {
-                case "", INCLUDE_PURPOSE -> ReferencePurpose.INCLUDE;
-                case IMPORT_PURPOSE -> ReferencePurpose.TYPE_DEFINITION_IMPORT;
-                default -> null;
-            };
-            if (purpose != null) {
-                references.get(purpose).put(reference.path(DmKeys.ALIAS).asText(),
-                        reference.path(DmKeys.REFERENCE).asText());
-            }
-        }
-        references.replaceAll((purpose, entries) ->
-                Collections.unmodifiableMap(new LinkedHashMap<>(entries)));
+    /** Direct authored includes and type-definition imports, grouped by purpose: each purpose's referenced model
+     *  ids, once each, in document order ({@link #includes()} for the include half). */
+    public Map<ReferencePurpose, List<String>> authoredReferences() {
+        Map<ReferencePurpose, List<String>> references = new java.util.EnumMap<>(ReferencePurpose.class);
+        references.put(ReferencePurpose.INCLUDE, includes().stream().map(Include::reference).toList());
+        references.put(ReferencePurpose.TYPE_DEFINITION_IMPORT,
+                typeDefImports().stream().distinct().toList());
         return Collections.unmodifiableMap(references);
     }
 
@@ -414,8 +413,8 @@ public final class ModelDocument {
         }
     }
 
-    /** An include mount's alias and complete option set. */
-    public record MountState(String alias, MountOptions options) {}
+    /** An include mount's referenced model id and complete option set. */
+    public record MountState(String reference, MountOptions options) {}
 
     /** A rule's authored descriptive metadata; logic and messages come from the bound adapter. */
     public record RuleState(String path, DescriptiveState meta) {}
@@ -1175,21 +1174,13 @@ public final class ModelDocument {
         if (maxRepetitions < 2) {
             throw new IllegalArgumentException("a repeatable group needs maxRepetitions >= 2, got " + maxRepetitions);
         }
-        JsonNode group = locate(groupPath, true);
-        if (group == null) {
-            throw new IllegalArgumentException("no group at path: " + groupPath);
-        }
-        ((ObjectNode) group.path(ElementType.GROUP.wireName())).put(DmKeys.REPEATABILITY, maxRepetitions);
+        editableGroupBody(groupPath).put(DmKeys.REPEATABILITY, maxRepetitions);
         return this;
     }
 
     /** Set the group at {@code groupPath} non-repeating (a single group, {@code repeatability == 1}). */
     public ModelDocument setNonRepeatable(String groupPath) {
-        JsonNode group = locate(groupPath, true);
-        if (group == null) {
-            throw new IllegalArgumentException("no group at path: " + groupPath);
-        }
-        ((ObjectNode) group.path(ElementType.GROUP.wireName())).put(DmKeys.REPEATABILITY, 1);
+        editableGroupBody(groupPath).put(DmKeys.REPEATABILITY, 1);
         return this;
     }
 
@@ -1205,7 +1196,7 @@ public final class ModelDocument {
      * admitted outside-landing spelling is locked by {@code GroupIndexAndSortReferenceLawsTest}.
      */
     public ModelDocument setIndexField(String groupPath, String fieldName) {
-        ObjectNode body = groupBody(groupPath);
+        ObjectNode body = editableGroupBody(groupPath);
         String shortName = fieldName.substring(fieldName.lastIndexOf('/') + 1);
         boolean childField = false;
         for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
@@ -1246,7 +1237,7 @@ public final class ModelDocument {
      * {@code validate()} gate stays the authoritative check.
      */
     public ModelDocument setSortFields(String groupPath, List<ElementDraft.SortField> fields) {
-        ObjectNode body = groupBody(groupPath);
+        ObjectNode body = editableGroupBody(groupPath);
         if (A12IntMembers.repetitionCount(body.path(DmKeys.REPEATABILITY)) <= 1) {
             throw new IllegalArgumentException("sort fields need a repeatable group; " + groupPath
                     + " is not repeatable");
@@ -1279,13 +1270,22 @@ public final class ModelDocument {
         return this;
     }
 
-    /** The {@code "Group"} payload object at {@code groupPath}; fails fast if no group is there. */
+    /** The {@code "Group"} payload object at {@code groupPath}, for a read; fails fast if no group is there. */
     private ObjectNode groupBody(String groupPath) {
+        return DmNodes.groupBody(requireGroup(groupPath));
+    }
+
+    /** {@link #groupBody(String)} for an edit, which writes out the empty body a body-less group is read as. */
+    private ObjectNode editableGroupBody(String groupPath) {
+        return DmNodes.editableGroupBody(requireGroup(groupPath));
+    }
+
+    private ObjectNode requireGroup(String groupPath) {
         JsonNode group = locate(groupPath, true);
         if (group == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
-        return (ObjectNode) group.path(ElementType.GROUP.wireName());
+        return (ObjectNode) group;
     }
 
     // --- doc config (content.modelConfig) -------------------------------------------------------
@@ -1723,41 +1723,62 @@ public final class ModelDocument {
     }
 
     /**
-     * The include alias the group at {@code groupPath} mounts ({@code Group.modelAlias}), or empty if it is
-     * not an include mount. A mount group's own {@code elements} would <em>shadow</em> the include (the kernel
-     * stops expanding it, silently — KERNEL-FINDINGS), so callers use this to refuse editing into a mount.
+     * The model id the group at {@code groupPath} mounts ({@code includeConfig.reference}), or empty if it is no
+     * include mount. A12 replaces a mount group's own {@code elements} with the included content, silently
+     * (KF651), so callers use this to refuse editing into a mount.
      */
-    public Optional<String> mountAliasAt(String groupPath) {
+    public Optional<String> mountReferenceAt(String groupPath) {
         JsonNode group = locate(groupPath, true);
-        if (group == null) {
-            return Optional.empty();
-        }
-        String alias = group.path(ElementType.GROUP.wireName()).path(DmKeys.MODEL_ALIAS).asText(null);
-        return alias == null || alias.isBlank() ? Optional.empty() : Optional.of(alias);
+        return group == null ? Optional.empty() : mountReference(group.path(ElementType.GROUP.wireName()));
     }
 
-    // --- includes (header.modelReferences + mount groups) ---------------------------------------
+    /** The model a group body mounts: its {@code includeConfig.reference}, the empty text when that is absent. */
+    private static Optional<String> mountReference(JsonNode groupBody) {
+        JsonNode include = groupBody.path(DmKeys.INCLUDE_CONFIG);
+        return include.isObject() ? Optional.of(include.path(DmKeys.REFERENCE).asText("")) : Optional.empty();
+    }
 
-    /** Declare a model include: a header {@code modelReference} aliased {@code alias} → {@code reference}. */
-    public ModelDocument addInclude(String alias, String reference) {
+    // --- includes (mount groups + their header modelReferences) --------------------------------
+
+    /** Write the header include entry for {@code reference} unless one is present: one per distinct mounted model,
+     *  without alias, as A12 Tools and the migrator write it (KF651). */
+    private void declareInclude(String reference) {
+        for (JsonNode r : modelReferences()) {
+            if (isIncludeEntry(r) && reference.equals(r.path(DmKeys.REFERENCE).asText())) {
+                return;
+            }
+        }
         modelReferences().addObject()
-                .put(DmKeys.ALIAS, alias)
                 .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
-                .put(DmKeys.PURPOSE, "include")
+                .put(DmKeys.PURPOSE, INCLUDE_PURPOSE)
                 .put(DmKeys.REFERENCE, reference);
-        return this;
+    }
+
+    /** Drop every header include entry naming {@code reference}; whether one was present. */
+    private boolean undeclareInclude(String reference) {
+        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
+        boolean removed = false;
+        if (refs.isArray()) {
+            ArrayNode array = (ArrayNode) refs;
+            for (int i = array.size() - 1; i >= 0; i--) {
+                if (isIncludeEntry(array.get(i)) && reference.equals(array.get(i).path(DmKeys.REFERENCE).asText())) {
+                    array.remove(i);
+                    removed = true;
+                }
+            }
+        }
+        return removed;
     }
 
     /**
      * Declare a <b>type-definition import</b>: a header {@code modelReference} with
      * {@code purpose: "typeDefinitions"} (the kernel constant {@code PURPOSE_4_ONLY_TYPE_DEFS}). The
      * referenced model's type-defs merge into this model's type-def namespace by id at expand, so a field
-     * can be typed by an imported id with a plain {@code typeDefinitionId} (no alias prefix). The alias is a
-     * label (defaults to {@code reference}); unlike an include, an import is <em>not</em> mounted.
+     * can be typed by an imported id with a plain {@code typeDefinitionId}; unlike an include, an import is
+     * <em>not</em> mounted. Written without alias, as the migrator writes it (KF651).
      */
     public ModelDocument addImport(String reference) {
         modelReferences().addObject()
-                .put(DmKeys.ALIAS, reference)
                 .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
                 .put(DmKeys.PURPOSE, IMPORT_PURPOSE)
                 .put(DmKeys.REFERENCE, reference);
@@ -1801,24 +1822,26 @@ public final class ModelDocument {
                 : ((ObjectNode) root.path(DmKeys.HEADER)).putArray(DmKeys.MODEL_REFERENCES);
     }
 
-    /** Mount a declared include at {@code parentPath} as a group named {@code name} (a {@code modelAlias} group). */
-    public ModelDocument mount(String parentPath, String name, String alias) {
-        return mount(parentPath, name, alias, 1);
+    /** Mount the model {@code reference} names at {@code parentPath} as a group named {@code name}, declaring its
+     *  header include entry when it is the first mount of that model. */
+    public ModelDocument mount(String parentPath, String name, String reference) {
+        return mount(parentPath, name, reference, 1);
     }
 
-    /** Mount a declared include as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS). */
-    public ModelDocument mount(String parentPath, String name, String alias, int repeatability) {
-        return mount(parentPath, name, alias, MountOptions.repeatable(repeatability));
+    /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS). */
+    public ModelDocument mount(String parentPath, String name, String reference, int repeatability) {
+        return mount(parentPath, name, reference, MountOptions.repeatable(repeatability));
     }
 
     /**
-     * Mount a declared include with explicit {@link MountOptions} — repeatability plus whether to exclude
+     * Mount an included model with explicit {@link MountOptions} — repeatability plus whether to exclude
      * the included model's rules / computations on expand (FEATURE-GAPS).
      */
-    public ModelDocument mount(String parentPath, String name, String alias, MountOptions options) {
+    public ModelDocument mount(String parentPath, String name, String reference, MountOptions options) {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
         container.add(DocumentModelDraft.mountNode(
-                new ElementDraft.Mount(name, alias, options, List.of()), parentPath));
+                new ElementDraft.Mount(name, reference, options, List.of()), parentPath));
+        declareInclude(reference);
         return this;
     }
 
@@ -1827,8 +1850,8 @@ public final class ModelDocument {
      * replace it in <em>this</em> base with a <b>mount</b> of that sub-model at the same name, so every
      * composed path is preserved (task #7, a Tier-3 structural refactor). The sub-model reuses the base's
      * envelope (locales, config) with header id {@code reference} and a single root group = the extracted
-     * subtree rebased to {@code /<name>}; the base gains the {@code modelReference} + {@code modelAlias}
-     * mount. Rules inside the subtree travel into the sub-model (they reference relatively). A rule inside
+     * subtree rebased to {@code /<name>}; the base gains the {@code includeConfig} mount and its header
+     * entry. Rules inside the subtree travel into the sub-model (they reference relatively). A rule inside
      * the subtree that references <em>outside</em> it, or a repeatable group, is the caller's gate to
      * refuse (the kernel re-validate of the composed pair is the backstop). Fails fast if the group is absent.
      */
@@ -1842,8 +1865,8 @@ public final class ModelDocument {
      * the extracted group's name so every composed path is preserved. Use it when the sub-model is meant for
      * <b>reuse</b> under a different mount name (extract {@code /Person/HomeAddress} as a shared {@code Address}
      * mounted under both Home and Work); {@code null} keeps the extracted group's name (probe F05-3 spared the
-     * follow-up {@code group rename}). The mount is by {@code reference}/alias, not by the root name, so the
-     * two are free to differ.
+     * follow-up {@code group rename}). The mount is by {@code reference}, not by the root name, so the two are
+     * free to differ.
      */
     public String extractGroupAsInclude(String groupPath, String reference, String rootName) {
         JsonNode group = locate(groupPath, true);
@@ -1875,47 +1898,45 @@ public final class ModelDocument {
             throw new UncheckedIOException(new IOException("failed to serialize the extracted sub-model", e));
         }
 
-        // the base: drop the group, declare the reference, mount it at the same name (path preserved).
+        // the base: drop the group and mount the sub-model at the same name (path preserved).
         removeGroup(groupPath);
-        addInclude(reference, reference);
         mount(groupPath.substring(0, groupPath.lastIndexOf('/')), mountName, reference);
         return subModelJson;
     }
 
     /**
-     * Inline the include aliased {@code alias} — the inverse of {@link #extractGroupAsInclude}: fold the
-     * included model's content (passed as {@code includedModelJson}) back into every mount as a real group
-     * (rebasing the sub-model's root path to the mount path), then drop the header reference. The included
-     * JSON is the caller's to supply (it lives in a separate file; this class is resolver-free). Fails fast
-     * if no mount carries {@code alias}.
+     * Inline the include {@code reference} — the inverse of {@link #extractGroupAsInclude}: fold the included
+     * model's content (passed as {@code includedModelJson}) back into every mount as a real group (rebasing the
+     * sub-model's root path to the mount path), then drop the header entry. The included JSON is the caller's to
+     * supply (it lives in a separate file; this class is resolver-free). Fails fast if no group mounts it.
      */
-    public ModelDocument inlineInclude(String alias, String includedModelJson) {
+    public ModelDocument inlineInclude(String reference, String includedModelJson) {
         ModelDocument included = read(includedModelJson);
         JsonNode includedRoot = included.root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS).path(0);
         if (includedRoot.isMissingNode()) {
-            throw new IllegalArgumentException("included model has no root group for alias: " + alias);
+            throw new IllegalArgumentException("included model has no root group: " + reference);
         }
         String includedRootId = includedRoot.path(DmKeys.ID).asText();
         JsonNode includedElements = includedRoot.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS);
         boolean[] folded = {false};
-        inlineMounts(rootGroups(), alias, includedRootId, includedElements, folded);
+        inlineMounts(rootGroups(), reference, includedRootId, includedElements, folded);
         if (!folded[0]) {
-            throw new IllegalArgumentException("no mount with alias: " + alias);
+            throw new IllegalArgumentException("no group mounts the include: " + reference);
         }
-        removeInclude(alias);   // mounts no longer carry modelAlias, so this only drops the header reference
+        undeclareInclude(reference);
         return this;
     }
 
-    private void inlineMounts(JsonNode elements, String alias, String includedRootId, JsonNode includedElements,
+    private void inlineMounts(JsonNode elements, String reference, String includedRootId, JsonNode includedElements,
             boolean[] folded) {
         for (JsonNode element : elements) {
             if (!DmNodes.is(ElementType.GROUP, element)) {
                 continue;
             }
-            ObjectNode body = (ObjectNode) element.path(ElementType.GROUP.wireName());
-            if (alias.equals(body.path(DmKeys.MODEL_ALIAS).asText(null))) {
+            ObjectNode body = DmNodes.groupBody(element);
+            if (mountReference(body).filter(reference::equals).isPresent()) {
                 String mountPath = element.path(DmKeys.ID).asText();
-                body.remove(DmKeys.MODEL_ALIAS);
+                body.remove(DmKeys.INCLUDE_CONFIG);
                 ArrayNode destination = body.putArray(DmKeys.ELEMENTS);
                 for (JsonNode child : includedElements) {
                     JsonNode copy = child.deepCopy();
@@ -1924,16 +1945,16 @@ public final class ModelDocument {
                 }
                 folded[0] = true;
             } else if (body.path(DmKeys.ELEMENTS).isArray()) {
-                inlineMounts(body.path(DmKeys.ELEMENTS), alias, includedRootId, includedElements, folded);
+                inlineMounts(body.path(DmKeys.ELEMENTS), reference, includedRootId, includedElements, folded);
             }
         }
     }
 
-    /** Every mount-group path that mounts the include aliased {@code alias} ({@code modelAlias}), in document order (task #2). */
-    public List<String> mountsOfInclude(String alias) {
+    /** Every mount-group path that mounts the model {@code reference} names, in document order (task #2). */
+    public List<String> mountsOfInclude(String reference) {
         List<String> out = new ArrayList<>();
         walk((path, node, isGroup) -> {
-            if (isGroup && alias.equals(node.path(ElementType.GROUP.wireName()).path(DmKeys.MODEL_ALIAS).asText(null))) {
+            if (isGroup && mountReference(node.path(ElementType.GROUP.wireName())).filter(reference::equals).isPresent()) {
                 out.add(path);
             }
         });
@@ -1956,95 +1977,62 @@ public final class ModelDocument {
     }
 
     /**
-     * Remove the include aliased {@code alias} — its header {@code modelReference} <em>and</em> every mount
-     * group ({@code modelAlias == alias}). Fails fast if neither is present; {@link #validate()} catches a
-     * rule still referencing the mounted content.
+     * Remove the include {@code reference} — every mount group of that model <em>and</em> its header entry.
+     * Fails fast if neither is present; {@link #validate()} catches a rule still referencing the mounted content.
      */
-    public ModelDocument removeInclude(String alias) {
-        boolean removed = false;
-        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
-        if (refs.isArray()) {
-            ArrayNode array = (ArrayNode) refs;
-            for (int i = array.size() - 1; i >= 0; i--) {
-                if (alias.equals(array.get(i).path(DmKeys.ALIAS).asText())) {
-                    array.remove(i);
-                    removed = true;
-                }
-            }
-        }
+    public ModelDocument removeInclude(String reference) {
         boolean[] mountRemoved = {false};
-        removeMounts(rootGroups(), alias, mountRemoved);
-        if (!removed && !mountRemoved[0]) {
-            throw new IllegalArgumentException("no include with alias: " + alias);
+        removeMounts(rootGroups(), reference, mountRemoved);
+        if (!undeclareInclude(reference) && !mountRemoved[0]) {
+            throw new IllegalArgumentException("no include of model: " + reference);
         }
         return this;
-    }
-
-    /** Re-point the include {@code alias} at a different referenced model — the mounts, keyed by alias, are untouched. */
-    public ModelDocument setIncludeReference(String alias, String newReference) {
-        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
-        if (refs.isArray()) {
-            for (JsonNode ref : refs) {
-                if (alias.equals(ref.path(DmKeys.ALIAS).asText())) {
-                    ((ObjectNode) ref).put(DmKeys.REFERENCE, newReference);
-                    return this;
-                }
-            }
-        }
-        throw new IllegalArgumentException("no include with alias: " + alias);
     }
 
     /**
-     * Rename an include's alias — its header {@code modelReference} <em>and</em> every mount's {@code
-     * modelAlias}, in step, so nothing dangles. Mount group names/ids are unchanged, so rules over mounted
-     * content (keyed by path, not alias) are unaffected. Fails fast if the alias is present nowhere.
+     * Re-point the include {@code reference} at the model {@code newReference}: every mount's
+     * {@code includeConfig.reference} and the header entry, in step, so nothing dangles. Mount group names are
+     * unchanged, so rules over the mounted content (keyed by path) are unaffected. When {@code newReference} is
+     * already included the two now name one model, so its header entry is kept once. Fails fast if
+     * {@code reference} is included nowhere.
      */
-    public ModelDocument renameInclude(String oldAlias, String newAlias) {
-        boolean renamed = false;
-        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
-        if (refs.isArray()) {
-            for (JsonNode ref : refs) {
-                if (oldAlias.equals(ref.path(DmKeys.ALIAS).asText())) {
-                    ((ObjectNode) ref).put(DmKeys.ALIAS, newAlias);
-                    renamed = true;
-                }
-            }
+    public ModelDocument setIncludeReference(String reference, String newReference) {
+        boolean[] repointed = {false};
+        repointMounts(rootGroups(), reference, newReference, repointed);
+        if (!undeclareInclude(reference) && !repointed[0]) {
+            throw new IllegalArgumentException("no include of model: " + reference);
         }
-        boolean[] mountRenamed = {false};
-        renameMounts(rootGroups(), oldAlias, newAlias, mountRenamed);
-        if (!renamed && !mountRenamed[0]) {
-            throw new IllegalArgumentException("no include with alias: " + oldAlias);
-        }
+        declareInclude(newReference);
         return this;
     }
 
-    private void renameMounts(ArrayNode elements, String oldAlias, String newAlias, boolean[] any) {
+    private void repointMounts(ArrayNode elements, String reference, String newReference, boolean[] any) {
         for (JsonNode el : elements) {
             if (!DmNodes.is(ElementType.GROUP, el)) {
                 continue;
             }
-            ObjectNode body = (ObjectNode) el.path(ElementType.GROUP.wireName());
-            if (oldAlias.equals(body.path(DmKeys.MODEL_ALIAS).asText())) {
-                body.put(DmKeys.MODEL_ALIAS, newAlias);
+            ObjectNode body = DmNodes.groupBody(el);
+            if (mountReference(body).filter(reference::equals).isPresent()) {
+                ((ObjectNode) body.path(DmKeys.INCLUDE_CONFIG)).put(DmKeys.REFERENCE, newReference);
                 any[0] = true;
             } else if (body.path(DmKeys.ELEMENTS).isArray()) {
-                renameMounts((ArrayNode) body.path(DmKeys.ELEMENTS), oldAlias, newAlias, any);
+                repointMounts((ArrayNode) body.path(DmKeys.ELEMENTS), reference, newReference, any);
             }
         }
     }
 
-    private void removeMounts(ArrayNode elements, String alias, boolean[] any) {
+    private void removeMounts(ArrayNode elements, String reference, boolean[] any) {
         for (int i = elements.size() - 1; i >= 0; i--) {
             JsonNode el = elements.get(i);
             if (!DmNodes.is(ElementType.GROUP, el)) {
                 continue;
             }
             JsonNode body = el.path(ElementType.GROUP.wireName());
-            if (alias.equals(body.path(DmKeys.MODEL_ALIAS).asText())) {
+            if (mountReference(body).filter(reference::equals).isPresent()) {
                 elements.remove(i);
                 any[0] = true;
             } else if (body.path(DmKeys.ELEMENTS).isArray()) {
-                removeMounts((ArrayNode) body.path(DmKeys.ELEMENTS), alias, any);
+                removeMounts((ArrayNode) body.path(DmKeys.ELEMENTS), reference, any);
             }
         }
     }
@@ -2099,11 +2087,11 @@ public final class ModelDocument {
         if (elements == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
-        // never write a local child into an include mount: the kernel would use the local elements and stop
-        // expanding the include, silently discarding the mounted content (KERNEL-FINDINGS). The loud backstop
+        // never write a local child into an include mount: A12 replaces a mount's local elements with the included
+        // content, so the child would be discarded silently (KF651). The loud backstop
         // under every add/move; the CLI runs SafetyChecks.notAnIncludeMount first for a structured refusal.
-        mountAliasAt(groupPath).ifPresent(alias -> {
-            throw new IllegalArgumentException("group '" + groupPath + "' mounts the include '" + alias
+        mountReferenceAt(groupPath).ifPresent(reference -> {
+            throw new IllegalArgumentException("group '" + groupPath + "' mounts the include '" + reference
                     + "' — adding a child would shadow the mounted content; edit the included model, or use a non-mount group");
         });
         return elements;
@@ -2160,8 +2148,8 @@ public final class ModelDocument {
         void visit(String namePath, JsonNode node, boolean isGroup);
     }
 
-    /** A declared model include (an entry of the header's {@code modelReferences}). */
-    public record Include(String alias, String reference) {}
+    /** A model include, identified by the included model's id (KF651: DM 29.4 has no include alias). */
+    public record Include(String reference) {}
 
     /**
      * The model-level document configuration (content {@code modelConfig}). {@code supportedCharacters}

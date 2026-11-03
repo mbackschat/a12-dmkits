@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import io.github.mbackschat.a12.dm.adapter.KernelExpansionFixture;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,7 +33,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 /**
  * Include <b>{@code excludeRules}</b> (FEATURE-GAPS) — a mount option that drops the <em>included</em>
  * model's own rules (and {@code excludeComputations}, its computations) when the kernel expands the mount.
- * The kernel ties the flag to a mount: {@code excludeRules} is valid only where {@code modelAlias} is set
+ * The kernel ties the flag to a mount: {@code excludeRules} lives inside a mount's {@code includeConfig}
  * (metamodel rule {@code EXCLUDE_RULES_INVALID}), which a mount always is.
  *
  * <p>Verified behaviorally through the kernel's own <b>expand</b>: a plain mount carries the included
@@ -77,28 +78,16 @@ class IncludeExcludeRulesTest {
     }
 
     /** Serialize the model after the kernel has expanded the mount (rules inline into the expanded form). This
-     *  is a kernel-EXPANSION oracle test, so it drives the kernel directly (the kits' loader is now kernel-free
-     *  and no longer hands back the expanded {@code IDocumentModel}). */
-    private static String expanded(String baseJson, ModelResolver resolver) throws Exception {
-        IDocumentModelService service = new DocumentModelServiceFactory().createDocumentModelService();
-        IDocumentModel model = SERIALIZER.deserialize(new StringReader(baseJson));
-        service.expand(model, ref -> {
-            try {
-                return SERIALIZER.deserialize(new StringReader(resolver.resolve(ref)));
-            } catch (IOException e) {
-                throw new UncheckedIOException("failed to deserialize resolved model \"" + ref + "\"", e);
-            }
-        });
-        StringWriter out = new StringWriter();
-        SERIALIZER.serialize(model, out, n -> { });
-        return out.toString();
+     *  is a kernel-EXPANSION oracle test, so it drives the kernel through the backend's own expansion port (the kits' loader is now
+     *  kernel-free and no longer hands back the expanded {@code IDocumentModel}). */
+    private static String expanded(String baseJson, ModelResolver resolver) {
+        return KernelExpansionFixture.expandedJson(baseJson, resolver);
     }
 
     @Test
     void aPlainMountCarriesTheIncludedModelsRule() throws Exception {
         ModelResolver resolver = resolver(pricelist());
         String base = ModelDocument.read(catalogStructure())
-                .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist")
                 .validate(resolver)
                 .toJson();
@@ -110,7 +99,6 @@ class IncludeExcludeRulesTest {
     void excludeRulesDropsTheIncludedModelsRuleButKeepsItsFields() throws Exception {
         ModelResolver resolver = resolver(pricelist());
         String base = ModelDocument.read(catalogStructure())
-                .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist", MountOptions.single().excludingRules())
                 .validate(resolver)
                 .toJson();
@@ -122,33 +110,30 @@ class IncludeExcludeRulesTest {
     }
 
     /**
-     * A directive spelled as the JSON STRING {@code "true"} is not an exclusion — A12 reads these members with
-     * {@code JsonNode.booleanValue()}, measured across twelve spellings by
-     * {@code WorkspaceIncludeStructureKernelTest} — so the authored state a consumer reads back must not claim
-     * one. Jackson's {@code asBoolean} coerces the string, which made {@code authoredState()} (and the model
-     * review built on it) report a mount as dropping rules the Kernel keeps.
+     * The authored state reports an exclusion exactly where A12 applies one. DM 29.4 binds the flag through A12's
+     * shared boolean law ([KF651](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf651)), so the JSON STRING {@code "True"} excludes as the
+     * literal does, while {@code "FALSE"} keeps the rule; kernel 30.8.1 read only the literal.
      *
-     * <p>The expand call is the basis rather than decoration: it establishes on the kernel itself that this
-     * very model keeps its included rule, so the authored state below is being compared against A12's own
-     * reading. The boolean row is the control — a genuine exclusion must still be reported.
+     * <p>The expand calls are the basis rather than decoration: they establish on the kernel itself what this
+     * very model does with its included rule, so the authored state below is compared against A12's own reading.
      */
     @Test
-    void theAuthoredStateReportsOnlyAnExclusionA12WouldApply() throws Exception {
+    void theAuthoredStateReportsAnExclusionExactlyWhereA12AppliesOne() throws Exception {
         ModelResolver resolver = resolver(pricelist());
         String authored = ModelDocument.read(catalogStructure())
-                .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist")
                 .validate(resolver)
                 .toJson();
 
-        String textual = withExcludeRules(authored, TextNode.valueOf("true"));
-        assertTrue(expanded(textual, resolver).contains("LIST_PRICE_NEG"),
-                "basis: A12 keeps the included rule when the directive is the string \"true\"");
-        assertFalse(excludesRules(textual),
-                "the authored state must not report an exclusion A12 never applies");
+        String textualOn = withExcludeRules(authored, TextNode.valueOf("True"));
+        assertFalse(expanded(textualOn, resolver).contains("LIST_PRICE_NEG"),
+                "basis: A12 drops the included rule when the flag is the string \"True\"");
+        assertTrue(excludesRules(textualOn), "the authored state reports the exclusion A12 applies");
 
-        assertTrue(excludesRules(withExcludeRules(authored, BooleanNode.TRUE)),
-                "a genuine boolean exclusion is still reported");
+        String textualOff = withExcludeRules(authored, TextNode.valueOf("FALSE"));
+        assertTrue(expanded(textualOff, resolver).contains("LIST_PRICE_NEG"),
+                "basis: A12 keeps the included rule when the flag is the string \"FALSE\"");
+        assertFalse(excludesRules(textualOff), "and the authored state reports none");
     }
 
     /** What a consumer of the published {@code authoredState()} surface sees about the mount's rule exclusion. */
@@ -157,14 +142,15 @@ class IncludeExcludeRulesTest {
                 .structure().mount().orElseThrow().options().excludeRules();
     }
 
-    /** The mount body with one directive set, edited on the kit's own output rather than hand-authored. */
+    /** The mount's {@code includeConfig} with its rule exclusion set, edited on the kit's own output rather than
+     *  hand-authored. */
     private static String withExcludeRules(String json, JsonNode value) {
         try {
             ObjectNode tree = (ObjectNode) MAPPER.readTree(json);
             for (JsonNode element : tree.path("content").path("modelRoot").path("rootGroups").get(0)
                     .path("Group").path("elements")) {
                 if ("Prices".equals(element.path("name").asText())) {
-                    ((ObjectNode) element.path("Group")).set("excludeRules", value);
+                    ((ObjectNode) element.path("Group").path("includeConfig")).set("excludeRules", value);
                 }
             }
             return MAPPER.writeValueAsString(tree);
@@ -177,7 +163,6 @@ class IncludeExcludeRulesTest {
     void excludeRulesIsSettableThroughTheIncludeEditor() throws Exception {
         ModelResolver resolver = resolver(pricelist());
         EditSession s = EditSession.read(catalogStructure(), resolver);
-        s.addInclude("pricelist", "pricelist");
         s.include("pricelist").mount("/Catalog", "Prices", MountOptions.single().excludingRules());
         s.validate();
         assertFalse(expanded(s.toJson(), resolver).contains("LIST_PRICE_NEG"),

@@ -51,8 +51,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  *
  * **Silent on a CATEGORY access**, which A12 refuses first with `MVK_CATEGORY_NOT_ALLOWED` — the shared
  * operand reducer declines a categorized operand, so no call of that shape reaches here, and nothing else
- * reads this carrier either: a disclosed under-report. Silent too on an unresolvable type definition or an `UnspecifiedType`
- * declaration, whose type this reader cannot know; on a nested operation that is not one of
+ * reads this carrier either: a disclosed under-report. Silent too on an unresolvable type definition, whose type this
+ * reader cannot know; on a nested operation that is not one of
  * the extractions typed here; and on a slot whose repetition stars do not match its repeating levels, where
  * a wildcard-validity class answers ahead of everything in this family.
  */

@@ -17,10 +17,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 /**
  * Which characters A12's two error-text gates refuse, on a rule's message and on a field type's own message.
  *
- * <p>Both carriers call the same two tests (source-read, kernel {@code 30.8.1}): {@code
- * FehlertextUtil.checkLineSeparators}, which refuses LF, CR, U+2028 and U+2029, and {@code
- * checkControlCharacters}, which refuses {@code \p{C}}. The rule's checker asks them first; the field's asks the
- * UTF-16 encoding before them, so a lone surrogate is a different class on each carrier. Every {@code \p{C}}
+ * <p>On kernel {@code 31.1.1} both carriers ask one helper, {@code FehlertextUtil.checkErrorTextAndExtractParameters}
+ * (source-read at {@code eec9134}), in one order: the line separators LF, CR, U+2028 and U+2029, then the encoding,
+ * then {@code \p{C}}. A lone surrogate fails both of the last two, so the order is what makes it
+ * {@code WRONG_ENCODING} on both carriers; on {@code 30.8.1} the rule's checker asked {@code \p{C}} first and drew
+ * {@code INVALID_CHARACTERS}, and the field's asked the encoding before the line separators ([KF657]). Every {@code \p{C}}
  * prediction was executed on the pinned JDK 21.0.12 before it was put to the kernel (2026-09-26), since the
  * category of an unassigned code point belongs to that JDK's Unicode version.
  */
@@ -83,6 +84,7 @@ class ErrorTextCharacterGateLawsTest {
         characters.put("a supplementary character outside \\p{C}", "a\uD83D\uDE00b");
         characters.put("U+E0001 LANGUAGE TAG, a supplementary format character", "a\uDB40\uDC01b");
         characters.put("U+2028 beside a tab", "a\u0009b\u2028c");
+        characters.put("a line feed beside a lone surrogate", "a\nb\uD83Dc");
 
         Map<String, String> actual = new LinkedHashMap<>();
         characters.forEach((row, text) -> {
@@ -106,10 +108,15 @@ class ErrorTextCharacterGateLawsTest {
         }
         expected.put("rule: a line feed", codeless("Rule", "ProbeRule", LINE_BREAKS) + ",INVALID_LINEBREAK");
         expected.put("field: a line feed", "INVALID_LINEBREAK," + codeless("Field", "Code", LINE_BREAKS));
-        // Beside a surrogate the charset refusal of KERNEL-FINDINGS KF489 stands too. On the field the
-        // encoding is asked first, and UTF-16 cannot encode a lone surrogate.
-        expected.put("rule: a lone high surrogate", codeless("Rule", "ProbeRule", UNSUPPORTED) + ",INVALID_CHARACTERS");
+        // Beside a surrogate the charset refusal of KERNEL-FINDINGS KF489 stands too. Both carriers ask the encoding
+        // after the line break and before \p{C} on kernel 31.1.1 ([KF657]): a lone surrogate is in \p{C} too, so the
+        // order is what names it WRONG_ENCODING, and a line feed beside it names the line break on both carriers.
+        expected.put("rule: a lone high surrogate", codeless("Rule", "ProbeRule", UNSUPPORTED) + ",WRONG_ENCODING");
         expected.put("field: a lone high surrogate", "WRONG_ENCODING," + codeless("Field", "Code", UNSUPPORTED));
+        expected.put("rule: a line feed beside a lone surrogate", codeless("Rule", "ProbeRule", UNSUPPORTED) + ",INVALID_LINEBREAK");
+        expected.put("field: a line feed beside a lone surrogate", "INVALID_LINEBREAK," + codeless("Field", "Code", UNSUPPORTED));
+        // Beside a surrogate the charset sentence stands and the line-feed sentence does not, on both carriers.
+        // Measured, no mechanism claimed.
         expected.put("rule: a supplementary private-use character",
                 codeless("Rule", "ProbeRule", UNSUPPORTED) + ",INVALID_CHARACTERS");
         expected.put("field: a supplementary private-use character",

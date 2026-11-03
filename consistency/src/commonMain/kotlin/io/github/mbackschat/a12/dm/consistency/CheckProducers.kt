@@ -278,12 +278,6 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     CheckProducer.Declaration(setOf(CheckFamily.RULE_CONDITION_AND_TARGET)) { base, at ->
         base.ruleMemberContributions(at)
     },
-    CheckProducer.ModelWide(
-        stage = ModelStage.DECLARATION,
-        completes = setOf(CheckFamily.VARIANT_FILTER),
-        findings = { it.variantFilterFindings() },
-        gaps = { it.variantFilterGaps() },
-    ),
     path(CheckFamily.CONDITION_REFERENCES),
     syntax(CheckFamily.CONDITION_LEXICALITY),
     syntax(CheckFamily.CONDITION_COMPLETENESS),
@@ -377,6 +371,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         base.computationPreconditionFeatureFindings(at)
     },
     CheckProducer.ModelWide(setOf(CheckFamily.COMPUTATION_CYCLE), ModelStage.GENERATION, { it.computationCycleFindings() }),
+    CheckProducer.ModelWide(setOf(CheckFamily.UNDECLARED_LOCALE_MESSAGE_PARAMETERS), ModelStage.GENERATION,
+        { it.undeclaredLocaleMessageFindings() }),
+    CheckProducer.ModelWide(setOf(CheckFamily.ELEMENT_ID_UNIQUENESS), ModelStage.IDENTITY, { it.elementIdFindings() }),
     CheckProducer.ModelWide(setOf(CheckFamily.BASIC_SENTENCES), ModelStage.BASIC, { it.basicSentenceFindings() }),
     CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_SELF_READ)) { base, at -> base.computationSelfReadContributions(at) },
     condition(CheckFamily.REPETITION_KEY_LIST) { base, at -> base.repetitionKeyListContributions(at) },
@@ -409,7 +406,6 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
             CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT,
             CheckFamily.PATTERN_COMPARISON_OPERANDS,
-            CheckFamily.ENUM_DISPLAY_COMPARABILITY,
         ),
         contributions = { facts, element -> facts.operationContributions(element) },
     ),
@@ -460,8 +456,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     },
     produces(CheckFamily.FIELD_TYPE_MESSAGE_TEXT) { it.fieldTypeMessageTextFindings() },
     perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS, DeclarationStage.INDEPENDENT) { it.stringTypeParameterFindings() },
-    CheckProducer.PerDeclarationWalk(setOf(CheckFamily.NUMBER_TYPE_DIGITS), DeclarationStage.INDEPENDENT,
-        findings = { it.numberTypeDigitFindings() }, gaps = { it.boundMagnitudeGaps() }),
+    perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS, DeclarationStage.INDEPENDENT) { it.numberTypeDigitFindings() },
     perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS, DeclarationStage.INDEPENDENT) { it.enumValueLabelFindings() },
     perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN, DeclarationStage.INDEPENDENT) { it.enumSpecialValueFindings() },
     // The one producer that completes no family: most type-definition laws are unexamined even though the

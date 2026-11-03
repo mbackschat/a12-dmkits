@@ -152,15 +152,16 @@ class GroupOperandRepetitionScopeLawsTest {
     }
 
     /**
-     * The one position where a carrier's gate DOES answer first: a group handed to a {@code Having} filter is
-     * refused as a group whether or not it is starred, so the walk never reaches it.
+     * A group handed to a {@code Having} filter is refused as a group only once the walk passes it: the unstarred
+     * group draws the walk's class, the starred one the group's. Kernel 30.8.1 refused the group as the filter
+     * was entered, ahead of the walk, starred or not (KERNEL-FINDINGS KF656).
      */
     @Test
-    void aFilteredGroupIsRefusedAsAGroupBeforeTheWalk() {
+    void aFilteredGroupIsRefusedAsAGroupOnceTheWalkPassesIt() {
         Map<String, String> rows = orderedMap(
-                "AtLeastOneFieldFilled(Claims Having [Claims/Amount] > 0)", "MVK_NO_GROUPS_ALLOWED",
+                "AtLeastOneFieldFilled(Claims Having [Claims/Amount] > 0)", "MVK_NO_WILDCARD",
                 "AtLeastOneFieldFilled(Claims* Having [Claims/Amount] > 0)", "MVK_NO_GROUPS_ALLOWED",
-                "Sum(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+                "Sum(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_WILDCARD");
         assertEquals(rows, verdicts("/Policy", "Holder", rows), "a filtered group");
     }
 

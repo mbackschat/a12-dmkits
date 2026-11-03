@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.predicates.LocalePredicatesKt;
 
 /**
  * The <b>kernel-free</b> DM-JSON assembly layer (kernel-decoupling Stage 2): parse a DM-JSON model, <b>expand
- * its includes</b> (mount an included model's content under the base's {@code modelAlias} group), <b>resolve
+ * its includes</b> (mount an included model's content under the base's {@code includeConfig} group), <b>resolve
  * imported type-definitions</b> to effective concrete field types, and index every element by its
  * <b>name-path</b> — all without touching {@code com.mgmtp.a12.kernel.*}. It is the clean-room reimplementation
  * of the kernel's {@code IDocumentModelService.expand} (the assembly half of {@link ModelLoader}); the
@@ -35,9 +35,9 @@ import io.github.mbackschat.a12.dm.predicates.LocalePredicatesKt;
  * <h2>What "expand" produces (source-verified against the kernel, KERNEL-FINDINGS "DocumentModel expansion")</h2>
  * <ul>
  *   <li><b>Include mounting.</b> A mount point is a <em>pre-existing</em> group in the base carrying
- *       {@code Group.modelAlias} with no inline elements. Mounting appends the <b>children of the included
- *       model's root group</b> onto that mount group — the included root group itself is discarded (only its
- *       {@code usageType} is copied up). So an included field lands at {@code /<mountGroupName>/<childName>};
+ *       {@code Group.includeConfig} (any inline elements are replaced, KF651). Mounting appends the <b>children of the included
+ *       model's root group</b> onto that mount group — the included root group itself is discarded, and on kernel
+ *       31.1.1 the mount keeps its own {@code usageType} (KF3). So an included field lands at {@code /<mountGroupName>/<childName>};
  *       the included model's own root-group name <b>never appears</b> in a path. {@code includeLevel}:
  *       {@code SINGLE_RG} (default) mounts the single root group's children; {@code MODEL_ROOT} mounts every
  *       top-level group. {@code excludeRules}/{@code excludeComputations} drop the included model's
@@ -255,7 +255,7 @@ public final class ModelReader {
         }
         JsonNode rootGroups = content.path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
         captureConditionLanguages(rootGroups, conditionLanguageCode(root), conditionLanguages);
-        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, origins,
+        expandElements(rootGroups, resolver, typeDefs, visiting, elementsWithResiduals, origins,
                 conditionLanguages, "");
     }
 
@@ -320,7 +320,7 @@ public final class ModelReader {
     /** Walk an {@code elements}/{@code rootGroups} array, expanding each mount group in place. {@code parentPath}
      *  is the absolute name-path of the container whose elements these are (empty at the model root), so a mount's
      *  own absolute path is known — the anchor the condition remap rewrites included references onto. */
-    private static void expandElements(JsonNode elements, ObjectNode baseRoot, ModelResolver resolver,
+    private static void expandElements(JsonNode elements, ModelResolver resolver,
             Map<String, JsonNode> typeDefs, Set<String> visiting, Set<ObjectNode> elementsWithResiduals,
             Map<ObjectNode, String> origins, Map<ObjectNode, String> conditionLanguages, String parentPath) {
         if (!elements.isArray()) {
@@ -330,35 +330,82 @@ public final class ModelReader {
             if (!ElementType.GROUP.matches(node) || !(node instanceof ObjectNode groupNode)) {
                 continue;
             }
-            ObjectNode body = (ObjectNode) groupNode.path(ElementType.GROUP.wireName());
             String groupPath = parentPath + "/" + groupNode.path(DmKeys.NAME).asText();
-            String alias = body.path(DmKeys.MODEL_ALIAS).asText("");
-            JsonNode existing = body.path(DmKeys.ELEMENTS);
-            boolean unexpanded = existing.isMissingNode() || existing.isEmpty();
-            // An empty alias names no include entry, so A12 cannot find the included model and fails the expansion.
-            if (alias.isEmpty() && body.path(DmKeys.MODEL_ALIAS).isTextual() && unexpanded) {
-                throw new UnresolvedReferenceException(alias,
-                        "the include group " + groupPath + " has an empty modelAlias, so A12 cannot find the included model");
+            ObjectNode body = groupBody(groupNode, groupPath);
+            for (String stale : DM28_MOUNT_MEMBERS) {
+                if (body.has(stale)) {
+                    throw new ModelInputException(staleMountMember(groupPath, stale));
+                }
             }
-            // A modelAlias group is an unexpanded mount only while its elements are empty — the kernel's
-            // idempotency guard (an already-mounted group is not re-expanded).
-            if (!alias.isEmpty() && unexpanded) {
-                mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals,
+            JsonNode includeConfig = body.path(DmKeys.INCLUDE_CONFIG);
+            if (includeConfig.isObject()) {
+                mount(groupNode, body, includedReference(includeConfig, groupPath), resolver, typeDefs, visiting,
+                        elementsWithResiduals, origins, conditionLanguages, groupPath);
+            } else if (includeConfig.isMissingNode() || includeConfig.isNull()) {
+                expandElements(body.path(DmKeys.ELEMENTS), resolver, typeDefs, visiting, elementsWithResiduals,
                         origins, conditionLanguages, groupPath);
             } else {
-                expandElements(existing, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins,
-                        conditionLanguages, groupPath);
+                throw new ModelInputException("the include group " + groupPath + " has an includeConfig that is not"
+                        + " an object, and A12 builds no model from it; write {\"reference\": \"<model id>\"}");
             }
         }
     }
 
-    /** Mount the model referenced by {@code alias} into {@code mountGroup}: append the included root group's
-     *  children (SINGLE_RG) or every top-level group (MODEL_ROOT), after fully expanding the included model. */
-    private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String alias, ObjectNode baseRoot,
+    /**
+     * The body of a Group element, as A12's reader binds it. Kernel 31.1.1 reads a missing or {@code null} body as an
+     * empty group on every carrier (the entry's root, a nested group, and a provider's root or nested group under
+     * either include level), so it is written out as {@code {}} here: this reader owns its parsed tree. Any other
+     * non-object body leaves no model ([KERNEL-FINDINGS KF3], {@code adapter.WorkspaceIncludeStructureKernelTest}).
+     */
+    private static ObjectNode groupBody(ObjectNode group, String groupPath) {
+        JsonNode body = group.path(ElementType.GROUP.wireName());
+        if (body instanceof ObjectNode object) {
+            return object;
+        }
+        if (body.isMissingNode() || body.isNull()) {
+            return group.putObject(ElementType.GROUP.wireName());
+        }
+        throw new ModelInputException("the group " + groupPath + " has a Group body that is not an object, and A12"
+                + " builds no model from it; write {\"elements\": [...]}, or {} for an empty group");
+    }
+
+    /** The DM 28 mount members, which DM 29.0 moved into {@code includeConfig}. */
+    private static final List<String> DM28_MOUNT_MEMBERS = List.of(DmKeys.MODEL_ALIAS, DmKeys.INCLUDE_LEVEL,
+            DmKeys.EXCLUDE_RULES, DmKeys.EXCLUDE_COMPUTATIONS);
+
+    /** The corrective for a DM 28 mount member on a DM 29 model: A12 ignores it and reads the group as plain without
+     *  a notification (KF651), so this refuses on purpose rather than losing the mount or option the author meant. */
+    static String staleMountMember(String groupPath, String member) {
+        return "the group " + groupPath + " carries " + member + ", a DM 28 mount member that A12 has ignored since"
+                + " DM 29.0, so it would be lost silently; mount it as \"includeConfig\": {\"reference\":"
+                + " \"<included model id>\", \"includeLevel\"?, \"excludeRules\"?, \"excludeComputations\"?}"
+                + " (the kernel migrator does this)";
+    }
+
+    /** The included model's id as A12 binds it (KF651): any scalar's text; a {@code null}, object or array builds no
+     *  model; an absent or Java-blank text ({@code String.isBlank}, as A12's {@code StringUtils.isBlank}) is "not
+     *  specified" and refuses the expansion. A no-break space is not blank, so it stays part of the id. */
+    private static String includedReference(JsonNode includeConfig, String groupPath) {
+        JsonNode reference = includeConfig.path(DmKeys.REFERENCE);
+        if (reference.isNull() || reference.isContainerNode()) {
+            throw new ModelInputException("the include group " + groupPath + " has an includeConfig.reference that"
+                    + " is not a text, and A12 builds no model from it");
+        }
+        if (reference.isMissingNode() || reference.asText().isBlank()) {
+            throw new UnresolvedReferenceException(reference.asText(""), "the include group " + groupPath
+                    + " names no model in includeConfig.reference, so A12 refuses to expand it");
+        }
+        return reference.asText();
+    }
+
+    /** Mount the model {@code reference} names into {@code mountGroup}, replacing any local elements as A12 does
+     *  (KF651): append the included root group's children (SINGLE_RG) or every top-level group (MODEL_ROOT), after
+     *  fully expanding the included model. */
+    private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String reference,
             ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting,
             Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins,
             Map<ObjectNode, String> conditionLanguages, String mountPath) {
-        String reference = referenceForAlias(baseRoot, alias);
+        ObjectNode includeConfig = (ObjectNode) mountBody.path(DmKeys.INCLUDE_CONFIG);
         if (visiting.contains(reference)) {
             throw new IllegalArgumentException("include cycle detected at reference \"" + reference + "\"");
         }
@@ -370,9 +417,9 @@ public final class ModelReader {
         String sourceModel = includedRoot.path(DmKeys.HEADER).path(DmKeys.ID).asText(reference);
         origins.put(mountGroup, sourceModel);
 
-        boolean modelRoot = "MODEL_ROOT".equals(mountBody.path("includeLevel").asText());
-        boolean excludeRules = excludes(mountBody, "excludeRules");
-        boolean excludeComputations = excludes(mountBody, "excludeComputations");
+        boolean modelRoot = modelRootLevel(includeConfig, mountPath);
+        boolean excludeRules = excludes(includeConfig, DmKeys.EXCLUDE_RULES, mountPath);
+        boolean excludeComputations = excludes(includeConfig, DmKeys.EXCLUDE_COMPUTATIONS, mountPath);
         ArrayNode includedRootGroups = (ArrayNode) includedRoot.path(DmKeys.CONTENT)
                 .path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
         ModelSymbols symbols = ModelSymbols.from(includedRoot);
@@ -393,22 +440,16 @@ public final class ModelReader {
             }
         } else if (!includedRootGroups.isEmpty()) {
             // SINGLE_RG (default): the single root group's children become the mount's children; the root group
-            // itself is discarded (its name maps to the mount path). Its final usageType slot replaces the mount's
-            // slot, including absence; a raw mount marker must not survive when the expanded provider has none.
+            // itself is discarded (its name maps to the mount path). The mount keeps its OWN usageType: kernel 30.8.1
+            // copied the provider root's slot onto it, 31.1.1 does not (KF3, MountUsageTypeKernelTest).
             JsonNode includedRootGroup = includedRootGroups.get(0);
             String rootGroupName = includedRootGroup.path(DmKeys.NAME).asText();
             if (!rootGroupName.isEmpty()) {
                 prefixMap.put("/" + rootGroupName, mountPath);
             }
+            // The discarded root's attachment marker still shields this mount's own exclusions, as behavior rather
+            // than metadata: filtering first would erase a template's mandated rules the Kernel keeps (same test).
             JsonNode usageType = includedRootGroup.path(ElementType.GROUP.wireName()).path(DmKeys.USAGE_TYPE);
-            if (usageType.isMissingNode()) {
-                mountBody.remove(DmKeys.USAGE_TYPE);
-            } else {
-                mountBody.set(DmKeys.USAGE_TYPE, usageType);
-            }
-            // SINGLE_RG discards the provider root, so its attachment shield must be transferred as behavior as
-            // well as metadata. Filtering first would erase the template's mandated rules even though the Kernel
-            // preserves them; WorkspacePreparationParityTest locks the external oracle.
             if ("attachment".equals(usageType.asText())) {
                 excludeRules = false;
                 excludeComputations = false;
@@ -431,44 +472,33 @@ public final class ModelReader {
                         child.parentPath());
             }
         }
-        // The include directives are now consumed — drop them so the expanded group is a plain, self-contained
-        // group (the kernel likewise doesn't re-expand a group once mounted).
-        mountBody.remove(List.of(DmKeys.MODEL_ALIAS, "includeLevel", "excludeRules", "excludeComputations"));
+        // The include directive is now consumed — drop it so the expanded group is a plain, self-contained group,
+        // as A12's expansion does (DocumentModelExpandService.integrateIncludedDocModelIntoGroup).
+        mountBody.remove(DmKeys.INCLUDE_CONFIG);
     }
 
-    /** Whether a mount directive drops the included executables: the JSON literal {@code true} and nothing else.
-     *
-     *  <p>A12 reads these two members with {@code JsonNode.booleanValue()} (kernel serializer
-     *  {@code ElementDeserializer}), which is false for every non-Boolean. Jackson's {@code asBoolean(false)}
-     *  instead coerces {@code "true"} and {@code 1}, so it would drop a rule the Kernel keeps — measured
-     *  2026-09-12 across twelve spellings by {@code WorkspaceIncludeStructureKernelTest}, which carries the
-     *  near-misses ({@code "True"}, {@code 0.5}) that the coercion happens to read the same way. */
-    private static boolean excludes(ObjectNode mountBody, String directive) {
-        return mountBody.path(directive).isBoolean() && mountBody.path(directive).booleanValue();
+    /** Whether a mount's exclusion flag is set, bound through A12's shared boolean law, which DM 29.4 moved these
+     *  members onto (KF651, {@code adapter.WorkspaceIncludeStructureKernelTest}); a value the law refuses makes
+     *  A12 build no model, so this refuses it too. */
+    private static boolean excludes(ObjectNode includeConfig, String directive, String mountPath) {
+        return switch (ConfigFlag.ofMember(includeConfig.path(directive))) {
+            case ON -> true;
+            case OFF -> false;
+            case UNREADABLE -> throw new ModelInputException("the include group " + mountPath + " carries an"
+                    + " includeConfig." + directive + " that A12 cannot bind as a boolean, so it builds no model");
+        };
     }
 
-    /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences}: the
-     *  LAST entry carrying the alias, whatever its purpose, is the one A12 keys it to (KF593). A12 finds no included
-     *  model when no entry carries the alias or that entry's {@code reference} is absent, null or blank as
-     *  {@code String.isBlank} reads it, and fails the expansion, so this refuses there too rather than reading the
-     *  alias as the reference. */
-    private static String referenceForAlias(ObjectNode baseRoot, String alias) {
-        JsonNode keyed = null;
-        for (JsonNode ref : baseRoot.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
-            if (alias.equals(ref.path(DmKeys.ALIAS).asText())) {
-                keyed = ref;
-            }
-        }
-        if (keyed != null && "typeDefinitions".equals(keyed.path(DmKeys.PURPOSE).asText())) {
-            throw new UnresolvedReferenceException(alias, "the header.modelReferences entry for alias \"" + alias
-                    + "\" has purpose typeDefinitions, and A12 refuses to expand a mount through one");
-        }
-        JsonNode reference = keyed == null ? null : keyed.path(DmKeys.REFERENCE);
-        if (reference != null && reference.isTextual() && !reference.asText().isBlank()) {
-            return reference.asText();
-        }
-        throw new UnresolvedReferenceException(alias,
-                "no header.modelReferences entry for alias \"" + alias + "\" names a model, so A12 cannot find the included model");
+    /** Whether the mount's level is MODEL_ROOT, bound as A12 binds its enum ({@link IncludeLevelBinding}); a value A12
+     *  cannot bind makes it build no model, so this refuses it too. */
+    private static boolean modelRootLevel(ObjectNode includeConfig, String mountPath) {
+        return switch (IncludeLevelBinding.ofMember(includeConfig.path(DmKeys.INCLUDE_LEVEL))) {
+            case SINGLE_RG -> false;
+            case MODEL_ROOT -> true;
+            case UNREADABLE -> throw new ModelInputException("the include group " + mountPath + " carries an"
+                    + " includeConfig.includeLevel that A12 cannot bind, so it builds no model; write SINGLE_RG or"
+                    + " MODEL_ROOT");
+        };
     }
 
     /** Drop {@code Rule}/{@code Computation} elements per the mount's exclude flags (recursively, but never under
@@ -484,7 +514,7 @@ public final class ModelReader {
             return null;
         }
         if (type == ElementType.GROUP) {
-            ObjectNode body = (ObjectNode) node.path(ElementType.GROUP.wireName());
+            ObjectNode body = groupBody(node, node.path(DmKeys.ID).asText());
             boolean attachment = "attachment".equals(body.path(DmKeys.USAGE_TYPE).asText());
             JsonNode elements = body.path(DmKeys.ELEMENTS);
             if (!attachment && elements.isArray()) {

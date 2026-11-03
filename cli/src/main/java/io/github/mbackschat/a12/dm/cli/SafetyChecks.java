@@ -222,25 +222,25 @@ public final class SafetyChecks {
     }
 
     /**
-     * Refuse adding a child element into a group that mounts an include ({@code modelAlias}) — the kernel would
-     * use the mount's own {@code elements} and stop expanding the include, silently discarding the mounted
-     * content (valid but wrong; KERNEL-FINDINGS, probe 01-de Finding 4). {@code RK_MOUNT_NOT_EDITABLE}.
+     * Refuse adding a child element into a group that mounts an include ({@code includeConfig}) — A12 replaces a
+     * mount's own {@code elements} with the included content, so the added child would silently vanish (KF651).
+     * {@code RK_MOUNT_NOT_EDITABLE}.
      */
     public static SafetyCheck notAnIncludeMount(ModelDocument doc, String groupPath) {
         return () -> {
-            Optional<String> alias = doc.mountAliasAt(groupPath);
-            if (alias.isEmpty()) {
+            Optional<String> reference = doc.mountReferenceAt(groupPath);
+            if (reference.isEmpty()) {
                 return Optional.empty();
             }
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_MOUNT_NOT_EDITABLE"),
-                    "group '" + groupPath + "' mounts the include '" + alias.get()
-                            + "' — adding a child here would shadow the mounted content (its included fields would silently vanish)",
+                    "group '" + groupPath + "' mounts the model '" + reference.get()
+                            + "' — A12 replaces a mount's own elements with the included content, so a child added here would silently vanish",
                     Diagnostic.Where.arg(null, "--group"),
-                    Optional.of("add the element to the included model '" + alias.get()
+                    Optional.of("add the element to the included model '" + reference.get()
                             + "' instead (edit that model's structure), or choose a non-mount group"),
                     Optional.empty());
             return Optional.of(new Refusal(
-                    "group '" + groupPath + "' is an include mount — refusing to add a shadowing child", null, diagnostic));
+                    "group '" + groupPath + "' is an include mount — refusing to add a child A12 would discard", null, diagnostic));
         };
     }
 
@@ -291,22 +291,11 @@ public final class SafetyChecks {
         };
     }
 
-    /** Refuse an include refactor whose target alias is not a declared model include (RK_NO_SUCH_INCLUDE). */
-    public static SafetyCheck includeExists(ModelDocument doc, String alias) {
-        return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(alias))
+    /** Refuse an include op whose referenced model is not included by this model (RK_NO_SUCH_INCLUDE). */
+    public static SafetyCheck includeExists(ModelDocument doc, String reference) {
+        return () -> doc.includes().stream().anyMatch(i -> i.reference().equals(reference))
                 ? Optional.empty()
-                : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", alias));
-    }
-
-    /**
-     * Refuse an include rename when {@code newAlias} is already a declared include alias — a rename must not
-     * collide with (and silently merge into) an existing include. The new-alias check runs before any mutation.
-     */
-    public static SafetyCheck includeAliasAvailable(ModelDocument doc, String newAlias) {
-        return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(newAlias))
-                ? Optional.of(nameExists(newAlias, "include",
-                        "choose a new alias that is not already declared, or remove the existing '" + newAlias + "' first"))
-                : Optional.empty();
+                : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", reference));
     }
 
     /** Refuse a computation op whose target computation does not exist (RK_NO_SUCH_COMPUTATION). */

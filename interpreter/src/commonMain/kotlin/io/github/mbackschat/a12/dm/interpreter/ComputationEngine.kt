@@ -7,6 +7,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CascadeOverlay
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
+import io.github.mbackschat.a12.dm.interpreter.eval.formalCompletionYear
 import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.IndexColumn
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
@@ -370,7 +372,7 @@ internal class ComputationEngine(
                             if (!c.value.isNullOrEmpty()) checks.customTypeUnsupportedAt(
                                 doc, comp.targetPath, targetKey.second,
                             )?.let { if (it !in unsupported) unsupported += it }
-                            if (c.outcome == ComputeOutcome.VALUE || attempt.computedError?.code == CUSTOM_TEST_RANGE) {
+                            if (c.outcome == ComputeOutcome.VALUE) {
                                 c.value?.let { valueAdmissions.admitComputedCustomValue(c.path, c.indices, it) }
                             }
                             attempt.computedError?.let { computedErrors[targetKey] = it }
@@ -385,10 +387,7 @@ internal class ComputationEngine(
                             } else {
                                 when (c.outcome) {
                                     ComputeOutcome.ERRORED -> {
-                                        // testIDNummer remains readable despite its errored result/apply channel (SPEC-2026-10-10-12).
-                                        if (attempt.computedError?.code == CUSTOM_TEST_RANGE) {
-                                            cascade.overlay(targetKey.first, targetKey.second, storedReading(v, c, doc))
-                                        } else cascade.poison(targetKey.first, targetKey.second)
+                                        cascade.poison(targetKey.first, targetKey.second)
                                         decided += targetKey
                                     }
                                     ComputeOutcome.VALUE -> {
@@ -696,7 +695,26 @@ internal class ComputationEngine(
         return ComputedAttempt(
             result,
             computedError = error,
+            formalOperandError = if (storeFailsBaseYearReCompletion(comp.targetPath, error)) {
+                checks.computedDomainError(doc, comp.targetPath, reps, locale)
+            } else null,
         )
+    }
+
+    /**
+     * Whether storing the rendered value fails as well as its format check (KERNEL-FINDINGS KF666). Kernel 31.1.1
+     * stores a computed Date by completing a day-month text with the Base Year and parsing it again; when that is no
+     * real date — a rendered `02-29` in a common Base Year, the only way a real date's day and month can fail — the
+     * store fails beside `datumFormatFalsch` and adds `berechnungsWertFehler` at the same pointer, so the run fails
+     * assembly. A year-carrying or month-only format is never completed with the Base Year, and a date range cannot
+     * reach the case: its source fails first (`adapter.laws.CalendarTargetCompletionDiffTest`).
+     */
+    private fun storeFailsBaseYearReCompletion(path: String, error: Message?): Boolean {
+        if (error?.code != FormalErrorCode.DATE_FORMAT.id || model.kinds[path] != Kind.DATE) return false
+        val format = model.dateLikeFormatOf(path) ?: return false
+        // The same fallback year AutoChecks.computedError completed the value in.
+        val baseYear = model.baseYear ?: 2000
+        return formalCompletionYear(format, baseYear) == baseYear
     }
 
     /**

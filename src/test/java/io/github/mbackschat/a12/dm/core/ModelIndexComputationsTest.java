@@ -19,7 +19,7 @@ class ModelIndexComputationsTest {
 
     private static final String MODEL = """
             {
-              "header": { "id": "claim-payout", "modelType": "document", "modelVersion": "28.4.0",
+              "header": { "id": "claim-payout", "modelType": "document", "modelVersion": "29.4.0",
                           "locales": [ { "code": "en_US" } ] },
               "content": {
                 "modelInfo": { "name": "claim-payout" },
@@ -62,7 +62,7 @@ class ModelIndexComputationsTest {
 
     private static final String MODEL_WITHOUT_COMPUTATIONS = """
             {
-              "header": { "id": "claim-flat", "modelType": "document", "modelVersion": "28.4.0",
+              "header": { "id": "claim-flat", "modelType": "document", "modelVersion": "29.4.0",
                           "locales": [ { "code": "en_US" } ] },
               "content": {
                 "modelInfo": { "name": "claim-flat" },

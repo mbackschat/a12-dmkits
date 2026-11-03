@@ -109,12 +109,13 @@ class EnumCategoryWireShapeLawsTest {
         expected.put("no tokens at all", MISSING_CATEGORY + "," + MISSING_CATEGORY);
         expected.put("no values at all, with tokens", KernelLaws.NOT_BUILDABLE);
         expected.put("no values at all, no categories", KernelLaws.NOT_BUILDABLE);
-        // All four near-misses die in A12's READER, which is the stronger answer: an unknown member is
-        // refused outright rather than ignored, so a model that loads at all carries only names A12 knows.
-        expected.put("the enum's own list member misspelled", KernelLaws.UNREADABLE);
-        expected.put("a value entry's member misspelled", KernelLaws.UNREADABLE);
-        expected.put("the categories member misspelled", KernelLaws.UNREADABLE);
-        expected.put("a category's token member misspelled", KernelLaws.UNREADABLE);
+        // Kernel 31.1.1's reader passes over a member it does not know (KERNEL-FINDINGS KF654; 30.8.1 refused all
+        // four), so each near-miss is the real member left out: no values at all, values without a value, no
+        // categories, and categories without tokens.
+        expected.put("the enum's own list member misspelled", KernelLaws.NOT_BUILDABLE);
+        expected.put("a value entry's member misspelled", MISSING_INTERNAL + ",MVK_INTERNAL_VALUES_MISSING");
+        expected.put("the categories member misspelled", KernelLaws.ADMITTED);
+        expected.put("a category's token member misspelled", MISSING_CATEGORY + "," + MISSING_CATEGORY);
         expected.put("two categories, one of them short", MISSING_CATEGORY);
         expected.put("no categories at all — the control for their absence", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which members carry the enum-category pairing, and what a near-miss costs");

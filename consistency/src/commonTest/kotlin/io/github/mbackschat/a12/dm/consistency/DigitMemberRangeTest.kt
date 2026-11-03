@@ -59,19 +59,12 @@ class DigitMemberRangeTest {
         assertEquals(listOf(aboveBudget), codes(""""trait":"percent","maxIntegerDigits":16"""))
     }
 
-    @Test
-    fun aFieldDeletedFromTheDefaultVariantIsNotJudged() {
-        val deleted = ""","variantFilter":{"filterType":"ONLY","variants":["premium"]}"""
-        assertEquals(emptyList(), codes(""""maxIntegerDigits":16""", deleted))
-        assertEquals(emptyList(), codes(""""maxFractionalDigits":15""", deleted))
-    }
-
     private fun codes(members: String, fieldExtra: String = ""): List<String> =
         checkRead(ModelSource(model(members, fieldExtra))).findings
             .filter { it.at == "/Ticket/Effort" && it.justifiesRejection }.map { it.code }.sorted()
 
     private fun model(members: String, fieldExtra: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"ticket","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"ticket","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Ticket","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Effort","Field":{"fieldType":{

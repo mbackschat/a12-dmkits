@@ -16,7 +16,7 @@ class ElementNameKf583Test {
         val r = "/$root"; val p = "$r/$part"; val b = "$p/$bin"
         val index = if (indexed) ""","repeatability":5,"indexFieldName":"$label"""" else ""
         return checkRead(ModelSource("""
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
              {"type":"Group","id":"$r","name":"$root","Group":{"elements":[
               {"type":"Group","id":"$p","name":"$part","Group":{"elements":[
                {"type":"Group","id":"$b","name":"$bin","Group":{"elements":[
@@ -64,18 +64,17 @@ class ElementNameKf583Test {
     }
 
     @Test
-    fun aBlankNameLeavesTheModelUnbuiltAndANoBreakSpaceDoesNot() {
+    fun aBlankNameDrawsTheConverterSentenceAndANoBreakSpaceDoesNot() {
         for (blank in listOf("", " ", "\t", "\n", "\u2003")) {
-            assertEquals(true, UNBUILT in codes(bin = blank), "a bin named ${blank.map { it.code }}")
-            assertEquals(true, UNBUILT in codes(fill = blank), "a computation named ${blank.map { it.code }}")
+            assertEquals(true, RK_ELEMENT_NAME_MISSING in codes(bin = blank), "a bin named ${blank.map { it.code }}")
+            assertEquals(true, RK_ELEMENT_NAME_MISSING in codes(fill = blank), "a computation named ${blank.map { it.code }}")
         }
-        assertEquals(false, UNBUILT in codes(bin = "\u00A0"), "a no-break space is not blank")
+        assertEquals(false, RK_ELEMENT_NAME_MISSING in codes(bin = "\u00A0"), "a no-break space is not blank")
     }
 
     private companion object {
         const val FIELDNAME = "MVK_ERROR_INVALID_FIELDNAME"
         const val XML = "MVK_NAME_STARTS_WITH_XML"
         const val UNDERSCORE = "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN"
-        const val UNBUILT = "CK_MODEL_NOT_BUILDABLE"
     }
 }

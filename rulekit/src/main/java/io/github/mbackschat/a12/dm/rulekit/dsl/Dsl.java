@@ -1032,7 +1032,7 @@ public final class Dsl {
         return new DateTimeExpr(new DateTimeLiteral(ddMMyyyyThhmmss));
     }
 
-    /** {@code DifferenceInDays(a, b)} over dates — signed complete model-zone legacy-calendar day steps. catalog:DifferenceInDays */
+    /** {@code DifferenceInDays(a, b)} over dates — signed complete days between the model-zone wall clocks. catalog:DifferenceInDays */
     public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
@@ -1047,7 +1047,7 @@ public final class Dsl {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
 
-    /** Date-time {@code DifferenceInDays}; clocks participate in complete calendar-step counting. */
+    /** Date-time {@code DifferenceInDays}; the time of day decides whether a day is complete. */
     public static NumberExpr differenceInDays(DateTimeOperand a, DateTimeOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }

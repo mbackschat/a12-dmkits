@@ -43,7 +43,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES" to Corrective(
         fix = "An enum's display labels are STARTED and not finished: top each value's `labels` up so every value carries a NONBLANK text for every declared locale, or remove the label entries altogether — an unlabelled enum is accepted. Blanking a text does not remove it. This most often surfaces right after adding a locale (`config modify --add-locale`): do the `--add-locale` and the per-value label top-ups in ONE `apply` so the single terminal gate sees a consistent model.",
-        meaning = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified together\") is armed by the PRESENCE of a label entry for a declared locale, not by coverage: once any value carries one, every value owes a nonblank text for every declared locale. Labels written only for an UNDECLARED locale are accepted, and every text blank is refused, so neither \"is the locale covered\" nor \"is any label there\" describes it (measured 2026-09-13, KERNEL-FINDINGS KF321). A value that carries no `labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.",
+        meaning = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified together\") is armed by the PRESENCE of a label entry, in any locale, not by coverage: a value that carries one owes a nonblank text for every declared locale, so a label written only for an UNDECLARED locale arms it too, and a blank text is refused (KERNEL-FINDINGS KF321, KF655). A value that carries no `labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.",
     ),
     "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE" to Corrective(
         fix = "Keep exactly one RepetitionNotUnique leaf in the condition. Put every component of the composite repetition key into that one call, then combine that leaf with ordinary conditions as needed.",
@@ -121,17 +121,29 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "write the bound with 15 digits or fewer, counting a leading 0; drop precision the field's fractional digits cannot hold.",
         meaning = "A12's sentence \"Only values with up to 15 digits are allowed.\": a Number's `minValue` or `maxValue`, as A12 prints it, has more than 15 digits, a leading `0` counted (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
     ),
+    "RK_CHILD_NAME_DUPLICATE" to Corrective(
+        fix = "rename one of the two; a group may hold one child of each name, whatever its kind.",
+        meaning = "A12's sentence \"Cannot have two child elements with the same name […] in group '…'.\": a group holds two children of one name, of any kinds; the comparison is case-sensitive. A12's converter keeps the first, states this sentence at the later one and checks the model without it or anything beneath it (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+    ),
     "RK_COMPUTATION_OPERATION_EMPTY" to Corrective(
         fix = "write the operation of every alternative.",
-        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, `null` or absent (KERNEL-FINDINGS KF643), stated once however many are. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, `null` or absent (KERNEL-FINDINGS KF643), stated once however many are. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_EMPTY" to Corrective(
         fix = "name the field the computation writes.",
-        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
+        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it over the model as read, beside its converter's \"The computed field was not specified.\" (`RK_COMPUTED_FIELD_NOT_SPECIFIED`; KERNEL-FINDINGS KF626, KF652), where the portable checker names the sentence by this code.",
+    ),
+    "RK_COMPUTED_FIELD_NOT_FOUND" to Corrective(
+        fix = "point `computedFieldRelPath` at a field the model declares, relative to the computation.",
+        meaning = "A12's sentence \"The computed field \"…\" was not found.\": a computation's `computedFieldRelPath` resolves to no declaration. A12's converter states it with the resolved path and checks the model without the computation (KERNEL-FINDINGS KF652). A path that climbs past the root or starts with `/` is refused by the reader instead, and one naming a field the converter itself leaves out leaves no model. The portable checker names the sentence by this code.",
+    ),
+    "RK_COMPUTED_FIELD_NOT_SPECIFIED" to Corrective(
+        fix = "name the field the computation writes.",
+        meaning = "A12's sentence \"The computed field was not specified.\": a computation's `computedFieldRelPath` is empty. A12's converter states it and checks the model without the computation, beside the basic sentence `RK_COMPUTED_FIELD_EMPTY` (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
     ),
     "RK_DATE_FORMAT_INVALID" to Corrective(
         fix = "declare a format A12 admits, for example `yyyy-MM-dd` for a date or `HH:mm:ss` for a time; TEMPORAL-FORMAT-VOCABULARY lists them.",
-        meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field the default variant keeps or through the type definition it uses (KERNEL-FINDINGS KF648). The checker names only the formats measured refused in TEMPORAL-FORMAT-VOCABULARY, where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field or through the type definition it uses (KERNEL-FINDINGS KF648). The checker names only the formats measured refused in TEMPORAL-FORMAT-VOCABULARY, where the portable checker names the sentence by this code.",
     ),
     "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
         fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
@@ -141,9 +153,17 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "use `-` or `/` as the range separator.",
         meaning = "A12's sentence \"Only minus (-) or slash (/) may be used for date range types.\": a DateRange type's `rangeSeparator`, trimmed, is neither empty, `-` nor `/` (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
     ),
+    "RK_ELEMENT_ID_NOT_UNIQUE" to Corrective(
+        fix = "give each element its own id, such as its path.",
+        meaning = "A12's sentence \"The id [x] of element on path 'p' is not unique: Used by [p1, p2].\": two elements written in the model share an `id`, the empty id included, and each of them draws the sentence at its own path; an element that arrived through a mount never shares (KERNEL-FINDINGS KF661), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ELEMENT_NAME_MISSING" to Corrective(
+        fix = "give the declaration a name: a blank, absent or `null` name is no name.",
+        meaning = "A12's sentence \"Element must have a name.\", stated at the group that holds it: a field, group, rule or computation has a name that is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without that declaration or anything beneath it (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+    ),
     "RK_ENUM_CATEGORY_DUPLICATE" to Corrective(
         fix = "give each category its own name.",
-        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
+        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name. A12's build fails first and states no sentence (KERNEL-FINDINGS KF626), and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
     "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
         fix = "remove the line break from the value, label or category token.",
@@ -151,7 +171,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ENUM_VALUE_DUPLICATE" to Corrective(
         fix = "declare each value once.",
-        meaning = "A12's sentence \"The enumeration contains the value '…' multiple times.\": an Enumeration declares one value token twice, stated once for each repeated token. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The enumeration contains the value '…' multiple times.\": an Enumeration declares one value token twice, stated once for each repeated token. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CODE_ALPHABET" to Corrective(
         fix = "write the error code, or the computation's name, in letters, digits, spaces and underscores only.",
@@ -159,15 +179,15 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ERROR_CODE_EMPTY" to Corrective(
         fix = "give the rule a non-empty `errorCode`.",
-        meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is absent or empty, drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence before any variant filter (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is the empty string (an absent one leaves no model on kernel 31.1.1, KERNEL-FINDINGS KF654), drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence over the model as read (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CONDITION_EMPTY" to Corrective(
         fix = "write the rule's condition.",
-        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged; a `null` or absent condition leaves the model unbuilt where the rule is kept, and draws the sentence alone where a filter removes the rule (KERNEL-FINDINGS KF643). A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged; a `null` or absent condition leaves the model unbuilt (KERNEL-FINDINGS KF643). A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_ENTITY_EMPTY" to Corrective(
         fix = "name the field the rule attaches its error to.",
-        meaning = "A12's sentence \"The error entity is not set properly.\": a rule's `errorEntityRelPath` is the empty string, drawn beside `MVK_ERROR_FIELD_MISSING` where the rule is judged. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error entity is not set properly.\": a rule's `errorEntityRelPath` is the empty string, drawn beside `MVK_ERROR_FIELD_MISSING` where the rule is judged. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_FIELD_NAME_ALPHABET" to Corrective(
         fix = "rename the field to ASCII letters, digits, underscores and colons, separating parts with a dot and starting each later part with an ASCII letter.",
@@ -179,7 +199,11 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_ID_EMPTY" to Corrective(
         fix = "give it a non-empty `id`.",
-        meaning = "A12's sentence \"The id is empty.\": a declaration's or a type definition's `id` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The id is empty.\": a declaration's or a type definition's `id` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+    ),
+    "RK_INDEX_FIELD_EMPTY" to Corrective(
+        fix = "name the field the group is indexed by, or remove `indexFieldName`.",
+        meaning = "A12's sentence \"The name of the index field is not set properly.\": a group's `indexFieldName` is the empty string, drawn beside `MVK_INVALID_INDEX_FIELD` for the group's own name. A12 states it over the model as read (KERNEL-FINDINGS KF653), where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
         fix = "shorten the root group's name to 60 characters or fewer.",
@@ -215,19 +239,15 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_NAME_EMPTY" to Corrective(
         fix = "give it a non-empty `name`.",
-        meaning = "A12's sentence \"The name is empty.\": a declaration's or a type definition's `name` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check and through any variant filter (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
-    ),
-    "RK_NUMBER_MAX_VALUE_EXCEEDED" to Corrective(
-        fix = "lower the maximum to 10^(15 - k) - 10^(-k) or less, or declare fewer fractional digits to widen that limit.",
-        meaning = "A12's sentence \"The maximum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `maxValue`, signed and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
-    ),
-    "RK_NUMBER_MIN_VALUE_EXCEEDED" to Corrective(
-        fix = "bring the minimum's absolute value within 10^(15 - k) - 10^(-k), raising a negative minimum or lowering a positive one, or declare fewer fractional digits to widen that limit.",
-        meaning = "A12's sentence \"The minimum value of the number type in field [id: …] is specified with '…'. It may not exceed '…'.\": a Number's `minValue`, by its absolute value and unrounded, is above `10^(15 - k) - 10^(-k)` for `maxFractionalDigits` k, an absent count being 0 (KERNEL-FINDINGS KF582), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The name is empty.\": a declaration's or a type definition's `name` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
     ),
     "RK_ROOT_GROUP_NAME_ALPHABET" to Corrective(
         fix = "rename the root group to ASCII letters, digits, underscores, the German umlauts and `ß`.",
         meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside ASCII letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+    ),
+    "RK_ROOT_GROUP_NAME_MISSING" to Corrective(
+        fix = "give the root group a name.",
+        meaning = "A12's sentence \"Root group must have a name.\": a root group's name is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without the root group or anything beneath it (KERNEL-FINDINGS KF652); a root named with the empty text leaves no model at all when anything beneath it names a reference, which A12's reader then cannot resolve. The portable checker names the sentence by this code.",
     ),
     "RK_RULE_NAME_ALPHABET" to Corrective(
         fix = "rename it to an ASCII letter followed by ASCII letters, digits and underscores.",
@@ -237,13 +257,17 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "keep at most three `sortFields` entries.",
         meaning = "A12's sentence \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.\": a group's `sortFields` holds more than three entries, and each entry beyond the third draws it once (KERNEL-FINDINGS KF345), where the portable checker names the sentence by this code.",
     ),
+    "RK_TYPE_DEFINITION_NOT_FOUND" to Corrective(
+        fix = "declare the type definition in `content.typeDefinitions`, or point `typeDefinitionId` at one that is declared.",
+        meaning = "A12's sentence \"Typedefinition with id '…' could not be found.\": a `TypeDefType` field's `typeDefinitionId` is absent, empty or names no declared type definition. A12's converter states it and checks the field as a plain String (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+    ),
     "RK_TYPE_REFERENCE_EMPTY" to Corrective(
         fix = "name a type definition the model declares.",
-        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string. A12 states it only where a variant filter removes the declaration (KERNEL-FINDINGS KF626); where the declaration is kept A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
+        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string. A12 states it over the model as read, beside its converter's \"Typedefinition with id '…' could not be found.\" (`RK_TYPE_DEFINITION_NOT_FOUND`; KERNEL-FINDINGS KF626, KF652), where the portable checker names the sentence by this code.",
     ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",
-        meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text would be reported valid without ever being examined.",
+        meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text is never examined, and A12's code generation asks only that each of its parameters be spelled as a declared locale's text spells one (KERNEL-FINDINGS KF659).",
     ),
     "RK_UNSUPPORTED_CHARACTER" to Corrective(
         fix = "replace the character above U+FFFF, such as an emoji, in that text.",

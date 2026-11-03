@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
@@ -18,6 +20,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * nothing on a field or group label and arms the enum-value law only on an entry for a DECLARED locale
  * ({@code rulekit.validate.laws.ElementLabelLocaleLawsTest}, [KERNEL-FINDINGS KF321]) — so the analogy made
  * three shapes it accepts unauthorable, and unreadable with them, since this draft is also the read model.
+ * <i>Corrected 2026-11-03:</i> kernel 31.1.1 arms the enum-value law on a label in ANY locale, so an enumeration
+ * labelled only for an undeclared locale is now refused (KF655). The draft still writes and reads it, because the
+ * kernel's refusal is a verdict about a readable model, not a shape our reader may reject.
  */
 class ElementLabelLocaleTest {
 
@@ -57,7 +62,7 @@ class ElementLabelLocaleTest {
     }
 
     @Test
-    void anEnumLabelledOnlyForAnUndeclaredLocaleIsWrittenAndTakenByTheKernel() {
+    void anEnumLabelledOnlyForAnUndeclaredLocaleIsWrittenAndRefusedByTheKernel() {
         String json = DocumentModelDraft.named("labels").locale("en_US")
                 .rootGroup("Order", g -> g.enumField("Tier", e -> e
                         .value("BASIC", l -> l.label(UNDECLARED, "Basique"))
@@ -66,7 +71,9 @@ class ElementLabelLocaleTest {
 
         assertTrue(dense(json).contains("{\"locale\":\"fr_FR\",\"text\":\"Basique\"}"),
                 () -> "the label must survive the write: " + json);
-        BoundModel.ofJson(json);
+        // Each value is labelled, but not for the declared en_US, so each lacks its display text there (KF655).
+        var refused = assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json));
+        assertTrue(refused.getMessage().contains("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"), refused::getMessage);
     }
 
     /**

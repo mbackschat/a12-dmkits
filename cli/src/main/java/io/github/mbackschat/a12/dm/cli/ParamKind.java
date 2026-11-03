@@ -39,7 +39,7 @@ public @interface ParamKind {
         RULE_PATH(true, "/__rk_absent__/__rule__", null),
         COMPUTATION_PATH(true, "/__rk_absent__/__computation__", null),
         TYPEDEF_ID(true, "__rk_absent_typedef__", null),
-        INCLUDE_ALIAS(true, "__rk_absent_alias__", null),
+        INCLUDE_REFERENCE(true, "__rk_absent_include__", null),
         // a reference to ANY describable element by name-path (field/group/rule/computation) or type-def id
         ELEMENT_REF(true, "/__rk_absent__/__element__", null),
 

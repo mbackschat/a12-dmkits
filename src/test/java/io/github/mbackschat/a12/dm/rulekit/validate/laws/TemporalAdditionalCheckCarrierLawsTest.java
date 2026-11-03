@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * <p><b>Why the axis is the complete admitted vocabulary.</b> Same reason as the sibling class: the claim is
  * about the format's COMPONENTS, and a grid whose refused cells all share one string cannot separate a
  * component rule from a string allowlist. So the fragment grid runs the whole published vocabulary and the
- * range grid runs all eight admitted {@code (format, separator)} pairs. Both are registered completeness
+ * range grid runs all twelve admitted {@code (format, separator)} pairs. Both are registered completeness
  * claimants of {@code TemporalFormatVocabularyGuardTest}, so a short axis fails the build rather than
  * narrowing the basis silently.
  *
@@ -63,9 +63,10 @@ class TemporalAdditionalCheckCarrierLawsTest {
             "dd.MM.yyyy", "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd"));
 
     /**
-     * The eight admitted DATERANGE {@code (format, separator)} pairs — the range's declaration allowlist is the
+     * The twelve admitted DATERANGE {@code (format, separator)} pairs — the range's declaration allowlist is the
      * PAIR, never the format alone, so this is its own denominator and not a projection of {@link #FORMATS}.
-     * Four of the eight are year-free, which is what gives the exemption grid cells on both sides.
+     * Five of the twelve are year-free, which is what gives the exemption grid cells on both sides. Kernel 31.1.1
+     * reads an empty separator as {@code /}, so it is admitted exactly where {@code /} is (KERNEL-FINDINGS KF658).
      */
     private record Pair(String format, String separator) {
     }
@@ -73,7 +74,8 @@ class TemporalAdditionalCheckCarrierLawsTest {
     private static final List<Pair> RANGE_PAIRS = List.of(
             new Pair("dd.MM.yyyy", "-"), new Pair("dd.MM", "-"),
             new Pair("yyyy-MM-dd", "/"), new Pair("yyyy", "/"), new Pair("yyyy-MM", "/"),
-            new Pair("MM", "/"), new Pair("MM-dd", "/"), new Pair("MM", ""));
+            new Pair("MM", "/"), new Pair("MM-dd", "/"), new Pair("MM", ""),
+            new Pair("yyyy-MM-dd", ""), new Pair("yyyy", ""), new Pair("yyyy-MM", ""), new Pair("MM-dd", ""));
 
     /** A fragment declaration reproduces the DateType gate exactly: the format must carry a year. */
     @Test
@@ -118,7 +120,7 @@ class TemporalAdditionalCheckCarrierLawsTest {
         }
         assertEquals(expected, actual,
                 "a checker that enforces the year co-requirement uniformly across the temporal kinds refuses "
-                        + "these four year-free range declarations, which the kernel admits");
+                        + "these year-free range declarations, which the kernel admits");
     }
 
     /** The range pairs with no check — the control that keeps the grid above about the check, not the pair. */

@@ -141,7 +141,6 @@ final class WorkspaceListCommand extends BaseCommand {
         ArrayNode includes = n.putArray("includes");
         for (Workspace.Reference r : m.includes()) {
             includes.addObject()
-                    .put("alias", r.alias())
                     .put("ref", r.ref())
                     .put("resolvedPath", r.resolvedPath()); // null = unresolved within the scan
         }

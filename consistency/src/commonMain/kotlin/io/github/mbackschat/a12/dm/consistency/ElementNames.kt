@@ -1,56 +1,78 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * Whether any group holds two children of the same name — the collision A12 cannot build a model through.
+ * The sentences A12's validation-model converter states about names: a blank name, and a name a sibling already
+ * carries ([KERNEL-FINDINGS KF652]).
  *
- * **The demand spans KINDS and stops at the group.** Two rules of one name in one group, a rule named after
- * a sibling FIELD, and a rule named after a sibling GROUP are all refused; the same name in two different
- * groups is fine, and so is a rule named after a field in another group. A "rule names must be unique"
- * reading passes two of those three refusals, which is why the kinds are measured rather than assumed
- * (`ElementNameUniquenessLawsTest`, kernel 30.8.1, 2026-09-12; extended 2026-09-13 to a GROUP and a
- * COMPUTATION taking a sibling's name, each against a fresh-name control). This function keys on the path
- * alone and so applies to every kind, which is sound only because every kind was measured: one pairing A12
- * admitted would turn it into an over-rejection.
+ * Kernel 31.1.1 states each without a class and leaves the declaration, with everything beneath it, out of the model
+ * it goes on to check ([ConversionDrops]); 30.8.1 threw instead. So these findings justify rejection and withhold
+ * nothing: every other family judges the declarations that are kept.
  *
- * **And it is case-SENSITIVE**, unlike the `vk_vk` prefix law on the same member, which the Kernel matches in
- * any letter case. Two laws on one slot with opposite case rules is exactly the pair a checker unifies by
- * accident, so `Probe` beside `probe` in one group is admitted and gets no finding.
+ * **Blank is Java's `isBlank`, and a name A12 reads as absent counts.** The empty name, a space, a tab, a line
+ * break and an em space are blank; a no-break space is not, so it reaches the ordinary name gates instead. An
+ * absent or `null` name is read as no name.
  *
- * **The outcome is not a verdict.** A12 throws while building the model from inside `checkConsistency` and
- * reports no `MVK_*` code at all, so every other finding in the same report is this checker's own reading —
- * which is what [CK_MODEL_NOT_BUILDABLE] and the coverage gap beside it say.
+ * **A collision spans KINDS and stops at the group.** Two rules of one name in one group, a rule named after a
+ * sibling field and one named after a sibling group all collide; the same name in two different groups does not
+ * (`ElementNameUniquenessLawsTest`). It is case-sensitive, unlike the `vk_vk` prefix law on the same member, so
+ * `Probe` beside `probe` collides with nothing. The first of the two is kept and judged; the sentence names the
+ * later one, which is left out.
+ *
+ * **A12 states a sentence once per subject, not once per declaration** ([sentenceSubject]).
  */
-internal fun TrackedFactBase.elementNameFindings(): List<Finding> = blankNameFindings() +
-    // Keyed by PATH, which is the parent plus the name — so a collision is by construction between
-    // declarations of one parent, and `at` names the collision itself rather than the parent it sits in.
-    allDefaultVariantDeclarations().groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            CK_MODEL_NOT_BUILDABLE,
-            "${collided.size} declarations here carry the name `${collided.first().name}` " +
-                "(${collided.joinToString(", ") { it.kind }}) — A12 cannot build a model in which two " +
-                "declarations of one parent share a name, whatever kinds they are, so nothing in it is judged",
-            path,
+internal fun TrackedFactBase.elementNameFindings(): List<Finding> = conversionDrops().causes.distinctBy(::sentenceSubject).map { cause ->
+    val element = cause.element
+    when (cause.reason) {
+        ConversionReason.ROOT_GROUP_NAME_MISSING -> sentence(
+            RK_ROOT_GROUP_NAME_MISSING,
+            "this root group's name is blank, so A12 states \"Root group must have a name.\" and checks the model " +
+                "without it or anything beneath it",
+            element.path,
+        )
+        ConversionReason.ELEMENT_NAME_MISSING -> sentence(
+            RK_ELEMENT_NAME_MISSING,
+            "a ${element.kind} in this group has a blank name, so A12 states \"Element must have a name.\" and checks " +
+                "the model without that ${element.kind} or anything beneath it",
+            element.path.removeSuffix("/${element.name}"),
+        )
+        ConversionReason.CHILD_NAME_DUPLICATE -> sentence(
+            RK_CHILD_NAME_DUPLICATE,
+            "an earlier declaration in this group already carries the name `${element.name}`, so A12 states that two " +
+                "children may not share it and checks the model without this ${element.kind} or anything beneath it",
+            element.path,
         )
     }
+}
 
 /**
- * A declaration whose name is blank as Java's `isBlank` reads it, which A12 cannot build a model through.
- *
- * Its builder asserts a non-blank name for every group and field it maps, and a rule or computation fails the
- * same way ([KERNEL-FINDINGS KF583], `adapter.laws.CheckerComputedPathAgreementTest`). The empty name, a space, a
- * tab, a line break and an em space are blank; a no-break space is not, so it reaches the ordinary name gates
- * instead. Only the default-variant model is built: a blank name an `ONLY` filter deletes is admitted.
+ * What makes two of the converter's sentences one. A12's code-generation consistency rule collects the sentences in
+ * a hash set of notifications, which are equal when their text and source are, and the source is the declaration a
+ * sentence is about: the holding group for a blank name, and for a shared name the converted later child, which is
+ * equal to another of its kind at its path. So two later rules of a name are one sentence, a later group and a later
+ * rule of it are two, and two blank names in one group are one (measured on kernel 31.1.1:
+ * `adapter.laws.CheckerConverterSentenceAgreementTest`, KERNEL-FINDINGS KF652).
  */
-private fun TrackedFactBase.blankNameFindings(): List<Finding> =
-    allDefaultVariantDeclarations().filter { it.name.isA12Blank() }.map { blank ->
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            CK_MODEL_NOT_BUILDABLE,
-            "this ${blank.kind}'s name is blank, and A12 cannot build a model in which a declaration has no name, " +
-                "so nothing in it is judged",
-            blank.path,
-        )
-    }
+private fun sentenceSubject(cause: ConversionCause): Any = when (cause.reason) {
+    ConversionReason.ROOT_GROUP_NAME_MISSING -> cause.key
+    ConversionReason.ELEMENT_NAME_MISSING -> cause.element.path.removeSuffix("/${cause.element.name}")
+    ConversionReason.CHILD_NAME_DUPLICATE -> cause.element.path to cause.element.kind
+}
+
+private fun sentence(code: String, explain: String, at: String) =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+
+internal const val RK_ROOT_GROUP_NAME_MISSING = "RK_ROOT_GROUP_NAME_MISSING"
+internal const val RK_ELEMENT_NAME_MISSING = "RK_ELEMENT_NAME_MISSING"
+internal const val RK_CHILD_NAME_DUPLICATE = "RK_CHILD_NAME_DUPLICATE"
+internal const val RK_COMPUTED_FIELD_NOT_SPECIFIED = "RK_COMPUTED_FIELD_NOT_SPECIFIED"
+internal const val RK_COMPUTED_FIELD_NOT_FOUND = "RK_COMPUTED_FIELD_NOT_FOUND"
+internal const val RK_TYPE_DEFINITION_NOT_FOUND = "RK_TYPE_DEFINITION_NOT_FOUND"
+
+/**
+ * The codes of A12's converter sentences. A12 states them and checks on, so none of them withholds a later stage
+ * ([KERNEL-FINDINGS KF652]: a cycle beside a blank-named field is still reported).
+ */
+internal val CONVERTER_SENTENCE_CODES = setOf(
+    RK_ROOT_GROUP_NAME_MISSING, RK_ELEMENT_NAME_MISSING, RK_CHILD_NAME_DUPLICATE,
+    RK_COMPUTED_FIELD_NOT_SPECIFIED, RK_COMPUTED_FIELD_NOT_FOUND, RK_TYPE_DEFINITION_NOT_FOUND,
+)

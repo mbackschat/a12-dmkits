@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.rt.api.DocumentValidationException
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
@@ -13,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.edit.EditSession
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 import java.util.Locale
@@ -45,41 +43,15 @@ class FieldConstraintFormalDiffTest {
                 "\$field\$" to emptyList(),
                 "\$field.value\$" to emptyList(),
                 "\$Field\$" to listOf(
-                    "ERROR: Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
-                        "The error text parameter 'Field' is not valid. [INVALID_PARAMETER]",
+                    "ERROR: Field with path '/Order/Code': The field '/Order/Code' specifies an incorrect error text " +
+                        "for the language English: The error text parameter 'Field' is not valid. [INVALID_PARAMETER]",
                 ),
                 "\$Code\$" to listOf(
-                    "ERROR: Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
-                        "The error text parameter 'Code' is not valid. [INVALID_PARAMETER]",
+                    "ERROR: Field with path '/Order/Code': The field '/Order/Code' specifies an incorrect error text " +
+                        "for the language English: The error text parameter 'Code' is not valid. [INVALID_PARAMETER]",
                 ),
             ),
             observed,
-        )
-    }
-
-    @Test
-    fun fieldOwnedPatternTextRejectsLiteralDollarAsAnEmptyParameter() {
-        val model = fieldMessageModel("Cost \$\$ \$field\$")
-        val diagnostic = "Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
-            "The error text parameter '' is not valid. [INVALID_PARAMETER]"
-        assertEquals(
-            listOf("ERROR: $diagnostic"),
-            RuntimeLaws.consistencyMessages(model),
-        )
-
-        val document = RuntimeLaws.doc().group("/Order", 1).field("/Order/Code", "bad", 1, 1)
-        val dynamic = assertThrows(DocumentValidationException::class.java) {
-            RuntimeLaws.errorTextOf(model, "stringFalschesMuster", document, Locale.US)
-        }
-        val generated = assertThrows(IllegalStateException::class.java) {
-            RuntimeLaws.kernelJavaEngine(model)
-        }
-        assertEquals("Following errors were found while generating code: $diagnostic", dynamic.message)
-        assertEquals(
-            "generateValidationCode(JAVA) returned null; notifications=[" +
-                "ERROR: Field '/Order/Code' is invalid: The error text parameter '' is not valid. " +
-                "[INVALID_PARAMETER]]",
-            generated.message,
         )
     }
 
@@ -98,6 +70,13 @@ class FieldConstraintFormalDiffTest {
             Row("Value [\$field.value\$]", value = "\$field\$", expected = listOf("Value [\$field\$]")),
             Row("Cost \$\$", expected = listOf("Cost \$\$")),
             Row("\$\$", expected = listOf("\$\$")),
+            // Kernel 30.8.1 refused this text as an empty parameter; 31.1.1 skips every empty `$$` pair (KERNEL-FINDINGS KF657).
+            Row("Cost \$\$ \$field\$", expected = listOf("Cost \$\$ Code label")),
+            // The label and value tokens are literal replace-all passes, so an empty pair beside one still lets it
+            // match, and both languages' tokens are replaced whatever the condition language.
+            Row("\$\$field\$\$", expected = listOf("\$Code label\$")),
+            Row("\$\$field.value\$\$", expected = listOf("\$bad\$")),
+            Row("\$\$Feld\$\$", expected = listOf("\$Code label\$")),
             Row("\$field\$: \$field.value\$", locale = Locale.GERMANY, expected = listOf("Kennung: bad")),
             Row("\$Feld\$: \$Feld.Wert\$", language = "de_DE", expected = listOf("Code label: bad")),
             Row("\$Feld\$: \$Feld.Wert\$", language = "de_DE", locale = Locale.GERMANY,

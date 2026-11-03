@@ -34,7 +34,7 @@ class DateConstructionSlotsTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"modelVersion":"28.4.0","id":"booking","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"booking","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Booking","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"BookingRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -411,7 +411,7 @@ class DateConstructionSlotsTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"modelVersion":"28.4.0","id":"booking-legs","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"booking-legs","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Booking","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"TravelDate","Field":{"fieldType":{"type":"DateType",

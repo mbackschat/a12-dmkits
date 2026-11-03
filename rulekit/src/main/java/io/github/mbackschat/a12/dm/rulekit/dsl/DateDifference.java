@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * A numeric temporal difference. {@code DifferenceInDays} accepts dates, date-times, and mixed pairs and
- * counts complete model-zone legacy-calendar steps. Months/years accept dates only and count complete calendar
+ * counts complete days between the two model-zone wall clocks (KERNEL-FINDINGS KF665). Months/years accept dates only and count complete calendar
  * periods. Hours/minutes/seconds accept date-times only and divide elapsed instants. Entity refs render bare.
  */
 public record DateDifference(Unit unit, Calculation left, Calculation right) implements Calculation {

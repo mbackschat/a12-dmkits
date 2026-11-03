@@ -212,8 +212,7 @@ class ConditionReadBackParityTest {
                 .code("POSTAL_REQUIRED").severity(Severity.ERROR).message(en("x")).build())
                 .toJson();
         String hostJson = DocumentModelDraft.named("host").locale("en_US")
-                .include("shipping", "included-rules")
-                .rootGroup("Order", order -> order.mount("Shipping", "shipping"))
+                .rootGroup("Order", order -> order.mount("Shipping", "included-rules"))
                 .build().toJson();
         ModelResolver resolver = reference -> "included-rules".equals(reference) ? includedJson : null;
 

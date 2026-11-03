@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
  * classes. The same read from the row's OWN rule reaches the gates, measured, so the anchoring is what
  * decides rather than the operand's spelling.
  *
- * **Silent on an unresolvable type definition or an `UnspecifiedType` field**, whose type this reader cannot know — either may
+ * **Silent on an unresolvable type definition**, whose type this reader cannot know — it may
  * well be a partially known date, and refusing it would be the one
  * direction this checker may not take.
  */
@@ -62,7 +62,7 @@ private class PartialDateDefect(val code: String, val detail: String)
 /**
  * The declarations this reader is CERTAIN A12's kind gate refuses, all eleven measured.
  *
- * An allow-list rather than the complement of one kind, so an unresolvable type definition or an `UnspecifiedType` — whose type this
+ * An allow-list rather than the complement of one kind, so an unresolvable type definition — whose type this
  * checker cannot know — is left unjudged. `DateType` is a member: a date field with
  * no partial precision is refused exactly like the kinds that carry none at all, and the one date that
  * passes has already returned before this set is consulted.

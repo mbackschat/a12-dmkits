@@ -140,10 +140,10 @@ class DeclaredNameShapeLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an ordinary name — the control", KernelLaws.ADMITTED);
-        // `MVK_NAME_MISSING` fires for neither: an unnamed element stops A12 BUILDING the model, so there
-        // is no consistency verdict about it and no code for a checker to reproduce.
-        expected.put("an EMPTY name", KernelLaws.NOT_BUILDABLE);
-        expected.put("a BLANK name", KernelLaws.NOT_BUILDABLE);
+        // `MVK_NAME_MISSING` fires for neither: kernel 31.1.1's converter states "Element must have a name." with
+        // no class and checks the model without the field (KERNEL-FINDINGS KF652; 30.8.1 could not build it).
+        expected.put("an EMPTY name", KernelLaws.REFUSED_CODELESS);
+        expected.put("a BLANK name", KernelLaws.REFUSED_CODELESS);
         expected.put("a name starting with a digit",
                 "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV");
         expected.put("a name starting with `xml`", "MVK_NAME_STARTS_WITH_XML_A12_DV");
@@ -203,7 +203,7 @@ class DeclaredNameShapeLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a NESTED group, ordinary name — the control", KernelLaws.ADMITTED);
-        expected.put("a NESTED group with an EMPTY name", KernelLaws.NOT_BUILDABLE);
+        expected.put("a NESTED group with an EMPTY name", KernelLaws.REFUSED_CODELESS);
         // The field row of the grid above draws BOTH codes for this shape; this carrier draws only the path
         // one, so `MVK_NAME_STARTS_WITH_DIGIT` in either spelling is not what a digit-initial group name is
         // reported as here.
@@ -225,7 +225,7 @@ class DeclaredNameShapeLawsTest {
         expected.put("a ROOT group starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML,MVK_NAME_STARTS_WITH_XML");
         expected.put("a RULE, ordinary name — the control", KernelLaws.ADMITTED);
         expected.put("a RULE starting with `xml`", KernelLaws.ADMITTED);
-        expected.put("a RULE with an EMPTY name", KernelLaws.NOT_BUILDABLE);
+        expected.put("a RULE with an EMPTY name", KernelLaws.REFUSED_CODELESS);
         expected.put("a RULE starting with a digit", KernelLaws.REFUSED_CODELESS);
         expected.put("a RULE with a dot in its name", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "the same name shapes on every carrier beside a field");

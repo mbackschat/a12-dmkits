@@ -41,9 +41,6 @@ class CheckerKeyedOperandAgreementTest {
             .stringField("Code") { }
             .numberField("Limit") { it.fractionDigits(0) }
             .dateField("Opened") { it.format("yyyy-MM-dd") }
-            .enumField("Stage") { e -> e
-                .value("OPEN") { it.label("en_US", "Open claim") }
-                .value("CLOSED") { it.label("en_US", "Closed claim") } }
             .group("Claims") { g -> claimFields(g.repeatable(20).indexField("ClaimRef")) }
             .group("Riders") { g -> claimFields(g.repeatable(5)) }
             .group("Endorsements") { g -> claimFields(g.repeatable(5).indexField("Status")) }
@@ -286,7 +283,6 @@ class CheckerKeyedOperandAgreementTest {
             "number scale comparison" to Probe("[%s] == [Limit]", "Amount"),
             "tolerance comparison" to Probe("[%s] DiffersWithToleranceRange1 5", "Memo"),
             "pattern comparison" to Probe("[%s] PatternMatched \"a+\"", "Amount"),
-            "enum display comparison" to Probe("[%s] == [Stage]", "Status"),
             "rounding a computed value" to Probe("RoundUp([%s], 0) > 0", "Memo"),
             "date arithmetic amount" to Probe("AddDays(Opened, [%s]) < Today", "Memo"),
             "date arithmetic precision" to Probe("[Opened] < AddHours(%s, 1)", "Filed"),

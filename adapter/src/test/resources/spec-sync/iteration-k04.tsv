@@ -139,8 +139,8 @@ f1	order	/Order	/Order/Lines/Parts	GroupFilled(Lines) And FieldNotFilled(Lines/P
 f2a	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or GroupNotFilled(Picks)	MVK_PARALLEL_ITERATION_INVALID
 f2a-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) Or FieldNotFilled(Picks/Ref)	MVK_PARALLEL_ITERATION_INVALID
 f2b	order	/Order	/Order/Lines/Qty	Sum(Lines*/Qty) > 0 And GroupFilled(Picks)	MVK_ERROR_FIELD_AND_ITERATION_INVALID
-f2c	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED
-f2c-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED
+f2c	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED
+f2c-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref) And NumberOfFilledFields(Lines/Parts*/Count Having [Lines/Parts/Count] > 1) > 0	MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED
 f2d	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks) And Sum(Lines/Parts*/Count Having [$Lines/Qty] > 1) > 0	MVK_NO_ITERATION_FOR_WILDCARD
 f2d-f	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And FieldFilled(Picks/Ref) And Sum(Lines/Parts*/Count Having [$Lines/Qty] > 1) > 0	MVK_NO_ITERATION_FOR_WILDCARD
 f2e	order	/Order	/Order/Lines/Qty	FieldFilled(Lines/Qty) And GroupFilled(Picks)	

@@ -12,15 +12,17 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — a DATE_RANGE computation whose source list and target are two different SPELLINGS of one
- * YEARLESS component set: an empty-separator `MM` list feeding a slash-separated `MM` target
+ * YEARLESS component set: a `dd.MM`+`-` list feeding an `MM-dd`+`/` target, both `{MONTH, DAY}`
  * (SPEC-2026-08-23-03).
  *
  * **Why this is not covered by the crossing already locked.** `DateRangeFirstFilledProfileDiffTest`'s crossed
  * row runs `dd.MM.yyyy` into `yyyy-MM-dd`, which is the `{YEAR, MONTH, DAY}` pair. The yearless sets are the
- * ones a one-spelling-per-component-set implementation cannot even express, and `MM`+`""` is additionally the
- * one declaration whose stored text splits in the MIDDLE rather than on a separator — so a crossing out of it
- * exercises a read path no other source spelling reaches. Getting the render wrong here stores `0110` where
- * the kernel stores `01/10`, silently.
+ * ones a one-spelling-per-component-set implementation cannot even express. Getting the render wrong here stores
+ * `15.01-20.02` where the kernel stores `01-15/02-20`, silently.
+ *
+ * On kernel 30.8.1 the crossing ran out of the halved `MM`+`""` into `MM`+`/`. On 31.1.1 an empty separator reads as
+ * `/` (KERNEL-FINDINGS KF658), so that pair is one spelling, and the class was re-expressed on the one yearless set
+ * that still has two.
  *
  * The direct two-field list is deliberate: it puts the crossing on a NON-FIRST slot in
  * [theSecondSourceIsReachedAndStillRendersInTheTargetSpelling], which a starred column cannot separate from
@@ -34,9 +36,9 @@ class DateRangeCrossedSpellingComputeDiffTest {
         val base = DocumentModelDraft.named("promo-crossed").locale("en_US")
             .rootGroup("Promo") { promo ->
                 promo.stringField("Campaign") { }
-                promo.dateRangeField("PrimaryRun") { it.format("MM").separator("") }
-                promo.dateRangeField("FallbackRun") { it.format("MM").separator("") }
-                promo.dateRangeField("EffectiveRun") { it.format("MM").separator("/") }
+                promo.dateRangeField("PrimaryRun") { it.format("dd.MM").separator("-") }
+                promo.dateRangeField("FallbackRun") { it.format("dd.MM").separator("-") }
+                promo.dateRangeField("EffectiveRun") { it.format("MM-dd").separator("/") }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
         val operation = RuntimeLaws.render(ROOT, 
@@ -52,19 +54,19 @@ class DateRangeCrossedSpellingComputeDiffTest {
     @Test
     fun theCrossedYearlessSpellingIsKernelAdmitted() =
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(json),
-            "the kernel admits an empty-separator month list assigned to a slash month target")
+            "the kernel admits a day-month list assigned to a month-day target")
 
     @Test
     fun theTargetSpellingRendersAValueTakenFromTheFirstSource() =
-        agree("VALUE|06/09", primary = "0609")
+        agree("VALUE|06-01/09-30", primary = "01.06-30.09")
 
     @Test
     fun theSecondSourceIsReachedAndStillRendersInTheTargetSpelling() =
-        agree("VALUE|01/10", primary = null, fallback = "0110")
+        agree("VALUE|01-15/02-20", primary = null, fallback = "15.01-20.02")
 
     /** The vacuity control: this fixture CAN report something other than a value. */
     @Test
-    fun anAllEmptyListClearsASeededTarget() = agree("CLEARED", seed = "02/03")
+    fun anAllEmptyListClearsASeededTarget() = agree("CLEARED", seed = "02-03/04-05")
 
     private fun agree(expected: String, primary: String? = null, fallback: String? = null, seed: String? = null) {
         val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)

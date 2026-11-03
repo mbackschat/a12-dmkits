@@ -749,6 +749,7 @@ tasks.register('publicContractTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.MalformedModelPublicContractTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PortableCheckPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandRouteEquivalenceTest'

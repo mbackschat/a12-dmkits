@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
  *
  * `ParserService.checkNormalRule`'s second gate asks `AnalyseService.hasParallelIteratedFilterConditionId`,
  * which wants ONE entity id carrying both a filter condition and the parallel-iteration marker, and refuses
- * the rule with `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED`
+ * the rule with `MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED`
  * ([KERNEL-FINDINGS KF376], `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`).
  *
  * **Which levels carry the marker is two passes, not one, and the second is why this family reads the whole
@@ -198,7 +198,7 @@ private fun TrackedFactBase.markedFilteredOperand(
  * A reference inside a filter body is excluded, as A12 excludes it: the pass skips a filter reference that
  * does not carry the outer marker, and a text carrying one is not judged at all. Excluding it is also the
  * safe direction, since a filter body that iterates a level of its own is
- * `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` during the parse.
+ * `MVK_INVALID_ITERATION_IN_SET_EXPRESSION` during the parse.
  */
 private fun TrackedFactBase.parallelIterates(
     text: String,
@@ -266,7 +266,7 @@ private fun filteredEntityFinding(
 ) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
-    "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED",
+    "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED",
     "in `$member`: `$operand` carries a `$filterKeyword` filter while this condition iterates a " +
         "repetition in parallel with `$target`'s own — A12 cannot say which repetitions the filter runs " +
         "over, so the filter has to go, or the parallel read has to be starred or moved to its own rule",

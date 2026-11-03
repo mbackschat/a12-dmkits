@@ -63,7 +63,7 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      * <p><b>An operand that may cross an unstarred repeatable level has no code here</b> (corrected
      * 2026-10-20). The reference reader answers {@code MVK_NO_WILDCARD} only where the rule does not bind that
      * level; where the rule binds it, by iterating it or by being declared inside it, the operator's own gates
-     * answer, {@code MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED} or {@code MVK_DIFFERENT_GROUPS}
+     * answer, {@code MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED} or {@code MVK_DIFFERENT_GROUPS}
      * (KERNEL-FINDINGS KF370, {@code adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest}). An operand
      * does not know the rule it will sit in, so the pair is refused, which every one of those classes does, and
      * the code is withheld. Unknown topology counts as crossing, as in {@link FieldRef}.
@@ -117,7 +117,7 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      *  ({@code validate.laws.SumOfProductsLawsTest}, the filtered operand that also stars two levels). */
     private static void requireLowestLevelStar(FieldListRef operand) {
         if (operand.filter().isPresent()) {
-            throw Refusals.of(KernelCode.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED,
+            throw Refusals.of(KernelCode.MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED,
                     "SumOfProducts needs an unrestricted asterisk at its lowest"
                             + " repetition position");
         }

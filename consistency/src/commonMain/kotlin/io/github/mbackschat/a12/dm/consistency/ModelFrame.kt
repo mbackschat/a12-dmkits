@@ -109,7 +109,8 @@ private val FRAME = listOf(
             // An absent name builds and draws MVK_INVALID_NAME_4_GENERATED_CODE, judged with the name A12 derives
             // (FrameValues.kt).
             FrameMember("name", Bind.TEXT, nulled = FrameTier.READ),
-            text("variant"), text("branch"), text("revision"), text("comment"), text("joinedModelsInfo"),
+            // Kernel 31.1.1 added `packet` and dropped `joinedModelsInfo`, which its reader now passes over unread.
+            text("variant"), text("branch"), text("revision"), text("comment"), text("packet"),
         )),
         FrameMember("modelConfig", Bind.OBJECT, nulled = FrameTier.READ, members = listOf(
             FrameMember("supportedCharacters", Bind.LIST, nulled = FrameTier.READ,

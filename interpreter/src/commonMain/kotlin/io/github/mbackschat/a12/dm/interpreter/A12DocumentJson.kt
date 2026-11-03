@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.DocumentPlacementRecord
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.parseRangeToIso
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
+import io.github.mbackschat.a12.dm.interpreter.model.A12_DECIMAL_SCALES
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -42,8 +43,9 @@ import kotlinx.serialization.json.JsonUnquotedLiteral
  * state A12's writer has no shape for — a non-repeatable group row above 1 — is refused ([DocumentEncodeError])
  * rather than silently dropped.
  *
- * Read conversion drops unknown or wrong-shaped entities and compacts surviving object rows, as A12's
- * serializer does (SPEC-2026-10-10-07; `A12JsonIngressDiffTest`). Syntax, root and scalar-id faults remain fatal.
+ * Read conversion drops unknown or wrong-shaped entities, as A12's serializer does (SPEC-2026-10-10-07;
+ * `A12JsonIngressDiffTest`). Syntax, root and scalar-id faults remain fatal, and so does an array holding a
+ * non-object at a member of the root or of a row (KF664).
  */
 internal object A12DocumentJson {
 
@@ -146,9 +148,11 @@ internal object A12DocumentJson {
      * `A12JsonIngressKernelTest`). Purely lexical like [plainForm]; cross-checked against `BigDecimal.toString` by
      * `A12NumberPlainFormTest`.
      *
-     * A token whose scale has no 32-bit form is no `BigDecimal`, and A12's mapper reads every unquoted token before
-     * it looks at the model, so the whole Document is unreadable to it wherever the token stands: this throws a
-     * [DocumentInputReasonCode.MALFORMED_JSON] refusal rather than returning a text (KF564).
+     * A token whose scale is outside [A12_DECIMAL_SCALES] is no `BigDecimal` to Jackson 3's fast parser — the 32-bit
+     * range less `Int.MIN_VALUE`, so `0e2147483648` is refused here although the converter reads the same text quoted —
+     * and A12's mapper reads every unquoted token before it looks at the model, so the whole Document is unreadable to
+     * it wherever the token stands: this throws a [DocumentInputReasonCode.MALFORMED_JSON] refusal rather than
+     * returning a text (KF564, `adapter.laws.NumberExponentEdgeDiffTest`).
      */
     internal fun numberNodeTextOrNull(literal: String): String? {
         val match = JSON_NUMBER.matchEntire(literal) ?: return null
@@ -159,8 +163,8 @@ internal object A12DocumentJson {
         if (fractionPart.isEmpty() && exponentPart.isEmpty() && !literal.contains('.')) {
             return if (negative) sign + digits else digits
         }
-        val scale = scaleOrNull(fractionPart, exponentPart) ?: throw DocumentInputError.from(listOf(
-            MalformedJsonDiagnostic("the number $literal has no 32-bit scale, so A12's reader cannot represent it"),
+        val scale = scaleOrNull(fractionPart, exponentPart)?.takeIf { it in A12_DECIMAL_SCALES } ?: throw DocumentInputError.from(listOf(
+            MalformedJsonDiagnostic("the number $literal has a scale A12's reader cannot represent"),
         ))
         val adjusted = digits.length - 1 - scale
         // No point-shift ceiling here: the plain branch is reached only at a scale the literal's own length bounds,
@@ -296,7 +300,7 @@ internal object A12DocumentJson {
      *   `createBigDecimalIfPossible` returns the original String and both renderings are that String.
      * - **BOOLEAN** — `"true".equalsIgnoreCase` / `"false".equalsIgnoreCase` → the canonical token; **CONFIRM**
      *   accepts only `true` (it has no false, so even a native JSON `false` is a pass-through).
-     * - **the DATE family** — nothing to do: `SimpleDateFormat` is non-lenient, so every non-canonical spelling
+     * - **the DATE family** — nothing to do: the date parse is strict, so every non-canonical spelling
      *   *fails* conversion and is kept verbatim, and every spelling that parses already IS the model format —
      *   except a DATE_RANGE read under a format shared from another declaration ([runtimeRangeText]).
      * - **STRING / Enumeration** — never normalized; A12's converter succeeds with the text itself.
@@ -354,7 +358,7 @@ internal object A12DocumentJson {
         val declared = declaredRangeConfig[path] ?: return raw
         val runtime = rangeConfig.getValue(path)
         if (declared == runtime) return raw
-        val (start, end) = parseRangeToIso(raw, declared.first, declared.second, baseYear ?: 2000,
+        val (start, end) = parseRangeToIso(raw, declared.first, declared.second, timeZone, baseYear ?: 2000,
             rangeYearInterpretationOf(path), completeEndToLastDay = false) ?: return raw
         val renderedStart = renderDateToFormat(start, runtime.first) ?: return raw
         val renderedEnd = renderDateToFormat(end, runtime.first) ?: return raw
@@ -426,9 +430,16 @@ internal object A12DocumentJson {
         private var totalRawCodeUnits = 0L
         private var documentId: String? = null
 
+        /**
+         * Reads one object A12 reads as a group — the root or a row — whose array members A12 requires to hold only
+         * objects. It checks that before it asks the model what the member is, so a known group, a field, an unknown
+         * key and the root `id` refuse the Document alike, while an object the model does not read as a group is never
+         * walked and so never checked (kernel 31.1.1, KERNEL-FINDINGS KF664, `adapter.laws.A12JsonIngressDiffTest`).
+         */
         fun walk(node: JsonObject, path: String, coordinates: List<Int>) {
             for ((name, child) in node) {
                 val childPath = "$path/$name"
+                if (child is JsonArray) requireObjectElements(childPath, child)
                 val kind = ModelAddressValidation.entityKind(model, childPath)
                 if (kind == null && path.isEmpty() && name == DOCUMENT_ID_KEY) {
                     readDocumentId(child)
@@ -538,15 +549,21 @@ internal object A12DocumentJson {
             }
         }
 
+        private fun requireObjectElements(path: String, array: JsonArray) {
+            val offending = array.indexOfFirst { it !is JsonObject }
+            if (offending < 0) return
+            throw DocumentInputError.from(listOf(MalformedJsonDiagnostic(
+                "the array at $path holds ${array[offending].nodeType().spelled()} at position ${offending + 1}, " +
+                    "and A12's reader admits only objects in an array",
+            )))
+        }
+
+        /** An array here holds only objects: [walk] refused any other element before dispatching to this. */
         private fun readGroup(path: String, parentCoordinates: List<Int>, node: JsonElement) {
             when (node) {
                 is JsonObject -> readRow(path, parentCoordinates + 1, node)
-                is JsonArray -> {
-                    var repetition = 0
-                    for (element in node) {
-                        if (element is JsonObject) readRow(path, parentCoordinates + ++repetition, element)
-                        else requireReadableNumbers(element)
-                    }
+                is JsonArray -> node.forEachIndexed { index, element ->
+                    readRow(path, parentCoordinates + (index + 1), element as JsonObject)
                 }
                 else -> requireReadableNumbers(node)
             }
@@ -697,6 +714,14 @@ private fun JsonElement.nodeType(): DocumentJsonNodeType = when {
     this is JsonObject -> DocumentJsonNodeType.OBJECT
     this is JsonArray -> DocumentJsonNodeType.ARRAY
     else -> DocumentJsonNodeType.VALUE
+}
+
+/** The node type as the diagnostic prose names it, spelled here so shared code runs no platform case table. */
+private fun DocumentJsonNodeType.spelled(): String = when (this) {
+    DocumentJsonNodeType.OBJECT -> "an object"
+    DocumentJsonNodeType.ARRAY -> "an array"
+    DocumentJsonNodeType.VALUE -> "a value"
+    DocumentJsonNodeType.NULL -> "a null"
 }
 
 private data class MalformedJsonDiagnostic(private val detail: String) : DocumentInputDiagnostic {

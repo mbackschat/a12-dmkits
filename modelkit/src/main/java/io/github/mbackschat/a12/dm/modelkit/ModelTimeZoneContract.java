@@ -6,7 +6,8 @@ import java.util.TimeZone;
 /**
  * The document-model {@code modelConfig.timeZone} contract at a JVM authoring/preparation boundary.
  *
- * <p>The four domains are intentionally explicit: a missing slot defaults to UTC; exact {@code UTC},
+ * <p>The four domains are intentionally explicit: a missing or empty slot defaults to UTC, because kernel
+ * 31.1.1's expand copy drops an empty member and reads it back as absent (KERNEL-FINDINGS KF658); exact {@code UTC},
  * {@code GMT}, and {@code Europe/Berlin} are supported by the kernel-free interpreter; another Java
  * {@link TimeZone} id is kernel-legal but outside that evaluator set; and null, blank, or an unknown id
  * that silently collapses to GMT is kernel-invalid. This utility uses the host JDK's registry only to
@@ -29,13 +30,13 @@ public final class ModelTimeZoneContract {
     }
 
     /**
-     * Classify the slot without conflating absence with an explicitly authored null.
+     * Classify the slot without conflating absence with an explicitly authored null or blank id.
      *
      * @param present whether {@code modelConfig} contains the {@code timeZone} key
      * @param value the scalar value, or {@code null} for an explicit JSON null
      */
     public static Domain classify(boolean present, String value) {
-        if (!present) {
+        if (!present || "".equals(value)) {
             return Domain.ABSENT_DEFAULT;
         }
         if (value == null || value.isBlank()) {

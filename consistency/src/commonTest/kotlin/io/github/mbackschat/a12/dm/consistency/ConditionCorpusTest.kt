@@ -34,7 +34,7 @@ class ConditionCorpusTest {
     private fun report(text: String, member: String, language: String?) = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"corpus","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"corpus","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},${
                 language?.let { """"modelConfig":{"conditionLanguage":{"code":"$it"}},""" } ?: ""
             }"modelRoot":{"rootGroups":[

@@ -3,8 +3,11 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
+import io.github.mbackschat.a12.dm.consistency.ConsistencyWorkspace
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -12,6 +15,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 /**
  * The checker against A12: the ORDER and number of A12's basic sentences, where the set-valued agreement of
@@ -19,9 +25,11 @@ import org.junit.jupiter.api.assertThrows
  *
  * `BasicConsistencyCheck` walks the type definitions before the elements, each definition's empty id and then its
  * empty name, so three defective definitions draw three sentences ahead of an element's. It walks them as the
- * expansion left them, sorted by id: declared `Beta`, `''`, `Gamma`, they are stated `''`, `Beta`, `Gamma`, where
- * declaration order and `HashMap` order (`''`, `Gamma`, `Beta`) both disagree. Two definitions sharing an id, the
- * empty one included, never reach that check: A12's expansion refuses the repeat and builds no model. An
+ * expansion left them. On kernel 31.1.1 that is declaration order for a model with nothing to expand, and order by
+ * id only for one A12 expands: declared `Beta`, `''`, `Gamma`, they are stated as declared, and `''`, `Beta`,
+ * `Gamma` once the model imports a type-definition library, where `HashMap` order (`''`, `Gamma`, `Beta`) disagrees
+ * with both. Two definitions sharing an id, the empty one included, never reach that check: the model reads, but A12
+ * cannot build the one its consistency check runs on. An
  * Enumeration's repeated values are collected by `Java8Utils.findDuplicates` into a `HashMap` through
  * `computeIfAbsent`, so they are stated in that map's iteration order. The three values of `Status` separate that
  * order from first-occurrence and second-occurrence order alike: declared `OPEN, CLOSED, PENDING` and then
@@ -51,11 +59,7 @@ class CheckerBasicSentenceOrderAgreementTest {
         val root = mapper.readTree(base) as ObjectNode
         val definitions = (root.path("content") as ObjectNode).putArray("typeDefinitions")
         for ((id, name) in listOf("Beta" to "", "" to "Alpha", "Gamma" to "")) definition(definitions, id, name)
-        // A kept field's empty name fails the build first, so the field is deleted by a filter and keeps only its sentence.
-        elements(root).single { it.path("name").asText() == "Code" }.let { code ->
-            (code as ObjectNode).put("name", "")
-            (code.path("Field") as ObjectNode).putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium")
-        }
+        (elements(root).single { it.path("name").asText() == "Code" } as ObjectNode).put("name", "")
         val json = root.toString()
         assertEquals(TYPE_DEFINITION_ORDER, a12Basic(json), "A12's sentences, in order")
         assertEquals(TYPE_DEFINITION_ORDER, ourBasic(json), "the checker's findings, in order")
@@ -65,13 +69,61 @@ class CheckerBasicSentenceOrderAgreementTest {
     }
 
     @Test
-    fun typeDefinitionIdsCompareByCodeUnitNotByCase() {
+    fun aModelA12ExpandsStatesItsDefinitionsSortedById(@TempDir dir: Path) {
+        val ids = importing(dir, listOf("Gamma" to "", "Beta" to "", "Delta" to ""))
+        assertEquals(SORTED_DEFINITION_IDS to SORTED_DEFINITION_IDS, ids, "the definitions named in order (A12's, the checker's)")
+    }
+
+    /**
+     * An empty id reaches A12's expansion as `null` (KF658), and adding the library's definition compares every id
+     * the model already holds, so the expansion fails and no model is left — where the same definition in a model
+     * with nothing to expand is one `RK_ID_EMPTY` sentence.
+     */
+    @Test
+    fun anEmptyIdLeavesAModelA12ExpandsUnbuilt(@TempDir dir: Path) {
+        Files.writeString(dir.resolve("library.dm.json"), LIBRARY)
+        val json = importingModel(listOf("" to "Alpha"))
+        val a12 = runCatching { KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.directory(dir)) }
+        assertTrue(a12.exceptionOrNull()?.message.orEmpty().contains("could not build"), "A12: $a12")
+        assertTrue("CK_MODEL_NOT_BUILDABLE" in ConsistencyWorkspace.fromSources(listOf(ModelSource(json), ModelSource(LIBRARY)))
+            .check("policy-basic-order").findings.map { it.code }, "the checker says so")
+    }
+
+    @Test
+    fun typeDefinitionIdsCompareByCodeUnitNotByCase(@TempDir dir: Path) {
+        val ids = importing(dir, listOf("deductible", "Prämie", "Coverage", "Überschuss").map { it to "" })
+        assertEquals(CODE_UNIT_IDS to CODE_UNIT_IDS, ids, "the definitions named in order (A12's, the checker's)")
+    }
+
+    @Test
+    fun aSelfContainedModelStatesItsDefinitionsAsDeclared() {
         val root = mapper.readTree(base) as ObjectNode
         val definitions = (root.path("content") as ObjectNode).putArray("typeDefinitions")
-        for (id in listOf("deductible", "Prämie", "Coverage", "Überschuss")) definition(definitions, id, "")
+        for (id in DECLARED_IDS) definition(definitions, id, "")
         val json = root.toString()
-        assertEquals(CODE_UNIT_IDS, a12DefinitionIds(json), "the definitions A12's sentences name, in order")
-        assertEquals(CODE_UNIT_IDS, ourDefinitionIds(json), "the definitions the checker's findings name, in order")
+        assertEquals(DECLARED_IDS, a12DefinitionIds(json), "the definitions A12's sentences name, in order")
+        assertEquals(DECLARED_IDS, ourDefinitionIds(json), "the definitions the checker's findings name, in order")
+    }
+
+    /** The base with [definitions], importing [LIBRARY]. */
+    private fun importingModel(definitions: List<Pair<String, String>>): String {
+        val root = mapper.readTree(base) as ObjectNode
+        (root.path("header") as ObjectNode).putArray("modelReferences").addObject()
+            .put("modelType", "document").put("purpose", "typeDefinitions").put("reference", "library")
+        val declared = (root.path("content") as ObjectNode).putArray("typeDefinitions")
+        for ((id, name) in definitions) definition(declared, id, name)
+        return root.toString()
+    }
+
+    /** The definitions each side names, in order, for the base with [definitions] that imports [LIBRARY]. */
+    private fun importing(dir: Path, definitions: List<Pair<String, String>>): Pair<List<String>, List<String>> {
+        Files.writeString(dir.resolve("library.dm.json"), LIBRARY)
+        val json = importingModel(definitions)
+        val a12 = KernelConsistencyOracle().checkConsistency(json, ReferenceResolvers.directory(dir)).map { it.message().trim() }
+        val ours = ConsistencyWorkspace.fromSources(listOf(ModelSource(json), ModelSource(LIBRARY))).check("policy-basic-order")
+            .findings.filter { it.code in BASIC && it.at == null }
+            .map { Regex("entry `([^`]*)`").find(it.explain)?.groupValues?.get(1) ?: "" }
+        return a12.mapNotNull(::definitionId) to ours
     }
 
     @Test
@@ -81,8 +133,10 @@ class CheckerBasicSentenceOrderAgreementTest {
             val definitions = (root.path("content") as ObjectNode).putArray("typeDefinitions")
             for (name in listOf("Alpha", "Delta")) definition(definitions, id, name)
             val json = root.toString()
-            val escaped = assertThrows<IllegalArgumentException> { BoundModel.ofJson(json) }
-            assertEquals("The type definition id '$id' already exists.", escaped.cause?.message ?: escaped.message)
+            val refused = assertThrows<ModelConsistencyException> { BoundModel.ofJson(json) }
+            // The empty id reaches the build as `null`, the expand copy's empty-as-absent reading (KF658).
+            val key = id.ifEmpty { "null" }
+            assertTrue("Duplicate key $key " in refused.message.orEmpty(), "A12's consistency build trips on '$id': ${refused.message}")
             assertTrue("CK_MODEL_NOT_BUILDABLE" in check(ModelSource(json)).findings.map { it.code }, "the checker says so for '$id'")
         }
     }
@@ -129,10 +183,11 @@ class CheckerBasicSentenceOrderAgreementTest {
     private fun ourBasic(json: String): List<String> = check(ModelSource(json)).findings.map { it.code }.filter { it in BASIC }
 
     /** Each definition sentence's id: A12 names a definition by its id, or by its name when the id is the empty defect. */
-    private fun a12DefinitionIds(json: String): List<String> = a12Sentences(json).mapNotNull { sentence ->
+    private fun a12DefinitionIds(json: String): List<String> = a12Sentences(json).mapNotNull(::definitionId)
+
+    private fun definitionId(sentence: String): String? =
         Regex("""^Type definition with (id|name) '([^']*)':""").find(sentence)?.groupValues
             ?.let { (_, by, value) -> if (by == "id") value else "" }
-    }
 
     /** Each definition finding's id; the definitions' findings are the basic sentences with no element path. */
     private fun ourDefinitionIds(json: String): List<String> = check(ModelSource(json)).findings
@@ -149,14 +204,24 @@ class CheckerBasicSentenceOrderAgreementTest {
     private companion object {
         val BASIC = setOf("RK_ID_EMPTY", "RK_NAME_EMPTY")
 
-        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
-        val TYPE_DEFINITION_ORDER = listOf("RK_ID_EMPTY", "RK_NAME_EMPTY", "RK_NAME_EMPTY", "RK_NAME_EMPTY")
+        /** Measured through `BoundModel`, kernel 31.1.1, 2026-11-03: `Beta`'s name, `Alpha`'s id, `Gamma`'s name, then `Code`'s. */
+        val TYPE_DEFINITION_ORDER = listOf("RK_NAME_EMPTY", "RK_ID_EMPTY", "RK_NAME_EMPTY", "RK_NAME_EMPTY")
 
-        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29: `Type definition with name 'Alpha': The id is empty.`, then `Beta`'s and `Gamma`'s name sentences. */
-        val DEFINITION_IDS = listOf("", "Beta", "Gamma")
+        /** Measured through `BoundModel`, kernel 31.1.1, 2026-11-03: declaration order. */
+        val DEFINITION_IDS = listOf("Beta", "", "Gamma")
 
-        /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
+        /** Declared `Gamma`, `Beta`, `Delta` in a model that imports a library: sorted by id. */
+        val SORTED_DEFINITION_IDS = listOf("Beta", "Delta", "Gamma")
+
+        /** Sorted by UTF-16 code unit, as `String.compareTo` orders them: capitals, then lower case, then `Ü`. */
         val CODE_UNIT_IDS = listOf("Coverage", "Prämie", "deductible", "Überschuss")
+
+        /** Not sorted, so this order tells declaration order from order by id; measured through `BoundModel`, kernel 31.1.1, 2026-11-03. */
+        val DECLARED_IDS = listOf("deductible", "Prämie", "Coverage", "Überschuss")
+
+        /** A type-definition library with one well-formed definition, which makes A12 expand its importer. */
+        val LIBRARY: String = DocumentModelDraft.typeDefModel("library").locale("en_US")
+            .typeDef("Region") { t -> t.string { s -> s.maxLength(8) } }.build().toJson()
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val REPEATED_ORDER = listOf("CLOSED", "PENDING", "OPEN")

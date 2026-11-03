@@ -38,7 +38,7 @@ class ModelExpandCommandTest {
         assertTrue(result.out().contains("\"Cover\""), "the included model is mounted");
         assertTrue(result.out().contains("\"Premium\""), "the imported typedef field remains present");
         assertFalse(result.out().contains("TypeDefType"), "every typedef use is concrete");
-        assertFalse(result.out().contains("\"modelAlias\""), "include directives are consumed");
+        assertFalse(result.out().contains("\"includeConfig\""), "include directives are consumed");
     }
 
     @Test
@@ -102,7 +102,6 @@ class ModelExpandCommandTest {
 
     private static String policy() {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .importTypeDefs("catalogtypes")
                 .rootGroup("Policy", group -> group
                         .mount("Cover", "benefits")

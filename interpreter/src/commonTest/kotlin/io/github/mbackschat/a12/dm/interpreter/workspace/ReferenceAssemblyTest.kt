@@ -52,7 +52,7 @@ class ReferenceAssemblyTest {
 
     @Test
     fun normalizesEveryElementIdToItsFinalNamePath() {
-        val result = assemble("same-alias-mounted-twice")
+        val result = assemble("same-model-mounted-twice")
         val elementIds = result.root.elementIdsByPath()
 
         assertEquals(elementIds.keys, elementIds.values.toSet())
@@ -351,7 +351,7 @@ class ReferenceAssemblyTest {
 
     @Test
     fun excludedExecutablesLeaveNoReferenceResidue() {
-        val caseId = "alias-with-exclusions"
+        val caseId = "mount-with-exclusions"
         val providerModelId = "inspection-checks"
         val sources = WorkspacePreparationFixtureJson.sources(caseId).toMutableMap()
         sources[providerModelId] = withResidualExecutables(

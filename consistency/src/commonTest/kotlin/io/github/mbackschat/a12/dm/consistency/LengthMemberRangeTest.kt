@@ -45,14 +45,6 @@ class LengthMemberRangeTest {
         assertEquals(listOf(signed), codes("NumberType", """"maxLength":-1"""))
     }
 
-    @Test
-    fun aFieldDeletedFromTheDefaultVariantIsNotJudged() {
-        val deleted = ""","variantFilter":{"filterType":"ONLY","variants":["premium"]}"""
-        assertEquals(emptyList(), codes("StringType", """"maxLength":100000""", deleted))
-        assertEquals(emptyList(), codes("CustomFieldType", """"name":"ref","minLength":5,"maxLength":3""", deleted))
-        assertEquals(emptyList(), codes("NumberType", """"maxLength":100000""", deleted))
-    }
-
     private fun codes(type: String, members: String, fieldExtra: String = ""): List<String> =
         checkRead(ModelSource(model(type, members, fieldExtra))).findings
             .filter { it.at == "/Ticket/Entry" && it.justifiesRejection }.map { it.code }.sorted()
@@ -60,7 +52,7 @@ class LengthMemberRangeTest {
     private fun model(type: String, members: String, fieldExtra: String): String {
         val extra = if (type == "NumberType") ""","minFractionalDigits":0,"maxFractionalDigits":0""" else ""
         return """
-            {"header":{"modelVersion":"28.4.0","id":"ticket","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"ticket","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Ticket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Entry","Field":{"fieldType":{

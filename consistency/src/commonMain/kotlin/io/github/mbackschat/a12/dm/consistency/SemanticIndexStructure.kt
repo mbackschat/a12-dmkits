@@ -42,8 +42,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.encloses
  *
  * **Silent where the key's DECLARED type is one A12's base-type comparison leaves unsettled here.** The
  * comparison is [BaseTypeClass], not name equality, and a type definition takes the type it defines
- * ([resolvedFieldTypeOf]); a declaration outside that table — an unspecified field, or a definition that does
- * not resolve — leaves the whole index unjudged rather than guessing whether A12 calls it consistent.
+ * ([resolvedFieldTypeOf]); a declaration outside that table — a definition that does not resolve — leaves the whole index unjudged rather than guessing whether A12 calls it consistent.
  *
  * **Silent on a literal key whose index field this reader cannot judge.** `isValueApplicable` runs the index
  * field's own value validation over the constant, and [admitsIndexConstant] reproduces it per kind except where
@@ -111,7 +110,7 @@ private fun TrackedFactBase.firstClassIn(
  * Whether A12 admits [use] on every gate of the semantic-index chain, as far as this reader can tell.
  *
  * True only where the chain reads CLEAN: an index this family would refuse, or one it cannot judge — a group
- * key, a constant a table-backed enumeration judges, a key whose declared type is unsettled — is not admitted,
+ * key, a key whose declared type is unsettled — is not admitted,
  * so a reader that honours a key on this answer honours only a key A12 does. A nested index never reaches here: [operandReferenceIn] honours a text with ONE index use.
  */
 internal fun TrackedFactBase.admitsSemanticIndex(

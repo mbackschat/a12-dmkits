@@ -64,11 +64,26 @@ class ModelIndexIntBindingTest {
         expected.put("3.7", 3);
         expected.put("\"\\u0663\"", 3);
         expected.put("\"\\uFF13\"", 3);
-        expected.put("\"null\"", 0);
-        expected.put("\"\"", 0);
-        expected.put("null", 0);
+        // A primitive `int`: on kernel 31 a value with no value leaves no model, read as the default (KF593).
+        expected.put("\"null\"", 1);
+        expected.put("\"\"", 1);
+        expected.put("null", 1);
         Map<String, Integer> observed = new LinkedHashMap<>();
         expected.keySet().forEach(raw -> observed.put(raw, index("repeatability", read(raw)).maxRepetitions("/Register/Claims")));
         assertEquals(expected, observed);
+    }
+
+    /**
+     * A number token whose {@code BigDecimal} scale is {@code Integer.MIN_VALUE} leaves A12 with no model, though the
+     * JDK constructs it (KERNEL-FINDINGS KF593); it is written as raw text, because a parsed tree prints it as 0.
+     */
+    @Test
+    void aScaleTheFastParserRefusesBindsNoCount() {
+        String json = DocumentModelDraft.named("claims").locale("en_US")
+                .rootGroup("Register", r -> r.group("Claims", c -> c.repeatable(5).numberField("Amount", f -> f.fractionDigits(0))))
+                .build().toJson();
+        String withScale = json.replace("\"repeatability\" : 5", "\"repeatability\" : 0e2147483648");
+        assertEquals(false, json.equals(withScale), "the raw lexeme replaced the count");
+        assertEquals(1, ModelIndex.of(withScale, ReferenceResolvers.selfContained()).maxRepetitions("/Register/Claims"));
     }
 }

@@ -21,7 +21,6 @@ package io.github.mbackschat.a12.dm.consistency
 internal fun TrackedFactBase.elementPathSentenceFindings(element: TrackedDeclaration): List<Finding> {
     val kind = element.declaredKind ?: return emptyList()
     if (element.name.isEmpty() || '/' in element.name) return emptyList()
-    if (kind != DeclaredKind.GROUP && element.body.deletesAtDefaultVariant()) return emptyList()
     val root = kind == DeclaredKind.GROUP && element.path == "/${element.name}"
     if (root) return listOfNotNull(rootGroupNameFinding(element))
     val groupPath = if (kind == DeclaredKind.GROUP) element.path else element.path.substringBeforeLast('/')

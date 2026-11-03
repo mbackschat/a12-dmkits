@@ -295,8 +295,7 @@ fun formalError(
     /** The model's base year (kernel default 2000) — the year a year-less date FRAGMENT (`MM`, `MM-dd`)
      *  completes to for its realness check; unused for non-fragment kinds. */
     baseYear: Int = 2000,
-    /** The model's configured time zone — a Europe/Berlin DATE_TIME inside the spring-forward gap is
-     *  `datumFormatFalsch` (the kernel's non-lenient zone-set parse rejects it; KERNEL-FINDINGS §6). */
+    /** The model's configured time zone — it decides whether a Julian leap day parses at all ([resolveParsedDate]). */
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
     /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
      *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
@@ -412,13 +411,13 @@ internal fun typeFormatErrorCached(
                 DatePrecision.DAY_OPTIONAL,
                 DatePrecision.MONTH_OPTIONAL,
                 DatePrecision.YEAR_OPTIONAL,
-                -> partialDateParts(raw, fmt, datePrecision)?.let { (y, m, d) ->
+                -> partialDateParts(raw, fmt, datePrecision, timeZone)?.let { (y, m, d) ->
                     Triple(if (y == 0) 2000 else y, if (m == 0) 1 else m, if (d == 0) 1 else d)
                 }
                 // Formal completion appends the Base Year only to a day-and-month format; any other omitted year
                 // takes the parser's default, so a month-only value escapes the floor (formalCompletionYear).
                 DatePrecision.FRAGMENT ->
-                    completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear)?.let { dateParts(it) }
+                    completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear, timeZone)?.let { dateParts(it) }
                 DatePrecision.FULL -> {
                     // A DateType's declared format may itself OMIT calendar components — `yyyy`, `yyyy-MM`,
                     // `yyyyMM` and `MM` are all kernel-legal (KF176) — and such a value is complete FOR ITS
@@ -428,8 +427,8 @@ internal fun typeFormatErrorCached(
                     // only the exact `yyyy` case (added for SPEC-2026-07-27-13's Date(...) year-component
                     // source, with a comment declining to infer the others) — so `yyyy-MM`, `yyyyMM` and `MM`
                     // drew a FALSE datumFormatFalsch on a legal model (IG110).
-                    val iso = parseDateToIso(raw, fmt)
-                        ?: completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear)
+                    val iso = parseDateToIso(raw, fmt, timeZone)
+                        ?: completeFragmentToIso(raw, fmt, formalCompletionYear(fmt, baseYear) ?: baseYear, timeZone)
                     iso?.let { dateParts(it) }
                 }
             }
@@ -437,7 +436,7 @@ internal fun typeFormatErrorCached(
                 invalidPartialShape -> FormalErrorCode.PARTIAL_DATE_INVALID
                 // Year ZERO is an unreal component, not a date below the floor — reality is settled before
                 // position in time (KF207's ordering), so `0000` is `datumFormatFalsch` while `0001` is
-                // `datumFalsch`. The parse decides it: no calendar A12 reads has a year 0 ([isParsedRealDate]).
+                // `datumFalsch`. The parse decides it: a `yyyy` parse admits no year 0 ([isRealDate]).
                 parts == null -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
@@ -457,14 +456,11 @@ internal fun typeFormatErrorCached(
         Kind.DATE_TIME -> {
             // Both of the kind's legal declared formats, via the shared canonicalization — a time-only
             // `HH:mm:ss` DATE_TIME is legal and used to be reported malformed here (IF301).
-            val canonical = parseDeclaredDateTime(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss")
+            // A Europe/Berlin wall time inside a spring-forward gap is no format error on kernel 31.1.1: its parse
+            // moves it forward by the gap, as `ZonedDateTime` does (probe-measured, KF665).
+            val canonical = parseDeclaredDateTime(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss", timeZone)
             when {
                 canonical == null -> FormalErrorCode.DATE_FORMAT
-                // A Europe/Berlin wall time inside the spring-forward gap does not exist — the kernel's
-                // non-lenient zone-set parse rejects it with the SAME code (probe-verified, KERNEL-FINDINGS §6).
-                // Only a date-bearing value can sit in a gap: a time-only cell names no calendar day, so there
-                // is no transition to fall into, and the guard must not be applied to its `HH:mm:ss` canonical.
-                isIsoDateTime(canonical) && isGapLocal(canonical, timeZone) -> FormalErrorCode.DATE_FORMAT
                 // A DateTime carries the SAME always-on Gregorian floor as a Date (KF207): the kernel has no
                 // DateTime-specific formal code and reports through the Date pair, so a date-bearing instant
                 // before 1583-10-16 is `datumFalsch`, not merely malformed. Only a date-bearing value can be
@@ -505,11 +501,11 @@ internal fun typeFormatErrorCached(
                         // The ORDER check must see the endpoints EVALUATION sees. A wrapping yearless range is
                         // ordered once `interpretationOfYear` has moved one endpoint's year, so comparing two
                         // base-year completions would report the kernel's ordinary winter season unordered.
-                        val shifted = parseRangeToIso(raw, format, rangeSep, baseYear, rangeYearInterpretation)
-                        val a = shifted?.first
-                            ?: parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
-                        val b = shifted?.second
-                            ?: parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
+                        val shifted = parseRangeToIso(raw, format, rangeSep, timeZone, baseYear, rangeYearInterpretation)
+                        val a = shifted?.first ?: parseDateToIso(parts[0], format, timeZone)
+                            ?: completeFragmentToIso(parts[0], format, baseYear, timeZone)
+                        val b = shifted?.second ?: parseDateToIso(parts[1], format, timeZone)
+                            ?: completeFragmentToIso(parts[1], format, baseYear, timeZone)
                         // BOTH date-position checks read the year the KERNEL's completion gives the start,
                         // which on a year-free format is not always the one the endpoint was built with —
                         // formalCompletionYear carries that rule and its measured basis.
@@ -558,14 +554,12 @@ internal fun typeFormatErrorCached(
  * **The equivalence is exact for a SINGLE-CHARACTER separator, which is every authorable one.** The kernel
  * delegates to `StringUtils.splitPreserveAllTokens`, whose second argument is a set of separator CHARS rather
  * than a separator string, so a hypothetical multi-character separator would split on each of its characters
- * there and on the whole token here. Every one of the eight admitted `(format, separator)` pairs uses `-`,
- * `/`, or the empty string, so the difference is unreachable — but it is a difference, not an equivalence.
+ * there and on the whole token here. Every admitted `(format, separator)` pair uses `-` or `/`, so the difference
+ * is unreachable — but it is a difference, not an equivalence.
  *
- * The empty separator is not a hypothetical: the declaration's `(format, separator)` PAIR is allowlisted as
- * the concatenation `format + separator + format`, and `MM` + `""` yields `MMMM`, which the kernel admits
- * (measured 2026-08-19 — `MM` is the only format that admits it). So a legal model can carry
- * a `0609` month-pair range, and `raw.split("")` would have shredded it into one piece per character and
- * reported a well-formed value as malformed.
+ * The empty branch mirrors the kernel's runtime class, which keeps it, but no stored model reaches it on kernel
+ * 31.1.1: an empty `rangeSeparator` reads as `/` there, and the loader does the same (KERNEL-FINDINGS KF658). Only a
+ * hand-built [ModelDef] can still declare one; on 30.8.1 `MM` + `""` was an admitted pair that split in the middle.
  */
 private fun splitDateRange(raw: String, sep: String): List<String> =
     if (sep.isEmpty()) listOf(raw.substring(0, raw.length / 2), raw.substring(raw.length / 2))

@@ -54,46 +54,4 @@ class PrintedNumberBoundTest {
         }
         assertEquals(expected, rows)
     }
-
-    /**
-     * The magnitude limit against the rows A12 was measured on (`adapter.laws.CheckerNumberBoundMagnitudeAgreementTest`):
-     * the minimum is judged by its absolute value and the maximum signed, `-1` and an out-of-range count are
-     * judged like any other, and a value one step past the limit is refused. The last two rows lock the window
-     * where A12's `Math.pow` need not round correctly: a count whose power of ten is not an exact double.
-     */
-    @Test
-    fun aBoundPastTheDigitLimitIsExceeded() {
-        val max = NumberBound.MAX_VALUE
-        val min = NumberBound.MIN_VALUE
-        val rows = linkedMapOf(
-            "max 1e14, f1" to numberBoundExceedsDigitLimit(max, 1e14, 1),
-            "max 99999999999999.9, f1" to numberBoundExceedsDigitLimit(max, 99999999999999.9, 1),
-            "max 999999999999999.4, f0" to numberBoundExceedsDigitLimit(max, 999999999999999.4, 0),
-            "max 999999999999999, f0" to numberBoundExceedsDigitLimit(max, 999999999999999.0, 0),
-            "max 1e15, absent" to numberBoundExceedsDigitLimit(max, 1e15, null),
-            "max -1e15, f0" to numberBoundExceedsDigitLimit(max, -1e15, 0),
-            "min 1e15, f0" to numberBoundExceedsDigitLimit(min, 1e15, 0),
-            "min -1e15, f0" to numberBoundExceedsDigitLimit(min, -1e15, 0),
-            "min -999999999999999, f0" to numberBoundExceedsDigitLimit(min, -999999999999999.0, 0),
-            "max 1e15, f-1" to numberBoundExceedsDigitLimit(max, 1e15, -1),
-            "max 9999999999999990, f-1" to numberBoundExceedsDigitLimit(max, 9999999999999990.0, -1),
-            "max 9999999999999991, f-1" to numberBoundExceedsDigitLimit(max, 9999999999999991.0, -1),
-            "max 10, f14" to numberBoundExceedsDigitLimit(max, 10.0, 14),
-            "max 9.99999999999999, f14" to numberBoundExceedsDigitLimit(max, 9.99999999999999, 14),
-            "max 2, f15" to numberBoundExceedsDigitLimit(max, 2.0, 15),
-            "max 0.5, f15" to numberBoundExceedsDigitLimit(max, 0.5, 15),
-            "max 1, f20" to numberBoundExceedsDigitLimit(max, 1.0, 20),
-            "max 1e15, f-2" to numberBoundExceedsDigitLimit(max, 1e15, -2),
-            "max 1e17, f-2" to numberBoundExceedsDigitLimit(max, 1e17, -2),
-            "max 1e8, f7" to numberBoundExceedsDigitLimit(max, 1e8, 7),
-            "max 1e-5 - 1e-20 at its limit, f20" to numberBoundExceedsDigitLimit(max, 1e-5 - 1e-20, 20),
-            "max 1e30 at its limit, f-15" to numberBoundExceedsDigitLimit(max, 1e30 - 1e15, -15),
-        )
-        val exceeded = setOf(
-            "max 1e14, f1", "max 999999999999999.4, f0", "max 1e15, absent", "min 1e15, f0", "min -1e15, f0",
-            "max 9999999999999991, f-1", "max 10, f14", "max 2, f15", "max 1, f20", "max 1e17, f-2", "max 1e8, f7",
-        )
-        val undecided = setOf("max 1e-5 - 1e-20 at its limit, f20", "max 1e30 at its limit, f-15")
-        assertEquals(rows.keys.associateWith { if (it in undecided) null else it in exceeded }, rows)
-    }
 }

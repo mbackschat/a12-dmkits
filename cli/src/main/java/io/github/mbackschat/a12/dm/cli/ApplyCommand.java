@@ -92,11 +92,10 @@ final class ApplyCommand extends BaseCommand {
         TYPEDEF_MODIFY("typedef", "modify", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
-        INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name",
+        INCLUDE_ADD("include", "add", Set.of("reference", "parent", "name",
                 "repeatability", "exclude-rules", "exclude-computations")),
-        INCLUDE_SET_REFERENCE("include", "set-reference", Set.of("alias", "reference")),
-        INCLUDE_RENAME("include", "rename", Set.of("alias", "to")),
-        INCLUDE_REMOVE("include", "remove", Set.of("alias")),
+        INCLUDE_SET_REFERENCE("include", "set-reference", Set.of("reference", "to")),
+        INCLUDE_REMOVE("include", "remove", Set.of("reference")),
         META_MODIFY("meta", "modify", withLocator("ref", MetaModification.KEYS)),
         CONFIG_MODIFY("config", "modify", ConfigModification.KEYS),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
@@ -629,7 +628,7 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case INCLUDE_ADD -> {
-                String alias = req(op, "alias");
+                String reference = req(op, "reference");
                 String parent = ModelPaths.rootLevelParent(req(op, "parent"));
                 String name = req(op, "name");
                 // mirror the standalone verb's mount options — repeatability + rule/computation exclusions —
@@ -643,8 +642,8 @@ final class ApplyCommand extends BaseCommand {
                 if (op.path("exclude-computations").asBoolean(false)) {
                     options = options.excludingComputations();
                 }
-                session.addInclude(alias, req(op, "reference")).mount(parent, name, alias, options);
-                changed.put("added", alias);
+                session.mount(parent, name, reference, options);
+                changed.put("added", reference);
                 changed.put("mountedAt", parent + "/" + name);
                 if (options.repeatability() != 1) {
                     changed.put("repeatability", options.repeatability());
@@ -658,17 +657,17 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case INCLUDE_SET_REFERENCE -> {
-                String alias = req(op, "alias");
                 String reference = req(op, "reference");
-                session.setIncludeReference(alias, reference);
-                changed.put("alias", alias);
+                String newReference = req(op, "to");
+                session.setIncludeReference(reference, newReference);
                 changed.put("reference", reference);
+                changed.put("to", newReference);
                 yield staged(which, changed, session);
             }
             case INCLUDE_REMOVE -> {
-                String alias = req(op, "alias");
-                session.removeInclude(alias);
-                changed.put("removed", alias);
+                String reference = req(op, "reference");
+                session.removeInclude(reference);
+                changed.put("removed", reference);
                 yield staged(which, changed, session);
             }
             case META_MODIFY -> {
@@ -718,8 +717,6 @@ final class ApplyCommand extends BaseCommand {
                     StructureRefactor.ruleRename(req(op, "rulePathInModel"), req(op, "to")));
             case TYPEDEF_RENAME -> applyRefactor(session, resolver,
                     StructureRefactor.typedefRename(req(op, "typeDefId"), req(op, "to")));
-            case INCLUDE_RENAME -> applyRefactor(session, resolver,
-                    StructureRefactor.includeRename(req(op, "alias"), req(op, "to")));
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
                 ModelDocument doc = ModelDocument.read(session.toJson());
@@ -894,7 +891,8 @@ final class ApplyCommand extends BaseCommand {
                 continue;
             }
             String near = Suggestions.nearest(f, valid);
-            Optional<String> relocation = MetadataRelocation.fix(which.target, which.op, f);
+            Optional<String> relocation = MetadataRelocation.fix(which.target, which.op, f)
+                    .or(() -> IncludeAliasRetirement.fix(which.target, f));
             out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_ARG"),
                     "unknown arg '" + f + "' for op '" + label + "'",
                     Diagnostic.Where.arg(null, f),
@@ -990,6 +988,8 @@ final class ApplyCommand extends BaseCommand {
         // wrote both {"target":"rule","op":"rule add"} has demonstrably confused the two spellings, and that is
         // exactly when withholding the correction is worst. (It was withheld there until a cold review, because
         // the branch was gated on the target being absent.)
+        Optional<String> retired = IncludeAliasRetirement.opFix(op.path("target").asText(""), verb);
+        if (retired.isPresent()) return retired.get();
         if (labelOf(verb) != null) {
             String[] halves = verb.split(" ", 2);
             return "an op-record spells that as TWO keys: {\"target\": \"" + halves[0] + "\", \"op\": \""

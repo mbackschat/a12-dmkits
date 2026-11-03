@@ -25,10 +25,10 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool include inline <alias>} — the inverse of {@code group extract} (CLI-SPEC §6): fold a mounted
+ * {@code dmtool include inline <reference>} — the inverse of {@code group extract} (CLI-SPEC §6): fold a mounted
  * include's content back into the base as a real group and drop the header reference. The included model is
  * resolved by id from the include-dir (its content lives in a separate file); the result re-validates
- * through the kernel. {@code changed.inlined}/{@code reference} name what was folded back in.
+ * through the kernel. {@code changed.inlined} names the model that was folded back in.
  */
 @Command(name = "inline", mixinStandardHelpOptions = true,
         description = "Fold a mounted include back into the base as a real group; drops the reference.")
@@ -36,9 +36,10 @@ final class IncludeInlineCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.INCLUDE_ALIAS)
-    @Parameters(index = "0", paramLabel = "<alias>", description = "the include alias to inline (see `include read`)")
-    String alias;
+    @ParamKind(ParamKind.Kind.INCLUDE_REFERENCE)
+    @Parameters(index = "0", paramLabel = "<reference>",
+            description = "the included model's id to inline (see `include read`)")
+    String reference;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -59,14 +60,11 @@ final class IncludeInlineCommand extends BaseCommand {
         }
         ModelDocument doc = ModelDocument.read(modelJson);
         Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.includeExists(doc, alias))
+                .require(SafetyChecks.includeExists(doc, reference))
                 .firstFailure();
         if (refusal.isPresent()) {
             return refuse(refusal.get());
         }
-        String reference = doc.includes().stream()
-                .filter(i -> i.alias().equals(alias)).map(ModelDocument.Include::reference)
-                .findFirst().orElseThrow();
 
         Path[] roots = workspace.roots(model).toArray(Path[]::new); // -w / $DMTOOL_WORKSPACE / the model's folder
         Optional<String> includedJson = ReferenceResolvers.documentModelJson(reference, roots);
@@ -81,18 +79,17 @@ final class IncludeInlineCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
         String resultJson;
         try {
-            doc.inlineInclude(alias, includedJson.get());
+            doc.inlineInclude(reference, includedJson.get());
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("inline left the model invalid", e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();
-        changed.put("inlined", alias);
-        changed.put("reference", reference);
+        changed.put("inlined", reference);
         return emitMutation(ModelWrite.of(resultIdentity())
-                .summaries("would inline include " + alias,
-                        "inlined include " + alias + " (folded " + reference + " back in)")
+                .summaries("would inline include " + reference,
+                        "inlined include " + reference)
                 .changed(changed)
                 .json(resultJson)
                 .gatedBy(ConsistencyEvidence.of(doc))

@@ -18,7 +18,7 @@ class SemanticIndexKeyTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -122,7 +122,7 @@ class SemanticIndexKeyTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

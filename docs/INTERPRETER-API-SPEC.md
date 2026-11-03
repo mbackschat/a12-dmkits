@@ -167,9 +167,9 @@ Authored DSL string literals have a separate decode step: each CRLF pair becomes
 
 ### 4.3 Conversion and fatal input errors
 
-`PreparedModel.documents.readDocument` converts the complete text before any document state exists. Unknown keys and wrong-shaped entities are discarded. Within arrays, only object rows survive and receive consecutive coordinates per parent; `{}` is retained. A field's `null` remains present-empty, and a scalar that fails its field conversion remains raw text.
+`PreparedModel.documents.readDocument` converts the complete text before any document state exists. Unknown keys and wrong-shaped entities are discarded. An array's object rows receive consecutive coordinates per parent; `{}` is a row. A field's `null` remains present-empty, and a scalar that fails its field conversion remains raw text.
 
-Malformed JSON, a non-object root, and Boolean/null scalar document IDs raise `DocumentInputError`. Object/array IDs are discarded; string and numeric IDs become text. Hard-capped `DocumentDecodeLimits` still apply to text size, retained rows/cells, path length, raw text and nesting depth, and fail before publishing a partial snapshot. `tryReadDocument` returns the same fatal errors through `A12Result` on TypeScript. The kernel serializer observations, coordinate guards and shared enforcement are recorded in [IF389](INTERPRETER-FINDINGS.md#if389).
+Malformed JSON, a non-object root, Boolean/null scalar document IDs, and an array holding anything but objects at a member of the root or of a row raise `DocumentInputError`, as A12's reader refuses them ([KF664](KERNEL-FINDINGS.md#kf664)). Object/array IDs are discarded; string and numeric IDs become text. Hard-capped `DocumentDecodeLimits` still apply to text size, retained rows/cells, path length, raw text and nesting depth, and fail before publishing a partial snapshot. `tryReadDocument` returns the same fatal errors through `A12Result` on TypeScript. The kernel serializer observations, coordinate guards and shared enforcement are recorded in [IF389](INTERPRETER-FINDINGS.md#if389).
 
 `encodeDocument` checks owner identity before writing. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 

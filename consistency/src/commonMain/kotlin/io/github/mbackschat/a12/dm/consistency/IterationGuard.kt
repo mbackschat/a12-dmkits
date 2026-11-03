@@ -31,11 +31,13 @@ import kotlin.math.floor
  * whole declaration, because a guess that refused would be an over-rejection.
  *
  * **How a condition is judged.** Every part starts admitted, and a part refuses by its kind and by how its
- * references iterate the judged level: a negative presence over an iterating reference, a positive presence that
+ * references iterate the judged level: a negative presence wherever it is judged, a positive presence that
  * counts references not iterating it (a starred one counting as often as its level repeats, a group as its
  * fields), a count compared below a positive constant or an amount compared equal to zero over references that
- * all iterate, an amount against a constant over mixed references, `CurrentRepetition` of the judged level, the
- * date form of `Invalid` and the value-list forms. A tolerance comparison takes part where `!=` does; a pattern,
+ * all iterate, an aggregate or a product sum against a constant over mixed references, any `CurrentRepetition`
+ * outside a filter, the date form of `Invalid` and the value-list forms. Kernel 31.1.1 dropped the own-iteration
+ * precondition from the negative presences and from `CurrentRepetition`, and stopped exempting `SumOfProducts`
+ * from the mixed-reference arm ([KERNEL-FINDINGS KF656]). A tolerance comparison takes part where `!=` does; a pattern,
  * `RepetitionNotUnique` and the field-and-type `Valid`/`Invalid` have no arm. An `And` is admitted when one of
  * its parts is admitted and iterates the level, an `Or` only when every part is ([KERNEL-FINDINGS KF537]). A
  * selection keyed by a field is one reference that iterates wherever its key does ([KF601]); a `$`-marked
@@ -165,6 +167,8 @@ private class IterationGuard(
      */
     val outer: List<GuardReference>,
     val operations: List<OperationShape>,
+    /** The filter bodies' offsets, which A12's verdict does not read. */
+    val bodies: List<IntRange>,
     val identities: Map<String, OperatorId>,
     /** The condition text the recognized offsets index into. */
     val source: String,
@@ -241,7 +245,7 @@ private class IterationGuard(
         val list = within(call.at, call.end)
         fun counted(threshold: Long) = list.filterNot { iterates(it, judged) }.sumOf { it.entries } >= threshold
         return when (id) {
-            in NEGATIVE_PRESENCE -> list.none { iterates(it, judged) }
+            in NEGATIVE_PRESENCE -> false
             in POSITIVE_PRESENCE -> !counted(1)
             OperatorId.MORE_THAN_ONE_FIELD_FILLED, OperatorId.FIELD_VALUES_NOT_UNIQUE -> !counted(2)
             OperatorId.FIELD_FILLED, OperatorId.ALL_FIELDS_FILLED -> !(list.sumOf { it.entries } == 1L && counted(1))
@@ -301,7 +305,7 @@ private class IterationGuard(
         val right = operations.spanning(shape.right) ?: return null
         val written = shape.operator.text.let { identities[it]?.catalogId ?: it }.takeIf { it in FACING } ?: return null
         val kinds = (kindOf(left) ?: return null) to (kindOf(right) ?: return null)
-        if (readsJudgedRepetition(shape, judged)) return false
+        if (readsJudgedRepetition(shape)) return false
         var admitted: Boolean? = true
         val sides = listOf(Triple(left, kinds.first, written), Triple(right, kinds.second, FACING.getValue(written)))
         for ((side, facing) in sides.withIndex()) {
@@ -325,12 +329,15 @@ private class IterationGuard(
         return admitted
     }
 
-    /** `CurrentRepetition` of a level being judged, anywhere in the comparison. */
-    private fun readsJudgedRepetition(shape: ComparisonShape, judged: Judged): Boolean =
+    /**
+     * Any `CurrentRepetition` in the comparison outside a filter body, whichever level it reads: A12's verdict does
+     * not read inside a filter, and since kernel 31.1.1 it refuses the operation without asking whether it iterates
+     * the judged level ([KERNEL-FINDINGS KF656]).
+     */
+    private fun readsJudgedRepetition(shape: ComparisonShape): Boolean =
         operations.filterIsInstance<OperationShape.Call>().any { op ->
             op.at >= shape.left.first().start && op.end <= shape.right.last().end &&
-                identities[op.call.operator] == OperatorId.CURRENT_REPETITION &&
-                within(op.at, op.end).any { iterates(it, judged) }
+                identities[op.call.operator] == OperatorId.CURRENT_REPETITION && bodies.none { op.at in it }
         }
 
     /** A bracket only groups, so the operation inside it is the one compared (measured, `{0}` and `{Sum(…)}`). */
@@ -391,8 +398,7 @@ private enum class OperationKind(
     COUNT_OF_VALUE(needsRowBelow = true, needsRowAtZero = true, needsRowAgainstConstant = true),
     AMOUNT(needsRowAtZero = true, needsRowAgainstConstant = true),
     OPERATION_LIST(needsRowAtZero = true, needsRowAgainstConstant = true),
-    /** A12 leaves a product sum out of the constant arm, unlike every other aggregate. */
-    PRODUCT_SUM(needsRowAtZero = true),
+    PRODUCT_SUM(needsRowAtZero = true, needsRowAgainstConstant = true),
     FIELD(needsRowAtZero = true),
     DATE(needsRowAtZero = true),
     OTHER,
@@ -461,7 +467,7 @@ private fun TrackedFactBase.guardOf(element: TrackedDeclaration, execution: Cond
     // A12 decides the error-field binding (KF417) before this law, so where no reference naming the error
     // field iterates while another does, that earlier class may answer and this reading has no verdict.
     if (references.any { it.iterates } && all.none { it.iterates && it.names(target) }) return null
-    return IterationGuard(element, target, tree, references, outer, recognition.operations,
+    return IterationGuard(element, target, tree, references, outer, recognition.operations, bodies,
         CONDITION_OPERATOR_IDENTITIES.getValue(conditionLanguage), execution.carrier.text)
 }
 

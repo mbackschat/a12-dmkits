@@ -64,7 +64,7 @@ class MessageParameterDecoderAgreementTest {
         row("L01", "\$Stars For \"a For b\"\$", "MVK_INDEX_FOR_ERROR_TEXT_INVALID")
         row("L02", "\$Stars For Verdict For \"a For b\"\$", "ILLEGAL_SEMANTIC_INDEX")
         row("R01", "\$RuleGroup For Stars For \"k\"\$", "ILLEGAL_SEMANTIC_INDEX")
-        row("R02", "\$Stars For RuleGroup\$", "MVK_INTERNAL_ERROR")
+        row("R02", "\$Stars For RuleGroup\$", "MVK_INDEX_FOR_ERROR_TEXT_INVALID")
         row("P01", "\$Nope\$ and \$Stars\$", "INVALID_ENTITY")
         row("P02", "\$Nope\$ and \$Verdicté\$", "INVALID_ENTITY", "MVK_LEXER_STANDARD_ERROR")
         row("P03", "\$Nope\$ and \$Nope2\$", "INVALID_ENTITY", "INVALID_ENTITY")
@@ -134,7 +134,7 @@ class MessageParameterDecoderAgreementTest {
         row("F5d", "\$#/Library/Reviews For /Nope For \"k\"\$", "INVALID_ROOT_GROUP")
         row("F5e", "\$#/Library/Reviews For ../../..\$", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
         row("F5f", "\$#/Library/Reviews For ..Wrong\$", "INVALID_ENTITY")
-        row("F5g", "\$#/Library/Reviews For RuleGroup\$", "MVK_INTERNAL_ERROR")
+        row("F5g", "\$#/Library/Reviews For RuleGroup\$", "INVALID_GROUP")
         row("F5h", "\$#/Library/Reviews For Nope\$", "INVALID_GROUP")
         // name-review.spec
         row("N30", "\$Nope->Tone x\$", "INVALID_ENTITY")
@@ -149,6 +149,48 @@ class MessageParameterDecoderAgreementTest {
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to kernel(it.model) }, "kernel classes")
         assertEquals(rows.map { it.id to it.classes }, rows.map { it.id to MessageParameterProbes.portable(it.model) }, "portable classes")
+    }
+
+    /**
+     * Ours, beside their grid (2026-11-03): kernel 31.1.1 asks for an empty category name before membership, so a
+     * field no condition reads is refused for the empty name, while a named category on the same field still meets
+     * membership (KERNEL-FINDINGS KF450). `Branch` is a String the rule never reads.
+     */
+    @Test
+    fun anEmptyCategoryNameOnAnUnreadFieldPrecedesMembership() {
+        val rows = listOf("\$Branch->\$" to listOf("NO_CATEGORY"), "\$Branch->Tone\$" to listOf("INVALID_FIELD"),
+            // The keyed arm on a defective key: `Reviews` has no index field (W20).
+            "\$Verdict-> For \"k\"\$" to listOf("NO_CATEGORY"),
+            "\$Verdict->Tone For \"k\"\$" to listOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID"))
+        assertEquals(rows, rows.map { (parameter, _) -> parameter to kernel(model(parameter)) }, "kernel classes")
+        assertEquals(rows, rows.map { (parameter, _) -> parameter to MessageParameterProbes.portable(model(parameter)) },
+            "portable classes")
+    }
+
+    /**
+     * The keyed arm on a valid key (2026-11-03): `Loans` is indexed by `Code` and the rule reads `Loans/Verdict`
+     * under the key `k1`, so `k1` meets keyed membership and `k2` does not (KERNEL-FINDINGS KF562). Each empty
+     * category row has its named-category twin, so the pair shows which gate an empty name is asked before.
+     */
+    @Test
+    fun anEmptyCategoryNameOnAKeyedParameter() {
+        val indexed = EditSession.read(DocumentModelDraft.named("library-keyed-category").locale("en_US")
+            .rootGroup("Library") { library -> library.stringField("Branch") { }
+                .group("Loans") { loans -> loans.repeatable(5).indexField("Code").stringField("Code") { }
+                    .enumField("Verdict") { it.value("A").value("B").category("Tone", "A", "B") } }
+            }.build().toJson()).toJson()
+        fun keyed(parameter: String) = rule(indexed, "/Library", "Branch", Dsl.en("Check $parameter.")) { edit ->
+            val library = edit.group("/Library")
+            library.str("Branch").filled().and(library.enumOf("Loans/Verdict").semanticIndex("k1").filled())
+        }
+        val rows = listOf(
+            "\$/Library/Loans/Verdict-> For \"k1\"\$" to listOf("NO_CATEGORY"),
+            "\$/Library/Loans/Verdict->Tone For \"k1\"\$" to listOf(),
+            "\$/Library/Loans/Verdict-> For \"k2\"\$" to listOf("NO_CATEGORY"),
+            "\$/Library/Loans/Verdict->Tone For \"k2\"\$" to listOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID"))
+        assertEquals(rows, rows.map { (parameter, _) -> parameter to kernel(keyed(parameter)) }, "kernel classes")
+        assertEquals(rows, rows.map { (parameter, _) -> parameter to MessageParameterProbes.portable(keyed(parameter)) },
+            "portable classes")
     }
 
     @Test

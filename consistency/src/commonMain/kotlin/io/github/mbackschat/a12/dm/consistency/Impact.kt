@@ -118,7 +118,7 @@ fun impactOf(baseline: ModelSource, edited: ModelSource): ImpactReport {
     val unmounted = (before.unexpandedMounts + after.unexpandedMounts).distinct().map {
         CoverageGap(
             it.at,
-            "this group mounts `${it.alias}` and the mount is not expanded here (${it.reason}), so the " +
+            "${it.described} and the mount is not expanded here (${it.reason}), so the " +
                 "dependency graph is incomplete and no declaration can be reported as unreached",
         )
     }

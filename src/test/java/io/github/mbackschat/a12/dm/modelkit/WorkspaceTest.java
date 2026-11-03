@@ -42,8 +42,9 @@ class WorkspaceTest {
         write(root, "Product_Movie.dm.json",
                 DocumentModelDraft.named("Product_Movie").locale("en_US")
                         .annotation("superTypes", "Product_Base")
-                        .include("shared", "Catalog_Shared")   // lives under lib/ — resolves only on a recursive scan
-                        .rootGroup("Movie", g -> g.field("RuntimeMinutes", FieldKind.NUMBER))
+                        .rootGroup("Movie", g -> g.field("RuntimeMinutes", FieldKind.NUMBER)
+                                // lives under lib/ — resolves only on a recursive scan
+                                .mount("Shared", "Catalog_Shared"))
                         .build().toJson());
 
         Path lib = Files.createDirectory(root.resolve("lib"));
@@ -78,7 +79,6 @@ class WorkspaceTest {
         Workspace.Reference imp = base.typedefImports().get(0);
         assertEquals("CatalogTypes", imp.ref());
         assertEquals("CatalogTypes.dm.json", imp.resolvedPath());
-        assertNull(imp.alias(), "a type-def import carries no mount alias");
 
         Workspace.Model types = byId(models, "CatalogTypes");
         assertEquals(List.of("Sku"), types.providesTypedefs(), "the provider model advertises its type-defs");
@@ -93,7 +93,6 @@ class WorkspaceTest {
         assertEquals(1, flatMovie.includes().size());
         Workspace.Reference flatInc = flatMovie.includes().get(0);
         assertEquals("Catalog_Shared", flatInc.ref());
-        assertEquals("shared", flatInc.alias(), "an include keeps its mount alias");
         assertNull(flatInc.resolvedPath(), "Catalog_Shared lives under lib/ — out of scope for a flat scan");
 
         // a recursive scan brings lib/ into scope, so the same include now resolves to its file

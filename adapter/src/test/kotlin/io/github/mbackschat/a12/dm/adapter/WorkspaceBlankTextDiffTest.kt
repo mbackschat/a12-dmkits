@@ -23,10 +23,11 @@ import org.junit.jupiter.api.Test
  * workspace, the core reader and the portable checker accept the same ones (KERNEL-FINDINGS KF592).
  *
  * Six texts split every reading apart: the empty text, a space, a tab and an em space are blank to Java's
- * `Character.isWhitespace`, and the no-break and figure spaces are not. A12 reads a `header.id`, a `modelAlias`
- * and a type-definition id as plain text, refusing only the empty alias and the empty type-definition id; it
- * finds no included model when the include entry's `reference` is missing, null or Java-blank; and it refuses
- * every one of them as a time zone. Own domain (a permit and its component).
+ * `Character.isWhitespace`, and the no-break and figure spaces are not. A12 reads a `header.id` and a
+ * type-definition id as plain text, refusing only the empty type-definition id; it finds no included model when the
+ * mount's `includeConfig.reference` is missing, null or Java-blank (KF651); and it refuses every one of them as a
+ * time zone except the empty text, which kernel 31.1.1's expand copy reads as an absent time zone (KF658). Own domain
+ * (a permit and its component).
  */
 class WorkspaceBlankTextDiffTest {
 
@@ -48,8 +49,8 @@ class WorkspaceBlankTextDiffTest {
 
     /**
      * A number or a Boolean `header.id` is admitted as well and its text identifies the model (KF593). A JSON null id
-     * is the control: A12 admits that model too, but it names no model a workspace could prepare, so the interpreter
-     * and the checker both state that it has no identity.
+     * is the control: kernel 31.1.1 builds no model from it (30.8.1 admitted it), and it names no model a workspace
+     * could prepare, so the interpreter and the checker both state that it has no identity.
      */
     @Test
     fun aScalarIdIdentifiesTheModelByItsText() {
@@ -61,7 +62,7 @@ class WorkspaceBlankTextDiffTest {
         assertEquals(mapOf(
             "5" to "A12 admitted, interpreter prepares, checker identifies it",
             "true" to "A12 admitted, interpreter prepares, checker identifies it",
-            "null" to "A12 admitted, interpreter refuses, checker no identity",
+            "null" to "A12 not built, interpreter refuses, checker no identity",
         ), observed)
     }
 
@@ -87,52 +88,37 @@ class WorkspaceBlankTextDiffTest {
     fun anIncludeFindsItsModelOnlyThroughAReferenceJavaReadsAsText() {
         val rows = linkedMapOf<String, Pair<ObjectNode, String>>()
         for (reference in listOf("component") + spaces) {
-            rows["reference ${label(reference)}"] = permit().also { reference(it).put("reference", reference) } to reference
+            rows["reference ${label(reference)}"] = permit().also { mountConfig(it).put("reference", reference) } to reference
         }
-        rows["no reference member"] = permit().also { reference(it).remove("reference") } to "component"
-        rows["a null reference"] = permit().also { reference(it).putNull("reference") } to "component"
-        rows["no modelReferences"] = permit().also { (it.path("header") as ObjectNode).remove("modelReferences") } to "component"
+        rows["no reference member"] = permit().also { mountConfig(it).remove("reference") } to "component"
+        rows["a null reference"] = permit().also { mountConfig(it).putNull("reference") } to "component"
         val expected = rows.mapValues { (row, entry) ->
             if (row.startsWith("reference") && !javaBlank(entry.second)) MOUNTS else REFUSES
         }
         assertEquals(expected, rows.mapValues { (_, entry) -> mountObservation(entry.first.toString(), entry.second) })
     }
 
-    @Test
-    fun onlyTheEmptyAliasNamesNoInclude() {
-        val observed = (listOf("component") + spaces).associate { alias ->
-            val entry = permit().also { reference(it).put("alias", alias) }
-            ((entry.at("/content/modelRoot/rootGroups/0/Group/elements/0/Group")) as ObjectNode).put("modelAlias", alias)
-            label(alias) to mountObservation(entry.toString(), "component")
-        }
-        assertEquals(observed.mapValues { (alias, _) -> if (alias == "[]") REFUSES else MOUNTS }, observed)
-    }
-
     /**
-     * A12 keys an alias to the LAST `header.modelReferences` entry carrying it, whatever that entry's `purpose`, and
-     * refuses to expand a mount through an entry whose purpose is `typeDefinitions` (KF593). A blank reference first
-     * and a real one last mounts; the reverse order refuses, which shows the order and not merely that one entry was
-     * found.
+     * The header's include entries take no part in finding the included model (KF651): a blank entry, one naming
+     * another model, a `transitiveInclude` one, or none at all mounts exactly as the canonical entry does, on every
+     * engine. A `typeDefinitions` entry is deliberately absent: it is an import, which does take part. Kernel 30.8.1
+     * keyed the mount's alias to the last entry carrying it (KF593).
      */
     @Test
-    fun anAliasNamesTheLastEntryCarryingItWhateverItsPurpose() {
-        fun entry(reference: String, purpose: String?) = MAPPER.createObjectNode().put("alias", "component")
+    fun theHeaderTakesNoPartInFindingTheIncludedModel() {
+        fun entry(reference: String, purpose: String?) = MAPPER.createObjectNode()
             .put("modelType", "document").also { if (purpose != null) it.put("purpose", purpose) }.put("reference", reference)
         fun entries(vararg rows: ObjectNode) = permit().also { root ->
             (root.at("/header/modelReferences") as ArrayNode).removeAll().addAll(rows.toList())
         }.toString()
         val rows = linkedMapOf(
-            "a blank entry, then the real one" to entries(entry(" ", "include"), entry("component", "include")),
-            "the real entry, then a blank one" to entries(entry("component", "include"), entry(" ", "include")),
-            "no purpose" to entries(entry("component", null)),
+            "the canonical entry" to entries(entry("component", "include")),
+            "a blank entry" to entries(entry(" ", "include")),
             "purpose transitiveInclude" to entries(entry("component", "transitiveInclude")),
-            "purpose other" to entries(entry("component", "other")),
-            "purpose typeDefinitions" to entries(entry("component", "typeDefinitions")),
+            "an entry naming another model" to entries(entry("other", "include")),
+            "no entry" to entries(),
         )
-        val expected = rows.mapValues { (row, _) ->
-            if (row == "the real entry, then a blank one" || row == "purpose typeDefinitions") REFUSES else MOUNTS
-        }
-        assertEquals(expected, rows.mapValues { (_, json) -> mountObservation(json, "component") })
+        assertEquals(rows.mapValues { MOUNTS }, rows.mapValues { (_, json) -> mountObservation(json, "component") })
     }
 
     /**
@@ -143,7 +129,7 @@ class WorkspaceBlankTextDiffTest {
     fun aTypeDefinitionReferenceIsResolvedWhateverItsText() {
         val observed = (listOf("types") + spaces).associate { reference ->
             val json = cover().also { (it.path("header") as ObjectNode).putArray("modelReferences").addObject()
-                .put("alias", "types").put("modelType", "document").put("purpose", "typeDefinitions").put("reference", reference) }.toString()
+                .put("modelType", "document").put("purpose", "typeDefinitions").put("reference", reference) }.toString()
             val a12 = runCatching { KernelModelOracle.of(json) { null } }.isSuccess
             val reader = runCatching { ModelReader.expand(json) { null } }.isSuccess
             label(reference) to "A12 ${a12.verb()}, interpreter ${prepares("cover", json)}, reader ${reader.verb()}"
@@ -159,7 +145,8 @@ class WorkspaceBlankTextDiffTest {
             val interpreter = runCatching { ModelLoader.load(json) }.exceptionOrNull()
             label(zone) to "A12 ${codes.any { "MVK_INVALID_TIME_ZONE" in it }}, interpreter ${interpreter is InvalidModelTimeZoneException}"
         }
-        assertEquals(observed.mapValues { "A12 true, interpreter true" }, observed)
+        assertEquals(observed.mapValues { (zone, _) -> if (zone == label("")) "A12 false, interpreter false" else "A12 true, interpreter true" },
+            observed)
         val control = cover().also { (it.path("content").path("modelConfig") as ObjectNode).put("timeZone", "UTC") }.toString()
         assertEquals(emptyList<String>(), KernelConsistencyOracle().checkConsistency(control) { null }.map { it.toString() }
             .filter { "MVK_INVALID_TIME_ZONE" in it }, "UTC is a time zone to A12")
@@ -196,10 +183,11 @@ class WorkspaceBlankTextDiffTest {
     private fun cover() = MAPPER.readTree(DocumentModelDraft.named("cover").locale("en_US")
         .rootGroup("Cover") { g -> g.numberField("Amount") { it.fractionDigits(0) } }.build().toJson()) as ObjectNode
 
-    private fun permit() = MAPPER.readTree(DocumentModelDraft.named("permit").locale("en_US").include("component", "component")
+    private fun permit() = MAPPER.readTree(DocumentModelDraft.named("permit").locale("en_US")
         .rootGroup("Permit") { p -> p.mount("Details", "component") }.build().toJson()) as ObjectNode
 
-    private fun reference(entry: ObjectNode) = (entry.at("/header/modelReferences") as ArrayNode)[0] as ObjectNode
+    private fun mountConfig(entry: ObjectNode) =
+        entry.at("/content/modelRoot/rootGroups/0/Group/elements/0/Group/includeConfig") as ObjectNode
 
     private companion object {
         val MAPPER = ObjectMapper()

@@ -12,10 +12,10 @@ import org.junit.jupiter.api.Test
  * The year a stored yearless `MM-dd` field's day shift starts from, and how the shifted value then compares
  * (KERNEL-FINDINGS KF93, a12-kernel-lean SPEC-2026-10-30-04).
  *
- * With no Base Year the shift starts from 2000 on the hybrid calendar: `02-28` plus 1, 36890 and 73049 days and minus
- * 36160 lands on `02-29`, `02-28`, `02-28` and `02-27`, which a leap year divisible by 400 alone gives, and the two
- * shifts back past 1582 land on the Julian labels 2000 reaches, where the proleptic Gregorian count gives others. The
- * same model under Base Year 2001, differing in that member alone, is the control.
+ * With no Base Year the shift starts from 2000: `02-28` plus 1, 36890 and 73049 days and minus 36160 lands on `02-29`,
+ * `02-28`, `02-28` and `02-27`, which a leap year divisible by 400 alone gives. The two shifts back past 1582 land on
+ * proleptic labels on kernel 31.1.1 (KF665), where 30.8.1's hybrid calendar gave the Julian ones (`05-13`, `11-06`).
+ * The same model under Base Year 2001, differing in that member alone, is the control.
  *
  * The shifted value keeps the year it reaches while the stored value it meets is read in the anchor year, so
  * `AddDays(12-31, 1)` is not the stored `01-01` although its month and day are. Two yearless constants complete in one
@@ -85,22 +85,22 @@ class YearlessShiftAnchorDiffTest {
         DocumentDifferential.assertAgree(anchored2001, documents.filterKeys { it != "leap day next" })
     }
 
-    /** No Base Year: the shifts start from 2000, the only year of 1600 to 8999 giving all of these on the hybrid calendar. */
+    /** No Base Year: the shifts start from 2000, a leap year divisible by 400. */
     @Test
     fun withoutABaseYearTheShiftStartsFromTheYear2000() {
         assertEquals(shifts("02-29", "02-28", "02-28", "02-27"), outcomes(unanchored, "march next", SHIFTS.keys.take(4)))
-        assertEquals(shifts("06-16", "06-16", "06-16", "06-15", "05-13", "11-06"), outcomes(unanchored, "june", SHIFTS.keys))
-        assertEquals(mapOf("Back160000" to "11-28", "Back200000" to "05-24").asStored(),
+        assertEquals(shifts("06-16", "06-16", "06-16", "06-15", "05-23", "11-15"), outcomes(unanchored, "june", SHIFTS.keys))
+        assertEquals(mapOf("Back160000" to "12-08", "Back200000" to "06-02").asStored(),
             outcomes(unanchored, "year end", SHIFTS.keys.drop(4)))
-        assertEquals(mapOf("Back160000" to "11-27", "Back200000" to "05-23").asStored(),
+        assertEquals(mapOf("Back160000" to "12-07", "Back200000" to "06-01").asStored(),
             outcomes(unanchored, "december", SHIFTS.keys.drop(4)))
     }
 
-    /** Base Year 2001 moves every shift that crosses a February the Gregorian way and none that lands before 1582. */
+    /** Base Year 2001 moves every shift that crosses a February 29 between 2000 and 2001 and none of the long shifts back. */
     @Test
     fun theBaseYearControlMovesOnlyTheGregorianShifts() {
         assertEquals(shifts("03-01", "03-01", "03-01", "02-28"), outcomes(anchored2001, "march next", SHIFTS.keys.take(4)))
-        assertEquals(shifts("06-16", "06-16", "06-16", "06-15", "05-13", "11-06"), outcomes(anchored2001, "june", SHIFTS.keys))
+        assertEquals(shifts("06-16", "06-16", "06-16", "06-15", "05-23", "11-15"), outcomes(anchored2001, "june", SHIFTS.keys))
     }
 
     /** The shifted value keeps the year it reaches: `12-31` plus one day is not the stored `01-01`. */
@@ -118,7 +118,7 @@ class YearlessShiftAnchorDiffTest {
         assertEquals(differences("-364", "1", "364"), outcomes(anchored2001, "year end", DIFFERENCES))
         assertEquals(differences("-364", "1", "59"), outcomes(anchored2001, "march first", DIFFERENCES))
         for (model in listOf(unanchored, anchored2001)) {
-            assertEquals(listOf("VALUE|05-13", "VALUE|11-06"), outcomes(model, "june", CONSTANT_SHIFTS.keys).values.toList())
+            assertEquals(listOf("VALUE|05-23", "VALUE|11-15"), outcomes(model, "june", CONSTANT_SHIFTS.keys).values.toList())
         }
     }
 

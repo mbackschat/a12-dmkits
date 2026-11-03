@@ -1,15 +1,17 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.differenceInDays
+import io.github.mbackschat.a12.dm.interpreter.eval.differenceInMonths
+import io.github.mbackschat.a12.dm.interpreter.eval.differenceInYears
+import io.github.mbackschat.a12.dm.interpreter.eval.epochDay
 import io.github.mbackschat.a12.dm.interpreter.eval.isConstructibleDate
-import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarDays
-import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarMonths
-import io.github.mbackschat.a12.dm.interpreter.eval.addLegacyCalendarYears
-import io.github.mbackschat.a12.dm.interpreter.eval.calendarOperandInstant
-import io.github.mbackschat.a12.dm.interpreter.eval.calendarDayDifferenceDetail
-import io.github.mbackschat.a12.dm.interpreter.eval.differenceInCalendarDays
-import io.github.mbackschat.a12.dm.interpreter.eval.differenceInLegacyCalendarMonths
-import io.github.mbackschat.a12.dm.interpreter.eval.differenceInLegacyCalendarYears
+import io.github.mbackschat.a12.dm.interpreter.eval.isoFromZonedInstant
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.plusLocalDays
+import io.github.mbackschat.a12.dm.interpreter.eval.shiftMonths
+import io.github.mbackschat.a12.dm.interpreter.eval.shiftYears
+import io.github.mbackschat.a12.dm.interpreter.eval.startOfDayMillis
+import io.github.mbackschat.a12.dm.interpreter.eval.zonedInstantOf
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -21,82 +23,76 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Portable lock for the legacy-hybrid calendar reality of the `Date(...)` constructor. Parsing judges reality on
- * the same calendar, which `ParsedDateCalendarTest` locks.
+ * Portable lock for the proleptic calendar of the `Date(...)` constructor (`LocalDate.of` on kernel 31.1.1) and of the
+ * date shifts and differences that consume it (KERNEL-FINDINGS KF665). Parsing judges reality on the same calendar,
+ * with one fallback, which `ParsedDateCalendarTest` locks.
  */
 class ConstructedDateCalendarTest {
 
     @Test
-    fun julianLeapDayBeforeTheDefaultCutoverIsReal() {
-        for (zone in ModelTimeZone.entries) {
-            assertTrue(isConstructibleDate(1500, 2, 29, zone), "$zone must admit the Julian leap day")
-            assertFalse(isConstructibleDate(1500, 2, 30, zone), "$zone must still reject an impossible day")
-            assertFalse(isConstructibleDate(1501, 2, 29, zone), "$zone must reject a non-leap Julian year")
-        }
+    fun theConstructorIsProleptic() {
+        assertFalse(isConstructibleDate(1500, 2, 29), "a Julian leap day is no proleptic day")
+        assertTrue(isConstructibleDate(1600, 2, 29), "a Gregorian leap day")
+        assertFalse(isConstructibleDate(1700, 2, 29), "a Gregorian common century year")
+        assertTrue(isConstructibleDate(1582, 10, 5), "the labels the hybrid calendar skipped are days")
+        assertTrue(isConstructibleDate(1582, 10, 14), "the labels the hybrid calendar skipped are days")
+        assertFalse(isConstructibleDate(2024, 4, 31), "an impossible day")
+    }
+
+    private val utc = ModelTimeZone.UTC
+    private fun date(iso: String): Long = startOfDayMillis(epochDay(iso)!!, utc)
+    private fun dateTime(iso: String): Long = zonedInstantOf(iso, utc)!! * 1_000L
+    private fun label(millis: Long?): String? = millis?.let { isoFromZonedInstant(it / 1_000L, utc) }
+
+    /** `ZonedDateTime.plus*` and A12's own February-28 corrections, on the proleptic calendar. */
+    @Test
+    fun shiftsAreJavaTimeArithmeticWithA12sFebruary28Corrections() {
+        assertEquals("1582-10-05T00:00:00", label(plusLocalDays(date("1582-10-04"), 1, utc)))
+        assertEquals("2024-02-29T00:00:00", label(shiftMonths(date("2024-01-31"), 1, utc)), "the day clamps")
+        assertEquals("2025-02-28T00:00:00", label(shiftYears(date("2024-02-29"), 1, utc)), "February 29 clamps")
+        assertEquals("2024-02-29T00:00:00", label(shiftYears(date("2023-02-28"), 1, utc)),
+            "a common-year 28th lands on the leap year's 29th")
+        assertEquals("2025-02-28T00:00:00", label(shiftYears(dateTime("2024-02-28T10:00:00"), 1, utc)),
+            "a leap-year 28th landing on a common year drops its time of day")
+        assertEquals("2025-02-28T00:00:00", label(shiftMonths(dateTime("2024-02-28T10:00:00"), 12, utc)),
+            "the month shift carries the same reset")
+        assertEquals("2024-03-28T10:00:00", label(shiftMonths(dateTime("2024-02-28T10:00:00"), 1, utc)),
+            "but only onto a common year's 28th")
     }
 
     @Test
-    fun defaultGregorianCutoverSkipsOctoberFifthThroughFourteenth() {
-        for (zone in ModelTimeZone.entries) {
-            assertTrue(isConstructibleDate(1582, 10, 4, zone), "$zone Julian-side neighbor")
-            assertFalse(isConstructibleDate(1582, 10, 5, zone), "$zone first skipped label")
-            assertFalse(isConstructibleDate(1582, 10, 14, zone), "$zone last skipped label")
-            assertTrue(isConstructibleDate(1582, 10, 15, zone), "$zone Gregorian-side neighbor")
-        }
-    }
-
-    @Test
-    fun dateConsumersRetainTheLegacyCalendarValue() {
-        assertEquals("1500-03-01", addLegacyCalendarDays("1500-02-29", 1))
-        assertEquals("1500-03-29", addLegacyCalendarMonths("1500-02-29", 1))
-        assertEquals("1501-02-28", addLegacyCalendarYears("1500-02-29", 1))
-        assertEquals(1, differenceInLegacyCalendarMonths("1500-02-29", "1500-03-29"))
-        assertEquals(1, differenceInLegacyCalendarYears("1500-02-29", "1501-02-28"))
-        assertEquals("1582-10-15", addLegacyCalendarDays("1582-10-04", 1))
-        assertEquals("1582-10-20", addLegacyCalendarMonths("1582-09-10", 1))
-        assertEquals("1582-10-20", addLegacyCalendarYears("1581-10-10", 1))
-        assertEquals(0, differenceInLegacyCalendarMonths("1582-09-10", "1582-10-15"))
-        assertEquals(1, differenceInLegacyCalendarMonths("1582-09-10", "1582-10-20"))
-        assertEquals(0, differenceInLegacyCalendarYears("1581-10-10", "1582-10-15"))
-        assertEquals(11, differenceInLegacyCalendarMonths("1581-10-10", "1582-10-15"))
-        assertEquals(1, differenceInLegacyCalendarYears("1581-10-10", "1582-10-20"))
-        assertEquals(12, differenceInLegacyCalendarMonths("1581-10-10", "1582-10-20"))
-        assertEquals("1500-02-28", addLegacyCalendarYears("1499-02-28", 1))
-    }
-
-    @Test
-    fun calendarDayDifferenceHandlesTheCutoverAndBoundsTheFullDomainResidual() {
-        val cutoverStart = calendarOperandInstant("1582-10-04", ModelTimeZone.UTC)!!
-        val cutoverEnd = calendarOperandInstant("1582-10-15", ModelTimeZone.UTC)!!
-        assertEquals(1, differenceInCalendarDays(cutoverStart, cutoverEnd, ModelTimeZone.UTC))
-
-        val domainStart = calendarOperandInstant("0001-01-01", ModelTimeZone.UTC)!!
-        val domainEnd = calendarOperandInstant("9999-12-31", ModelTimeZone.UTC)!!
-        val detail = calendarDayDifferenceDetail(domainStart, domainEnd, ModelTimeZone.UTC)
-        assertEquals(3_652_060, detail.days)
-        assertTrue(detail.residualSteps < 2_800, "the year seed must bound, not eliminate, residual +1 steps")
+    fun differencesCountOnTheProlepticCalendar() {
+        assertEquals(11, differenceInDays(date("1582-10-04"), date("1582-10-15"), utc), "no skipped labels")
+        assertEquals(3_652_058, differenceInDays(date("0001-01-01"), date("9999-12-31"), utc), "the whole label domain")
+        assertEquals(2, differenceInMonths(date("2008-01-31"), date("2008-03-31"), utc),
+            "months count on a fresh copy of the earlier date, so 31.01 + 2 months is 31.03")
+        assertEquals(1, differenceInMonths(date("2008-01-31"), date("2008-02-29"), utc))
+        assertEquals(1, differenceInYears(date("2023-02-28"), date("2024-02-29"), utc))
+        assertEquals(-1, differenceInYears(date("2024-02-29"), date("2023-02-28"), utc), "authored order restores the sign")
+        assertEquals(0, differenceInYears(dateTime("2023-06-01T10:00:00"), dateTime("2024-06-01T09:00:00"), utc),
+            "the time of day counts")
     }
 
     @Test
     fun unrealConstructedDateAndDateTimeExtractorsReturnZeroButMalformedPartsStayUnknown() {
         val date = "Date($DAY, $MONTH, $YEAR)"
         val time = "Time($HOUR, $MINUTE, $SECOND)"
-        assertTrue(fires("YearFromDate($date) == 0", "10"))
-        assertTrue(fires("QuarterFromDate($date) == 0", "10"))
-        assertTrue(fires("""HoursFromTime(DateTime($date, Time("12", "00", "00"))) == 0""", "10"))
-        assertTrue(fires("DifferenceInDays($date, $date) == 0", "10"))
+        assertTrue(fires("YearFromDate($date) == 0", "31"))
+        assertTrue(fires("QuarterFromDate($date) == 0", "31"))
+        assertTrue(fires("""HoursFromTime(DateTime($date, Time("12", "00", "00"))) == 0""", "31"))
+        assertTrue(fires("DifferenceInDays($date, $date) == 0", "31"))
         assertTrue(fires(
             """DifferenceInHours(DateTime($date, Time("12", "00", "00")), """ +
                 """DateTime($date, Time("12", "00", "00"))) == 0""",
-            "10",
+            "31",
         ))
         assertFalse(fires("YearFromDate($date) == 0", "bad"))
         assertFalse(fires("QuarterFromDate($date) == 0", "bad"))
         assertFalse(fires("DifferenceInDays($date, $date) == 0", "bad"))
 
-        assertTrue(fires("YearFromDate(AddDays($date, 1)) == 0", "10"),
+        assertTrue(fires("YearFromDate(AddDays($date, 1)) == 0", "31"),
             "a legal date shift must retain the construction's valueless reason")
-        assertTrue(fires("YearFromDate(DateFromDateTime(DateTime($date, $time))) == 0", "10", "12"),
+        assertTrue(fires("YearFromDate(DateFromDateTime(DateTime($date, $time))) == 0", "31", "12"),
             "DateTime and DateFromDateTime must retain the construction's valueless reason")
         assertTrue(fires("YearFromDate(DateTime($date, $time)) == 0", "15", null),
             "an empty time makes an otherwise-real DateTime present-but-valueless")
@@ -117,8 +113,8 @@ class ConstructedDateCalendarTest {
             rules = listOf(RuleDef("/Calendar/R", "/Calendar", condition, "DATE", "../Year")),
         )
         val document = model.newDocument().group("/Calendar", 1)
-            .field(MONTH, "10", 1, 1)
-            .field(YEAR, "1582", 1, 1)
+            .field(MONTH, "4", 1, 1)
+            .field(YEAR, "2024", 1, 1)
             .field(MINUTE, "0", 1, 1)
             .field(SECOND, "0", 1, 1)
         day?.let { document.field(DAY, it, 1, 1) }

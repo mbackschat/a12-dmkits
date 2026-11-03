@@ -7,9 +7,9 @@ import kotlin.test.assertIs
 /**
  * Whether any group holds two children of the same name.
  *
- * Every verdict below is the Kernel's, measured by `rulekit.validate.laws.ElementNameUniquenessLawsTest`
- * (kernel 30.8.1, 2026-09-12). The collision is not a verdict about a declaration: A12 throws while building
- * the model and reports no `MVK_*` code, so the checker reports that tier rather than inventing one.
+ * Which pairs collide is the Kernel's, measured by `rulekit.validate.laws.ElementNameUniquenessLawsTest`. On kernel
+ * 31.1.1 a collision is a sentence of A12's converter with no `MVK_*` code, published as `RK_CHILD_NAME_DUPLICATE`
+ * (KF652; 30.8.1 threw instead).
  */
 class ElementNameTest {
 
@@ -22,7 +22,7 @@ class ElementNameTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         $children,
@@ -58,7 +58,7 @@ class ElementNameTest {
         actual["a field named after a sibling GROUP"] =
             codesFor("${field("f0", "Archive")},${rule("r0", "Check")}")
 
-        val collision = listOf("CK_MODEL_NOT_BUILDABLE")
+        val collision = listOf(RK_CHILD_NAME_DUPLICATE)
         val expected = mapOf(
             "two distinct names — the control" to listOf(),
             "two rules of one name" to collision,
@@ -77,26 +77,31 @@ class ElementNameTest {
         assertEquals(expected, actual, "how far an element name must be unique")
     }
 
-    /** Three children of one name are one collision, reported once at the path they share. */
+    /**
+     * A12 states one sentence per kind of later child at a shared path: three rules of one name are one, and a
+     * group and a rule taking a field's name are two (KF652; the kernel's side, with the rival collapses it rules
+     * out, is `adapter.laws.CheckerConverterSentenceAgreementTest.eachDroppedDeclarationIsStatedOnce`).
+     */
     @Test
-    fun oneCollidingNameIsReportedOnceHoweverManyChildrenCarryIt() {
-        val findings = prepare(
+    fun eachKindOfLaterChildOfASharedNameIsOneSentence() {
+        fun sentences(elements: String) = prepare(
             assertIs<Admission.Admitted>(
                 admit(
                     ModelSource(
                         """
-                        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
-                          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                            ${rule("r0", "Check")},${rule("r1", "Check")},${rule("r2", "Check")}
-                          ]}}
+                          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[$elements]}}
                          ]}}}
                         """.trimIndent(),
                     ),
                 ),
             ),
-        ).tracked().elementNameFindings()
-        assertEquals(1, findings.size, "one shared name is one finding")
-        assertEquals("/Catalog/Check", findings.single().at)
+        ).tracked().elementNameFindings().map { it.code to it.at }
+        val field = """{"type":"Field","id":"f0","name":"Check","Field":{"fieldType":{"type":"StringType"}}}"""
+        val group = """{"type":"Group","id":"g1","name":"Check","Group":{"elements":[]}}"""
+        val sentence = RK_CHILD_NAME_DUPLICATE to "/Catalog/Check"
+        assertEquals(listOf(sentence), sentences("${rule("r0", "Check")},${rule("r1", "Check")},${rule("r2", "Check")}"))
+        assertEquals(listOf(sentence, sentence), sentences("$field,$group,${rule("r0", "Check")}"))
     }
 }

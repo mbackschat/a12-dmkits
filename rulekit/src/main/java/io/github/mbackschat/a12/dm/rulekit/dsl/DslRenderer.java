@@ -38,7 +38,9 @@ public final class DslRenderer {
             "KeinVordruckAngegeben", "ValueNotConsistent", "WertNichtKonsistent",
             "AktuelleVordruckNummer", "AnzahlAngegebeneUsb", "AnzahlAngegebenerVordrucke",
             "MaximalAngegebenerZeilenindex", "UsbNichtFortlaufend", "VordruckNichtFortlaufend",
-            "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend");
+            "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend",
+            // Kernel 31.1.1's term sum is a lexer terminal before the catalog carries it (KERNEL-FINDINGS KF656).
+            "SumOfTerms", "SummeVonTermen");
 
     private final Set<String> reservedNames;
 
@@ -365,9 +367,9 @@ public final class DslRenderer {
     }
 
     /**
-     * A concatenation part, with an enumeration read braced: A12 refuses an immediate one whose labels remap its
-     * values and admits the braced one whatever its labels (KERNEL-FINDINGS KF396), a key-selected cell included
-     * ({@code validate.laws.KeyedEnumerationConcatenationLawsTest}).
+     * A concatenation part, with an enumeration read braced. Kernel 30.8.1 refused an immediate read whose labels
+     * remap its values and admitted the braced one (KERNEL-FINDINGS KF396); kernel 31.1.1 admits both (KF655), so the
+     * brace is no longer required, only admitted ({@code validate.laws.KeyedEnumerationConcatenationLawsTest}).
      */
     private String concatenationPart(Calculation part) {
         return (part instanceof FieldValue || part instanceof IndexedFieldValue) && part.kind() == ValueKind.ENUMERATION

@@ -20,8 +20,7 @@ import org.junit.jupiter.api.Test
  * every error-text class, `RULE_HAS_NO_ERRORTEXT` included, are withheld. A `sortFields` list judges each distinct
  * name once wherever it stands, its duplicate class reads only the three entries it holds, and every entry beyond
  * those draws a codeless capacity sentence. `The error code is empty.`, which an absent or zero-length code draws
- * beside `MVK_ERROR_CODE_MISSING` and alone on a rule an `ONLY` filter deletes, is published as
- * `RK_ERROR_CODE_EMPTY` (KF579), and an unbuildable model only has to be reported so.
+ * beside `MVK_ERROR_CODE_MISSING`, is published as `RK_ERROR_CODE_EMPTY` (KF579), and an unbuildable model only has to be reported so.
  * The -11 rows add a model with no declared locale, a group as the error target, two texts for one locale in either
  * order, and a five-entry sort list, which draws the capacity sentence twice.
  *
@@ -39,8 +38,6 @@ class CheckerDeclarationWithholdingAgreementTest {
         val bilingual: Boolean = false,
         val extra: List<Pair<String, String>> = emptyList(),
         val noLocale: Boolean = false,
-        val only: Boolean = false,
-        val allExcept: Boolean = false,
     )
 
     private val tab = "see" + Char(9) + "it"
@@ -74,14 +71,6 @@ class CheckerDeclarationWithholdingAgreementTest {
         "twin empty code" to RuleRow(code = ""),
         "twin blank code" to RuleRow(code = " "),
         "twin tab code" to RuleRow(code = "\t"),
-        "no code, deleted at the default variant" to RuleRow(code = null, only = true),
-        "empty code, deleted at the default variant" to RuleRow(code = "", only = true),
-        "blank code, deleted at the default variant" to RuleRow(code = " ", only = true),
-        "tab code, deleted at the default variant" to RuleRow(code = "\t", only = true),
-        "empty code beside a broken target, deleted" to RuleRow(target = "../NoSuchField", code = "", only = true),
-        "no code, all but one variant" to RuleRow(code = null, allExcept = true),
-        "empty code, all but one variant" to RuleRow(code = "", allExcept = true),
-        "blank code, all but one variant" to RuleRow(code = " ", allExcept = true),
         "twin no message" to RuleRow(texts = emptyMap()),
         "twin blank text" to RuleRow(texts = mapOf("en_US" to "")),
         "twin tab" to RuleRow(texts = mapOf("en_US" to tab)),
@@ -170,11 +159,6 @@ class CheckerDeclarationWithholdingAgreementTest {
         assertEquals(emptyList<String>(), a12("same locale twice, tab then plain"))
         assertEquals(listOf("MVK_ERROR_CODE_MISSING", EMPTY_CODE), a12("twin empty code"))
         assertEquals(listOf("MVK_ERROR_CODE_MISSING"), a12("twin blank code"))
-        assertEquals(listOf(EMPTY_CODE), a12("no code, deleted at the default variant"))
-        assertEquals(listOf(EMPTY_CODE), a12("empty code, deleted at the default variant"))
-        assertEquals(emptyList<String>(), a12("blank code, deleted at the default variant"))
-        assertEquals(listOf("MVK_ERROR_CODE_MISSING", EMPTY_CODE), a12("no code, all but one variant"))
-        assertEquals(listOf("MVK_ERROR_CODE_MISSING"), a12("blank code, all but one variant"))
     }
 
     private val oracle = KernelConsistencyOracle()
@@ -223,10 +207,6 @@ class CheckerDeclarationWithholdingAgreementTest {
         row.texts.forEach { (locale, text) -> messages.addObject().put("locale", locale).put("text", text) }
         row.extra.forEach { (locale, text) -> messages.addObject().put("locale", locale).put("text", text) }
         if (row.noLocale) (root.path("header") as ObjectNode).putArray("locales")
-        if (row.only) body.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Broker")
-        if (row.allExcept) {
-            body.putObject("variantFilter").put("filterType", "ALL_EXCEPT").putArray("variants").add("Broker")
-        }
         return mapper.writeValueAsString(root)
     }
 

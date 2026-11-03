@@ -120,7 +120,7 @@ class RepetitionKeyPlacementTest {
         val inBasket = if (inGroup == "Basket") ",$rule" else ""
         val inLines = if (inGroup == "Lines") ",$rule" else ""
         return """
-            {"header":{"modelVersion":"28.4.0","id":"cart","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"cart","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"BasketRef","Field":{"fieldType":{"type":"StringType"}}},

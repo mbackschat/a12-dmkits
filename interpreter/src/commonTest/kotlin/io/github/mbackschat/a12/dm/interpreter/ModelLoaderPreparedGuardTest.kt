@@ -33,15 +33,22 @@ class ModelLoaderPreparedGuardTest {
     }
 
     @Test
-    fun everyUnexpandedIncludeMemberIsRejectedEvenWhenItsValueIsNull() {
-        for (member in listOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")) {
+    fun everyUnexpandedIncludeMemberIsRejectedAndADm28OneEvenWhenItsValueIsNull() {
+        val members = listOf(
+            "includeConfig" to """{"reference": "cover"}""",
+            "modelAlias" to "null",
+            "includeLevel" to "null",
+            "excludeRules" to "null",
+            "excludeComputations" to "null",
+        )
+        for ((member, value) in members) {
             val raw = model(
                 """
                     {
                       "type": "Group",
                       "id": "/Policy/Cover",
                       "name": "Cover",
-                      "Group": {"repeatability": 1, "$member": null}
+                      "Group": {"repeatability": 1, "$member": $value}
                     }
                 """.trimIndent(),
             )
@@ -54,6 +61,15 @@ class ModelLoaderPreparedGuardTest {
             assertEquals("/Policy/Cover", error.path, member)
             assertContains(error.message ?: "", member)
         }
+    }
+
+    /** A12 reads `includeConfig: null` as a plain group (KF651), so it is no residue. */
+    @Test
+    fun aNullIncludeConfigIsAPlainGroup() {
+        val def = ModelLoader.load(model(
+            """{ "type": "Group", "id": "/Policy/Cover", "name": "Cover", "Group": {"repeatability": 1, "includeConfig": null,
+                "elements": [{ "type": "Field", "id": "/Policy/Cover/Ref", "name": "Ref", "Field": { "fieldType": {"type":"StringType"} } }] } }"""))
+        assertEquals(1, def.fields.size)
     }
 
     @Test
@@ -157,7 +173,7 @@ class ModelLoaderPreparedGuardTest {
                 "/Policy/Ref",
             ),
             InvalidElementCase(
-                """{"type":"Group","id":"/Policy/Nested","name":"Nested","Group":null}""",
+                """{"type":"Group","id":"/Policy/Nested","name":"Nested","Group":true}""",
                 "/Policy/Nested",
             ),
             InvalidElementCase(

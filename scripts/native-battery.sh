@@ -130,11 +130,11 @@ AW="$(mktemp -d)"
 "$NATIVE" -m "$AW/catalog.dm.json" group add --parent /Catalog --name G >/dev/null 2>&1
 "$NATIVE" -m "$AW/catalog.dm.json" field add --group /Catalog/G --name F --kind STRING >/dev/null 2>&1
 "$NATIVE" model new --id store --locale en_US --root Store -o "$AW/store.dm.json" >/dev/null 2>&1
-"$NATIVE" -m "$AW/store.dm.json" -w "$AW" include add --alias catalog --reference catalog --parent /Store --name Catalog >/dev/null 2>&1
+"$NATIVE" -m "$AW/store.dm.json" -w "$AW" include add --reference catalog --parent /Store --name Catalog >/dev/null 2>&1
 "$NATIVE" -m "$AW/catalog.dm.json" config modify --role admin >/dev/null 2>&1     # annotate the sub AFTER attaching
 "$NATIVE" -m "$AW/store.dm.json"   config modify --role manager >/dev/null 2>&1   # and the parent
 # Fail LOUD if setup didn't take, so a broken setup can't make the guard a silent no-op (testing-strategy rule).
-if ! grep -q modelAlias "$AW/store.dm.json" || ! grep -q roles "$AW/catalog.dm.json"; then
+if ! grep -q includeConfig "$AW/store.dm.json" || ! grep -q roles "$AW/catalog.dm.json"; then
   fails=$((fails+1)); checks=$((checks+1))
   echo "  FAIL  annotated-include setup did not take (include or roles annotation missing) — guard would be a no-op"
 fi

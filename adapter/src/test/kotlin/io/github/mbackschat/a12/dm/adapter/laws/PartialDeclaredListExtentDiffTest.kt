@@ -101,7 +101,10 @@ class PartialDeclaredListExtentDiffTest {
                         val expectedControls = buildList {
                             if (complete) addAll(listOf("NF_LEFT_NO", "NF_RIGHT_NO", "NF_RIGHT_NOTALL", "VALUE0"))
                             add("NF_LEFT_NOTALL")
-                            if (rows == listOf(0)) addAll(listOf("FILLED", "SUM", "DISTINCT", "MIN", "MAX", "GROUPS"))
+                            if (rows == listOf(0)) addAll(listOf("FILLED", "SUM", "DISTINCT", "MIN", "MAX"))
+                            // The group count joins the declared-slot union on kernel 31.1.1: wholly relevant rows
+                            // covering every slot fold into the wildcard (KERNEL-FINDINGS KF667).
+                            if (complete) add("GROUPS")
                         }.sorted()
                         val controls = setOf("NF_LEFT_NO", "NF_RIGHT_NO", "NF_RIGHT_NOTALL", "NF_LEFT_NOTALL", "VALUE0",
                             "FILLED", "SUM", "DISTINCT", "MIN", "MAX", "GROUPS")

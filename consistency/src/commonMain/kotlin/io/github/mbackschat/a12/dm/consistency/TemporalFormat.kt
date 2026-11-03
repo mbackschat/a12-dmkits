@@ -66,7 +66,7 @@ internal fun TrackedFactBase.temporalFormatOf(field: TrackedDeclaration): String
  * The declared field types this reader is CERTAIN A12 gives a non-DATETIME base type.
  *
  * An allow-list rather than the complement of the temporal one, because the complement would include
- * `CustomFieldType`, an unresolvable type definition, `UnspecifiedType` and `DateRangeType` — types whose base type this reader does
+ * `CustomFieldType`, an unresolvable type definition and `DateRangeType` — types whose base type this reader does
  * not place — and refusing on those would be an over-rejection on a model A12 may admit.
  */
 internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(

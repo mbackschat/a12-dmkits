@@ -29,12 +29,12 @@ class ComputationAlternativeTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
-                        {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{${
-                        alternatives?.let { """"computationAlternatives":$it""" } ?: ""
+                        {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{"computedFieldRelPath":"../Price"${
+                        alternatives?.let { ""","computationAlternatives":$it""" } ?: ""
                     }}}
                       ]}}
                      ]}}}
@@ -190,7 +190,10 @@ class ComputationAlternativeTest {
         actual["the envelope as an array"] = codesForRaw(""""Computation":[]""")
 
         val expected = mapOf(
-            "the envelope omitted" to listOf("MVK_INCOMPLETE_INPUT", "MVK_CONDITION_MISSING"),
+            // No envelope names no computed field either, so kernel 31.1.1 builds no model
+            // (`ComputationAlternativeSlotLawsTest.anOmittedComputationEnvelopeLeavesNoModel`); the alternative
+            // analysis still runs beside that.
+            "the envelope omitted" to listOf("CK_MODEL_NOT_BUILDABLE", "MVK_INCOMPLETE_INPUT", "MVK_CONDITION_MISSING"),
             "the envelope as a string" to listOf("CK_MODEL_NOT_BUILDABLE"),
             "the envelope as an array" to listOf("CK_MODEL_NOT_BUILDABLE"),
         )
@@ -203,7 +206,7 @@ class ComputationAlternativeTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -226,7 +229,7 @@ class ComputationAlternativeTest {
                 admit(
                     ModelSource(
                         """
-                        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},

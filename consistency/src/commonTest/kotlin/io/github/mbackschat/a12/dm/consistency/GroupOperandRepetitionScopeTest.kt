@@ -61,12 +61,12 @@ class GroupOperandRepetitionScopeTest {
     }
 
     @Test
-    fun aFilteredGroupIsRefusedAsAGroupBeforeTheWalk() {
-        val rows = listOf(
-            "AtLeastOneFieldFilled(Claims Having [Claims/Amount] > 0)",
-            "AtLeastOneFieldFilled(Claims* Having [Claims/Amount] > 0)",
-            "Sum(Claims Having [Claims/Amount] > 0) > 0",
-        ).associateWith { listOf(NO_GROUPS) }
+    fun aFilteredGroupIsRefusedAsAGroupOnceTheWalkPassesIt() {
+        val rows = mapOf(
+            "AtLeastOneFieldFilled(Claims Having [Claims/Amount] > 0)" to listOf("MVK_NO_WILDCARD"),
+            "AtLeastOneFieldFilled(Claims* Having [Claims/Amount] > 0)" to listOf(NO_GROUPS),
+            "Sum(Claims Having [Claims/Amount] > 0) > 0" to listOf("MVK_NO_WILDCARD"),
+        )
         assertEquals(rows, rows.keys.associateWith(::fromRoot), "a filtered group")
     }
 

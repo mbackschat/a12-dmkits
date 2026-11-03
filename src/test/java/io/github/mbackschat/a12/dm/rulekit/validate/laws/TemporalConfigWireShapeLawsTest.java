@@ -98,9 +98,9 @@ class TemporalConfigWireShapeLawsTest {
         expected.put("the check on a year-free RANGE pair", KernelLaws.ADMITTED);
         expected.put("the check with no format declared", KernelLaws.ADMITTED);
         expected.put("a partial precision with no format declared", KernelLaws.ADMITTED);
-        // A field's own body refuses a member A12 does not declare; the fieldType body is measured here for
-        // the first time, and the answer says a misspelling cannot masquerade as the real member.
-        expected.put("a nearly-right member name", KernelLaws.UNREADABLE);
+        // Kernel 31.1.1's reader passes over a member it does not declare (KERNEL-FINDINGS KF654; 30.8.1 refused
+        // it), so a misspelling is the real member left out and the model is checked without it.
+        expected.put("a nearly-right member name", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the stored members carrying the two date-config gates");
     }
 

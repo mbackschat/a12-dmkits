@@ -28,7 +28,7 @@ class StringLengthSentinelReadTest {
 
     private static String modelWith(String stringTypeBody) {
         return """
-                {"header":{"id":"catalog","modelType":"document","modelVersion":"28.4.0",
+                {"header":{"id":"catalog","modelType":"document","modelVersion":"29.4.0",
                   "locales":[{"code":"en_US"}]},
                  "content":{"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[

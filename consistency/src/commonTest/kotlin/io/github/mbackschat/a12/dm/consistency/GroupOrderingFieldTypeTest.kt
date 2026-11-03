@@ -27,7 +27,7 @@ class GroupOrderingFieldTypeTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Group","id":"g1","name":"Items","Group":{$ordering"elements":[
@@ -161,7 +161,7 @@ class GroupOrderingFieldTypeTest {
     }
 
     /**
-     * An unresolvable reference never reaches the type gate, however unusable the field it failed to name.
+     * A name the group does not carry never reaches the type gate, however unusable the field it failed to name.
      *
      * A12 returns at the first gate that fires, so the two verdicts are exclusive rather than cumulative. The
      * discriminator is that `Sku` is a no-value-validation string in BOTH rows: only the spelling moves.
@@ -174,7 +174,7 @@ class GroupOrderingFieldTypeTest {
 
         val expected = mapOf(
             "the reference resolves" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
-            "the reference names nothing" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "the reference names nothing" to listOf("MVK_INVALID_INDEX_FIELD"),
         )
         assertEquals(expected, actual, "gate order")
     }

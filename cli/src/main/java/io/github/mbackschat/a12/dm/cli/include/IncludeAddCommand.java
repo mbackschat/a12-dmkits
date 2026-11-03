@@ -24,23 +24,18 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool include add --alias <a> --reference <r> --parent <path> --name <n>} — declare a header
- * model-reference and mount it as a group, then write the model back (in place; {@code -o}/{@code --dry-run}).
+ * {@code dmtool include add --reference <r> --parent <path> --name <n>} — declare a header
+ * model-reference and mount it as a group whose {@code includeConfig} names that model, then write the model back (in place; {@code -o}/{@code --dry-run}).
  * {@code --repeatability} mounts a repeating sub-form; {@code --exclude-rules}/{@code --exclude-computations}
  * drop the included model's own rules/computations on expand (FEATURE-GAPS). The referenced model is
  * resolved + kernel-validated via {@code -w/--workspace}; a missing reference or an invalid mount is a
  * {@code rejected} envelope.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
-        description = "Declare a model include (--alias → --reference) and mount it as --name under --parent.")
+        description = "Include the model --reference and mount it as --name under --parent.")
 final class IncludeAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    @ParamKind(ParamKind.Kind.NEW_NAME)
-    @Option(names = "--alias", required = true, paramLabel = "<alias>",
-            description = "the include alias used by the mount")
-    String alias;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
@@ -110,16 +105,14 @@ final class IncludeAddCommand extends BaseCommand {
         ModelDocument doc = ModelDocument.read(modelJson);
         String resultJson;
         try {
-            resultJson = doc.addInclude(alias, reference)
-                    .mount(parent, name, alias, options)
+            resultJson = doc.mount(parent, name, reference, options)
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("the include is rejected by the kernel", e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
-        changed.put("added", alias);
-        changed.put("reference", reference);
+        changed.put("added", reference);
         changed.put("mountedAt", mountPath);
         if (repeatability != 1) {
             changed.put("repeatability", repeatability);
@@ -131,8 +124,8 @@ final class IncludeAddCommand extends BaseCommand {
             changed.put("excludeComputations", true);
         }
         return emitMutation(ModelWrite.of(resultIdentity())
-                .summaries("would add include " + alias,
-                        "added include " + alias)
+                .summaries("would add include " + reference,
+                        "added include " + reference)
                 .changed(changed)
                 .json(resultJson)
                 .gatedBy(ConsistencyEvidence.of(doc))

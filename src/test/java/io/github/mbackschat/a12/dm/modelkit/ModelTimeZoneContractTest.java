@@ -14,7 +14,9 @@ class ModelTimeZoneContractTest {
     void classifiesTheFourAuthoringDomainsWithTheJvmTimeZoneRegistry() {
         assertEquals(ABSENT_DEFAULT, ModelTimeZoneContract.classify(false, null));
         assertEquals(KERNEL_INVALID, ModelTimeZoneContract.classify(true, null));
-        assertEquals(KERNEL_INVALID, ModelTimeZoneContract.classify(true, ""));
+        // Kernel 31.1.1's expand copy drops an empty member, so an empty id is an absent one (KERNEL-FINDINGS KF658);
+        // a blank one is kept and refused.
+        assertEquals(ABSENT_DEFAULT, ModelTimeZoneContract.classify(true, ""));
         assertEquals(KERNEL_INVALID, ModelTimeZoneContract.classify(true, " \t "));
         assertEquals(INTERPRETER_SUPPORTED, ModelTimeZoneContract.classify(true, "UTC"));
         assertEquals(INTERPRETER_SUPPORTED, ModelTimeZoneContract.classify(true, "GMT"));

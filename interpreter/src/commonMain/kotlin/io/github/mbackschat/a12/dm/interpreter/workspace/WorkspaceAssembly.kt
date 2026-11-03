@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
 import io.github.mbackschat.a12.dm.interpreter.ModelReferencePurpose
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -141,28 +140,24 @@ internal class WorkspaceAssemblyContext(
     }
 
     /**
-     * What A12's expansion demands of a model the entry reaches, before it reads a declaration of it (KF594): every
-     * locale the entry declares, and, for a type-definition library, no root group at all, since an import whose root
-     * holds one, even empty, is not expanded. An included model's locales are also gathered into one map keyed by
-     * locale, so a locale it declares twice, in one spelling or two, refuses, and so does its empty code, which A12
-     * reads as no locale; a library declaring either is expanded. Measured one reference deep; a nested reference is
-     * held to the entry's locales as the portable checker holds it, which no measurement has yet separated from its
-     * referrer's.
+     * What A12's expansion demands of an included model the entry reaches, before it reads a declaration of it
+     * (KF594): every locale the entry declares, gathered into one map keyed by locale, so a locale it declares twice,
+     * in one spelling or two, refuses, and so does its empty code, which A12 reads as no locale. Measured one reference
+     * deep; a nested include is held to the entry's locales as the portable checker holds it, which no measurement has
+     * yet separated from its referrer's.
+     *
+     * A type-definition library is held to none of these on kernel 31.1.1: it is expanded whatever locales it declares
+     * and whatever root groups it holds. Kernel 30.8.1 refused both, in a compatibility check 31.1.0 removed with
+     * `DocumentModelExpandSanityChecks` (measured by `adapter.WorkspaceReachedModelDiffTest`).
      */
     private fun requireExpandable(step: ModelReferenceStep, reached: ParsedWorkspaceSource) {
-        if (step.purpose == ModelReferencePurpose.INCLUDE) {
-            val codes = reached.root.declaredLocaleCodes()
-            if ("" in codes || codes.mapNotNull(::a12LocaleKeyOrNull).let { it.size != it.toSet().size }) {
-                throw invalidModelElement(reached, "header.locales",
-                    "an included model declares a locale twice or an empty locale code, so A12 cannot expand the include")
-            }
+        if (step.purpose != ModelReferencePurpose.INCLUDE) {
+            return
         }
-        if (step.purpose == ModelReferencePurpose.TYPE_DEFINITIONS &&
-            (((reached.root["content"] as? JsonObject)?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray)
-                .orEmpty().isNotEmpty()
-        ) {
-            throw invalidModelElement(reached, "content.modelRoot.rootGroups",
-                "a type-definition library declares a root group, so A12 cannot expand the import")
+        val codes = reached.root.declaredLocaleCodes()
+        if ("" in codes || codes.mapNotNull(::a12LocaleKeyOrNull).let { it.size != it.toSet().size }) {
+            throw invalidModelElement(reached, "header.locales",
+                "an included model declares a locale twice or an empty locale code, so A12 cannot expand the include")
         }
         val uncovered = checkNotNull(entryLocaleKeys) { "the entry is read before any reference is resolved" } -
             reached.root.declaredLocaleKeys()

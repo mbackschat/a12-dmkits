@@ -66,9 +66,11 @@ class FirstFilledOperandShapeLawsTest {
     @Test
     void eachShapesClass_onEveryGroupShape_andBesideASecondDefect() {
         Map<String, String> expected = new LinkedHashMap<>();
-        // a filter on a group: one class, repeatable or not, starred or not
+        // a filter on a group: one class, repeatable or not, wherever the iteration walk lets the filter be
+        // judged; since kernel 31.1.1 that walk answers first, so an unstarred repetition draws its class
+        // (KERNEL-FINDINGS KF656)
         expected.put("FirstFilledValue(Grading Having [Weight] > 0, Title) == \"x\"", NO_GROUPS);
-        expected.put("FirstFilledValue(Lines Having [Lines/Qty] > 0, Title) == \"x\"", NO_GROUPS);
+        expected.put("FirstFilledValue(Lines Having [Lines/Qty] > 0, Title) == \"x\"", NO_WILDCARD);
         expected.put("FirstFilledValue(Lines* Having [Lines/Qty] > 0, Title) == \"x\"", NO_GROUPS);
         // a category on a group: the same class, until a repeatable level is left unstarred
         expected.put("FirstFilledValue(Grading -> Band) == \"LOW\"", NO_GROUPS);
@@ -149,14 +151,17 @@ class FirstFilledOperandShapeLawsTest {
         expected.put("Title | FirstFilledValue(Keyed/Hollow For \"k\") == \"x\"", EMPTY);
         expected.put("Title | FirstFilledValue(Keyed/Hollow) == \"x\"", NO_WILDCARD);
         expected.put("Title | FirstFilledValue(Keyed For \"k\") == \"x\"", ADMITTED);
-        // inside a filter, with or without the outer marker: the classes of the bare shapes
+        // inside a filter, with or without the outer marker: the classes of the bare shapes, except that a marked
+        // group carrying its own filter has left the outer filter's scope once its own is read, so its marker
+        // is refused (kernel 31.1.1, KERNEL-FINDINGS KF656)
         for (String marker : List.of("", "$")) {
             expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
                     + "Grading -> Band) == \"LOW\", Title) == \"x\"", NO_GROUPS);
             expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
                     + "Empty) == \"x\", Title) == \"x\"", EMPTY);
             expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
-                    + "Grading Having [Title] == \"a\", Title) == \"x\", Subtitle) == \"x\"", NO_GROUPS);
+                    + "Grading Having [Title] == \"a\", Title) == \"x\", Subtitle) == \"x\"",
+                    marker.isEmpty() ? NO_GROUPS : OUTER);
         }
 
         Map<String, String> actual = new LinkedHashMap<>();
@@ -173,14 +178,16 @@ class FirstFilledOperandShapeLawsTest {
         Condition filter = m.num("/Item/Weight").gt(0);
         CategoryRef gradeBand = m.enumOf("/Item/Grading/Grade").category("Band");
 
-        for (String group : List.of("/Item/Grading", "/Item/Lines", "/Item/Lines*")) {
+        for (String group : List.of("/Item/Grading", "/Item/Lines*")) {
             assertCited(NO_GROUPS, () -> m.firstFilledGroup(group).having(filter));
         }
-        assertCited(NO_GROUPS, () -> m.firstFilledGroup("/Item/Grading").outer().having(filter));
+        // the rule decides an unstarred repetition's class, and the marker answers ahead of a filtered group
+        assertUncoded(() -> m.firstFilledGroup("/Item/Lines").having(filter));
+        assertUncoded(() -> m.firstFilledGroup("/Item/Grading").outer().having(filter));
         for (String group : List.of("/Item/Grading", "/Item/Reviews*", "/Item/Outer*/Graded")) {
             assertCited(NO_GROUPS, () -> m.firstFilledGroup(group).withCategory(gradeBand));
         }
-        // the marker keeps a group filter's class, but not a category's (theMarkerOutsideAFilterAnswersAheadOfEveryShapeButAGroupFilter)
+        // the marker answers ahead of a category too (theMarkerOutsideAFilterAnswersAheadOfEveryShape)
         assertUncoded(() -> m.firstFilledGroup("/Item/Grading").outer().withCategory(gradeBand));
         for (String group : List.of("/Item/Empty", "/Item/Blank*", "/Item/Outer*/Hollow")) {
             assertCited(EMPTY, () -> m.firstFilledGroup(group));
@@ -220,17 +227,18 @@ class FirstFilledOperandShapeLawsTest {
 
     /**
      * The {@code $} marker OUTSIDE a filter, where A12 refuses it while reading the operand: ahead of the empty
-     * group, the category and the field filter, whose classes it keeps inside one (the rows above), but not ahead
-     * of a group's {@code Having} filter, which keeps its class here too.
+     * group, the category and both filters, whose classes it keeps inside one (the rows above). Kernel 30.8.1
+     * answered a group's {@code Having} filter here with the group's class, asked as the filter was entered
+     * (KERNEL-FINDINGS KF656).
      */
     @Test
-    void theMarkerOutsideAFilterAnswersAheadOfEveryShapeButAGroupFilter() {
+    void theMarkerOutsideAFilterAnswersAheadOfEveryShape() {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("FirstFilledValue($Grading -> Band) == \"LOW\"", OUTER);
         expected.put("FirstFilledValue($Reviews* -> Band) == \"LOW\"", OUTER);
         expected.put("FirstFilledValue($Empty) == \"x\"", OUTER);
         expected.put("FirstFilledValue($Title Having [Weight] > 0, Subtitle) == \"x\"", OUTER);
-        expected.put("FirstFilledValue($Grading Having [Weight] > 0, Title) == \"x\"", NO_GROUPS);
+        expected.put("FirstFilledValue($Grading Having [Weight] > 0, Title) == \"x\"", OUTER);
         Map<String, String> actual = new LinkedHashMap<>();
         expected.keySet().forEach(condition -> actual.put(condition, verdict("Title", condition)));
         assertEquals(expected, actual);

@@ -46,9 +46,6 @@ class KeyedOperandFamilyGateLawsTest {
                     .stringField("Code", f -> { })
                     .numberField("Limit", f -> f.fractionDigits(0))
                     .dateField("Opened", f -> f.format("yyyy-MM-dd"))
-                    .enumField("Stage", e -> e
-                            .value("OPEN", l -> l.label("en_US", "Open claim"))
-                            .value("CLOSED", l -> l.label("en_US", "Closed claim")))
                     .enumField("Outcome", e -> e.value("OPEN").value("CLOSED"))
                     .group("Claims", g -> claimFields(g.repeatable(20).indexField("ClaimRef")))
                     .group("Riders", g -> claimFields(g.repeatable(5)))
@@ -103,7 +100,6 @@ class KeyedOperandFamilyGateLawsTest {
         PROBES.put("number scale comparison", "[%s] == [Limit]");
         PROBES.put("tolerance comparison", "[%s] DiffersWithToleranceRange1 5");
         PROBES.put("pattern comparison", "[%s] PatternMatched \"a+\"");
-        PROBES.put("enum display comparison", "[%s] == [Stage]");
         PROBES.put("rounding a computed value", "RoundUp([%s], 0) > 0");
         PROBES.put("date arithmetic amount", "AddDays(Opened, [%s]) < Today");
         PROBES.put("date arithmetic precision", "[Opened] < AddHours(%s, 1)");
@@ -136,7 +132,6 @@ class KeyedOperandFamilyGateLawsTest {
         FIELDS.put("number scale comparison", new String[] {"Amount"});
         FIELDS.put("tolerance comparison", new String[] {"Memo"});
         FIELDS.put("pattern comparison", new String[] {"Amount"});
-        FIELDS.put("enum display comparison", new String[] {"Status"});
         FIELDS.put("rounding a computed value", new String[] {"Memo"});
         FIELDS.put("date arithmetic amount", new String[] {"Memo"});
         FIELDS.put("date arithmetic precision", new String[] {"Filed"});
@@ -198,7 +193,6 @@ class KeyedOperandFamilyGateLawsTest {
         CLASS.put("number scale comparison", "MVK_INVALID_COMPARE_DEC_PLACES");
         CLASS.put("tolerance comparison", "MVK_INVALID_TYPE_FOR_TOLERANCE_OP");
         CLASS.put("pattern comparison", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON");
-        CLASS.put("enum display comparison", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
         CLASS.put("rounding a computed value", "MVK_NO_NUMBER");
         CLASS.put("date arithmetic amount", "MVK_NON_NUMERIC");
         CLASS.put("date arithmetic precision", "MVK_WRONG_DATE_FORMAT_FOR_OP");

@@ -137,7 +137,7 @@ class SelectedIterationGuardLawsTest {
 
     /** An aggregate mixing the key's iterating selection with a fixed one, as a bare comparison leaf. */
     @Test
-    void theMixedReferenceGateSkipsOnlySumOfProducts() {
+    void theMixedReferenceGateAsksEveryAggregate() {
         String dynamic = "/Store/Warehouse/Bins/Slots*/Qty For Wanted";
         String literal = "/Store/Warehouse/Bins/Slots*/Weight For \"a\"";
         String dynamicWeight = "/Store/Warehouse/Bins/Slots*/Weight For Wanted";
@@ -153,9 +153,10 @@ class SelectedIterationGuardLawsTest {
         expected.put("a sum of two iterating selections — control", KernelLaws.ADMITTED);
         expected.put("a mixed sum", NEGATIVE);
         expected.put("a mixed maximum", NEGATIVE);
-        expected.put("a mixed product", KernelLaws.ADMITTED);
-        // The zero gate asks whether EVERY field iterates, so a mixed product passes it as well.
-        expected.put("a mixed product, equal to zero", KernelLaws.ADMITTED);
+        // Kernel 30.8.1 exempted a product sum from the mixed-reference gate; 31.1.1 asks it of every aggregate
+        // (KERNEL-FINDINGS KF656).
+        expected.put("a mixed product", NEGATIVE);
+        expected.put("a mixed product, equal to zero", NEGATIVE);
         expected.put("an iterating product, equal to zero", NEGATIVE);
         assertEquals(expected, actual, "the mixed-reference gate and its product exception");
     }

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
  * {@code workspace check} is a <b>gate</b>: it must never exit 0 for a workspace it did not clear.
@@ -39,13 +40,9 @@ class WorkspaceCheckGateTest {
     /** The reachable case: one model, scannable, whose include cannot be resolved — so nothing gates. */
     @Test
     void aWorkspaceWhereNoModelReachesTheGateDoesNotPass(@TempDir Path dir) throws Exception {
-        Files.writeString(dir.resolve("order.dm.json"), CliTestSupport.orderRuledJson()
-                .replaceFirst("\"includes\"\\s*:\\s*\\[", "\"includes\": [")
-                .replaceFirst("\\{", "{"));
-        // give it an include that no file in the tree provides
-        String withDanglingInclude = Files.readString(dir.resolve("order.dm.json"))
-                .replaceFirst("\"modelReferences\"\\s*:\\s*\\[[^]]*]", "\"modelReferences\": []");
-        Files.writeString(dir.resolve("order.dm.json"), danglingInclude(withDanglingInclude));
+        // a mount of a model that no file in the tree provides
+        Files.writeString(dir.resolve("order.dm.json"), ModelDocument.read(CliTestSupport.orderRuledJson())
+                .mount("/Order", "Supplier", "no-such-model").toJson());
 
         var res = CliTestSupport.run("workspace", "check", dir.toString());
 
@@ -77,11 +74,5 @@ class WorkspaceCheckGateTest {
         assertEquals(0, res.code(), res::out);
         assertEquals(true, j.path("valid").asBoolean(), res::out);
         assertEquals("KERNEL_CONFIRMED", j.path("verification").asText(), res::out);
-    }
-
-    /** Inject an include whose reference names a model id nothing in the scan provides. */
-    private static String danglingInclude(String modelJson) {
-        return modelJson.replaceFirst("\\{", """
-                {"includes":[{"alias":"Nope","reference":"no-such-model"}],""");
     }
 }

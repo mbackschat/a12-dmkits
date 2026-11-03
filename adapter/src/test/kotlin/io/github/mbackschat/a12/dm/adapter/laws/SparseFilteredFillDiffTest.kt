@@ -32,7 +32,7 @@ class SparseFilteredFillDiffTest {
         val root = edit.group("/Dispatch")
         val parcels = edit.group("/Dispatch/Runs/Parcels")
         val selected = root.flatten("Runs*/Parcels*/Charge").having(parcels.num("Permit").filled()
-            .or(parcels.dateTime("RecordedAt").eq(Dsl.dateTimeValue("31.03.2024T02:30:00"))))
+            .or(parcels.dateTime("RecordedAt").eq(Dsl.dateTimeValue("29.02.1500T10:00:00"))))
         var json = edit.toJson()
         for (q in Quantifier.entries) {
             val condition = q.build(listOf(selected))

@@ -38,7 +38,8 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:removal', '-Werror']
 }
 
-def kernelVersion = '30.8.1'
+// One pin for the whole build: the root project owns it (KERNEL-UPGRADE step 1).
+def kernelVersion = rootProject.ext.kernelVersion
 
 def kernelClosureConsumerCompile = configurations.create('kernelClosureConsumerCompileDeps') {
     canBeConsumed = false
@@ -87,37 +88,29 @@ dependencies {
     api project(':rulekit')
     api project(':modelkit')
     api project(':edit')
+    // Since kernel 31 the facade is the ONE kernel coordinate: its published Gradle module metadata exports, at
+    // API scope, every artifact this backend compiles against — the a12internal read tier
+    // (kernel-internal-core-tool-api: IMVK_Service/IRuleParser/IConditionFormatter; kernel-internal-core-parsetree-api:
+    // ICondition; kernel-internal-md-model; kernel-md-serializer; kernel-md-documentmodel: the internal DocumentModel;
+    // kernel-internal-core-facade + kernel-internal-core-calc: the computation read surface), the runtime
+    // evaluation tier (kernel-internal-md-runtime-api/-service, kernel-md-document-v2) and the core custom-condition
+    // SPI (kernel-core-runtime-api 33.0.2: ICustomCondition, IData, IIdentifier). Measured from
+    // kernel-md-facade-31.1.1.module `apiElements`, 2026-11-02; the sibling a12-kernel-demo builds on the same single
+    // dependency (its e7ca3af). Re-declaring any of them would only duplicate a version the facade already fixes.
+    // Kernel types still never escape a public adapter signature (N8/D15).
     implementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
-
-    // The a12internal *read* tier — adapter-only (core must never depend on these per N8/D15):
-    implementation "com.mgmtp.a12.kernel:kernel-core-tool-api:${kernelVersion}"      // IMVK_Service, IRuleParser, IConditionFormatter, IRuleMetaInformation, ado.IRule/IEntity/IEC, IProblemReporter
-    implementation "com.mgmtp.a12.kernel:kernel-core-parsetree-api:${kernelVersion}" // ICondition (the transport AST)
-    implementation "com.mgmtp.a12.kernel:kernel-md-model:${kernelVersion}"           // DocumentModelService.getMvkServiceForModel, ElementContainer
-    implementation "com.mgmtp.a12.kernel:kernel-md-serializer:${kernelVersion}"      // ExternalDocumentModelSerializerService.getInternDocumentModel
-    implementation "com.mgmtp.a12.kernel:kernel-md-a12internal:${kernelVersion}"     // internal DocumentModel
-    implementation "com.mgmtp.a12.kernel:kernel-core-facade:${kernelVersion}"        // ServiceFactory.getCalculationService — the read surface for COMPUTATIONS (ICalculationService.extractCalculationInfo)
-    implementation "com.mgmtp.a12.kernel:kernel-core-calc:${kernelVersion}"          // IWithComparisonOperation.getOriginalOperation — unwrap a computation alternative's value-expression from its assignment wrapper
-
-    // The runtime *evaluation* tier — build a document instance and run the kernel's runtime validation
-    // to observe which rules actually FIRE on data. Promoted from test-only to MAIN (2026-06-08) for the
-    // public `KernelAdapter.evaluate` seam (the `eval-doc` verb / judge-verifies-against-kernel); the
-    // F-LAW behavioral-law oracle (`laws/RuntimeLaws`) rides the same tier. Boundary still holds — these
-    // kernel runtime types never escape a public adapter signature (evaluate takes a Map, returns EvalResult).
-    implementation "com.mgmtp.a12.kernel:kernel-md-runtime-api:${kernelVersion}"   // IDocumentRtService, IDocumentValidationResult, IMessage
-    implementation "com.mgmtp.a12.kernel:kernel-md-document-api:${kernelVersion}"  // IDocument, IDocumentFactory, IEntityInstance
-    runtimeOnly "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"  // DocumentDynamicRtService impl behind the facade
+    // Kernel 31 moved to Jackson 3 (A12K-3967), whose exceptions are unchecked, so KernelModelInput must NAME the
+    // type the kernel's model mapper throws instead of catching IOException. The facade carries Jackson 3 at
+    // runtime scope only; compileOnly adds the type to javac without pinning what runs — the runtime version
+    // stays the facade's (3.2.1 at kernel 31.1.1, the facade's runtimeElements).
+    compileOnly 'tools.jackson.core:jackson-core:3.2.1'
+    // RuntimeLaws hands the kernel's Document serializer a Jackson 3 pretty printer; same runtime-version rule.
+    testCompileOnly 'tools.jackson.core:jackson-core:3.2.1'
 
     // The fresh comparator derives its graph from the executable consumer source set: facade at compile time,
     // the dynamic runtime implementation at runtime. Their metadata supplies every needed API/transitive edge.
     add('kernelClosureConsumerCompileDeps', "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}")
-    add('kernelClosureConsumerRuntimeDeps', "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}")
-
-    // CORE custom-condition SPI (the IData-based contract the kernel's own conditions + JS/TS codegen use) —
-    // for KernelCustomConditions, the JVM bridge that runs a project's EXISTING kernel ICustomCondition on the
-    // interpreter. core-runtime-api resolves to 32.3.4 in the 30.8.1 distribution (already on the runtime
-    // classpath via md-runtime-service; promoted to compile here). The bridge provides its OWN IData/IIdentifier
-    // (the kernel documents the caller does so) — it constructs no kernel `…Impl` (N8/D15 guardrail).
-    implementation "com.mgmtp.a12.kernel:kernel-core-runtime-api:32.3.4"           // ICustomCondition (core), IData, IIdentifier
+    add('kernelClosureConsumerRuntimeDeps', "com.mgmtp.a12.kernel:kernel-internal-md-runtime-service:${kernelVersion}")
 
     // The model-performance profile is a standalone JSON artifact consumed by both the adapter facade
     // and the CLI. Its package-private codec validates the current profile shape before synthesis.
@@ -131,15 +124,17 @@ dependencies {
     // CustomCondition SPI; (2) TEST — the kernel oracle (RuntimeLaws) runs the differential comparison.
     implementation project(':interpreter')
     testFixturesImplementation project(':interpreter')
+    // KernelExpansionFixture's signatures carry kernel model types (the expansion oracle tests share), so the
+    // fixture exposes the facade to its consumers' test classpaths — never to the main module's.
+    testFixturesApi "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
     // The kernel-free ConditionReadBack provider — TEST-ONLY, and the ONLY place both providers of that port
     // are on one classpath, which is what makes the parity differential (ConditionReadBackParityTest)
     // expressible. Test scope keeps :interpreter-bridge off :adapter's own consumers.
     testImplementation project(':interpreter-bridge')
     testImplementation project(':schemakit')
-    // The reserved-custom law observes the core validation mode absent from the modern API (SPEC-2026-10-10-12).
-    testImplementation "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"
-    testImplementation "com.mgmtp.a12.kernel:kernel-core-runtime-30-8:${kernelVersion}"
+    // The reserved-custom law observes the core validation mode absent from the modern API (SPEC-2026-10-10-12);
+    // the runtime service and kernel-core-runtime-31-1 it needs arrive through the facade's API scope above.
 
     // The classpath a COLD checker process gets, and it is a configuration rather than a filter over this
     // module's test runtime on purpose: H5-b measures standalone checking, so a kernel or Java-kit artifact on
@@ -155,11 +150,6 @@ dependencies {
     // would be a second population that could drift from the first. The edge is deliberately test-scoped:
     // :consistency is a standalone module and nothing shipping depends on it.
     testImplementation project(':consistency')
-
-    // Custom-field-type SPI (predefined types) — TEST-ONLY: lets the differential register a project type
-    // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the
-    // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).
-    testImplementation "com.mgmtp.a12.kernel:kernel-core-customfieldtype-api:28.2.0"
 
     // The kernel-probe artifact's published schema is checked against real output, the way :cli's schemas are —
     // an unchecked schema drifts, and this one is what an external consumer reads the artifact through.
@@ -425,7 +415,6 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.OperationHarvestStorageTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerCompositionSweepTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.ConformanceFrontierTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.FieldVariantStageLawsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.ElementPathStageLawsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.A12ParseTraceTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.A12ReportStreamTest'
@@ -780,8 +769,6 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerCompositionSweepTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.ConformanceFrontierTest')
-        includeTestsMatching(
-            'io.github.mbackschat.a12.dm.adapter.laws.FieldVariantStageLawsTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.ElementPathStageLawsTest')
         includeTestsMatching(

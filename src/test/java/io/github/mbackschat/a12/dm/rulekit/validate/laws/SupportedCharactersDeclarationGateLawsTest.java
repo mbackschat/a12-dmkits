@@ -195,10 +195,9 @@ class SupportedCharactersDeclarationGateLawsTest {
             builder.supportedCharacters(restriction);
         }
         String host = builder
-                .include("dlv", "delivery")
                 .rootGroup("Shop", s -> {
                     s.field("Reference", FieldKind.STRING);
-                    s.mount("Shipping", "dlv");
+                    s.mount("Shipping", "delivery");
                 })
                 .build().toJson();
         ModelResolver resolver = reference -> "delivery".equals(reference) ? deliveryProvider() : null;

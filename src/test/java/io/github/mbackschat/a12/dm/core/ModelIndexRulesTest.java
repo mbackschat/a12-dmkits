@@ -87,7 +87,6 @@ class ModelIndexRulesTest {
                         .errorCondition("[/Repairs/Hours] < 0").errorCode("HOURS_NEGATIVE").severity("ERROR")
                         .build());
         String claim = DocumentModelDraft.named("claim").locale("en_US")
-                .include("repairs", "repairs")
                 .rootGroup("Claim", c -> c.numberField("Damage", n -> n.fractionDigits(2)).mount("Work", "repairs"))
                 .build().toJson();
 

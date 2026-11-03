@@ -485,7 +485,7 @@ class A12ParseTraceTest {
     private fun mvkService(json: String): IMVK_Service {
         val expanded = KernelModelPreparation.expand(json, ReferenceResolvers.selfContained())
         val intern = ExternalDocumentModelSerializerService.getInternDocumentModel(expanded.model())
-        return DocumentModelService().getMvkServiceForModel(intern, expanded.variant(), IProblemReporter { })
+        return DocumentModelService().getMvkServiceForModel(intern, IProblemReporter { })
     }
 
     /** One parse of [condition] in [rule]'s context, with the failure recorded as A12's parser met it. */

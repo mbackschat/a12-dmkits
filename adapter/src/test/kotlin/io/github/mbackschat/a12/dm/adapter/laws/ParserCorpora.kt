@@ -21,15 +21,8 @@ internal object ParserCorpora {
 
     private val MAPPER = ObjectMapper()
 
-    /** The `a12-kernel-mm` metamodels, or null when the sibling checkout is absent. */
-    fun kernelMm(): Path? {
-        val candidates = buildList {
-            System.getProperty("a12.kernel.mm.dir")?.let { add(it) }
-            add("../a12-kernel-mm/documentModels")
-            add("../../a12-kernel-mm/documentModels")
-        }
-        return candidates.map { Path.of(it) }.firstOrNull { Files.isDirectory(it) }
-    }
+    /** The `a12-kernel-mm` metamodels at the kernel's model version ([KernelMmCorpus]), or null when absent. */
+    fun kernelMm(): Path? = KernelMmCorpus.migrated()
 
     /** The A12 Tools workspaces, whose mount path is machine-local and so supplied as a property. */
     fun workspaces(): Path? =

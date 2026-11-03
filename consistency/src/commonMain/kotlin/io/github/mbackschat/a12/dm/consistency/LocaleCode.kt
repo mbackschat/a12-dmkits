@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.a12LanguageTag
 import io.github.mbackschat.a12.dm.predicates.a12LocaleKey
 import io.github.mbackschat.a12.dm.predicates.a12LocaleKeyHasLanguage
 
@@ -22,7 +23,7 @@ internal fun localeKeyOrNull(code: String): String? {
         // caller reports it with the spellings the reader refuses, both being a model A12 will not use.
         return null
     }
-    return a12LocaleKey(code)
+    return a12LocaleKey(code)?.takeUnless(::lostByTheModelCopy)
 }
 
 /**
@@ -31,4 +32,16 @@ internal fun localeKeyOrNull(code: String): String? {
  * (KERNEL-FINDINGS KF649). A header demands nothing more of the parsed locale, so `de_CH_x` and `ée` declare
  * locales A12 builds.
  */
-internal fun headerLocaleKeyOrNull(code: String): String? = a12LocaleKey(code)?.takeIf(::a12LocaleKeyHasLanguage)
+internal fun headerLocaleKeyOrNull(code: String): String? =
+    a12LocaleKey(code)?.takeIf(::a12LocaleKeyHasLanguage)?.takeUnless(::lostByTheModelCopy)
+
+/**
+ * Whether kernel 31.1.1 builds no model naming the locale [key] names, though its parser reads it: the two JDK
+ * locales whose language tag carries a Unicode extension, `ja_JP_JP` and `th_TH_TH`. Its expand step copies the
+ * model through its serializer ([KERNEL-FINDINGS KF658]), and that copy fails on either wherever the model names it,
+ * as a header code or as a message entry's locale ([KERNEL-FINDINGS KF662], `adapter.laws.CheckerLocaleSpellingAgreementTest`).
+ */
+private fun lostByTheModelCopy(key: String): Boolean = a12LanguageTag(key) in EXTENDED_TAGS
+
+/** The language tags `java.util.Locale.toLanguageTag` writes for those two locales, the only ones carrying an extension. */
+private val EXTENDED_TAGS = setOf("ja-JP-u-ca-japanese-x-lvariant-JP", "th-TH-u-nu-thai-x-lvariant-TH")

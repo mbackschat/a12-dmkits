@@ -189,7 +189,6 @@ private fun unreadableEnvelope(kind: String, at: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
-    "`$kind` here is present and is not a JSON object, which A12's own reader refuses — the " +
-        "source never loads, and an OMITTED envelope is what A12 default-constructs instead",
+    "`$kind` here is present and is not a JSON object, which A12's own reader refuses, so the source never loads",
     at,
 )

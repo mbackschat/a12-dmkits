@@ -13,40 +13,40 @@ import kotlinx.serialization.json.contentOrNull
  * it names nothing is a law about THAT member, these two have codes of their own, and their resolution has
  * no short-name fallback.
  *
- * **TWO gates, and the second reads a NAME rather than a position.** A12 resolves the spelling positionally
- * from the group; one that does not land on a field stops the model from being BUILT, so no verdict about it
- * exists. One that does land keeps only that field's SHORT NAME, and the group must then carry a field of
- * that name — otherwise the member's own code (`GroupIndexAndSortReferenceLawsTest`, kernel 30.8.1,
- * 2026-09-12).
+ * **A12 keeps a NAME, not a position.** Its converter joins the spelling to the group's path and keeps only the
+ * last segment, and the group must then carry a field of that short name, otherwise the member's own code. Where
+ * the spelling lands does not matter on kernel 31.1.1, with three exceptions that leave no model: an absolute
+ * spelling and one climbing past the root, which the reader cannot resolve, and one landing on a GROUP, which the
+ * reader binds where a field is expected. Landing on nothing, or on a rule, is only a name; the reader's map holds
+ * fields and groups alone (KERNEL-FINDINGS KF653, `GroupIndexAndSortReferenceLawsTest`). On 30.8.1 a spelling that
+ * did not land on a field left no model.
  *
- * **The second gate is why "judge where the path landed" is wrong, and exactly one row separates them.**
- * With the short name `Sku` living at two levels, `../Sku` written in `/Order/Items` lands on `/Order/Sku` —
- * outside the group — and A12 ADMITS the model, because `/Order/Items` carries a `Sku` of its own. A checker
- * judging the landing rejects a model A12 takes. Every other row has disjoint short names per level, where
- * the two accounts agree, which is why that row had to be built rather than inferred.
- *
- * A third reading, that `..` is the special ingredient, is refuted separately: `Items/Sku` read from inside
- * `/Order/Items` names nothing and stops the build, while the same spelling read from `/Order` lands on a
- * real field and reaches the second gate.
+ * **Why "judge where the path landed" is wrong, and two rows separate them.** With the short name `Sku` living at
+ * two levels, `../Sku` written in `/Order/Items` lands on `/Order/Sku`, outside the group, and A12 admits the
+ * model because `/Order/Items` carries a `Sku` of its own. And `../../Sku` lands on nothing at all and is admitted
+ * the same way.
  *
  * **A THIRD gate reads the selected local field's TYPE**, and it lives here rather than in a file of its own
  * because it is the same lookup: `checkIndexField` returns at the first gate that fires, so a type verdict is
  * only ever reached by a reference that already resolved, and separating them would let a resolution fix read
  * as a type approval. The report still tells them apart — `CheckFamily.GROUP_ORDERING_FIELD_TYPE` is its own
- * constant. KF295's remote/local controls (2026-09-27, `FieldVariantStageLawsTest`) distinguish the original
- * referent from the surviving local field. A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` /
+ * constant. KF295's remote/local controls distinguish the referent the spelling lands on from the group's own
+ * field of that short name, the one whose type is judged. A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` /
  * `MVK_SORT_FIELD_NO_VALUE_VALIDATION` even as a direct child (`GroupOrderingFieldTypeLawsTest`).
  *
  * **The index member has a FOURTH gate in source that no stored A12 model can reach**, so it is excluded on a
  * cited dead path rather than carried as silence: `MVK_INDEX_FIELD_NO_TABLE_ENUM` needs
  * `IEnumerationType.getTableName()` to be present, and the only implementor of that interface returns
  * `Optional.empty()` unconditionally, is built by a constructor taking no table argument, and binds from a
- * DM-JSON shape with no table member at all — measured: the reader REFUSES a `tableName` outright. The sort
+ * DM-JSON shape with no table member at all — measured: kernel 31.1.1's reader passes over a `tableName`, leaving an
+ * enumeration with no values when it stands alone (KERNEL-FINDINGS KF653). The sort
  * member has no such gate to begin with, so the pair above is the whole family.
  *
- * **An ABSENT member is legal and a BLANK one is fatal** — the sibling slot families' "blank counts as
- * absent" law inverted as far as it goes. And the check runs on every group, not only a repeatable one, so a
- * non-repeatable group carrying an unresolvable index is refused just the same.
+ * **An ABSENT member is legal; an EMPTY one is not absent.** An empty index is joined to the group's own path, so
+ * the short name it keeps is the group's name, and A12 adds its basic sentence ([basicSentenceFindings]). An empty
+ * or missing sort `name` binds no reference and leaves no model. A blank sort name is an unfilled
+ * entry of A12's metamodel, so it draws `MVK_SORT_INFO_MISSING` beside the member's code and no name sentence. The
+ * check runs on every group, not only a repeatable one.
  *
  * **An ABSOLUTE spelling escapes every typed channel**: `ElementPathUtils.splitRelPath` raises "illegal
  * relPath" during conversion. The model is unusable, which is what this checker reports; that A12 reports it
@@ -80,7 +80,7 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
         // object, is the refusal.
         val name = (entry as? JsonObject)?.get("name")?.let { (it as? JsonPrimitive)?.contentOrNull }
         when {
-            name == null -> listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
+            name.isNullOrEmpty() -> listOf(unbuildable(group, "a `sortFields` entry here carries no `name`, or an empty one"))
             !judged.add(name) -> emptyList()
             // The name sentence is A12's metamodel reading of the list, which holds three entries; the
             // gates below read every entry ([KERNEL-FINDINGS KF589]).
@@ -92,8 +92,30 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
         }
     }
     return group.unsortableCarrier(entries) + group.repeatedSortField(entries, refusedNames) +
-        group.sortCapacityFindings(entries) + perEntry
+        group.sortCapacityFindings(entries) + group.unfilledSortEntries(entries) + perEntry
 }
+
+/**
+ * One `MVK_SORT_INFO_MISSING` for a group whose list holds, within capacity, a name A12's metamodel reads as
+ * unfilled: present, not empty, and blank as Java's `isBlank` reads it, so an em space counts and trimming would
+ * not. The metamodel requires a sort entry's field, order and priority filled together; two such entries still
+ * draw one. On 30.8.1 such a name left no model first (KERNEL-FINDINGS KF653).
+ */
+private fun TrackedDeclaration.unfilledSortEntries(entries: JsonArray): List<Finding> =
+    entries.take(SORT_CAPACITY).firstNotNullOfOrNull { entry ->
+        ((entry as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
+            ?.takeIf { it.isNotEmpty() && it.isA12Blank() }
+            ?.let {
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_SORT_INFO_MISSING",
+                    "a `sortFields` entry here names only blanks, which A12's metamodel reads as no field — a sort " +
+                        "entry names its field and its order together",
+                    path,
+                )
+            }
+    }.let(::listOfNotNull)
 
 /**
  * One finding per `sortFields` entry beyond the three A12's metamodel holds, which it refuses with no class:
@@ -178,9 +200,9 @@ private fun TrackedDeclaration.repeatedSortField(entries: JsonArray, refusedName
 }
 
 /**
- * Bind one ordering reference, then judge its surviving local field by short name (KF295).
+ * Bind one ordering reference, then judge the group's own field of the short name it lands on (KF295).
  *
- * @param outsideCode the member's own code when the landed short name selects no surviving local field.
+ * @param outsideCode the member's own code when the landed short name selects no field of the group's own.
  *     The two members do NOT share one — `MVK_INVALID_INDEX_FIELD` is named for the
  *     index and `MVK_INVALID_SORT_FIELD` for the sort, and each was measured on its own member rather than
  *     transferred from the other.
@@ -198,23 +220,19 @@ private fun TrackedFactBase.orderingFindings(
     if (written.startsWith("/")) {
         return listOf(unbuildable(group, "`$member` is `$written`, which A12 refuses as an illegal relative path"))
     }
-    // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
-    // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
-    val target = declarationAt(landed)
-    if (target == null || target.declaredKind != DeclaredKind.FIELD) {
-        return listOf(unbuildable(
-            group,
-            "`$member` is `$written`, which names no field at all — a blank or unresolvable one included, " +
-                "and a GROUP of that name does not count",
-        ))
+        ?: return listOf(unbuildable(group, "`$member` is `$written`, which climbs above the root group"))
+    // An empty spelling binds nothing; any other one landing on a group is bound where a field is expected.
+    if (written.isNotEmpty() && declarationAt(landed)?.declaredKind == DeclaredKind.GROUP) {
+        return listOf(unbuildable(group, "`$member` is `$written`, which names the group `$landed` where a field belongs"))
     }
-    // KF295's filter and twin controls require a surviving local cursor, after the original binding above.
+    // KF295's twin controls: the type gate reads the group's own field of this short name, not the landed one.
     val shortName = landed.substringAfterLast('/')
     // The short name A12 keeps is judged as a field name, in a sentence of its own that neither withholds the
     // later gates nor is withheld by them (KERNEL-FINDINGS KF589). The gates are A12's later check, which it
     // skips whenever an earlier one refused the model ([ORDERING_GATE_CODES]).
-    val sentence = if (statesName && shortName.refusedAsFieldName()) {
+    // A blank name is an unfilled metamodel field, which no pattern law judges.
+    val sentence = if (statesName && !shortName.isA12Blank() && shortName.refusedAsFieldName()) {
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
@@ -238,7 +256,7 @@ private fun TrackedFactBase.gateFinding(
     outsideCode: String,
     noValueValidationCode: String,
 ): Finding? {
-    val own = defaultVariantFieldAt("${group.path}/$shortName")
+    val own = fieldAt("${group.path}/$shortName")
     if (own != null) {
         // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
         // also the one it reports the type error against, so the finding is attached there and not at the
@@ -281,17 +299,18 @@ private fun TrackedFactBase.noValueValidationFinding(field: TrackedDeclaration, 
 }
 
 /**
- * Resolve [written] from [from] with no short-name fallback — `..` climbs, anything else descends.
+ * Resolve [written] from [from] with no short-name fallback — `..` climbs, anything else descends — or `null`
+ * when a `..` climbs above the root, which A12's reader cannot resolve.
  *
  * The condition resolver's model-wide fallback deliberately does not apply: a bare name here is looked up
  * among the group's own fields alone, so a field of the parent group is not reachable however the model
  * configures `fieldRefByShortNameAllowed`.
  */
-private fun resolvePositionally(from: String, written: String): String {
+private fun resolvePositionally(from: String, written: String): String? {
     val segments = from.split('/').filter { it.isNotEmpty() }.toMutableList()
     written.split('/').filter { it.isNotEmpty() }.forEach { step ->
         when (step) {
-            ".." -> if (segments.isNotEmpty()) segments.removeAt(segments.size - 1)
+            ".." -> segments.removeLastOrNull() ?: return null
             else -> segments += step
         }
     }

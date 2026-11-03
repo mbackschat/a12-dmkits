@@ -98,10 +98,19 @@ class EvalUnsupportedTimeZoneRefusalTest {
         assertEquals(0, json.path("diagnostics").size(), check::out);
     }
 
+    /** Kernel 31.1.1 reads an empty zone as the absent one, UTC (KERNEL-FINDINGS KF658), so every runtime verb evaluates. */
+    @Test
+    void anEmptyZoneEvaluatesAsTheUtcDefault(@TempDir Path dir) throws Exception {
+        Path doc = emptyDoc(dir);
+        for (CliTestSupport.Result result : runtimeResults(zoneModel(dir, ""), doc)) {
+            assertEquals(0, result.code(), () -> result.out() + result.err());
+        }
+    }
+
     @Test
     void allInterpreterVerbsRejectInvalidExplicitZonesInsteadOfEvaluatingUtc(@TempDir Path dir) throws Exception {
         Path doc = emptyDoc(dir);
-        for (String zone : List.of("", "   ", "Europe/Berln")) {
+        for (String zone : List.of("   ", "Europe/Berln")) {
             Path model = zoneModel(dir, zone);
             for (CliTestSupport.Result result : runtimeResults(model, doc)) {
                 assertZoneInvalid(result, zone);

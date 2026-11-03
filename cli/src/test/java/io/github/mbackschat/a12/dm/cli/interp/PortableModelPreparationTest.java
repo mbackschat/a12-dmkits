@@ -21,7 +21,6 @@ class PortableModelPreparationTest {
                 .rootGroup("Included", group -> group.field("Value", FieldKind.STRING))
                 .build().toJson();
         String entry = DocumentModelDraft.named("entry").locale("en_US")
-                .include("included", "included")
                 .rootGroup("Entry", group -> group.mount("Mount", "included"))
                 .build().toJson();
         String unused = DocumentModelDraft.named("unused").locale("en_US")

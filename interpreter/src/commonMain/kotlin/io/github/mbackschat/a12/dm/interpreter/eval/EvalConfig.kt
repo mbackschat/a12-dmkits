@@ -34,8 +34,8 @@ class EvalConfig(
      *  document's model-derived built-in check for low-level [Interpreter] consumers. */
     val indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
     /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — drives
-     *  datetime instant math, stateful `DifferenceInDays` calendar steps, wall-day AddDays landings, and
-     *  legacy-calendar Date construction (KERNEL-FINDINGS §6). */
+     *  datetime instant math, wall-clock `DifferenceInDays` counts and Add landings, and the instant a
+     *  constructed Date stands for (KERNEL-FINDINGS KF665). */
     val timeZone: ModelTimeZone = ModelTimeZone.UTC,
     /** The consumer-supplied predefined-type registry (the kernel's `IPredefinedType` client SPI) — the
      *  validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")`. An unregistered type name →

@@ -9,19 +9,29 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageSuffix
 
-/** Membership precedes value/category checks; form-position suffixes ask only for a field (KF335, KF501). */
+/**
+ * Membership precedes value/category checks; the form-line suffix asks only for a field (KF335, KF501). Kernel
+ * 31.1.1 dropped the `Vordruckname` suffix from its parameter grammar, so `X.Vordruckname` is an ordinary dotted
+ * name that names nothing (KERNEL-FINDINGS KF657). One exception to that order: on 31.1.1 a field parameter with an
+ * empty category name is refused for the empty name before membership, before keyed membership and before a
+ * defective key, while a named category on the same field still meets each of those gates (KF450). A keyed GROUP
+ * keeps its key's class first, which is unmeasured with a category suffix.
+ */
 internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Field, element: TrackedDeclaration): MessageCompletion {
     if (parameter.entity.ruleGroup) return MessageCompletion.Refused("INVALID_PARAMETER")
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val path = (resolveMessageEntity(group, parameter.entity.written.replace("'", ""), element.origin)
         as? Reference.Resolved)?.path ?: return MessageCompletion.Declined
-    if (parameter.suffix == MessageSuffix.FORM_LINE || parameter.suffix == MessageSuffix.FORM_NAME) {
+    if (parameter.suffix == MessageSuffix.FORM_LINE) {
         return if (declarationAt(path)?.declaredKind == DeclaredKind.GROUP)
             MessageCompletion.Refused("INVALID_FIELD_IN_PARAMETER") else MessageCompletion.Accepted
     }
     // A keyed GROUP in the field position is refused by the key's own class, whatever the condition reads (KF562).
     if (parameter.key != null && declarationAt(path)?.declaredKind == DeclaredKind.GROUP) {
         return MessageCompletion.Refused("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
+    }
+    if (parameter.suffix == MessageSuffix.CATEGORY && parameter.category == null) {
+        return MessageCompletion.Refused("NO_CATEGORY")
     }
     val membership = parameter.key?.let { messageKeyDefect(path, it, element) }
         ?: if (parameter.key == null && path !in entitiesReadBy(element)) MessageCompletion.Refused("INVALID_FIELD")

@@ -121,9 +121,7 @@ object CorpusShrinkSupport {
     }
 
     /** The consult-only kernel-mm corpus root (`-Da12.kernel.mm.dir` or the sibling clone), null when absent. */
-    fun locateKernelMm(): Path? = listOfNotNull(
-        System.getProperty("a12.kernel.mm.dir"), "../a12-kernel-mm/documentModels", "../../a12-kernel-mm/documentModels",
-    ).map { Path.of(it) }.firstOrNull { Files.isDirectory(it) }
+    fun locateKernelMm(): Path? = KernelMmCorpus.migrated()
 
     private fun indent(s: String) = s.lines().joinToString("\n") { "    $it" }
 

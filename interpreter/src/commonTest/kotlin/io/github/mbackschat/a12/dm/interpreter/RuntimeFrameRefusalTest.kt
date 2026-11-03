@@ -17,8 +17,8 @@ class RuntimeFrameRefusalTest {
         "complete" to model(),
         "modelVersion absent" to model(header = """"id":"policy","locales":[{"code":"en_US"}]"""),
         "modelInfo absent" to model(info = ""),
-        "locales absent" to model(header = """"id":"policy","modelVersion":"28.4.0""""),
-        "locales null" to model(header = """"id":"policy","modelVersion":"28.4.0","locales":null"""),
+        "locales absent" to model(header = """"id":"policy","modelVersion":"29.4.0""""),
+        "locales null" to model(header = """"id":"policy","modelVersion":"29.4.0","locales":null"""),
         "a null supported character" to model(config = """"modelConfig":{"supportedCharacters":["a-z",null]},"""),
     )
 
@@ -82,7 +82,7 @@ class RuntimeFrameRefusalTest {
     }
 
     private fun model(
-        header: String = """"id":"policy","modelVersion":"28.4.0","locales":[{"code":"en_US"}]""",
+        header: String = """"id":"policy","modelVersion":"29.4.0","locales":[{"code":"en_US"}]""",
         info: String = """"modelInfo":{"name":"policy"},""",
         config: String = "",
     ) = """

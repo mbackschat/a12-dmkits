@@ -48,7 +48,7 @@ tools="$(post tools/list "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\
 echo "$tools" | grep -q '"dm.model.read"' || fail "the tool surface is missing dm.model.read"
 
 echo "==> 3/4 tools/call — a model carried in, a verdict back"
-model='{"header":{"id":"smoke","modelVersion":"28.4.0","locales":["en_US"]},"rootGroup":{"name":"Smoke","groups":[],"fields":[]}}'
+model='{"header":{"id":"smoke","modelVersion":"29.4.0","locales":["en_US"]},"rootGroup":{"name":"Smoke","groups":[],"fields":[]}}'
 call="$(post tools/call "$(printf '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"dm.model.read","arguments":{"op":"check","model":%s},%s}}' \
   "$(printf '%s' "$model" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" "$META")" dm.model.read)" \
   || fail "tools/call did not answer"

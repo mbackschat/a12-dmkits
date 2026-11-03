@@ -576,10 +576,12 @@
           "kernelPhase": "CHECK",
           "replacement": {
             "contains": [
-              "MVK_INVALID_ENTITY",
-              "MVK_INVALID_WILDCARD"
+              "MVK_INVALID_WILDCARD",
+              "RK_CHILD_NAME_DUPLICATE"
             ],
-            "absent": []
+            "absent": [
+              "MVK_INVALID_ENTITY"
+            ]
           }
         }
       ]
@@ -740,7 +742,7 @@
           "assertion": "CODE_SET",
           "at": "/Policy/Probe",
           "expected": [
-            "MVK_NO_GROUPS_ALLOWED"
+            "MVK_NO_WILDCARD"
           ],
           "modelMiddle": "NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0",
           "modelSha256": "042344b582cfd99984219652581173293fb6d0e435660e823ccb583fb04eccfb",
@@ -3691,41 +3693,6 @@
           ],
           "modelMiddle": "TotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"roundingMode\":\"RoundUp\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Subtotal]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see\\tit",
           "modelSha256": "105a599d8f1bc535d795d4a08bb4fb47f7f89a631827d12f61f5c7308e01be47",
-          "kernelPhase": "CHECK"
-        }
-      ]
-    },
-    {
-      "prefix": "        {\"header\":{\"id\":\"checkout\",\"locales\":[{\"code\":\"en_US\"}]},\n         \"content\":{\"modelRoot\":{\"rootGroups\":[\n          {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Checkout\",\"Group\":{\"elements\":[\n            {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Subtotal\",\"Field\":{\"fieldType\":{\"type\":\"NumberType\",\n              \"NumberType\":{\"maxFractionalDigits\":2}}}},\n            {\"type\":\"Field\",\"id\":\"f1\",\"name\":\"Discount\",\"Field\":{\"fieldType\":{\"type\":\"NumberType\",\n              \"NumberType\":{\"maxFractionalDigits\":2}}}},\n            {\"type\":\"Field\",\"id\":\"f2\",\"name\":\"Total\",\"Field\":{\"fieldType\":{\"type\":\"NumberType\",\n              \"NumberType\":{\"maxFractionalDigits\":2}}}},\n            {\"type\":\"Field\",\"id\":\"f3\",\"name\":\"Tax\",\"Field\":{\"fieldType\":{\"type\":\"NumberType\",\n              \"NumberType\":{\"maxFractionalDigits\":2}}}},\n            {\"type\":\"Field\",\"id\":\"f4\",\"name\":\"Coupon\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n            {\"type\":\"Field\",\"id\":\"f7\",\"name\":\"Label\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n            {\"type\":\"Field\",\"id\":\"f8\",\"name\":\"Tier\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n              \"EnumerationType\":{\"values\":[{\"value\":\"GOLD\"},{\"value\":\"SILVER\"}]}}}},\n            {\"type\":\"Group\",\"id\":\"g1\",\"name\":\"Lines\",\"Group\":{\"repeatability\":5,\"indexFieldName\":\"Sku\",\"elements\":[\n              {\"type\":\"Field\",\"id\":\"f5\",\"name\":\"Sku\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n              {\"type\":\"Field\",\"id\":\"f6\",\"name\":\"Quantity\",\"Field\":{\"fieldType\":{\"type\":\"NumberType\",\n                \"NumberType\":{\"maxFractionalDigits\":0}}}}\n            ]}},\n            {\"type\":\"Group\",\"id\":\"g2\",\"name\":\"Parcels\",\"Group\":{\"repeatability\":3,\"indexFieldName\":\"Kind\",\"elements\":[\n              {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Kind\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n                \"EnumerationType\":{\"values\":[{\"value\":\"BOX\"},{\"value\":\"ENVELOPE\"}]}}}}\n            ]}},\n{\"type\":\"Computation\",\"id\":\"cTotalCalc\",\"name\":\"TotalCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Total\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Discount]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]",
-      "suffix": "}}\n          ]}}\n         ]}}}",
-      "rows": [
-        {
-          "id": "CalculationMemberWithholdingTest.aCircleThroughAFilteredComputationIsNoCycle#1",
-          "assertion": "CODE_SET",
-          "a12Only": true,
-          "expected": [
-            "MVK_ERROR_CALC_CYCLE"
-          ],
-          "modelMiddle": "}},\n{\"type\":\"Computation\",\"id\":\"cDiscountCalc\",\"name\":\"DiscountCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Discount\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Total]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]",
-          "modelSha256": "8cbbb00c57689ca69742079f95510a1444f53f0b379e7ab88f3ea7fcf49f8149",
-          "kernelPhase": "CHECK"
-        },
-        {
-          "id": "CalculationMemberWithholdingTest.aCircleThroughAFilteredComputationIsNoCycle#2",
-          "assertion": "CODE_SET",
-          "a12Only": true,
-          "expected": [],
-          "modelMiddle": "}},\n{\"type\":\"Computation\",\"id\":\"cDiscountCalc\",\"name\":\"DiscountCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Discount\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Total]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}],\"variantFilter\":{\"filterType\":\"ONLY\",\"variants\":[\"premium\"]}",
-          "modelSha256": "4057efaa95d915abf029dab8a9802c440895b305a6198a4fe4abb1bce2c148cd",
-          "kernelPhase": "CHECK"
-        },
-        {
-          "id": "CalculationMemberWithholdingTest.aCircleThroughAFilteredComputationIsNoCycle#3",
-          "assertion": "CODE_SET",
-          "a12Only": true,
-          "expected": [],
-          "modelMiddle": ",\"variantFilter\":{\"filterType\":\"ONLY\",\"variants\":[\"premium\"]}}},\n{\"type\":\"Computation\",\"id\":\"cDiscountCalc\",\"name\":\"DiscountCalc\",\"Computation\":{\n              \"computedFieldRelPath\":\"../Discount\",\"computationAlternatives\":[{\"precondition\":\"FieldFilled(Coupon)\",\"operation\":\"[Total]\"}],\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see it\"}]",
-          "modelSha256": "67688da858c786069ad0cf8a3fea80db9f359fff79fb55debe37ca5e4dfa0f4e",
           "kernelPhase": "CHECK"
         }
       ]

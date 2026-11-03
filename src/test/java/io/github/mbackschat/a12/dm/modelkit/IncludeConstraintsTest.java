@@ -38,7 +38,7 @@ class IncludeConstraintsTest {
         for (String loc : locales) {
             b.locale(loc);
         }
-        return b.include("address", "address")
+        return b
                 .rootGroup("Order", o -> o.field("OrderRef", FieldKind.STRING).mount("ShipTo", "address"))
                 .build().toJson();
     }

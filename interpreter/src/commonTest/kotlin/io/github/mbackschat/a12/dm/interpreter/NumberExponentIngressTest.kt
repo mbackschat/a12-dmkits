@@ -7,8 +7,9 @@ import kotlin.test.assertFailsWith
 /**
  * A number literal's exponent at the Document boundary (KERNEL-FINDINGS KF564). A12's converter is
  * `new BigDecimal(String)`, which accepts a literal exactly when its scale (fraction length minus exponent) fits
- * 32 bits; A12's reader parses every UNQUOTED token the same way before it looks at the model, so one without such
- * a scale makes the whole Document unreadable wherever it stands. The kernel rows are
+ * 32 bits; A12's reader parses every UNQUOTED token before it looks at the model, with Jackson 3's fast parser, whose
+ * range is the same less the scale `Int.MIN_VALUE` (kernel 31.1.1), so a token outside it makes the whole Document
+ * unreadable wherever it stands. The kernel rows are
  * `adapter … NumberExponentEdgeDiffTest`; this file locks the reader on every platform.
  *
  * Own domain (a sales order).
@@ -22,7 +23,7 @@ class NumberExponentIngressTest {
 
     @Test
     fun aZeroAtEveryThirtyTwoBitScaleIsStoredAsZero() {
-        for (literal in listOf("\"0e2147483648\"", "\"-0e2147483648\"", "\"0.0e2147483649\"", "0e99999999", "0e2147483648")) {
+        for (literal in listOf("\"0e2147483648\"", "\"-0e2147483648\"", "\"0.0e2147483649\"", "0e99999999", "0e2147483647", "0.0e2147483648")) {
             assertEquals("""{"Order":{"Items":[{"Qty":0}]}}""", stored("""{"Order":{"Items":{"Qty":$literal}}}"""), literal)
         }
     }
@@ -38,6 +39,7 @@ class NumberExponentIngressTest {
     fun anUnquotedTokenWithoutAThirtyTwoBitScaleMakesTheDocumentUnreadableWhereverItStands() {
         val positions = linkedMapOf(
             "a number field" to """{"Order":{"Items":{"Qty":0e2147483649}}}""",
+            "a number field, at the scale only the converter admits" to """{"Order":{"Items":{"Qty":0e2147483648}}}""",
             "a string field" to """{"Order":{"Ref":0e2147483649}}""",
             "an unknown key" to """{"Order":{"Ref":"a","Discount":0e2147483649}}""",
             "inside an unknown subtree" to """{"Order":{"Discount":{"Tiers":[1,{"Rate":-1.5e-2147483647}]}}}""",
@@ -45,7 +47,7 @@ class NumberExponentIngressTest {
             "a repetition that is no object" to """{"Order":{"Items":[{"Qty":1},0e2147483649]}}""",
             "inside an object at a field position" to """{"Order":{"Ref":{"Amount":0e2147483649}}}""",
             "the root id" to """{"id":0e2147483649,"Order":{}}""",
-            "inside a container at the root id" to """{"id":[0e2147483649],"Order":{}}""",
+            "inside a container at the root id" to """{"id":[{"Rate":0e2147483649}],"Order":{}}""",
         )
         for ((position, json) in positions) {
             val error = assertFailsWith<DocumentInputError>(position) { documents.readDocument(json) }
@@ -86,7 +88,7 @@ class NumberExponentIngressTest {
     private companion object {
         val MODEL = """
             {
-              "header":{"id":"sales-orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "header":{"id":"sales-orders","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
               "content":{"modelInfo":{"name":"sales-orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",

@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,7 +19,7 @@ import java.util.Optional;
  *                    repeated computed field
  * @param outcome     {@code value} | {@code cleared} | {@code error}
  * @param value       the computed value when {@code outcome} is {@code value} (or a partial on {@code error})
- * @param repetitions the target cell's repetition indices ({@code IComputedFieldInstance.getRepetitions()}),
+ * @param repetitions the target cell's repetition indices (the kernel pointer's {@code repetitionIndexes()}),
  *                    one per path part — what makes a repeated computed field's rows distinguishable. Dropping
  *                    these is why the kernel-side compute projection published four identical {@code path}s for
  *                    four rows, associable only by list position; the kernel had them all along
@@ -29,11 +28,5 @@ public record ComputedField(String path, String outcome, Optional<String> value,
 
     public ComputedField {
         repetitions = repetitions == null ? List.of() : List.copyOf(repetitions);
-    }
-
-    /** The instance whose kernel repetitions arrive as the raw {@code int[]} of {@code getRepetitions()}. */
-    public static ComputedField of(String path, String outcome, Optional<String> value, int[] repetitions) {
-        return new ComputedField(path, outcome, value,
-                repetitions == null ? List.of() : Arrays.stream(repetitions).boxed().toList());
     }
 }

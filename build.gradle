@@ -75,12 +75,12 @@ tasks.withType(JavaCompile).configureEach {
 
 // `ext` (not `def`) so subprojects can read the pin — the CLI bakes it into version.properties for
 // the `--version` / `manifest.version` surface (the kernel this release was built against).
-ext.kernelVersion = '30.8.1'
+ext.kernelVersion = '31.1.1'
 // The A12 Tools distribution that ships this kernel — the human-facing release tag (the kernel semver is
 // the machine compatibility key; this is its "A12 Tools <quarter>" label, RELEASE-SPEC). Single source of
 // truth: the CLI bakes it into the version surface, and a drift guard pins every README/plugin mention to
 // it. Bump it in lockstep with `kernelVersion` (KERNEL-UPGRADE).
-ext.a12Distribution = '2025.06-ext5'
+ext.a12Distribution = '2026.06-ext1'
 
 dependencies {
     // Root is a PURE AGGREGATOR + the cross-kit integration-test host (kernel-decoupling Stage 4, PROPOSAL
@@ -106,7 +106,9 @@ dependencies {
     // kernel-oracle tests (BoundModel.ofJson / RuleValidator.check get KERNEL_CONFIRMED); kernel-md-facade
     // gives the 8 tests that read kernel types directly (IDocumentModel, the serializer) their imports. The
     // non-leaking pattern (PROPOSAL §3a): rootTest → adapterMain → {kit}Main is acyclic.
-    testImplementation project(':adapter')
+    // …and its test fixtures for the kernel-expansion oracle (KernelExpansionFixture): the backend's own expansion
+    // port, for the root tests that assert what the KERNEL expands a model to.
+    testImplementation project(':adapter'), testFixtures(project(':adapter'))
     testImplementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
     // A few root tests read/emit DM-JSON directly → Jackson at test scope (the kits expose it only as
@@ -1086,9 +1088,8 @@ tasks.register('vocabularyGuardTest', Test) {
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
-    filter {
-        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
-    }
+    filter.includeTestsMatching('io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest')
+            .includeTestsMatching('io.github.mbackschat.a12.dm.rulekit.validate.laws.DateRangePairCountClaimTest')
     guardInputs(it, [
             'the derived vocabulary': file('docs/TEMPORAL-FORMAT-VOCABULARY.md'),
             // Every registered consumer is read at runtime; undeclared, dropping a format from one would leave

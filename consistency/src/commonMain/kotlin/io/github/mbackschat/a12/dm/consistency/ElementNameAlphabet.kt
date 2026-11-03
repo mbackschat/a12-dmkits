@@ -4,7 +4,6 @@ package io.github.mbackschat.a12.dm.consistency
 internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclaration): List<Finding> {
     val kind = element.declaredKind
     if (kind != DeclaredKind.GROUP && kind != DeclaredKind.FIELD || element.name.isEmpty()) return emptyList()
-    if (kind == DeclaredKind.FIELD && element.body.deletesAtDefaultVariant()) return emptyList()
     val root = element.path == "/${element.name}"
     // A12's entity walk stops at a refused path and never descends (KERNEL-FINDINGS KF580), so nothing beneath one
     // states a path or group class of its own; the field-name gates are not part of that walk and still speak.

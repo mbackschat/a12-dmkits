@@ -57,7 +57,6 @@ class IncludeEvalDefaultPathTest {
     /** A policy mounting benefits at /Policy/Cover, with a BASE rule over the mounted Coverage field. */
     private static String policyWithBaseRule(ModelResolver resolver) {
         String policy = DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p
                         .field("PolicyNo", FieldKind.STRING)
                         .mount("Cover", "benefits"))
@@ -100,7 +99,6 @@ class IncludeEvalDefaultPathTest {
     /** A policy mounting the benefits sub-model at /Policy/Cover (no base rule). */
     private static String policyMountingBenefitsAtCover() {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p.field("PolicyNo", FieldKind.STRING).mount("Cover", "benefits"))
                 .build().toJson();
     }
@@ -171,7 +169,6 @@ class IncludeEvalDefaultPathTest {
     void anIncludedModelsOwnRelativeRuleEvaluatesOnTheDefaultPathLikeTheKernel(@TempDir Path dir) throws Exception {
         String benefits = benefitsWithRule();
         String policy = DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p.field("PolicyNo", FieldKind.STRING).mount("Cover", "benefits"))
                 .build().toJson();
         Path model = workspace(dir, policy, benefits);

@@ -521,7 +521,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json
   "diagnostics" : [ {
     "severity" : "ERROR",
     "source" : "KERNEL",
-    "summary" : "the kernel could not build this model: Typedefinition with id 'Currency' could not be found.",
+    "summary" : "Field with path '/Subscription/Billing/SetupFee': Typedefinition with id 'Currency' could not be found.",
     "where" : { }
   } ],
   "written" : false
@@ -849,10 +849,10 @@ dmtool -m /tmp/struct2-ext/order.dm.json \
 }
 ```
 
-→ the subtree (and its own rule) moved into `billing-address.dm.json`; the base now **mounts** it at the same path. Two files, the base slimmed to a `modelAlias`:
+→ the subtree (and its own rule) moved into `billing-address.dm.json`; the base now **mounts** it at the same path. Two files, the base slimmed to a mount whose `includeConfig` names the sub-model:
 
 ```bash
-ls /tmp/struct2-ext && jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json
+ls /tmp/struct2-ext && jq -c '[.. | objects | select(has("includeConfig")) | .includeConfig.reference]' /tmp/struct2-ext/order.dm.json
 ```
 
 ```output
@@ -883,14 +883,13 @@ dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address \
   "outcome": "applied",
   "ok": true,
   "changed": {
-    "inlined": "billing-address",
-    "reference": "billing-address"
+    "inlined": "billing-address"
   }
 }
 ```
 
 ```bash
-jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json \
+jq -c '[.. | objects | select(has("includeConfig")) | .includeConfig.reference]' /tmp/struct2-ext/order.dm.json \
   && dmtool -m /tmp/struct2-ext/order.dm.json model check | jq -c '{valid}'
 ```
 
@@ -903,7 +902,7 @@ jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ex
 
 ## include — mount another model's content
 
-An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `-w/--workspace`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
+An include mounts another model's content as a group (`--name`) under `--parent`; the mount names that model by its id (`--reference`), which is the include's only identity. The referenced model is resolved by its header id from `-w/--workspace`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
 
 ```bash
 cp examples/models/subscription.dm.json /tmp/struct2-sub.json
@@ -939,7 +938,7 @@ Now `include add` resolves `catalog` from `-w/--workspace` and mounts it under `
 ```bash
 dmtool -m /tmp/struct2-sub.json \
   include add \
-  --alias catalog --reference catalog \
+  --reference catalog \
   --parent /Subscription --name Catalog \
   -w /tmp/struct2-lib
 ```
@@ -954,7 +953,6 @@ dmtool -m /tmp/struct2-sub.json \
   "summary" : "added include catalog",
   "changed" : {
     "added" : "catalog",
-    "reference" : "catalog",
     "mountedAt" : "/Subscription/Catalog"
   },
   "diagnostics" : [ ],
@@ -980,7 +978,6 @@ dmtool -m /tmp/struct2-sub.json include read
   "summary" : "read 1 include(s)",
   "data" : {
     "includes" : [ {
-      "alias" : "catalog",
       "reference" : "catalog"
     } ]
   },
@@ -989,7 +986,7 @@ dmtool -m /tmp/struct2-sub.json include read
 }
 ```
 
-→ `data.includes` carries the `alias → reference` pair the header declares. `include remove <alias>` then drops the header reference *and* its mounts:
+→ `data.includes` names each included model. `include remove <reference>` then drops the header reference *and* its mounts:
 
 ```bash
 dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
@@ -1146,7 +1143,7 @@ dmtool -m /tmp/struct2-exp.json export
 ```
 
 ```output
-# Model: subscription (v28.4.0)
+# Model: subscription (v29.4.0)
 
 - fields: 8
 - groups: 3 (1 repeatable)

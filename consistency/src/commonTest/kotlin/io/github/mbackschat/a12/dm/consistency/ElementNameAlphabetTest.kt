@@ -23,7 +23,7 @@ class ElementNameAlphabetTest {
     private fun codes(groupName: String, fieldName: String = "Price"): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"${'$'}GROUP","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"${'$'}FIELD","Field":{"fieldType":{"type":"StringType"}}}
@@ -37,7 +37,7 @@ class ElementNameAlphabetTest {
     private fun nestedCodes(groupName: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"${'$'}GROUP","Group":{"elements":[
@@ -207,7 +207,7 @@ class ElementNameAlphabetTest {
         val findings = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"xmlAddress","Group":{"elements":[
@@ -232,7 +232,7 @@ class ElementNameAlphabetTest {
         val codes = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"xmlCatalogé","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Title","Field":{"fieldType":{"type":"StringType"}}},
@@ -260,7 +260,7 @@ class ElementNameAlphabetTest {
             actual["a RULE named `$name`"] = checkRead(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -293,7 +293,7 @@ class ElementNameAlphabetTest {
             val finding = checkRead(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"$group","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"$field","Field":{"fieldType":{"type":"StringType"}}}

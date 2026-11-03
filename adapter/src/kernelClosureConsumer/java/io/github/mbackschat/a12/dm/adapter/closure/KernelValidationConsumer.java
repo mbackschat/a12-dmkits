@@ -7,14 +7,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument;
-import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
+import com.mgmtp.a12.kernel.md.combination.a12internal.CombinationModelService;
+import com.mgmtp.a12.kernel.md.combination.a12internal.CombinationModelService.CombinationModelExpandParams;
+import com.mgmtp.a12.kernel.md.combination.a12internal.IUnexpandedModelResolver;
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.UpdateAction;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.FieldInstanceV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.GroupInstanceV2;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
-import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
@@ -40,7 +43,7 @@ public final class KernelValidationConsumer {
               "header": {
                 "id": "closure-probe",
                 "modelType": "document",
-                "modelVersion": "28.4.0",
+                "modelVersion": "29.4.0",
                 "locales": [ { "code": "en_US" } ],
                 "labels": [],
                 "annotations": [],
@@ -99,12 +102,9 @@ public final class KernelValidationConsumer {
     public static void main(String[] args) throws Exception {
         IDocumentModel model = preparedModel();
         IDocumentModelResolver resolver = ignored -> model;
-        DocumentServiceFactory documentServices = new DocumentServiceFactory(resolver);
-        IDocumentFactory documents = documentServices.createDocumentFactory();
-        IDocument document = documents.createDocument("closure-probe");
-        document.addEntityInstance(documents.createGroupInstance("/Closure", new int[] {1}));
-        document.addEntityInstance(documents.createFieldInstance("/Closure/Flag", new int[] {1, 1}, "true"));
-        DocumentV2 immutable = documentServices.createDocumentV1V2Converter().ofDocumentV1(document);
+        DocumentV2 immutable = DocumentV2.empty("closure-probe").withBatchUpdates(List.of(
+                UpdateAction.putGroup(DocumentPointer.of("/Closure", List.of(1)), GroupInstanceV2.empty()),
+                UpdateAction.putField(DocumentPointer.of("/Closure/Flag", List.of(1, 1)), FieldInstanceV2.ofValue("true"))));
         IDocumentRtService runtime = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         IDocumentValidationResult result =
                 runtime.validateFull(immutable, DocumentProcessingConfig.builder(Locale.US).build());
@@ -118,10 +118,9 @@ public final class KernelValidationConsumer {
     private static IDocumentModel preparedModel() throws Exception {
         DocumentModelServiceFactory factory = new DocumentModelServiceFactory();
         IDocumentModel model = factory.createDocumentModelSerializer().deserialize(new StringReader(MODEL));
-        factory.createDocumentModelService().expand(model, (IDocumentModelReferenceResolver) reference -> {
+        return CombinationModelService.expand(model, (IUnexpandedModelResolver) reference -> {
             throw new IllegalStateException("self-contained closure probe requested " + reference);
-        });
-        return model;
+        }, CombinationModelExpandParams.builder().build()).orElseThrow();
     }
 
     private static IDocumentDynamicServiceConfig dynamicConfig() {
@@ -142,11 +141,6 @@ public final class KernelValidationConsumer {
             @Override
             public IModelCodeCache getCache() {
                 return cache;
-            }
-
-            @Override
-            public Optional<String> getVariant() {
-                return Optional.empty();
             }
 
             @Override

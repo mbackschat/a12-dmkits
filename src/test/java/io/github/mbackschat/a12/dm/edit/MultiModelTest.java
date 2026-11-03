@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -66,7 +67,7 @@ class MultiModelTest {
         EditSession s = EditSession.read(catalogStructure(), resolver);
 
         // include the shared price list at TWO locations
-        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");   // declare + mount #1
+        s.mount("/Catalog", "Retail", "pricelist");   // declare + mount #1
         s.include("pricelist").mount("/Catalog", "Wholesale");          // mount #2 — same include, second place
 
         // author rules over the mounted fields (each mount's own copy) + the type-def field
@@ -95,6 +96,6 @@ class MultiModelTest {
         String json = s.toJson();
         assertTrue(json.contains("RetailCap") && json.contains("WholesaleCap") && json.contains("SkuFormat"),
                 "the base model's rules over the included + type-def fields all landed");
-        assertTrue(json.contains("\"modelAlias\" : \"pricelist\""), "the include stays separate (not inlined)");
+        assertFalse(ModelDocument.read(json).mountsOfInclude("pricelist").isEmpty(), "the include stays separate (not inlined)");
     }
 }

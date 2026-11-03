@@ -128,7 +128,7 @@ class OperatorGateOrderTest {
 
     /** The claims policy of the laws test, reduced to the elements its gate rows read. */
     private fun model(condition: String, errorTarget: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -160,7 +160,7 @@ class OperatorGateOrderTest {
             "text in a rounding slot" to ("0 < RoundUpValue(Reference, 2)" to "MVK_NO_NUMBER"),
             "an argument too many" to ("FieldFilled(Reference, Score)" to "MVK_PARAMSIZE_INVALID1"),
             "a filtered group in a count" to
-                ("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED"),
+                ("NumberOfFilledGroups(Claims* Having [Claims/Amount] > 0) > 0" to "MVK_NO_GROUPS_ALLOWED"),
             "text in a date slot" to ("DifferenceInDays(Reference, Reference) > 0" to "MVK_NO_DATE"),
             "text ordered against a number" to ("[Reference] > 5" to "MVK_INVALID_TYPE_FOR_COMPARISON"),
             "two scales held equal" to ("[Premium] == [Score]" to "MVK_INVALID_COMPARE_DEC_PLACES"),

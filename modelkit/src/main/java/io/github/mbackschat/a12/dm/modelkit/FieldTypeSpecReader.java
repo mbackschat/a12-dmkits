@@ -77,9 +77,10 @@ final class FieldTypeSpecReader {
         }
         List<FieldTypeSpec.EnumCategory> categories = new ArrayList<>();
         for (JsonNode category : config.path("categories")) {
+            String name = category.path(DmKeys.NAME).asText();
             List<String> classifications = new ArrayList<>();
-            category.path(DmKeys.VALUES).forEach(value -> classifications.add(value.asText()));
-            categories.add(new FieldTypeSpec.EnumCategory(category.path(DmKeys.NAME).asText(), classifications,
+            category.path(DmKeys.VALUES).forEach(token -> classifications.add(categoryToken(name, token)));
+            categories.add(new FieldTypeSpec.EnumCategory(name, classifications,
                     text(category, DmKeys.DESCRIPTION)));
         }
         Map<String, String> messages = localized(config.path(DmKeys.ERROR_MESSAGE));
@@ -87,6 +88,19 @@ final class FieldTypeSpecReader {
         return new FieldTypeSpec.EnumSpec(values, categories,
                 A12Booleans.isSet(config.path("alphabeticalSorting")), fallbackMessage, messages,
                 text(config, "sValue"));
+    }
+
+    /**
+     * One category token as A12 reads it (KERNEL-FINDINGS KF660): a scalar as its text, and {@code null} as no token,
+     * which A12 judges as it judges a blank one, so it is read as the empty token rather than the text {@code "null"}.
+     * An object or an array leaves the model unbuilt, so it is refused rather than read as {@code ""}.
+     */
+    private static String categoryToken(String category, JsonNode token) {
+        if (token.isContainerNode()) {
+            throw new IllegalArgumentException("the category '" + category + "' holds a token that is an object or an "
+                    + "array, and A12 reads each category token as a string: " + token);
+        }
+        return token.isNull() ? "" : token.asText();
     }
 
     private static Map<String, String> localized(JsonNode entries) {

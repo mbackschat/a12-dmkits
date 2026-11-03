@@ -56,7 +56,7 @@ class ComparisonConstantTest {
 
     /** An order desk: one field of each kind the rows compare, and the rule under test. */
     private fun model(condition: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"order-constants","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"order-constants","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}},

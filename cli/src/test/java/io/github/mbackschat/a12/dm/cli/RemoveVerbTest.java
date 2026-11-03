@@ -97,12 +97,11 @@ class RemoveVerbTest {
         Files.writeString(dir.resolve("catalog.dm.json"),
                 DocumentModelDraft.named("catalog").locale("en_US")
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add", "--alias", "catalog",
-                "--reference", "catalog", "--parent", "/Order", "--name", "Catalog",
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add", "--reference", "catalog", "--parent", "/Order", "--name", "Catalog",
                 "-w", dir.toString()).code());
 
         var res = CliTestSupport.run("-m", model.toString(), "include", "remove", "catalog");
         assertEquals(0, res.code(), res.err());
-        assertFalse(Files.readString(model).contains("modelAlias"));
+        assertFalse(Files.readString(model).contains("includeConfig"));
     }
 }

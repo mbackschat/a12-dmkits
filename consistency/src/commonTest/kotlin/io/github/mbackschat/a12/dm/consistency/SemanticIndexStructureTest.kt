@@ -226,7 +226,7 @@ class SemanticIndexStructureTest {
      * from the root.
      */
     private fun depot(probe: String, anchor: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"depot","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -246,7 +246,7 @@ class SemanticIndexStructureTest {
               "CustomFieldType":{"name":"CourierCode"}}}},
             {"type":"Field","id":"f10","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"BRONZE"},{"value":"GOLD"}],
-              "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}},
+              "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}},
             {"type":"Group","id":"g1","name":"Runs","Group":{"repeatability":20,
               "indexFieldName":"RunKey","elements":[
               {"type":"Field","id":"f11","name":"RunKey","Field":{"fieldType":{"type":"StringType"}}},
@@ -263,7 +263,7 @@ class SemanticIndexStructureTest {
                 "EnumerationType":{"values":[{"value":"BRONZE"},{"value":"GOLD"}]}}}},
               {"type":"Field","id":"f17","name":"ShiftTier","Field":{"fieldType":{"type":"EnumerationType",
                 "EnumerationType":{"values":[{"value":"BRONZE"},{"value":"GOLD"}],
-                "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}},
+                "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}},
               {"type":"Field","id":"f18","name":"ShiftLabel","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f19","name":"ShiftAmount","Field":{"fieldType":{"type":"NumberType"}}}
               ${ruleIn(anchor, SHIFTS, probe, "ShiftLabel")}
@@ -301,14 +301,14 @@ class SemanticIndexStructureTest {
 
     /** An insurance policy with three indexed shapes, mirroring the laws test's carrier. */
     private fun model(probe: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"LookupCode","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f2","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"BRONZE"},{"value":"GOLD"}],
-              "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}},
+              "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}},
             {"type":"Group","id":"g1","name":"Insured","Group":{"elements":[
               {"type":"Field","id":"f3","name":"InsuredName","Field":{"fieldType":{"type":"StringType"}}}
             ]}},

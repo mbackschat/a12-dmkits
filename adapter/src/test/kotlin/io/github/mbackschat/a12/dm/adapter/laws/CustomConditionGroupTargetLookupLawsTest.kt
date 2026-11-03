@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import com.mgmtp.a12.kernel.md.rt.api.ICustomConditionFactory
@@ -45,8 +47,8 @@ class CustomConditionGroupTargetLookupLawsTest {
         override fun createCustomConditionV2(customConditionName: String): Optional<ICustomCondition> {
             log += "lookup $customConditionName"
             return Optional.of(object : ICustomCondition {
-                override fun check(document: IDocument, relevant: Set<IEntityInstance>?,
-                    invalid: Set<IEntityInstance>, error: IEntityInstance): Boolean {
+                override fun check(document: DocumentV2, relevant: Set<out DocumentMultiPointer>?,
+                    invalid: Set<DocumentPointer>, error: PartiallyKnownDocumentMultiPointer): Boolean {
                     log += "call $customConditionName"
                     return true
                 }

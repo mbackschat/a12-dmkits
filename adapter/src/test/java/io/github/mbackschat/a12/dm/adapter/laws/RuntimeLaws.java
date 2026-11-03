@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws;
 
+import com.mgmtp.a12.kernel.md.document.apiV2.UpdateAction;
+import io.github.mbackschat.a12.dm.adapter.KernelExpansionFixture;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -40,12 +42,10 @@ import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
+import tools.jackson.core.util.MinimalPrettyPrinter;
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory;
-import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.DocumentDeserializationConfig;
 import com.mgmtp.a12.kernel.md.document.api.services.DocumentSerializationConfig;
-import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
@@ -56,9 +56,7 @@ import com.mgmtp.a12.kernel.md.document.apiV2.immutable.RepetitionsV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.services.IDocumentV2Serializer;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
-import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
@@ -98,10 +96,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
  * fired, so a kernel upgrade that changes a documented runtime behavior (polarity, empty-as-0, …)
  * fails loudly. Grounded in {@code docs/KERNEL-SEMANTICS.md}.
  *
- * <p><b>Document construction (the V1 path — the one shared with the TypeScript runtime).</b> Each
- * entity instance needs <em>one 1-based repetition index per path part</em> (group <em>and</em> field):
- * {@code /Order} → {@code [1]}, {@code /Order/Quantity} → {@code [1,1]}. Field values are read back as
- * strings during the V1→update-action conversion, so values are passed as text — numbers/strings
+ * <p><b>Document construction (explicit placements, built as kernel update actions — see
+ * {@code buildInstance}).</b> Each entity instance needs <em>one 1-based repetition index per path part</em>
+ * (group <em>and</em> field): {@code /Order} → {@code [1]}, {@code /Order/Quantity} → {@code [1,1]}. Field
+ * values enter the document as strings, so values are passed as text — numbers/strings
  * verbatim, <b>boolean as {@code "true"}/{@code "false"}</b> (lowercase; other tokens are a formal
  * error), <b>confirm as {@code "true"} or empty</b> (a confirm has no {@code false} — that's a formal
  * error; unspecified counts as {@code False}). An <em>absent</em> field models an empty value.
@@ -593,19 +591,25 @@ public final class RuntimeLaws {
         return typeOf(modelJson, errorCode, doc);
     }
 
-    /** Build the document instance described by {@code doc} against {@code modelJson}'s model. */
-    private static IDocument buildInstance(String modelJson, IDocumentFactory df, Doc doc) {
-        IDocument d = df.createDocument(modelId(modelJson));
+    /**
+     * Build the document instance described by {@code doc} against {@code modelJson}'s model, exactly as kernel
+     * 30.8.1's V1→V2 converter built it from the V1 placements this oracle used to construct
+     * ({@code DocumentV1V2ConverterImpl.ofDocumentV1}: one {@code putGroup}/{@code putField} update per placement,
+     * the value through {@code ofV1Value}, which passes String and {@code null} through unchanged). Kernel 31
+     * removed the V1 document API and that converter (A12K-3684); building the same updates keeps every law's
+     * input identical across the upgrade, sparse and over-repeated rows included, which a tree-shaped encoding
+     * could not express.
+     */
+    private static DocumentV2 buildInstance(String modelJson, Doc doc) {
+        List<UpdateAction> inserts = new ArrayList<>();
         for (Inst i : doc.insts) {
-            if (i.group()) {
-                d.addEntityInstance(df.createGroupInstance(i.path(), i.reps()));
-            } else if (i.hasValue()) {
-                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps(), i.value()));
-            } else {
-                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps()));   // present, no value = unfilled
-            }
+            DocumentPointer pointer = DocumentPointer.of(i.path(), Arrays.stream(i.reps()).boxed().toList());
+            inserts.add(i.group()
+                    ? UpdateAction.putGroup(pointer, GroupInstanceV2.empty())
+                    // null = present, no value = unfilled
+                    : UpdateAction.putField(pointer, FieldInstanceV2.ofValue(i.hasValue() ? i.value() : null)));
         }
-        return d;
+        return DocumentV2.empty(modelId(modelJson)).withBatchUpdates(inserts);
     }
 
     /** Run the kernel's {@code validateFull} over the instance, in the given locale (the modern {@link DocumentV2}
@@ -680,16 +684,14 @@ public final class RuntimeLaws {
     }
 
     /**
-     * Render an explicit placement fixture through A12's own V1→V2 converter and canonical V2 serializer.
+     * Render an explicit placement fixture through {@link #buildInstance} and A12's canonical V2 serializer.
      * Retained-result differentials use this to feed the identical document to the standalone public JSON
      * boundary without maintaining a second, invented placement-to-tree encoder.
      */
     static String canonicalDocumentJson(String modelJson, Doc doc) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
-                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        DocumentV2 v2 = buildInstance(modelJson, doc);
         IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
         StringWriter rewritten = new StringWriter();
         serializer.serializeV2(v2, rewritten, DocumentSerializationConfig.builder()
@@ -1045,11 +1047,11 @@ public final class RuntimeLaws {
     private static List<ComputedInstance> instancesOf(IDocumentComputationResult result) {
         List<ComputedInstance> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->
-                out.add(new ComputedInstance(c.getPath(), c.pointer(), c.getStringValue(), false, false)));
+                out.add(new ComputedInstance(c.pointer().fullName(), c.pointer(), c.getStringValue(), false, false)));
         result.getComputedFieldInstancesWithErrors().forEach(c ->
-                out.add(new ComputedInstance(c.getPath(), c.pointer(), c.getStringValue(), false, true)));
+                out.add(new ComputedInstance(c.pointer().fullName(), c.pointer(), c.getStringValue(), false, true)));
         result.getClearedFieldInstances().forEach(c ->
-                out.add(new ComputedInstance(c.getPath(), c.pointer(), Optional.empty(), true, false)));
+                out.add(new ComputedInstance(c.pointer().fullName(), c.pointer(), Optional.empty(), true, false)));
         return out;
     }
 
@@ -1304,8 +1306,6 @@ public final class RuntimeLaws {
         private final String modelJson;
         private final IDocumentModel model;
         private final IDocumentRtService rt;
-        private final DocumentServiceFactory dsf;
-        private final IDocumentFactory df;
         private final IDocumentDynamicServiceConfig serviceConfig;
 
         KernelEngine(String modelJson) {
@@ -1317,10 +1317,8 @@ public final class RuntimeLaws {
             IDocumentModel model = expandedModel(modelJson);
             this.model = model;
             IDocumentModelResolver resolver = id -> model;
-            this.dsf = new DocumentServiceFactory(resolver);
             this.serviceConfig = dynamicConfig(codeCache);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(serviceConfig);
-            this.df = dsf.createDocumentFactory();
         }
 
         /** The explicit core-mode route: the modern API always selects full examination. */
@@ -1332,7 +1330,7 @@ public final class RuntimeLaws {
         /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, so it is
          *  OUTSIDE the timed region (V2 is immutable, so reusing one instance across timed runs has no aliasing hazard). */
         public DocumentV2 instance(Doc doc) {
-            return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+            return buildInstance(modelJson, doc);
         }
 
         /**
@@ -1610,9 +1608,9 @@ public final class RuntimeLaws {
     private static List<String> computeSorted(IDocumentRtService rt, DocumentV2 instance) {
         IDocumentComputationResult r = rt.compute(instance, config(null, Locale.US));
         List<String> out = new ArrayList<>();
-        r.getComputedFieldInstancesWithChanges().forEach(c -> out.add(normComputedPath(c.getPath()) + "|" + c.getStringValue().orElse("")));
-        r.getComputedFieldInstancesWithErrors().forEach(c -> out.add(normComputedPath(c.getPath()) + "|ERR"));
-        r.getClearedFieldInstances().forEach(c -> out.add(normComputedPath(c.getPath()) + "|CLEARED"));
+        r.getComputedFieldInstancesWithChanges().forEach(c -> out.add(normComputedPath(c.pointer().fullName()) + "|" + c.getStringValue().orElse("")));
+        r.getComputedFieldInstancesWithErrors().forEach(c -> out.add(normComputedPath(c.pointer().fullName()) + "|ERR"));
+        r.getClearedFieldInstances().forEach(c -> out.add(normComputedPath(c.pointer().fullName()) + "|CLEARED"));
         out.sort(null);
         return out;
     }
@@ -1659,8 +1657,6 @@ public final class RuntimeLaws {
         private final String modelJson;
         private final IDocumentModel model;
         private final IDocumentRtService rt;
-        private final IDocumentFactory df;
-        private final DocumentServiceFactory dsf;   // kept for the V1→V2 conversion the modern validatePart needs
         private final IDocumentStaticServiceConfig serviceConfig;
 
         JavaKernelEngine(String modelJson) {
@@ -1672,10 +1668,8 @@ public final class RuntimeLaws {
                     expanded, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage);
             ClassLoader codeLoader = compileInMemory(sources).loader();
             IDocumentModelResolver resolver = id -> expanded;
-            this.dsf = new DocumentServiceFactory(resolver);
             this.serviceConfig = staticConfig(idToPackage, codeLoader);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(serviceConfig);
-            this.df = dsf.createDocumentFactory();
         }
 
         /** The explicit core-mode route: the modern API always selects full examination. */
@@ -1687,7 +1681,7 @@ public final class RuntimeLaws {
         /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, OUTSIDE the
          *  timed region (the static rt-service consumes {@link DocumentV2} just like the dynamic one). */
         public DocumentV2 instance(Doc doc) {
-            return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+            return buildInstance(modelJson, doc);
         }
 
         /** The A12-Document-JSON twin of {@link KernelEngine#instance(String)}; same non-retaining contract. */
@@ -2088,7 +2082,6 @@ public final class RuntimeLaws {
             public Optional<String> getModelPackage(String id) { return Optional.ofNullable(idToPackage.getProperty(id)); }
             public Optional<ClassLoader> getModelCodeClassLoader(String id) { return Optional.of(codeLoader); }
             public Optional<ILabelProvider> getLabelProvider() { return Optional.of(LABEL_OR_NAME); }
-            public Optional<String> getVariant() { return Optional.empty(); }
         };
     }
 
@@ -2182,18 +2175,8 @@ public final class RuntimeLaws {
      * foreign / hand-authored model the typed builders would refuse (e.g. an out-of-domain enum {@code sValue}).
      */
     static List<String> consistencyMessages(String modelJson) {
-        var factory = new DocumentModelServiceFactory();
-        IDocumentModelSerializer serializer = factory.createDocumentModelSerializer();
-        IDocumentModelService modelService = factory.createDocumentModelService();
-        IDocumentModel model;
-        try {
-            model = serializer.deserialize(new StringReader(modelJson));
-        } catch (Exception e) {
-            throw new RuntimeException("failed to deserialize model", e);
-        }
-        modelService.expand(model, (IDocumentModelReferenceResolver) ref -> {
-            throw new IllegalStateException("self-contained, unexpected reference: " + ref);
-        });
+        IDocumentModelService modelService = new DocumentModelServiceFactory().createDocumentModelService();
+        IDocumentModel model = expandedModel(modelJson);
         List<String> out = new ArrayList<>();
         modelService.checkConsistency(model, n -> out.add(n.getSeverity() + ": " + n.getMessage()));
         return out;
@@ -2219,19 +2202,9 @@ public final class RuntimeLaws {
 
     /** Deserialize + expand (self-contained) the model JSON. */
     private static IDocumentModel expandedModel(String modelJson) {
-        var factory = new DocumentModelServiceFactory();
-        IDocumentModelSerializer serializer = factory.createDocumentModelSerializer();
-        IDocumentModelService modelService = factory.createDocumentModelService();
-        IDocumentModel model;
-        try {
-            model = serializer.deserialize(new StringReader(modelJson));
-        } catch (Exception e) {
-            throw new RuntimeException("failed to deserialize model", e);
-        }
-        modelService.expand(model, (IDocumentModelReferenceResolver) ref -> {
+        return KernelExpansionFixture.expanded(modelJson, ref -> {
             throw new IllegalStateException("self-contained, unexpected reference: " + ref);
         });
-        return model;
     }
 
     /** The kernel's own generated-code cache, per engine — the shape every engine had before one was injectable. */
@@ -2246,7 +2219,6 @@ public final class RuntimeLaws {
     private static IDocumentDynamicServiceConfig dynamicConfig(IModelCodeCache cache) {
         return new IDocumentDynamicServiceConfig() {
             public IModelCodeCache getCache() { return cache; }
-            public Optional<String> getVariant() { return Optional.empty(); }
             // The $field$ display-name resolver — label-for-locale (non-blank) else the field name. Mirrors
             // KernelAdapter's provider, so a differential compares the interpreter's render to the kernel's
             // label-aware render (not the path+index fallback the kernel emits with no provider).

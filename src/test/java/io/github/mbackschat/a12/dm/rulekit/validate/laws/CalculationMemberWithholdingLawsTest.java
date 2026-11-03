@@ -229,26 +229,6 @@ class CalculationMemberWithholdingLawsTest {
         assertEquals(unmessaged, actual, "the error-text classes beside the calculation module's");
     }
 
-    /**
-     * A computation a variant filter takes out of the check is no node of the dependency graph either: the
-     * code generator that draws the cycle generates the default variant ({@code ComputationVariantFilterLawsTest}),
-     * so a circle through an {@code ONLY}-filtered computation is no circle A12 sees.
-     */
-    @Test
-    void aCircleThroughAFilteredComputationIsNoCycle() {
-        String cycle = modelOf(Shape.CYCLE.written(Defect.NONE));
-        Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("unfiltered — the control", KernelLaws.verdictOf(cycle));
-        actual.put("the computation it names, filtered", KernelLaws.verdictOf(filtered(cycle, "DiscountCalc")));
-        actual.put("the other computation, filtered", KernelLaws.verdictOf(filtered(cycle, "TotalCalc")));
-
-        Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("unfiltered — the control", Shape.CYCLE.code);
-        expected.put("the computation it names, filtered", KernelLaws.ADMITTED);
-        expected.put("the other computation, filtered", KernelLaws.ADMITTED);
-        assertEquals(expected, actual, "a dependency circle through a variant-filtered computation");
-    }
-
     private static final String FEATURE_CLASS = "MVK_ERROR_INVALID_LANGUAGE_FEATURE";
 
     private static final String ENUM_SOURCE = "MVK_ERROR_INVALID_ENUM_CALCULATION";
@@ -390,13 +370,6 @@ class CalculationMemberWithholdingLawsTest {
     /** [calcs]' model with the error message of the computation [name] removed. */
     private static String unmessaged(List<Calc> calcs, String name) {
         return KernelLaws.verdictOf(edited(modelOf(calcs), root -> computation(root, name).remove("errorMessage")));
-    }
-
-    /** [model] with the computation [name] filtered to a variant other than the default. */
-    private static String filtered(String model, String name) {
-        return edited(model, root -> computation(root, name).set("variantFilter",
-                MAPPER.createObjectNode().put("filterType", "ONLY").set("variants",
-                        MAPPER.createArrayNode().add("premium"))));
     }
 
     /** Moves the computation [name] from the root group into {@code Lines}. */

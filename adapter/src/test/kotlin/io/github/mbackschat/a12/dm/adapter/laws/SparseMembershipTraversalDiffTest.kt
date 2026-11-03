@@ -39,7 +39,7 @@ class SparseMembershipTraversalDiffTest {
         val edit = EditSession.read(draft).also { it.config().timeZone("Europe/Berlin") }
         val root = edit.group("/Dispatch")
         val rows = edit.group("/Dispatch/Runs/Parcels")
-        val having = rows.num("Permit").filled().or(rows.dateTime("RecordedAt").eq(Dsl.dateTimeValue("31.03.2024T02:30:00")))
+        val having = rows.num("Permit").filled().or(rows.dateTime("RecordedAt").eq(Dsl.dateTimeValue("29.02.1500T10:00:00")))
         var json = edit.toJson()
         fun add(target: String, condition: Condition) {
             json = TypedRules.inject(json, root.rule { it.name(target + "Rule").code(target).errorField(root.num("Anchor"))

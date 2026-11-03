@@ -44,8 +44,17 @@ enum class CheckFamily {
     /** A rule's `errorCondition` and `errorEntityRelPath` are present and carry text. */
     RULE_CONDITION_AND_TARGET,
 
-    /** No group holds two children of the same name, whatever kinds they are. */
+    /**
+     * No root group or element has a blank name, and no group holds two children of the same name, whatever kinds
+     * they are: the sentences A12's converter states as it leaves such a declaration out (KF652).
+     */
     ELEMENT_NAME_UNIQUENESS,
+
+    /**
+     * No two elements share an id: the sentence A12's `IdUniqueRule` states for each sharer, before code generation
+     * and without leaving anything out (KF661).
+     */
+    ELEMENT_ID_UNIQUENESS,
 
     /** A group's `indexFieldName` and `sortFields[].name` each name one of its own fields. */
     GROUP_ORDERING_REFERENCES,
@@ -84,18 +93,9 @@ enum class CheckFamily {
     SUPPRESSED_WARNINGS,
 
     /**
-     * A `variantFilter` — that A12 can bind it, on every carrier that declares one, and WHICH declarations
-     * it takes out of A12's check, which is a rules-and-computations question because on a field the same
-     * spelling deletes the field instead. The family is unusual in that its main output is a coverage gap
-     * rather than a finding, because A12 accepts the models that second half concerns.
-     */
-    VARIANT_FILTER,
-
-    /**
-     * A rule's `guiPatterns` and `variantErrorMessages` — that A12's reader can BIND them, and nothing else.
-     * A12 checks neither member's CONTENT, so an undocumented `guiPatterns` key and a variant name no filter
-     * mentions are both admitted; the family exists because the shapes their readers refuse make the whole
-     * model unloadable, and a clean report for one of those would be read as a verdict.
+     * A rule's `guiPatterns` — that A12's reader can BIND it, and nothing else. A12 checks none of its
+     * CONTENT, so an undocumented key is admitted; the family exists because the shapes its reader refuses
+     * make the whole model unloadable, and a clean report for one of those would be read as a verdict.
      */
     RULE_PRESENTATION_MEMBERS,
 
@@ -675,14 +675,6 @@ enum class CheckFamily {
     RANGE_OPERAND_GATES,
 
     /**
-     * That two declarations a comparison equates agree about LABELLING their values, and label the values
-     * they share the same way. Its own constant because the question is about a PAIR rather than about
-     * either side — the same enumeration is fine opposite one partner and refused opposite another — which
-     * is the one shape `STRING_ENUM_COMPARISON_AGREEMENT`'s per-side walk cannot carry.
-     */
-    ENUM_DISPLAY_COMPARABILITY,
-
-    /**
      * That `ValueAsDate` resolves a field A12 can resolve — one operand, four gates, one chain. Its own
      * constant because the operator's whole law is about the OPERAND's declaration, and the class it draws
      * is the same for every declaration it refuses, so a report merging it into a kind family would lose
@@ -736,6 +728,14 @@ enum class CheckFamily {
      * reading its own target — is A12's other law and is deliberately not reported here.
      */
     COMPUTATION_CYCLE,
+
+    /**
+     * That a rule's or computation's message for a locale the model does not declare spells each parameter as a
+     * declared locale's text does. A12's checker never reads such a text, but its code generation looks the
+     * parameters up among the declared texts' and cannot build the model on a miss, so a valid field the declared
+     * texts do not name, or one spelled differently, fails it. Asked only of a model A12 otherwise admits.
+     */
+    UNDECLARED_LOCALE_MESSAGE_PARAMETERS,
 
     /**
      * That a computation does not read the field it writes. The predicate is CONTAINMENT rather than
@@ -1013,7 +1013,7 @@ internal fun checkRun(
     val unmounted = prepared.unexpandedMounts.map {
         CoverageGap(
             at = it.at,
-            reason = "this group mounts `${it.alias}` and the mount is not expanded here (${it.reason}), so " +
+            reason = "${it.described} and the mount is not expanded here (${it.reason}), so " +
                 "the fact base is incomplete and no reference check can run over this source",
         )
     }
@@ -1076,7 +1076,7 @@ internal fun checkRun(
             // that never ran (`ChecksCompletedScopeTest`). Whenever anything is declared the two derivations
             // are the same set, which that test's populated row is the control for.
             checksCompleted = COMPOSED_FAMILIES + scheduled.flatMap { it.key.producer.completes },
-            gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
+            gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + findings.leftOutByConversion() +
                 scheduled.flatMap { cells.getValue(it.key).gaps } + UNREAD_MEMBERS +
                 UNIMPLEMENTED_FAMILIES,
         ),
@@ -1155,10 +1155,10 @@ private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
  * The findings that stop A12 from producing a verdict at all, so every OTHER finding in the same report is
  * this checker's own reading rather than something A12 would have said about this model.
  *
- * They are recognized by their code, because the class is wider than any one family: an unresolvable
- * computed field and a target climbing past the root stop the Kernel from BUILDING the model (measured
- * through `ModelLoader.loadAndCheck`), while a message entry or a locale code its READER refuses stops it
- * one tier earlier still. A consumer told only the findings would assume the list is A12's; the gap says
+ * They are recognized by their code, because the class is wider than any one family: a computed field naming a
+ * group and a target climbing past the root stop the Kernel from BUILDING the model (measured through
+ * `ModelLoader.loadAndCheck`), while a message entry or a locale code its READER refuses stops it one tier earlier
+ * still. A consumer told only the findings would assume the list is A12's; the gap says
  * which it is.
  */
 private fun List<Finding>.buildBlocked(): List<CoverageGap> =
@@ -1167,6 +1167,23 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
             at = it.at,
             reason = "this makes the model unusable, so A12 reports that and stops; every other finding " +
                 "here is this checker's own reading of a model A12 never got far enough to judge",
+        )
+    }
+
+/**
+ * The declarations A12's converter leaves out, one gap for each sentence that names one ([KERNEL-FINDINGS KF652]).
+ *
+ * A12 judges nothing more about such a declaration, and neither does this checker, with one exception it does not
+ * reproduce: A12's READER still binds the declaration first, so a member it cannot bind would leave no model at all.
+ * The checker does not read the members of a declaration it leaves out, so that refusal would go unreported.
+ */
+private fun List<Finding>.leftOutByConversion(): List<CoverageGap> =
+    filter { it.code in CONVERTER_SENTENCE_CODES && it.code != RK_TYPE_DEFINITION_NOT_FOUND }.map {
+        CoverageGap(
+            at = it.at,
+            reason = "A12 checks the model without the declaration this sentence names and everything beneath it, " +
+                "and so does this checker; a member there that A12's reader cannot bind would still leave no " +
+                "model, and that is not read",
         )
     }
 

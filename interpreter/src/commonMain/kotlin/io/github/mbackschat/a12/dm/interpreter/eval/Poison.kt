@@ -14,7 +14,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 class PoisonedReadException(val path: String) : RuntimeException("compute read of a formally-invalid cell: $path")
 
 /**
- * A reached runtime failure, shared by an empty authored pattern and a DateTime wall label with no instant.
+ * A reached runtime failure, shared by an empty authored pattern and a temporal label the model zone cannot read.
  * The failure belongs to execution rather than an operand state.
  * The kernel raises it only at execution, so the failure is not an operand
  * state the three-valued algebra can absorb: an earlier operand that already decided the expression (a malformed
@@ -40,5 +40,3 @@ class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the wa
 class GroupErrorEntityCustomFailure(name: String) :
     RuntimeEvaluationFailure("custom condition \"$name\" cannot receive a group as its error field")
 
-/** A message token reading a value through a key that selects no row (KERNEL-FINDINGS KF561). */
-class UnmatchedMessageKeyFailure(token: String) : RuntimeEvaluationFailure("the message parameter $token selects no row")

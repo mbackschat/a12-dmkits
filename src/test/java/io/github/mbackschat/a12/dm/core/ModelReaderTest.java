@@ -68,7 +68,7 @@ class ModelReaderTest {
         // a TypeDefType whose id has no matching definition stays a TypeDefType (kernel: getEffectiveType() empty
         // → the field falls back to its declared TypeDefType → ValueKind.UNKNOWN).
         String json = """
-            { "header": { "id": "m", "modelType": "document", "modelVersion": "28.4.0",
+            { "header": { "id": "m", "modelType": "document", "modelVersion": "29.4.0",
                 "locales": [{"code":"en_US"}], "modelReferences": [] },
               "content": { "modelInfo": {"name":"m"}, "modelRoot": { "rootGroups": [
                 { "type":"Group", "id":"/G", "name":"G", "Group": { "repeatability":1, "elements": [
@@ -95,7 +95,7 @@ class ModelReaderTest {
         // and the expanded form is self-contained + name-path-keyed (interpreter-ready)
         assertEquals("/Storefront/Inventory/ListPrice",
                 reader.element("/Storefront/Inventory/ListPrice").path("id").asText());
-        assertFalse(reader.toJson().contains("modelAlias"), "the mount is folded, no vestigial modelAlias remains");
+        assertFalse(reader.toJson().contains("includeConfig"), "the mount is folded, no vestigial includeConfig remains");
     }
 
     // ── MODEL_ROOT vs SINGLE_RG ───────────────────────────────────────────────────────────────────────────
@@ -106,7 +106,6 @@ class ModelReaderTest {
                 .rootGroup("Rider", r -> r.numberField("Amount", n -> n.fractionDigits(2)))
                 .build().toJson();
         String policy = DocumentModelDraft.named("policy").locale("en_US")
-                .include("rider", "rider")
                 .rootGroup("Policy", p -> p
                         .field("PolicyNo", FieldKind.STRING)
                         .mount("Extras", "rider", MountOptions.single().asModelRoot()))
@@ -123,10 +122,9 @@ class ModelReaderTest {
                 .attachmentGroup("Evidence", body -> { })
                 .build().toJson();
         String permit = DocumentModelDraft.named("permit").locale("en_US")
-                .include("evidence", "attachment")
                 .rootGroup("Permit", root -> root.mount(
                         "Documents",
-                        "evidence",
+                        "attachment",
                         MountOptions.single().excludingRules().excludingComputations()))
                 .build().toJson();
 
@@ -134,8 +132,10 @@ class ModelReaderTest {
                 ? attachment
                 : null);
 
-        assertEquals("attachment",
-                reader.element("/Permit/Documents").path("Group").path("usageType").asText());
+        // Kernel 31.1.1: the mount keeps its own (absent) usageType, and the discarded root's marker still shields
+        // the mount's own exclusions (KF3, adapter.MountUsageTypeKernelTest).
+        assertTrue(reader.element("/Permit/Documents").path("Group").path("usageType").isMissingNode(),
+                "the provider root's usageType does not transfer to the mount");
         assertTrue(reader.toJson().contains("AttachmentExactlyOneSource"),
                 "the provider root's attachment shield survives when SINGLE_RG discards that root");
     }
@@ -252,7 +252,7 @@ class ModelReaderTest {
     /** An included insurance-benefits model with one field and one rule (referencing the field by short name). */
     private static String benefitsModel() {
         return """
-            { "header": { "id": "benefits", "modelType": "document", "modelVersion": "28.4.0",
+            { "header": { "id": "benefits", "modelType": "document", "modelVersion": "29.4.0",
                 "locales": [{"code":"en_US"}], "modelReferences": [] },
               "content": { "modelInfo": {"name":"benefits"}, "modelRoot": { "rootGroups": [
                 { "type":"Group", "id":"/Benefits", "name":"Benefits", "Group": { "repeatability":1, "elements": [
@@ -296,15 +296,15 @@ class ModelReaderTest {
     private static String policyIncludingBenefits(boolean excludeRules) {
         String exclude = excludeRules ? ", \"excludeRules\": true" : "";
         return """
-            { "header": { "id": "policy", "modelType": "document", "modelVersion": "28.4.0",
+            { "header": { "id": "policy", "modelType": "document", "modelVersion": "29.4.0",
                 "locales": [{"code":"en_US"}],
-                "modelReferences": [{"alias":"benefits","modelType":"document","purpose":"include","reference":"benefits"}] },
+                "modelReferences": [{"modelType":"document","purpose":"include","reference":"benefits"}] },
               "content": { "modelInfo": {"name":"policy"}, "modelRoot": { "rootGroups": [
                 { "type":"Group", "id":"/Policy", "name":"Policy", "Group": { "repeatability":1, "elements": [
                   { "type":"Field", "id":"/Policy/PolicyNo", "name":"PolicyNo",
                     "Field": { "fieldType": { "type":"StringType" } } },
                   { "type":"Group", "id":"/Policy/Benefits", "name":"Benefits",
-                    "Group": { "repeatability":1, "modelAlias":"benefits"%EXCLUDE% } }
+                    "Group": { "repeatability":1, "includeConfig":{"reference":"benefits"%EXCLUDE%} } }
                 ] } } ] } } }
             """.replace("%EXCLUDE%", exclude);
     }

@@ -88,6 +88,31 @@ class CheckerLocaleSpellingAgreementTest {
         )
     }
 
+    /**
+     * Kernel 31.1.1 builds no model naming `ja_JP_JP` or `th_TH_TH`, the two locales whose JDK tag carries an extension,
+     * though its parser reads both: the model copy its expansion makes cannot write them (KERNEL-FINDINGS KF662). It
+     * holds for a header code and for a label entry's locale; the neighbours, the same locale without its variant and
+     * a lower-case variant, build.
+     */
+    @Test
+    fun aLocaleWhoseTagCarriesAnExtensionLeavesNoModel() {
+        val rows = linkedMapOf(
+            "header ja_JP_JP" to declaring("en_US", "ja_JP_JP"), "header th_TH_TH" to declaring("en_US", "th_TH_TH"),
+            "header ja-JP-JP" to declaring("en_US", "ja-JP-JP"),
+            "header ja_JP — the control" to declaring("en_US", "ja_JP"), "header ja_JP_jp" to declaring("en_US", "ja_JP_jp"),
+            "label ja_JP_JP" to labelled("ja_JP_JP"), "label th_TH_TH" to labelled("th_TH_TH"),
+            "label ja_JP — the control" to labelled("ja_JP"),
+        )
+        val unbuilt = setOf(UNBUILT_CLASS)
+        val expected = linkedMapOf(
+            "header ja_JP_JP" to unbuilt, "header th_TH_TH" to unbuilt, "header ja-JP-JP" to unbuilt,
+            "header ja_JP — the control" to emptySet(), "header ja_JP_jp" to emptySet(),
+            "label ja_JP_JP" to unbuilt, "label th_TH_TH" to unbuilt, "label ja_JP — the control" to emptySet(),
+        )
+        assertEquals(expected, rows.mapValues { (_, json) -> kernelModelClasses(json) }, "A12's classes")
+        assertEquals(expected, rows.mapValues { (_, json) -> rejectingCodes(json).toSet() }, "the checker's classes")
+    }
+
     @Test
     fun twoLocalesWritingOneTagDrawTheDuplicateClass() {
         val rows = TAG_POOL.flatMapIndexed { i, a -> TAG_POOL.drop(i + 1).map { b -> "$a + $b" } }.associateWith { pair ->
@@ -192,6 +217,7 @@ class CheckerLocaleSpellingAgreementTest {
     }
 
     private companion object {
+        const val UNBUILT_CLASS = "CK_MODEL_NOT_BUILDABLE"
         const val BUILT = "built"
         const val UNBUILT = "no model"
 

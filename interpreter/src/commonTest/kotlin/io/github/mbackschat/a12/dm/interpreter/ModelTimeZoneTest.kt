@@ -17,9 +17,9 @@ import kotlin.test.assertTrue
  * interpreter (loader + [io.github.mbackschat.a12.dm.interpreter.eval.DateMath] zone math + eval), kernel-free
  * on Kotlin/JS too. The kernel truths are pinned by `adapter.laws.DstTimeZoneDiffTest` /
  * `adapter.laws.WallDayArithmeticDiffTest`; this proves the kernel-free build reproduces them end-to-end:
- * a `Europe/Berlin` model's datetime arithmetic is DST-aware (instant diffs, standard-time resolution of the
- * ambiguous fall-back hour, the spring gap as `datumFormatFalsch`, the no-overshoot `AddDays` landings), the
- * `DifferenceInDays` is time-of-day-aware stateful calendar stepping, and UTC keeps ordinary controls.
+ * a `Europe/Berlin` model's datetime arithmetic is DST-aware (instant diffs, the ambiguous fall-back hour at its
+ * earlier, summer-time offset, a spring-gap wall time moved forward by the gap, `AddDays` landings likewise), the
+ * `DifferenceInDays` counts whole days between wall clocks, and UTC keeps ordinary controls (KERNEL-FINDINGS KF665).
  */
 class ModelTimeZoneTest {
 
@@ -50,10 +50,13 @@ class ModelTimeZoneTest {
     @Test fun gmtCollapsesToUtc() =
         assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel("GMT")).timeZone)
 
-    @Test fun explicitNullEmptyAndWhitespaceAreInvalidConfiguration() {
+    /** Kernel 31.1.1 reads an empty zone as an absent one (KERNEL-FINDINGS KF658, `adapter.laws.EmptyTimeZoneDiffTest`). */
+    @Test fun anEmptySlotDefaultsToUtcAsAnAbsentOneDoes() =
+        assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModelValue("\"\"")).timeZone)
+
+    @Test fun explicitNullAndWhitespaceAreInvalidConfiguration() {
         for ((label, json, expectedId) in listOf(
             Triple("null", "null", null),
-            Triple("empty", "\"\"", ""),
             Triple("whitespace", "\"   \\t\"", "   \t"),
         )) {
             val e = assertFailsWith<InvalidModelTimeZoneException> { ModelLoader.load(claimModelValue(json)) }
@@ -91,18 +94,17 @@ class ModelTimeZoneTest {
         fires("DifferenceInHours(ReportedAt, SettledAt) == 1", "2024-03-31T01:30:00", "2024-03-31T03:30:00"),
         "01:30 CET → 03:30 CEST is 1 real hour")
 
-    @Test fun fallBackAmbiguousHourResolvesToStandardTime() = assertTrue(
-        fires("DifferenceInMinutes(ReportedAt, SettledAt) == 120", "2024-10-27T01:30:00", "2024-10-27T02:30:00"),
-        "the repeated 02:30 parses as CET → 120 minutes")
+    @Test fun fallBackAmbiguousHourResolvesToSummerTime() = assertTrue(
+        fires("DifferenceInMinutes(ReportedAt, SettledAt) == 60", "2024-10-27T01:30:00", "2024-10-27T02:30:00"),
+        "the repeated 02:30 parses at its earlier offset, CEST → 60 minutes (KF665)")
 
-    @Test fun gapValueIsAFormalErrorAndSuppresses() {
+    @Test fun aGapValueIsMovedForwardByTheGap() {
         val def = ModelDef(fields, listOf(RuleDef("/Claim/R", "/Claim", "DifferenceInMinutes(ReportedAt, SettledAt) == 0", "LATE", "../ReportedAt")),
             timeZone = ModelTimeZone.EUROPE_BERLIN)
         val doc = def.newDocument().group("/Claim", 1)
             .field(RA, "2024-03-31T02:30:00", 1, 1).field(SA, "2024-03-31T03:30:00", 1, 1)
         val codes = DmInterpreter(def).validateFull(doc).map { it.code }
-        assertTrue("datumFormatFalsch" in codes, "the nonexistent wall time is datumFormatFalsch, got $codes")
-        assertTrue("LATE" !in codes, "the referencing rule is suppressed, got $codes")
+        assertEquals(listOf("LATE"), codes, "02:30 in the gap is the instant of 03:30 and draws no formal code (KF665)")
     }
 
     @Test fun aGapValueUnderUtcIsAPlainValidDateTime() = assertTrue(
@@ -110,18 +112,17 @@ class ModelTimeZoneTest {
         "under UTC there is no gap: a plain 60-minute pair")
 
     @Test fun chainedAddKeepsItsInstantIdentity() = assertTrue(
-        fires("DifferenceInMinutes(AddHours(ReportedAt, 1), SettledAt) == 60", "2024-10-27T01:30:00", "2024-10-27T02:30:00"),
-        "AddHours lands on the daylight side of the ambiguous hour — 60 real minutes to the stored value")
+        fires("DifferenceInMinutes(AddHours(ReportedAt, 2), SettledAt) == -60", "2024-10-27T01:30:00", "2024-10-27T02:30:00"),
+        "AddHours lands on the standard side of the ambiguous hour, 60 real minutes after the stored, summer-time value")
 
-    @Test fun addDaysIsTimePreservingAndTheGapLandingNeverOvershoots() {
+    @Test fun addDaysIsTimePreservingAndAGapLandingMovesForward() {
         assertTrue(fires("AddDays(ReportedAt, 1) == [SettledAt]", "2024-06-15T22:00:00", "2024-06-16T22:00:00"),
             "a wall-day add keeps the clock time")
-        // Forward into the gap: the landing takes the DAYLIGHT (earlier) instant — 60 min before the rolled 03:30.
-        assertTrue(fires("DifferenceInMinutes(AddDays(ReportedAt, 1), SettledAt) == 60", "2024-03-30T02:30:00", "2024-03-31T03:30:00"),
-            "a forward gap landing takes the earlier instant")
-        // Backward into the gap: the landing takes the STANDARD (later) instant — equal to the 03:30 instant.
+        // Into the gap from either side, the landing moves forward by the gap: the 03:30 instant (KF665).
+        assertTrue(fires("DifferenceInMinutes(AddDays(ReportedAt, 1), SettledAt) == 0", "2024-03-30T02:30:00", "2024-03-31T03:30:00"),
+            "a forward step into the gap lands one gap later")
         assertTrue(fires("DifferenceInMinutes(AddDays(ReportedAt, -1), SettledAt) == 0", "2024-04-01T02:30:00", "2024-03-31T03:30:00"),
-            "a backward gap landing takes the later instant")
+            "a backward step into the gap lands one gap later too")
     }
 
     @Test fun differenceInDaysCountsCompleteCalendarSteps() {

@@ -9,21 +9,21 @@ import kotlinx.serialization.json.JsonObject
  * this checker's own ([KERNEL-FINDINGS KF579], [KF626]).
  *
  * A12 runs that check as its last consistency rule (`BasicConsistencyCheckFromSerializerRule`) over the model as
- * READ, before any variant filter applies, so a declaration an `ONLY` filter deletes or suppresses still draws
- * its sentence — and on such a declaration the sentence is the model's only refusal. Each sentence fires on
- * `StringUtils.isEmpty`, so an empty member draws it and a blank one does not: a name, condition or error target
- * of one space is measured admitted under `ONLY`. `isEmpty` is true of a missing member as well, so the members
- * the reader accepts missing draw their sentence absent as well: a rule's condition and an alternative's
- * operation, also when `null` ([KERNEL-FINDINGS KF643]), a rule's code, and a type definition's name
- * ([KERNEL-FINDINGS KF644]). The others are left to the reader, which refuses them before this check is reached;
- * an element's `name` written as an object or an array the preparation reads as empty, as A12 does.
+ * READ, so a declaration its converter leaves out still draws its sentence ([KERNEL-FINDINGS KF652]). Each sentence
+ * fires on `StringUtils.isEmpty`, so an empty member draws it and a blank one does not. `isEmpty` is true of a
+ * missing member as well, so the members the reader accepts missing draw their sentence absent as well: a rule's
+ * condition and an alternative's operation, also when `null` ([KERNEL-FINDINGS KF643]), a type definition's name
+ * ([KERNEL-FINDINGS KF644]), and on kernel 31.1.1 an element's name, absent or `null` (KF652). A rule's code is not
+ * among them on 31.1.1, where its absence leaves no model (KF654). The others are left to the reader, which refuses
+ * them before this check is reached.
  *
- * Two of A12's sentences are not here because no JSON source reaches them: an empty `indexFieldName` or
- * `sortFields[].name` leaves the model unbuilt first, and a localized text of `null` is refused by the reader.
+ * Two of A12's sentences are not here because no JSON source reaches them: an empty `sortFields[].name` leaves the
+ * model unbuilt first, and a localized text of `null` is refused by the reader. An empty `indexFieldName` reaches its
+ * sentence on kernel 31.1.1 (KERNEL-FINDINGS KF653).
  */
 internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
     // A12's walker visits the type definitions before the elements (KERNEL-FINDINGS KF647).
-    typeDefinitionSentences() + declarations().flatMap { element ->
+    typeDefinitionSentences() + declarationsAsRead().flatMap { element ->
         val body = element.body
         val shared = listOfNotNull(
             element.id?.takeIf { it.isEmpty() }?.let { sentence(element, RK_ID_EMPTY, "this declaration's `id` is empty") },
@@ -33,15 +33,18 @@ internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
             DeclaredKind.FIELD -> fieldSentences(element, body)
             DeclaredKind.RULE -> ruleSentences(element, body)
             DeclaredKind.COMPUTATION -> computationSentences(element, body)
+            DeclaredKind.GROUP -> listOfNotNull(
+                body?.emptyMember("indexFieldName")?.let { sentence(element, RK_INDEX_FIELD_EMPTY, "this group's `indexFieldName` is empty") },
+            )
             else -> emptyList()
         }
     }
 
-/** The codes [basicSentenceFindings] publishes, each A12's sentence for one member ([VARIANT_BLIND_CODES]). */
+/** The codes [basicSentenceFindings] publishes, each A12's sentence for one member. */
 internal val BASIC_SENTENCE_CODES = setOf(
     RK_ID_EMPTY, RK_NAME_EMPTY, RK_ERROR_CODE_EMPTY, RK_ERROR_CONDITION_EMPTY, RK_ERROR_ENTITY_EMPTY,
     RK_COMPUTED_FIELD_EMPTY, RK_COMPUTATION_OPERATION_EMPTY, RK_ENUM_VALUE_DUPLICATE, RK_ENUM_CATEGORY_DUPLICATE,
-    RK_TYPE_REFERENCE_EMPTY,
+    RK_TYPE_REFERENCE_EMPTY, RK_INDEX_FIELD_EMPTY,
 )
 
 /**
@@ -55,8 +58,9 @@ private fun fieldSentences(field: TrackedDeclaration, body: JsonObject?): List<F
     val typeBody = type.bodyIn(declared) ?: return emptyList()
     return when (type) {
         FieldType.ENUMERATION ->
-            typeBody.repeated("values", "value").map {
-                sentence(field, RK_ENUM_VALUE_DUPLICATE, "this enumeration declares the value `$it` more than once")
+            typeBody.repeated("values", "value", absentIsAKey = true).map {
+                sentence(field, RK_ENUM_VALUE_DUPLICATE, it?.let { token -> "this enumeration declares the value `$token` more than once" }
+                    ?: "this enumeration declares more than one value with no `value` token, which A12 reads as one repeated value")
             } + typeBody.repeated("categories", "name").map {
                 sentence(field, RK_ENUM_CATEGORY_DUPLICATE, "this enumeration declares the category `$it` more than once")
             }
@@ -72,18 +76,18 @@ private fun fieldSentences(field: TrackedDeclaration, body: JsonObject?): List<F
 }
 
 /**
- * A rule's empty condition and error target, and its absent or empty code — which alone among the members is
- * judged absent as well, because A12 reads a rule with no code and states both its class and this sentence.
+ * A rule's empty condition, error target and code. A rule with no code leaves no model on kernel 31.1.1
+ * (KERNEL-FINDINGS KF654), so only the empty one draws its sentence.
  */
 private fun ruleSentences(rule: TrackedDeclaration, body: JsonObject?): List<Finding> {
     // No body is an envelope A12's reader refuses, and that refusal is the declaration's one finding.
     body ?: return emptyList()
     return listOfNotNull(
-        sentence(rule, RK_ERROR_CONDITION_EMPTY, "this rule's `errorCondition` is absent or empty")
-            .takeIf { body.isEmptyOrMissing("errorCondition") },
+        // An absent or `null` condition leaves no model on kernel 31.1.1, and the build failure is its one class
+        // (`adapter.laws.CheckerEmptyMemberAgreementTest`).
+        body.emptyMember("errorCondition")?.let { sentence(rule, RK_ERROR_CONDITION_EMPTY, "this rule's `errorCondition` is empty") },
         body.emptyMember("errorEntityRelPath")?.let { sentence(rule, RK_ERROR_ENTITY_EMPTY, "this rule's `errorEntityRelPath` is empty") },
-        sentence(rule, RK_ERROR_CODE_EMPTY, "this rule's `errorCode` is absent or empty")
-            .takeIf { body["errorCode"] == null || body.emptyMember("errorCode") != null },
+        body.emptyMember("errorCode")?.let { sentence(rule, RK_ERROR_CODE_EMPTY, "this rule's `errorCode` is empty") },
     )
 }
 
@@ -98,12 +102,12 @@ private fun computationSentences(computation: TrackedDeclaration, body: JsonObje
 )
 
 /**
- * Each type definition's empty id and empty name, one sentence per defect, ordered by id as A12 states them: its
- * expansion rewrites the definitions sorted by id before this check walks them (`TypeDefCache.getOrderedTypeDefs`,
- * KERNEL-FINDINGS KF647). They carry no element path. Two definitions sharing an id, the empty one included, leave
- * no model before this check runs, so one sentence per id is A12's count.
+ * Each type definition's empty id and empty name, one sentence per defect, in the order A12 walks them, which
+ * [declaredTypeDefinitionIds] keeps: by id when A12 expands the model, as declared when it does not (KERNEL-FINDINGS
+ * KF647). They carry no element path. Two definitions sharing an id, the empty one included, leave no model this
+ * check runs on, so one sentence per id is A12's count.
  */
-private fun TrackedFactBase.typeDefinitionSentences(): List<Finding> = declaredTypeDefinitionIds.sorted().flatMap { id ->
+private fun TrackedFactBase.typeDefinitionSentences(): List<Finding> = declaredTypeDefinitionIds.flatMap { id ->
     listOfNotNull(
         sentence(null, RK_ID_EMPTY, "a `content.typeDefinitions` entry has an empty `id`").takeIf { id.isEmpty() },
         // An absent name reads as empty too (KF644); `null`, an object or an array is the reader's refusal instead.
@@ -120,19 +124,26 @@ private fun JsonObject.isEmptyOrMissing(member: String): Boolean =
 /** This member when it is present as the empty string, which is exactly what `StringUtils.isEmpty` adds to absence. */
 private fun JsonObject.emptyMember(member: String): String? = string(member)?.takeIf { it.isEmpty() }
 
-/** The values of [key] that two or more entries of the [list] share, each once, in the order A12 states them. */
-private fun JsonObject.repeated(list: String, key: String): List<String> {
-    val seen = mutableSetOf<String>()
+/**
+ * The keys repeated in [list], in A12's order. With [absentIsAKey], an entry without [key] is the null key, as A12 reads
+ * a value entry with no token (KERNEL-FINDINGS KF655); an entry whose [key] is not a string is not judged.
+ */
+private fun JsonObject.repeated(list: String, key: String, absentIsAKey: Boolean = false): List<String?> {
+    val seen = mutableSetOf<String?>()
     // A12 calls `computeIfAbsent` at every occurrence after the first, so the third one can still resize its map.
-    val repeats = (this[list] as? JsonArray).orEmpty()
-        .mapNotNull { (it as? JsonObject)?.string(key) }
-        .filterNot { seen.add(it) }
+    val keys: List<String?> = (this[list] as? JsonArray).orEmpty().filterIsInstance<JsonObject>().flatMap { entry ->
+        when {
+            key !in entry -> if (absentIsAKey) listOf(null) else emptyList()
+            else -> listOfNotNull(entry.string(key))
+        }
+    }
+    val repeats = keys.filterNot { seen.add(it) }
     return computeIfAbsentOrder(repeats)
 }
 
 private fun sentence(element: TrackedDeclaration?, code: String, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code,
-    "$explain, which A12 states in a sentence with no class, before it applies any variant filter", element?.path,
+    "$explain, which A12 states in a sentence with no class over the model as read", element?.path,
 )
 
 internal const val RK_ID_EMPTY = "RK_ID_EMPTY"
@@ -145,3 +156,4 @@ internal const val RK_COMPUTATION_OPERATION_EMPTY = "RK_COMPUTATION_OPERATION_EM
 internal const val RK_ENUM_VALUE_DUPLICATE = "RK_ENUM_VALUE_DUPLICATE"
 internal const val RK_ENUM_CATEGORY_DUPLICATE = "RK_ENUM_CATEGORY_DUPLICATE"
 internal const val RK_TYPE_REFERENCE_EMPTY = "RK_TYPE_REFERENCE_EMPTY"
+internal const val RK_INDEX_FIELD_EMPTY = "RK_INDEX_FIELD_EMPTY"

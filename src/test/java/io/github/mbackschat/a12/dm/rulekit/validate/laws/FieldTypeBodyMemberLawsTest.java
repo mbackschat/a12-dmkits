@@ -114,7 +114,7 @@ class FieldTypeBodyMemberLawsTest {
         expected.put("DateRangeType with a separator only", KernelLaws.REFUSED_CODELESS);
         // NOT sufficient, and this is the row that says the derived member is NECESSARY and no more: the
         // builder does default `rangeSeparator`, to `/`, and A12 allowlists the format-and-separator PAIR —
-        // (`dd.MM.yyyy`, `/`) is not one of the eight admitted pairs (TEMPORAL-FORMAT-VOCABULARY).
+        // (`dd.MM.yyyy`, `/`) is not one of the admitted pairs (TEMPORAL-FORMAT-VOCABULARY).
         expected.put("DateRangeType with a format only", KernelLaws.REFUSED_CODELESS);
         // The discriminator for that account: a format the DEFAULT separator IS admitted with. Without it
         // the row above is equally consistent with `format` alone never being enough for this type.

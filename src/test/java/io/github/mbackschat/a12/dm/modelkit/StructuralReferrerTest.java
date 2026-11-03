@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Structural referrer queries (refactor task #2, CLI-SPEC §6): which fields point at a type definition
- * (the {@code typeDefinitionId} pointer) and which mounts carry an include alias ({@code modelAlias}).
+ * (the {@code typeDefinitionId} pointer) and which mounts name an included model ({@code includeConfig.reference}).
  * These are the *find* leg the structural refactors rely on — typedef rename repoints exactly the
  * fields {@link ModelDocument#fieldsUsingTypeDefinition} returns. They are pure structure reads (no
  * kernel resolution), distinct from the adapter's rule-reference {@code whereUsed}.
@@ -19,7 +19,6 @@ class StructuralReferrerTest {
     private static ModelDocument model() {
         return ModelDocument.read(DocumentModelDraft.named("store").locale("en_US")
                 .typeDef("ProductCode", t -> t.string(s -> s.maxLength(12)))
-                .include("catalog", "catalog")
                 .rootGroup("Store", s -> s
                         .typedefField("PrimarySku", "ProductCode")
                         .typedefField("BackupSku", "ProductCode")

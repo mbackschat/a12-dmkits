@@ -139,7 +139,7 @@ class RawTypeLengthTest {
                  "errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"claim","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"claim","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Claim","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"IncidentNote","Field":{"fieldType":{"type":"StringType",

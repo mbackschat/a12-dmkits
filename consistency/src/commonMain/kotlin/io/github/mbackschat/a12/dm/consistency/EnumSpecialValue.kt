@@ -20,7 +20,7 @@ import kotlinx.serialization.json.JsonObject
  * named: A12 answers it with the unsupported-signs sentence alone ([namedByA12], KERNEL-FINDINGS KF551).
  */
 internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
-    defaultVariantFields().mapNotNull { field ->
+    fieldDeclarations().mapNotNull { field ->
         val body = field.ownEnumerationBody() ?: return@mapNotNull null
         val special = body.string("sValue")?.takeIf { it.javaTrimmed().isNotEmpty() } ?: return@mapNotNull null
         val declared = (body["values"] as? JsonArray)

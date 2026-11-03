@@ -90,7 +90,9 @@ class RuleConditionAndTargetSlotLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("../Tier — the control", KernelLaws.ADMITTED);
-        expected.put("absent", KernelLaws.UNREADABLE);
+        // Read on kernel 31.1.1, and then dereferenced while the model is built ("errorEntity is null",
+        // KERNEL-FINDINGS KF654); 30.8.1's reader refused it.
+        expected.put("absent", KernelLaws.NOT_BUILDABLE);
         expected.put("empty", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
         expected.put("whitespace only", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
         assertEquals(expected, actual, "what A12 does with each shape of a rule's errorEntityRelPath");

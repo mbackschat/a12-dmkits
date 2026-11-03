@@ -65,6 +65,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field DATE_TIME_CONSTRUCTION_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field DECLARATION_SLOTS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field DECLARED_REFERENCES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field ELEMENT_ID_UNIQUENESS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ELEMENT_NAME_ALPHABET Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ELEMENT_NAME_UNIQUENESS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field EMPTY_GROUP_OPERAND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
@@ -73,7 +74,6 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field ENTITY_LIST_PRE_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_CATEGORY_ALIGNMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_COMPUTATION_SOURCE Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
-	public static final field ENUM_DISPLAY_COMPARABILITY Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_S_VALUE_DOMAIN Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_TEXT_FORBIDDEN_CHARACTERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field ENUM_VALUE_CHARACTERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
@@ -149,11 +149,11 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field TEMPORAL_COMPARISON_AGREEMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field TEMPORAL_CONFIG Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field TEMPORAL_EXTRACTOR_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field UNDECLARED_LOCALE_MESSAGE_PARAMETERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALIDITY_CONDITION_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_AS_DATE_OPERAND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_IN_FIELDS_CONSTANT_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_LIST_CONDITION_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
-	public static final field VARIANT_FILTER Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static fun values ()[Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
@@ -324,8 +324,8 @@ public final class io/github/mbackschat/a12/dm/consistency/DeclaredElement {
 	public final fun getBody ()Lkotlinx/serialization/json/JsonObject;
 	public final fun getDeclaration ()Lkotlinx/serialization/json/JsonObject;
 	public final fun getId ()Ljava/lang/String;
+	public final fun getIncludedReference ()Ljava/lang/String;
 	public final fun getKind ()Ljava/lang/String;
-	public final fun getModelAlias ()Ljava/lang/String;
 	public final fun getName ()Ljava/lang/String;
 	public final fun getOrigin ()Lio/github/mbackschat/a12/dm/consistency/DeclarationOrigin;
 	public final fun getPath ()Ljava/lang/String;
@@ -345,7 +345,6 @@ public final class io/github/mbackschat/a12/dm/consistency/DeclaredReference {
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getDeclaredAt ()Ljava/lang/String;
 	public final fun getMember ()Ljava/lang/String;
-	public final fun getRefusedByTheReader ()Z
 	public final fun getRole ()Lio/github/mbackschat/a12/dm/consistency/ReferenceRole;
 	public final fun getTarget ()Lio/github/mbackschat/a12/dm/consistency/Reference;
 	public final fun getWritten ()Ljava/lang/String;
@@ -698,7 +697,6 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun getFrameValues ()Lio/github/mbackschat/a12/dm/consistency/FrameValues;
 	public final fun getHasBaseYear ()Z
 	public final fun getReachedModelRefusals ()Ljava/util/List;
-	public final fun getResolvableElements ()Ljava/util/List;
 	public final fun getSupportedCharacters ()Ljava/util/List;
 	public final fun getTypeDefinitionBodies ()Ljava/util/Map;
 	public final fun getUnbindableBaseYear ()Ljava/lang/String;
@@ -773,14 +771,16 @@ public final class io/github/mbackschat/a12/dm/consistency/Reference$Resolved : 
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/Reference$Undeclared : io/github/mbackschat/a12/dm/consistency/Reference {
-	public fun <init> (Ljava/lang/String;Z)V
-	public synthetic fun <init> (Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;ZZ)V
+	public synthetic fun <init> (Ljava/lang/String;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Z
-	public final fun copy (Ljava/lang/String;Z)Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;Ljava/lang/String;ZILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;
+	public final fun component3 ()Z
+	public final fun copy (Ljava/lang/String;ZZ)Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;Ljava/lang/String;ZZILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/Reference$Undeclared;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCandidate ()Ljava/lang/String;
+	public final fun getLeftOutByConversion ()Z
 	public final fun getRootUnresolved ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -861,9 +861,9 @@ public final class io/github/mbackschat/a12/dm/consistency/UnexpandedMount {
 	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/UnexpandedMount;
 	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/UnexpandedMount;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/UnexpandedMount;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getAlias ()Ljava/lang/String;
 	public final fun getAt ()Ljava/lang/String;
 	public final fun getReason ()Ljava/lang/String;
+	public final fun getReference ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

@@ -124,10 +124,10 @@ class EnumValueAndLabelLawsTest {
                         + "{\"locale\":\"en_US\",\"text\":\"Entry\"}]},"
                         + "{\"value\":\"PLUS\"," + label("en_US", "Plus") + "}]}");
 
-        // The rows that separate the two codes. Under the account the measurements suggest — values must
-        // AGREE on carrying a `label` member (else COUNT_INVALID), and each declared locale's texts must
-        // then be complete and non-blank (else DISPLAY_SHORT) — an empty label ARRAY is an unlabelled value
-        // and all-blank texts are a complete-but-empty locale. Neither follows from the rows above.
+        // The rows that separate the two codes. Values must AGREE on carrying a `label` entry (else
+        // COUNT_INVALID), and a labelled value then needs a non-blank text for every declared locale (else
+        // DISPLAY_SHORT): an empty label ARRAY is an unlabelled value and all-blank texts are a complete-but-empty
+        // locale. On kernel 31.1.1 a label for an UNDECLARED locale is a label too (KERNEL-FINDINGS KF655).
         rows.put("an EMPTY label ARRAY on one value",
                 "{\"values\":[{\"value\":\"BASIC\",\"label\":[]},"
                         + "{\"value\":\"PLUS\"," + label("en_US", "Plus") + "}]}");
@@ -142,7 +142,7 @@ class EnumValueAndLabelLawsTest {
         expected.put("no labels at all — the control", KernelLaws.ADMITTED);
         expected.put("every value labelled for the declared locale", KernelLaws.ADMITTED);
         expected.put("only ONE value labelled", COUNT_INVALID);
-        expected.put("a label for an UNDECLARED locale", KernelLaws.ADMITTED);
+        expected.put("a label for an UNDECLARED locale", DISPLAY_SHORT);
         expected.put("an EMPTY label text", DISPLAY_SHORT);
         expected.put("TWO labels for the same locale on one value", KernelLaws.ADMITTED);
         expected.put("an EMPTY label ARRAY on one value", COUNT_INVALID);

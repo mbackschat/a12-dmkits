@@ -27,15 +27,13 @@ class ModelProvenanceTest {
                 .rootGroup("Leaf", root -> root.stringField("LeafCode", field -> {}))
                 .build().toJson();
         String middle = DocumentModelDraft.named("MiddleHeader").locale("en_US")
-                .include("leafAlias", "leaf-reference")
-                .rootGroup("Middle", root -> root.mount("LeafMount", "leafAlias"))
+                .rootGroup("Middle", root -> root.mount("LeafMount", "leaf-reference"))
                 .build().toJson();
         String base = DocumentModelDraft.named("BaseHeader").locale("en_US")
-                .include("middleAlias", "middle-reference")
                 .typeDef("EmailType", type -> type.string(string -> string.minLength(5)))
                 .rootGroup("Base", root -> root
                         .typedefField("Email", "EmailType")
-                        .mount("MiddleMount", "middleAlias"))
+                        .mount("MiddleMount", "middle-reference"))
                 .build().toJson();
 
         ModelIndex index = ModelIndex.of(base, reference -> switch (reference) {
@@ -59,7 +57,7 @@ class ModelProvenanceTest {
     @Test
     void retainsADanglingNamedTypeWithoutAddingPrivateMarkersToExpandedJson() {
         String model = """
-                { "header": { "id": "m", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "m", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": [{"code":"en_US"}], "modelReferences": [] },
                   "content": { "modelInfo": {"name":"m"}, "modelRoot": { "rootGroups": [
                     { "type":"Group", "id":"/G", "name":"G", "Group": { "repeatability":1, "elements": [

@@ -156,7 +156,7 @@ class CheckDraftTest {
         checkDraft(ModelSource(base), at, member, text).introduced.map { it.code }
 
     private val base = """
-        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},

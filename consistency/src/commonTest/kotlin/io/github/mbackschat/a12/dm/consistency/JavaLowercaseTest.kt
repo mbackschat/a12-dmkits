@@ -23,4 +23,18 @@ class JavaLowercaseTest {
         )
         assertEquals(rows, rows.mapValues { (written, _) -> written.javaLowercase() })
     }
+
+    /** The rows Java's own `regionMatches(true, …)` settles on the JVM target; the JS target must agree. */
+    @Test
+    fun matchesASuffixIgnoringCaseAsJavasRegionMatchesDoes() {
+        val rows = mapOf(
+            ("İİİ_b" to "_b") to true,
+            ("POLICY_V1" to "_v1") to true,
+            ("x_İ" to "_i") to true,
+            ("Straße" to "SSE") to false,
+            ("ΟΔΟΣ" to "ς") to true,
+            ("b" to "_b") to false,
+        )
+        assertEquals(rows, rows.mapValues { (pair, _) -> pair.first.javaEndsWithIgnoringCase(pair.second) })
+    }
 }

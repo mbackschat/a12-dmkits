@@ -13,34 +13,35 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * A hand-built clock whose `now` names a wall time the model's zone skips has no instant, so `Now` is refused
- * wherever it is read: as a temporal operand and as a computed value alike. A12 cannot meet this input, because its
- * clock is an instant ([EvalClock.at] builds the same), so this locks our fail-fast contract, not a kernel row.
+ * A hand-built clock whose `now` names a wall time the model's zone skips reads as the wall time one gap later,
+ * the way kernel 31.1.1 resolves every gap label (KERNEL-FINDINGS KF665), and it does so wherever it is read: as a
+ * temporal operand and as a computed value alike. A12 cannot meet this input, because its clock is an instant
+ * ([EvalClock.at] builds the same), so this locks our own consistency contract, not a kernel row.
  */
 class ClockReadingZoneTest {
 
     @Test
-    fun aClockInABerlinGapIsRefusedOnEveryReadOfNow() {
+    fun aClockInABerlinGapReadsOneGapLaterOnEveryReadOfNow() {
         for (condition in listOf("[ScheduledAt] < Now", "[ScheduledAt] < AddSeconds(Now, 1)")) {
-            assertFailsWith<UnsupportedConstructException>(condition) { fires(ModelTimeZone.EUROPE_BERLIN, condition) }
+            assertTrue(fires(ModelTimeZone.EUROPE_BERLIN, condition), condition)
         }
     }
 
+    /** The control: in UTC the same wall time is its own instant, so 03:15 lies after it. */
     @Test
     fun theSameWallTimeIsAnOrdinaryReadingInUtc() {
-        assertTrue(fires(ModelTimeZone.UTC, "[ScheduledAt] < Now"))
-        assertTrue(fires(ModelTimeZone.UTC, "[ScheduledAt] < AddSeconds(Now, 1)"))
+        assertFalse(fires(ModelTimeZone.UTC, "[ScheduledAt] < Now"))
+        assertFalse(fires(ModelTimeZone.UTC, "[ScheduledAt] < AddSeconds(Now, 1)"))
     }
 
-    /** A computed `Now` reads the clock as a value, not as a temporal operand; it used to store the gap label and
-     *  flag it, the shape IF326 retired for a gap DateTime constant. */
+    /** A computed `Now` stores the label its comparisons read: one gap later in Berlin, the clock's own in UTC. */
     @Test
-    fun aComputedNowIsRefusedInTheGapAndStoredInUtc() {
-        assertFailsWith<UnsupportedConstructException> { computedNow(ModelTimeZone.EUROPE_BERLIN) }
+    fun aComputedNowStoresTheResolvedReading() {
+        assertEquals("VALUE|2026-03-29T03:30:00", computedNow(ModelTimeZone.EUROPE_BERLIN))
         assertEquals("VALUE|2026-03-29T02:30:00", computedNow(ModelTimeZone.UTC))
     }
 
@@ -58,7 +59,7 @@ class ClockReadingZoneTest {
 
     private fun fires(zone: ModelTimeZone, condition: String): Boolean =
         Interpreter(
-            SingleRowDoc(ROOT, mapOf(FIELD to "2026-03-29T01:00:00"), mapOf(FIELD to Kind.DATE_TIME)),
+            SingleRowDoc(ROOT, mapOf(FIELD to "2026-03-29T03:15:00"), mapOf(FIELD to Kind.DATE_TIME)),
             EvalConfig(clock = GAP_CLOCK, timeZone = zone),
         ).fires(parseCondition(condition, ROOT))
 

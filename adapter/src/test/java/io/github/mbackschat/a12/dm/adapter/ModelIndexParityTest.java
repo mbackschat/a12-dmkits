@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.adapter.laws.KernelMmCorpus;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -63,7 +64,7 @@ class ModelIndexParityTest {
 
     @Test
     void kernelMmCorpusMatchesTheKernel() {
-        Path root = locateKernelMm();
+        Path root = KernelMmCorpus.migrated();
         assumeTrue(root != null, "a12-kernel-mm not present — skipping the kernel-mm parity sweep");
         int compared = sweepCorpusParity(root);
         assertTrue(compared >= 10, () -> "expected the canonical metamodel set, compared only " + compared);
@@ -156,7 +157,6 @@ class ModelIndexParityTest {
 
     private static String policyIncludingBenefits() {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p
                         .field("PolicyNo", FieldKind.STRING)
                         .mount("Benefits", "benefits"))
@@ -178,7 +178,6 @@ class ModelIndexParityTest {
 
     private static String policyModelRootMount() {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("rider", "rider")
                 .rootGroup("Policy", p -> p
                         .field("PolicyNo", FieldKind.STRING)
                         .mount("Extras", "rider", MountOptions.single().asModelRoot()))
@@ -192,23 +191,6 @@ class ModelIndexParityTest {
         return ref -> "rider".equals(ref) ? rider : null;
     }
 
-    /** The 3-candidate sibling-clone locate for a12-kernel-mm (mirrors CorpusShrinkSupport). */
-    private static Path locateKernelMm() {
-        List<String> candidates = new ArrayList<>();
-        String prop = System.getProperty("a12.kernel.mm.dir");
-        if (prop != null) {
-            candidates.add(prop);
-        }
-        candidates.add("../a12-kernel-mm/documentModels");
-        candidates.add("../../a12-kernel-mm/documentModels");
-        for (String c : candidates) {
-            Path p = Path.of(c);
-            if (Files.isDirectory(p)) {
-                return p;
-            }
-        }
-        return null;
-    }
 
     /** Every {@code header.modelType == "document"} JSON file under {@code root}. */
     private static List<Path> documentModels(Path root) {

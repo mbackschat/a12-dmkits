@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 
 /**
  * The checker's half of what an enum-valued computation may compute from.
@@ -83,19 +82,17 @@ class EnumComputationSourceTest {
     }
 
     /**
-     * What a `FirstFilledValue` operand owes this gate that a sole read does not, mirroring
-     * `EnumComputationSourceLawsTest.aFirstFilledValueOperandOwesThisGateTheDisplayCheck`: inside the call A12
-     * asks the display check here rather than in the comparison walk, and a custom-typed source is no
-     * enumeration at all.
+     * Labels play no part in what a `FirstFilledValue` operand or a sole read owes this gate, mirroring
+     * `EnumComputationSourceLawsTest.labelsPlayNoPartInAFirstFilledValueOperand`: kernel 31.1.1 deleted the display
+     * check (KERNEL-FINDINGS KF655), while a custom-typed source is still no enumeration at all.
      */
     @Test
-    fun aFirstFilledValueOperandOwesThisGateTheDisplayCheck() {
+    fun labelsPlayNoPartInAFirstFilledValueOperand() {
         val refused = listOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
         assertEquals(mapOf(
-            "an unlabelled and a labelled operand into an unlabelled target" to refused,
-            // The comparison walk's class, so this gate stays silent on the sole read.
+            "an unlabelled and a labelled operand into an unlabelled target" to emptyList(),
             "the labelled read alone" to emptyList(),
-            "two unlabelled operands into a labelled target" to refused,
+            "two unlabelled operands into a labelled target" to emptyList(),
             "a custom-typed field" to refused,
             "a custom-typed operand among enumerations" to refused,
         ), mapOf(
@@ -107,22 +104,6 @@ class EnumComputationSourceTest {
             "a custom-typed field" to computing("[Loose]"),
             "a custom-typed operand among enumerations" to computing("FirstFilledValue(Mirror, Loose)"),
         ))
-    }
-
-    /**
-     * The sole labelled read is the comparison walk's to refuse, and that refusal ends selection before this
-     * gate's stage, so only the family's own contribution shows the gate leaves it alone rather than piling on.
-     */
-    @Test
-    fun theGateLeavesTheSoleLabelledReadToTheComparisonWalk() {
-        fun contributed(operation: String): List<String> {
-            val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(ModelSource(model(operation, "../Status"))))),
-                ReadTranscript())
-            return facts.enumComputationSourceContributions(facts.declarations().single { it.path == "/Policy/DerivedStatus" })
-                .map { it.finding.code }
-        }
-        assertEquals(mapOf("[Labelled]" to emptyList(), "FirstFilledValue(Mirror, Labelled)" to OWNED.toList()),
-            listOf("[Labelled]", "FirstFilledValue(Mirror, Labelled)").associateWith(::contributed))
     }
 
     /** The finding names the uncovered value, since widening the target or projecting the source is the fix. */
@@ -178,7 +159,7 @@ class EnumComputationSourceTest {
         target: String,
         alternatives: String = """[{"operation":"$operation"}]""",
     ): String = """
-        {"header":{"modelVersion":"28.4.0","id":"policy-enum-computation","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy-enum-computation","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -199,8 +180,8 @@ class EnumComputationSourceTest {
             {"type":"Field","id":"f8","name":"Banded","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"VOID"}],
               "categories":[
-                {"name":"Band","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"OPEN"}]},
-                {"name":"Wide","values":[{"value":"OPEN"},{"value":"CLOSED"},{"value":"VOID"}]}]}}}},
+                {"name":"Band","values":["OPEN","CLOSED","OPEN"]},
+                {"name":"Wide","values":["OPEN","CLOSED","VOID"]}]}}}},
             {"type":"Field","id":"f9","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f12","name":"Loose","Field":{"fieldType":{"type":"CustomFieldType",
               "CustomFieldType":{"name":"Loose"}}}},

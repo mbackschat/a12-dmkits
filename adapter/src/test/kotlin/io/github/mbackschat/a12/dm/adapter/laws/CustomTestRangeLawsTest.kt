@@ -16,7 +16,13 @@ import java.util.Optional
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-/** SPEC-2026-10-10-12: reserved custom findings need separate admission and whole-call observations. */
+/**
+ * SPEC-2026-10-10-12: a custom validator answering the key `testIDNummer`. Kernel 30.8.1 reserved it as a test-range
+ * finding that reported without excluding the value; kernel 31.1.1 dropped the reservation (`ValidType.Test` and
+ * `TEST_ID_NUMMER` are gone at `eec9134`), so it is an ordinary rejection, measured here row for row against the
+ * project-owned `PROJECT_REJECT` answer on every route and mode (KERNEL-FINDINGS KF669). The case, suffix and space
+ * variants stay as the controls that it was never a prefix or case-insensitive match.
+ */
 class CustomTestRangeLawsTest {
     private enum class Answer(val code: String?) {
         ACCEPT(null), REJECT("PROJECT_REJECT"), TEST("testIDNummer"),
@@ -241,7 +247,7 @@ class CustomTestRangeLawsTest {
     }
 
     @Test
-    fun reservedReportsStayOutsideTheCustomConditionsInvalidPointerSet() {
+    fun everyAnswerReachesTheCustomConditionsInvalidPointerSetAsBothKernelsReport() {
         val json = model(false, observeMembership = true)
         val dynamic = RuntimeLaws.kernelEngine(json)
         val static = RuntimeLaws.kernelJavaEngine(json)
@@ -318,7 +324,7 @@ class CustomTestRangeLawsTest {
     }
 
     @Test
-    fun reservedReportsDoNotOverrideDuplicateIndexAdmission() {
+    fun aRejectionBesideADuplicateIndexReportsBothOnEveryRow() {
         val base = DocumentModelDraft.named("parcel-custom-index").locale("en_US")
             .rootGroup("Parcel") { p -> p.group("Tags") { tags ->
                 tags.repeatable(2).customField("Identifier") { it.type("ParcelIdentifier") }
@@ -358,14 +364,6 @@ class CustomTestRangeLawsTest {
                 val attempt = runCatching {
                     if (strategy == 0) dynamic.computation(instance, null, Locale.US, recorder)
                     else static.computation(instance, null, Locale.US, recorder)
-                }
-                if (answer == Answer.TEST && second == "ABCD") {
-                    val cause = generateSequence(attempt.exceptionOrNull()) { it.cause }.last()
-                    assertEquals(IllegalStateException::class.java, cause.javaClass)
-                    org.junit.jupiter.api.Assertions.assertTrue(cause.message!!.startsWith("Duplicate key "))
-                    org.junit.jupiter.api.Assertions.assertTrue(computedAttempt.exceptionOrNull() is IllegalStateException,
-                        "the public compute result must fail assembly at a duplicate error pointer")
-                    continue
                 }
                 val changes = attempt.getOrThrow()
                 val computed = computedAttempt.getOrThrow()

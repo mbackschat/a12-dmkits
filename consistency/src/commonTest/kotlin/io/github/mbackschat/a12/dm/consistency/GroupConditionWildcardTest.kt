@@ -77,7 +77,7 @@ class GroupConditionWildcardTest {
 
     /** An order with a nested repeatable group and two fixed ones, so every landing site has a carrier. */
     private fun model(condition: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

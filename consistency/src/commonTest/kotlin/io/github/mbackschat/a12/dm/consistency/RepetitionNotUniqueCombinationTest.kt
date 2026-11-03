@@ -17,7 +17,7 @@ class RepetitionNotUniqueCombinationTest {
     private fun codes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"depot","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -60,7 +60,7 @@ class RepetitionNotUniqueCombinationTest {
      *
      * A filter's body is handed back as authored text rather than as structure, so the call scanner does not
      * descend into it — and that under-report is the right answer here anyway: A12 refuses the construct in a
-     * filter outright with `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`, so reporting the count would name
+     * filter outright with `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION`, so reporting the count would name
      * a class A12 does not.
      */
     @Test
@@ -81,7 +81,7 @@ class RepetitionNotUniqueCombinationTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"depot","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Pallets","Group":{"repeatability":9,"elements":[

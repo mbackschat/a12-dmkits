@@ -145,9 +145,9 @@ class MessageParameterRowDiffTest {
     }
 
     /**
-     * Both kernel strategies, row by row. A value read through a key selecting no row replaces the WHOLE text with
-     * the evaluation-fault text, at the first iterated row only; a label read of the same key needs no row, and a
-     * category read renders empty.
+     * Both kernel strategies, row by row. A value read through a key selecting no row renders empty on kernel
+     * 31.1.1, where 30.8.1 replaced the whole text with an evaluation fault at the first iterated row (KERNEL-FINDINGS
+     * KF668); a label read of the same key needs no row, and a category read renders empty.
      */
     @Test
     fun bothKernelStrategiesRenderTheRowEachParameterReads() {
@@ -260,18 +260,17 @@ class MessageParameterRowDiffTest {
 
     private companion object {
         val FAULT = Regex("An error occurred while evaluati(on|ng) the data check: .*$")
-        const val KERNEL_FAULT = "An error occurred while evaluation the data check: " +
-            "repetition index must be > 0, or 0 for wildcard, but not negative"
         val EXPECTED = listOf(
             "ENCLOSING /Policy[1]/Claims[2]/Items[1]/Item[1] item=[i1] abs=[n1] rel=[n1] own=[1]",
             "ENCLOSING /Policy[1]/Claims[2]/Items[2]/Item[1] item=[i2] abs=[n1] rel=[n1] own=[2]",
             "FIELD_KEYED /Policy[1]/Pick[1] f=[n0] fk=[c0]",
             "KEYED /Policy[1]/Holder[1] kn=[n1] kr=[c1] kl=[Note]",
             "KEYED_EMPTY /Policy[1]/Holder[1] e=[] sc=[HIGH] sv=[OPEN]",
-            "KEYED_MISS /Policy[1]/Holder[1] $KERNEL_FAULT",
+            "KEYED_MISS /Policy[1]/Holder[1] m=[] h=[Ada]",
             "KEYED_MISS_CATEGORY /Policy[1]/Holder[1] mc=[]",
             "KEYED_MISS_LABEL /Policy[1]/Holder[1] ml=[Note]",
-            "KEYED_MISS_ROW /Policy[1]/Claims[1]/Note[1] $KERNEL_FAULT",
+            "KEYED_MISS_ROW /Policy[1]/Claims[1]/Note[1] mr=[]",
+            "KEYED_MISS_ROW /Policy[1]/Claims[2]/Note[1] mr=[]",
             "NUMBER_KEYED /Policy[1]/Holder[1] tv=[t2] tk=[2] tg=[2]",
             "NUMBER_SCALED /Policy[1]/Holder[1] bv=[b2]",
             "PARTNER /Policy[1]/Covers[1]/Remark[1] p=[5] own=[r1] pl=[Cap]",
@@ -295,11 +294,11 @@ class MessageParameterRowDiffTest {
 
         val EXPECTED_FAULTS = listOf(
             // An empty key selects no row; so does a key whose value fails its own pattern, although `c1` names one.
-            "EMPTY_KEY /Policy[1]/Holder[1] $KERNEL_FAULT",
+            "EMPTY_KEY /Policy[1]/Holder[1] e=[]",
             // The first claim again, from a rule iterating covers.
             "FROM_ROW /Policy[1]/Covers[1]/Remark[1] r=[n0] own=[r1]",
             "FROM_ROW /Policy[1]/Covers[2]/Remark[1] r=[n0] own=[r2]",
-            "INVALID_KEY /Policy[1]/Holder[1] $KERNEL_FAULT",
+            "INVALID_KEY /Policy[1]/Holder[1] i=[]",
             // The German text's unmatched key does not fault the English rendering.
             "OTHER_LOCALE /Policy[1]/Holder[1] plain",
             "stringFalschesMuster /Policy[1]/Code[1] digits",

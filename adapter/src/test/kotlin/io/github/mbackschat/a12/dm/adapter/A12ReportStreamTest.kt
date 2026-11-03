@@ -170,7 +170,7 @@ class A12ReportStreamTest {
                 val expected = if (first || second) listOf(code) else emptyList()
                 val prepared = KernelModelPreparation.expand(json, ReferenceResolvers.selfContained())
                 val raw = mutableListOf<RankedNotification>()
-                prepared.service().generateValidationCode(prepared.model(), GroovyCodeGeneratorConfig(null), null) { raw += it }
+                prepared.service().generateValidationCode(prepared.model(), GroovyCodeGeneratorConfig(), null) { raw += it }
                 val whole = originalOutcome(json)
                 assertEquals(null, whole.failure, id)
                 assertEquals(if (carrier == "computation") expected + expected else expected, raw.map { code(it.message) }, "$id raw")
@@ -196,11 +196,12 @@ class A12ReportStreamTest {
             HostCase("repeat", "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1", HostControl.CONDITION,
                 listOf("MVK_INVALID_ENTITY"), emptyList()),
             HostCase("twins-valid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#1", HostControl.FIRST_RULE_NAME,
-                null, listOf("MVK_INVALID_WILDCARD")),
+                listOf("RK_CHILD_NAME_DUPLICATE", "MVK_INVALID_WILDCARD"), listOf("MVK_INVALID_WILDCARD")),
             HostCase("twins-invalid", "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2", HostControl.FIRST_RULE_NAME,
-                null, listOf("MVK_INVALID_WILDCARD", "MVK_INVALID_ENTITY")),
+                listOf("RK_CHILD_NAME_DUPLICATE", "MVK_INVALID_WILDCARD"), listOf("MVK_INVALID_WILDCARD", "MVK_INVALID_ENTITY")),
             HostCase("field-rule", "RuleMemberWithholdingTest.aFieldSharingARulesPathKeepsItsOwnFindings#1", HostControl.FIRST_RULE_NAME,
-                null, listOf("MVK_FRACT_DIGITS_INVALID", "MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")),
+                listOf("RK_CHILD_NAME_DUPLICATE", "MVK_FRACT_DIGITS_INVALID"),
+                listOf("MVK_FRACT_DIGITS_INVALID", "MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD")),
             HostCase("dispatch", "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1", HostControl.CONDITION,
                 listOf("MVK_INCOMPLETE_INPUT", "MVK_BRACKET_MISSING", "MVK_INCOMPLETE_INPUT", "MVK_BRACKET_MISSING"), emptyList()),
         )
@@ -249,7 +250,9 @@ class A12ReportStreamTest {
                 val id = "${case.id}/$suffix"
                 val json = model.toString()
                 val outcome = originalOutcome(json)
-                val reported = outcome.callbacks.map { code(it.message) }
+                // A12 states a shared rule name as a codeless converter sentence since 31.1.1 (KERNEL-FINDINGS
+                // KF652), so it is projected onto our class for it exactly as every other report oracle does.
+                val reported = outcome.callbacks.map { code(it.message).takeUnless { c -> c == "(no code)" } ?: codelessClass(it.message) }
                 val a12 = kernelModelClasses(json)
                 val report = check(ModelSource(json))
                 val findings = report.findings.filter { it.justifiesRejection }
@@ -260,12 +263,8 @@ class A12ReportStreamTest {
                         assertEquals(listOf(TextSpan("errorCondition", 12, 23)), findings.map { it.span }, id)
                 }
                 val expectedCodes = if (suffix == "completed") case.completedCodes else case.controlCodes
-                val failureType = when {
-                    suffix == "completed" && case.control == HostControl.FIRST_RULE_NAME -> IllegalArgumentException::class.java
-                    completion == HostCompletion.VERSION -> NullPointerException::class.java
-                    else -> null
-                }
-                val expectedReports = if (failureType != null) emptyList() else checkNotNull(expectedCodes)
+                val failureType = if (completion == HostCompletion.VERSION) NullPointerException::class.java else null
+                val expectedReports = if (failureType != null) emptyList() else expectedCodes
                 val expectedClasses = if (failureType != null) setOf("CK_MODEL_NOT_BUILDABLE") else expectedReports.toSet()
                 if (outcome.phase != OriginalPhase.CHECK || outcome.failure?.javaClass != failureType ||
                     reported != expectedReports || a12 != expectedClasses)
@@ -327,7 +326,7 @@ class A12ReportStreamTest {
     private enum class HostControl { CONDITION, FIRST_RULE_NAME }
     private data class HostCase(
         val id: String, val source: String, val control: HostControl,
-        val completedCodes: List<String>?, val controlCodes: List<String>,
+        val completedCodes: List<String>, val controlCodes: List<String>,
     )
 
     @Test
@@ -335,9 +334,9 @@ class A12ReportStreamTest {
         val mapper = ObjectMapper()
         val rows = HarvestedModels.expand(mapper.readTree(checkNotNull(javaClass.getResource(
             "/checker-near-miss/harvested-report-checks.json")).readText()))
-        assertEquals(316, rows.size)
-        assertEquals(316, rows.map { it["id"].asText() }.distinct().size)
-        assertEquals(mapOf("CHECK" to 273, "INPUT" to 42, "PREPARATION" to 1),
+        assertEquals(313, rows.size)
+        assertEquals(313, rows.map { it["id"].asText() }.distinct().size)
+        assertEquals(mapOf("CHECK" to 270, "INPUT" to 42, "PREPARATION" to 1),
             rows.groupingBy { it["kernelPhase"].asText() }.eachCount())
         val control = originalOutcome(host())
         assertEquals(null, control.failure)
@@ -430,7 +429,7 @@ class A12ReportStreamTest {
             }
             val expanded = KernelModelPreparation.expand(row.model, ReferenceResolvers.selfContained())
             val raw = mutableListOf<RankedNotification>()
-            expanded.service().generateValidationCode(expanded.model(), GroovyCodeGeneratorConfig(null), null) { raw += it }
+            expanded.service().generateValidationCode(expanded.model(), GroovyCodeGeneratorConfig(), null) { raw += it }
             val whole = KernelConsistencyOracle().checkConsistency(row.model, ReferenceResolvers.selfContained())
             val ours = check(ModelSource(row.model)).findings.filter { it.justifiesRejection }
             val copies = if (row.member == "errorCondition") 1 else 2
@@ -590,7 +589,7 @@ class A12ReportStreamTest {
         for (row in rows) {
             val generation = KernelModelPreparation.expand(row.model, ReferenceResolvers.selfContained())
             val raw = mutableListOf<RankedNotification>()
-            generation.service().generateValidationCode(generation.model(), GroovyCodeGeneratorConfig(null), null) { raw += it }
+            generation.service().generateValidationCode(generation.model(), GroovyCodeGeneratorConfig(), null) { raw += it }
             val consistency = originalOutcome(row.model)
             assertEquals(OriginalPhase.CHECK, consistency.phase, row.id)
             assertEquals(null, consistency.failure, row.id)
@@ -606,8 +605,9 @@ class A12ReportStreamTest {
             expect("whole-model classes", row.whole, wholeCodes)
             expect("dmkits messages", whole.map { it.message }, projected.map { it.message() })
             expect("dmkits severities", whole.map { it.severity.name }, projected.map { it.severity().name })
-            expect("whole-model coordinates unknown", List(whole.size) { Range(-1, -1, -1, -1) },
-                whole.filterIsInstance<IProblem>().map(::range))
+            // Kernel 31.1.1 hands the consistency problem itself, which carries no coordinates (KERNEL-FINDINGS KF499).
+            expect("whole-model callback types", List(whole.size) { "DocumentModelConsistencyProblem" },
+                whole.map { it.javaClass.simpleName })
             row.range?.let { expect("raw problem range", List(raw.size) { _ -> it }, raw.filterIsInstance<IProblem>().map(::range)) }
             val repeated = when (row.id) {
                 "computation", "mixed-zeta-alpha", "mixed-alpha-zeta" -> raw.filter { code(it.message) == "MVK_NO_STRING_OR_NUMBER_FOR_ADD" }

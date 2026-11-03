@@ -40,7 +40,7 @@ class ConditionLexicalityTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -234,7 +234,7 @@ class ConditionLexicalityTest {
     private fun reportCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -253,7 +253,7 @@ class ConditionLexicalityTest {
         val codes = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},

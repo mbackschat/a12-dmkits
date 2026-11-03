@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.parseDateTimeToIso
 import io.github.mbackschat.a12.dm.interpreter.eval.parseDeclaredDateTime
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone.UTC
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -22,10 +23,10 @@ class DeclaredDateTimeFormatTest {
     private val timeOnly = "HH:mm:ss"
 
     @Test fun theIsoFormatCanonicalizesToAnIsoDateTime() =
-        assertEquals("2024-06-01T12:30:00", parseDeclaredDateTime("2024-06-01T12:30:00", iso))
+        assertEquals("2024-06-01T12:30:00", parseDeclaredDateTime("2024-06-01T12:30:00", iso, UTC))
 
     @Test fun theTimeOnlyFormatCanonicalizesToATime() =
-        assertEquals("14:30:00", parseDeclaredDateTime("14:30:00", timeOnly))
+        assertEquals("14:30:00", parseDeclaredDateTime("14:30:00", timeOnly, UTC))
 
     /**
      * The boundary. The fallback must be reachable ONLY from a date-less format, or a fix for the time-only
@@ -33,20 +34,20 @@ class DeclaredDateTimeFormatTest {
      * acceptance, which is the worse direction.
      */
     @Test fun aBareTimeIsStillMalformedInAnIsoDeclaredField() =
-        assertNull(parseDeclaredDateTime("14:30:00", iso))
+        assertNull(parseDeclaredDateTime("14:30:00", iso, UTC))
 
     @Test fun anIsoValueIsStillMalformedInATimeOnlyDeclaredField() =
-        assertNull(parseDeclaredDateTime("2024-06-01T12:30:00", timeOnly))
+        assertNull(parseDeclaredDateTime("2024-06-01T12:30:00", timeOnly, UTC))
 
     @Test fun malformedValuesStayMalformedUnderBothFormats() {
-        assertNull(parseDeclaredDateTime("25:00:00", timeOnly), "hour out of range")
-        assertNull(parseDeclaredDateTime("14:61:00", timeOnly), "minute out of range")
-        assertNull(parseDeclaredDateTime("14:30", timeOnly), "missing the seconds the format requires")
-        assertNull(parseDeclaredDateTime("2024-13-01T12:30:00", iso), "month out of range")
-        assertNull(parseDeclaredDateTime("", timeOnly), "empty")
+        assertNull(parseDeclaredDateTime("25:00:00", timeOnly, UTC), "hour out of range")
+        assertNull(parseDeclaredDateTime("14:61:00", timeOnly, UTC), "minute out of range")
+        assertNull(parseDeclaredDateTime("14:30", timeOnly, UTC), "missing the seconds the format requires")
+        assertNull(parseDeclaredDateTime("2024-13-01T12:30:00", iso, UTC), "month out of range")
+        assertNull(parseDeclaredDateTime("", timeOnly, UTC), "empty")
     }
 
     /** The delegation is one-way: the date-bearing reading is tried first, so it still wins where it applies. */
     @Test fun theDateBearingReadingTakesPrecedence() =
-        assertEquals(parseDateTimeToIso("2024-06-01T12:30:00", iso), parseDeclaredDateTime("2024-06-01T12:30:00", iso))
+        assertEquals(parseDateTimeToIso("2024-06-01T12:30:00", iso, UTC), parseDeclaredDateTime("2024-06-01T12:30:00", iso, UTC))
 }

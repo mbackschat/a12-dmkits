@@ -89,7 +89,7 @@ class UnreadableModelRefusalTest {
             "field rename", "group add", "group attachment", "group extract",
             "group modify", "group move", "group read", "group remove",
             "group rename", "include add", "include inline", "include read",
-            "include remove", "include rename", "include set-reference", "meta",
+            "include remove", "include set-reference", "meta",
             "model check", "model compute", "model describe", "model eval",
             "model expand", "model export-jsonschema", "model info", "model normalize",
             "model read", "model rename", "model report", "model seed",

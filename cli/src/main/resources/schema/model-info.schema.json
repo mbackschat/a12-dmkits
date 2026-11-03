@@ -50,11 +50,10 @@
   "$defs": {
     "include": {
       "type": "object",
-      "required": ["alias", "ref", "resolvedPath"],
+      "required": ["ref", "resolvedPath"],
       "additionalProperties": false,
       "properties": {
-        "alias": { "type": "string", "description": "the include alias (how mount groups bind it)" },
-        "ref": { "type": "string", "description": "the referenced model id" },
+        "ref": { "type": "string", "description": "the included model's id, which every mount of it names in `includeConfig.reference` — the include's only identity (DM 29.4)" },
         "resolvedPath": { "type": ["string", "null"], "description": "the referenced model's path within the include dir, or null if unresolved" }
       }
     },

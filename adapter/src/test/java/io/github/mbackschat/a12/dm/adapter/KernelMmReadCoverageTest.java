@@ -1,4 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
+
+import io.github.mbackschat.a12.dm.adapter.laws.KernelMmCorpus;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
@@ -28,7 +30,7 @@ class KernelMmReadCoverageTest {
 
     @Test
     void measuresReadCoverageAcrossTheCanonicalMetamodels() throws IOException {
-        Path root = locateKernelMm();
+        Path root = KernelMmCorpus.migrated();
         assumeTrue(root != null, "a12-kernel-mm not present — skipping spike coverage harness");
 
         int totalRules = 0, converted = 0, opaque = 0;
@@ -93,19 +95,21 @@ class KernelMmReadCoverageTest {
         // Regression floor: F-IDX (name-path keying) + boolean/confirm/!= + enum field-to-field + the
         // field-list×value-list quantifiers (constant AND entity-valued) + NumberOfFilledFields/Groups +
         // custom conditions (→ CustomConditionRef, name-only). Foreign validation-rule read is FULLY
-        // typed: 547/547 (100%). The 6 computations kernel-mm ships are excluded here (readAll() is
-        // validation rules only) and locked separately at 6/6 by the computation-coverage test below —
-        // 547 + 6 = 553 typed elements, the kernel's whole getAllRules(). Lock the floor near the ceiling
-        // so any converter/path-keying regression is loud here (opt-in: only runs where the clone exists).
+        // typed: 544/544 (100%, measured 2026-11-02 on the 2026.06-ext0 metamodels, a12-kernel-mm f7ea179, which
+        // dropped three rules from 30.8.1's 547). The 6 computations kernel-mm ships are excluded here (readAll() is
+        // validation rules only) and locked separately at 6/6 by the computation-coverage test below. Lock the
+        // floor near the ceiling so any converter/path-keying regression is loud here (opt-in: only runs where
+        // the clone exists).
         int finalConverted = converted;
-        assertTrue(finalConverted >= 545,
+        int finalTotal = totalRules;
+        assertTrue(finalConverted >= 542,
                 () -> "kernel-mm validation-rule read coverage regressed below the floor (converted="
-                        + finalConverted + " of " + 547 + ")" + report);
+                        + finalConverted + " of " + finalTotal + ")" + report);
     }
 
     @Test
     void measuresComputationReadCoverageAcrossTheCanonicalMetamodels() throws IOException {
-        Path root = locateKernelMm();
+        Path root = KernelMmCorpus.migrated();
         assumeTrue(root != null, "a12-kernel-mm not present — skipping spike coverage harness");
 
         int total = 0, converted = 0, opaque = 0;
@@ -181,23 +185,6 @@ class KernelMmReadCoverageTest {
         return "[other] " + (reason.length() > 70 ? reason.substring(0, 70) + "…" : reason);
     }
 
-    /** First existing of the system-property dir, then the sibling-clone candidates. */
-    private static Path locateKernelMm() {
-        List<String> candidates = new ArrayList<>();
-        String prop = System.getProperty("a12.kernel.mm.dir");
-        if (prop != null) {
-            candidates.add(prop);
-        }
-        candidates.add("../a12-kernel-mm/documentModels");
-        candidates.add("../../a12-kernel-mm/documentModels");
-        for (String c : candidates) {
-            Path p = Path.of(c);
-            if (Files.isDirectory(p)) {
-                return p;
-            }
-        }
-        return null;
-    }
 
     /** Newest non-previous file per directory, preferring the a12- variant, else codegen-, else none-. */
     private static List<Path> canonicalModels(Path root) throws IOException {

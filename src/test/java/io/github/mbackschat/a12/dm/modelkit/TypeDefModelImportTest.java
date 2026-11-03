@@ -89,10 +89,9 @@ class TypeDefModelImportTest {
                 .build()
                 .toJson();
         String consumer = DocumentModelDraft.named("catalog").locale("en_US")
-                .include("component", "catalog-component")
                 .rootGroup("Catalog", catalog -> catalog
                         .typedefField("Code", "ComponentCode")
-                        .mount("Details", "component"))
+                        .mount("Details", "catalog-component"))
                 .build()
                 .toJson();
         ModelResolver resolver = reference -> "catalog-component".equals(reference) ? component : null;

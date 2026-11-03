@@ -79,6 +79,8 @@ class CustomFieldTypeSpiInvocationLawsTest {
             return Optional.empty()
         }
 
+        // Kernel 31 removed the `configData` overloads (A12K-4079): these one-argument forms are the only
+        // conversion arms left, so recording them observes every conversion the engine can reach.
         override fun convertDisplay2Internal(displayValue: String): ICustomFieldTypeConversionResult {
             log += "convertDisplay2Internal($displayValue)"
             return conversion(displayValue)
@@ -86,29 +88,6 @@ class CustomFieldTypeSpiInvocationLawsTest {
 
         override fun convertInternal2Display(internalValue: String): ICustomFieldTypeConversionResult {
             log += "convertInternal2Display($internalValue)"
-            return conversion(internalValue)
-        }
-
-        // BOTH overloads are recorded, and the two-argument pair is the one that matters: the engine calls
-        // `convertDisplay2Internal(wert, configData)`, and the SPI's default for THAT form returns a
-        // no-conversion result without delegating to the one-argument form — so an instrument overriding only
-        // the outer pair would leave the engine's real path unrecorded and report an empty log whatever the
-        // engine did. The `validate` arm has no such trap and that asymmetry is what hid it: the engine calls
-        // the deprecated four-argument overload, whose default DOES delegate down to the three-argument form
-        // overridden above, so acceptance is genuinely observed. (Found by a cold review, 2026-09-03.)
-        override fun convertDisplay2Internal(
-            displayValue: String,
-            configData: MutableMap<String, Any>,
-        ): ICustomFieldTypeConversionResult {
-            log += "convertDisplay2Internal($displayValue, configData=${configData.keys})"
-            return conversion(displayValue)
-        }
-
-        override fun convertInternal2Display(
-            internalValue: String,
-            configData: MutableMap<String, Any>,
-        ): ICustomFieldTypeConversionResult {
-            log += "convertInternal2Display($internalValue, configData=${configData.keys})"
             return conversion(internalValue)
         }
     }

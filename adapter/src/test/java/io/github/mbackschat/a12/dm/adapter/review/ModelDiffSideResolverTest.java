@@ -21,19 +21,19 @@ class ModelDiffSideResolverTest {
         ModelDiff diff = ModelDiff.between(store("pricing-v1"), store("pricing-v2"),
                 baseResolver, headResolver);
 
-        ElementChange include = diff.changes().stream()
-                .filter(change -> change.element() == ElementKind.INCLUDE)
-                .findFirst().orElseThrow(() -> new AssertionError("missing include retarget: " + diff.changes()));
-        assertEquals("pricing-v1", delta(include, "reference").before());
-        assertEquals("pricing-v2", delta(include, "reference").after());
+        // The mount names its model (KF651), so the retarget is the mount group's own delta.
+        ElementChange mount = diff.changes().stream()
+                .filter(change -> change.element() == ElementKind.GROUP && change.id().equals("/Store/Prices"))
+                .findFirst().orElseThrow(() -> new AssertionError("missing mount retarget: " + diff.changes()));
+        assertEquals("pricing-v1", delta(mount, "mount.reference").before());
+        assertEquals("pricing-v2", delta(mount, "mount.reference").after());
     }
 
     private static String store(String pricingId) {
         return DocumentModelDraft.named("store").locale("en_US")
-                .include("pricing", pricingId)
                 .rootGroup("Store", store -> {
                     store.field("Sku", FieldKind.STRING);
-                    store.mount("Prices", "pricing");
+                    store.mount("Prices", pricingId);
                 })
                 .build().toJson();
     }

@@ -21,7 +21,7 @@ class SparseMembershipTraversalTest {
         val rows = "$root/Runs/Parcels"
         val operators = listOf("AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList")
         val targets = (0..1).flatMap { kind -> (0..2).flatMap { side -> operators.indices.map { op -> "K${kind}S${side}P$op" } } }
-        val having = "Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"31.03.2024T02:30:00\"))"
+        val having = "Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"29.02.1500T10:00:00\"))"
         val conditions = (0..1).flatMap { kind ->
             val selected = "Runs*/Parcels*/${if (kind == 0) "Charge" else "Label"} $having"
             val approved = if (kind == 0) "Approved" else "Token"

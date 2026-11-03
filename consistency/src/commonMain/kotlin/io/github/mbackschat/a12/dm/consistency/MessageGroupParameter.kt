@@ -78,7 +78,6 @@ internal fun TrackedFactBase.completedGroupDefect(
     if (declarationAt(named)?.declaredKind != DeclaredKind.GROUP) return MessageCompletion.Refused(GROUP)
     val key = (parameter as? MessageParameter.Group)?.key
     if (key != null) {
-        if (key.entity?.ruleGroup == true) return MessageCompletion.Refused("MVK_INTERNAL_ERROR")
         return keyedMessageGroupDefect(named, key, element)
     }
     val references = ordinaryMessageGroupReferences(element) ?: return MessageCompletion.Declined

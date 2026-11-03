@@ -12,7 +12,7 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal fun basketModel(inBasket: String = "", inLines: String = ""): ModelSource = ModelSource(
     """
-    {"header":{"modelVersion":"28.4.0","id":"basket","locales":[{"code":"en_US"}]},
+    {"header":{"modelVersion":"29.4.0","id":"basket","locales":[{"code":"en_US"}]},
      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
       {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
         {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},

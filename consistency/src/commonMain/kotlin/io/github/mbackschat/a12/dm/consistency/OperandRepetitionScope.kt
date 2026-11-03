@@ -258,9 +258,9 @@ internal fun TrackedFactBase.levelClassOf(
     // The one level an admitted key addresses ([KERNEL-FINDINGS KF478]).
     val pinned = if (keyed) indexGroupOf(resolved.path) else null
     val isGroup = declared.declaredKind == DeclaredKind.GROUP
-    if (!isGroup && declared.declaredKind != DeclaredKind.FIELD || isGroup && filtered) {
-        return null
-    }
+    // A filtered group is walked too: since kernel 31.1.1 its kind is asked only once the walk passes
+    // (KERNEL-FINDINGS KF656).
+    if (!isGroup && declared.declaredKind != DeclaredKind.FIELD) return null
     val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
     val levels = repetitionsReachedBy(resolved.path)
     var wildcardSeen = false

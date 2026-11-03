@@ -57,7 +57,7 @@ class AggregateOperandIterationTest {
     private fun codes(errorField: String, call: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},

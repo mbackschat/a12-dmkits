@@ -220,7 +220,6 @@ class InterpreterBridgePreparedModel internal constructor(
                 fromModelId = dependency.fromModelId,
                 toModelId = dependency.toModelId,
                 purpose = dependency.purpose.wireName(),
-                alias = dependency.alias,
                 diagnosticLabel = dependency.diagnosticLabel,
                 sha256 = dependency.sha256,
             )
@@ -293,7 +292,6 @@ class InterpreterBridgeModelDependency internal constructor(
     val fromModelId: String,
     val toModelId: String,
     val purpose: String,
-    val alias: String?,
     val diagnosticLabel: String?,
     val sha256: String,
 )
@@ -874,7 +872,6 @@ private fun preparationDiagnostic(diagnostic: CoreModelPreparationDiagnostic): J
                     put("fromModelId", step.fromModelId)
                     put("toModelId", step.toModelId)
                     put("purpose", step.purpose.wireName())
-                    putOptional("alias", step.alias)
                 }
             }))
         }

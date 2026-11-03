@@ -12,15 +12,17 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * What the rule-message `<field>.Vordruckzeile` / `<field>.Vordruckname` parameters RENDER — the runtime half
- * of the two forms whose admission half is [KF279]. **Both kernel strategies FAULT on them**, so this is a
+ * What the rule-message `<field>.Vordruckzeile` parameter RENDERS — the runtime half of the form whose admission
+ * half is [KF279]. **Both kernel strategies FAULT on it**, so this is a
  * characterized divergence rather than a match, and the characterization is the point: a lock that asserted
  * three-way equality would have to encode a kernel internal error as our contract.
  *
  * <p><b>Measured 2026-09-07, all three engines, one model, one document.</b> Dynamic-Groovy and static-Java
  * agree exactly — the rule's message text comes back as the runtime's own failure string, `An error occurred
  * while evaluation the data check: Index 1 out of bounds for length 1`. The interpreter renders the two tokens
- * LITERALLY, because it has no case for the suffix. The plain `$Reference$` parameter rides in the same
+ * LITERALLY, because it has no case for the suffix. Its sibling `<field>.Vordruckname` was measured beside it then;
+ * kernel 31.1.1 removed that suffix from the parameter grammar, so a model carrying it no longer builds and it has
+ * no runtime half to characterize (KERNEL-FINDINGS KF657). The plain `$Reference$` parameter rides in the same
  * message as a within-message control: it renders on every engine, so the fault is attributable to the
  * form-line positions and not to the rule, the document or the route.
  *
@@ -62,8 +64,7 @@ class RuleMessageFormLineParameterDiffTest {
                     .`when`(reference.filled()).severity(Severity.ERROR)
                     .message(
                         Dsl.en(
-                            "zeile=[\$$ADJUSTER.Vordruckzeile\$] name=[\$$ADJUSTER.Vordruckname\$] " +
-                                "plain=[\$Reference\$]",
+                            "zeile=[\$$ADJUSTER.Vordruckzeile\$] plain=[\$Reference\$]",
                         ),
                     ).build()
             }
@@ -78,7 +79,7 @@ class RuleMessageFormLineParameterDiffTest {
     private val definition = ModelLoader.load(model)
 
     @Test
-    fun bothKernelStrategiesFaultOnTheFormLineParametersWhileTheInterpreterLeavesTheTokenLiteral() {
+    fun bothKernelStrategiesFaultOnTheFormLineParameterWhileTheInterpreterLeavesTheTokenLiteral() {
         val kDoc = RuntimeLaws.doc().group(POLICY, 1).field(REFERENCE, "P-1", 1, 1)
         val iDoc = definition.newDocument().group(POLICY, 1).field(REFERENCE, "P-1", 1, 1)
 
@@ -92,7 +93,7 @@ class RuleMessageFormLineParameterDiffTest {
         assertEquals(dynamic, generated,
             "the two kernel strategies agree, so the fault is the kernel's and not one codegen dialect's")
         assertEquals(
-            listOf("zeile=[\$$ADJUSTER.Vordruckzeile\$] name=[\$$ADJUSTER.Vordruckname\$] plain=[Reference]"),
+            listOf("zeile=[\$$ADJUSTER.Vordruckzeile\$] plain=[Reference]"),
             interpreted,
             "the interpreter's characterized divergence: no case for the suffix, so the token survives",
         )

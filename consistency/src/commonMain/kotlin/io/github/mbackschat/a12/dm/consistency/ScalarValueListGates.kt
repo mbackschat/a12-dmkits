@@ -61,7 +61,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * is categorized. Both are measured in the same grid, and widening this family by analogy would name the
  * scalars' class on them.
  *
- * **Silent on an unresolvable type definition or an `UnspecifiedType` subject**, whose type this reader cannot know; on an enumeration declaring a `tableName`, which A12 exempts from the domain check; and on a
+ * **Silent on an unresolvable type definition**, whose type this reader cannot know (a `tableName` beside an
+ * enumeration's values is read past, KERNEL-FINDINGS KF654); and on a
  * subject whose repetition stars do not match its repeating levels, where a wildcard-validity class answers
  * ahead of every gate here.
  */
@@ -231,9 +232,6 @@ private fun TrackedFactBase.constantListFindings(
         return listOf(gate(INVALID_TYPES_FOR_COMPARISON, call.operator, subject, member, element, call.spanIn(member)))
     }
     val body = enumerationBodyOf(subject) ?: return null
-    if (body["tableName"] != null) {
-        return null
-    }
     val category = categoryAccessesIn(subjectOperand.text, conditionLanguage).singleOrNull()?.category
     val domain = body.lookupDomain(category)?.toSet() ?: return null
     val offending = entries.mapNotNull { it.literal }.filter { it !in domain }

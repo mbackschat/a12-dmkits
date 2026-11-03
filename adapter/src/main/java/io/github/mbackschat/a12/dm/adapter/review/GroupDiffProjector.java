@@ -84,7 +84,7 @@ final class GroupDiffProjector {
             aspects.put("sort[" + i + "]", sort.fieldName() + ":" + sort.order().name());
         }
         structure.mount().ifPresent(mount -> {
-            aspects.put("mount.alias", mount.alias());
+            aspects.put("mount.reference", mount.reference());
             aspects.put("mount.excludeRules", Boolean.toString(mount.options().excludeRules()));
             aspects.put("mount.excludeComputations", Boolean.toString(mount.options().excludeComputations()));
             aspects.put("mount.includeLevel", mount.options().includeLevel().name());

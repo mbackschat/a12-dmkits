@@ -60,7 +60,7 @@ class FieldNameReservedSegmentTest {
         checkRead(ModelSource(bin(fieldName))).findings.filter { it.code == reserved }.map { it.code }
 
     private fun bin(fieldName: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"warehouse-bin","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"warehouse-bin","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Bin","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},
@@ -70,7 +70,7 @@ class FieldNameReservedSegmentTest {
     """.trimIndent()
 
     private fun binWithAGroupNamed(groupName: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"warehouse-bin","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"warehouse-bin","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Bin","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},

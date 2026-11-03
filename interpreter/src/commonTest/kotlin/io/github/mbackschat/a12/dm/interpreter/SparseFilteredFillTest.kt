@@ -21,7 +21,7 @@ class SparseFilteredFillTest {
         val rows = "$root/Runs/Parcels"
         val operators = listOf("AllFieldsFilled", "NoFieldFilled", "AtLeastOneFieldFilled", "MoreThanOneFieldFilled",
             "NotAllFieldsFilled", "NotExactlyOneFieldFilled", "FieldsNotCollectivelyFilled")
-        val selected = "Runs*/Parcels*/Charge Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"31.03.2024T02:30:00\"))"
+        val selected = "Runs*/Parcels*/Charge Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"29.02.1500T10:00:00\"))"
         val model = ModelDef(
             fields = (listOf("$root/Anchor", "$rows/Permit", "$rows/Charge") + operators.map { "$root/$it" })
                 .map { FieldDef(it, Kind.NUMBER, scale = 0) } + FieldDef("$rows/RecordedAt", Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"),

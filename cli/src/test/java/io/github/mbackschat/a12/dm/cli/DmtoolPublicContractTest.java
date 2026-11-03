@@ -73,7 +73,7 @@ class DmtoolPublicContractTest {
     }
 
     @Test
-    void packagedRuntimeVerbsShareCanonicalJsonSurvivorCoordinates(@TempDir Path dir) throws Exception {
+    void packagedRuntimeVerbsShareCanonicalJsonRowsAndRefusals(@TempDir Path dir) throws Exception {
         String base = DocumentModelDraft.named("parcel-json-ingress").locale("en_US")
                 .rootGroup("Parcel", p -> p.group("Lines", g -> g.repeatable(3)
                         .numberField("Amount", f -> f.fractionDigits(0))
@@ -88,7 +88,7 @@ class DmtoolPublicContractTest {
         Path model = dir.resolve("parcel.dm.json");
         Path document = dir.resolve("parcel.json");
         Files.writeString(model, edit.toJson());
-        String input = "{\"Parcel\":{\"Unknown\":{},\"Lines\":[null,7,{\"Amount\":7},false]}}";
+        String input = "{\"Parcel\":{\"Unknown\":{},\"Lines\":[{\"Amount\":7}]}}";
         Files.writeString(document, input);
         var dmtool = new PackagedDmtool(dir);
         var evaluated = dmtool.run("-m", model.toString(), "model", "eval", "--instance", document.toString());
@@ -114,6 +114,17 @@ class DmtoolPublicContractTest {
             assertEquals("Parcel/Lines/Amount", data.path("field").asText(), result::out);
         }
         assertEquals(input, Files.readString(document));
+
+        // Kernel 31.1.1 reads no array holding a non-object, so every verb refuses the Document (KERNEL-FINDINGS KF664).
+        Path refused = dir.resolve("stray.json");
+        Files.writeString(refused, "{\"Parcel\":{\"Lines\":[null,{\"Amount\":7}]}}");
+        for (var result : List.of(
+                dmtool.run("-m", model.toString(), "model", "eval", "--instance", refused.toString()),
+                dmtool.run("-m", model.toString(), "model", "compute", "--instance", refused.toString()),
+                dmtool.run("-m", model.toString(), "rule", "eval", lines.ref().path() + "/Positive",
+                        "--instance", refused.toString()))) {
+            assertEquals(2, result.code(), () -> result.out() + result.err());
+        }
     }
 
     @Test
@@ -176,8 +187,8 @@ class DmtoolPublicContractTest {
             }
         }
         assertEquals(ManifestVerbTest.EXPECTED_VERBS.size(), leaves);
-        assertEquals(49, writes);
-        assertEquals(39, previews);
+        assertEquals(48, writes);
+        assertEquals(38, previews);
         assertEquals(RUNTIME, runtime, "only the three interpreter runtime routes may claim runtime execution");
     }
 
@@ -591,61 +602,6 @@ class DmtoolPublicContractTest {
                     MAPPER.readTree(evaluated.out()).path("data").path("fired"), List.class));
             assertEquals(input, Files.readString(document));
         }
-    }
-
-    @Test
-    void packagedPortableCheckPreservesSelectedAncestorBinding(@TempDir Path dir) throws Exception {
-        String base = DocumentModelDraft.named("depot-check-scope").locale("en_US")
-                .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)
-                        .numberField("Marker", f -> {})
-                        .group("Bins", bin -> bin.repeatable(3).indexField("Code").stringField("Code", f -> {})
-                                .numberField("Stock", f -> {}).numberField("Reserve", f -> {}))))
-                .build().toJson();
-        for (String guard : List.of("ancestor", "sibling", "own")) {
-            var session = EditSession.read(base);
-            var store = session.group("/Store");
-            var depot = session.group("/Store/Depots");
-            var stock = depot.num("Bins/Stock");
-            var guarded = switch (guard) {
-                case "ancestor" -> depot.num("Marker");
-                case "sibling" -> depot.num("Bins/Reserve");
-                default -> stock;
-            };
-            var rule = store.rule(builder -> builder.name("Selected").code("Selected").errorField(stock)
-                    .when(guarded.filled().and(stock.forIndex("b").gt(0)))
-                    .message(Dsl.en("Check selected stock.")).build());
-            Path model = dir.resolve(guard + ".dm.json");
-            Files.writeString(model, new io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator().inject(base, rule.draft()));
-            var result = new PackagedDmtool(dir).run("-m", model.toString(), "model", "check", "--engine", "portable");
-            boolean rejected = guard.equals("sibling");
-            assertEquals(rejected ? 1 : 3, result.code(), result::out);
-            var envelope = MAPPER.readTree(result.out());
-            assertEquals("PORTABLE_CHECKER", envelope.path("engineExecuted").asText(), result::out);
-            assertEquals(rejected ? "INVALID" : "INCONCLUSIVE", envelope.path("data").path("status").asText(), result::out);
-        }
-    }
-
-    @Test
-    void packagedPortableCheckReportsTheKeyAddressFailure(@TempDir Path dir) throws Exception {
-        String base = DocumentModelDraft.named("depot-key-address").locale("en_US")
-                .rootGroup("Store", store -> store.group("Depots", depot -> depot.repeatable(2)
-                        .stringField("Wanted", f -> {}))
-                        .group("Catalog", catalog -> catalog.repeatable(3).indexField("Code")
-                                .stringField("Code", f -> {}).numberField("Stock", f -> {}).numberField("Reserve", f -> {})))
-                .build().toJson();
-        var session = EditSession.read(base);
-        var store = session.group("/Store");
-        var rule = store.rule(builder -> builder.name("Selected").code("Selected")
-                .errorField(store.field("Catalog/Reserve"))
-                .when(Dsl.groupFilled(store.ref()).and(store.num("Catalog/Stock").forIndex(store.field("Depots/Wanted")).gt(0)))
-                .message(Dsl.en("Check selected stock.")).build());
-        Path model = dir.resolve("key-address.dm.json");
-        Files.writeString(model, new io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator().inject(base, rule.draft()));
-        var result = new PackagedDmtool(dir).run("-m", model.toString(), "model", "check", "--engine", "portable");
-        assertEquals(1, result.code(), result::out);
-        var codes = MAPPER.readTree(result.out()).findValuesAsText("code");
-        assertTrue(codes.contains("MVK_SEMANTIC_INDEX_INVALID_ITER"), result::out);
-        assertFalse(codes.contains("MVK_ERROR_FIELDGROUP_ITERATION5_INVALID"), result::out);
     }
 
     @Test

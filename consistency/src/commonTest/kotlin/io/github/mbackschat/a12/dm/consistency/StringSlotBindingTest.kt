@@ -21,7 +21,7 @@ class StringSlotBindingTest {
 
     private fun ruleSource(members: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -35,7 +35,7 @@ class StringSlotBindingTest {
 
     private fun computationSource(alternative: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -50,7 +50,7 @@ class StringSlotBindingTest {
 
     private fun groupSource(members: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[

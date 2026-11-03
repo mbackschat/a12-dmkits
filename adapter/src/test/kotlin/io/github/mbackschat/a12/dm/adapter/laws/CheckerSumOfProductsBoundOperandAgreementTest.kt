@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * A `SumOfProducts` operand that leaves its lowest repeatable level unstarred, because the rule binds that level,
- * draws `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` (a12-kernel-lean SPEC-2026-10-14-08, re-measured here). The rule
+ * draws `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED` (a12-kernel-lean SPEC-2026-10-14-08, re-measured here). The rule
  * binds the level by iterating it, through its error field, or by being declared inside it; one unstarred operand
  * or both draw the class, while `Sum` and `MaxValue` admit the same pair, and the owning-group gate still answers
  * ahead of it. The class is `MVK_REPEATABLE_LEVEL_REQUIRED`
@@ -27,7 +27,7 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
 
     @Test
     fun anOperandLeftUnstarredOnABoundLevelDrawsTheLowestLevelClass() {
-        val lowest = setOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+        val lowest = setOf("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
         val rows = linkedMapOf(
             "iterated, the left operand unstarred" to
                 Row(ROOT, ITEM_COUNT, "FieldFilled(Items/Count) And SumOfProducts(Items/Count, Items*/UnitWeight) > 5", lowest),
@@ -83,7 +83,7 @@ class CheckerSumOfProductsBoundOperandAgreementTest {
             val ours = rejectingCodes(json).toSet()
             a12 to ours
         }
-        val lowest = setOf("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+        val lowest = setOf("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
         assertEquals(linkedMapOf(
             "target in the group, declared at the root" to (lowest to lowest),
             "target in the group, declared in it" to (lowest to lowest),

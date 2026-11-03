@@ -3,84 +3,39 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 /**
- * Kernel 30.8.1's effective-display comparability gate for direct string/enumeration fields. An enum is
- * display-bearing only when at least one localized display differs from its stored token, so identity labels
- * remain textless. Two display-bearing enums need a consistent partial bijection in every shared locale.
+ * Kernel 31.1.1 compares a String or Enumeration field with an Enumeration whatever either declares as display
+ * labels (KERNEL-FINDINGS KF655). Kernel 30.8.1 refused a text-bearing enumeration against a String or a textless
+ * one, and two text-bearing ones whose token/label maps conflicted; 31.1.0 deleted that gate
+ * ({@code FieldUtils.isEnumWithDisplayValues} has no caller left at {@code a12-kernel} {@code eec9134}).
  *
- * <p>Source: {@code IEnumerationType.hasDisplayValues}, {@code FieldUtils.isEnumWithDisplayValues},
- * {@code CheckVergleichsBedingungImpl}, and {@code CheckEntityListenUtils.checkDisplayValues}.
+ * <p>The pairs are the old law's every arm, admitted and refused alike, so a gate surviving on any one of them
+ * fails here.
  */
 class EnumComparabilityLawsTest {
 
     private static final String ENUMS = ModelDrafts.enumComparability().toJson();
 
     @Test
-    void stringComparesToATextlessEnum() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../Str",
-                "AllFieldsFilled(Str, NoText) And [Str] == [NoText]");
-    }
-
-    @Test
-    void textBearingEnumsWithMatchingMapsCompare() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../WithText",
-                "AllFieldsFilled(WithText, WithText2) And [WithText] == [WithText2]");
-    }
-
-    @Test
-    void identityLabelsAreEffectivelyTextlessForStringInequality() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../Str",
-                "AllFieldsFilled(Str, IdentityText) And [Str] != [IdentityText]");
-    }
-
-    @Test
-    void identityLabelsAreEffectivelyTextlessForEnumEquality() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../IdentityText",
-                "AllFieldsFilled(IdentityText, NoText) And [IdentityText] == [NoText]");
-    }
-
-    @Test
-    void sharedStoredTokenMustHaveOneDisplay() {
-        KernelLaws.rejectsModel(ENUMS, "/Doc", "../WithText",
-                "AllFieldsFilled(WithText, ForwardConflict) And [WithText] == [ForwardConflict]",
-                "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-    }
-
-    @Test
-    void sharedDisplayMustDenoteOneStoredToken() {
-        KernelLaws.rejectsModel(ENUMS, "/Doc", "../WithText",
-                "AllFieldsFilled(WithText, ReverseConflict) And [WithText] == [ReverseConflict]",
-                "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-    }
-
-    @Test
-    void identityMappingParticipatesOnceBothDeclarationsAreDisplayBearing() {
-        KernelLaws.rejectsModel(ENUMS, "/Doc", "../IdentityMixed",
-                "AllFieldsFilled(IdentityMixed, WithText) And [IdentityMixed] == [WithText]",
-                "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-    }
-
-    @Test
-    void partiallyOverlappingCompatibleMapsCompare() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../WithText",
-                "AllFieldsFilled(WithText, PartialCompatible) And [WithText] == [PartialCompatible]");
-    }
-
-    @Test
-    void disjointCompatibleMapsCompare() {
-        KernelLaws.acceptsModel(ENUMS, "/Doc", "../WithText",
-                "AllFieldsFilled(WithText, DisjointCompatible) And [WithText] == [DisjointCompatible]");
-    }
-
-    @Test
-    void stringCannotCompareToATextBearingEnum() {
-        KernelLaws.rejectsModel(ENUMS, "/Doc", "../Str",
-                "AllFieldsFilled(Str, WithText) And [Str] == [WithText]", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-    }
-
-    @Test
-    void textlessAndTextBearingEnumsCannotCompare() {
-        KernelLaws.rejectsModel(ENUMS, "/Doc", "../NoText",
-                "AllFieldsFilled(NoText, WithText) And [NoText] == [WithText]", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
+    void labelsDecideNoComparison() {
+        List<String[]> pairs = List.of(
+                new String[] {"Str", "NoText", "=="},
+                new String[] {"WithText", "WithText2", "=="},
+                new String[] {"Str", "IdentityText", "!="},
+                new String[] {"IdentityText", "NoText", "=="},
+                new String[] {"WithText", "ForwardConflict", "=="},
+                new String[] {"WithText", "ReverseConflict", "=="},
+                new String[] {"IdentityMixed", "WithText", "=="},
+                new String[] {"WithText", "PartialCompatible", "=="},
+                new String[] {"WithText", "DisjointCompatible", "=="},
+                new String[] {"Str", "WithText", "=="},
+                new String[] {"NoText", "WithText", "=="});
+        for (String[] pair : pairs) {
+            KernelLaws.acceptsModel(ENUMS, "/Doc", "../" + pair[0],
+                    "AllFieldsFilled(" + pair[0] + ", " + pair[1] + ") And [" + pair[0] + "] " + pair[2]
+                            + " [" + pair[1] + "]");
+        }
     }
 }

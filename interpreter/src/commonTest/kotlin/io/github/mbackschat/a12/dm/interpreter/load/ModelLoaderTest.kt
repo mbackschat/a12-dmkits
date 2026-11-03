@@ -14,14 +14,14 @@ import kotlin.test.assertTrue
 /**
  * The multiplatform [ModelLoader] — DM-JSON → [ModelDef] on BOTH targets (JVM + JS; `:interpreter:check` runs
  * both). Small hand-written DM-JSON string fixtures exercise the whole map: kinds, repeatable groups, rules,
- * tiered computations, enum values/categories, requiredness, index fields, variant filtering, `baseYear`, the
+ * tiered computations, enum values/categories, requiredness, index fields, a retired member, `baseYear`, the
  * raw-number fidelity (F1), and the malformed-JSON contract. The exhaustive parity-vs-Jackson check over every
  * real fixture lives in `:cli` (`ModelLoaderParityTest`, where both loaders are visible).
  */
 class ModelLoaderTest {
 
-    // A compact but feature-dense model: a non-repeatable root Order with an enum, a partial DATE, a
-    // variant-ONLY field (dropped at the null variant), and a repeatable Lines group carrying an unsigned
+    // A compact but feature-dense model: a non-repeatable root Order with an enum, a partial DATE, a field
+    // carrying the retired `variantFilter`, and a repeatable Lines group carrying an unsigned
     // scaled NUMBER (with a fractional minValue), a rule, and a tiered computation. No `$` in any string
     // (Kotlin raw strings interpolate `$`).
     private val model = """
@@ -71,10 +71,10 @@ class ModelLoaderTest {
     private fun load(): ModelDef = ModelLoader.load(model)
 
     @Test
-    fun collectsFieldsInDocumentOrderDroppingTheVariantOnlyField() {
-        // Secret carries variantFilter ONLY → dropped at the null variant; the rest stay in document order.
+    fun collectsFieldsInDocumentOrderReadingPastTheRetiredVariantFilter() {
+        // Kernel 31.1.1 reads past a `variantFilter` (DM 29.1 retired it; KERNEL-FINDINGS KF299), so Secret is kept.
         assertEquals(
-            listOf("/Order/Tier", "/Order/When", "/Order/Lines/LineNo", "/Order/Lines/Amount"),
+            listOf("/Order/Tier", "/Order/When", "/Order/Secret", "/Order/Lines/LineNo", "/Order/Lines/Amount"),
             load().fields.map { it.path },
         )
     }

@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The kit-side reading of a {@code boolean} model-config member, against the table the Kernel gave
- * {@code rulekit.validate.laws.ShortNameFlagSpellingLawsTest} (kernel 30.8.1, 2026-09-12,
- * KERNEL-FINDINGS KF289).
+ * {@code rulekit.validate.laws.ShortNameFlagSpellingLawsTest} (kernel 30.8.1, 2026-09-12, KERNEL-FINDINGS KF289;
+ * re-measured on kernel 31.1.1, 2026-11-02, where the empty, blank and {@code null} spellings turned UNREADABLE).
  *
  * <p><b>Every row is the Kernel's answer, not a design choice</b> (the padded and null-text rows are KF569's,
  * measured on both carriers), which is what makes this a conformance
@@ -47,7 +47,7 @@ class ConfigFlagTest {
         expected.put("\"FALSE\"", ConfigFlag.OFF);
         expected.put("\"yes\"", ConfigFlag.UNREADABLE);
         expected.put("\"1\"", ConfigFlag.UNREADABLE);
-        expected.put("\"\"", ConfigFlag.OFF);
+        expected.put("\"\"", ConfigFlag.UNREADABLE);
         expected.put("1", ConfigFlag.ON);
         expected.put("2", ConfigFlag.ON);
         expected.put("-1", ConfigFlag.ON);
@@ -58,13 +58,14 @@ class ConfigFlagTest {
         expected.put("1.5", ConfigFlag.UNREADABLE);
         expected.put("{}", ConfigFlag.UNREADABLE);
         expected.put("[]", ConfigFlag.UNREADABLE);
-        expected.put("null", ConfigFlag.OFF);
-        // A string is trimmed as Java trims, decoded first, and the text `null` is the default (KF569).
+        expected.put("null", ConfigFlag.UNREADABLE);
+        // A string is trimmed as Java trims and decoded first (KF569); the empty, blank and `null` texts refuse
+        // the reader on kernel 31.1.1, as does a JSON `null`.
         expected.put("\" true\"", ConfigFlag.ON);
         expected.put("\"\\ttrue\"", ConfigFlag.ON);
         expected.put("\"\\u00A0true\"", ConfigFlag.UNREADABLE);
-        expected.put("\" \"", ConfigFlag.OFF);
-        expected.put("\"null\"", ConfigFlag.OFF);
+        expected.put("\" \"", ConfigFlag.UNREADABLE);
+        expected.put("\"null\"", ConfigFlag.UNREADABLE);
         expected.put("\"NULL\"", ConfigFlag.UNREADABLE);
         expected.put("1.0", ConfigFlag.UNREADABLE);
         expected.put("1e0", ConfigFlag.UNREADABLE);

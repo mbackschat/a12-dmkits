@@ -280,8 +280,8 @@ class PreparedDocumentApi internal constructor(
     /**
      * Read A12 Document JSON into an immutable, owner-bound snapshot.
      *
-     * Conversion discards unknown and wrong-shaped entities and compacts surviving object rows (KF1).
-     * Syntax, root, scalar-id and resource-limit failures abort without publishing a partial snapshot.
+     * Conversion discards unknown and wrong-shaped entities (KF1). Syntax, root, scalar-id, non-object array element
+     * (KF664) and resource-limit failures abort without publishing a partial snapshot.
      */
     @JvmOverloads
     fun readDocument(

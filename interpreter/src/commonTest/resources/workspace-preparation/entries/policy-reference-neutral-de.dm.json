@@ -2,14 +2,13 @@
   "header" : {
     "id" : "policy-reference-neutral-de",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "benefits",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "benefits-reference-neutral-en"
@@ -52,7 +51,9 @@
             "name" : "Cover",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "benefits"
+              "includeConfig" : {
+                "reference" : "benefits-reference-neutral-en"
+              }
             }
           } ]
         }

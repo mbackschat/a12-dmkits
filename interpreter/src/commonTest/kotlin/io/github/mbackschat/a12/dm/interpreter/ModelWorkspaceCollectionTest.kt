@@ -308,7 +308,6 @@ class ModelWorkspaceCollectionTest {
         val imported = JsonObject(
             mapOf(
                 "purpose" to JsonPrimitive("typeDefinitions"),
-                "alias" to JsonPrimitive(import.reference),
                 "reference" to JsonPrimitive(import.reference),
             ),
         )

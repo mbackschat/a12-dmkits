@@ -110,9 +110,9 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("\"False\"", OFF);
         expected.put("\"FALSE\"", OFF);
         expected.put("\"yes\"", UNREADABLE);
-        // The EMPTY string is not an unrecognized spelling: Jackson's empty-string coercion supplies the
-        // type's default before the recognized-values check runs, so it reads as OFF rather than refusing.
-        expected.put("\"\"", OFF);
+        // The EMPTY string is coerced to null before the recognized-values check runs. Kernel 30.8.1 then took
+        // the type's default (OFF); 31.1.1's Jackson 3 refuses null for a primitive, so it no longer loads.
+        expected.put("\"\"", UNREADABLE);
         expected.put("1", ON);
         expected.put("2", ON);
         expected.put("-1", ON);
@@ -130,20 +130,21 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("\"1\"", UNREADABLE);
         expected.put("{}", UNREADABLE);
         expected.put("[]", UNREADABLE);
-        expected.put("null", OFF);
+        // An explicit null is refused the same way on 31.1.1, where 30.8.1 read it as OFF; absence stays OFF.
+        expected.put("null", UNREADABLE);
         expected.put("absent", OFF);
         assertEquals(expected, actual, "how A12 reads each spelling of fieldRefByShortNameAllowed");
     }
 
     /**
-     * The string arm TRIMS before it compares, and treats the text {@code null} as the type's default
-     * ([KF569], first measured on {@code StringType.noValueValidation} and re-measured here on this carrier
-     * rather than inherited). The trim is Java's {@code String.trim}, which strips U+0000 to U+0020 only, so a
-     * no-break or em space before {@code true} still refuses; the {@code null} match is exact, so
-     * {@code "NULL"} refuses while {@code " null"} trims to it.
+     * The string arm TRIMS before it compares ([KF569], first measured on {@code StringType.noValueValidation}
+     * and re-measured here on this carrier rather than inherited). The trim is Java's {@code String.trim}, which
+     * strips U+0000 to U+0020 only, so a no-break or em space before {@code true} still refuses. On kernel 30.8.1
+     * the blank text and the text {@code null} took the type's default; on 31.1.1 both reach Jackson 3's refusal
+     * of null for a primitive, so every one of them now leaves the model unread (2026-11-02).
      */
     @Test
-    void theStringIsTrimmedAndTheTextNullReadsAsTheDefault() {
+    void theStringIsTrimmedAndTheBlankOrNullTextRefusesTheReader() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("\" true\"", readAs(TextNode.valueOf(" true")));
         actual.put("\"\\ttrue\"", readAs(TextNode.valueOf("\ttrue")));
@@ -165,9 +166,9 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("\" TRUE\"", ON);
         expected.put("a no-break space before true", UNREADABLE);
         expected.put("an em space before true", UNREADABLE);
-        expected.put("\" \"", OFF);
-        expected.put("\"null\"", OFF);
-        expected.put("\" null\"", OFF);
+        expected.put("\" \"", UNREADABLE);
+        expected.put("\"null\"", UNREADABLE);
+        expected.put("\" null\"", UNREADABLE);
         expected.put("\"NULL\"", UNREADABLE);
         expected.put("\"FaLsE\"", UNREADABLE);
         expected.put("1.0", UNREADABLE);

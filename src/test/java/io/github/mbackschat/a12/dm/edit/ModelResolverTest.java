@@ -33,7 +33,7 @@ class ModelResolverTest {
         ModelResolver resolver = id -> "pricelist".equals(id) ? pricelist() : null;
 
         EditSession s = EditSession.read(catalog(), resolver);     // ModelResolver overload — no kernel import
-        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        s.mount("/Catalog", "Retail", "pricelist");
         s.validate();                                              // resolves the include through the SAM
 
         assertTrue(ModelDocument.read(s.toJson()).groupPaths().contains("/Catalog/Retail"),

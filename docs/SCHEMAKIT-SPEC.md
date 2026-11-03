@@ -210,7 +210,7 @@ A single JSON Schema imports to **exactly one** document model today. Multiplici
 |---|---|---|
 | **typeDefinition** (local) | a named reusable *type* — a `Money` decimal, an `Iban` string+pattern, an enum — declared in `content.typeDefinitions[]`, referenced by fields (`FieldTypeSpec.TypeDefRef`) | **No** — lives in the model |
 | **type-def-only model** | a `modelType:document` with an empty root carrying *only* `typeDefinitions`, **imported** by others (`DocumentModelDraft.typeDefModel()` / `Builder.importTypeDefs` → header `typeDefImports`) | **Yes** |
-| **include / mount** | a group with `modelAlias` → another model's id (header `includes[]` = alias→reference); on expand the kernel splices the child in (`IncludeLevel.SINGLE_RG` = the child becomes one group, `MODEL_ROOT` = its root fields land directly) | **Yes** |
+| **include / mount** | a group whose `includeConfig.reference` names another model's id (DM 29.4; the header lists each included model once); on expand the kernel splices the child in (`IncludeLevel.SINGLE_RG` = the child becomes one group, `MODEL_ROOT` = its root fields land directly) | **Yes** |
 
 ### Which reuse construct fans out into how many models
 
@@ -226,7 +226,7 @@ A single JSON Schema imports to **exactly one** document model today. Multiplici
 ### The clean way to say it
 
 - **typeDefinition** = reuse a *type* → stays in **one** model (promote to a shared **type-def-only model** only when the type is shared *across* schemas).
-- **include/mount** = reuse a *structure* → a **separate child model** the host mounts by `modelAlias`; **`--out-dir`** emits these for object cross-references.
+- **include/mount** = reuse a *structure* → a **separate child model** the host mounts by `includeConfig.reference`; **`--out-dir`** emits these for object cross-references.
 - An import yields **multiple** models with **`--out-dir`** over an OpenAPI bundle. **Recursion does *not*** yield a self-mount — the kernel forbids a model including itself, so a self-recursive component is *expanded* (to `--recursion-depth`) then omitted.
 
 ### Why a mount beats inlining (and where it can't reach)

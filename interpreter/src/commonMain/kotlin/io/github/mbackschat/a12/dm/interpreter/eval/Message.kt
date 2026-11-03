@@ -134,9 +134,8 @@ internal fun renderMessage(
 internal class SelectedCell(val path: String, val stored: String?, val matched: Boolean)
 
 /**
- * A key-selected token's text. A label needs no row; a category read through a key that selects none renders
- * empty; a value read through it fails the rule's evaluation, whose message then carries the fault text alone
- * (KERNEL-FINDINGS KF561, `adapter.laws.MessageParameterRowDiffTest`).
+ * A key-selected token's text. A label needs no row; a category or a value read through a key that selects none
+ * renders empty (KERNEL-FINDINGS KF561, KF668; `adapter.laws.MessageParameterRowDiffTest`).
  */
 private fun selectedText(
     token: MatchResult,
@@ -148,10 +147,9 @@ private fun selectedText(
 ): String {
     val category = token.groupValues[CATEGORY]
     return when {
-        category.isNotEmpty() -> if (cell.matched) enumCategoryOf(cell.path, cell.stored ?: "", category) ?: "" else ""
-        token.groupValues[VALUE_SUFFIX].isNotEmpty() ->
-            if (cell.matched) valueText(cell.path, { cell.stored }, enumValueOf, defaultValueOf)
-            else throw UnmatchedMessageKeyFailure(token.value)
+        !cell.matched && (category.isNotEmpty() || token.groupValues[VALUE_SUFFIX].isNotEmpty()) -> ""
+        category.isNotEmpty() -> enumCategoryOf(cell.path, cell.stored ?: "", category) ?: ""
+        token.groupValues[VALUE_SUFFIX].isNotEmpty() -> valueText(cell.path, { cell.stored }, enumValueOf, defaultValueOf)
         else -> labelOf(cell.path)
     }
 }

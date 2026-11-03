@@ -7,10 +7,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
 
-/** R4's path/carrier/filter population; predictions are frozen in CONFORMANCE-PLAN before execution. */
+/** R4's path/carrier population; predictions are frozen in CONFORMANCE-PLAN before execution. */
 class ElementPathStageLawsTest {
     private enum class Carrier { ROOT, NESTED, FIELD }
-    private enum class Filter { ABSENT, ONLY, ALL_EXCEPT }
     private data class Name(val text: String, val root: String = "", val nested: String = root, val field: String = nested)
 
     @Test
@@ -30,7 +29,7 @@ class ElementPathStageLawsTest {
             Name("Id", "MVK_ROOT_GROUP_NAME_INVALID", nested = ""),
         )
         assertEquals(24, names.size)
-        assertPopulation(names, 432, "element-paths")
+        assertPopulation(names, 144, "element-paths")
     }
 
     @Test
@@ -42,7 +41,7 @@ class ElementPathStageLawsTest {
             Name("Co/-de", "MVK_PATH_INVALID", NESTED_PATH, FIELD_PATH),
             Name("-Co/de", "MVK_PATH_INVALID,RK_ROOT_GROUP_NAME_ALPHABET", NESTED_PATH, "MVK_PATH_INVALID,RK_GROUP_PATH_INVALID"),
         )
-        assertPopulation(names, 108, "element-paths-mixed")
+        assertPopulation(names, 36, "element-paths-mixed")
     }
 
     /** A name every carrier refuses, each beside the sentence its own alphabet states (KF580). */
@@ -60,7 +59,7 @@ class ElementPathStageLawsTest {
         val predictions = mutableListOf<String>()
         val clusters = sortedMapOf<String, Int>()
         val examples = mutableListOf<String>()
-        for (name in names) for (carrier in Carrier.entries) for (tab in listOf(false, true)) for (filter in Filter.entries) {
+        for (name in names) for (carrier in Carrier.entries) for (tab in listOf(false, true)) {
             val tree = mapper.readTree(host)
             val root = tree.at("/content/modelRoot/rootGroups/0") as ObjectNode
             val nested = root.at("/Group/elements/1") as ObjectNode
@@ -70,19 +69,17 @@ class ElementPathStageLawsTest {
                 Carrier.NESTED -> nested
                 Carrier.FIELD -> field
             }.put("name", name.text)
-            if (filter != Filter.ABSENT) field.withObject("/Field/variantFilter")
-                .put("filterType", filter.name).putArray("variants").add("premium")
             (field.at("/Field/fieldType/StringType/errorMessage/0") as ObjectNode)
                 .put("text", if (tab) "Use\tcapitals" else "Use capitals")
             val json = tree.toString()
-            val label = "${name.text}:$carrier:tab=$tab:$filter"
+            val label = "${name.text}:$carrier:tab=$tab"
             models += json
             val nameCodes = when (carrier) {
                 Carrier.ROOT -> name.root
                 Carrier.NESTED -> name.nested
-                Carrier.FIELD -> if (filter == Filter.ONLY) "" else name.field
+                Carrier.FIELD -> name.field
             }.split(',').filter { it.isNotEmpty() }.toSet()
-            val expected = nameCodes + if (tab && filter != Filter.ONLY &&
+            val expected = nameCodes + if (tab &&
                 path !in nameCodes && "MVK_PATHS_INCONSISTENT" !in nameCodes) setOf("INVALID_CHARACTERS") else emptySet()
             val kernel = kernelModelClasses(json)
             if (expected != kernel) predictions += "$label: predicted $expected, observed $kernel"

@@ -25,7 +25,7 @@ class ModelDiffLoadingTest {
                 .rootGroup("Quote", group -> group.field("Reference", FieldKind.STRING))
                 .build()
                 .toJson(), editingResolver);
-        session.addInclude("tariff", "tariff", "/Quote", "CurrentTariff");
+        session.mount("/Quote", "CurrentTariff", "tariff");
         var resolver = new CountingResolver(included);
 
         ModelDiff.between(session.toJson(), session.toJson(), resolver);

@@ -90,7 +90,7 @@ final class ModelInfoCommand extends BaseCommand {
         });
         ArrayNode incs = data.putArray("includes");
         for (Workspace.Reference r : self.includes()) {
-            incs.addObject().put("alias", r.alias()).put("ref", r.ref()).put("resolvedPath", r.resolvedPath());
+            incs.addObject().put("ref", r.ref()).put("resolvedPath", r.resolvedPath());
         }
         ArrayNode imports = data.putArray("typedefImports");
         for (Workspace.Reference r : self.typedefImports()) {

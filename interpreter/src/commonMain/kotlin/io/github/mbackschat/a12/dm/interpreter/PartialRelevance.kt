@@ -56,9 +56,9 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
      * The stricter [GroupCountGate] for `NumberOfFilledGroups` is decided on the counted group
      * itself rather than on its fields (KF464, IF339). An operand is countable when three things hold:
      *
-     * 1. **The group's own identifiers establish the extent.** They are the relevant entities at or above the
-     *    group and every relevant descendant cut back to the group's depth, reduced exactly as [starRelevantOf]
-     *    reduces a field's, and none may stay concrete at a starred level.
+     * 1. **The group's fully-relevant identifiers establish the extent.** Kernel 31.1.1 asks the identifiers
+     *    of the group instances that are WHOLLY relevant ([fullyRelevantIdentifiers]) rather than of those with
+     *    any relevant content, as 30.8.1 did; none may stay concrete at a starred level (KERNEL-FINDINGS KF667).
      * 2. **The first declared instance is fully relevant and not erroneous** — the one instance A12 inspects
      *    before it counts anything, held or not, so a partly covered or erroneous first row leaves the count
      *    undecidable even where every other row is decided.
@@ -83,7 +83,9 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
             return GroupCountGate { groupPath, bindDepth, rowReps, present ->
                 val scope = starScope(groupPath, bindDepth, rowReps)
                 decided.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
-                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) { RowAddressIndex(ownIdentifiers(groupPath)) }, scope) &&
+                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) {
+                        RowAddressIndex(fullyRelevantIdentifiers(groupPath).map { RelevantEntity(groupPath, it) })
+                    }, scope) &&
                         presence(groupPath, firstInstance(groupPath, scope))
                             .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
                         coversAbsent(groupPath, bindDepth, rowReps, present, presence)
@@ -102,19 +104,72 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
             }
         }
 
-        private fun ownIdentifiers(groupPath: String): List<RelevantEntity> {
-            val groupParts = pathParts(groupPath)
-            return reducedStarRelevantCandidates(
-                candidates.mapNotNull { e ->
-                    when {
-                        covers(e, groupPath) -> e
-                        pathParts(e.path).take(groupParts.size) == groupParts ->
-                            RelevantEntity(groupPath, e.indices.take(groupParts.size))
-                        else -> null
-                    }
-                },
-                groupPath,
-            )
+        /**
+         * The index tuples of [groupPath]'s wholly relevant instances, one index per path segment and
+         * [RelevantEntity.ALL] for a wildcard. An instance is wholly relevant when every direct child is: a field
+         * through its own relevant identifiers, a sub-group only through a tuple that wildcards the sub-group's
+         * own level (or names a non-repeatable one), so the tuples are the compatible intersections of one tuple
+         * per child. A repeatable group's concrete tuples under one upper prefix that name every declared slot
+         * then fold into that prefix's wildcard. The fold applies at the group's own level only, which is why a
+         * non-repeatable group covered row by row under a starred parent stays concrete at the parent's level
+         * (KERNEL-FINDINGS KF667, `adapter.laws.PartialGroupCountRelevanceDiffTest`).
+         */
+        private fun fullyRelevantIdentifiers(groupPath: String): Set<List<Int>> = fullyByGroup.getOrPut(groupPath) {
+            val depth = pathParts(groupPath).size
+            val childTuples = model.fields.filter { parentOf(it.path) == groupPath }.map { field ->
+                reducedStarRelevantCandidates(candidates, field.path).mapTo(HashSet()) { it.indices.take(depth) }
+            } + groupsBelow(groupPath).map { child ->
+                val own = depth
+                val repeatable = child in model.repeatable
+                fullyRelevantIdentifiers(child).filter { !repeatable || it[own] == RelevantEntity.ALL }
+                    .mapTo(HashSet()) { it.take(depth) }
+            }
+            if (childTuples.isEmpty()) return@getOrPut emptySet()
+            val intersected = childTuples.reduce { acc, next ->
+                acc.flatMapTo(HashSet()) { a -> next.mapNotNull { b -> intersection(a, b) } }
+            }
+            folded(groupPath, withoutEncompassed(intersected))
+        }
+
+        private val fullyByGroup = HashMap<String, Set<List<Int>>>()
+
+        private fun groupsBelow(groupPath: String): Set<String> {
+            val depth = pathParts(groupPath).size
+            return model.fields.mapNotNullTo(HashSet()) { field ->
+                val parts = pathParts(field.path)
+                if (parts.size > depth + 1 && parts.take(depth) == pathParts(groupPath))
+                    "/" + parts.take(depth + 1).joinToString("/") else null
+            }
+        }
+
+        private fun parentOf(path: String): String = path.substringBeforeLast('/')
+
+        /** The tuple both [a] and [b] address, or null when they name different rows at some level. */
+        private fun intersection(a: List<Int>, b: List<Int>): List<Int>? =
+            a.indices.map { level ->
+                when {
+                    a[level] == RelevantEntity.ALL -> b[level]
+                    b[level] == RelevantEntity.ALL || b[level] == a[level] -> a[level]
+                    else -> return null
+                }
+            }
+
+        private fun withoutEncompassed(tuples: Set<List<Int>>): Set<List<Int>> =
+            tuples.filterTo(HashSet()) { candidate ->
+                tuples.none { other -> other != candidate && intersection(other, candidate) == candidate }
+            }
+
+        private fun folded(groupPath: String, tuples: Set<List<Int>>): Set<List<Int>> {
+            val capacity = model.declaredReps[groupPath] ?: return tuples
+            val own = pathParts(groupPath).lastIndex
+            val result = HashSet(tuples)
+            tuples.filter { it[own] != RelevantEntity.ALL }.groupBy { it.take(own) }.forEach { (prefix, rows) ->
+                if (rows.mapTo(HashSet()) { it[own] }.count { it in 1..capacity } >= capacity) {
+                    result.removeAll(rows.toSet())
+                    result.add(prefix + RelevantEntity.ALL)
+                }
+            }
+            return withoutEncompassed(result)
         }
 
         private fun firstInstance(groupPath: String, scope: StarScope): List<Int> =

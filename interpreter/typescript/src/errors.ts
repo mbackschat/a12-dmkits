@@ -35,7 +35,6 @@ export interface ModelReferenceStep {
   readonly fromModelId: string;
   readonly toModelId: string;
   readonly purpose: "include" | "type-definitions";
-  readonly alias?: string;
 }
 
 /** Structured, privacy-safe detail for one model preparation failure. */

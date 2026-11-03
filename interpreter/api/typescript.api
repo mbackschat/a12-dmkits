@@ -250,7 +250,6 @@ export interface ModelDependency {
     readonly fromModelId: string;
     readonly toModelId: string;
     readonly purpose: "include" | "type-definitions";
-    readonly alias?: string;
     readonly diagnosticLabel?: string;
     readonly sha256: string;
 }
@@ -322,7 +321,6 @@ export interface ModelReferenceStep {
     readonly fromModelId: string;
     readonly toModelId: string;
     readonly purpose: "include" | "type-definitions";
-    readonly alias?: string;
 }
 
 ## ModelSourceLoadContext

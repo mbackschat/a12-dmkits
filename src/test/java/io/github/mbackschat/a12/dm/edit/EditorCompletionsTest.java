@@ -98,7 +98,7 @@ class EditorCompletionsTest {
         ModelResolver resolver = id -> "pricelist".equals(id) ? pricelist : null;
         EditSession s = EditSession.read(DocumentModelDraft.named("catalog").locale("en_US")
                 .rootGroup("Catalog", c -> c.field("StoreName", FieldKind.STRING)).build().toJson(), resolver);
-        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        s.mount("/Catalog", "Retail", "pricelist");
         s.validate();
 
         s.inlineInclude("pricelist", pricelist);   // the inverse of extractGroupAsInclude — fold the content back

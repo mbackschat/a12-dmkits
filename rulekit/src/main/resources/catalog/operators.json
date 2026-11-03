@@ -1,5 +1,5 @@
 {
-  "verifiedAgainst": "30.8.1",
+  "verifiedAgainst": "31.1.1",
   "emptyOperandDefaults": {
     "number": {
       "behavior": "AS_ZERO",
@@ -706,7 +706,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "direct String/enum comparability uses effective remapping: no labels and identity-only labels are textless; two display-bearing enums need only a bidirectionally consistent partial map in each shared locale, so compatible disjoint/partial maps are legal",
+          "text": "display labels never decide comparability: a String, a textless enumeration and a labelled one compare with each other whatever labels either declares, conflicting token/label maps included",
           "kind": "SURPRISE"
         }
       ],
@@ -1972,7 +1972,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "an enumeration joins as its STORED value, never its label; an immediate read [Tier] is refused (MVK_NO_STRING_OR_NUMBER_FOR_ADD) when any label remaps its value, while the braced read { [Tier] } is admitted whatever the labels, and is what the typed plus renders",
+          "text": "an enumeration joins a text as its STORED value, never its label, whatever labels it declares: the immediate read [Tier] and the braced { [Tier] } alike, the braced one being what the typed plus renders; beside a number it is refused (MVK_NO_STRING_OR_NUMBER_FOR_ADD)",
           "kind": "AUTHORING"
         },
         {
@@ -4382,8 +4382,8 @@
       "meaning": "Filters a *-repetition list, keeping only candidates whose complete condition is known true, before an aggregate or quantifier consumes selected cells.",
       "constraints": [
         "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
-        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden",
-        "the condition answers to TWO independent gates, and the code says which one refused. SCOPE (MVK_NO_ITERATION_FOR_WILDCARD): the condition carries no unmarked reference into a level the operand's star reopens — ANY in-scope conjunct clears it, and this is what a non-repeatable group or an unstarred ancestor on the operand's own path draws. ITERATION (MVK_INVALID_ITERATION_IN_FILTER_CONDITION): a reference names a repeatable level OFF the operand's path — no conjunct clears it, and neither does the rule iterating that very level; the $ marker is the remedy, and it needs an enclosing iteration to capture or the code becomes MVK_NO_WILDCARD. so 'add an in-scope reference' repairs the first gate and does nothing for the second (all kernel-checked)"
+        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden",
+        "the condition answers to TWO independent gates, and the code says which one refused. SCOPE (MVK_NO_ITERATION_FOR_WILDCARD): the condition carries no unmarked reference into a level the operand's star reopens — ANY in-scope conjunct clears it, and this is what a non-repeatable group or an unstarred ancestor on the operand's own path draws. ITERATION (MVK_INVALID_ITERATION_IN_SET_EXPRESSION): a reference names a repeatable level OFF the operand's path — no conjunct clears it, and neither does the rule iterating that very level; the $ marker is the remedy, and it needs an enclosing iteration to capture or the code becomes MVK_NO_WILDCARD. so 'add an in-scope reference' repairs the first gate and does nothing for the second (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4454,7 +4454,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a repeatable level OFF the operand's path is MVK_INVALID_ITERATION_IN_FILTER_CONDITION even when the rule itself iterates that level, so inside a filter it is the star and never the enclosing iteration that binds; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
+          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a repeatable level OFF the operand's path is MVK_INVALID_ITERATION_IN_SET_EXPRESSION even when the rule itself iterates that level, so inside a filter it is the star and never the enclosing iteration that binds; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
           "kind": "SURPRISE"
         },
         {
@@ -4503,7 +4503,7 @@
       "meaning": "Delegates the fire/don't-fire decision to host code the consuming system registers under the given name — the escape hatch when the language cannot express a check.",
       "constraints": [
         "the name is one A12 name token made from letters (including Ä/Ü/Ö/ä/ü/ö/ß), digits, underscore, or colon; it may start with a digit or underscore, a reserved-token name is single-quoted, and it takes no operands",
-        "forbidden inside a Having filter (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION) and in computation rules",
+        "forbidden inside a Having filter (MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION) and in computation rules",
         "does not satisfy the error-field rule on its own — pair it with a field reference"
       ],
       "gotchas": [
@@ -4628,13 +4628,13 @@
         }
       ],
       "returns": "number",
-      "meaning": "The signed number of complete model-zone legacy-calendar day steps from the first date/date-time to the second.",
+      "meaning": "The signed number of complete days between the model-zone wall clocks of the first date/date-time and the second.",
       "constraints": [
         "both operands are date or date-time values (fields or temporal expressions); mixed date/date-time pairs are legal, and entity refs render bare"
       ],
       "gotchas": [
         {
-          "text": "this is calendar stepping, not elapsed or wall-label seconds divided by 86,400: time of day matters, and a DST-gap landing can change the retained clock for later steps (Berlin 2024-03-30T02:30 to 2024-03-31T01:45 is 1)",
+          "text": "this counts wall-clock days, not elapsed seconds divided by 86,400: time of day matters, and a DST transition does not shorten a day (Berlin 2024-03-30T02:30 to 2024-03-31T01:45 is 0, because 01:45 has not reached 02:30)",
           "kind": "SURPRISE"
         }
       ],
@@ -6579,7 +6579,7 @@
       ],
       "gotchas": [
         {
-          "text": "calendar reality uses the model-zone non-lenient legacy GregorianCalendar: it is Julian through 1582-10-04, skips 1582-10-05..14, then Gregorian; this is separate from the 1583-10-16 stored/computed-value floor",
+          "text": "calendar reality is the proleptic Gregorian calendar: 1582-10-05 is a real date and 29.02.1500 is not; this is separate from the 1583-10-16 stored/computed-value floor",
           "kind": "SURPRISE"
         }
       ],
@@ -6876,8 +6876,8 @@
       "meaning": "The element-wise sum of products across two parallel number field lists: Σ aᵢ·bᵢ (typically two wildcard repetition lists over the same group). Both operands render as bare entity refs.",
       "constraints": [
         "exactly two number wildcard repetition lists whose FIELDS share one owning group — sharing a starred group is not enough, so SumOfProducts(Lines*/Qty, Lines*/Packaging/Weight) is rejected",
-        "the rejection code depends on the PAIR, and for an unstarred repeatable level on the RULE: an operand below a repeatable level it does not wildcard is MVK_NO_WILDCARD where the rule does not bind that level (this also rejects a star above the lowest repeatable layer, and a plain field inside the other's starred group); where the rule binds it, by iterating it or being declared inside it, the operator's own gates answer, MVK_DIFFERENT_GROUPS when the two fields' owning groups differ and MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED when they agree; one outside the other's starred group is MVK_DIFFERENT_GROUPS; only a pair with no repeatable level at all AND one shared owning group is MVK_REPEATABLE_LEVEL_REQUIRED \u2014 two plain fields in different groups draw MVK_DIFFERENT_GROUPS instead",
-        "the asterisk notates their lowest repeatable layer, and the operands are judged left to right: a Having is MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED and a multi-star operand MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED, so with both operands starring two levels a Having on the right still draws MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+        "the rejection code depends on the PAIR, and for an unstarred repeatable level on the RULE: an operand below a repeatable level it does not wildcard is MVK_NO_WILDCARD where the rule does not bind that level (this also rejects a star above the lowest repeatable layer, and a plain field inside the other's starred group); where the rule binds it, by iterating it or being declared inside it, the operator's own gates answer, MVK_DIFFERENT_GROUPS when the two fields' owning groups differ and MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED when they agree; one outside the other's starred group is MVK_DIFFERENT_GROUPS; only a pair with no repeatable level at all AND one shared owning group is MVK_REPEATABLE_LEVEL_REQUIRED \u2014 two plain fields in different groups draw MVK_DIFFERENT_GROUPS instead",
+        "the asterisk notates their lowest repeatable layer, and the operands are judged left to right: a Having is MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED and a multi-star operand MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED, so with both operands starring two levels a Having on the right still draws MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
       ],
       "validExample": {
         "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != SumOfProducts(Items*/Count, Items*/UnitWeight)",

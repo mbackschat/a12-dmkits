@@ -40,46 +40,51 @@ class SelfNamedRuleErrorReferenceLawsTest {
     private static final Pattern CODE = Pattern.compile("\\[(MVK_[A-Z_0-9]+)]");
 
     /**
-     * <b>The disagreeing shape is UNREACHABLE, and it fails a whole layer earlier than the MVK gate.</b> A
-     * rule named after a field of its own group is refused while the model is being CONVERTED — an
-     * {@code IllegalArgumentException} out of the kernel's own {@code Group.addChildEntity}, "Cannot have two
-     * child elements with the same name" — so `checkConsistency` never runs and no {@code MVK_*} code exists
-     * for it. Both spellings of the reference behave identically, which is the point: the reference is not
-     * what is refused.
+     * <b>The disagreeing shape is never admitted.</b> A rule named after a field of its own group collides with
+     * that field, and A12 refuses the model whichever reference the rule carries. On kernel 31.1.1 the collision
+     * is reported as converter sentences — "Cannot have two child elements with the same name" and the duplicate
+     * id — beside {@code MVK_ERROR_FIELD_MISSING} / {@code MVK_MISSING_ERROR_FIELD}. On 30.8.1 it threw while
+     * converting, so no check ran. Both spellings draw the same refusal; the empty one only adds its own
+     * "error entity is not set properly" sentence. The reference is not what is refused.
      *
      * <p><b>What that settles.</b> {@code Rule.errorEntityRelPath()} and {@code EntityPath.relativize}
      * disagree on exactly one input — a rule whose element base and error target are the same path — and no
-     * kernel model can carry it. So the hand-rolled form has no observable behaviour the typed algebra lacks,
+     * admitted kernel model carries it. So the hand-rolled form has no observable behaviour the typed algebra lacks,
      * and delegating is safe (DEV-API-GAPS {@code DG50}).
      *
      * <p><b>Two controls, because "everything here is refused" would be a dead gate.</b> The renamed rule
      * with a plain {@code ../CustomerName} is ADMITTED, so the fixture reaches the kernel at all. The renamed
      * rule with the EMPTY reference is the sharper one: it is refused {@code MVK_ERROR_FIELD_MISSING} /
      * {@code MVK_MISSING_ERROR_FIELD}, "The error entity is not set properly". So an empty reference is not
-     * merely unmeasured — the kernel rejects it outright, and had the disagreeing shape been reachable, the
+     * merely unmeasured — the kernel rejects it outright, and had the disagreeing shape been admitted, the
      * hand-rolled {@code ../Field} form would have been the CORRECT one and {@code relativize} the wrong one.
-     * Delegating is safe because the input is unreachable, not because the two agree.
+     * Delegating is safe because the input is never admitted, not because the two agree.
      */
     @Test
-    void aRuleNamedAfterAFieldOfItsGroupIsRefUsedAtCONVERSION_WhicheverReferenceItCarries() {
+    void aRuleNamedAfterAFieldOfItsGroupIsRefusedWhicheverReferenceItCarries() {
         Map<String, String> verdicts = new LinkedHashMap<>();
         verdicts.put("self-named, ../Field reference", verdict(FIELD, "../" + FIELD));
         verdicts.put("self-named, EMPTY reference", verdict(FIELD, ""));
         verdicts.put("renamed control, ../Field reference", verdict("NameRequired", "../" + FIELD));
         verdicts.put("renamed control, EMPTY reference", verdict("NameRequired", ""));
 
+        String collision = "ERROR: Field with path '/Order/CustomerName': Cannot have two child elements with the "
+                + "same name [CustomerName] in group '/Order'.";
+        String duplicateId = "ERROR: The id [/Order/CustomerName] of element on path '/Order/CustomerName' is not "
+                + "unique: Used by [/Order/CustomerName, /Order/CustomerName].";
+        String errorField = "MVK_ERROR_FIELD_MISSING, MVK_MISSING_ERROR_FIELD";
         assertEquals(Map.of(
-                "self-named, ../Field reference", NAME_COLLISION,
-                "self-named, EMPTY reference", NAME_COLLISION,
+                "self-named, ../Field reference", String.join(", ", collision, duplicateId, errorField),
+                "self-named, EMPTY reference", String.join(", ", collision,
+                        "ERROR: Rule with id '/Order/CustomerName': The error entity is not set properly.",
+                        duplicateId, errorField),
                 "renamed control, ../Field reference", ADMITTED,
-                "renamed control, EMPTY reference",
-                "ERROR: Rule with id '/Order/NameRequired': The error entity is not set properly., "
-                        + "MVK_ERROR_FIELD_MISSING, MVK_MISSING_ERROR_FIELD"), verdicts);
+                "renamed control, EMPTY reference", String.join(", ",
+                        "ERROR: Rule with id '/Order/NameRequired': The error entity is not set properly.",
+                        errorField)), verdicts);
     }
 
     // ---- instruments ------------------------------------------------------------------------------
-
-    private static final String NAME_COLLISION = "CONVERSION: two child elements with the same name";
 
     /**
      * The kernel's verdict on a model whose rule is spliced in as raw DM-JSON, past every check of ours — and
@@ -93,8 +98,7 @@ class SelfNamedRuleErrorReferenceLawsTest {
         try {
             notifications = RuntimeLaws.consistencyMessages(model);
         } catch (RuntimeException e) {
-            return e.getMessage() != null && e.getMessage().contains("same name")
-                    ? NAME_COLLISION : "CONVERSION: " + e.getMessage();
+            return "CONVERSION: " + e.getMessage();
         }
         if (notifications.isEmpty()) {
             return ADMITTED;

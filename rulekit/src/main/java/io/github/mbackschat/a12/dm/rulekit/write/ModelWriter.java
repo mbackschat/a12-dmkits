@@ -337,9 +337,8 @@ public final class ModelWriter {
     /**
      * The same, one level deeper: the {@code Computation} BODY members {@link #computationNode} reconstructs.
      *
-     * <p>A12 declares one more on {@code md.model.a12internal.Computation} — {@code variantFilter} — which no
-     * draft here can express, so the rebuild would drop it and a modify would silently change which variants
-     * the computation belongs to rather than merely losing metadata.
+     * <p>Any other member the old body carries, such as one A12 no longer declares, is carried over, so a modify
+     * never drops what it does not write.
      *
      * <p><b>The conditionally-written members are why this is a name set rather than a presence test.</b>
      * {@code commonPrecondition}, {@code errorCodesToSuppress} and {@code roundingMode} are emitted only when

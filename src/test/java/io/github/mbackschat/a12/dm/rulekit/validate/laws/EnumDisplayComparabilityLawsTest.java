@@ -13,18 +13,13 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
- * KERNEL-FINDINGS §8 — when two enumerations may be compared, and when an enumeration may meet a text.
+ * KERNEL-FINDINGS §8 — on kernel 31.1.1 an enumeration's display labels decide no comparison, on any written arm
+ * (KERNEL-FINDINGS KF655).
  *
- * <p>{@link EnumComparabilityLawsTest} locks the law's core as ten single verdicts. This grid measures what a
- * reproduction additionally needs and what no assertion there could see: which LOCALES the map comparison
- * runs over, what a category access does to it, and what the text gate actually reads on the text side.
- *
- * <p>Three of its rows are the discriminators a reading of {@code CheckVergleichsBedingungImpl} does not
- * give. The shared-locale set is an INTERSECTION, so two labelled enumerations whose labels live in
- * different locales are never compared at all. A category access on either side skips the whole gate, which
- * makes a conflicting pair admitted. And the text gate is spelled {@code isFeldWertOp} — it reads how the
- * partner is WRITTEN, not what type it has — so a labelled enumeration meets a string-valued function
- * happily and refuses the same field read bare.
+ * <p>{@link EnumComparabilityLawsTest} locks the core pairs. This grid covers the shapes kernel 30.8.1's gate read
+ * differently, and each would expose a surviving remnant of it: a category access, a string-valued function, an
+ * inequality, the operands' order, and the token/label conflicts in both directions. On 30.8.1 the text gate read
+ * how the partner was WRITTEN ({@code isFeldWertOp}), and a category access skipped the gate.
  *
  * <p>Own domain (insurance policy tiers).
  */
@@ -53,11 +48,6 @@ class EnumDisplayComparabilityLawsTest {
                     .enumField("DisplayConflict", e -> e
                             .value("ECONOMY", l -> l.label("en_US", "Basic cover"))
                             .value("PLUS", l -> l.label("en_US", "Plus cover")))
-                    // Labelled only for an UNDECLARED locale, which A12 admits — so it is display-bearing
-                    // and shares no display locale with any of the others.
-                    .enumField("ForeignLabelled", e -> e
-                            .value("BASIC", l -> l.label("fr_FR", "Budget cover"))
-                            .value("PLUS", l -> l.label("fr_FR", "Plus cover")))
                     // Conflicts with `Labelled` on the token BASIC, and carries a category as well.
                     .enumField("Categorized", e -> e
                             .value("BASIC", l -> l.label("en_US", "Budget cover"))
@@ -84,46 +74,27 @@ class EnumDisplayComparabilityLawsTest {
     }
 
     @Test
-    void whenTwoEnumerationsMayBeCompared() {
+    void everyEnumerationPairCompares() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("two textless enumerations — the control", fields("Plain", "PlainTwin"));
+        actual.put("two textless enumerations", fields("Plain", "PlainTwin"));
         actual.put("identity labels against a textless enumeration", fields("Mirrored", "Plain"));
         actual.put("two labelled enumerations agreeing on every value", fields("Labelled", "LabelledTwin"));
         actual.put("a labelled enumeration against a textless one", fields("Labelled", "Plain"));
         actual.put("a shared STORED token carrying two texts", fields("Labelled", "TokenConflict"));
         actual.put("a shared DISPLAY text standing for two tokens", fields("Labelled", "DisplayConflict"));
-        actual.put("a labelled enumeration against one labelled only for an UNDECLARED locale",
-                fields("Labelled", "ForeignLabelled"));
-        actual.put("that undeclared-locale enumeration against a TEXTLESS one",
-                fields("ForeignLabelled", "Plain"));
         actual.put("a conflicting pair read through a CATEGORY",
                 compare("[Labelled]", "[Categorized -> Band]", "Labelled", "Categorized"));
         actual.put("the same pair read without the category", fields("Labelled", "Categorized"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("two textless enumerations — the control", KernelLaws.ADMITTED);
-        expected.put("identity labels against a textless enumeration", KernelLaws.ADMITTED);
-        expected.put("two labelled enumerations agreeing on every value", KernelLaws.ADMITTED);
-        expected.put("a labelled enumeration against a textless one", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("a shared STORED token carrying two texts", "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-        expected.put("a shared DISPLAY text standing for two tokens", "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-        // A label written for a locale the model does not declare does not make an enumeration
-        // display-bearing at all, so this pair is the display/textless mismatch rather than a map comparison
-        // — and the next row is what separates "textless" from "conflicting".
-        expected.put("a labelled enumeration against one labelled only for an UNDECLARED locale",
-                "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("that undeclared-locale enumeration against a TEXTLESS one", KernelLaws.ADMITTED);
-        // A category on EITHER side returns before the display machinery runs, so the identical conflict is
-        // admitted through the projection and refused without it.
-        expected.put("a conflicting pair read through a CATEGORY", KernelLaws.ADMITTED);
-        expected.put("the same pair read without the category", "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
-        assertEquals(expected, actual, "when two enumerations may be compared");
+        actual.keySet().forEach(row -> expected.put(row, KernelLaws.ADMITTED));
+        assertEquals(expected, actual, "every enumeration pair compares");
     }
 
     @Test
-    void whatTheTextGateReadsOnTheTextSide() {
+    void aLabelledEnumerationMeetsATextOnEveryArm() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("a textless enumeration against a string field — the control", fields("Plain", "Holder"));
+        actual.put("a textless enumeration against a string field", fields("Plain", "Holder"));
         actual.put("identity labels against a string field", fields("Mirrored", "Holder"));
         actual.put("a labelled enumeration against a string field", fields("Labelled", "Holder"));
         actual.put("the same with the string side written first", fields("Holder", "Labelled"));
@@ -136,17 +107,7 @@ class EnumDisplayComparabilityLawsTest {
                 compare("[Categorized -> Band]", "[Holder]", "Categorized"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("a textless enumeration against a string field — the control", KernelLaws.ADMITTED);
-        expected.put("identity labels against a string field", KernelLaws.ADMITTED);
-        expected.put("a labelled enumeration against a string field", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("the same with the string side written first", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("the same pair compared for INEQUALITY", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        // `isFeldWertOp` reads how the partner is WRITTEN, not what type it carries — so the same field
-        // behind a string-valued function does not trip the gate its bare read does.
-        expected.put("a labelled enumeration against a string-valued FUNCTION of that field",
-                KernelLaws.ADMITTED);
-        expected.put("a labelled enumeration read through a CATEGORY against a string field",
-                KernelLaws.ADMITTED);
-        assertEquals(expected, actual, "what the text gate reads on the text side");
+        actual.keySet().forEach(row -> expected.put(row, KernelLaws.ADMITTED));
+        assertEquals(expected, actual, "a labelled enumeration meets a text on every arm");
     }
 }

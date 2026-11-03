@@ -207,7 +207,7 @@ class HModelFormConstructTest {
 
     /** A German-language order sheet with a repeatable root group, so a level specifier is meaningful. */
     private fun german(declaration: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"bestellung","locales":[{"code":"de_DE"}]},
+        {"header":{"modelVersion":"29.4.0","id":"bestellung","locales":[{"code":"de_DE"}]},
          "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Bestellung","Group":{"repeatability":9,"elements":[
             {"type":"Field","id":"f0","name":"Kennzeichen","Field":{"fieldType":{"type":"StringType"}}},
@@ -219,7 +219,7 @@ class HModelFormConstructTest {
 
     /** The same sheet in English, which is where the spellings stop being keywords. */
     private fun englishRule(condition: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"repeatability":9,"elements":[
             {"type":"Field","id":"f0","name":"Marker","Field":{"fieldType":{"type":"StringType"}}},

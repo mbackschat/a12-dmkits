@@ -105,8 +105,10 @@ class EnumDeclarationShapeLawsTest {
         // A blank one is not a value outside the domain but a member A12 reads as unset, so the law is not
         // asked — the row that keeps a checker from refusing it.
         expected.put("a BLANK sValue", KernelLaws.ADMITTED);
-        expected.put("a table name beside the inline values", KernelLaws.UNREADABLE);
-        expected.put("a table and column name beside them", KernelLaws.UNREADABLE);
+        // No enumeration declares a table member, and kernel 31.1.1's reader passes over a member it does not
+        // know (KERNEL-FINDINGS KF654); 30.8.1 refused both.
+        expected.put("a table name beside the inline values", KernelLaws.ADMITTED);
+        expected.put("a table and column name beside them", KernelLaws.ADMITTED);
         // The categories arrive as a MAP keyed by name, so a repeated name is a conversion failure rather
         // than a verdict — `MVK_CATEGORY_NAME_DUPLICATE` names a shape A12 never judges.
         expected.put("two categories sharing a name", KernelLaws.NOT_BUILDABLE);

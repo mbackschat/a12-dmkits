@@ -82,7 +82,7 @@ private fun filtered(e: Expr): Boolean = when (e) {
 internal fun reachIsObservable(cond: Cond): Boolean = canRaiseRuntimeFailure(cond) || callsBack(cond)
 
 // No filter body is searched, unlike [canRaiseRuntimeFailure]: A12 refuses a `CustomCondition` inside a `Having`
-// filter (`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`, KERNEL-FINDINGS KF97), so none can be there.
+// filter (`MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION`, KERNEL-FINDINGS KF97), so none can be there.
 private fun callsBack(cond: Cond): Boolean = when (cond) {
     is Cond.And -> callsBack(cond.left) || callsBack(cond.right)
     is Cond.Or -> callsBack(cond.left) || callsBack(cond.right)
@@ -109,10 +109,12 @@ internal fun canRaiseRuntimeFailure(cond: Cond): Boolean = when (cond) {
     is Cond.Pred -> cond.args.any(::expressionCanRaiseRuntimeFailure)
 }
 
-private val DATE_TIME_LITERAL_SHAPE = Regex("""\d{1,2}\.\d{1,2}\.\d{4}T\d{1,2}:\d{1,2}:\d{1,2}""")
+/** A temporal literal naming February 29 — the only label whose runtime parse A12 can refuse after admitting it
+ *  ([parseTemporalLiteral]); a yearless one completes with the base year first. */
+private val FEBRUARY_29_LITERAL_SHAPE = Regex("""29\.02\.(\d{4}(T\d{2}:\d{2}:\d{2})?)?""")
 
 private fun expressionCanRaiseRuntimeFailure(e: Expr): Boolean = when (e) {
-    is Expr.StrLit -> DATE_TIME_LITERAL_SHAPE.matches(e.v)
+    is Expr.StrLit -> FEBRUARY_29_LITERAL_SHAPE.matches(e.v)
     is Expr.Func -> e.args.any(::expressionCanRaiseRuntimeFailure)
     is Expr.Arith -> expressionCanRaiseRuntimeFailure(e.left) || expressionCanRaiseRuntimeFailure(e.right)
     is Expr.Star -> e.having?.let(::canRaiseRuntimeFailure) ?: false

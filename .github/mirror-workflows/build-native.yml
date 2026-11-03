@@ -35,7 +35,7 @@ permissions:
 
 env:
   # Keep in lockstep with build.gradle ext.kernelVersion / the bootstrap cache key (KERNEL-UPGRADE).
-  KERNEL_CACHE_KEY: a12-kernel-30.8.1-base-29.3.0
+  KERNEL_CACHE_KEY: a12-kernel-31.1.1-base-30.0.2
 
 jobs:
   # 1. Rebuild the kernel from public sources ONCE (Linux only — the bootstrap is bash) and publish the
@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2/repository/com/mgmtp
-          key: ${{ env.KERNEL_CACHE_KEY }}-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/patches/**') }}
+          key: ${{ env.KERNEL_CACHE_KEY }}-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/releases/**', 'a12-kernel-bootstrap/scripts/**', 'a12-kernel-bootstrap/build-support/**') }}
 
       - name: Bootstrap the A12 kernel from public sources (cache miss only)
         if: steps.kernel-cache.outputs.cache-hit != 'true'
@@ -191,11 +191,11 @@ jobs:
           ./scripts/native-no-java-smoke.sh "$BIN" "$VERSION"
           echo "== --version =="
           "$BIN" --version | norm | tee /tmp/v.txt
-          grep -q "A12 Tools distribution: 2025.06-ext5" /tmp/v.txt
+          grep -q "A12 Tools distribution: 2026.06-ext1" /tmp/v.txt
           # grep a FILE, not the pipe: `… | grep -q` exits on first match and SIGPIPEs the upstream
           # producer (manifest is ~66 KB) → exit 141 under `set -o pipefail`. Mirrors the --version check.
           echo "== manifest (catalog reflection) =="
-          "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2025.06-ext5"' /tmp/m.txt
+          "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2026.06-ext1"' /tmp/m.txt
           echo "== model check (kernel reflection) =="
           "$BIN" -m examples/models/order-ruled.dm.json model check | norm > /tmp/mv.txt
           jq -e '.target == "model" and .op == "check" and .ok == true and .valid == true and .verification == "KERNEL_CONFIRMED" and .written == false' /tmp/mv.txt >/dev/null

@@ -77,7 +77,6 @@ class IncludeResidualRefDiffTest {
 
     private static String policy(boolean modelRoot) {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> {
                     p.field("PolicyNo", FieldKind.STRING);
                     if (modelRoot) {

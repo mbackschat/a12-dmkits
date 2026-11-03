@@ -45,7 +45,6 @@ class IncludeResolverVerbTest {
     private static String storefrontJson() {
         return DocumentModelDraft.named("storefront").locale("en_US")
                 .typeDef("Sku", t -> t.string(s -> s.maxLength(12)))
-                .include("pricelist", "pricelist")
                 .rootGroup("Storefront", s -> s
                         .field("StoreName", FieldKind.STRING)
                         .typedefField("ProductSku", "Sku")
@@ -64,7 +63,7 @@ class IncludeResolverVerbTest {
     @Test
     void includeReadAcceptsTheIncludeFlag(@TempDir Path dir) throws Exception {
         // The locator contract for the workspace-resolved include verb (LocatorContractTest's sibling): the
-        // include is addressed by its alias positionally OR via --include/--alias, resolving identically.
+        // include is addressed by the included model's id positionally OR via --include/--reference, resolving identically.
         Path m = workspace(dir);
         CliTestSupport.Result pos = CliTestSupport.run("-m", m.toString(), "include", "read", "pricelist");
         CliTestSupport.Result flag = CliTestSupport.run("-m", m.toString(), "include", "read", "--include", "pricelist");

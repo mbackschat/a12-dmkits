@@ -21,7 +21,7 @@ class ReferenceBindingTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
                       "modelConfig":{"fieldRefByShortNameAllowed":$shortNames},
                       "modelRoot":{"rootGroups":[
                         {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[

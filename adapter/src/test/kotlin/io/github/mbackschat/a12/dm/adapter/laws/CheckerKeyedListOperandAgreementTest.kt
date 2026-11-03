@@ -29,7 +29,7 @@ class CheckerKeyedListOperandAgreementTest {
     private companion object {
         const val VARYING = "MVK_VARYING_TYPES_NOT_ALLOWED"
         const val KIND = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
-        const val LOWEST = "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        const val LOWEST = "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
 
         val ROWS: Map<String, Row> = LinkedHashMap<String, Row>().apply {
             fun row(id: String, errorField: String, condition: String, vararg a12: String) =

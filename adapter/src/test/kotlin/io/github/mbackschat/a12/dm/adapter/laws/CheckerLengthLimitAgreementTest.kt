@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test
  * checker. On a String, Custom or Number type, `minLength` and `maxLength` must lie between 1 and 99,999; A12
  * answers a member outside that with one of three codeless sentences, once per sentence and field, and judges
  * nothing else with it, a hint list's lengths included. `-1`, "no bound", is admitted on the String and Custom
- * carriers only, and a field deleted from the default variant draws nothing.
+ * carriers only.
  *
  * Own domain (a support ticket's description, summary, reference and effort), built by editing the drafted model's
  * JSON, because the typed builder refuses an inverted pair outright.
  */
 class CheckerLengthLimitAgreementTest {
 
-    private data class Row(val field: String, val members: Map<String, Any>, val deleted: Boolean = false)
+    private data class Row(val field: String, val members: Map<String, Any>)
 
     private fun string(vararg members: Pair<String, Any>) = Row(DESCRIPTION, mapOf(*members))
     private fun custom(vararg members: Pair<String, Any>) = Row(REFERENCE, mapOf(*members))
@@ -58,8 +58,6 @@ class CheckerLengthLimitAgreementTest {
         "string min above beside a hint" to string(MIN to 100_000, HINTS to listOf("abc")),
         "string max sentinel beside a hint" to string(MAX to -1, HINTS to listOf("Basic")),
         "string max three beside a hint" to string(MAX to 3, HINTS to listOf("Basic")),
-        "string deleted, max above" to Row(DESCRIPTION, mapOf(MAX to 100_000), deleted = true),
-        "string deleted, inverted" to Row(DESCRIPTION, mapOf(MIN to 5, MAX to 3), deleted = true),
         "custom max above" to custom(MAX to 100_000),
         "custom min above" to custom(MIN to 100_000),
         "custom max at the limit" to custom(MAX to 99_999),
@@ -68,8 +66,6 @@ class CheckerLengthLimitAgreementTest {
         "custom max sentinel" to custom(MAX to -1),
         "custom max signed" to custom(MAX to -2),
         "custom min above a zero max" to custom(MIN to 5, MAX to 0),
-        "custom deleted, max above" to Row(REFERENCE, mapOf(MAX to 100_000), deleted = true),
-        "custom deleted, inverted" to Row(REFERENCE, mapOf(MIN to 5, MAX to 3), deleted = true),
         "number max above" to number(MAX to 100_000),
         "number min above" to number(MIN to 100_000),
         "number min above an ordinary max" to number(MIN to 100_000, MAX to 5),
@@ -79,7 +75,6 @@ class CheckerLengthLimitAgreementTest {
         "number max signed" to number(MAX to -2),
         "number min above a zero max" to number(MIN to 5, MAX to 0),
         "number max zero beside fractional digits" to number(MAX to 0, "minFractionalDigits" to 2, "maxFractionalDigits" to 2),
-        "number deleted, max above" to Row(EFFORT, mapOf(MAX to 100_000), deleted = true),
     )
 
     /** Every row's classes, with their multiplicity; A12's order is not claimed. */
@@ -103,7 +98,6 @@ class CheckerLengthLimitAgreementTest {
         assertEquals(listOf(SIGNED), a12("number max sentinel"))
         assertEquals(listOf(SIGNED), a12("number min sentinel"))
         assertEquals(emptyList<String>(), a12("custom max sentinel"))
-        assertEquals(emptyList<String>(), a12("number deleted, max above"))
         assertEquals(listOf("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID", "MVK_STRING_TYPE_PARAMS_INCONSISTENT", ABOVE),
             a12("string unvalidated with a pattern, max above"))
         assertEquals(listOf("MVK_VALUE_TOO_LONG"), a12("string max three beside a hint"))
@@ -151,7 +145,6 @@ class CheckerLengthLimitAgreementTest {
                     else -> error(value)
                 }
             }
-            if (row.deleted) field.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium")
         }
         return mapper.writeValueAsString(root)
     }

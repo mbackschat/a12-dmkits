@@ -23,6 +23,19 @@ class JavaHashOrderJvmTest {
         }
     }
 
+    /** A token-less value entry maps to a null key, which Java hashes to 0 (KERNEL-FINDINGS KF655). */
+    @Test
+    fun aNullKeyTakesTheBucketJavaGivesIt() {
+        val random = Random(20261102)
+        for (size in 0..120) {
+            repeat(20) {
+                val pool = List(random.nextInt(1, size / 2 + 2)) { if (it == 0) null else randomKey(random) }
+                val values = List(size) { pool[random.nextInt(pool.size)] }
+                assertEquals(javaOrder(values), computeIfAbsentOrder(repeatOccurrences(values)), "values $values")
+            }
+        }
+    }
+
     @Test
     fun aBucketReachingEightKeysUnderSixtyFourBucketsResizesAsJavaDoes() {
         // Keys sharing their low four spread hash bits: eight of them in one of 16 buckets force `treeifyBin`'s resize.
@@ -34,16 +47,19 @@ class JavaHashOrderJvmTest {
         }
     }
 
-    /** The real map, filled by `computeIfAbsent` exactly where `Java8Utils.findDuplicates` calls it. */
-    private fun javaOrder(values: List<String>): List<String> {
-        val present = java.util.HashMap<String, String>()
-        val duplicates = java.util.HashMap<String, Int>()
-        for (value in values) if (present.put(value, value) != null) duplicates.computeIfAbsent(value) { 0 }
+    /**
+     * The real map, filled by `computeIfAbsent` exactly where `Java8Utils.findDuplicates` calls it. `present` maps the
+     * key to the ENTRY, which is never null, so a null key repeats as any other does.
+     */
+    private fun javaOrder(values: List<String?>): List<String?> {
+        val present = java.util.HashMap<String?, Boolean>()
+        val duplicates = java.util.HashMap<String?, Int>()
+        for (value in values) if (present.put(value, true) != null) duplicates.computeIfAbsent(value) { 0 }
         return duplicates.keys.toList()
     }
 
-    private fun repeatOccurrences(values: List<String>): List<String> {
-        val seen = mutableSetOf<String>()
+    private fun repeatOccurrences(values: List<String?>): List<String?> {
+        val seen = mutableSetOf<String?>()
         return values.filterNot { seen.add(it) }
     }
 

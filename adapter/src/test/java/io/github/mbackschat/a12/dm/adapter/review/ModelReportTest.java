@@ -46,7 +46,7 @@ class ModelReportTest {
                 : null;
         EditSession s = EditSession.read(DocumentModelDraft.named("catalog").locale("en_US")
                 .rootGroup("Catalog", c -> c.field("StoreName", FieldKind.STRING)).build().toJson(), resolver);
-        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        s.mount("/Catalog", "Retail", "pricelist");
         String mounted = s.toJson();
 
         ModelReport r = ModelReport.of(mounted, resolver);   // dm.core.ModelResolver overload — no kernel import

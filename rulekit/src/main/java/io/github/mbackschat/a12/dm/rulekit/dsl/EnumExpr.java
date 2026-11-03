@@ -11,8 +11,8 @@ public record EnumExpr(Calculation expression) {
 
     /**
      * {@code <this> + <text>} — this enumeration expression joined to text, contributing its stored value (KERNEL-FINDINGS
-     * KF530). A key-selected cell is read braced, which A12 admits whatever its labels, and a first-filled value is no
-     * field read, so its labels are never asked (KF396). catalog:Concatenation
+     * KF530). A key-selected cell is read braced, which A12 admits whatever its labels (KF396, KF655).
+     * catalog:Concatenation
      */
     public StringExpr plus(StringExpr text) {
         return StringExpr.joined(expression, text.expression());

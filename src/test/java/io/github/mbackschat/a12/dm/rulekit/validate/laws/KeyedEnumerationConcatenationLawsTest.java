@@ -15,9 +15,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 
 /**
  * Whether a KEY-SELECTED enumeration cell in a text concatenation follows the display-label law of a direct read
- * (KERNEL-FINDINGS KF396): immediate and remapped is refused, braced, unlabelled or identity-labelled is admitted,
- * whether a literal key or a key field selects it. A first-filled enumeration is not a field read at all, so the
- * label question is never asked of it.
+ * (KERNEL-FINDINGS KF396): it does, and on kernel 31.1.1 that law admits every row, immediate or braced, remapped or
+ * not, keyed by a literal or a field (KF655). Kernel 30.8.1 refused the immediate remapped reads.
  *
  * <p><b>Typed-surface boundary.</b> The subject is the brace around the operand, which is concrete syntax with no
  * node of its own, so the measuring rows are condition text; the typed {@code EnumExpr.plus} is checked separately
@@ -45,7 +44,7 @@ class KeyedEnumerationConcatenationLawsTest {
     }
 
     @Test
-    void aKeyedEnumerationCellFollowsTheDirectReadsLabelLaw() {
+    void aKeyedEnumerationCellJoinsATextWhateverItsLabels() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("remapped, immediate", verdict("[Claims/Plan For Key] + [Note]"));
         actual.put("remapped, braced", verdict("{[Claims/Plan For Key]} + [Note]"));
@@ -56,20 +55,11 @@ class KeyedEnumerationConcatenationLawsTest {
         actual.put("identity-labelled, literal key, immediate", verdict("[Claims/Grade For \"C1\"] + [Note]"));
         actual.put("identity-labelled, braced", verdict("{[Claims/Grade For Key]} + [Note]"));
         actual.put("remapped, first filled", verdict("FirstFilledValue(Claims*/Plan) + [Note]"));
-        actual.put("remapped, unkeyed immediate — the KF396 control", KernelLaws.verdictModel(POLICY,
+        actual.put("remapped, unkeyed immediate", KernelLaws.verdictModel(POLICY,
                 "/Policy/Claims", "../Code", "FieldFilled(Code) And [Plan] + [Code] == [Code]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("remapped, immediate", "MVK_NO_STRING_OR_NUMBER_FOR_ADD");
-        expected.put("remapped, braced", KernelLaws.ADMITTED);
-        expected.put("remapped, literal key, immediate", "MVK_NO_STRING_OR_NUMBER_FOR_ADD");
-        expected.put("remapped, literal key, braced", KernelLaws.ADMITTED);
-        expected.put("unlabelled, immediate", KernelLaws.ADMITTED);
-        expected.put("identity-labelled, immediate", KernelLaws.ADMITTED);
-        expected.put("identity-labelled, literal key, immediate", KernelLaws.ADMITTED);
-        expected.put("identity-labelled, braced", KernelLaws.ADMITTED);
-        expected.put("remapped, first filled", KernelLaws.ADMITTED);
-        expected.put("remapped, unkeyed immediate — the KF396 control", "MVK_NO_STRING_OR_NUMBER_FOR_ADD");
+        actual.keySet().forEach(row -> expected.put(row, KernelLaws.ADMITTED));
         assertEquals(expected, actual);
     }
 

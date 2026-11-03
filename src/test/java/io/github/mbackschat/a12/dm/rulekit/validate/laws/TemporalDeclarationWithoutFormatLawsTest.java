@@ -19,13 +19,17 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * KERNEL-FINDINGS §6 — <b>a temporal field may declare no format at all, and the kernel then resolves its
- * KIND's default</b>; and the neighbouring shape, an <b>empty format string</b>, is refused outright.
+ * KIND's default</b>; on kernel 31.1.1 an <b>empty format string</b> is the same declaration, and a <b>blank</b> one
+ * is refused outright.
  *
- * <p><b>Absent and empty are two different declarations, and that is the whole point of this class.</b> An
- * empty type payload ({@code "DateType": {}}) is kernel-valid and behaves as the kind's default spelling; a
- * present-but-blank {@code "format": ""} dies in the kernel's own type converter. Our writer cannot produce
- * either — {@code DocumentModelDraft} substitutes the kind default for a null format — so both shapes are
- * built here by editing the emitted DM-JSON, which is also the honest record of why no builder row exists.
+ * <p><b>Absent and empty were two declarations on 30.8.1 and are one on 31.1.1.</b> An empty type payload
+ * ({@code "DateType": {}}) is kernel-valid and behaves as the kind's default spelling. A present {@code "format": ""}
+ * died in the kernel's own type converter on 30.8.1; on 31.1.1 A12's expand step copies the model through its own
+ * serializer, which omits an empty string, so the copy reads the default and every gate below answers as for an
+ * absent format ([KF658], {@code adapter.ExpandCopyEmptyMemberLawsTest} for the raw-versus-expanded discriminator). A
+ * BLANK format is not empty, survives the copy and still dies there. Our writer cannot produce any of these —
+ * {@code DocumentModelDraft} substitutes the kind default for a null format — so the shapes are built here by editing
+ * the emitted DM-JSON, which is also the honest record of why no builder row exists.
  *
  * <p><b>Three gates pin the resolved default, and no one of them alone would.</b> The format-STRING gate
  * ({@code FieldValuesNotUnique}) shows the resolved value compares EQUAL to the default spelling rather than
@@ -68,8 +72,21 @@ class TemporalDeclarationWithoutFormatLawsTest {
     /** The three {@code NoFmt*} fields with an EMPTY type payload — the shape our own writer cannot emit. */
     private static final String NO_FORMAT = rewriteNoFmtPayloads(payload -> { });
 
-    /** The same three with a present-but-BLANK format string — the neighbouring shape, and a different one. */
-    private static final String BLANK_FORMAT = rewriteNoFmtPayloads(payload -> payload.put("format", ""));
+    /** The same three with a present EMPTY format string, which kernel 31.1.1 reads as the absent one. */
+    private static final String EMPTY_FORMAT = rewriteNoFmtPayloads(payload -> payload.put("format", ""));
+
+    /** The same three with a BLANK format string — not empty, so it survives A12's expand copy. */
+    private static final String BLANK_FORMAT = rewriteNoFmtPayloads(payload -> payload.put("format", " "));
+
+    /** Every gate row of the three tests below, so the empty and absent declarations can be put to all of them. */
+    private static final java.util.List<String> GATE_ROWS = java.util.List.of(
+            "FieldFilled(NoFmtDate)", "FieldValuesNotUnique(NoFmtDate, IsoDate)",
+            "FieldValuesNotUnique(NoFmtDate, GermanDate)", "FieldValuesNotUnique(NoFmtTime, FullClock)",
+            "FieldValuesNotUnique(NoFmtStamp, FullStamp)", "NumberOfDifferentValues(NoFmtDate, NoFmtStamp) == 1",
+            "NumberOfDifferentValues(NoFmtDate, NoFmtTime) == 1", "NumberOfDifferentValues(NoFmtDate, GermanDate) == 1",
+            "NumberOfDifferentValues(NoFmtTime, FullClock) == 1", "YearFromDate(NoFmtDate) == 2024",
+            "HoursFromTime(NoFmtDate) == 0", "YearFromDate(NoFmtTime) == 2024", "HoursFromTime(NoFmtTime) == 0",
+            "YearFromDate(NoFmtStamp) == 2024", "HoursFromTime(NoFmtStamp) == 0");
 
     private static String rewriteNoFmtPayloads(java.util.function.Consumer<ObjectNode> edit) {
         try {
@@ -176,10 +193,28 @@ class TemporalDeclarationWithoutFormatLawsTest {
     }
 
     /**
+     * An empty format is the absent one on every gate row (kernel 31.1.1, [KF658]). The rows include refusals, so
+     * equality here is not two admissions agreeing by default.
+     */
+    @Test
+    void anEmptyFormatAnswersEveryGateAsAnAbsentOne() {
+        Map<String, String> empty = new LinkedHashMap<>();
+        Map<String, String> absent = new LinkedHashMap<>();
+        GATE_ROWS.forEach(row -> {
+            empty.put(row, verdict(EMPTY_FORMAT, row));
+            absent.put(row, verdict(NO_FORMAT, row));
+        });
+        assertTrue(absent.values().stream().anyMatch(v -> !v.equals(KernelLaws.ADMITTED)),
+                () -> "the gate rows must include a refusal: " + absent);
+        assertEquals(absent, empty, "an empty format and an absent one, row for row");
+    }
+
+    /**
      * The neighbouring shape, and the reason this class also guards a REPORTING contract: a blank format
-     * string is refused by the kernel's own type converter, inside {@code checkConsistency} and before any
-     * structured problem exists. Left to escape it reaches a caller as an internal-defect envelope, which
-     * asserts the opposite of the truth — the input is invalid and the kernel is what said so.
+     * string is refused by the kernel's own type converter, before any structured problem exists. Left to escape
+     * it reaches a caller as an internal-defect envelope, which asserts the opposite of the truth — the input is
+     * invalid and the kernel is what said so. On 31.1.1 the throw comes out of A12's expand rather than out of
+     * {@code checkConsistency}, which the adapter folds the same way (KF259).
      */
     @Test
     void aBlankFormatStringIsARejectedINPUTAndNotAnInternalDefect() {

@@ -104,13 +104,13 @@ class DocumentJsonCodecTest {
     }
 
     @Test
-    fun explicitSparsePlacementStillPadsPredecessorsWhileJsonCompactsNonObjects() {
+    fun explicitSparsePlacementStillPadsPredecessorsWhileJsonRefusesNonObjects() {
         val model = ModelLoader.load(ORDER_MODEL)
         val path = "/Order/Items/Note"
         val placed = model.newDocument().field(path, "third", 1, 3, 1)
         assertEquals("""{"Order":{"Items":[{},{},{"Note":"third"}]}}""", placed.toDocumentJson(model))
-        val read = model.readDocumentJson("""{"Order":{"Items":[null,null,{"Note":"third"}]}}""")
-        assertEquals("""{"Order":{"Items":[{"Note":"third"}]}}""", read.toDocumentJson(model))
+        // Kernel 31.1.1 reads no repetition array holding a non-object; 30.8.1 compacted it (KERNEL-FINDINGS KF664).
+        assertFailsWith<DocumentInputError> { model.readDocumentJson("""{"Order":{"Items":[null,null,{"Note":"third"}]}}""") }
     }
 
     @Test
@@ -123,7 +123,9 @@ class DocumentJsonCodecTest {
 
         assertEquals("""{"Order":{"Ref":"a"}}""", document.toDocumentJson(model))
         assertEquals("""{"Order":{"Ref":"a"}}""",
-            model.readDocumentJson("""{"id":[1],"Order":{"Ref":"a"}}""").toDocumentJson(model))
+            model.readDocumentJson("""{"id":[{}],"Order":{"Ref":"a"}}""").toDocumentJson(model))
+        // The root is read as a group, so an array id holding a non-object refuses the Document (KERNEL-FINDINGS KF664).
+        assertFailsWith<DocumentInputError> { model.readDocumentJson("""{"id":[1],"Order":{"Ref":"a"}}""") }
     }
 
     private companion object {

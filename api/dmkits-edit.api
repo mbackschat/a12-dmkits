@@ -24,8 +24,6 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession addField(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public io.github.mbackschat.a12.dm.edit.EditSession addGroup(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession addImport(java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.EditSession addInclude(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.EditSession addInclude(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession addLocale(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession addMultiSelectGroup(java.lang.String, java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
   public io.github.mbackschat.a12.dm.edit.EditSession addRepeatableGroup(java.lang.String, java.lang.String, int)
@@ -79,7 +77,6 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession removeTypeDefinition(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameGroup(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.EditSession renameInclude(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameRule(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameTypeDefinition(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.RuleEditor rule(java.lang.String)
@@ -198,12 +195,11 @@ public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.githu
   public io.github.mbackschat.a12.dm.edit.GroupEditor timeField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder>)
 
 public final class io.github.mbackschat.a12.dm.edit.IncludeEditor
-  public java.lang.String alias()
   public io.github.mbackschat.a12.dm.edit.IncludeEditor mount(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.IncludeEditor mount(java.lang.String, java.lang.String, int)
   public io.github.mbackschat.a12.dm.edit.IncludeEditor mount(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
+  public java.lang.String reference()
   public io.github.mbackschat.a12.dm.edit.EditSession remove()
-  public io.github.mbackschat.a12.dm.edit.IncludeEditor rename(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.IncludeEditor setReference(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.edit.RuleEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.RuleEditor>

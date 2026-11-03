@@ -2,10 +2,12 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 
 /**
  * Modelkit-private DM-JSON node tests + group-elements traversal. Since Set W a Jackson-typed signature may
@@ -22,6 +24,39 @@ final class DmNodes {
     /** True iff {@code node}'s {@code "type"} discriminator names {@code type}. */
     static boolean is(ElementType type, JsonNode node) {
         return type.wireName().equals(node.path(DmKeys.TYPE).asText());
+    }
+
+    /**
+     * A Group element's body, read without changing the document. Kernel 31.1.1 reads a missing or {@code null} body
+     * as an empty group on every carrier, and builds no model from any other non-object body ([KERNEL-FINDINGS KF3],
+     * {@code adapter.WorkspaceIncludeStructureKernelTest}); a reading must not respell the author's text, so the empty
+     * group is a detached node.
+     */
+    static ObjectNode groupBody(JsonNode group) {
+        JsonNode body = group.path(ElementType.GROUP.wireName());
+        if (body instanceof ObjectNode object) {
+            return object;
+        }
+        requireNoValue(group, body);
+        return JsonNodeFactory.instance.objectNode();
+    }
+
+    /** {@link #groupBody}, for an edit: the empty group A12 reads is written out, so the edit lands in the document. */
+    static ObjectNode editableGroupBody(ObjectNode group) {
+        JsonNode body = group.path(ElementType.GROUP.wireName());
+        if (body instanceof ObjectNode object) {
+            return object;
+        }
+        requireNoValue(group, body);
+        return group.putObject(ElementType.GROUP.wireName());
+    }
+
+    private static void requireNoValue(JsonNode group, JsonNode body) {
+        if (!body.isMissingNode() && !body.isNull()) {
+            throw new ModelInputException("the group " + group.path(DmKeys.ID).asText() + " has a Group body that is"
+                    + " not an object, and A12 builds no model from it; write {\"elements\": [...]}, or {} for an empty"
+                    + " group");
+        }
     }
 
     /** The {@code elements} array of the group at the absolute {@code groupPath}, or {@code null}. */

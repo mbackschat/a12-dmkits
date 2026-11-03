@@ -27,6 +27,7 @@ import {
   installedInterpreterDeclaration,
   type BoundaryClassification,
 } from "./boundary-contract.js";
+import {assertDocumentInputConversions} from "./document-input.js";
 import {validateWithProjectCondition} from "./guide-customization.js";
 import {runInterpreter} from "./guide-finite.js";
 import {collectWorkspace} from "./guide-provider.js";
@@ -57,7 +58,7 @@ if (guideWorkspace.prepare("permit-single").entryModelId !== "permit-single") {
 
 const finiteWorkspace = ModelWorkspace.fromSources([...sourcesById.values()]);
 const expanded = finiteWorkspace.expand("permit-single");
-if (expanded.includes('"modelAlias"') || expanded.includes('"TypeDefType"')) {
+if (expanded.includes('"includeConfig"') || expanded.includes('"TypeDefType"')) {
   throw new Error("workspace expansion retained include or typedef residue");
 }
 const preparedIncluded = finiteWorkspace.prepare("permit-single");
@@ -375,23 +376,7 @@ if (canonical !== '{"Permit":{"ApplicationNo":"P-1","RequestedArea":125}}') {
   throw new Error(`Document transport did not round-trip: ${canonical}`);
 }
 
-const unknownKey = prepared.documents.tryReadDocument(
-  '{"Permit":[null,{"ApplicationNo":"P-2","Unexpected":"discarded"}]}',
-);
-if (!unknownKey.ok || prepared.documents.encodeDocumentJson(unknownKey.value) !== '{"Permit":{"ApplicationNo":"P-2"}}') {
-  throw new Error("unknown Document key was not discarded by canonical conversion");
-}
-
-try {
-  prepared.documents.readDocument({Permit: {RequestedArea: Number.NaN}});
-  throw new Error("Document reading accepted a value JSON cannot carry");
-} catch (error) {
-  if (!(error instanceof DocumentInputError) ||
-      error.diagnostics[0]?.reasonCode !== "unrepresentable-native-value" ||
-      error.diagnostics[0]?.inputPath?.join("/") !== "Permit/RequestedArea") {
-    throw error;
-  }
-}
+assertDocumentInputConversions(prepared);
 
 try {
   prepared.model.relevantPointer(

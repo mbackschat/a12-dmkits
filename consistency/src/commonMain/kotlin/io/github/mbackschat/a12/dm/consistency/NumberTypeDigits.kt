@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.predicates.numberBoundsInverted
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /**
  * A declared number type's fractional-digit pair and its value range.
@@ -29,71 +28,14 @@ import kotlinx.serialization.json.intOrNull
  * declares none, and the priority half of the sort block that has no DM-JSON member at all.
  */
 internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
-    defaultVariantFields().flatMap { field ->
+    fieldDeclarations().flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
         val unbindable = unbindableBoundFindings(field, body)
         if (unbindable.isNotEmpty()) return@flatMap unbindable
         val digits = DigitCounts.of(body)
         memberRangeFindings(field, body.lengthMembers(admitsUndefined = false) + digits.ranged) +
             digitPairFindings(field, digits) + valueRangeFindings(field, body) + budgetFindings(field, body, digits)
-    } + boundMagnitudeFindings()
-
-/**
- * Each bound past the magnitude its fractional digits allow ([numberBoundExceedsDigitLimit]), on EVERY field.
- *
- * Unlike the laws above, this one is not judged on the default-variant model: A12 asks it of the stored model's
- * every field, so a field an `ONLY` filter deletes still draws it, measured ([KERNEL-FINDINGS KF582]). It is
- * independent of them too: it neither withholds nor is withheld by the printed-bound checks or the inversion. A
- * bound whose verdict depends on the JVM is left unjudged and disclosed by [boundMagnitudeGaps]. A count that is
- * present but not an integer is left unjudged as well, since what A12 binds it to is unmeasured.
- */
-private fun TrackedFactBase.boundMagnitudeFindings(): List<Finding> = magnitudeVerdicts().mapNotNull { verdict ->
-    verdict.takeIf { it.exceeded == true }?.let {
-        finding(it.field, it.bound.code, "this field's `${it.bound.member}` of ${it.value} exceeds what A12 allows " +
-            "beside a `maxFractionalDigits` of ${it.places ?: 0}: `10^(15 - k) - 10^(-k)`, ${it.bound.judged}")
     }
-}
-
-internal fun TrackedFactBase.boundMagnitudeGaps(): List<CoverageGap> = magnitudeVerdicts().mapNotNull { verdict ->
-    verdict.takeIf { it.exceeded == null }?.let {
-        CoverageGap(it.field.path, "this field's `${it.bound.member}` of ${it.value} lies within two ulps of A12's " +
-            "magnitude limit for a `maxFractionalDigits` of ${it.places}, where `Math.pow` decides it differently " +
-            "on different JVMs, so it was not judged")
-    }
-}
-
-private class MagnitudeVerdict(
-    val field: TrackedDeclaration, val bound: NumberBound, val value: Double, val places: Int?, val exceeded: Boolean?,
-)
-
-private fun TrackedFactBase.magnitudeVerdicts(): List<MagnitudeVerdict> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        val body = field.numberTypeBody() ?: return@flatMap emptyList()
-        val places = body.int("maxFractionalDigits")
-        if (places == null && body["maxFractionalDigits"] != null) return@flatMap emptyList()
-        NumberBound.entries.mapNotNull { bound ->
-            body.number(bound.member)?.let { MagnitudeVerdict(field, bound, it, places, numberBoundExceedsDigitLimit(bound, it, places)) }
-        }
-    }
-
-private val NumberBound.member: String get() = when (this) {
-    NumberBound.MIN_VALUE -> "minValue"
-    NumberBound.MAX_VALUE -> "maxValue"
-}
-
-private val NumberBound.code: String get() = when (this) {
-    NumberBound.MIN_VALUE -> RK_NUMBER_MIN_VALUE_EXCEEDED
-    NumberBound.MAX_VALUE -> RK_NUMBER_MAX_VALUE_EXCEEDED
-}
-
-private val NumberBound.judged: String get() = when (this) {
-    NumberBound.MIN_VALUE -> "which a minimum may not exceed in absolute value"
-    NumberBound.MAX_VALUE -> "which a maximum may not exceed"
-}
-
-/** A12's `DOCUMENT_MODEL_NUMBER_MIN_VALUE_EXCEEDED` and `…_MAX_VALUE_EXCEEDED`, which it states with no class key. */
-internal const val RK_NUMBER_MIN_VALUE_EXCEEDED = "RK_NUMBER_MIN_VALUE_EXCEEDED"
-internal const val RK_NUMBER_MAX_VALUE_EXCEEDED = "RK_NUMBER_MAX_VALUE_EXCEEDED"
 
 /**
  * The three digit counts as A12's metamodel holds them, each judged against its range.
@@ -125,7 +67,7 @@ private class DigitCounts(val integer: RangedMember?, val minFractional: RangedM
     companion object {
         fun of(body: JsonObject): DigitCounts {
             val maxFractional = fractional(body, "maxFractionalDigits")
-            val declared = body.int("maxIntegerDigits")
+            val declared = body.boundInt("maxIntegerDigits")
             val integer = when {
                 declared != null -> RangedMember("`maxIntegerDigits` $declared", declared, MemberRange.INTEGER_PLACES)
                 body.string("trait") == "amount" -> (DIGIT_BUDGET - maxFractional.value).let {
@@ -137,7 +79,7 @@ private class DigitCounts(val integer: RangedMember?, val minFractional: RangedM
         }
 
         private fun fractional(body: JsonObject, member: String): RangedMember =
-            (body.int(member) ?: 0).let { RangedMember("`$member` $it", it, MemberRange.FRACTIONAL_PLACES) }
+            (body.boundInt(member) ?: 0).let { RangedMember("`$member` $it", it, MemberRange.FRACTIONAL_PLACES) }
     }
 }
 
@@ -180,7 +122,7 @@ private fun digitPairFindings(field: TrackedDeclaration, digits: DigitCounts): L
  * many bounds fail it, as A12 reports it.
  */
 private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
-    val maxFractional = body.int("maxFractionalDigits")
+    val maxFractional = body.boundInt("maxFractionalDigits")
     val declared = listOfNotNull(body.number("minValue"), body.number("maxValue"))
     val defects = declared.flatMap { printedNumberBoundDefects(it, maxFractional) }.distinct()
     if (defects.isNotEmpty()) {
@@ -341,7 +283,6 @@ private fun TrackedDeclaration.numberTypeBody(): JsonObject? {
     return FieldType.NUMBER.bodyIn(declared)
 }
 
-private fun JsonObject.int(member: String): Int? = (this[member] as? JsonPrimitive)?.intOrNull
 
 /**
  * A declared decimal bound, as a comparable magnitude.

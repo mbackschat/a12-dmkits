@@ -14,6 +14,7 @@ public final class CliMain {
         // re-entered per child by `batch` and the MCP invoker, and clearing there would let a second `-`
         // through the very refusal that exists to stop it.
         JsonInput.resetForInvocation();
+        KernelCopyReaderTrace.install();
         System.exit(Cli.run(args, System.out, System.err));
     }
 }

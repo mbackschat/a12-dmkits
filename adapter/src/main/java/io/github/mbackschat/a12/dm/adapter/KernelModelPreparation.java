@@ -24,20 +24,48 @@ final class KernelModelPreparation {
     private KernelModelPreparation() {
     }
 
+    /**
+     * Expand, then hold the model to the whole-model gate, folding a build failure of EITHER phase into one
+     * rejection. Kernel 31.1.1 can die building the model inside expansion as well as inside the check
+     * ({@link KernelResolvers#expand}), and each is a verdict on the caller's bytes (KF259).
+     */
+    static IDocumentModel requireConsistent(String modelJson, ModelResolver resolver) {
+        ExpandedModel expanded;
+        try {
+            expanded = expand(modelJson, resolver);
+        } catch (ConsistencyCheckFailedException couldNotBuild) {
+            throw couldNotBuild(couldNotBuild);
+        }
+        return expanded.requireConsistent();
+    }
+
+    private static ModelConsistencyException couldNotBuild(ConsistencyCheckFailedException failure) {
+        return new ModelConsistencyException(List.of(new Notification(Severity.ERROR, failure.getMessage())));
+    }
+
+    /**
+     * Deserialize and expand.
+     *
+     * @throws ConsistencyCheckFailedException when the kernel itself dies building the model during expansion;
+     *     a whole-model gate goes through {@link #requireConsistent(String, ModelResolver)}, which folds it
+     */
     static ExpandedModel expand(String modelJson, ModelResolver resolver) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
-        IDocumentModel model = KernelModelInput.deserialize(serializer, modelJson);
+        IDocumentModel unexpanded = KernelModelInput.deserialize(serializer, modelJson);
+        IDocumentModel model;
         try {
-            service.expand(model, KernelResolvers.of(resolver));
+            model = KernelResolvers.expand(unexpanded, resolver);
+        } catch (ConsistencyCheckFailedException couldNotBuild) {
+            throw KernelModelInput.namingAbsentMember(modelJson, couldNotBuild);
         } catch (DocumentModelExpansionException rejected) {
-            // DocumentModelService.expand throws this type for reported ERRORs; callback defects have no verdict.
+            // KernelResolvers.expand throws this type for reported ERRORs; callback defects have no verdict.
             throw ModelConsistencyException.notKernelValid(rejected);
         }
-        return new ExpandedModel(model, service);
+        return new ExpandedModel(model, service, modelJson);
     }
 
-    record ExpandedModel(IDocumentModel model, IDocumentModelService service) {
+    record ExpandedModel(IDocumentModel model, IDocumentModelService service, String modelJson) {
 
         /**
          * The kernel's own consistency verdict — with its <em>conversion</em> throws folded into the same
@@ -50,10 +78,11 @@ final class KernelModelPreparation {
          * "this is a dmtool defect, not an invalid input" — which asserts the opposite of the truth
          * (KERNEL-FINDINGS KF259).
          *
-         * <p><b>The narrowness is the point.</b> This wraps {@code checkConsistency} alone, never
-         * {@link #expand}: a failure to deserialize the DM-JSON, and a reference our own resolver could not
-         * resolve, belong to earlier tiers that report themselves and must keep doing so — relabelling either
-         * as a kernel consistency verdict would publish a gate receipt for a gate that never ran.
+         * <p><b>The narrowness is the point.</b> A failure to deserialize the DM-JSON, and a reference our own
+         * resolver could not resolve, belong to earlier tiers that report themselves and must keep doing so —
+         * relabelling either as a kernel consistency verdict would publish a gate receipt for a gate that never
+         * ran. So only the KERNEL's own throws fold: this one wraps {@code checkConsistency}, and the one during
+         * expansion is told apart from our resolver's by provenance in {@link KernelResolvers#expand}.
          *
          * <p>The typed {@link ConsistencyCheckFailedException} is what lets the port's two callers dispose of
          * the same event differently, which they must: the whole-model gate turns it into a verdict, the draft
@@ -72,8 +101,8 @@ final class KernelModelPreparation {
                 String why = kernelCouldNotBuildTheModel.getMessage() != null
                         ? kernelCouldNotBuildTheModel.getMessage()
                         : kernelCouldNotBuildTheModel.getClass().getSimpleName();
-                throw new ConsistencyCheckFailedException(
-                        "the kernel could not build this model: " + why, kernelCouldNotBuildTheModel);
+                throw KernelModelInput.namingAbsentMember(modelJson, new ConsistencyCheckFailedException(
+                        "the kernel could not build this model: " + why, kernelCouldNotBuildTheModel));
             }
             return raw.stream().map(KernelNotifications::toCore).toList();
         }
@@ -92,9 +121,8 @@ final class KernelModelPreparation {
             List<Notification> reported;
             try {
                 reported = notifications();
-            } catch (ConsistencyCheckFailedException couldNotBuild) {
-                throw new ModelConsistencyException(
-                        List.of(new Notification(Severity.ERROR, couldNotBuild.getMessage())));
+            } catch (ConsistencyCheckFailedException failure) {
+                throw couldNotBuild(failure);
             }
             List<Notification> errors = reported.stream()
                     .filter(notification -> notification.severity() == Severity.ERROR)
@@ -103,10 +131,6 @@ final class KernelModelPreparation {
                 throw new ModelConsistencyException(errors);
             }
             return model;
-        }
-
-        String variant() {
-            return service.extractUsedVariants(model).stream().findFirst().orElse("");
         }
     }
 

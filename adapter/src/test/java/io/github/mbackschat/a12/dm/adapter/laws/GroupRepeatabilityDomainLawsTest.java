@@ -78,7 +78,8 @@ class GroupRepeatabilityDomainLawsTest {
         }
         expected.put("0 — our builder refuses", invalidMaxima("Only values greater than 0 are allowed."));
         expected.put("-1 — our builder refuses", invalidMaxima("Only values without a sign are allowed."));
-        expected.put("null", invalidMaxima("Only values greater than 0 are allowed."));
+        // A primitive `int` member that Jackson 3 refuses a null for, so the model never loads (KERNEL-FINDINGS KF593).
+        expected.put("null", "RuntimeException");
         expected.put("true — a non-numeric kind", "RuntimeException");
         // The floor mirrors the ceiling, and it is the boundary the CHECKER's own family needed: it held
         // only the upper half until 2026-09-16, so a stored `"repeatability":0` was reported here and

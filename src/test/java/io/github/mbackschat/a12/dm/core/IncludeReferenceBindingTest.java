@@ -30,7 +30,7 @@ class IncludeReferenceBindingTest {
     @Test
     void aCrossGroupShortNameIsBoundBeforeAnIncludingModelCollisionCanRetargetIt() {
         String included = checksWithCrossGroupShortName();
-        String policy = policyMounting("checks", "checks", false, false, true);
+        String policy = policyMounting("checks", false, false, true);
 
         ModelReader reader = ModelReader.expand(policy, resolver(Map.of("checks", included)));
 
@@ -47,7 +47,7 @@ class IncludeReferenceBindingTest {
         String included = checksWithCrossGroupShortName()
                 .replace("[Cap]", "[/Checks/Rates/Cap]");
         ModelReader reader = ModelReader.expand(
-                policyMounting("checks", "checks", false, false, false),
+                policyMounting("checks", false, false, false),
                 resolver(Map.of("checks", included)));
 
         JsonNode computation = JSON.readTree(reader.toJson()).findParents("name").stream()
@@ -69,7 +69,7 @@ class IncludeReferenceBindingTest {
         disabled.config().fieldRefByShortNameAllowed(false);
 
         ModelReader reader = ModelReader.expand(
-                policyMounting("checks", "checks", false, false, true),
+                policyMounting("checks", false, false, true),
                 resolver(Map.of("checks", disabled.toJson())));
 
         assertTrue(reader.toJson().contains("[Cap] > 0"),
@@ -97,7 +97,7 @@ class IncludeReferenceBindingTest {
                     java.util.regex.Matcher.quoteReplacement("\"fieldRefByShortNameAllowed\":" + spelling));
 
             ModelReader reader = ModelReader.expand(
-                    policyMounting("checks", "checks", false, false, true),
+                    policyMounting("checks", false, false, true),
                     resolver(Map.of("checks", included)));
 
             assertTrue(reader.toJson().contains("[/Policy/Cover/Rates/Cap] > 0"),
@@ -109,7 +109,7 @@ class IncludeReferenceBindingTest {
     void outerExclusionDropsNestedResidualsWithTheirElements() {
         String leaf = leafWithResidualRuleAndComputation();
         String middle = middleMountingLeaf();
-        String policy = policyMounting("middle", "middle", true, true, false);
+        String policy = policyMounting("middle", true, true, false);
 
         ModelReader reader = ModelReader.expand(policy, resolver(Map.of("middle", middle, "leaf", leaf)));
 
@@ -121,7 +121,7 @@ class IncludeReferenceBindingTest {
     void retainedNestedResidualsRefuseAtUnambiguousNamePaths() {
         String leaf = leafWithResidualRuleAndComputation();
         String middle = middleMountingLeaf();
-        String policy = policyMounting("middle", "middle", false, false, false);
+        String policy = policyMounting("middle", false, false, false);
 
         ModelReader reader = ModelReader.expand(policy, resolver(Map.of("middle", middle, "leaf", leaf)));
 
@@ -133,7 +133,7 @@ class IncludeReferenceBindingTest {
     @Test
     void duplicateElementNamesInDifferentGroupsHaveDistinctResidualLocations() {
         String included = duplicateNamedResidualRules();
-        String policy = policyMounting("checks", "checks", false, false, false);
+        String policy = policyMounting("checks", false, false, false);
 
         ModelReader reader = ModelReader.expand(policy, resolver(Map.of("checks", included)));
 
@@ -191,7 +191,6 @@ class IncludeReferenceBindingTest {
 
     private static String middleMountingLeaf() {
         return DocumentModelDraft.named("middle").locale("en_US")
-                .include("leaf", "leaf")
                 .rootGroup("Middle", middle -> middle.mount("Nested", "leaf"))
                 .build().toJson();
     }
@@ -215,7 +214,7 @@ class IncludeReferenceBindingTest {
         return both.replace("[Value] > 0", "[/Unknown/Value] > 0");
     }
 
-    private static String policyMounting(String alias, String reference, boolean excludeRules,
+    private static String policyMounting(String reference, boolean excludeRules,
             boolean excludeComputations, boolean collidingCap) {
         MountOptions options = MountOptions.single();
         if (excludeRules) {
@@ -226,13 +225,12 @@ class IncludeReferenceBindingTest {
         }
         MountOptions mountOptions = options;
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include(alias, reference)
                 .rootGroup("Policy", policy -> {
                     policy.field("PolicyNo", FieldKind.STRING);
                     if (collidingCap) {
                         policy.numberField("Cap", field -> field.fractionDigits(0));
                     }
-                    policy.mount("Cover", alias, mountOptions);
+                    policy.mount("Cover", reference, mountOptions);
                 })
                 .build().toJson();
     }

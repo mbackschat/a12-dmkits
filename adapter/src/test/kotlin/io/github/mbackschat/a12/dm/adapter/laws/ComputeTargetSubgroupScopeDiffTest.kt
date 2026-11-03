@@ -28,8 +28,8 @@ class ComputeTargetSubgroupScopeDiffTest {
     private companion object {
         const val ISO_DT = "yyyy-MM-dd'T'HH:mm:ss"
 
-        /** Europe/Berlin skips 02:00–03:00 on 2024-03-31. */
-        const val GAP = "31.03.2024T02:30:00"
+        /** A Julian leap day, which Europe/Berlin cannot read: the label fails when reached (KERNEL-FINDINGS KF665). */
+        const val GAP = "29.02.1500T10:00:00"
         const val LEG = """{"Weight":"7","Stamp":"2024-03-31T01:30:00"}"""
     }
 

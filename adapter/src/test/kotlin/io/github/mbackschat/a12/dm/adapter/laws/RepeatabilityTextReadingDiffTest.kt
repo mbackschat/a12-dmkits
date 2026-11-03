@@ -12,10 +12,11 @@ import org.junit.jupiter.api.Test
 
 /**
  * How A12's reader binds a group's `repeatability`, and that the portable checker and the interpreter bind it alike
- * (KERNEL-FINDINGS KF590). Text is Java-trimmed and read by `Integer.parseInt`, so a non-ASCII digit counts and the
- * empty text is 0; a JSON number is truncated toward zero; a fraction or exponent in text, a count past `Int`, a
- * no-break space and a boolean leave no model, and so do a JSON number whose exact value lies past `Int` and an
- * object or an array; the text `null` binds no value, held as 0 (KF593). Each built model then holds four rows, so a count of 3 draws the
+ * (KERNEL-FINDINGS KF590). Text is Java-trimmed and read by `Integer.parseInt`, so a non-ASCII digit counts; a JSON
+ * number is truncated toward zero; a fraction or exponent in text, a count past `Int`, a no-break space and a boolean
+ * leave no model, and so do a JSON number whose exact value lies past `Int` and an object or an array. The member is a
+ * primitive `int`, so on kernel 31.1.1 a value that binds no value — the empty or blank text, the text `null`, a JSON
+ * `null` — leaves no model too (KF593, corrected 2026-11-02). Each built model then holds four rows, so a count of 3 draws the
  * over-repetition pair and 10 does not, which shows the count itself and not only that one was read.
  *
  * Own domain (a claims register).
@@ -29,7 +30,8 @@ class RepeatabilityTextReadingDiffTest {
         "\"\\t3\\n\"" to ("\t3\n" to A12.BUILT), "\"\\u0663\"" to ("\u0663" to A12.BUILT),
         "\"\\uFF13\"" to ("\uFF13" to A12.BUILT), "\"+3\"" to ("+3" to A12.BUILT), "\"03\"" to ("03" to A12.BUILT),
         "3.7" to (3.7 to A12.BUILT), "1e1" to (RawValue("1e1") to A12.BUILT), "10.0" to (RawValue("10.0") to A12.BUILT),
-        "\"\"" to ("" to A12.MAX_VALUES_INVALID), "\"-1\"" to ("-1" to A12.MAX_VALUES_INVALID),
+        "\"\"" to ("" to A12.NOT_BUILT), "\" \"" to (" " to A12.NOT_BUILT), "null" to (RawValue("null") to A12.NOT_BUILT),
+        "\"-1\"" to ("-1" to A12.MAX_VALUES_INVALID),
         "-3.7" to (-3.7 to A12.MAX_VALUES_INVALID),
         "\"3.7\"" to ("3.7" to A12.NOT_BUILT), "\"1e1\"" to ("1e1" to A12.NOT_BUILT), "\"0x3\"" to ("0x3" to A12.NOT_BUILT),
         "\"\\u00A03\"" to ("\u00A03" to A12.NOT_BUILT), "\"3\\u00A0\"" to ("3\u00A0" to A12.NOT_BUILT),
@@ -37,8 +39,8 @@ class RepeatabilityTextReadingDiffTest {
         "4294967298" to (4294967298L to A12.NOT_BUILT), "3e10" to (RawValue("3e10") to A12.NOT_BUILT),
         "3.0E10" to (RawValue("3.0E10") to A12.NOT_BUILT),
         "true" to (true to A12.NOT_BUILT),
-        // The text `null`, in that case only, is the null value, which the `int` member holds as 0 (KF593).
-        "\"null\"" to ("null" to A12.MAX_VALUES_INVALID), "\" null \"" to (" null " to A12.MAX_VALUES_INVALID),
+        // The text `null`, in that case only, is the null value, which the primitive `int` member cannot hold (KF593).
+        "\"null\"" to ("null" to A12.NOT_BUILT), "\" null \"" to (" null " to A12.NOT_BUILT),
         "\"NULL\"" to ("NULL" to A12.NOT_BUILT),
         // A JSON number binds only when its exact value fits `Int`, before it is truncated, in either spelling. Written
         // verbatim: a Kotlin double reaches the model as Java prints it, `2.147483647E9` for `2147483647.0` (2026-10-22).
@@ -50,6 +52,8 @@ class RepeatabilityTextReadingDiffTest {
         "-2147483649.0" to (RawValue("-2147483649.0") to A12.NOT_BUILT), "-2.147483649E9" to (RawValue("-2.147483649E9") to A12.NOT_BUILT),
         // A12 leaves no model for a scale past `Int`, even where the value would truncate to 0.
         "1e-2147483649" to (RawValue("1e-2147483649") to A12.NOT_BUILT),
+        // Kernel 31.1.1's fast parser refuses a scale of `Int.MIN_VALUE` too, which the JDK would admit (KF593).
+        "0e2147483648" to (RawValue("0e2147483648") to A12.NOT_BUILT), "3e-2147483647" to (RawValue("3e-2147483647") to A12.MAX_VALUES_INVALID),
         "{}" to (emptyMap<String, Any>() to A12.NOT_BUILT), "[]" to (emptyList<Any>() to A12.NOT_BUILT),
     )
 

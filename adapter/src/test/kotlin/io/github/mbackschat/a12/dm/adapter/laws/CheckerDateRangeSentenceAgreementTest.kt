@@ -28,14 +28,13 @@ import org.junit.jupiter.api.Test
  */
 class CheckerDateRangeSentenceAgreementTest {
 
-    private data class Row(val format: String?, val separator: String?, val only: Boolean = false)
+    private data class Row(val format: String?, val separator: String?)
 
     @Test
     fun theCheckerStatesA12sRangeVerdictsOnEveryPair() {
-        val grid = (FORMATS.flatMap { format -> SEPARATORS.map { Row(format, it) } } +
-            listOf(Row("yyyy-MM-dd", "-", only = true), Row("", "", only = true), Row(null, "x", only = true)))
+        val grid = FORMATS.flatMap { format -> SEPARATORS.map { Row(format, it) } }
         val observed = grid.associateWith { model(it).let { json -> kernel(json) to ours(json) } }
-        assertEquals(FORMATS.size * SEPARATORS.size + 3, observed.size, "every grid member is a distinct model")
+        assertEquals(FORMATS.size * SEPARATORS.size, observed.size, "every grid member is a distinct model")
         assertEquals(observed.mapValues { (_, verdict) -> verdict.first to verdict.first }, observed, "each row as (A12, ours)")
         // A12's own answer on the rows that separate the three verdicts, so the agreement cannot follow a drift on
         // both sides.
@@ -48,10 +47,11 @@ class CheckerDateRangeSentenceAgreementTest {
             Row("yyyy-MM-dd", "/ ") to listOf(FORMAT),
             Row("MM", "\u00A0") to listOf(FORMAT, SEPARATOR),
             Row(null, null) to listOf(FORMAT),
-            Row("", "") to listOf(MISSING),
+            // Both members empty read as both absent on kernel 31.1.1 (KERNEL-FINDINGS KF658), so this composes
+            // `null/null` and is the range-format verdict; a blank pair still composes a blank one.
+            Row("", "") to listOf(FORMAT),
             Row(" ", "\t") to listOf(MISSING),
             Row("", "/") to listOf(FORMAT),
-            Row("yyyy-MM-dd", "-", only = true) to emptyList(),
         ).mapValues { (_, classes) -> classes.map { "$it@$FIELD" }.sorted() },
             observed.filterKeys { it in PINNED }.mapValues { it.value.first }.let { pinned -> PINNED.associateWith { pinned.getValue(it) } })
     }
@@ -95,7 +95,6 @@ class CheckerDateRangeSentenceAgreementTest {
         val body = field.putObject("fieldType").put("type", "DateRangeType").putObject("DateRangeType")
         row.format?.let { body.put("format", it) }
         row.separator?.let { body.put("rangeSeparator", it) }
-        if (row.only) field.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Gold")
         return mapper.writeValueAsString(tree)
     }
 
@@ -121,6 +120,6 @@ class CheckerDateRangeSentenceAgreementTest {
             "/\t", "\u00A0", "|", "\u00E4", "ab")
         val PINNED = listOf(Row("yyyy-MM-dd", "/"), Row("yyyy-MM-dd", null), Row("MM", ""), Row("dd.MM.yyyy", "/"),
             Row("yyyy-MM-dd", "x"), Row("yyyy-MM-dd", "/ "), Row("MM", "\u00A0"), Row(null, null), Row("", ""),
-            Row(" ", "\t"), Row("", "/"), Row("yyyy-MM-dd", "-", only = true))
+            Row(" ", "\t"), Row("", "/"))
     }
 }

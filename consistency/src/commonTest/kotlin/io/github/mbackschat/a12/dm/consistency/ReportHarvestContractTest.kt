@@ -107,8 +107,14 @@ class ReportHarvestContractTest {
 
     }
 
+    /**
+     * Of two declarations at one path, only the first is checked: A12's converter leaves the later one out
+     * (KERNEL-FINDINGS KF652). So the later one is scheduled for nothing and owns no condition, while every kept
+     * declaration still reads its own target member. Kernel 30.8.1 judged both, which is what these harvested
+     * twins were first built to keep apart.
+     */
     @Test
-    fun aDeclaredTargetBelongsToItsDeclarationOccurrence() {
+    fun theLaterOfTwoDeclarationsAtOnePathOwnsNothing() {
         val identities = setOf(
             "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#1",
             "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2",
@@ -119,56 +125,23 @@ class ReportHarvestContractTest {
         assertEquals(identities.size, rows.size)
         for (row in rows) {
             val id = row.getValue("id").jsonPrimitive.content
-            val admitted = assertIs<Admission.Admitted>(admit(ModelSource(row.getValue("model").jsonPrimitive.content)))
-            val prepared = prepare(admitted)
-            val firstRule = prepared.elements.first { it.declaredKind == DeclaredKind.RULE }
-            val changed = firstRule.copy(declaration = JsonObject(firstRule.declaration +
-                (firstRule.kind to JsonObject(firstRule.body!! + ("errorEntityRelPath" to JsonPrimitive(".."))))))
-            for (model in listOf(prepared, prepared.copy(elements = prepared.elements.map {
-                if (it === firstRule) changed else it
-            }))) {
-                val facts = TrackedFactBase(model, ReadTranscript())
-                if (model === prepared && id == "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2") {
-                    val executed = executeChecks(facts, model, CheckCells.NONE)
-                    val selected = executed.selectedConditions(facts)
-                    assertEquals(listOf("MVK_INVALID_WILDCARD", "MVK_INVALID_ENTITY"), selected.map { it.finding.code })
-                    assertEquals(listOf(0, 1), selected.map { it.owner.amongSamePath })
-                    val conditions = selected.map { DeclarationFinding(it.owner, DeclarationStage.CONDITION, it.finding) }
-                    assertEquals(conditions, facts.selectDeclarations(conditions.reversed()))
-                    val first = conditions.first()
-                    val second = conditions.last()
-                    val target = first.copy(stage = DeclarationStage.TARGET)
-                    val message = first.copy(stage = DeclarationStage.MESSAGE)
-                    val independent = first.copy(stage = DeclarationStage.INDEPENDENT)
-                    assertEquals(listOf(target, second), facts.selectDeclarations(conditions + target + message))
-                    assertEquals(listOf(independent, first, second),
-                        facts.selectDeclarations(conditions + message + independent))
-                    assertEquals(listOf(message, second), facts.selectDeclarations(listOf(second, message)))
-                    val alternative = first.copy(stage = DeclarationStage.CALCULATION_ALTERNATIVES)
-                    val extraction = first.copy(stage = DeclarationStage.CALCULATION_EXTRACTION)
-                    assertEquals(listOf(alternative, second),
-                        facts.selectDeclarations(listOf(extraction, second, alternative)))
-                    assertEquals(listOf(alternative, alternative, second),
-                        facts.selectDeclarations(listOf(extraction, second, alternative, alternative)))
-                    assertFailsWith<IllegalArgumentException> {
-                        selectDeclaration(first.owner, listOf(second))
-                    }
+            val prepared = prepare(assertIs<Admission.Admitted>(admit(ModelSource(row.getValue("model").jsonPrimitive.content))))
+            val later = prepared.declarationsByKey.keys.filter { it.amongSamePath > 0 }.toSet()
+            assertEquals(1, later.size, "$id: the fixture must declare exactly one later twin")
+            assertEquals(later, prepared.conversionDrops.dropped, id)
+            val facts = TrackedFactBase(prepared, ReadTranscript())
+            assertEquals(prepared.declarationsByKey.keys - later, facts.declarations().map { it.key }.toSet(), id)
+            val executed = executeChecks(facts, prepared, CheckCells.NONE)
+            assertEquals(emptyList(), executed.selectedConditions(facts).filter { it.owner in later }, id)
+            for (cursor in facts.declarations()) {
+                val element = prepared.declarationsByKey.getValue(cursor.key)
+                val member = when (element.declaredKind) {
+                    DeclaredKind.RULE -> "errorEntityRelPath"
+                    DeclaredKind.COMPUTATION -> "computedFieldRelPath"
+                    else -> null
                 }
-                val cursors = facts.declarations()
-                assertEquals(model.elements.size, cursors.size, id)
-                val seen = mutableMapOf<String, Int>()
-                for ((element, cursor) in model.elements.zip(cursors)) {
-                    val ordinal = seen.getOrElse(element.path) { 0 }
-                    seen[element.path] = ordinal + 1
-                    assertEquals(DeclarationKey(element.path, ordinal), cursor.key, id)
-                    val member = when (element.declaredKind) {
-                        DeclaredKind.RULE -> "errorEntityRelPath"
-                        DeclaredKind.COMPUTATION -> "computedFieldRelPath"
-                        else -> null
-                    }
-                    val written = member?.let { element.body?.get(it)?.jsonPrimitive?.content }
-                    assertEquals(written, cursor.declaredReference()?.written, "$id: ${element.kind} ${element.path}")
-                }
+                val written = member?.let { element.body?.get(it)?.jsonPrimitive?.content }
+                assertEquals(written, cursor.declaredReference()?.written, "$id: ${element.kind} ${element.path}")
             }
         }
     }
@@ -176,7 +149,7 @@ class ReportHarvestContractTest {
     @Test
     fun originalReportAssertionsKeepTheirClaimKinds() {
         val rows = SyntaxFixtureData.reportChecks.map { Json.parseToJsonElement(it).jsonObject }
-        assertEquals(316, rows.size)
+        assertEquals(313, rows.size)
         assertEquals(SOURCES.flatMap { (source, count) -> (1..count).map { "$source#$it" } }.toSet(),
             rows.map { it.getValue("id").jsonPrimitive.content }.toSet())
         assertEquals(setOf(
@@ -283,7 +256,6 @@ class ReportHarvestContractTest {
             "CalculationMemberWithholdingTest.aDefectElsewhereWithholdsOnlyTheCycle" to 17,
             "CalculationMemberWithholdingTest.theCalculationModuleAsksItsStagesInOrder" to 13,
             "CalculationMemberWithholdingTest.theErrorTextClassesStandBesideTheCalculationModule" to 10,
-            "CalculationMemberWithholdingTest.aCircleThroughAFilteredComputationIsNoCycle" to 3,
             "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor" to 1
         )
     }

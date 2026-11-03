@@ -14,7 +14,7 @@ package io.github.mbackschat.a12.dm.core;
 public final class ModelFormat {
 
     /** The {@code header.modelVersion} this build authors and validates against. */
-    public static final String VERSION = "28.4.0";
+    public static final String VERSION = "29.4.0";
 
     private ModelFormat() {
     }

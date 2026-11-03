@@ -50,28 +50,26 @@ internal class TrackedFactBase private constructor(
      */
     private class Views(private val model: PreparedModel, private val transcript: ReadTranscript) {
 
-        /** Every declaration as a cursor, allocated once per check. */
-        val cursors: List<TrackedDeclaration> by lazy {
+        /** Every declaration as a cursor, allocated once per check: the model as read. */
+        val readCursors: List<TrackedDeclaration> by lazy {
             model.declarationsByKey.map { (key, element) -> TrackedDeclaration(key, element, model, transcript) }
         }
 
-        val defaultVariantCursors: List<TrackedDeclaration> by lazy {
-            cursors.filterIndexed { index, _ -> !model.elements[index].body.deletesAtDefaultVariant() }
-        }
-
-        val defaultVariantFieldsByPath: Map<String, TrackedDeclaration> by lazy {
-            val fields = LinkedHashMap<String, TrackedDeclaration>()
-            defaultVariantCursors.filter { it.declaredKind == DeclaredKind.FIELD }
-                .forEach { field -> fields.getOrPut(field.path) { field } }
-            fields
+        /**
+         * The declarations A12's converter keeps ([KERNEL-FINDINGS KF652]), which is the model every family but the
+         * basic sentences and the converter's own judges. Every lookup below is built over it.
+         */
+        val cursors: List<TrackedDeclaration> by lazy {
+            val dropped = model.conversionDrops.dropped
+            readCursors.filterNot { it.key in dropped }
         }
 
         /**
-         * [cursors] keyed by path, so `declarationAt` is a lookup rather than a scan.
+         * [cursors] keyed by path, so `declarationAt` is a lookup rather than a scan. Measured: the scan was 29x
+         * growth over a 4x scale-up (2026-09-18), being linear per call and called once per declaration.
          *
-         * FIRST occurrence wins, because `firstOrNull` is the answer it replaces — the same rule, and the
-         * same reason, as `PreparedModel.resolvableByPath`. Measured: the scan was 29x growth over a 4x
-         * scale-up (2026-09-18), being linear per call and called once per declaration.
+         * A path holds one declaration in [cursors], because A12's converter keeps only the first of two
+         * ([KERNEL-FINDINGS KF652]); `getOrPut` keeps that first one should the view ever hold two.
          */
         val cursorsByPath: Map<String, TrackedDeclaration> by lazy {
             val byPath = LinkedHashMap<String, TrackedDeclaration>(cursors.size)
@@ -94,35 +92,14 @@ internal class TrackedFactBase private constructor(
          * [ModelFact.REPEATABLE_GROUP_SET], whose value is this question's own answer.
          */
         val repeatable: List<TrackedDeclaration> by lazy {
-            cursors.filterIndexed { index, _ -> model.elements[index].isRepeatableGroup }
-        }
-
-        /**
-         * [cursors] keyed by path AND declared kind, for the gates that qualify a lookup by kind.
-         *
-         * First occurrence wins per key, on the same rule and for the same reason as [cursorsByPath]: it is
-         * the answer `firstOrNull` gave. A declaration with no declared kind is left out, because no
-         * `declaredKind == K` predicate could ever have matched it.
-         *
-         * **Safe to compute in a view, unlike [repeatable], and the difference is the whole invariant.**
-         * `TrackedDeclaration.declaredKind` records nothing — the set's shape already covers it — so forcing
-         * this map charges no fact to whichever producer happens to force it first. A view may read the
-         * uncharged shape members and only those; `isRepeatableGroup` is a BODY member, which is why
-         * [repeatable] has to go around the barrier and carry its own [ModelFact] instead.
-         */
-        val cursorsByPathAndKind: Map<PathAndKind, TrackedDeclaration> by lazy {
-            val byKey = LinkedHashMap<PathAndKind, TrackedDeclaration>(cursors.size)
-            cursors.forEach { cursor ->
-                val kind = cursor.declaredKind ?: return@forEach
-                byKey.getOrPut(PathAndKind(cursor.path, kind)) { cursor }
-            }
-            byKey
+            val repeatableKeys = model.declarationsByKey.filterValues { it.isRepeatableGroup }.keys
+            cursors.filter { it.key in repeatableKeys }
         }
     }
 
     /**
-     * Every declaration, as cursors that record what is read THROUGH them — or, on a SCOPED fact base, the
-     * single declaration it was narrowed to.
+     * Every declaration A12's converter keeps ([declarationsAsRead] has the rest), as cursors that record what is
+     * read THROUGH them — or, on a SCOPED fact base, the single declaration it was narrowed to.
      *
      * Records the set's shape alone — [FactRead.DeclarationSetShape] carries why that separation is the
      * design rather than an optimization. A scoped base records [FactRead.DeclarationRow] instead, which is
@@ -186,30 +163,18 @@ internal class TrackedFactBase private constructor(
     }
 
     /**
-     * The declaration at [path] declared as [kind], or null when nothing there is of that kind.
+     * The declaration at [path] declared as [kind], or null when what is there is of another kind.
      *
-     * **Its own index, because filtering the path-only one is not the same question.** Fifteen gates ask
-     * `it.path == X && it.declaredKind == K`, and the obvious rewrite —
-     * `declarationAt(X)?.takeIf { it.declaredKind == K }` — answers differently wherever a path carries two
-     * declarations: the path-only index hands back the FIRST, so a rule-shaped question about a path whose
-     * field comes first returns null instead of the rule. A12 refuses to build such a model and this checker
-     * reports that (`CK_MODEL_NOT_BUILDABLE`) rather than declining to look, so those paths reach every
-     * other family and the difference is live rather than theoretical. Keyed by both, each gate keeps
-     * exactly the answer its scan gave.
-     *
-     * Charges the set's SHAPE alone, identically to [declarationAt] and to the scan both replace — the kind
-     * is a shape member that records nothing of its own, so no cell's key moves.
+     * A filter over [declarationAt] and nothing more, because a path carries one declaration in the model A12
+     * checks: of two at one path its converter keeps the first and leaves the other out ([KERNEL-FINDINGS KF652]),
+     * so a question about the later one's kind has no declaration to answer with. Charges the set's SHAPE alone,
+     * as [declarationAt] does — the kind is a shape member.
      */
-    fun declarationAt(path: String, kind: DeclaredKind): TrackedDeclaration? {
-        transcript.record(FactRead.DeclarationSetShape)
-        return views.cursorsByPathAndKind[PathAndKind(path, kind)]
-    }
+    fun declarationAt(path: String, kind: DeclaredKind): TrackedDeclaration? =
+        declarationAt(path)?.takeIf { it.declaredKind == kind }
 
-    /** KF295 selects the surviving local field after original binding; membership is in the set shape. */
-    fun defaultVariantFieldAt(path: String): TrackedDeclaration? {
-        transcript.record(FactRead.DeclarationSetShape)
-        return views.defaultVariantFieldsByPath[path]
-    }
+    /** KF295 selects the local field after original binding; membership is in the set shape. */
+    fun fieldAt(path: String): TrackedDeclaration? = declarationAt(path, DeclaredKind.FIELD)
 
     /**
      * Resolve a written entity path from [declaringGroup] — the reference reader, charged.
@@ -262,7 +227,7 @@ internal class TrackedFactBase private constructor(
         declarations().mapNotNull { it.declaredReference() }
 
     /**
-     * Every declaration in the model, whatever this base is scoped to — the route a SET question takes.
+     * Every declaration A12's converter keeps, whatever this base is scoped to — the route a SET question takes.
      *
      * **The distinction it draws is the one that decides whether a family can be asked per declaration.**
      * [declarations] is "the declarations this pass is about"; this is "every declaration there is". A
@@ -281,21 +246,25 @@ internal class TrackedFactBase private constructor(
     }
 
     /**
-     * Code-generation declarations, irrespective of scope (KF495's filtered name-collision witness).
-     * DeclarationSetShape carries each deletion bit, so reading this view does not charge every body.
+     * Every declaration of the model as READ, the ones A12's converter leaves out included ([KERNEL-FINDINGS
+     * KF652]). Only three readers are entitled to it: A12's basic sentences and its id sentences ([KERNEL-FINDINGS
+     * KF661]), which run over the model as read, and the converter's own sentences, which name what it leaves out. Charged as the shape, because what the
+     * converter drops is decided by paths and names alone.
      */
-    fun allDefaultVariantDeclarations(): List<TrackedDeclaration> {
+    fun declarationsAsRead(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
-        return views.defaultVariantCursors
+        return views.readCursors
     }
 
-    /** KF494/KF498's field checks retain scope; a scoped filter is part of that field's tracked body. */
-    fun defaultVariantFields(): List<TrackedDeclaration> =
-        if (scope == null) {
-            allDefaultVariantDeclarations().filter { it.declaredKind == DeclaredKind.FIELD }
-        } else {
-            declarations().filter { it.declaredKind == DeclaredKind.FIELD && !it.body.deletesAtDefaultVariant() }
-        }
+    /** What A12's converter leaves out, and why ([ConversionDrops]); a shape fact, charged as one. */
+    fun conversionDrops(): ConversionDrops {
+        transcript.record(FactRead.DeclarationSetShape)
+        return model.conversionDrops
+    }
+
+    /** The field declarations, within the pass's scope when it has one (KF494/KF498's field checks). */
+    fun fieldDeclarations(): List<TrackedDeclaration> =
+        (if (scope == null) allDeclarations() else declarations()).filter { it.declaredKind == DeclaredKind.FIELD }
 
     /**
      * The REPEATABLE groups the model declares, charged as [ModelFact.REPEATABLE_GROUP_SET].
@@ -332,8 +301,7 @@ internal class TrackedFactBase private constructor(
      * over their own operand and a member of that name would sit silently shadowed beside them.
      *
      * **Charged as the set's SHAPE, and that is the design rather than a convenience.** The resolvable set is
-     * the declarations minus the ones the default variant deletes, and that filter sits in the shape on
-     * purpose ([FactRead.DeclarationSetShape] says why) — charging it as content would hand every reader of
+     * the declarations' paths, which the shape carries — charging it as content would hand every reader of
      * the resolvable set a dependency on every body. So resolution costs no granularity at all: a keystroke
      * in a condition or a message leaves this answer alone.
      */
@@ -512,12 +480,3 @@ internal class TrackedDeclaration(
 
     override fun hashCode(): Int = element.hashCode()
 }
-
-/**
- * A (path, kind) lookup key, for the gates that ask about one kind of declaration at one path.
- *
- * A named type rather than a `Pair`, because a path alone is not a unique key here — the cell key carries an
- * ordinal for the same reason — and a reader meeting `Pair<String, DeclaredKind>` at a call site has to
- * reconstruct which half means what.
- */
-private data class PathAndKind(val path: String, val kind: DeclaredKind)

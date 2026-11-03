@@ -121,7 +121,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository/com/mgmtp
-          key: a12-kernel-30.8.1-base-29.3.0-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/patches/**') }}
+          key: a12-kernel-31.1.1-base-30.0.2-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/releases/**', 'a12-kernel-bootstrap/scripts/**', 'a12-kernel-bootstrap/build-support/**') }}
 
       - name: Bootstrap the A12 kernel from public sources (cache miss only)
         if: steps.kernel-cache.outputs.cache-hit != 'true'

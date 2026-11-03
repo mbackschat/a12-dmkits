@@ -45,7 +45,7 @@ class CustomConditionTest {
 
     @Test
     void forbiddenInsideAHavingFilter() {
-        // MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION (verified 2026-06-04) — pre-checked in having()
+        // MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION (verified 2026-06-04) — pre-checked in having()
         assertThrows(IllegalArgumentException.class,
                 () -> m.flatten("/Subscription/Addons*/MonthlyFee").having(Dsl.customCondition("NotReverse")));
     }

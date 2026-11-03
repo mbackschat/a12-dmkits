@@ -166,7 +166,7 @@ class ImpactJsonTest {
         const val FIELD_ON_TYPE_DEF = "/Order/Tier"
 
         private val BASE = """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"typeDefinitions":[
                {"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
               "modelConfig":{"fieldRefByShortNameAllowed":true},

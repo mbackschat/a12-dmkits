@@ -37,7 +37,6 @@ class EditGateRejectionTierTest {
     /** A model that deserializes fine but whose {@code include} names an id no workspace can serve. */
     private static Path hostWithUnresolvableInclude(Path dir) throws Exception {
         String json = DocumentModelDraft.named("host").locale("en_US")
-                .include("missing-library", "missing-library")
                 .rootGroup("Host", host -> host.mount("Missing", "missing-library"))
                 .build().toJson();
         Path model = dir.resolve("host.json");
@@ -95,7 +94,7 @@ class EditGateRejectionTierTest {
     void aRefusalTheKernelDidMakeIsSourcedToTheKernelEvenWithNoMvkCode(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("dup.json");
         Files.writeString(model, """
-                { "header": { "id": "dup", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "dup", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": [ { "code": "en_US" } ], "labels": [], "annotations": [], "modelReferences": [] },
                   "content": {
                     "modelInfo": { "name": "dup", "variant": "cockpit", "revision": "r", "immutable": false },

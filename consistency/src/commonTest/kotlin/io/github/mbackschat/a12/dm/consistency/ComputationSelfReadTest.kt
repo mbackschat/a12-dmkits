@@ -212,7 +212,7 @@ class ComputationSelfReadTest {
      * row needs; `PreferredLeg` is its non-target twin, so that row's control moves only the key.
      */
     private fun routing(inLegs: String, inRouting: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"routing","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"routing","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Routing","Group":{"elements":[
             {"type":"Field","id":"f0","name":"PlannedLeg","Field":{"fieldType":{"type":"StringType"}}},

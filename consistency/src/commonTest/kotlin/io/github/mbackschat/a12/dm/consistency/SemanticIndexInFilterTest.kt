@@ -19,7 +19,7 @@ class SemanticIndexInFilterTest {
     private fun codes(errorField: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"PolicyRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -95,7 +95,7 @@ class SemanticIndexInFilterTest {
         // The control that makes the POSITION load-bearing rather than the construct.
         expected["the same index OUTSIDE any filter — the control"] = emptyList()
         expected["an off-path iterating reference BEFORE the indexed one"] =
-            listOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
+            listOf("MVK_INVALID_ITERATION_IN_SET_EXPRESSION")
         expected["the same two, the indexed reference FIRST"] = listOf(notAllowed)
         // A12 answers this from the index's OWN spec gates, which run while the spec is parsed and ahead of the
         // walk: the key-kind class, with no iteration class although the group repeats.
@@ -124,7 +124,7 @@ class SemanticIndexInFilterTest {
         // because A12's verdict is the parse-time class rather than its post-parse one.
         expected["an indexed filter on an operand under a keyed PARALLEL level"] = emptyList()
         expected["the same operand with a filter carrying NO index"] =
-            listOf("MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED")
+            listOf("MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED")
         assertEquals(expected, actual, "the filter walk throws before the whole-rule gates run")
     }
 }

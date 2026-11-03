@@ -11,8 +11,9 @@ import org.junit.jupiter.api.assertThrows
 /**
  * A number literal's exponent at the edges of A12's converter (KERNEL-FINDINGS KF564). A literal converts exactly
  * when its scale, fraction length minus exponent, fits 32 bits, so a zero at the widest scale is `0` and one place
- * further is unconvertible text; an unquoted token past that bound makes the Document unreadable wherever it
- * stands. Past the reader's per-field ceiling the interpreter refuses a value A12 would expand, and the rows pin
+ * further is unconvertible text. An unquoted token is parsed by Jackson 3's fast parser, whose range is the same
+ * less the scale `Int.MIN_VALUE` (kernel 31.1.1; 30.8.1 read that token as `0`), and one outside it makes the
+ * Document unreadable wherever it stands. Past the reader's per-field ceiling the interpreter refuses a value A12 would expand, and the rows pin
  * what A12 does there instead.
  *
  * Own domain (an insurance premium with its cover and riders).
@@ -31,7 +32,8 @@ class NumberExponentEdgeDiffTest {
         "a zero at the widest negative scale" to premium("\"0e2147483648\""),
         "a negative zero there" to premium("\"-0e2147483648\""),
         "a zero far past the materializing ceiling" to premium("\"0e99999999\""),
-        "an unquoted zero at the widest scale" to premium("0e2147483648"),
+        "an unquoted zero one scale inside the widest" to premium("0e2147483647"),
+        "an unquoted zero there, by a fraction place" to premium("0.0e2147483648"),
         "a zero one place past the widest scale" to premium("\"0e2147483649\""),
         "a scale past 32 bits on the positive side" to premium("\"1.5e-2147483647\""),
     )
@@ -51,7 +53,8 @@ class NumberExponentEdgeDiffTest {
             "a zero at the widest negative scale" to emptyList(),
             "a negative zero there" to emptyList(),
             "a zero far past the materializing ceiling" to emptyList(),
-            "an unquoted zero at the widest scale" to emptyList(),
+            "an unquoted zero one scale inside the widest" to emptyList(),
+            "an unquoted zero there, by a fraction place" to emptyList(),
             "a zero one place past the widest scale" to unconvertible,
             "a scale past 32 bits on the positive side" to unconvertible,
         ), observed)
@@ -62,6 +65,8 @@ class NumberExponentEdgeDiffTest {
     fun anUnquotedTokenPastThirtyTwoBitsLeavesTheDocumentUnreadableWhereverItStands() {
         val positions = linkedMapOf(
             "a number field" to premium("0e2147483649"),
+            "a number field, at the widest scale the converter admits" to premium("0e2147483648"),
+            "the same at the other end" to premium("0e-2147483648"),
             "a string field" to """{"Policy":{"Note":0e2147483649}}""",
             "an unknown key" to """{"Policy":{"Premium":1,"Discount":0e2147483649}}""",
             "inside an unknown subtree" to """{"Policy":{"Discount":{"Tiers":[{"Rate":0e2147483649}]}}}""",

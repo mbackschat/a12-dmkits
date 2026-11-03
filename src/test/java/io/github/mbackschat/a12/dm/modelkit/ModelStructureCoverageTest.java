@@ -46,7 +46,6 @@ class ModelStructureCoverageTest {
     @Test
     void addsAnIncludeAndMountsItValidatedAgainstTheReferencedModel() {
         ModelDocument doc = subscription()
-                .addInclude("catalog", "catalog")
                 .mount("/Subscription", "Catalog", "catalog")
                 .validate(resolver());
 
@@ -66,7 +65,7 @@ class ModelStructureCoverageTest {
     @Test
     void removesAnIncludeAndItsMount() {
         ModelDocument doc = subscription()
-                .addInclude("catalog", "catalog").mount("/Subscription", "Catalog", "catalog")
+                .mount("/Subscription", "Catalog", "catalog")
                 .validate(resolver());
         assertTrue(doc.groupPaths().contains("/Subscription/Catalog"));
 

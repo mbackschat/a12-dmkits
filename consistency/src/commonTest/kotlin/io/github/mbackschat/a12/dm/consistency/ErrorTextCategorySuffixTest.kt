@@ -23,6 +23,7 @@ class ErrorTextCategorySuffixTest {
         actual["a TEXT field with a category suffix"] = reporting("\$Note -> Band\$")
         actual["the arrow with no category name after it"] = reporting("\$Grade ->\$")
         actual["a field the condition never reads, with a valid suffix"] = reporting("\$Unread -> Band\$")
+        actual["a field the condition never reads, empty category"] = reporting("\$Unread ->\$")
         actual["the INDEX terminal carrying a category suffix"] = reporting("\$index(Note)->Band\$")
 
         val expected = mutableMapOf<String, List<String>>()
@@ -36,6 +37,8 @@ class ErrorTextCategorySuffixTest {
         expected["the arrow with no category name after it"] = listOf("NO_CATEGORY")
         // KF413 and KF501: the shared reader reaches membership before the category action.
         expected["a field the condition never reads, with a valid suffix"] = listOf("INVALID_FIELD")
+        // Kernel 31.1.1 asks for the empty name before membership on an unkeyed parameter (KERNEL-FINDINGS KF450).
+        expected["a field the condition never reads, empty category"] = listOf("NO_CATEGORY")
         // A12 answers `FIELD_NO_ENUM` here too — for a STRING index field — but `checkIndexFieldRef` owns
         // this form and has eleven classes of its own, several about an ENUM index field. Agreeing by luck on
         // one carrier is not a basis, so this family declines the form outright.
@@ -48,7 +51,7 @@ class ErrorTextCategorySuffixTest {
 
     /** An e-commerce catalogue desk mirroring the laws test's carrier. */
     private fun model(text: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"catalogue-error-text-category","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalogue-error-text-category","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalogue","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -56,7 +59,7 @@ class ErrorTextCategorySuffixTest {
             {"type":"Field","id":"f2","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f3","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"NEW"},{"value":"USED"}],
-              "categories":[{"name":"Band","values":[{"value":"NEW"},{"value":"USED"}]}]}}}},
+              "categories":[{"name":"Band","values":["NEW","USED"]}]}}}},
             {"type":"Field","id":"f4","name":"Plain","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"NEW"},{"value":"USED"}]}}}},
             {"type":"Field","id":"f5","name":"Unread","Field":{"fieldType":{"type":"StringType"}}},

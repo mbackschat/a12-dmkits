@@ -21,7 +21,7 @@ class ErrorFieldReferenceTest {
     private fun codes(errorFieldRelPath: String, condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"shipment","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
@@ -179,7 +179,7 @@ class ErrorFieldReferenceTest {
     private fun nestedCodes(condition: String): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"shipment-nested","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"shipment-nested","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},
@@ -206,7 +206,7 @@ class ErrorFieldReferenceTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"shipment","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Carrier","Field":{"fieldType":{"type":"StringType"}}},

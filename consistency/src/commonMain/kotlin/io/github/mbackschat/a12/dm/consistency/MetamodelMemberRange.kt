@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /**
  * A declared type member against the range A12's own metamodel admits for it (KERNEL-FINDINGS KF556, KF559).
@@ -10,8 +9,6 @@ import kotlinx.serialization.json.intOrNull
  * A12 judges a type's numeric members as numbers in a range and answers a member outside it with a sentence and
  * no class. Each sentence is reported once per field, however many members draw it — a length and a digit count
  * that are both signed draw one — and an out-of-range member is no bound for the field's other laws.
- *
- * A field deleted from the default variant is never judged: A12 is silent on it.
  */
 internal fun memberRangeFindings(field: TrackedDeclaration, members: List<RangedMember>): List<Finding> =
     members.mapNotNull { member -> member.violation()?.let { it to member.label } }
@@ -85,7 +82,7 @@ internal enum class MemberRangeViolation(val code: String, val sentence: String)
 /** The two length members this type declares, each judged against [MemberRange.length]. */
 internal fun JsonObject.lengthMembers(admitsUndefined: Boolean): List<RangedMember> =
     LENGTH_MEMBERS.mapNotNull { member ->
-        intMember(member)?.let { RangedMember("`$member` $it", it, MemberRange.length(admitsUndefined)) }
+        boundInt(member)?.let { RangedMember("`$member` $it", it, MemberRange.length(admitsUndefined)) }
     }
 
 /**
@@ -95,9 +92,7 @@ internal fun JsonObject.lengthMembers(admitsUndefined: Boolean): List<RangedMemb
  * writing the sentinel, and both are measured ADMITTED wherever a bound would have been refused. A member
  * outside A12's metamodel range is no bound either: A12 refuses it on its own and judges nothing else with it.
  */
-internal fun JsonObject.lengthInRange(member: String): Int? = intMember(member)?.takeIf { it in 1..TECHNICAL_LENGTH_LIMIT }
-
-private fun JsonObject.intMember(member: String): Int? = (this[member] as? JsonPrimitive)?.intOrNull
+internal fun JsonObject.lengthInRange(member: String): Int? = boundInt(member)?.takeIf { it in 1..TECHNICAL_LENGTH_LIMIT }
 
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 

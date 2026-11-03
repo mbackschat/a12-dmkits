@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 
@@ -57,7 +58,7 @@ class IncludesWritePathTest {
         assertEquals(STOREFRONT, bind().toJson());
         // proof the catalog stayed separate: the base never gained the included field definitions
         assertFalse(bind().toJson().contains("/Catalog/Sku"), "included content must not leak into the base");
-        assertTrue(bind().toJson().contains("\"modelAlias\": \"catalog\""), "the include reference is preserved");
+        assertFalse(ModelDocument.read(bind().toJson()).mountsOfInclude("catalog").isEmpty(), "the include reference is preserved");
     }
 
     @Test
@@ -80,7 +81,7 @@ class IncludesWritePathTest {
 
         assertTrue(compact.contains("StoreNamedRule"), "the rule landed in the base model");
         assertFalse(compact.contains("/Catalog/Sku"), "the catalog is still separate, not inlined");
-        assertTrue(compact.contains("\"modelAlias\":\"catalog\""), "include preserved after write");
+        assertFalse(ModelDocument.read(compact).mountsOfInclude("catalog").isEmpty(), "include preserved after write");
         assertFalse(m.toJson().contains("StoreNamedRule"), "snapshot: original binding untouched");
         assertEquals(STOREFRONT, m.toJson(), "the source binding is byte-for-byte unchanged");
         // and the written base still re-binds (with the same resolver) — round-trips

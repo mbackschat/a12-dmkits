@@ -405,7 +405,7 @@ class ApplyVerbTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, """
-                [ {"target":"include","op":"add","alias":"catalog","reference":"catalog",
+                [ {"target":"include","op":"add","reference":"catalog",
                    "parent":"/Subscription","name":"Catalog"} ]""");
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
@@ -413,7 +413,7 @@ class ApplyVerbTest {
         JsonNode j = M.readTree(res.out());
         assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed (resolved via -w/--workspace): " + res.out());
         assertEquals("catalog", j.path("data").path("results").get(0).path("changed").path("added").asText());
-        assertTrue(Files.readString(model).contains("modelAlias"));
+        assertTrue(Files.readString(model).contains("includeConfig"));
     }
 
     @Test
@@ -732,7 +732,7 @@ class ApplyVerbTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, """
-                [ {"target":"include","op":"add","alias":"catalog","reference":"catalog",
+                [ {"target":"include","op":"add","reference":"catalog",
                    "parent":"/Subscription","name":"Catalog","repeatability":5,
                    "exclude-rules":true,"exclude-computations":true} ]""");
 

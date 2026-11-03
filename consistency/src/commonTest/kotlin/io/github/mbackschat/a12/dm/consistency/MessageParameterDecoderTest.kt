@@ -33,7 +33,7 @@ class MessageParameterDecoderTest {
             "keyed-decline" to 4, "key-follower" to 8, "family-order" to 4, "form-position" to 2,
             "indexed-group" to 16, "indexed-ancestry" to 4),
             rows.groupingBy { it.getValue("grid").jsonPrimitive.content }.eachCount())
-        assertEquals(7, rows.count { it.getValue("decline").jsonPrimitive.contentOrNull != null })
+        assertEquals(6, rows.count { it.getValue("decline").jsonPrimitive.contentOrNull != null })
         for (row in rows) {
             val reason = row.getValue("decline").jsonPrimitive.contentOrNull
             val expected = if (reason == null) row.getValue("classes").jsonArray.map { it.jsonPrimitive.content }

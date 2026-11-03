@@ -8,8 +8,9 @@ import kotlin.test.assertEquals
  *
  * Every row mirrors one measured against the real kernel by
  * `rulekit.validate.laws.EnumValueAndLabelLawsTest`. The ADMITTED rows carry the risk: an empty token, a
- * spaced token, a 300-character token, labels written only for an undeclared locale and two labels for one
- * locale are all models A12 takes, and four `MVK_VALUE_*` codes read as though they governed them.
+ * spaced token, a 300-character token and two labels for one locale are all models A12 takes, and four
+ * `MVK_VALUE_*` codes read as though they governed them. Labels written only for an undeclared locale are
+ * refused on kernel 31.1.1, which gives a labelled value a text for every declared locale (KERNEL-FINDINGS KF655).
  */
 class EnumValueLabelTest {
 
@@ -21,7 +22,7 @@ class EnumValueLabelTest {
     private fun codes(values: String, vararg locales: String = arrayOf("en_US")): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",
@@ -110,7 +111,7 @@ class EnumValueLabelTest {
         expected["no labels at all — the control"] = emptyList()
         expected["every value labelled for the declared locale"] = emptyList()
         expected["only ONE value labelled"] = listOf(countInvalid)
-        expected["a label for an UNDECLARED locale"] = emptyList()
+        expected["a label for an UNDECLARED locale"] = listOf(displayShort)
         expected["an EMPTY label text"] = listOf(displayShort)
         expected["TWO labels for the same locale on one value"] = emptyList()
         expected["an EMPTY label ARRAY on one value"] = listOf(countInvalid)
@@ -149,7 +150,7 @@ class EnumValueLabelTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"},{"code":"de_DE"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",

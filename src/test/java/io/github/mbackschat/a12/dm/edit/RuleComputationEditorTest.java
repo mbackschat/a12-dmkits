@@ -209,12 +209,10 @@ class RuleComputationEditorTest {
      *
      * <p>The element-level fix above carried `annotations`/`internalDescription` across because
      * {@code computationNode} reconstructs only `type`/`id`/`name`/`Computation`. The body it reconstructs is
-     * partial in the same way: A12 declares {@code variantFilter} on {@code md.model.a12internal.Computation}
-     * beside the members the writer emits, so a modify used to drop it — silent SEMANTIC loss, since the
-     * computation would join every variant rather than the ones it was filtered to.
-     *
-     * <p>`variantFilter` has no typed surface, so the probe injects it and re-reads. {@code ALL_EXCEPT} keeps
-     * the computation in the default variant, which the session validates.
+     * partial in the same way, so a modify used to drop a body member it does not write. The probe's member is the
+     * {@code variantFilter} DM 29.1 retired, which a hand-written model may still carry and kernel 31.1.1 reads
+     * past ({@code rulekit.validate.laws.RetiredVariantMembersLawsTest}); it has no typed surface, so the probe
+     * injects it and re-reads.
      */
     @Test
     void preservesAComputationsBodyMembersTheRebuildDoesNotWrite() {

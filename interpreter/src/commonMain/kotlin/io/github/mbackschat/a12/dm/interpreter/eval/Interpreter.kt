@@ -1427,8 +1427,8 @@ class Interpreter(
         }
         // A DATETIME comparison under a non-UTC model zone compares zone-parsed INSTANTS (the kernel's
         // `vergleicheDATUM` on `VkDate` epoch millis), derived STRUCTURALLY so a chained `Add{Hours,…}` keeps
-        // its exact instant — an ambiguous fall-back wall time re-parses as STANDARD, so the equal-looking
-        // rendering of a daylight-side chain result is a DIFFERENT instant (KERNEL-FINDINGS §6). Under UTC the
+        // its exact instant — an ambiguous fall-back wall time re-parses at its earlier, summer-time offset, so the
+        // equal-looking rendering of a standard-side chain result is a DIFFERENT instant (KERNEL-FINDINGS KF665). Under UTC the
         // canonical local ISO order IS the instant order; only a rendered tie can hide Now's millisecond remainder.
         if (l is Val.Txt && r is Val.Txt && isIsoDateTime(l.v) && isIsoDateTime(r.v) &&
             (timeZone != ModelTimeZone.UTC || l.v == r.v)) {
@@ -1443,7 +1443,7 @@ class Interpreter(
         // ordinary parse resolution, which is what the kernel's `VkDate` holds for it — so this is not gated on
         // retention; gating it on retention would compare a shifted Date against a field by LABEL and diverge.
         // The footprint is provably one date: wherever midnight is unambiguous the derived instant and the label
-        // order agree, and Berlin's pinned history has exactly one ambiguous midnight (1916-10-01).
+        // order agree, and Berlin's history has exactly one ambiguous midnight (1916-10-01).
         if (l is Val.Txt && r is Val.Txt && isIsoDate(l.v) && isIsoDate(r.v)) {
             if (timeZone != ModelTimeZone.UTC) {
                 val li = dateInstant(c.left)
@@ -1451,10 +1451,9 @@ class Interpreter(
                 if (li != null && ri != null) return compareInstants(c.op, li, ri)
             }
             // Labels order lexically only while every year has four digits; a calendar shift can reach five
-            // (SPEC-2026-10-04-01), so two dates compare by day number — on A12's hybrid calendar, where
-            // 1500-02-29 is a day of its own rather than an alias of 1500-03-01 (KF588).
-            val ld = legacyEpochDay(l.v)
-            val rd = legacyEpochDay(r.v)
+            // (SPEC-2026-10-04-01), so two dates compare by day number.
+            val ld = epochDay(l.v)
+            val rd = epochDay(r.v)
             if (ld != null && rd != null) return compareInstants(c.op, ld, rd)
         }
         return when (c.op) {
@@ -1610,7 +1609,7 @@ class Interpreter(
     /** The stored text of a well-formed partial Date at [path], or null when [raw] is absent or not one. */
     private fun wellFormedPartialText(c: EvalContext, path: String, raw: String?): Val? {
         if (raw == null) return null
-        val parts = partialDateParts(raw, c.dateFormatOf(path) ?: "yyyy-MM-dd", c.datePrecisionOf(path))
+        val parts = partialDateParts(raw, c.dateFormatOf(path) ?: "yyyy-MM-dd", c.datePrecisionOf(path), timeZone)
         return if (parts != null) Val.Txt(raw) else null
     }
 

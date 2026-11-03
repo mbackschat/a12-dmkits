@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.IncludeLevelBinding;
 import io.github.mbackschat.a12.dm.core.ElementType;
 
 /** Single-pass JSON-tree reader behind {@link ModelDocument#authoredState()}. */
@@ -48,7 +49,7 @@ final class AuthoredStateReader {
         if (type != ElementType.GROUP) {
             return;
         }
-        ObjectNode body = (ObjectNode) node.path(ElementType.GROUP.wireName());
+        ObjectNode body = DmNodes.groupBody(node);
         groups.put(path, new ModelDocument.GroupState(path, structure(body), metadata(node, body)));
         for (JsonNode child : body.path(DmKeys.ELEMENTS)) {
             collect(child, path, elements, fields, groups, rules);
@@ -75,14 +76,14 @@ final class AuthoredStateReader {
                     SortOrder.valueOf(sort.path(DmKeys.ORDER).asText(SortOrder.ASC.name()))));
         }
         int repeatability = A12IntMembers.repetitionCount(body.path(DmKeys.REPEATABILITY));
-        String alias = body.path(DmKeys.MODEL_ALIAS).asText(null);
-        Optional<ModelDocument.MountState> mount = alias == null || alias.isBlank() ? Optional.empty()
-                : Optional.of(new ModelDocument.MountState(alias, new MountOptions(
+        JsonNode include = body.path(DmKeys.INCLUDE_CONFIG);
+        Optional<ModelDocument.MountState> mount = !include.isObject() ? Optional.empty()
+                : Optional.of(new ModelDocument.MountState(include.path(DmKeys.REFERENCE).asText(""),
+                        new MountOptions(
                         repeatability,
-                        excludes(body, "excludeRules"),
-                        excludes(body, "excludeComputations"),
-                        "MODEL_ROOT".equals(body.path("includeLevel").asText())
-                                ? IncludeLevel.MODEL_ROOT : IncludeLevel.SINGLE_RG)));
+                        A12Booleans.isSet(include.path(DmKeys.EXCLUDE_RULES)),
+                        A12Booleans.isSet(include.path(DmKeys.EXCLUDE_COMPUTATIONS)),
+                        includeLevel(include.path(DmKeys.INCLUDE_LEVEL)))));
         return new ModelDocument.GroupStructure(repeatability,
                 Optional.ofNullable(body.path(DmKeys.INDEX_FIELD_NAME).asText(null)), sortFields, mount);
     }
@@ -98,15 +99,12 @@ final class AuthoredStateReader {
                 localized(node, DmKeys.EXTERNAL_DESCRIPTION), annotations(node));
     }
 
-    /**
-     * Whether a mount directive drops the included executables: the JSON literal {@code true} and nothing else.
-     * A12 reads these two members with {@code JsonNode.booleanValue()}, which is false for every non-Boolean,
-     * whereas Jackson's {@code asBoolean(false)} coerces {@code "true"} and {@code 1} — so the coercion
-     * reported an exclusion the Kernel never applies (measured 2026-09-12,
-     * {@code WorkspaceIncludeStructureKernelTest}).
-     */
-    private static boolean excludes(ObjectNode body, String directive) {
-        return body.path(directive).isBoolean() && body.path(directive).booleanValue();
+    /** The level as A12 binds it ({@link IncludeLevelBinding}); an unbindable one reads as the default, as an
+     *  unbindable flag reads as unset ({@link A12Booleans#isSet}), since A12 never loads that model to say. */
+    private static IncludeLevel includeLevel(JsonNode member) {
+        var bound = IncludeLevelBinding.ofParsedMember(member.isMissingNode() ? null : member.toString(),
+                member.isFloatingPointNumber());
+        return bound == IncludeLevelBinding.MODEL_ROOT ? IncludeLevel.MODEL_ROOT : IncludeLevel.SINGLE_RG;
     }
 
     private static List<ElementDraft.Annotation> annotations(JsonNode node) {

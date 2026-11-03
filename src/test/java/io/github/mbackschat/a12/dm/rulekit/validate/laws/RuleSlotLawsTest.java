@@ -219,32 +219,26 @@ class RuleSlotLawsTest {
     }
 
     /**
-     * The same-group name collision is caught by a kernel THROW, not by the {@code MVK_NAME_RULES_DUPLICATE}
-     * metamodel rule — the kernel refuses to build the model at all and the metamodel rule never gets to
-     * report (instrument-4 territory, KERNEL-FINDINGS pre-tier note).
+     * The same-group name collision is stated by kernel 31.1.1's validation-model converter, not by the
+     * {@code MVK_NAME_RULES_DUPLICATE} metamodel rule: "Cannot have two child elements with the same name …",
+     * with no class, after which A12 checks the model without the later rule (KERNEL-FINDINGS KF652).
      *
-     * <p><b>The throw happens INSIDE {@code checkConsistency}, not before it</b>, which is what makes it this
-     * gate's business: the adapter's guard wraps that call alone and never {@code expand}, and a mutant on that
-     * catch clause kills this test. An earlier name and wording here said "before checkConsistency" and
-     * "deserialize/convert tier" — pointing a future reader at the one tier the guard deliberately excludes.
-     *
-     * <p><b>It arrives as a REJECTION, and used not to.</b> The kernel throws a bare
-     * {@code IllegalArgumentException} there, which escaped {@code ModelLoader.loadAndCheck} and reached a
-     * caller as an internal-defect envelope — asserting the opposite of the truth, since the input is invalid
-     * and the kernel is what said so ([KF259]). This is the second member of that class: the first was a blank
-     * temporal {@code format}, and this one was never reported, which is what makes it the confirmation rather
-     * than a second symptom.
+     * <p>Kernel 30.8.1 threw a bare {@code IllegalArgumentException} inside {@code checkConsistency} here, which
+     * the adapter's guard turned into a rejection rather than an internal-defect envelope ([KF259]); this test
+     * then locked that guard. The converter's sentence now arrives as an ordinary rejection, so the assertion is
+     * that no build failure stands in for it.
      */
     @Test
-    void aDuplicateRuleNameIsRejectedByAThrowInsideCheckConsistency() {
+    void aDuplicateRuleNameIsRefusedByTheConverterSentence() {
         String once = withProbeRule("DupNameProbe", List.of(en("x"), de("x")));
         String twice = ModelWriter.addRule(once, "/Subscription", "DupNameProbe", "../Tier",
                 "PROBE", "FieldNotFilled(Tier)", "ERROR", List.of(en("x"), de("x")));
         ModelConsistencyException ex =
                 assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(twice));
         assertTrue(ex.getMessage().contains("two child elements with the same name"), ex::getMessage);
+        // Kernel 31.1.1 states the collision and checks on (KERNEL-FINDINGS KF652); 30.8.1 could not build the model.
         assertTrue(ex.notifications().stream()
-                        .anyMatch(n -> n.message().contains("the kernel could not build this model")),
-                () -> "the rejection must carry the kernel's own reason: " + ex.notifications());
+                        .noneMatch(n -> n.message().contains("the kernel could not build this model")),
+                () -> "the converter's sentence, not a build failure: " + ex.notifications());
     }
 }

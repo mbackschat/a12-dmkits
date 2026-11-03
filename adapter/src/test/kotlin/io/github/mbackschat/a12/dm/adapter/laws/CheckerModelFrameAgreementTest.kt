@@ -112,7 +112,9 @@ class CheckerModelFrameAgreementTest {
             "/header", "/header/id", "/header/modelType", "/header/modelVersion", "/header/description", "/header/locales",
             "/header/labels", "/header/annotations", "/header/modelReferences",
             "/content", "/content/modelInfo", "/content/modelInfo/name", "/content/modelInfo/variant", "/content/modelInfo/branch",
-            "/content/modelInfo/revision", "/content/modelInfo/comment", "/content/modelInfo/joinedModelsInfo",
+            "/content/modelInfo/revision", "/content/modelInfo/comment", "/content/modelInfo/packet",
+            // Kernel 31.1.1 dropped this member, so its reader passes over every shape of it as an unknown one.
+            "/content/modelInfo/joinedModelsInfo",
             "/content/modelConfig", "/content/modelConfig/supportedCharacters", "/content/modelConfig/decimalSeparator",
             "/content/modelConfig/timeZone", "/content/modelConfig/conditionLanguage", "/content/typeDefinitions",
             "/content/modelRoot", "/content/modelRoot/rootGroups",

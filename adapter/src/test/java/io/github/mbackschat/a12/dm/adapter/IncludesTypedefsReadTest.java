@@ -52,7 +52,6 @@ class IncludesTypedefsReadTest {
     private static DocumentModelDraft storefront() {
         return DocumentModelDraft.named("storefront").locale("en_US")
                 .typeDef("Sku", t -> t.string(s -> s.maxLength(12)))
-                .include("pricelist", "pricelist")
                 .rootGroup("Storefront", s -> s
                         .field("StoreName", FieldKind.STRING)
                         .typedefField("ProductSku", "Sku")

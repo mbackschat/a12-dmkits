@@ -162,17 +162,18 @@ public final class RuleValidator {
             return Optional.empty();   // unreadable model — let the kernel path be the one to report it
         }
         if (elements == null) {
-            // the path may name an include MOUNT (a Group with a modelAlias, whose children come from the
+            // the path may name an include MOUNT (a Group with an includeConfig, whose children come from the
             // include, not stored `elements`) — elementsOf can't see those, so distinguish it from a genuinely
             // absent group: a mount IS there, you just can't anchor a rule/computation's error field inside an
             // included sub-model (probe 04 — the misleading "no group at path" when the group is a mount).
             JsonNode group = groupNodeAt(rootGroups, groupPath);
-            String alias = group == null ? null : group.path("Group").path("modelAlias").asText(null);
-            if (alias != null && !alias.isBlank()) {
+            JsonNode include = group == null ? null : group.path("Group").path("includeConfig");
+            if (include != null && include.isObject()) {
+                String reference = include.path("reference").asText("");
                 return Optional.of(Diagnostic.precheck(Optional.of("RK_MOUNT_NOT_EDITABLE"),
                         // "error field" is the RULE's word for it; a computation has a computed field, and the
                         // declaring `group` key made this branch directly reachable for one.
-                        "'" + groupPath + "' is an include mount (alias '" + alias + "'), not an editable group — a "
+                        "'" + groupPath + "' is an include mount (of model '" + reference + "'), not an editable group — a "
                                 + kind + " cannot be declared inside an included sub-model",
                         Diagnostic.Where.path(groupPath),
                         Optional.of("anchor the " + kind + " on a NATIVE field/group of THIS model, and reference the "

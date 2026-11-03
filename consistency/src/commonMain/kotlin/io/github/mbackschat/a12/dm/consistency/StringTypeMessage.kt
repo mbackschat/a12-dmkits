@@ -43,7 +43,7 @@ internal fun TrackedFactBase.stringTypeMessageFindings(field: TrackedDeclaration
                 field.path,
             ),
         )
-        is AuthoredMessages.Read -> if (field.body.deletesAtDefaultVariant()) emptyList() else patternMessageFindings(
+        is AuthoredMessages.Read -> patternMessageFindings(
             field,
             !stringType.string("pattern").isNullOrEmpty(),
             read.entries.coveredLocales(declaredLocales),

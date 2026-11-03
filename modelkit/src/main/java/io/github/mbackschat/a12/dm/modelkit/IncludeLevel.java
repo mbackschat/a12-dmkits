@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 /**
  * How an included model is mounted into the host (the kernel's group {@code includeLevel}, A12K-3234) —
- * valid only on a mount group (one with {@code modelAlias}). Absent in DM-JSON ⇒ {@link #SINGLE_RG}.
+ * set in a mount group's {@code includeConfig}. Absent in DM-JSON ⇒ {@link #SINGLE_RG} (KF651).
  */
 public enum IncludeLevel {
 

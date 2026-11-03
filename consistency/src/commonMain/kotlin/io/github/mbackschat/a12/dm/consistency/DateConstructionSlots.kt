@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 
 /**
  * What each SLOT of a `Date` or `Time` construction admits, on all three of its arms.
@@ -598,5 +597,4 @@ private fun EntityDemand.maximumText(): String = if (flexibleFloor == null) {
 }
 
 /** A declared length member, absent when the member is missing or carries A12's suppression sentinel. */
-private fun JsonObject.declaredInt(member: String): Int? =
-    (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 }
+private fun JsonObject.declaredInt(member: String): Int? = boundInt(member)?.takeIf { it >= 0 }

@@ -42,7 +42,7 @@ class RepetitionKeyContainmentTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"depot","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"DepotRef","Field":{"fieldType":{"type":"StringType"}}},

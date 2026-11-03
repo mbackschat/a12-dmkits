@@ -1,7 +1,7 @@
 {
   "groups": [
     {
-      "prefix": "{\n  \"header\" : {\n    \"id\" : \"invoice-group-dependencies\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"invoice-group-dependencies\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Invoice\",\n        \"name\" : \"Invoice\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/",
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"invoice-group-dependencies\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"29.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"invoice-group-dependencies\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Invoice\",\n        \"name\" : \"Invoice\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/",
       "suffix": "\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/Gate\",\n            \"name\" : \"Gate\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          }, {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/X\",\n            \"name\" : \"X\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          }, {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/Y\",\n            \"name\" : \"Y\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          }, {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/Local\",\n            \"name\" : \"Local\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
       "rows": [
         {
@@ -26,7 +26,7 @@
             }
           ],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "c93001ead6994112c952bb7a010dbf405477082fb5cc3a95dc63fd2fd4646225"
+          "modelSha256": "ad282598474eadc217e033b7e8182e24ffb561019a120a0db1a8338454e74772"
         },
         {
           "id": "AND/false",
@@ -50,7 +50,7 @@
             }
           ],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice) And FieldNotFilled(Gate)\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice) And FieldNotFilled(Gate)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "7b0252b67c47ce506eb0a2b3c7b09318cc25ff07fc39ce644f6ad36f709cc0fb"
+          "modelSha256": "24d59a1fe9e587865f1779950e204769900f255b936cd40e401dfc859b9f462f"
         },
         {
           "id": "OR/false",
@@ -59,7 +59,7 @@
           ],
           "runtime": [],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice) Or FieldFilled(Gate)\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice) Or FieldFilled(Gate)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "afdd4567276c745eeb8db672d23efa3ff07543a5f33f59d806512f3c23f721ac"
+          "modelSha256": "1d9b579a1bb401412a9fb2c093d07b1fbce592d3aac1df82e8994a7fb925f0e0"
         },
         {
           "id": "UNCONDITIONAL/false",
@@ -83,7 +83,7 @@
             }
           ],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "37ae1a0edadcbf39cc10d288ce9e009c3e3454b09552b6c5802632e59f3e46df"
+          "modelSha256": "11c9566ff4ae1a7486b73fb72bc2468842e55e6487f69533bcd8af189e3b56d5"
         },
         {
           "id": "FIELD_CYCLE/false",
@@ -92,7 +92,7 @@
           ],
           "runtime": [],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"[Y]",
-          "modelSha256": "db48505831f6a7ff3ec36f36dd47d1b84dacdf7cfeba945badd36e6cd8daecb6"
+          "modelSha256": "a184182ef8254e63d1396aa3537ba1c2d65fa8d74406cb5350ab17ff99dbd9e6"
         },
         {
           "id": "ALTERNATIVES/false",
@@ -116,7 +116,7 @@
             }
           ],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"precondition\": \"GroupFilled(/Invoice) And FieldFilled(Gate)\", \"operation\": \"[X]\" }, { \"precondition\": \"GroupFilled(/Invoice) And FieldNotFilled(Gate)\", \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "979f5b374fb55118454fff963278423bbea5ec6fc19d692d6db706fbec6bdb2a"
+          "modelSha256": "936bc1d70dae2c15f6d99a9f630ab0a06fa160abfdeeff53363a319c25495edc"
         },
         {
           "id": "COMMON/false",
@@ -140,7 +140,7 @@
             }
           ],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"precondition\": \"FieldFilled(Gate)\", \"operation\": \"[X]\" }, { \"precondition\": \"FieldNotFilled(Gate)\", \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "e5b93e9773f2241926861d8d7d0e1edbf974956ea169c88a1d49ae9243ea0f75"
+          "modelSha256": "24d591b5728cbfc44496470baf26374b97117fc830fd65e5197ff3f510ebba11"
         },
         {
           "id": "BYPASS/false",
@@ -149,7 +149,7 @@
           ],
           "runtime": [],
           "modelMiddle": "ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"precondition\": \"GroupFilled(/Invoice) And FieldFilled(Gate)\", \"operation\": \"[X]\" }, { \"precondition\": \"FieldNotFilled(Gate)\", \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "6c079615c50cd9b19dc6de6c136d3cd08deaba06e13f5661700f40fe535d1cea"
+          "modelSha256": "61902e2320127b16482e4a08984229d6fbfe0fcc1662a529ecac10b7acf3eede"
         },
         {
           "id": "SPLIT/false",
@@ -173,7 +173,7 @@
             }
           ],
           "modelMiddle": "PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "6f78f2b55049f52185cb7b882717f4b7c80348225b3b9acc1936fbcc37b309df"
+          "modelSha256": "403b53300f1c5bb737a4c2abbb58ed8e55d1c82b5bddbb7e21f67fbc52674411"
         },
         {
           "id": "SPLIT/true",
@@ -197,7 +197,7 @@
             }
           ],
           "modelMiddle": "GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice)\", \"computationAlternatives\": [ { \"operation\": \"1",
-          "modelSha256": "e38c37b98cdcd8d280745ab4c3387608f9112eeff3b10e0c77bef080b56e658d"
+          "modelSha256": "5a591a79ac73318dd5245b1e25f443724a865757648a4d603067e6b19bd872bb"
         },
         {
           "id": "DEAD_READ/false",
@@ -206,12 +206,12 @@
           ],
           "runtime": [],
           "modelMiddle": "GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"FieldFilled(Gate)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"computationAlternatives\": [ { \"operation\": \"[Y]",
-          "modelSha256": "2970073196fe72322cd98b8a0069d3c6530eec05cc94b87d469ac5057d7eb13a"
+          "modelSha256": "8353eb926914be6ceb20e33ebeb23d43f29ca8658ea23d32fedf0af07e05dd99"
         }
       ]
     },
     {
-      "prefix": "{\n  \"header\" : {\n    \"id\" : \"invoice-group-dependencies\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"28.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"invoice-group-dependencies\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Invoice\",\n        \"name\" : \"Invoice\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/Gate\",\n            \"name\" : \"Gate\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Invoice/Rows\",\n            \"name\" : \"Rows\",\n            \"Group\" : {\n              \"repeatability\" : ",
+      "prefix": "{\n  \"header\" : {\n    \"id\" : \"invoice-group-dependencies\",\n    \"modelType\" : \"document\",\n    \"modelVersion\" : \"29.4.0\",\n    \"locales\" : [ {\n      \"code\" : \"en_US\"\n    } ],\n    \"labels\" : [ ],\n    \"annotations\" : [ ],\n    \"modelReferences\" : [ ]\n  },\n  \"content\" : {\n    \"modelInfo\" : {\n      \"name\" : \"invoice-group-dependencies\",\n      \"variant\" : \"cockpit\",\n      \"revision\" : \"Arbeitsversion\",\n      \"immutable\" : false\n    },\n    \"modelConfig\" : {\n      \"decimalSeparator\" : \".\",\n      \"timeZone\" : \"Europe/Berlin\",\n      \"conditionLanguage\" : {\n        \"code\" : \"en_US\"\n      },\n      \"fieldRefByShortNameAllowed\" : true\n    },\n    \"modelRoot\" : {\n      \"rootGroups\" : [ {\n        \"type\" : \"Group\",\n        \"id\" : \"/Invoice\",\n        \"name\" : \"Invoice\",\n        \"Group\" : {\n          \"repeatability\" : 1,\n          \"elements\" : [ {\n            \"type\" : \"Field\",\n            \"id\" : \"/Invoice/Gate\",\n            \"name\" : \"Gate\",\n            \"Field\" : {\n              \"fieldType\" : {\n                \"type\" : \"NumberType\",\n                \"NumberType\" : {\n                  \"maxFractionalDigits\" : 0\n                }\n              }\n            }\n          }, {\n            \"type\" : \"Group\",\n            \"id\" : \"/Invoice/Rows\",\n            \"name\" : \"Rows\",\n            \"Group\" : {\n              \"repeatability\" : ",
       "suffix": ")\", \"computationAlternatives\": [ { \"operation\": \"1\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Invoice/Rows/Box/X\",\n                    \"name\" : \"X\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"NumberType\",\n                        \"NumberType\" : {\n                          \"maxFractionalDigits\" : 0\n                        }\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Invoice/Rows/Box/Y\",\n                    \"name\" : \"Y\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"NumberType\",\n                        \"NumberType\" : {\n                          \"maxFractionalDigits\" : 0\n                        }\n                      }\n                    }\n                  }, {\n                    \"type\" : \"Field\",\n                    \"id\" : \"/Invoice/Rows/Box/Local\",\n                    \"name\" : \"Local\",\n                    \"Field\" : {\n                      \"fieldType\" : {\n                        \"type\" : \"NumberType\",\n                        \"NumberType\" : {\n                          \"maxFractionalDigits\" : 0\n                        }\n                      }\n                    }\n                  } ]\n                }\n              } ]\n            }\n          } ]\n        }\n      } ]\n    }\n  }\n}",
       "rows": [
         {
@@ -219,7 +219,7 @@
           "classes": [],
           "runtime": [],
           "modelMiddle": "1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(../..) And GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "c1d8a63f7168e9993ae7cd70d55aa43f3020bb5c789917098f0ec57150aa137b"
+          "modelSha256": "00458a08dc831fec0d1069275e1ebdffd851a1ecdcbfff916eaebbf15287423e"
         },
         {
           "id": "DEPTH_OR/false",
@@ -228,7 +228,7 @@
           ],
           "runtime": [],
           "modelMiddle": "1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeY\", \"name\": \"ComputeY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(../..) Or GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "d721972c1fbdbbe19998c829787c2055585c8d60fec160a006ee92ff2259fa29"
+          "modelSha256": "8b0f5c7b86cd6daea8832e2612a9c1d95700befc8abc3175457d0eb01471e393"
         },
         {
           "id": "REPEATED_BOX/false",
@@ -237,7 +237,7 @@
           ],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "2b6809558244f33438c2d37e8672261cd5b49af8dbf6a60b8456146b83b82e50"
+          "modelSha256": "db68dfe21487a5e380b6ff76ae92f659833a19b7c06a930515b950b0e81120cc"
         },
         {
           "id": "REPEATED_BOX/true",
@@ -246,49 +246,49 @@
           ],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "d9068d1b2e8acd403e2c571c230b3b4195ca26c29b2484e7929c4eb887f1a8dd"
+          "modelSha256": "17967762f47defd905c1542d00e9ceaf3e134f57cfc254c11a0aa6c1e350737c"
         },
         {
           "id": "REPEATED_ROW/false",
           "classes": [],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(..",
-          "modelSha256": "cf132c7409cdff4d843285896b1c73043f8ccb4c98d4f2536958281cccf9f680"
+          "modelSha256": "c77a7ee150de42a611e806a1dd3b2d738ec933171b878860645d92f19b1eab0b"
         },
         {
           "id": "REPEATED_ROW/true",
           "classes": [],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(..",
-          "modelSha256": "d1d9405b918ebd2288fa490e1d3637da73c6ced3232d4a9ef1e5e63254b01a03"
+          "modelSha256": "c9937a0d9b3c84740d3ef4684fe05cd5d2b95310ab98082772163b2f57b94672"
         },
         {
           "id": "REPEATED_COMMON/false",
           "classes": [],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "6d85fe0aacd5ed33e9d55fd7394f8210fb9cab676579fb9bf95ee2070f44fdf2"
+          "modelSha256": "5547d7bb850e82c6df935ad7743008f3124992f7e264637a66f18fa70f646eb2"
         },
         {
           "id": "REPEATED_COMMON/true",
           "classes": [],
           "runtime": [],
           "modelMiddle": "2,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "e97922fbb08edd4b5ea735204dfe5eac9460cc6787bc6a0d538974d9bcc2d938"
+          "modelSha256": "fe4978dd27fa49c7efd7d438280b69b226123247175966af5d4ff3d608e0e0c7"
         },
         {
           "id": "FIXED_BOX/false",
           "classes": [],
           "runtime": [],
           "modelMiddle": "1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "2d9d8a4105a041e0772f9dd3d76bd1ce9bbceffbba83309b61635a4d992dc087"
+          "modelSha256": "9835ec6b3405e10ef4068b0929e445950bb0e18ba73750c66598c62c8cc90071"
         },
         {
           "id": "FIXED_BOX/true",
           "classes": [],
           "runtime": [],
           "modelMiddle": "1,\n              \"elements\" : [ {\n                \"type\" : \"Group\",\n                \"id\" : \"/Invoice/Rows/Box\",\n                \"name\" : \"Box\",\n                \"Group\" : {\n                  \"repeatability\" : 1,\n                  \"elements\" : [\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/GuardedY\", \"name\": \"GuardedY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box)\", \"computationAlternatives\": [ { \"operation\": \"[X]\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/PlainY\", \"name\": \"PlainY\", \"Computation\": { \"computedFieldRelPath\": \"../Y\", \"computationAlternatives\": [ { \"operation\": \"2\" } ], \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n\n{ \"type\": \"Computation\", \"id\": \"/Invoice/Rows/Box/ComputeX\", \"name\": \"ComputeX\", \"Computation\": { \"computedFieldRelPath\": \"../X\", \"commonPrecondition\": \"GroupFilled(/Invoice/Rows/Box",
-          "modelSha256": "46943238288259c9601a3beb56c4669078ac514576c8dbc27e613a2791dfcebf"
+          "modelSha256": "12f758b20884de58912bf559e8480313dd64fd48951d00baabb278a91bfd4603"
         }
       ]
     }

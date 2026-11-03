@@ -25,8 +25,8 @@ enum class Tri {
 
 /** A resolved, typed value, [Unknown] when the operand is not evaluated, or [DomainFailure] when an
  *  expression WAS evaluated but has no value in its domain. Two sources are measured: a numeric expression
- *  outside its domain (division by zero, an out-of-range power), and a DATE_TIME literal naming a wall time
- *  the model's declared zone has no instant for (IF326) — both reach the store with nothing to store. */
+ *  outside its domain (division by zero, an out-of-range power), and a temporal literal the model's
+ *  declared zone cannot read, a Julian leap day under Europe/Berlin (KERNEL-FINDINGS KF665) — both reach the store with nothing to store. */
 sealed interface Val {
     data object Unknown : Val
     data object DomainFailure : Val

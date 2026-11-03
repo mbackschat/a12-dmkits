@@ -449,7 +449,7 @@ dmtool -m order.dm.json model seed --rows /Order/Items:2
 dmtool -m pay.dm.json model eval --instance pay.json --predefined-types iban.json
 ```
 
-The `--instance` document is **A12's own canonical Document JSON** — the shape the A12 kernel's document serializer reads and writes, so a document a real A12 application produced drops straight in. A root group name is a top-level key (no wrapper), a repeating group is an array whose index is the repetition, a number/boolean is native JSON, and `null` is a field that is present with no value. `model seed` writes that same shape through the same codec, so a generated sample round-trips back into the verbs above by construction. `dmtool schema model eval` serves the contract. Reading discards unknown keys and wrong-shaped entities, compacts surviving object rows, and retains empty `{}` rows; [conversion and fatal errors](docs/INTERPRETER-API-SPEC.md#43-conversion-and-fatal-input-errors) follow the shared codec.
+The `--instance` document is **A12's own canonical Document JSON** — the shape the A12 kernel's document serializer reads and writes, so a document a real A12 application produced drops straight in. A root group name is a top-level key (no wrapper), a repeating group is an array whose index is the repetition, a number/boolean is native JSON, and `null` is a field that is present with no value. `model seed` writes that same shape through the same codec, so a generated sample round-trips back into the verbs above by construction. `dmtool schema model eval` serves the contract. Reading discards unknown keys and wrong-shaped entities and retains empty `{}` rows, while an array holding anything but objects refuses the document, as A12's reader does; [conversion and fatal errors](docs/INTERPRETER-API-SPEC.md#43-conversion-and-fatal-input-errors) follow the shared codec.
 
 This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule eval` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. Its locator has two exclusive forms: a stored `<rulePathInModel>`, or a non-stored candidate supplied as `--condition` plus absolute `--field` (optional `--code`); candidate evaluation uses the same focused envelope and leaves the model byte-identical. A **firing** additionally reports that message's own channels — `code`, `field`, `severity`, `type`, `message`, `referenced` (and `fillToFix` for an omission) — the same keys `model eval` puts on a `messages[]` entry, so the message `type` (`VALUE_ERROR` / `OMISSION_ERROR`) is observable without persisting the candidate first: `dmtool schema rule eval` serves the shape. `model eval --relevant '["/Order/Name","/Order/Lines[2]/Quantity"]'` selects partial/wizard-page validation; `[*]` (or `[0]`) means every repetition and `[n]` selects one row; an **omitted** index on a repeatable segment is refused rather than guessed, because that spelling means repetition 1 in A12 and reading it as "all" would silently widen the check (starred value-list extent accepts complete declared-slot coverage as well as wildcards; ordinary aggregate gates remain distinct), and global fields are added automatically. `model eval` / `rule eval` run the **form-engine flow by default** — *compute → apply → validate* — so a required-or-referenced **computed** field is filled by its computation before validation, matching the running app (the kernel keeps `validateFull` and `compute` separate, so a bare validate would false-fail a computed field); `--no-computations` opts down to the bare `validateFull` over stored values. These verbs run on a **native-safe interpreter** on every target — the sole runtime eval engine — reproducing the kernel's runtime semantics, verified rule-for-rule (the A12 kernel remains the differential oracle behind that verification).
 
@@ -533,7 +533,7 @@ dmtool -m order.dm.json config modify \
 
 # mount another model under /Order/Prices, dropping the included rules
 dmtool -m order.dm.json include add \
-  --alias prices --reference pricelist \
+  --reference pricelist \
   --parent /Order --name Prices --exclude-rules -w ./models
 
 # import another model's type-defs (merged by id, not mounted)
@@ -605,7 +605,7 @@ dmtool -m app/storefront.dm.json model check -w lib   # resolves include'd / typ
 
 ### Version & compatibility — tolerant, but explicit
 
-This build targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**). `dmtool --version` (and `manifest.version`) report that — alongside the base source revision and clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` explicitly says the artifact differs from that revision. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version). A second, A12-Tools-only packaging invariant is made *readable* rather than policed: that distribution requires a model's file basename to equal its `header.id`, the kernel does not care, so `model info` reports `fileName` and `fileNameMatchesId` beside `id` and leaves the call to you.
+This build targets **A12 Kernel 31.1.1** (A12 Tools distribution **2026.06-ext1**). `dmtool --version` (and `manifest.version`) report that — alongside the base source revision and clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` explicitly says the artifact differs from that revision. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version). A second, A12-Tools-only packaging invariant is made *readable* rather than policed: that distribution requires a model's file basename to equal its `header.id`, the kernel does not care, so `model info` reports `fileName` and `fileNameMatchesId` beside `id` and leaves the call to you.
 
 ### See it all, runnable
 
@@ -1020,11 +1020,11 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 2 | 887 | 750 | 3 | 134 |
 | HTML | 2 | 347 | 335 | 0 | 12 |
-| Java | 524 | 79499 | 53318 | 18212 | 7969 |
+| Java | 525 | 79760 | 53452 | 18324 | 7984 |
 | JavaScript | 2 | 283 | 144 | 122 | 17 |
-| Kotlin | 343 | 69790 | 41801 | 22546 | 5443 |
-| TypeScript | 18 | 3867 | 3299 | 286 | 282 |
-| **Total** | **891** | **154673** | **99647** | **41169** | **13857** |
+| Kotlin | 346 | 69863 | 41802 | 22592 | 5469 |
+| TypeScript | 18 | 3862 | 3294 | 286 | 282 |
+| **Total** | **895** | **155002** | **99777** | **41327** | **13898** |
 
 ### Verification
 
@@ -1033,12 +1033,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1270 | 198131 | 137208 | 38472 | 22451 |
+| Java | 1277 | 198069 | 137137 | 38437 | 22495 |
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
-| Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
+| Kotlin | 1541 | 221914 | 165273 | 36019 | 20622 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 50 | 7497 | 6413 | 597 | 487 |
-| **Total** | **2878** | **430190** | **310942** | **75479** | **43769** |
+| TypeScript | 50 | 7482 | 6399 | 597 | 486 |
+| **Total** | **2896** | **431106** | **311456** | **75716** | **43934** |
 
 ### Tooling
 
@@ -1048,7 +1048,7 @@ Build, verification, release, deployment, and maintainer tooling.
 |---|---:|---:|---:|---:|---:|
 | BASH | 2 | 360 | 223 | 123 | 14 |
 | CSS | 1 | 1 | 1 | 0 | 0 |
-| Groovy | 19 | 11349 | 8507 | 2421 | 421 |
+| Groovy | 19 | 11341 | 8495 | 2429 | 417 |
 | HTML | 6 | 167 | 156 | 0 | 11 |
 | Java | 1 | 70 | 52 | 10 | 8 |
 | JavaScript | 5 | 1796 | 1512 | 157 | 127 |
@@ -1056,7 +1056,7 @@ Build, verification, release, deployment, and maintainer tooling.
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
 | TypeScript | 27 | 3814 | 3243 | 306 | 265 |
-| **Total** | **130** | **24336** | **18612** | **4345** | **1379** |
+| **Total** | **130** | **24328** | **18600** | **4353** | **1375** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
@@ -1116,7 +1116,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos, and **[locmetry](https://github.com/mbackschat/locmetry)** at its latest release (`brew install mbackschat/tap/locmetry`; update with `brew update && brew upgrade locmetry`; never pin it), which the source-size guard counts code lines with. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the POSIX/TypeScript tooling boundary, Node, Java, locmetry, Gradle-home, hook, and local-Kernel state together.
+This publishes kernel `31.1.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos, and **[locmetry](https://github.com/mbackschat/locmetry)** at its latest release (`brew install mbackschat/tap/locmetry`; update with `brew update && brew upgrade locmetry`; never pin it), which the source-size guard counts code lines with. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the POSIX/TypeScript tooling boundary, Node, Java, locmetry, Gradle-home, hook, and local-Kernel state together.
 
 ### Maintainer agent setup (optional)
 

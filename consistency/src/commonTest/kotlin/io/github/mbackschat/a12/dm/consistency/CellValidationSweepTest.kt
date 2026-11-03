@@ -133,7 +133,7 @@ class CellValidationSweepTest {
                 """"errorCondition":"FieldFilled(Input$i)","errorCode":"c$i",""" +
                 """"errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
-        return """{"header":{"modelVersion":"28.4.0","id":"sweep","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":""" +
+        return """{"header":{"modelVersion":"29.4.0","id":"sweep","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":""" +
             """{"rootGroups":[{"type":"Group","id":"g0","name":"Order","Group":{"elements":[$elements]}}]}}}"""
     }
 }

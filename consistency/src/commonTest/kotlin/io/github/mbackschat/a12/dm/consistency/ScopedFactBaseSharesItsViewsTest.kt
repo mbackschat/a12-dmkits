@@ -51,7 +51,7 @@ class ScopedFactBaseSharesItsViewsTest {
     private companion object {
         /** Several elements including a repeatable group, so all three views have something to share. */
         private val MODEL = """
-            {"header":{"modelVersion":"28.4.0","id":"shared","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"shared","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},

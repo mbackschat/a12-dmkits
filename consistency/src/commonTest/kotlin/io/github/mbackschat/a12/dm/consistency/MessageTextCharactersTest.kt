@@ -93,7 +93,8 @@ class MessageTextCharactersTest {
             "U+200E LEFT-TO-RIGHT MARK" to setOf(characters),
             "U+E000 private use" to setOf(characters),
             "U+0378 unassigned" to setOf(characters),
-            "a lone high surrogate" to setOf(unsupported, characters),
+            // Asked of the encoding before \p{C} on kernel 31.1.1 (KERNEL-FINDINGS KF657).
+            "a lone high surrogate" to setOf(unsupported, "WRONG_ENCODING"),
             "a supplementary private-use character" to setOf(unsupported, characters),
             "a supplementary character outside \\p{C}" to setOf(unsupported),
             "U+E0001 LANGUAGE TAG" to setOf(unsupported, characters),
@@ -186,7 +187,7 @@ class MessageTextCharactersTest {
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$escaped"}]}}"""
         }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

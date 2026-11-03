@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -22,14 +21,15 @@ import org.junit.jupiter.api.Test
  *  - `DifferenceIn{Hours,Minutes,Seconds}` subtract zone-parsed **instants** — a pair straddling the
  *    spring-forward gap spans 1 real hour per 2 wall hours ([springForwardDiffCountsRealHours]), a fall-back
  *    pair 3 per 2 ([fallBackDiffCountsRealHours]).
- *  - An **ambiguous** fall-back wall time (`02:30` occurs twice) parses as **standard time** (CET) — the
- *    `GregorianCalendar` resolution ([ambiguousWallTimeResolvesToStandardTime]).
- *  - A **nonexistent** spring-gap wall time (`2024-03-31T02:30:00`) is the formal error `datumFormatFalsch` —
- *    the kernel's non-lenient zone-set parse rejects it; a referencing rule is suppressed
- *    ([gapWallTimeIsAFormalError]).
- *  - `Add{Hours,…}` is **instant arithmetic**, and a chained result keeps its exact instant: adding 1 h to
- *    `01:30` CEST lands ON the ambiguous hour as the *daylight* instant, which is NOT the instant the stored
- *    `"02:30:00"` re-parses to (standard) — 60 minutes apart ([chainedAddKeepsItsInstantIdentity]).
+ *  - An **ambiguous** fall-back wall time (`02:30` occurs twice) parses at its **earlier, summer-time** offset
+ *    (CEST) on kernel 31.1.1; 30.8.1's `GregorianCalendar` took standard time (KERNEL-FINDINGS KF665,
+ *    [ambiguousWallTimeResolvesToSummerTime]).
+ *  - A **nonexistent** spring-gap wall time (`2024-03-31T02:30:00`) is a value moved forward by the gap, the instant
+ *    of `03:30` CEST, and draws no formal code; 30.8.1 rejected it as `datumFormatFalsch` (KF665,
+ *    [gapWallTimeMovesForwardByTheGap]).
+ *  - `Add{Hours,…}` is **instant arithmetic**, and a chained result keeps its exact instant: adding 2 h to
+ *    `01:30` CEST lands ON the ambiguous hour as the *standard-time* instant, which is NOT the instant the stored
+ *    `"02:30:00"` re-parses to (summer time) — 60 minutes apart ([chainedAddKeepsItsInstantIdentity]).
  *  - Under the default `UTC`, wall clock equals instant time for the sub-day operations
  *    ([utcModelStaysNaive]); day differences retain their separately locked calendar-step rule.
  */
@@ -45,15 +45,20 @@ class DstTimeZoneDiffTest {
     private val m = BoundModel.ofJson(berlinOrder)
     private fun render(c: Condition): String = RuntimeLaws.render(c)
 
-    /** Kernel and interpreter must agree on `cond` firing over ScheduledAt=[sa], CompletedAt=[ca]. */
+    /**
+     * Kernel and interpreter must agree on `cond` firing over ScheduledAt=[sa], CompletedAt=[ca]; a given [fires]
+     * also pins the kernel's answer, so the agreement cannot hold vacuously.
+     */
     private fun agree(cond: String, sa: String, ca: String, msg: String,
-                      model: String = berlinOrder, tz: ModelTimeZone = ModelTimeZone.EUROPE_BERLIN) {
+                      model: String = berlinOrder, tz: ModelTimeZone = ModelTimeZone.EUROPE_BERLIN,
+                      fires: Boolean? = null) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(model, "/Order", "R", "../ScheduledAt", "TA", cond), "TA",
             RuntimeLaws.doc().group("/Order", 1).field(SA, sa, 1, 1).field(CA, ca, 1, 1))
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "TA", "../ScheduledAt")), timeZone = tz)
         val iDoc = def.newDocument().field(SA, sa, 1, 1).field(CA, ca, 1, 1)
         val i = DmInterpreter(def).validate(iDoc).messages.any { it.code == "TA" }
         assertEquals(k, i, "$msg (sa=$sa ca=$ca) [k=$k i=$i]")
+        if (fires != null) assertEquals(fires, k, "$msg — the kernel's answer (sa=$sa ca=$ca)")
     }
 
     // ---- instant-based diffs across the two transitions --------------------------------------------------
@@ -65,32 +70,32 @@ class DstTimeZoneDiffTest {
         render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(SA), m.dateTime(CA)).eq(3))),
         "2024-10-27T01:30:00", "2024-10-27T03:30:00", "01:30 CEST → 03:30 CET spans 3 real hours, not wall 2")
 
-    @Test fun ambiguousWallTimeResolvesToStandardTime() = agree(
-        render(m.dateTime(SA).filled().and(Dsl.differenceInMinutes(m.dateTime(SA), m.dateTime(CA)).eq(120))),
-        "2024-10-27T01:30:00", "2024-10-27T02:30:00", "the repeated 02:30 parses as CET (standard) → 120 min")
+    @Test fun ambiguousWallTimeResolvesToSummerTime() = agree(
+        render(m.dateTime(SA).filled().and(Dsl.differenceInMinutes(m.dateTime(SA), m.dateTime(CA)).eq(60))),
+        "2024-10-27T01:30:00", "2024-10-27T02:30:00", "the repeated 02:30 parses as CEST (earlier) → 60 min",
+        fires = true)
 
-    // ---- the spring gap is a FORMAL error, suppressing the referencing rule ------------------------------
-    @Test fun gapWallTimeIsAFormalError() {
+    // ---- the spring gap is a value, moved forward by the gap ----------------------------------------------
+    @Test fun gapWallTimeMovesForwardByTheGap() {
         val gap = "2024-03-31T02:30:00"
-        // Kernel: the value draws datumFormatFalsch and the rule does not fire (probe P1/P3).
         agree(render(m.dateTime(SA).filled().and(Dsl.differenceInMinutes(m.dateTime(SA), m.dateTime(CA)).eq(0))),
-            gap, "2024-03-31T03:30:00", "a gap operand suppresses the rule")
-        // Interpreter side must also EMIT the formal code itself.
+            gap, "2024-03-31T03:30:00", "02:30 in the gap is the instant of 03:30 CEST", fires = true)
         val def = ModelDef(fields, emptyList(), timeZone = ModelTimeZone.EUROPE_BERLIN)
         val codes = DmInterpreter(def).validate(def.newDocument().field(SA, gap, 1, 1)).messages.map { it.code }
-        assertTrue("datumFormatFalsch" in codes,
-            "a Europe/Berlin DATE_TIME in the spring gap must be datumFormatFalsch, got $codes")
+        assertEquals(emptyList<String>(), codes, "a Europe/Berlin DATE_TIME in the spring gap draws no formal code")
     }
 
     // ---- chained Add keeps the exact instant (the kernel's VkDate identity, probe P5) ---------------------
     @Test fun chainedAddKeepsItsInstantIdentity() {
-        // AddHours(01:30 CEST, 1) = the DAYLIGHT instant of the ambiguous hour; the stored "02:30:00" re-parses
-        // as STANDARD — 60 real minutes later. Equality is false, the diff is 60.
+        // AddHours(01:30 CEST, 2) = the STANDARD instant of the ambiguous hour; the stored "02:30:00" re-parses
+        // as DAYLIGHT — 60 real minutes earlier. Equality is false, the diff is -60.
         agree(render(m.dateTime(SA).filled()
-                .and(Dsl.differenceInMinutes(Dsl.addHours(m.dateTime(SA), 1), m.dateTime(CA)).eq(60))),
-            "2024-10-27T01:30:00", "2024-10-27T02:30:00", "AddHours lands on the daylight side: 60 min to the stored value")
-        agree("AddHours(ScheduledAt, 1) == [CompletedAt]",
-            "2024-10-27T01:30:00", "2024-10-27T02:30:00", "the equal-looking wall times are different instants")
+                .and(Dsl.differenceInMinutes(Dsl.addHours(m.dateTime(SA), 2), m.dateTime(CA)).eq(-60))),
+            "2024-10-27T01:30:00", "2024-10-27T02:30:00", "AddHours lands on the standard side: -60 min to the stored value",
+            fires = true)
+        agree("AddHours(ScheduledAt, 2) == [CompletedAt]",
+            "2024-10-27T01:30:00", "2024-10-27T02:30:00", "the equal-looking wall times are different instants",
+            fires = false)
     }
 
     @Test fun addAcrossTheGapLandsOnTheRolledWallTime() = agree(

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.parseRangeToIso
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone.UTC
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -15,17 +16,17 @@ class DateFormatTest {
 
     private val expected = "2021-06-01" to "2021-06-30"
 
-    @Test fun deFormat() = assertEquals(expected, parseRangeToIso("01.06.2021-30.06.2021", "dd.MM.yyyy", "-"))
-    @Test fun enUsFormat() = assertEquals(expected, parseRangeToIso("06/01/2021-06/30/2021", "MM/dd/yyyy", "-"))
-    @Test fun isoFormatSlashSeparator() = assertEquals(expected, parseRangeToIso("2021-06-01/2021-06-30", "yyyy-MM-dd", "/"))
+    @Test fun deFormat() = assertEquals(expected, parseRangeToIso("01.06.2021-30.06.2021", "dd.MM.yyyy", "-", UTC))
+    @Test fun enUsFormat() = assertEquals(expected, parseRangeToIso("06/01/2021-06/30/2021", "MM/dd/yyyy", "-", UTC))
+    @Test fun isoFormatSlashSeparator() = assertEquals(expected, parseRangeToIso("2021-06-01/2021-06-30", "yyyy-MM-dd", "/", UTC))
 
     @Test fun separatorAlsoInsideFormat() =
         // sep "-" also separates the ISO date components — the anchored regex still splits the two endpoints.
-        assertEquals(expected, parseRangeToIso("2021-06-01-2021-06-30", "yyyy-MM-dd", "-"))
+        assertEquals(expected, parseRangeToIso("2021-06-01-2021-06-30", "yyyy-MM-dd", "-", UTC))
 
     @Test fun malformedReturnsNull() {
-        assertNull(parseRangeToIso("01.06.2021 - 30.06.2021", "dd.MM.yyyy", "-"), "spaces around the separator")
-        assertNull(parseRangeToIso("2021-06-01/2021-06-30", "dd.MM.yyyy", "-"), "wrong format")
-        assertNull(parseRangeToIso("31.13.2021-01.01.2022", "dd.MM.yyyy", "-"), "month 13 out of range")
+        assertNull(parseRangeToIso("01.06.2021 - 30.06.2021", "dd.MM.yyyy", "-", UTC), "spaces around the separator")
+        assertNull(parseRangeToIso("2021-06-01/2021-06-30", "dd.MM.yyyy", "-", UTC), "wrong format")
+        assertNull(parseRangeToIso("31.13.2021-01.01.2022", "dd.MM.yyyy", "-", UTC), "month 13 out of range")
     }
 }

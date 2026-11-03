@@ -32,7 +32,10 @@ import org.junit.jupiter.api.io.TempDir;
  * case that was reported; a duplicate child name in one group is the sibling that was predicted from the
  * mechanism and then found. Both are refused by the kernel THROWING inside {@code checkConsistency} rather
  * than by reporting a structured problem, which is what makes them one class and not two bugs
- * (KERNEL-FINDINGS KF259).
+ * (KERNEL-FINDINGS KF259). <i>Corrected 2026-11-03:</i> kernel 31.1.1 admits an empty format, reading it as
+ * absent (KF658), and reports a duplicate child name as a structured problem, so neither throws any more. The
+ * two members are now a rule naming no error field and a computation naming no computed field, which 31.1.1
+ * reads and then cannot build (KF654).
  *
  * <p><b>The negative assertions carry the claim.</b> Exit 1 alone would pass on a lucky mapping; what is
  * actually being locked is that the envelope is not the internal-defect one, so {@code RK_INTERNAL_ERROR},
@@ -47,7 +50,7 @@ class KernelBuildFailureExitCodeTest {
     /** A model whose only defect is that the kernel's own converter refuses to build it. */
     private static String model(String elements) {
         return """
-                { "header": { "id": "bf", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "bf", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": [ { "code": "en_US" } ], "labels": [], "annotations": [], "modelReferences": [] },
                   "content": {
                     "modelInfo": { "name": "bf", "variant": "cockpit", "revision": "r", "immutable": false },
@@ -62,7 +65,7 @@ class KernelBuildFailureExitCodeTest {
             "{ \"type\": \"Field\", \"id\": \"/R/A\", \"name\": \"A\", "
                     + "\"Field\": { \"fieldType\": { \"type\": \"StringType\" } } }";
 
-    /** A rule named {@code name}; two of these in one group is the second member of the class. */
+    /** A rule named {@code name}. */
     private static String rule(String name) {
         return """
                 { "type": "Rule", "id": "/R/%s", "name": "%s", "Rule": {
@@ -73,13 +76,14 @@ class KernelBuildFailureExitCodeTest {
     }
 
     private static final List<BuildFailure> CASES = List.of(
-            // The kernel's converter runs Commons Lang `notBlank` on a declared temporal format.
-            new BuildFailure("a blank temporal format", model(LABEL + ", "
-                    + "{ \"type\": \"Field\", \"id\": \"/R/D\", \"name\": \"D\", \"Field\": { \"fieldType\": "
-                    + "{ \"type\": \"DateType\", \"DateType\": { \"format\": \"\" } } } }")),
-            // The predicted sibling: one group cannot hold two children of the same name.
-            new BuildFailure("a duplicate rule name in one group",
-                    model(LABEL + ", " + rule("Dup") + ", " + rule("Dup"))));
+            // Kernel 31.1.1 reads a rule with no error field and dereferences the missing reference while building.
+            new BuildFailure("a rule naming no error field",
+                    model(LABEL + ", " + rule("Lost").replace("\"errorEntityRelPath\": \"../A\", ", ""))),
+            // The sibling on the other declaration kind that names a target by reference.
+            new BuildFailure("a computation naming no computed field",
+                    model(LABEL + ", { \"type\": \"Computation\", \"id\": \"/R/AComp\", \"name\": \"AComp\", "
+                            + "\"Computation\": { \"computationAlternatives\": [ { \"operation\": \"\\\"x\\\"\" } ], "
+                            + "\"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }")));
 
     /**
      * {@code model check} REPORTS validity, so a build failure is {@code outcome: read} with {@code valid:

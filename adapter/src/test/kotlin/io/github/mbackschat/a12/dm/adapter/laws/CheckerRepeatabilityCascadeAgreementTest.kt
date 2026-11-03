@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
+import io.github.mbackschat.a12.dm.core.ModelInputException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -62,6 +63,9 @@ class CheckerRepeatabilityCascadeAgreementTest {
     private fun kernel(json: String): List<String> = try {
         oracle.checkConsistency(json, ReferenceResolvers.selfContained())
     } catch (unbuildable: ConsistencyCheckFailedException) {
+        return listOf("CK_MODEL_NOT_BUILDABLE@/")
+    } catch (unreadable: ModelInputException) {
+        // Kernel 31 refuses an explicit `null` count at the reader, since the member is a primitive `int` (KF593).
         return listOf("CK_MODEL_NOT_BUILDABLE@/")
     }.map { notification ->
         val message = notification.message().trim()

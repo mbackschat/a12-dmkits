@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 
 /**
  * The single-entity value operators' kind and star gates, followed by each field operator's type gate.
@@ -41,12 +40,11 @@ import kotlinx.serialization.json.intOrNull
  * `MVK_STRING_TYPE_PARAMS_INCONSISTENT, MVK_INVALID_RAW_TYPE`, drop the pattern to make the declaration legal
  * and the conversion gate answers `MVK_NO_CONVERT_IN_NUMBER` alone. So the class never arrives on its own,
  * and reporting it would mean reporting a declaration A12 already refuses for its own inconsistency. And
- * `MVK_INVALID_TABLE_ENUM` needs an enumeration carrying a `tableName`, which makes a document model
- * UNREADABLE before any consistency check runs ([KERNEL-FINDINGS](../../../../../../../../../../docs/KERNEL-FINDINGS.md)
- * "the stored shape").
+ * `MVK_INVALID_TABLE_ENUM` needs a table-backed enumeration, which no stored model can declare: kernel 31.1.1's
+ * reader passes over a `tableName` (KERNEL-FINDINGS KF654), where 30.8.1's refused it.
  *
- * **Silent on a declaration whose effective type this reader does not resolve** — a typedef, an unspecified
- * type — and on an enumeration whose declared values it cannot read as strings.
+ * **Silent on a declaration whose effective type this reader does not resolve** — an unresolvable typedef — and on
+ * an enumeration whose declared values it cannot read as strings.
  */
 internal fun TrackedFactBase.fieldValueOperatorOperandFindings(): List<Finding> = declarations().flatMap { element ->
     fieldValueOperatorContributions(element).map { it.finding }
@@ -90,8 +88,8 @@ private const val DIGIT_PATTERN = "[0-9]+"
  *
  * `checkIsConvertableToNumber` branches on `IStringType` then `IEnumerationType` and refuses every other
  * declaration, so this is that remainder, named rather than derived so a reader sees which classes were
- * measured. A typedef and an unspecified type are absent on purpose: this reader does not resolve them to an
- * effective type, so it leaves them to A12.
+ * measured. An unresolvable typedef is absent on purpose: this reader does not resolve it to an effective type,
+ * so it leaves it to A12.
  */
 private val PLAINLY_UNCONVERTIBLE_TYPES = setOf(
     FieldType.NUMBER,
@@ -173,7 +171,7 @@ private fun TrackedFactBase.conversionDefect(
     return when (type) {
         FieldType.STRING -> {
             val body = typeBodyOf(declared, FieldType.STRING)
-            val maxLength = (body?.get("maxLength") as? JsonPrimitive)?.intOrNull?.takeIf { it != UNDEFINED }
+            val maxLength = body?.boundInt("maxLength")?.takeIf { it != UNDEFINED }
             val pattern = (body?.get("pattern") as? JsonPrimitive)?.contentOrNull
             when {
                 maxLength == null || maxLength > MOST_CONVERTIBLE_DIGITS ->

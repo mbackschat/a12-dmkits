@@ -51,7 +51,6 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Verification;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -62,14 +61,16 @@ import java.util.regex.Pattern;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument;
-import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.UpdateAction;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.FieldInstanceV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.GroupInstanceV2;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
-import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
+import com.mgmtp.a12.kernel.md.rt.api.IComputedFieldInstance;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
@@ -189,12 +190,11 @@ public final class KernelAdapter {
             String modelJson,
             ModelResolver resolver,
             ConsistencyGate gate) {
-        KernelModelPreparation.ExpandedModel expanded = KernelModelPreparation.expand(modelJson, resolver);
-        if (gate == ConsistencyGate.REQUIRED) {
-            expanded.requireConsistent();
-        }
-        DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(expanded.model());
-        return new DocumentModelService().getMvkServiceForModel(intern, expanded.variant(), SILENT);
+        IDocumentModel expanded = gate == ConsistencyGate.REQUIRED
+                ? KernelModelPreparation.requireConsistent(modelJson, resolver)
+                : KernelModelPreparation.expand(modelJson, resolver).model();
+        DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(expanded);
+        return new DocumentModelService().getMvkServiceForModel(intern, SILENT);
     }
 
     private enum ConsistencyGate {
@@ -1298,14 +1298,19 @@ public final class KernelAdapter {
         // dropping it here is what made a repeated computed field's rows indistinguishable downstream.
         result.getComputedFieldInstancesWithChanges()
                 .forEach(c -> computed.add(
-                        ComputedField.of(c.getPath(), "value", c.getStringValue(), c.getRepetitions())));
+                        computedField(c, "value", c.getStringValue())));
         result.getComputedFieldInstancesWithErrors()
                 .forEach(c -> computed.add(
-                        ComputedField.of(c.getPath(), "error", c.getStringValue(), c.getRepetitions())));
+                        computedField(c, "error", c.getStringValue())));
         result.getClearedFieldInstances()
                 .forEach(c -> computed.add(
-                        ComputedField.of(c.getPath(), "cleared", Optional.empty(), c.getRepetitions())));
+                        computedField(c, "cleared", Optional.empty())));
         return new ComputeResult(computed);
+    }
+
+    /** Boundary conversion (N8): the kernel's pointer to a computed cell → its path and one index per path part. */
+    private static ComputedField computedField(IComputedFieldInstance cell, String outcome, Optional<String> value) {
+        return new ComputedField(cell.pointer().fullName(), outcome, value, cell.pointer().repetitionIndexes());
     }
 
     /** The kernel runtime service + the built (immutable {@link DocumentV2}) instance, shared by {@link #evaluate}/{@link #compute}. */
@@ -1319,36 +1324,44 @@ public final class KernelAdapter {
         return DocumentProcessingConfig.builder(locale).build();
     }
 
+    /**
+     * Build the runtime from the nested {@code fields} tree (model-aware walk) as one batch of kernel updates.
+     *
+     * <p>Kernel 31 removed the V1 document factory and its V1→V2 converter (A12K-3684). This builds the
+     * {@link DocumentV2} exactly as that converter did at 30.8.1 ({@code DocumentV1V2ConverterImpl.ofDocumentV1}:
+     * {@code DocumentV2.empty(modelId).withBatchUpdates(…)}, a {@code putGroup(pointer, GroupInstanceV2.empty())} per
+     * group row and a {@code putField(pointer, FieldInstanceV2.ofV1Value(value))} per field), and for the string
+     * and {@code null} values this walk produces {@code ofV1Value} is {@code ofValue} unchanged
+     * ({@code BasicTypeV1V2Conversion.basicTypeV1ToV2} passes STRING and NULL through). So the document the
+     * runtime sees is the one it saw before the upgrade.
+     */
+    private DocRuntime prepare(Map<String, Object> fields) {
+        ModelResolver resolver = resolver();
+        IDocumentModel expanded = loadExpanded(model.toJson(), resolver);
+        // The structural index (group paths / repeatability / field-ness) is kernel-free (decoupling Stage 2);
+        // it re-expands the authored JSON and is parity-locked to the kernel's expansion (ModelIndexParityTest).
+        ModelIndex index = ModelIndex.of(model.toJson(), resolver);
+        Set<String> groupPaths = index.groupPaths().collect(Collectors.toCollection(HashSet::new));
+        List<UpdateAction> inserts = new ArrayList<>();
+        buildInstances(fields, "", List.of(), index, groupPaths, inserts);
+        IDocumentModelResolver modelResolver = id -> expanded;
+        IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());
+        return new DocRuntime(rt, DocumentV2.empty(modelId(model.toJson())).withBatchUpdates(inserts));
+    }
+
+    private ModelResolver resolver() {
+        return model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
+    }
+
     /** A12K-3638 preserves unconvertible raw values for validation, so deserialize notifications are not a refusal gate. */
     private DocRuntime prepare(String documentJson) {
-        ModelResolver resolver = model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        IDocumentModel expanded = loadExpanded(model.toJson(), resolver);
+        IDocumentModel expanded = loadExpanded(model.toJson(), resolver());
         IDocumentModelResolver modelResolver = id -> expanded;
         DocumentV2 document = new MDSerializerFactory().createDocumentSerializerV2(modelResolver)
                 .deserializeV2(new StringReader(documentJson), modelId(model.toJson()),
                         DocumentDeserializationConfig.builder().build(), notification -> { });
         IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());
         return new DocRuntime(rt, document);
-    }
-
-    /** Build the runtime service + the document instance from the nested {@code fields} tree (model-aware walk). */
-    private DocRuntime prepare(Map<String, Object> fields) {
-        ModelResolver resolver =
-                model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        IDocumentModel expanded = loadExpanded(model.toJson(), resolver);
-        // The structural index (group paths / repeatability / field-ness) is kernel-free (decoupling Stage 2);
-        // it re-expands the authored JSON and is parity-locked to the kernel's expansion (ModelIndexParityTest).
-        ModelIndex index = ModelIndex.of(model.toJson(), resolver);
-        IDocumentModelResolver modelResolver = id -> expanded;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(modelResolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = dsf.createDocumentFactory();
-
-        IDocument document = df.createDocument(modelId(model.toJson()));
-        Set<String> groupPaths = index.groupPaths().collect(Collectors.toCollection(HashSet::new));
-        buildInstances(fields, "", new int[0], index, groupPaths, df, document);
-        // Convert the built V1 instance to the immutable DocumentV2 the modern rt-service consumes (once, per prepare).
-        return new DocRuntime(rt, dsf.createDocumentV1V2Converter().ofDocumentV1(document));
     }
 
     /**
@@ -1359,17 +1372,17 @@ public final class KernelAdapter {
      * exactly (behaviour-neutral for dmtool).
      */
     private static IDocumentModel loadExpanded(String modelJson, ModelResolver resolver) {
-        return KernelModelPreparation.expand(modelJson, resolver).requireConsistent();
+        return KernelModelPreparation.requireConsistent(modelJson, resolver);
     }
 
     /**
-     * Recursively turn the nested document tree into kernel entity instances, deriving one 1-based
-     * repetition index per path segment (a group's index = its array position, or 1 if non-repeating; a
-     * field's own index is always 1; a parent is created before its children). Validates every path
-     * against the model so a typo or a shape mismatch fails fast rather than yielding a wrong evaluation.
+     * Recursively turn the nested document tree into kernel updates, deriving one 1-based repetition index per
+     * path segment (a group's index = its array position, or 1 if non-repeating; a field's own index is always 1;
+     * a parent is placed before its children). Validates every path against the model so a typo or a shape
+     * mismatch fails fast rather than yielding a wrong evaluation.
      */
-    private static void buildInstances(Map<String, Object> node, String parentPath, int[] reps,
-            ModelIndex index, Set<String> groupPaths, IDocumentFactory df, IDocument document) {
+    private static void buildInstances(Map<String, Object> node, String parentPath, List<Integer> reps,
+            ModelIndex index, Set<String> groupPaths, List<UpdateAction> inserts) {
         for (Map.Entry<String, Object> e : node.entrySet()) {
             String childPath = parentPath + "/" + e.getKey();
             Object value = e.getValue();
@@ -1380,9 +1393,9 @@ public final class KernelAdapter {
                 }
                 int r = 0;
                 for (Object row : rows) {
-                    int[] rowReps = append(reps, ++r);
-                    document.addEntityInstance(df.createGroupInstance(childPath, rowReps));
-                    buildInstances(asMap(row, childPath), childPath, rowReps, index, groupPaths, df, document);
+                    List<Integer> rowReps = append(reps, ++r);
+                    inserts.add(UpdateAction.putGroup(DocumentPointer.of(childPath, rowReps), GroupInstanceV2.empty()));
+                    buildInstances(asMap(row, childPath), childPath, rowReps, index, groupPaths, inserts);
                 }
             } else if (value instanceof Map<?, ?>) {
                 if (!groupPaths.contains(childPath)) {
@@ -1393,22 +1406,25 @@ public final class KernelAdapter {
                     throw new IllegalArgumentException("'" + childPath + "' is a repeatable group — give it as a JSON"
                             + " array of rows, not a single object");
                 }
-                int[] childReps = append(reps, 1);
-                document.addEntityInstance(df.createGroupInstance(childPath, childReps));
-                buildInstances(asMap(value, childPath), childPath, childReps, index, groupPaths, df, document);
+                List<Integer> childReps = append(reps, 1);
+                inserts.add(UpdateAction.putGroup(DocumentPointer.of(childPath, childReps), GroupInstanceV2.empty()));
+                buildInstances(asMap(value, childPath), childPath, childReps, index, groupPaths, inserts);
             } else {
                 if (!index.isField(childPath)) {
                     throw new IllegalArgumentException("'" + childPath + "' is not a field in this model — check the"
                             + " path and the document structure (a group is a nested object/array, a field is a value)");
                 }
-                int[] fieldReps = append(reps, 1);
-                if (value == null || (value instanceof String s && s.isEmpty())) {
-                    document.addEntityInstance(df.createFieldInstance(childPath, fieldReps));   // present, unfilled
-                } else {
-                    document.addEntityInstance(df.createFieldInstance(childPath, fieldReps, String.valueOf(value)));
-                }
+                boolean unfilled = value == null || (value instanceof String s && s.isEmpty());
+                inserts.add(UpdateAction.putField(DocumentPointer.of(childPath, append(reps, 1)),
+                        FieldInstanceV2.ofValue(unfilled ? null : String.valueOf(value))));   // null = present, unfilled
             }
         }
+    }
+
+    private static List<Integer> append(List<Integer> base, int v) {
+        List<Integer> out = new ArrayList<>(base);
+        out.add(v);
+        return List.copyOf(out);
     }
 
     @SuppressWarnings("unchecked")
@@ -1417,12 +1433,6 @@ public final class KernelAdapter {
             throw new IllegalArgumentException("'" + path + "' must be a JSON object (group), got: " + o);
         }
         return (Map<String, Object>) m;
-    }
-
-    private static int[] append(int[] base, int v) {
-        int[] out = Arrays.copyOf(base, base.length + 1);
-        out[base.length] = v;
-        return out;
     }
 
     /** The in-memory dynamic runtime config (no precompiled model code) — lifted from the F-LAW oracle. */

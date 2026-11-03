@@ -60,13 +60,17 @@ class KernelCodeLiteralRatchetTest {
      * which exception a caller catches, for a gain that is only in how the code is spelled, so it wants its
      * own decision about the right type and not a rider on a mechanical sweep. The other entries are
      * {@code INTERPRET_ONLY} files in the census's sense: they describe codes rather than refuse on them.
+     *
+     * <p>{@code RkCode}'s allowance includes {@code MVK_INVALID_INDEX_FIELD}, which is not debt either: it is a
+     * {@code NoMetaModelCheckErrorType} code, and {@link io.github.mbackschat.a12.dm.core.KernelCode} deliberately
+     * carries none of those (MVK-LEDGER's scope boundary), so there is no constant to move it to.
      */
     private static final Map<String, Integer> REMAINING = Map.ofEntries(
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/LocalizedText.java", 2),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/lint/ComputationLinter.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricher.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RawLengthDiagnostic.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java", 2),
+            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java", 3),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java", 21)
     );
 

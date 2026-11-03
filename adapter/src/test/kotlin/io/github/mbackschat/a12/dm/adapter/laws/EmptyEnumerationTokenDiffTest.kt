@@ -13,9 +13,10 @@ import org.junit.jupiter.api.Test
 
 /**
  * An Enumeration declaring the empty stored token, against the Kernel (a12-kernel-lean SPEC-2026-10-14-04). The
- * declaration loads and `""` is a value-list literal exactly where it is a declared token, but a cell never holds
- * it: a stored `""` reads as an absent cell, so membership in `""` never fires, and neither `== ""` nor `!= ""`
- * fires on an Enumeration, as on a String. The control Enumeration declares no empty token.
+ * declaration loads, but on kernel 31.1.1 the token is not one: A12's expand copy reads the empty `value` as an absent
+ * one ([KERNEL-FINDINGS KF658]), so `""` is no condition literal even where it is declared, exactly as where it is not
+ * (on 30.8.1 it was a literal where declared). A cell never holds it either: a stored `""` reads as an absent cell.
+ * The control Enumeration declares no empty token.
  *
  * Own domain (a gift order's wrapping, where "no wrapping" is declared as the empty token, and its ribbon).
  */
@@ -31,11 +32,14 @@ class EmptyEnumerationTokenDiffTest {
     private val validator = RuleValidator()
 
     @Test
-    fun theEmptyTokenIsALiteralWhereDeclaredAndNowhereElse() {
+    fun theEmptyTokenIsNoLiteralEvenWhereDeclared() {
+        val outsideDomain = setOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION")
         val rows = linkedMapOf(
-            "membership in the empty token" to ("FieldValueIncludedInValueList(Wrapping, \"\")" to emptySet()),
-            "non-membership in the empty token" to ("FieldValueNotIncludedInValueList(Wrapping, \"\")" to emptySet()),
-            "equality with the empty token" to ("[Wrapping] == \"\"" to emptySet()),
+            "membership in the empty token" to ("FieldValueIncludedInValueList(Wrapping, \"\")" to outsideDomain),
+            "non-membership in the empty token" to ("FieldValueNotIncludedInValueList(Wrapping, \"\")" to outsideDomain),
+            "equality with the empty token" to
+                ("[Wrapping] == \"\"" to setOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON")),
+            "membership in a declared token" to ("FieldValueIncludedInValueList(Wrapping, \"Gold\")" to emptySet()),
             "membership in the empty token where none is declared" to
                 ("FieldValueIncludedInValueList(Ribbon, \"\")" to setOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION")),
         )
@@ -63,10 +67,6 @@ class EmptyEnumerationTokenDiffTest {
             "WRAPPING_GOLD" to wrapping.`in`("Gold"),
             "WRAPPING_NOT_GOLD" to wrapping.notIn("Gold"),
             "RIBBON_NOT_GOLD" to ribbon.notIn("Gold"),
-            "WRAPPING_NONE" to wrapping.`in`(""),
-            "WRAPPING_SOME" to wrapping.notIn(""),
-            "WRAPPING_IS_NONE" to wrapping.eq(""),
-            "WRAPPING_IS_NOT_NONE" to wrapping.ne(""),
         )
         val model = rules.entries.fold(order) { json, (code, condition) ->
             val target = if (code.startsWith("RIBBON")) "/Gift/Ribbon" else "/Gift/Wrapping"
@@ -84,7 +84,7 @@ class EmptyEnumerationTokenDiffTest {
         val expected = mapOf(
             "stored empty" to omissions,
             "absent" to omissions,
-            "filled" to listOf("RIBBON_FILLED", "WRAPPING_FILLED", "WRAPPING_GOLD", "WRAPPING_SOME"),
+            "filled" to listOf("RIBBON_FILLED", "WRAPPING_FILLED", "WRAPPING_GOLD"),
             "undeclared" to listOf("stringFalschesMuster", "stringFalschesMuster"),
         )
         val kernel = documents.mapValues { (_, json) -> RuntimeLaws.jsonIngressCodes(model, json) }

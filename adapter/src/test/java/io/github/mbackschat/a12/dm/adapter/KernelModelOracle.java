@@ -15,7 +15,6 @@ import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IElement;
 import com.mgmtp.a12.kernel.md.model.api.IField;
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IBooleanType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IConfirmType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
@@ -63,9 +62,8 @@ final class KernelModelOracle {
     /** Load + index a model through the real kernel, resolving includes / imported type-defs against {@code resolver}. */
     static KernelModelOracle of(String dmJson, ModelResolver resolver) {
         try {
-            IDocumentModelService service = FACTORY.createDocumentModelService();
-            IDocumentModel model = FACTORY.createDocumentModelSerializer().deserialize(new StringReader(dmJson));
-            service.expand(model, KernelResolvers.of(resolver));
+            IDocumentModel model = KernelResolvers.expand(
+                    FACTORY.createDocumentModelSerializer().deserialize(new StringReader(dmJson)), resolver);
             Map<String, IElement> byPath = new LinkedHashMap<>();
             index(model.getContent().getDocumentModelRoot(), "", byPath);
             return new KernelModelOracle(model, byPath);

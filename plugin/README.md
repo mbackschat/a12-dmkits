@@ -6,7 +6,7 @@ This repository is the **public distribution** — release-only (binaries + the 
 
 > **Not an official A12 / mgm artifact.** `dmtool` is an independent tool built against the public A12 Kernel.
 
-This release targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
+This release targets **A12 Kernel 31.1.1** (A12 Tools distribution **2026.06-ext1**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
 
 ## Documentation
 
@@ -311,11 +311,11 @@ Product implementation.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 524 | 79499 | 53318 | 18212 | 7969 |
+| Java | 525 | 79760 | 53452 | 18324 | 7984 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
-| Kotlin | 343 | 69790 | 41801 | 22546 | 5443 |
-| TypeScript | 11 | 1813 | 1403 | 240 | 170 |
-| **Total** | **879** | **151209** | **96594** | **41023** | **13592** |
+| Kotlin | 346 | 69863 | 41802 | 22592 | 5469 |
+| TypeScript | 11 | 1808 | 1398 | 240 | 170 |
+| **Total** | **883** | **151538** | **96724** | **41181** | **13633** |
 
 ### Verification
 
@@ -324,11 +324,11 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1270 | 198131 | 137208 | 38472 | 22451 |
+| Java | 1277 | 198069 | 137137 | 38437 | 22495 |
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
-| Kotlin | 1530 | 220921 | 164674 | 35747 | 20500 |
-| TypeScript | 29 | 5260 | 4424 | 543 | 293 |
-| **Total** | **2845** | **425445** | **307028** | **75069** | **43348** |
+| Kotlin | 1541 | 221914 | 165273 | 36019 | 20622 |
+| TypeScript | 29 | 5245 | 4410 | 543 | 292 |
+| **Total** | **2863** | **426361** | **307542** | **75306** | **43513** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

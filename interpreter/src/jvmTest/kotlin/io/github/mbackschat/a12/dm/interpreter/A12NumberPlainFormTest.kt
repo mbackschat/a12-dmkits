@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
@@ -53,11 +54,20 @@ class A12NumberPlainFormTest {
 
     /**
      * A12's reader takes an unquoted number's text from its node: a `BigDecimal` for a token with a point or an
-     * exponent, an integer otherwise, so the comparand is that type's own `toString`.
+     * exponent, an integer otherwise, so the comparand is that type's own `toString`. Jackson 3's fast parser builds
+     * no `BigDecimal` at the scale `Int.MIN_VALUE`, which the JDK admits, so a token there has no node text: the
+     * Document is unreadable (KF564), and the oracle only holds off that one scale.
      */
     @Test
     fun everyLegalJsonNumberReadsAsItsNodesText() {
-        val mismatches = literals.mapNotNull { literal ->
+        val (unparsed, parsed) = literals.partition { BigDecimal(it).scale() == Int.MIN_VALUE }
+        assertEquals(listOf("0e2147483648", "-0e2147483648"), unparsed, "the literals at the scale Jackson 3 refuses")
+        unparsed.forEach { literal ->
+            assertEquals(DocumentInputReasonCode.MALFORMED_JSON,
+                assertFailsWith<DocumentInputError>(literal) { A12DocumentJson.numberNodeTextOrNull(literal) }
+                    .diagnostics.single().reasonCode, literal)
+        }
+        val mismatches = parsed.mapNotNull { literal ->
             val expected = if (literal.any { it == '.' || it == 'e' || it == 'E' }) BigDecimal(literal).toString()
             else BigInteger(literal).toString()
             val actual = A12DocumentJson.numberNodeTextOrNull(literal)

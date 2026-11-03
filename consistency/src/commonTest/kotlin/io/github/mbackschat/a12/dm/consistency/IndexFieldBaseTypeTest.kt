@@ -72,7 +72,7 @@ class IndexFieldBaseTypeTest {
             // outside any filter (KERNEL-FINDINGS KF353, KF487).
             "marked, into the keyed Invoices" to listOf("MVK_ERROR_FIELD_NO_INDEX"),
             "marked, into the unkeyed filtered group" to listOf("MVK_NO_WILDCARD"),
-            "unmarked, into the keyed Invoices" to listOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION"),
+            "unmarked, into the keyed Invoices" to listOf("MVK_INVALID_ITERATION_IN_SET_EXPRESSION"),
             "marked, into the fixed Summary" to ADMITTED,
             "a filter on its own group — control" to ADMITTED,
             "the keyed read, outside any filter" to listOf("MVK_ERROR_FIELD_NO_INDEX"),
@@ -166,7 +166,7 @@ class IndexFieldBaseTypeTest {
             keyed("ByRange", RANGE),
         )
         return """
-            {"header":{"modelVersion":"28.4.0","id":"keyed-shipments","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"keyed-shipments","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[${groups.joinToString(",")}]}}
              ]}}}

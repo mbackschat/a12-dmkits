@@ -7,15 +7,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * When `+` refuses an Enumeration for its display labels (a12-kernel-lean SPEC-2026-10-08-04). [KF396] measured that
- * a labelled Enumeration beside a text draws `MVK_NO_STRING_OR_NUMBER_FOR_ADD` where a labelless one concatenates.
- * These rows separate the two things that rule depends on, each on an Enumeration of the same tokens:
- * - the LABELS: only an effective remapping refuses, a label differing from its stored value in some locale
- *   (`IEnumerationType.hasDisplayValues`). Labels that repeat their values are no labels here.
- * - the OPERAND SHAPE: only an immediate field read is asked (`CheckOperationImpl.checkWithoutDisplayValues` returns
- *   for anything but a `SINGLE_OP` field value), so a braced Enumeration concatenates and a category access is exempt.
- *   A braced failing addition still fails inside the brace, and the brace keeps the Enumeration's string-likeness,
- *   so it does not become a Number partner.
+ * When `+` refuses an Enumeration (a12-kernel-lean SPEC-2026-10-08-04). Kernel 30.8.1 refused an immediate read
+ * whose labels remap its values beside a text ([KF396]); kernel 31.1.1 deleted that gate ([KF655]), so every row
+ * that separated the LABELS and the OPERAND SHAPE it depended on is now admitted, and they stay as the lock that no
+ * remnant of it survives. A braced Enumeration still keeps its string-likeness, so beside a Number it is refused.
  *
  * Own domain (an e-commerce order's sales channel).
  */
@@ -49,25 +44,25 @@ class CheckerEnumerationAdditionAgreementTest {
     private val validator = RuleValidator()
 
     @Test
-    fun onlyAnImmediateEffectivelyRemappedEnumerationIsRefused() {
+    fun anEnumerationJoinsATextWhateverItsLabelsAndShape() {
         val predicted = linkedMapOf(
             "a labelless Enumeration" to ("[Plain] + [Notes] == \"x\"" to ADMITTED),
             "an identity-labelled Enumeration, left" to ("[Identity] + [Notes] == \"x\"" to ADMITTED),
             "an identity-labelled Enumeration, right" to ("[Notes] + [Identity] == \"x\"" to ADMITTED),
-            "a remapped Enumeration, left" to ("[Remapped] + [Notes] == \"x\"" to MIXED_ADD),
-            "a remapped Enumeration, right" to ("[Notes] + [Remapped] == \"x\"" to MIXED_ADD),
-            "one remapped label in one locale" to ("[OneRemapped] + [Notes] == \"x\"" to MIXED_ADD),
+            "a remapped Enumeration, left" to ("[Remapped] + [Notes] == \"x\"" to ADMITTED),
+            "a remapped Enumeration, right" to ("[Notes] + [Remapped] == \"x\"" to ADMITTED),
+            "one remapped label in one locale" to ("[OneRemapped] + [Notes] == \"x\"" to ADMITTED),
             "a braced remapped Enumeration, left" to ("{[Remapped]} + [Notes] == \"x\"" to ADMITTED),
             "a braced remapped Enumeration, right" to ("[Notes] + {[Remapped]} == \"x\"" to ADMITTED),
             "a twice-braced remapped Enumeration" to ("{{[Remapped]}} + [Notes] == \"x\"" to ADMITTED),
-            "a brace around the failing addition" to ("{[Remapped] + [Notes]} == \"x\"" to MIXED_ADD),
-            "a braced one beside a direct one" to ("{[Remapped]} + [Remapped] == \"x\"" to MIXED_ADD),
-            "a direct one beside a braced one" to ("[Remapped] + {[Remapped]} == \"x\"" to MIXED_ADD),
+            "a brace around the addition" to ("{[Remapped] + [Notes]} == \"x\"" to ADMITTED),
+            "a braced one beside a direct one" to ("{[Remapped]} + [Remapped] == \"x\"" to ADMITTED),
+            "a direct one beside a braced one" to ("[Remapped] + {[Remapped]} == \"x\"" to ADMITTED),
             "a category access" to ("[Remapped -> Kind] + [Notes] == \"x\"" to ADMITTED),
             "a braced remapped Enumeration beside a Number" to ("{[Remapped]} + [Quantity] == \"x\"" to MIXED_ADD),
             "two braced Enumerations alone" to ("{[Remapped]} + {[Identity]} == \"x\"" to ADMITTED),
             "two braced Enumerations before a text" to ("{[Remapped]} + {[Identity]} + [Notes] == \"x\"" to ADMITTED),
-            "a key-selected remapped cell" to ("[Lines/Channel For Key] + [Notes] == \"x\"" to MIXED_ADD),
+            "a key-selected remapped cell" to ("[Lines/Channel For Key] + [Notes] == \"x\"" to ADMITTED),
             "a braced key-selected remapped cell" to ("{[Lines/Channel For Key]} + [Notes] == \"x\"" to ADMITTED),
         )
         val wrong = predicted.mapNotNull { (row, probe) ->

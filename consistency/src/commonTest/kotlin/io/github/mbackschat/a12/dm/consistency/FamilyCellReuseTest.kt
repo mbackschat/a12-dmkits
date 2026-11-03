@@ -24,12 +24,12 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 class FamilyCellReuseTest {
 
-    private fun model(condition: String, tierFilter: String = "") = """
-        {"header":{"modelVersion":"28.4.0","id":"cells","locales":[{"code":"en_US"}]},
+    private fun model(condition: String) = """
+        {"header":{"modelVersion":"29.4.0","id":"cells","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
-            {"type":"Field","id":"f1","name":"Tier","Field":{$tierFilter"fieldType":{
+            {"type":"Field","id":"f1","name":"Tier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"BASIC"}],
               "categories":[{"name":"Band","values":["A","B"]}]}}}},
             {"type":"Rule","id":"r0","name":"CodeRequired","Rule":{
@@ -39,8 +39,8 @@ class FamilyCellReuseTest {
          ]}}}
     """.trimIndent()
 
-    private fun prepared(condition: String, tierFilter: String = ""): PreparedModel {
-        val admitted = admit(ModelSource(model(condition, tierFilter)))
+    private fun prepared(condition: String): PreparedModel {
+        val admitted = admit(ModelSource(model(condition)))
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
         return prepare(admitted)
     }
@@ -59,8 +59,8 @@ class FamilyCellReuseTest {
         fun perDeclarationKeys() = keys.filter { it.at != null }
     }
 
-    private fun checked(condition: String, tierFilter: String = ""): Checked {
-        val base = prepared(condition, tierFilter)
+    private fun checked(condition: String): Checked {
+        val base = prepared(condition)
         val tracked = TrackedFactBase(base, ReadTranscript())
         val scheduled = schedule(tracked)
         return Checked(
@@ -91,42 +91,40 @@ class FamilyCellReuseTest {
             val executed = executeChecks(facts, model, carried, producers)
             return executed to executed.selectedConditions(facts)
         }
-        for (samePath in listOf(false, true)) {
-            fun sibling(text: String): DeclaredElement {
-                val changed = withCondition(text)
-                if (samePath) return changed
-                val name = first.name + "Other"
-                return changed.copy(path = first.path + "Other", name = name, id = "r1",
-                    declaration = JsonObject(changed.declaration + mapOf(
-                        "name" to JsonPrimitive(name), "id" to JsonPrimitive("r1"))))
-            }
-            val before = original.copy(elements = original.elements + sibling("FieldFilled(Code)"))
-            val after = original.copy(elements = original.elements + sibling("FieldFilled("))
-            val (cold, coldFindings) = run(before)
-            assertEquals(listOf("MVK_INVALID_ENTITY"), coldFindings.map { it.finding.code })
-            val firstKey = CellKey(paths, DeclarationKey(first.path, 0))
-            assertEquals(2, cold.cells.getValue(firstKey).contributions.size,
-                "cells retain local results before first-failure selection")
-            val (reused, editedFindings) = run(after, CheckCells(cold.cells))
-            if (!samePath) assertTrue(cold.cells.getValue(firstKey) === reused.cells.getValue(firstKey))
-            assertTrue(reused.reused > 0 && reused.reused < reused.cells.size)
-            assertEquals(listOf("MVK_INVALID_ENTITY", "MVK_INCOMPLETE_INPUT"), editedFindings.map { it.finding.code })
-            assertEquals(if (samePath) listOf(0, 1) else listOf(0, 0), editedFindings.map { it.owner.amongSamePath })
-            assertEquals(editedFindings, run(after).second, "reused and cold ordered findings differ")
-            assertEquals(listOf("MVK_INVALID_ENTITY"), run(after, CheckCells(reused.cells), listOf(paths))
-                .second.map { it.finding.code })
-            assertEquals(listOf("MVK_INCOMPLETE_INPUT"), run(after, CheckCells(reused.cells), listOf(syntax))
-                .second.map { it.finding.code })
-            val repaired = after.copy(elements = after.elements.mapIndexed { index, element ->
-                if (index == original.elements.indexOf(first)) withCondition("FieldFilled(Code)") else element
-            })
-            val (last, remaining) = run(repaired, CheckCells(reused.cells))
-            val siblingKey = CellKey(syntax, DeclarationKey(if (samePath) first.path else first.path + "Other",
-                if (samePath) 1 else 0))
-            if (!samePath) assertTrue(reused.cells.getValue(siblingKey) === last.cells.getValue(siblingKey))
-            assertEquals(listOf("MVK_INCOMPLETE_INPUT"), remaining.map { it.finding.code })
-            assertEquals(remaining, run(repaired).second)
+        // The sibling has a path of its own: a second rule at the FIRST one's path is left out of the check
+        // A12 runs (KF652), so it holds no cells to reuse (`CheckCellKeyTest`).
+        fun sibling(text: String): DeclaredElement {
+            val changed = withCondition(text)
+            val name = first.name + "Other"
+            return changed.copy(path = first.path + "Other", name = name, id = "r1",
+                declaration = JsonObject(changed.declaration + mapOf(
+                    "name" to JsonPrimitive(name), "id" to JsonPrimitive("r1"))))
         }
+        val before = original.copy(elements = original.elements + sibling("FieldFilled(Code)"))
+        val after = original.copy(elements = original.elements + sibling("FieldFilled("))
+        val (cold, coldFindings) = run(before)
+        assertEquals(listOf("MVK_INVALID_ENTITY"), coldFindings.map { it.finding.code })
+        val firstKey = CellKey(paths, DeclarationKey(first.path, 0))
+        assertEquals(2, cold.cells.getValue(firstKey).contributions.size,
+            "cells retain local results before first-failure selection")
+        val (reused, editedFindings) = run(after, CheckCells(cold.cells))
+        assertTrue(cold.cells.getValue(firstKey) === reused.cells.getValue(firstKey))
+        assertTrue(reused.reused > 0 && reused.reused < reused.cells.size)
+        assertEquals(listOf("MVK_INVALID_ENTITY", "MVK_INCOMPLETE_INPUT"), editedFindings.map { it.finding.code })
+        assertEquals(listOf(0, 0), editedFindings.map { it.owner.amongSamePath })
+        assertEquals(editedFindings, run(after).second, "reused and cold ordered findings differ")
+        assertEquals(listOf("MVK_INVALID_ENTITY"), run(after, CheckCells(reused.cells), listOf(paths))
+            .second.map { it.finding.code })
+        assertEquals(listOf("MVK_INCOMPLETE_INPUT"), run(after, CheckCells(reused.cells), listOf(syntax))
+            .second.map { it.finding.code })
+        val repaired = after.copy(elements = after.elements.mapIndexed { index, element ->
+            if (index == original.elements.indexOf(first)) withCondition("FieldFilled(Code)") else element
+        })
+        val (last, remaining) = run(repaired, CheckCells(reused.cells))
+        val siblingKey = CellKey(syntax, DeclarationKey(first.path + "Other", 0))
+        assertTrue(reused.cells.getValue(siblingKey) === last.cells.getValue(siblingKey))
+        assertEquals(listOf("MVK_INCOMPLETE_INPUT"), remaining.map { it.finding.code })
+        assertEquals(remaining, run(repaired).second)
         val competing = prepared("FieldFilled(NoSuchField) And FieldFilled(")
         val (both, firstStop) = run(competing)
         assertEquals(listOf("MVK_INVALID_ENTITY"), firstStop.map { it.finding.code })
@@ -220,38 +218,6 @@ class FamilyCellReuseTest {
         // above trivially. Something must fall at the edited rule itself.
         assertTrue(fallen.any { it.at?.path == "/Order/CodeRequired" },
             "nothing fell at the edited declaration, so this row is measuring a store that reuses everything")
-    }
-
-    @Test
-    fun aCellFallsWhenAVariantFilterDeletesAReferentThoughNoDeclarationRowMoved() {
-        val before = prepared("FieldFilled(Code)")
-        // `ONLY` on a FIELD DELETES it rather than suppressing verdicts about it (KF305), so `Tier` leaves
-        // the resolvable set while its path, name, kind, id and origin all stay exactly where they were.
-        val after = prepared("FieldFilled(Code)", tierFilter = """"variantFilter":{"filterType":"ONLY"},""")
-        val tracked = TrackedFactBase(before, ReadTranscript())
-        val scheduled = schedule(tracked)
-        val store = CheckCells(scheduled.associate { it.key to tracked.cellFor(it.key, before, it.produce) })
-
-        // The control that gives this row its meaning: the two models are indistinguishable on the shape's
-        // ROWS, so only the resolvable half of the shape value can tell them apart.
-        assertEquals(before.shapeRows(), after.shapeRows(),
-            "the filter must not move a declaration's row, or the rows would do this row's work")
-
-        // The cells blind to `Tier`'s body. For each of them EVERY charged value is unchanged except the
-        // resolvable set — so a shape value that left the resolvable set out would reuse a verdict reached
-        // when `Tier` still existed, which is the unsound direction and the one no end-to-end row can reach
-        // today: the only consumer carries cells across a DRAFT, and a draft can change a text member alone.
-        val blind = scheduled.map { it.key }.filter { key ->
-            val reads = tracked.observedWhileProducing(key)
-            FactRead.DeclarationSetShape in reads && FactRead.DeclarationContent(TIER) !in reads
-        }
-
-        assertTrue(blind.isNotEmpty(), "no cell charged the set without Tier's body, so this is vacuous")
-        assertEquals(
-            emptyList(),
-            blind.filter { store.validIn(after, it) != null }.map { it.producer.completes to it.at },
-            "a cell that read the declaration SET must fall when a variant filter changes what resolves",
-        )
     }
 
     @Test

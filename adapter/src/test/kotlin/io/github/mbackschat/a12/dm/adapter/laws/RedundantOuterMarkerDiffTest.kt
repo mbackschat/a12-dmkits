@@ -23,7 +23,7 @@ import org.junit.jupiter.api.TestInstance
  *
  * **The carrier is the ancestor, not every bound level** — [KF237]'s 2026-09-05 correction. On a repeatable
  * SIBLING the enclosing iteration also binds the level, and there the bare spelling is a static refusal
- * (`MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, [KF244]), so the marker is load-bearing rather than redundant.
+ * (`MVK_INVALID_ITERATION_IN_SET_EXPRESSION`, [KF244]), so the marker is load-bearing rather than redundant.
  * This file's topology is an ancestor throughout; nothing here transfers to a sibling.
  *
  * **The topology is what makes the claim non-trivial.** The rule iterates `Lines` and the operand stars only

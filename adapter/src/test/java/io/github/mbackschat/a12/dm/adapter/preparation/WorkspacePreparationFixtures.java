@@ -259,7 +259,7 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/Review/Section/Inspection/Result"))
                         .build(),
                 FixtureCase.builder()
-                        .id("alias-with-exclusions")
+                        .id("mount-with-exclusions")
                         .entryModelId(EXCLUDED_ID)
                         .sources(sources(checks, excluded))
                         .expectedFields(Set.of(
@@ -301,7 +301,7 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/Sections/Decision/Status"))
                         .build(),
                 FixtureCase.builder()
-                        .id("same-alias-mounted-twice")
+                        .id("same-model-mounted-twice")
                         .entryModelId(REPEATED_MOUNT_ID)
                         .sources(sources(checks, repeatedMount))
                         .expectedFields(Set.of(
@@ -696,10 +696,9 @@ public final class WorkspacePreparationFixtures {
     private static String collectionSection() {
         return DocumentModelDraft.named(COLLECTION_SECTION_ID).locale("en_US")
                 .importTypeDefs(COLLECTION_SHARED_TYPES_ID)
-                .include("checklist", COLLECTION_CHECKLIST_ID)
                 .rootGroup("Section", section -> section
                         .typedefField("SectionCode", "CollectionCode")
-                        .mount("Checklist", "checklist"))
+                        .mount("Checklist", COLLECTION_CHECKLIST_ID))
                 .build()
                 .toJson();
     }
@@ -715,11 +714,9 @@ public final class WorkspacePreparationFixtures {
         return DocumentModelDraft.named(COLLECTION_ENTRY_ID).locale("en_US")
                 .importTypeDefs(COLLECTION_LEFT_TYPES_ID)
                 .importTypeDefs(COLLECTION_RIGHT_TYPES_ID)
-                .include("section", COLLECTION_SECTION_ID)
-                .include("unused", COLLECTION_UNUSED_ID)
                 .rootGroup("Permit", permit -> permit
                         .typedefField("CollectionCode", "CollectionCode")
-                        .mount("Section", "section"))
+                        .mount("Section", COLLECTION_SECTION_ID))
                 .build()
                 .toJson();
     }
@@ -756,10 +753,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String includeTypesEntry() {
         return DocumentModelDraft.named(INCLUDE_TYPES_ENTRY_ID).locale("en_US")
-                .include("section-types", INCLUDE_TYPES_ID)
                 .rootGroup("Permit", permit -> permit
                         .typedefField("ApplicationCode", "IncludedPermitCode")
-                        .mount("Details", "section-types"))
+                        .mount("Details", INCLUDE_TYPES_ID))
                 .build()
                 .toJson();
     }
@@ -796,20 +792,18 @@ public final class WorkspacePreparationFixtures {
 
     private static String rootMountProvider() {
         var structure = DocumentModelDraft.named(ROOT_MOUNT_PROVIDER_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Placeholder", group -> {})
                 .build()
                 .toJson();
         var session = EditSession.read(structure);
         session.removeGroup("/Placeholder");
-        session.mount("", "InspectionProxy", "checksAlias");
+        session.mount("", "InspectionProxy", CHECKS_ID);
         return session.toJson();
     }
 
     private static String rootMountHost() {
         return DocumentModelDraft.named(ROOT_MOUNT_HOST_ID).locale("en_US")
-                .include("providerAlias", ROOT_MOUNT_PROVIDER_ID)
-                .rootGroup("Permit", permit -> permit.mount("Review", "providerAlias"))
+                .rootGroup("Permit", permit -> permit.mount("Review", ROOT_MOUNT_PROVIDER_ID))
                 .build()
                 .toJson();
     }
@@ -961,13 +955,12 @@ public final class WorkspacePreparationFixtures {
             MountOptions options,
             boolean repeatedMount) {
         var source = DocumentModelDraft.named(id).locale("en_US")
-                .include("benefits", providerId)
                 .rootGroup("Policy", policy -> {
                     policy.field("PolicyNo", FieldKind.STRING)
                             .numberField("Threshold", number -> number.fractionDigits(0))
-                            .mount("Cover", "benefits", options);
+                            .mount("Cover", providerId, options);
                     if (repeatedMount) {
-                        policy.mount("Renewal", "benefits", options);
+                        policy.mount("Renewal", providerId, options);
                     }
                 })
                 .build()
@@ -980,10 +973,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String nestedReferenceHost() {
         return DocumentModelDraft.named(MIXED_REFERENCE_NESTED_ID).locale("en_US")
-                .include("policy", MIXED_REFERENCE_MIDDLE_ID)
                 .rootGroup("Envelope", envelope -> envelope
                         .field("EntryNo", FieldKind.STRING)
-                        .mount("NestedPolicy", "policy"))
+                        .mount("NestedPolicy", MIXED_REFERENCE_MIDDLE_ID))
                 .build()
                 .toJson();
     }
@@ -1017,10 +1009,9 @@ public final class WorkspacePreparationFixtures {
             String providerId,
             ConditionLanguage language) {
         var source = DocumentModelDraft.named(modelId).locale("en_US")
-                .include("benefits", providerId)
                 .rootGroup("Policy", policy -> policy
                         .field("PolicyNo", FieldKind.STRING)
-                        .mount("Cover", "benefits"))
+                        .mount("Cover", providerId))
                 .build()
                 .toJson();
         source = withConditionLanguage(source, language);
@@ -1137,10 +1128,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String permitSection(Map<String, String> providers) {
         var raw = DocumentModelDraft.named(SECTION_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Section", section -> section
                         .field("Name", FieldKind.STRING)
-                        .mount("Inspection", "checksAlias"))
+                        .mount("Inspection", CHECKS_ID))
                 .build()
                 .toJson();
         var session = EditSession.read(raw, resolver(providers));
@@ -1164,11 +1154,10 @@ public final class WorkspacePreparationFixtures {
             Map<String, String> providers) {
         var raw = DocumentModelDraft.named(id).locale("en_US")
                 .importTypeDefs(TYPES_ID)
-                .include("sectionAlias", SECTION_ID)
                 .rootGroup("Permit", permit -> permit
                         .typedefField("ApplicationCode", "PermitCode")
                         .typedefField("InspectionDisposition", "InspectionDisposition")
-                        .mount("Review", "sectionAlias", options))
+                        .mount("Review", SECTION_ID, options))
                 .build()
                 .toJson();
         var session = EditSession.read(raw, resolver(providers));
@@ -1188,10 +1177,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String excludedEntry() {
         return DocumentModelDraft.named(EXCLUDED_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Inspection",
-                        "checksAlias",
+                        CHECKS_ID,
                         MountOptions.single().excludingRules().excludingComputations()))
                 .build()
                 .toJson();
@@ -1199,10 +1187,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String rulesExcludedEntry() {
         return DocumentModelDraft.named(RULES_EXCLUDED_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Inspection",
-                        "checksAlias",
+                        CHECKS_ID,
                         MountOptions.single().excludingRules()))
                 .build()
                 .toJson();
@@ -1210,10 +1197,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String computationsExcludedEntry() {
         return DocumentModelDraft.named(COMPUTATIONS_EXCLUDED_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Inspection",
-                        "checksAlias",
+                        CHECKS_ID,
                         MountOptions.single().excludingComputations()))
                 .build()
                 .toJson();
@@ -1231,10 +1217,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String multiRootEntry() {
         return DocumentModelDraft.named(MULTI_ROOT_ENTRY_ID).locale("en_US")
-                .include("sections", MULTI_ROOT_SECTIONS_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Sections",
-                        "sections",
+                        MULTI_ROOT_SECTIONS_ID,
                         MountOptions.single().asModelRoot()))
                 .build()
                 .toJson();
@@ -1242,10 +1227,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String repeatedMountEntry() {
         return DocumentModelDraft.named(REPEATED_MOUNT_ID).locale("en_US")
-                .include("checksAlias", CHECKS_ID)
                 .rootGroup("Permit", permit -> permit
-                        .mount("Primary", "checksAlias")
-                        .mount("Secondary", "checksAlias"))
+                        .mount("Primary", CHECKS_ID)
+                        .mount("Secondary", CHECKS_ID))
                 .build()
                 .toJson();
     }
@@ -1259,10 +1243,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String attachmentHost() {
         return DocumentModelDraft.named(ATTACHMENT_HOST_ID).locale("en_US")
-                .include("evidence", ATTACHMENT_TEMPLATE_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Documents",
-                        "evidence",
+                        ATTACHMENT_TEMPLATE_ID,
                         MountOptions.single().asModelRoot().excludingRules().excludingComputations()))
                 .build()
                 .toJson();
@@ -1270,10 +1253,9 @@ public final class WorkspacePreparationFixtures {
 
     private static String attachmentSingleHost() {
         return DocumentModelDraft.named(ATTACHMENT_SINGLE_HOST_ID).locale("en_US")
-                .include("evidence", ATTACHMENT_TEMPLATE_ID)
                 .rootGroup("Permit", permit -> permit.mount(
                         "Documents",
-                        "evidence",
+                        ATTACHMENT_TEMPLATE_ID,
                         MountOptions.single().excludingRules().excludingComputations()))
                 .build()
                 .toJson();

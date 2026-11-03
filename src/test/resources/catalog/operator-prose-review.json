@@ -546,7 +546,7 @@
       "operator": "Equal",
       "lane": "GOTCHA",
       "ordinal": 7,
-      "digest": "sha256:6f5b4b96d6795360b7ecc045fb646ab5d709d11007ccd1d13a2380ecf484e687",
+      "digest": "sha256:635fd6077cbadb45fbd7dbe10091a6c707f2b8ac93bb2b311cb225e9ef8bfac3",
       "classifications": [
         "ADMISSION"
       ],
@@ -554,7 +554,7 @@
         {
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
-          "id": "rulekit.validate.laws.EnumComparabilityLawsTest#partiallyOverlappingCompatibleMapsCompare"
+          "id": "rulekit.validate.laws.EnumComparabilityLawsTest#labelsDecideNoComparison"
         }
       ]
     },
@@ -2733,7 +2733,7 @@
       "operator": "Concatenation",
       "lane": "GOTCHA",
       "ordinal": 2,
-      "digest": "sha256:9b934cf3ef564fb4d61d073716391ba8fc02a2baa18217dd7501509d985a20bc",
+      "digest": "sha256:27d2077d1aa5464ab3e366023b98c71a9184d5925cedddb4f3066491bf7789f3",
       "classifications": [
         "RUNTIME",
         "REJECTION",
@@ -5396,7 +5396,7 @@
       "operator": "Having",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:da5a15c898598fc66c87bb3800059a1217e0d5fe54685c5c42c31416c49fadc9",
+      "digest": "sha256:6d1fe779286228cc433f8f9cd2c049389b31c309b4990926819e8809038770df",
       "classifications": [
         "REJECTION"
       ],
@@ -5406,7 +5406,7 @@
       "operator": "Having",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:1b27e257db5ccfa03da23c1576f02915f4097459f8a517d1bd00730a6ce6e3da",
+      "digest": "sha256:a256bcdac0d1f8ef5b646f1d14e96097c0056aa1d751dd1970ca866aee078f1d",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -5609,7 +5609,7 @@
       "operator": "CurrentRepetition",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:c3f5975ea9b90bc67adcb008175f6e4d4f5a810b1c324668c20345d06dfaa9cd",
+      "digest": "sha256:0dc5f155fa81d174e056a275c0301604e424f0330e5f016e160fdd9566e7a555",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -5704,7 +5704,7 @@
       "operator": "CustomCondition",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:876a0e203f3ece9f000d6b7156897fbeea5923dc914242cb621dd13d709173cc",
+      "digest": "sha256:92c3a4c4f93c0ec38a55b7f9e7952269b1317fa6d27861707a7e789a42c6bf6f",
       "classifications": [
         "REJECTION"
       ],
@@ -5941,7 +5941,7 @@
       "operator": "DifferenceInDays",
       "lane": "MEANING",
       "ordinal": 0,
-      "digest": "sha256:c087802f1933d420766a3bbd8d44b8e4d4a2d571ae9a66d18510b5cc9e95c41e",
+      "digest": "sha256:84e59952e8e2388783ba5ef4ae1a306fe64478bf2321ba51234d362a92b1e79e",
       "classifications": [
         "REJECTION",
         "RUNTIME"
@@ -5973,7 +5973,7 @@
       "operator": "DifferenceInDays",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:4f5e690d4ffa1af8b5fcc8903bf2c2ec6365b810e301b245f47891d2dd8eb8c8",
+      "digest": "sha256:2d0c337ada4fbb959aae10bf56c27d09507c5840d2cf48623d861d6963a91933",
       "classifications": [
         "RUNTIME"
       ],
@@ -7740,7 +7740,7 @@
       "operator": "Date",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:3391e44104b904d9c052d23d695fc68bb25e111cf0a2be9b0b5151d4ab364223",
+      "digest": "sha256:929f708bcea8e405b8f5e002979ac7705023b1bfe340c6eb3a0550ce2e09546a",
       "classifications": [
         "RUNTIME"
       ],
@@ -8168,7 +8168,7 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:02f0d72cbc7c05309a72001515e15d60875dc9a6b8f864024c524c5afdf7cecd",
+      "digest": "sha256:7425efff0f23e87d263c1c41f7c957dc343fcc9547625917826ef81c6c1416d0",
       "classifications": [
         "REJECTION"
       ],
@@ -8178,7 +8178,7 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:2e47e39067a337a5ec5832c9c6e41b04edc0d579fc51db0e0f12e933832c539c",
+      "digest": "sha256:fd3a74538d3bcf25a0e76f5492d44fcf2b15043e5f803624ab49e36b7950790b",
       "classifications": [
         "REJECTION"
       ],
@@ -11135,7 +11135,7 @@
       ]
     },
     {
-      "id": "literal.Having.constraint1.MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+      "id": "literal.Having.constraint1.MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION",
       "operator": "Having",
       "kind": "CONDITION",
       "units": [
@@ -11146,7 +11146,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -11247,7 +11247,7 @@
       ]
     },
     {
-      "id": "literal.CustomCondition.constraint1.MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION",
+      "id": "literal.CustomCondition.constraint1.MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION",
       "operator": "CustomCondition",
       "kind": "CONDITION",
       "units": [
@@ -11258,7 +11258,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -12178,7 +12178,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -23022,7 +23022,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -23108,7 +23108,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -23238,7 +23238,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -25882,7 +25882,7 @@
       ]
     },
     {
-      "id": "literal.SumOfProducts.constraint1.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+      "id": "literal.SumOfProducts.constraint1.MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
       "operator": "SumOfProducts",
       "kind": "CONDITION",
       "units": [
@@ -25893,7 +25893,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "evidence": [
         {
@@ -25914,7 +25914,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "evidence": [
         {
@@ -26075,7 +26075,7 @@
       ]
     },
     {
-      "id": "literal.SumOfProducts.constraint2.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+      "id": "literal.SumOfProducts.constraint2.MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
       "operator": "SumOfProducts",
       "kind": "CONDITION",
       "units": [
@@ -26086,7 +26086,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "evidence": [
         {
@@ -26107,7 +26107,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "evidence": [
         {
@@ -26215,7 +26215,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "evidence": [
         {
@@ -27422,7 +27422,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -27444,7 +27444,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -28026,7 +28026,7 @@
       ]
     },
     {
-      "id": "literal.CurrentRepetition.constraint1.MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+      "id": "literal.CurrentRepetition.constraint1.MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
       "operator": "CurrentRepetition",
       "kind": "CONDITION",
       "units": [
@@ -28037,7 +28037,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "evidence": [
         {
@@ -28047,7 +28047,7 @@
       ]
     },
     {
-      "id": "literal.Having.constraint2.MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+      "id": "literal.Having.constraint2.MVK_INVALID_ITERATION_IN_SET_EXPRESSION",
       "operator": "Having",
       "kind": "CONDITION",
       "units": [
@@ -28058,7 +28058,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "evidence": [
         {

@@ -43,7 +43,7 @@ class SumOfProductsOperandReachLawsTest {
         rows.put("Ledger | " + EVERY + "/Weight, " + EVERY + "/Label", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         rows.put("Ledger | " + EVERY + "/Weight, /Fulfilment/Ledger/Total", "MVK_DIFFERENT_GROUPS");
         rows.put("Ledger | " + EVERY + "/Weight Having [/Fulfilment/Shipments/Parcels/Quantity] > 0, " + EVERY
-                + "/Quantity", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+                + "/Quantity", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
         rows.put("Summary | " + EVERY + "/Weight, " + EVERY + "/Quantity", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         // The rule binds `Shipments`, and a star on it is still a second star.
         rows.put("Shipments | " + EVERY + "/Weight, " + EVERY + "/Quantity",

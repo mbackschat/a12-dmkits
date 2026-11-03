@@ -90,9 +90,10 @@ class ModelHeaderSlotLawsTest {
         expected.put("a header declaring the same locale twice", KernelLaws.NOT_BUILDABLE);
         expected.put("a header declaring two locales the JDK tags alike", "MVK_SUPP_LANGUAGES_DUPLICATE");
         expected.put("no `locales` at all", KernelLaws.NOT_BUILDABLE);
-        // Of the header's other members exactly ONE is load-bearing, and it is not the one a reader expects:
-        // the model builds with no `id` and no `modelType`, and not without a `modelVersion`.
-        expected.put("no `id`", KernelLaws.ADMITTED);
+        // Of the header's other members two are load-bearing on kernel 31.1.1: the model builds with no
+        // `modelType`, and not without a `modelVersion` or an `id` (a `NullPointerException` while it is built,
+        // KERNEL-FINDINGS KF654; 30.8.1 admitted a header with no id).
+        expected.put("no `id`", KernelLaws.NOT_BUILDABLE);
         expected.put("no `modelType`", KernelLaws.ADMITTED);
         expected.put("no `modelVersion`", KernelLaws.NOT_BUILDABLE);
         expected.put("no `labels`", KernelLaws.ADMITTED);

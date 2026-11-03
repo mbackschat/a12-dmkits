@@ -75,7 +75,6 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft build()
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder comment(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder importTypeDefs(java.lang.String)
-  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder include(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder label(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder locale(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder multiSelectGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
@@ -177,12 +176,12 @@ public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Mount imp
   public Mount(java.lang.String, java.lang.String, int, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
   public Mount(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
   public Mount(java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
-  public java.lang.String alias()
   public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.modelkit.MountOptions options()
+  public java.lang.String reference()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Rule implements io.github.mbackschat.a12.dm.modelkit.ElementDraft
@@ -518,7 +517,6 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addField(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addGroup(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addImport(java.lang.String)
-  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addInclude(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addLocale(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addMultiSelectGroup(java.lang.String, java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addRepeatableGroup(java.lang.String, java.lang.String, int)
@@ -527,7 +525,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypedefField(java.lang.String, java.lang.String, java.lang.String)
   public java.util.Map<java.lang.String, java.lang.String> annotations(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument applyModification(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldModification)
-  public java.util.Map<io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose, java.util.Map<java.lang.String, java.lang.String>> authoredReferences()
+  public java.util.Map<io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose, java.util.List<java.lang.String>> authoredReferences()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredState authoredState()
   public java.util.Optional<java.lang.Integer> baseYear()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearBaseYear()
@@ -575,7 +573,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String, int)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
-  public java.util.Optional<java.lang.String> mountAliasAt(java.lang.String)
+  public java.util.Optional<java.lang.String> mountReferenceAt(java.lang.String)
   public java.util.List<java.lang.String> mountsOfInclude(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument moveField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument moveGroup(java.lang.String, java.lang.String)
@@ -592,7 +590,6 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeTypeDefinition(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameGroup(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameInclude(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameRule(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameTypeDefinition(java.lang.String, java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.Requiredness> requiredness(java.lang.String)
@@ -718,8 +715,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupStr
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include
-  public Include(java.lang.String, java.lang.String)
-  public java.lang.String alias()
+  public Include(java.lang.String)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String reference()
@@ -727,10 +723,10 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include
 
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.MountState
   public MountState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
-  public java.lang.String alias()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.modelkit.MountOptions options()
+  public java.lang.String reference()
   public final java.lang.String toString()
 
 public static enum io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose
@@ -936,8 +932,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.Workspace.Model
   public java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Reference> typedefImports()
 
 public static record io.github.mbackschat.a12.dm.modelkit.Workspace.Reference
-  public Reference(java.lang.String, java.lang.String, java.lang.String)
-  public java.lang.String alias()
+  public Reference(java.lang.String, java.lang.String)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String ref()

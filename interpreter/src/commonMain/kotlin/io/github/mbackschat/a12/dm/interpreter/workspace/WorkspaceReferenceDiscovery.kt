@@ -55,7 +55,6 @@ internal object WorkspaceReferenceDiscovery {
                     ModelReferenceStep.typeDefinitions(
                         fromModelId = source.modelId,
                         toModelId = reference.strictString("reference").orEmpty(),
-                        alias = reference.strictString("alias"),
                     ),
                 )
             }
@@ -93,7 +92,7 @@ internal object WorkspaceReferenceDiscovery {
             }
             val path = "${candidate.parentPath}/${structure.name}"
             val children = requirePreparedGroupChildren(structure.body, path) { invalidPath, reason ->
-                if ("modelAlias" in structure.body) {
+                if (structure.body.includeDirectiveMember() != null) {
                     throw invalidIncludeMount(source.modelId, invalidPath, reason)
                 }
                 throw invalidModelElement(this, invalidPath, reason)
@@ -101,8 +100,7 @@ internal object WorkspaceReferenceDiscovery {
             when (val assembly = classifyGroup(structure.body, children, this, path)) {
                 is GroupAssembly.Include -> references += ModelReferenceStep.include(
                     fromModelId = source.modelId,
-                    toModelId = root.includeReference(source.modelId, path, assembly.directive.alias),
-                    alias = assembly.directive.alias,
+                    toModelId = assembly.directive.reference,
                 )
                 is GroupAssembly.Ordinary -> assembly.elements
                     ?.asReversed()

@@ -21,14 +21,7 @@ data class DeclaredReference(
     val role: ReferenceRole,
     val target: Reference,
     val written: String,
-) {
-    /**
-     * Whether A12's reader refuses this path before any variant filter applies: its resolver's path arithmetic
-     * fails on a climb past the root and on a slash-led path, while a path that merely names nothing fails
-     * later, at conversion, which a filter deleting the declaration lifts ([KERNEL-FINDINGS KF643]).
-     */
-    val refusedByTheReader: Boolean get() = target is Reference.AboveRoot || target is Reference.IllegalRelPath
-}
+)
 
 /**
  * The two DSL-carrier reference members: a rule's `errorEntityRelPath` and a computation's
@@ -74,15 +67,19 @@ private val DECLARED_BY_KIND = mapOf(
  * over-long relative path is reported instead of quietly naming a root element.
  */
 private fun PreparedModel.resolveRelative(from: String, relative: String): Reference =
-    resolveRelativeIn(from, relative) { it in resolvableByPath }
+    resolveRelativeIn(from, relative, leftOut = { it in leftOutPaths }) { it in resolvableByPath }
 
-/** The same walk through the read barrier — it asks the resolvable set and reads no body. */
+/**
+ * The same walk through the read barrier — it asks the resolvable set and reads no body. Its one caller keeps only
+ * a [Reference.Resolved], so it does not ask what the converter left out.
+ */
 private fun TrackedFactBase.resolveRelative(from: String, relative: String): Reference =
-    resolveRelativeIn(from, relative) { isResolvable(it) }
+    resolveRelativeIn(from, relative, leftOut = { false }) { isResolvable(it) }
 
 private inline fun resolveRelativeIn(
     from: String,
     relative: String,
+    leftOut: (String) -> Boolean,
     resolves: (String) -> Boolean,
 ): Reference {
     val segments = from.split('/').filter { it.isNotEmpty() }.toMutableList()
@@ -100,7 +97,7 @@ private inline fun resolveRelativeIn(
         // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
         climbedPastRoot -> Reference.AboveRoot(relative)
         resolves(path) -> Reference.Resolved(path)
-        else -> Reference.Undeclared(path)
+        else -> Reference.Undeclared(path, leftOutByConversion = leftOut(path))
     }
 }
 

@@ -26,8 +26,7 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * **It stands beside every other class, and neither withholds the other.** A12 lists it with a refused
  * condition's class, with the message's own classes and with a broken error target's, so report assembly
- * holds it outside both the DSL's withholding and the error target's stop. An `ONLY` variant filter is the
- * one thing that takes it away, with the rest of the rule.
+ * holds it outside both the DSL's withholding and the error target's stop.
  *
  * **What it leaves to A12**, all of it under-reporting: a mounted provider's declarations, whose reach through
  * the host was not measured, and every member not listed above — a field type's other members, a category's
@@ -35,7 +34,6 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 internal fun TrackedFactBase.modelTextRepertoireFindings(): List<Finding> =
     declarations().filterNot { it.origin.isMounted }.mapNotNull { element ->
-        if (element.declaredKind == DeclaredKind.FIELD && element.body.deletesAtDefaultVariant()) return@mapNotNull null
         element.carriedTexts(declaredLocales).firstNotNullOfOrNull { it.unsupported() }
             ?.let { element.repertoireFinding(it) }
     }

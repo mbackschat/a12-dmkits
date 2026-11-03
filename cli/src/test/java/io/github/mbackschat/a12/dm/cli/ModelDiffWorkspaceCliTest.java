@@ -87,10 +87,9 @@ class ModelDiffWorkspaceCliTest {
 
     private static String store(String pricingId) {
         return DocumentModelDraft.named("store").locale("en_US")
-                .include("pricing", pricingId)
                 .rootGroup("Store", store -> {
                     store.field("Sku", FieldKind.STRING);
-                    store.mount("Prices", "pricing");
+                    store.mount("Prices", pricingId);
                 })
                 .build().toJson();
     }

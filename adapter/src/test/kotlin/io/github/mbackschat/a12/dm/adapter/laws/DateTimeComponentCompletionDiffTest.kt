@@ -14,11 +14,11 @@ import java.util.Date
  * A component-omitting Date argument of `DateTime(date, time)` completes to its earliest day (KERNEL-FINDINGS KF627,
  * a12-kernel-lean SPEC-2026-10-30-06): `yyyy` to January 1, `yyyy-MM` to the first of its month, and a yearless
  * `MM-dd` or `MM` in the Base Year, `MM` to the first. The completed label then resolves in the model's zone, so a
- * Berlin spring-gap label clears.
+ * Berlin spring-gap label moves forward by the gap (kernel 31.1.1, KERNEL-FINDINGS KF665; 30.8.1 cleared it).
  *
  * The Base Year 2023 differs from the clock's 2026 and from the year-bearing arguments' 2022, so the yearless
  * argument's year is separated from both: Berlin's 2023 gap is March 26 and its 2026 gap March 29, and only the Base
- * Year clears `03-26` and stores `03-29` at 02:30. The UTC twin, differing in its zone alone, stores both. Every
+ * Year moves `03-26` at 02:30 to 03:30 and stores `03-29` unchanged. The UTC twin, differing in its zone alone, stores both. Every
  * document compares dynamic Groovy, static Java and the interpreter; the outcomes are pinned from dynamic Groovy. Own
  * domain (an insurance claim's reported date and clock).
  */
@@ -81,12 +81,12 @@ class DateTimeComponentCompletionDiffTest {
         assertEquals(noon.stored(), outcomes(utc, "noon"))
     }
 
-    /** At 02:30 only the Base Year's gap clears in Berlin; the UTC twin stores every label. */
+    /** At 02:30 only the Base Year's gap moves forward in Berlin; the UTC twin stores every label as written. */
     @Test
     fun theCompletedLabelResolvesInTheModelsZone() {
         val gap = mapOf("StampYear" to "2022-01-01T02:30:00", "StampYearMonth" to "2022-03-01T02:30:00",
             "StampMonth" to "2023-03-01T02:30:00", "StampMonthDay" to "2023-03-26T02:30:00").stored()
-        assertEquals(gap + ("StampMonthDay" to "CLEARED"), outcomes(berlin, "gap of the Base Year"))
+        assertEquals(gap + ("StampMonthDay" to "VALUE|2023-03-26T03:30:00"), outcomes(berlin, "gap of the Base Year"))
         assertEquals(gap, outcomes(utc, "gap of the Base Year"))
         assertEquals("VALUE|2023-03-29T02:30:00", outcomes(berlin, "gap of the clock's year")["StampMonthDay"])
     }

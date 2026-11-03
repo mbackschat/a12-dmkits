@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.predicates.numberBoundAsRead
 import kotlin.math.abs
-import kotlin.math.ulp
 
 /** A12's two codeless formal checks on a Number bound's printed form. */
 internal enum class PrintedBoundDefect {
@@ -61,47 +60,3 @@ private fun plainDigitCount(value: Double): Int {
         else -> significant.length
     }
 }
-
-/** Which of a Number declaration's two bounds is judged. */
-internal enum class NumberBound { MIN_VALUE, MAX_VALUE }
-
-/**
- * Whether a Number declaration's [bound] exceeds the magnitude A12 derives from its declared fractional digits,
- * or null where the answer depends on the JVM A12 runs on.
- *
- * A12 bounds both values by `10^(15 - k) - 10^(-k)`, `k` being [maxFractionalDigits] as declared (an absent count
- * is 0), computed in doubles with `Math.pow`, and refuses a `maxValue` above it and a `minValue` whose ABSOLUTE
- * value is above it ([KERNEL-FINDINGS KF582], source `NumberFieldValueLimitRule`, measured by
- * `adapter.laws.CheckerNumberBoundMagnitudeAgreementTest`). Nothing else enters: not the integer places, not the
- * trait, not whether `k` is within the range its member admits, and not the rounding the inversion law applies,
- * so `999999999999999.4` exceeds the limit at scale 0 though it rounds to it.
- *
- * **The window.** `Math.pow` is specified to return an exact result only when it is representable, and to be
- * within one ulp otherwise; measured on JDK 21.0.12, it differs from the correctly rounded power of ten at 64 of
- * the exponents from -400 to 400. So the limit is decided here only where `10^(15 - k)` is an exact double,
- * `k` from -7 to 15, which covers every count A12's member range admits; beyond it a value within two ulps of
- * the limit is left undecided. The subtracted `10^(-k)` is never exact, but it is fifteen orders of magnitude
- * below the term it is taken from, so its error is far below the limit's own ulp.
- */
-internal fun numberBoundExceedsDigitLimit(bound: NumberBound, value: Double, maxFractionalDigits: Int?): Boolean? {
-    val places = maxFractionalDigits ?: 0
-    // Java's int arithmetic, which A12's exponents are computed in, wraps; Kotlin's Int wraps the same way.
-    val limit = powerOfTen(MAX_PRINTED_DIGITS - places) - powerOfTen(-places)
-    val magnitude = when (bound) {
-        NumberBound.MIN_VALUE -> abs(value)
-        NumberBound.MAX_VALUE -> value
-    }
-    // An infinite limit is exact, Java's overflow of `Math.pow` being specified, and nothing exceeds it.
-    if (limit.isFinite() && MAX_PRINTED_DIGITS - places !in EXACT_POWERS_OF_TEN &&
-        abs(magnitude - limit) <= 2 * limit.ulp
-    ) {
-        return null
-    }
-    return magnitude > limit
-}
-
-/** The exponents whose power of ten a double holds exactly, `10^22` being the largest. */
-private val EXACT_POWERS_OF_TEN = 0..22
-
-/** The correctly rounded power of ten: both runtimes parse a decimal literal exactly to the nearest double. */
-private fun powerOfTen(exponent: Int): Double = "1e$exponent".toDouble()

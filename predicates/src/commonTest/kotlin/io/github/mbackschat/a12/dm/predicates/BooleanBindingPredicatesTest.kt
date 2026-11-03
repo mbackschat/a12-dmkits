@@ -18,8 +18,10 @@ class BooleanBindingPredicatesTest {
         val rows = linkedMapOf(
             "true" to TRUE, "True" to TRUE, "TRUE" to TRUE, " true" to TRUE, "\ttrue" to TRUE, "true\n" to TRUE,
             " TRUE" to TRUE,
-            "false" to FALSE, "False" to FALSE, "FALSE" to FALSE, "" to FALSE, " " to FALSE, "null" to FALSE,
-            " null" to FALSE,
+            "false" to FALSE, "False" to FALSE, "FALSE" to FALSE,
+            // Kernel 31.1.1's Jackson 3 coerces the empty text to null and refuses null for a primitive, so the
+            // texts that bound as the default on 30.8.1 now refuse the reader (KERNEL-FINDINGS KF569).
+            "" to UNREADABLE, " " to UNREADABLE, "null" to UNREADABLE, " null" to UNREADABLE,
             "yes" to UNREADABLE, "1" to UNREADABLE, "tRUE" to UNREADABLE, "FaLsE" to UNREADABLE,
             "NULL" to UNREADABLE, "\u00A0true" to UNREADABLE, "\u2003true" to UNREADABLE,
         )

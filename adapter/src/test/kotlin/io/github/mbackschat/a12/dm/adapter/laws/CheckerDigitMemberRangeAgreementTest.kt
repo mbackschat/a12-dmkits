@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
  */
 class CheckerDigitMemberRangeAgreementTest {
 
-    private data class Row(val members: Map<String, Any>, val deleted: Boolean = false)
+    private data class Row(val members: Map<String, Any>)
 
     private fun number(vararg members: Pair<String, Any>) = Row(mapOf(*members))
 
@@ -80,9 +80,6 @@ class CheckerDigitMemberRangeAgreementTest {
         "amount whose signed scale derives a count above" to number(TRAIT to "amount", MAX_FRACT to -2),
         "percent with its integer count above" to number(TRAIT to "percent", INT to 16),
         "signless at the budget" to number(INT to 15, MAX_LENGTH to 15, "positivesOnly" to true),
-        "deleted, integer above" to Row(mapOf(INT to 16), deleted = true),
-        "deleted, fractional maximum above" to Row(mapOf(MAX_FRACT to 15), deleted = true),
-        "deleted, integer signed" to Row(mapOf(INT to -2), deleted = true),
     )
 
     /** Every row's classes, with their multiplicity; A12's order is not claimed. */
@@ -107,7 +104,6 @@ class CheckerDigitMemberRangeAgreementTest {
         assertEquals(listOf(ABOVE_SCALE), a12("fractional maximum above beside a length over the budget"))
         assertEquals(listOf("MVK_MAX_LENGTH_TOO_SMALL", ABOVE_SCALE), a12("fractional maximum above beside a length too small"))
         assertEquals(listOf(ABOVE_SCALE, NOT_POSITIVE), a12("amount whose scale derives a zero count"))
-        assertEquals(emptyList<String>(), a12("deleted, integer above"))
     }
 
     /**
@@ -170,7 +166,6 @@ class CheckerDigitMemberRangeAgreementTest {
                 else -> error(value)
             }
         }
-        if (row.deleted) field.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("premium")
         return mapper.writeValueAsString(root)
     }
 

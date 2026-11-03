@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
@@ -48,10 +51,10 @@ class PartialValidationCustomConditionDiffTest {
     /** Kernel side — fires iff `Region` is in the relevant set (or it's a full validation, relevant == null). */
     private val mdRegionInScope = object : com.mgmtp.a12.kernel.md.rt.api.ICustomCondition {
         override fun check(
-            doc: com.mgmtp.a12.kernel.md.document.api.IDocument,
-            relevant: Set<IEntityInstance>?,
-            formallyIncorrect: Set<IEntityInstance>,
-            errorEntity: IEntityInstance,
+            doc: DocumentV2,
+            relevant: Set<out DocumentMultiPointer>?,
+            formallyIncorrect: Set<DocumentPointer>,
+            errorEntity: PartiallyKnownDocumentMultiPointer,
         ): Boolean = relevant == null || relevant.any { it.path == REGION }
     }
 

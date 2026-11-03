@@ -149,31 +149,26 @@ data class ModelReferenceStep private constructor(
     val fromModelId: String,
     val purpose: ModelReferencePurpose,
     val toModelId: String,
-    val alias: String?,
 ) {
     companion object {
         @JvmSynthetic
         internal fun typeDefinitions(
             fromModelId: String,
             toModelId: String,
-            alias: String?,
         ): ModelReferenceStep = ModelReferenceStep(
             fromModelId = fromModelId,
             purpose = ModelReferencePurpose.TYPE_DEFINITIONS,
             toModelId = toModelId,
-            alias = alias,
         )
 
         @JvmSynthetic
         internal fun include(
             fromModelId: String,
             toModelId: String,
-            alias: String?,
         ): ModelReferenceStep = ModelReferenceStep(
             fromModelId = fromModelId,
             purpose = ModelReferencePurpose.INCLUDE,
             toModelId = toModelId,
-            alias = alias,
         )
     }
 }
@@ -184,7 +179,6 @@ data class ModelDependency private constructor(
     val fromModelId: String,
     val toModelId: String,
     val purpose: ModelReferencePurpose,
-    val alias: String?,
     val diagnosticLabel: String?,
     val sha256: String,
 ) {
@@ -198,7 +192,6 @@ data class ModelDependency private constructor(
             fromModelId = step.fromModelId,
             toModelId = step.toModelId,
             purpose = step.purpose,
-            alias = step.alias,
             diagnosticLabel = diagnosticLabel,
             sha256 = sha256,
         )

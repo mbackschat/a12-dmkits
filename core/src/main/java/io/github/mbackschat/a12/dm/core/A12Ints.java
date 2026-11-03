@@ -16,8 +16,10 @@ public final class A12Ints {
     private A12Ints() {}
 
     /**
-     * A group's {@code repeatability} as A12 binds it: {@code "\u0663"} is 3 and the text {@code null} 0. An absent
-     * member, and a value A12 cannot bind and so builds no model from, read as the default 1.
+     * A group's {@code repeatability} as A12 binds it: {@code "\u0663"} is 3. An absent member, and a value A12 cannot
+     * bind and so builds no model from, read as the default 1. The member is a primitive {@code int}, so on kernel 31
+     * the text {@code null}, the empty text and a JSON null are such values: Jackson 3 refuses a null for a primitive
+     * (KERNEL-FINDINGS KF593, corrected 2026-11-02).
      *
      * @param jsonText the member rendered as JSON ({@code JsonNode.toString()}), or {@code null} when it is absent
      */
@@ -35,14 +37,7 @@ public final class A12Ints {
     }
 
     static int repetitionCount(JsonNode member) {
-        if (member.isMissingNode()) {
-            return 1;
-        }
-        return switch (A12IntBinding.of(member)) {
-            case A12IntBinding.Bound(int count) -> count;
-            case A12IntBinding.NoValue noValue -> 0;
-            case A12IntBinding.Unbindable unbindable -> 1;
-        };
+        return A12IntBinding.of(member).bound().orElse(1);
     }
 
     private static JsonNode member(String jsonText) {

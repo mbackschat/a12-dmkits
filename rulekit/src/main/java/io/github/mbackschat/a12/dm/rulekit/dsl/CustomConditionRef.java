@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * colon. A name that collides with a reserved token is quoted by {@link DslRenderer}.
  *
  * <p>Two contexts forbid it (verified 2026-06-04): inside a {@code Having} filter
- * ({@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}, pre-checked in {@link FieldListRef#having})
+ * ({@code MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION}, pre-checked in {@link FieldListRef#having})
  * and in computation rules (pre-checked in {@code Computation.build}). Like any predicate it does
  * not satisfy the error-field rule on its own — pair it with a field reference.
  */

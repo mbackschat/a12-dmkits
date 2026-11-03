@@ -48,7 +48,7 @@ class RootLevelParentSpellingTest {
                 "--name", "Choices", "--field", "Choice", "--max-rows", "3", "--values", "A,B"));
         actual.put("group attachment", rootLevelAdd(dir, "three", "group", "attachment", "--name", "Files"));
         actual.put("include add", rootLevelAdd(dir, "four", "include", "add", "--name", "Mounted",
-                "--reference", "Other_DM", "--alias", "other"));
+                "--reference", "Other_DM"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("group add", "applied");

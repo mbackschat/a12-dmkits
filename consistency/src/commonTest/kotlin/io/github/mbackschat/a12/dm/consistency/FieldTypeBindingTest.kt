@@ -21,7 +21,7 @@ class FieldTypeBindingTest {
     /** A model whose single field carries [fieldType] verbatim, or no such member when it is null. */
     private fun typed(fieldType: String?) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{${
@@ -42,50 +42,31 @@ class FieldTypeBindingTest {
     fun everyTypeA12DeclaresBindsAndDrawsNothing() {
         val actual = mutableMapOf<String, List<String>>()
         val expected = mutableMapOf<String, List<String>>()
-        // The five whose reader guards a missing body: both spellings bind, and an empty body builds.
-        for (type in listOf("StringType", "NumberType", "ConfirmType", "BooleanType", "UnspecifiedType")) {
+        // On kernel 31.1.1 every type builds a missing body from its defaults, so the two spellings agree on all
+        // twelve (KERNEL-FINDINGS KF654); `UnspecifiedType` is no longer a type A12 reads.
+        for (type in listOf("StringType", "NumberType", "ConfirmType", "BooleanType", "DateType", "DateTimeType",
+            "TimeType", "DateRangeType", "DateFragmentType", "EnumerationType", "TypeDefType", "CustomFieldType",
+            "UnspecifiedType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            // `UnspecifiedType` binds like the other four and is then refused for BEING itself, in both
-            // spellings — the one type whose verdict is a property of the type rather than of its body.
-            val bound = if (type == "UnspecifiedType") listOf(noCodegen) else emptyList()
-            expected["$type, body present"] = bound
-            expected["$type, body absent"] = bound
-        }
-        // The three temporal types, which read their body but build from an empty one — a format is
-        // optional. They are what keep "reads the body" and "needs something in it" apart.
-        for (type in listOf("DateType", "DateTimeType", "TimeType")) {
-            actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
-            actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            expected["$type, body present"] = emptyList()
-            expected["$type, body absent"] = unbuildable
-        }
-        // The five that read the body AND construct from a member of it: neither spelling gives a model.
-        for (type in listOf("DateRangeType", "DateFragmentType", "EnumerationType", "TypeDefType",
-            "CustomFieldType")) {
-            actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
-            actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            // With a body PRESENT two part from the other three: the custom type finds no usable `name` and
-            // says so under its own class, and the range composes its absent format as `null` and draws the
-            // range-format sentence (KF581), where the rest die with nothing to report. With the body ABSENT
-            // all five are alike — A12's reader refuses the declaration before any of it. The present typedef
-            // body also lacks its id, which is A12's basic type-reference sentence (KF626).
-            expected["$type, body present"] = when (type) {
+            // Two read the body and construct from a member an empty one lacks; the custom type and the range say so
+            // under a code of their own, and a typedef reference naming nothing is the converter's sentence beside
+            // the basic one (KF652).
+            val drawn = when (type) {
                 "CustomFieldType" -> listOf(codenameMissing)
                 "DateRangeType" -> rangeFormat
-                "TypeDefType" -> unbuildable + "RK_TYPE_REFERENCE_EMPTY"
-                else -> unbuildable
+                "TypeDefType" -> listOf("RK_TYPE_DEFINITION_NOT_FOUND", "RK_TYPE_REFERENCE_EMPTY")
+                "DateFragmentType", "EnumerationType", "UnspecifiedType" -> unbuildable
+                else -> emptyList()
             }
-            expected["$type, body absent"] = unbuildable
+            expected["$type, body present"] = drawn
+            expected["$type, body absent"] = drawn
         }
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
     }
 
     /** A12's own class for a custom type with no usable `name` — unprefixed, like several of its siblings. */
     private val codenameMissing = "CUSTOM_FIELD_TYPE_CODENAME_MISSING"
-
-    /** …and for the type A12 can generate no code for, which it refuses per declaration on either carrier. */
-    private val noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN"
 
     /**
      * A constructing type is judged on the MEMBER it builds from, not on whether its body is empty.
@@ -183,9 +164,12 @@ class FieldTypeBindingTest {
             """{"format":"dd.MM.yyyy","rangeSeparator":"/"}""", rangeFormat)
         row("ISO, separator omitted", """{"format":"yyyy-MM-dd"}""", emptyList())
         row("German, separator omitted", """{"format":"dd.MM.yyyy"}""", rangeFormat)
-        // The empty separator is a declaration of its own, so omission cannot be read as it.
+        // A12's expand copy drops an empty separator and reads it as the `/` default (KERNEL-FINDINGS KF658), so the
+        // German format, which `/` does not admit, is the row that tells that reading from "empty is a pair".
         row("ISO with an explicit empty separator",
-            """{"format":"yyyy-MM-dd","rangeSeparator":""}""", rangeFormat)
+            """{"format":"yyyy-MM-dd","rangeSeparator":""}""", emptyList())
+        row("German with an explicit empty separator",
+            """{"format":"dd.MM.yyyy","rangeSeparator":""}""", rangeFormat)
         row("month with an explicit empty separator", """{"format":"MM","rangeSeparator":""}""", emptyList())
         // The two directions in which the range domain is not the field vocabulary.
         row("a field-admitted format with no admitted pair", """{"format":"yyyyMM","rangeSeparator":"/"}""",
@@ -281,7 +265,7 @@ class FieldTypeBindingTest {
     fun aFieldTypeOnAGroupIsIgnoredTheWayA12IgnoresIt() {
         val withGroup = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{
                 "fieldType":{"type":"NotAType","NotAType":{}},
@@ -306,7 +290,7 @@ class FieldTypeBindingTest {
     fun aTypeDefTypeReferenceResolvesAgainstTheModelsTypeDefinitions() {
         fun typed(fieldType: String, typeDefinitions: String?) = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},${typeDefinitions?.let { """"typeDefinitions":$it,""" } ?: ""}
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
@@ -333,10 +317,11 @@ class FieldTypeBindingTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["naming a DECLARED type definition — the control"] = emptyList()
-        expected["naming nothing, with one declared"] = unbuildable
-        expected["naming nothing, with none declared"] = unbuildable
-        // Beside the build failure, the absent id is A12's basic type-reference sentence (KF626).
-        expected["no typeDefinitionId at all"] = unbuildable + "RK_TYPE_REFERENCE_EMPTY"
+        // Kernel 31.1.1's converter states an unfound definition and keeps the field as text (KF652).
+        expected["naming nothing, with one declared"] = listOf("RK_TYPE_DEFINITION_NOT_FOUND")
+        expected["naming nothing, with none declared"] = listOf("RK_TYPE_DEFINITION_NOT_FOUND")
+        // Beside it, the absent id is A12's basic type-reference sentence (KF626).
+        expected["no typeDefinitionId at all"] = listOf("RK_TYPE_DEFINITION_NOT_FOUND", "RK_TYPE_REFERENCE_EMPTY")
         assertEquals(expected, actual, "what a TypeDefType's reference must name")
 
         // The definitions themselves are read for their IDS alone, so every content law this checker

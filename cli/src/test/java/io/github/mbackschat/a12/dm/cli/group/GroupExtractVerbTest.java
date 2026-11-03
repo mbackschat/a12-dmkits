@@ -70,7 +70,7 @@ class GroupExtractVerbTest {
         assertEquals("shipping", subModel.path("content").path("modelInfo").path("name").asText(),
                 "sub-model modelInfo.name is the reference, not the parent's ('order')");
         String baseAfter = Files.readString(model);
-        assertTrue(baseAfter.contains("\"modelAlias\""), "the base now mounts the sub-model");
+        assertTrue(baseAfter.contains("\"includeConfig\""), "the base now mounts the sub-model");
         assertFalse(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields left the base");
         // the composed pair re-validates (the sub-model resolves by id from the same dir)
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "composed model is valid");

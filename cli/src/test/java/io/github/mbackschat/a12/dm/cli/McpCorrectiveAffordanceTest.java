@@ -141,7 +141,7 @@ class McpCorrectiveAffordanceTest {
         arguments.put("op", "inline");
         arguments.put("model",
                 Files.readString(Path.of("src/test/resources/models/multifile/app/storefront.dm.json")));
-        arguments.putObject("args").put("alias", "catalog");
+        arguments.putObject("args").put("reference", "catalog");
 
         ObjectNode params = MAPPER.createObjectNode();
         params.put("name", "dm.include.edit");

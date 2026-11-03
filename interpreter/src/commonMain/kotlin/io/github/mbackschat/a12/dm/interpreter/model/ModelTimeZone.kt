@@ -6,8 +6,8 @@ import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException
 
 /**
  * The model's configured time zone (`content.modelConfig.timeZone`) — the axis the kernel applies to every
- * DATE/DATE_TIME parse at evaluation time (a zone-set, non-lenient `SimpleDateFormat`; the codegen copies the
- * slot into its internal `"TimeZone"` meta key). Only the kernel's two documented values are modeled
+ * DATE/DATE_TIME parse at evaluation time (the zone's `java.time` rules since kernel 31.1.1, KERNEL-FINDINGS KF665;
+ * the codegen copies the slot into its internal `"TimeZone"` meta key). Only the kernel's two documented values are modeled
  * (`IMetaKeysInternal`: "Currently, only `UTC` and `Europe/Berlin` are supported"); the kernel itself passes
  * any string to `TimeZone.getTimeZone(...)` with a silent GMT fallback for unknown ids. `"GMT"` maps to
  * [UTC] here; an explicit blank is invalid, and any other id is refused without common code guessing whether
@@ -15,8 +15,8 @@ import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException
  * before this neutral supported-set boundary (KERNEL-FINDINGS §6).
  *
  * Under [UTC] (the DM-JSON default) wall-clock time equals instant time. Under [EUROPE_BERLIN] the DST
- * transitions make wall clock and instants diverge. Sub-day operations use instants; DifferenceInDays uses
- * stateful model-zone calendar steps; date construction uses the model-zone legacy hybrid calendar. The math lives in
+ * transitions make wall clock and instants diverge. Sub-day operations use instants; DifferenceInDays counts
+ * model-zone wall-clock days; date construction uses the proleptic calendar. The math lives in
  * [io.github.mbackschat.a12.dm.interpreter.eval.DateMath].
  */
 enum class ModelTimeZone {

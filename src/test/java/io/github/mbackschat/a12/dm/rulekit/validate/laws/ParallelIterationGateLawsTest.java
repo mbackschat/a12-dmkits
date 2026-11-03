@@ -104,11 +104,11 @@ class ParallelIterationGateLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a filter on an operand whose OUTER level is parallel-iterated",
-                "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+                "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED");
         // The filtered-entity gate precedes the connective guard: both are violated and only it answers
         // (a12-kernel-lean SPEC-2026-10-09-09); the row below shows the guard alone on the same model.
         expected.put("unguarded negatives beside that filter",
-                "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+                "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED");
         // the comparison with 0 guards nothing, so the filter is the only variable between this row and the first
         expected.put("the same negatives beside the unfiltered Sum comparison", "MVK_PARALLEL_ITERATION_INVALID");
         expected.put("the same negatives without the filter", "MVK_PARALLEL_ITERATION_INVALID");
@@ -117,7 +117,7 @@ class ParallelIterationGateLawsTest {
         // that parallel-iterates — is not reached by this shape. Whether any shape reaches it is not
         // claimed here; one attempt is not an unreachability proof.
         expected.put("a filter whose own BODY reads the parallel group",
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
         assertEquals(expected, actual, "which gate answers when the filter sits under a parallel iteration");
     }
 

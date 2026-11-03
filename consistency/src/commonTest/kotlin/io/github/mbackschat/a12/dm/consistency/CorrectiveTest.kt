@@ -26,7 +26,7 @@ class CorrectiveTest {
      */
     private val reachability = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":true},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g90","name":"SeasonalSeasonalSeasonalSeasonalSeasonalSeasonalSeasonalStock","Group":{"elements":[
             {"type":"Field","id":"f90","name":"Spare","Field":{"fieldType":{"type":"StringType"}}}
@@ -265,18 +265,22 @@ class CorrectiveTest {
             {"type":"Rule","id":"r3","name":"ForeignLocale","Rule":{
               "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C4","errorMessage":[{"locale":"en_US","text":"x"},{"locale":"fr_FR","text":"y"}]}},
-            {"type":"Field","id":"","name":"Unidentified","Field":{"fieldType":{"type":"StringType"},"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}},
-            {"type":"Field","id":"f97","name":"","Field":{"fieldType":{"type":"StringType"},"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}},
+            {"type":"Field","id":"","name":"Unidentified","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f97","name":"","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f98","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"A"},{"value":"A"}],"categories":[{"name":"Band","values":["x","y"]},
-                {"name":"Band","values":["x","y"]}]}},"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}},
+                {"name":"Band","values":["x","y"]}]}}}},
             {"type":"Field","id":"f99","name":"Shelved","Field":{"fieldType":{"type":"TypeDefType",
-              "TypeDefType":{"typeDefinitionId":""}},"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}},
+              "TypeDefType":{"typeDefinitionId":""}}}},
             {"type":"Rule","id":"r97","name":"Unconditioned","Rule":{"errorCondition":"","errorEntityRelPath":"",
-              "errorCode":"C97","errorMessage":[{"locale":"en_US","text":"x"}],"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}},
+              "errorCode":"C97","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Computation","id":"c97","name":"Unworked","Computation":{"computedFieldRelPath":"",
-              "computationAlternatives":[{"operation":""}],"errorMessage":[{"locale":"en_US","text":"x"}],"variantFilter":{"filterType":"ONLY","variants":["outlet"]}}}
-          ]}}
+              "computationAlternatives":[{"operation":""}],"errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Computation","id":"c98","name":"Untargeted","Computation":{"computedFieldRelPath":"../NoSuchTarget",
+              "computationAlternatives":[{"operation":"1"}],"errorMessage":[{"locale":"en_US","text":"x"}]}}
+          ]}},
+          {"type":"Group","id":"g98","name":" ","Group":{"elements":[]}},
+          {"type":"Group","id":"g99","name":"Unindexed","Group":{"indexFieldName":"","elements":[]}}
          ]}}}
         """.trimIndent(),
     )

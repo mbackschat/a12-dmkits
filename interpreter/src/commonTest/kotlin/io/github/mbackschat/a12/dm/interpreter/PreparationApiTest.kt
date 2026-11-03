@@ -157,12 +157,12 @@ class PreparationApiTest {
 
     @Test
     fun repeatedMountsRetainEachDistinctResolvedEdgeOnce() {
-        val prepared = ModelWorkspace.fromSources(sources("same-alias-mounted-twice"))
-            .prepare(entryModelId("same-alias-mounted-twice"))
+        val prepared = ModelWorkspace.fromSources(sources("same-model-mounted-twice"))
+            .prepare(entryModelId("same-model-mounted-twice"))
 
         assertEquals(
             prepared.dependencies.distinctBy {
-                listOf(it.fromModelId, it.purpose, it.toModelId, it.alias)
+                listOf(it.fromModelId, it.purpose, it.toModelId)
             },
             prepared.dependencies,
         )
@@ -240,8 +240,7 @@ class PreparationApiTest {
         assertTrue(typedefOutput.contains(""""typeDefinitions":["""))
         assertFalse(typedefOutput.contains(""""type":"TypeDefType""""))
         assertFalse(includeOutput.contains(""""modelReferences""""))
-        assertFalse(includeOutput.contains(""""modelAlias""""))
-        assertFalse(includeOutput.contains(""""includeLevel""""))
+        assertFalse(includeOutput.contains(""""includeConfig""""))
         assertEquals(expanded(includeCase), includeOutput)
     }
 
@@ -317,7 +316,7 @@ class PreparationApiTest {
                 fieldType = """{"type":"StringType"}""",
             ).replace(
                 """"Group":{"elements":""",
-                """"Group":{"modelAlias":"provider","elements":""",
+                """"Group":{"includeConfig":{"reference":"provider"},"elements":""",
             ),
             preparedModel(
                 id = "opaque",
@@ -535,7 +534,7 @@ class PreparationApiTest {
         val config = modelConfig.takeIf(String::isNotEmpty)?.let { """"modelConfig":{$it},""" }.orEmpty()
         return """
             {
-              "header":{"id":"$id","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "header":{"id":"$id","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
               "content":{"modelInfo":{"name":"$id"},
                 $config
                 "modelRoot":{"rootGroups":[{
@@ -555,7 +554,7 @@ class PreparationApiTest {
         element: String,
     ): String = """
         {
-          "header":{"id":"$id","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+          "header":{"id":"$id","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
           "content":{"modelInfo":{"name":"$id"},
             "modelRoot":{"rootGroups":[{
               "type":"Group","id":"/Root","name":"Root",

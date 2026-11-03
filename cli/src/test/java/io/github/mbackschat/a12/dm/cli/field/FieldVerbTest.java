@@ -126,7 +126,7 @@ class FieldVerbTest {
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "Order_DM", "--locale", "en_US",
                 "--root", "Order", "-o", order.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", order.toString(), "-w", dir.toString(), "include", "add",
-                "--alias", "Product_DM", "--reference", "Product_DM", "--parent", "/Order", "--name", "Product").code());
+                "--reference", "Product_DM", "--parent", "/Order", "--name", "Product").code());
 
         var res = CliTestSupport.run("-m", order.toString(), "-w", dir.toString(),
                 "field", "read", "/Order/Product/Price");
@@ -289,7 +289,7 @@ class FieldVerbTest {
                 {"group":"/D","name":"D1","kind":"DATE","date":{"format":"YYYY-MM-DD"}}"""), "the uppercase editor label is rejected");
         assertEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"D2","kind":"DATE","date":{"format":"yyyy-MM-dd"}}"""), "the lowercase pattern is accepted");
-        // DATERANGE: the (format, separator) PAIR is allowlisted, and EIGHT are admitted over the
+        // DATERANGE: the (format, separator) PAIR is allowlisted, and TWELVE are admitted over the
         // 8x4 grid measured below; a mismatched separator is rejected
         assertEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"R1","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
@@ -303,11 +303,12 @@ class FieldVerbTest {
         // …and the rest of the grid. This block is the WHOLE 8x4 denominator — eight candidate formats against
         // `/`, `-`, `.` and the empty separator — because a ragged grid reads exactly like a measured class and
         // this fact has now been published wrong twice from one: first as the two exact pairs, then as seven,
-        // the second time because `dd.MM`+`-` sat in a cell nobody had run. Eight of the 32 cells are admitted.
+        // the second time because `dd.MM`+`-` sat in a cell nobody had run. Twelve of the 32 cells are admitted:
+        // kernel 31.1.1 reads an empty separator as `/`, so `""` is admitted exactly where `/` is (KF658).
         String[] formats = {"dd.MM.yyyy", "yyyy-MM-dd", "yyyy", "yyyy-MM", "MM", "MM-dd", "yyyyMM", "dd.MM"};
         String[] separators = {"/", "-", ".", ""};
         Set<String> admitted = Set.of("dd.MM.yyyy|-", "yyyy-MM-dd|/", "yyyy|/", "yyyy-MM|/",
-                "MM|/", "MM-dd|/", "MM|", "dd.MM|-");
+                "MM|/", "MM-dd|/", "dd.MM|-", "yyyy-MM-dd|", "yyyy|", "yyyy-MM|", "MM|", "MM-dd|");
         Map<String, Boolean> observed = new LinkedHashMap<>();
         int probe = 0;
         for (String format : formats) {
@@ -322,7 +323,7 @@ class FieldVerbTest {
         Map<String, Boolean> expected = new LinkedHashMap<>();
         observed.keySet().forEach(cell -> expected.put(cell, admitted.contains(cell)));
         assertEquals(expected, observed,
-                "the DATERANGE (format, separator) allowlist is these eight pairs and no others; the whole grid "
+                "the DATERANGE (format, separator) allowlist is these twelve pairs and no others; the whole grid "
                         + "is asserted at once so a shifted cell cannot hide behind a passing neighbour");
         // DATE_TIME: the ONLY date-bearing datetime format is the ISO yyyy-MM-dd'T'HH:mm:ss; every other date-bearing
         // form is rejected `The date format is invalid` (KERNEL-FINDINGS §6 — IG19 parity-by-construction).

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import io.github.mbackschat.a12.dm.adapter.KernelExpansionFixture;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -68,32 +69,18 @@ class IncludedDeclarationLocaleScopeLawsTest {
                 .rootGroup("Catalog", c -> c.stringField("StoreName", s -> { }))
                 .build().toJson();
         return ModelDocument.read(structure)
-                .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist")
                 .toJson();
     }
 
     /** Expand the catalogue over a price list built from [locales] and [messages], and serialize the result. */
     private static String expanded(List<String> locales, List<LocalizedText> messages) {
-        try {
-            IDocumentModelService service = new DocumentModelServiceFactory().createDocumentModelService();
-            IDocumentModel model = SERIALIZER.deserialize(new StringReader(catalog()));
-            service.expand(model, reference -> {
-                if (!"pricelist".equals(reference)) {
-                    throw new IllegalStateException("unknown reference: " + reference);
-                }
-                try {
-                    return SERIALIZER.deserialize(new StringReader(pricelist(locales, messages)));
-                } catch (IOException unreadable) {
-                    throw new UncheckedIOException("the kits' own output must be readable", unreadable);
-                }
-            });
-            StringWriter out = new StringWriter();
-            SERIALIZER.serialize(model, out, n -> { });
-            return out.toString();
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException("the kits' own output must be readable", unreadable);
-        }
+        return KernelExpansionFixture.expandedJson(catalog(), reference -> {
+            if (!"pricelist".equals(reference)) {
+                throw new IllegalStateException("unknown reference: " + reference);
+            }
+            return pricelist(locales, messages);
+        });
     }
 
     /** The control: a provider matching the entry's locales, its rule covering both, mounts and is admitted. */

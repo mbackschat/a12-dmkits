@@ -1,11 +1,13 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -46,7 +48,6 @@ class IncludesTypedefsRuleTest {
     private static DocumentModelDraft storefront() {
         return DocumentModelDraft.named("storefront").locale("en_US")
                 .typeDef("Sku", t -> t.string(s -> s.maxLength(12)))
-                .include("pricelist", "pricelist")
                 .rootGroup("Storefront", s -> s
                         .field("StoreName", FieldKind.STRING)
                         .typedefField("ProductSku", "Sku")
@@ -101,7 +102,7 @@ class IncludesTypedefsRuleTest {
         BoundModel m2 = m.add(rule);
         assertTrue(m2.toJson().contains("PriceCapRule"), "the rule landed");
         // proof the include stayed separate (not inlined) after writing a rule that uses an included field
-        assertTrue(m2.toJson().contains("\"modelAlias\" : \"pricelist\""), "the include reference is preserved");
+        assertFalse(ModelDocument.read(m2.toJson()).mountsOfInclude("pricelist").isEmpty(), "the include reference is preserved");
         assertEquals(false, m2.toJson().contains("/Pricelist/ListPrice"), "included content must not leak into the base");
     }
 

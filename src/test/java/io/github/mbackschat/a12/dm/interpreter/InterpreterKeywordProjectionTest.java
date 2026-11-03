@@ -79,11 +79,13 @@ class InterpreterKeywordProjectionTest {
             "SuppressWarning", "UnterdrueckeWarnung");
 
     /**
-     * The operator rulekit defers (it depends on dynamically enumerated columns) and the interpreter with it.
-     * Unlike the checker — which must list it, or read it as an undeclared field — the interpreter refuses it
-     * loudly at evaluation, so leaving it out of the vocabulary costs nothing.
+     * Operators the interpreter does not evaluate: the one rulekit defers (it depends on dynamically enumerated
+     * columns) and kernel 31.1.1's term sum (KF656). Unlike the checker — which must list them, or read them as
+     * undeclared fields — the interpreter refuses them loudly at evaluation, so leaving them out of the
+     * vocabulary costs nothing.
      */
-    private static final Set<String> DEFERRED_OPERATOR = Set.of("ValueNotConsistent", "WertNichtKonsistent");
+    private static final Set<String> DEFERRED_OPERATOR =
+            Set.of("ValueNotConsistent", "WertNichtKonsistent", "SumOfTerms", "SummeVonTermen");
 
     /**
      * H-model constructs — multi-form (Vordruck/USB) and bounded row iteration — classified {@code legacy} in
@@ -212,10 +214,10 @@ class InterpreterKeywordProjectionTest {
         Map<String, Integer> expected = new LinkedHashMap<>();
         // 97 since 2026-10-20: the `@UnterdrueckeWarnung` preamble keyword joined the table (KERNEL-FINDINGS KF75).
         expected.put("hand-written German→canonical rows", 97);
-        expected.put("EN terminals in the kernel bundle", 112);
-        expected.put("DE terminals in the kernel bundle", 125);
+        expected.put("EN terminals in the kernel bundle", 113);
+        expected.put("DE terminals in the kernel bundle", 126);
         assertEquals(expected, actual,
-                "measured against kernel 30.8.1 on 2026-09-12 — a kernel bump moving these is a real signal, "
+                "measured against kernel 31.1.1 on 2026-11-03 — a kernel bump moving these is a real signal, "
                         + "so update the numbers deliberately rather than reading past a stale comment");
     }
 

@@ -29,7 +29,7 @@ class DenseUniquenessPrefixDiffTest {
         val root = edit.group("/Dispatch")
         val rows = edit.group("/Dispatch/Runs/Parcels")
         val safe = rows.num("Permit").filled()
-        val poison = rows.dateTime("RecordedAt").eq(Dsl.dateTimeValue("31.03.2024T02:30:00"))
+        val poison = rows.dateTime("RecordedAt").eq(Dsl.dateTimeValue("29.02.1500T10:00:00"))
         var json = edit.toJson()
         for (field in listOf("Charge", "ShippedOn")) {
             val values = root.flatten("Runs*/Parcels*/$field")

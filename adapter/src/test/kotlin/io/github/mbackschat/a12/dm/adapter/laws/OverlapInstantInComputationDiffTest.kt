@@ -11,8 +11,10 @@ import org.junit.jupiter.api.Test
 /**
  * Inside one computation a comparison and a sub-day difference read the exact instant a shift keeps across Berlin's
  * fall-back overlap (KERNEL-FINDINGS KF504; a12-kernel-lean SPEC-2026-10-30-10): from `2024-10-27T01:30`,
- * `AddHours(Start, 1)` and `AddHours(Start, 2)` both render `02:30`, yet the first is before the second, differs from
- * a stored `02:30`, and lies 60 minutes from it. KF504's `l1` row measured the kept instant on a chained shift only.
+ * `AddHours(Start, 1)` and `AddHours(Start, 2)` both render `02:30`, yet the first is before the second and lies 60
+ * minutes from it. A stored `02:30` is the FIRST of the two on kernel 31.1.1, whose parse takes an overlap's earlier
+ * offset (KF665), so it equals the one-hour shift; on 30.8.1 it was the second copy and differed. KF504's `l1` row
+ * measured the kept instant on a chained shift only.
  *
  * The controls are the same day from `00:30` beside a stored `01:30`, where no shift lands in the repeated hour, and
  * a summer day. Every numeric target is seeded `9`, so a cleared precondition shows. Every document compares dynamic
@@ -70,12 +72,12 @@ class OverlapInstantInComputationDiffTest {
     @Test
     fun allThreeEnginesAgreeOnEveryDocument() = DocumentDifferential.assertAgree(model, documents)
 
-    /** Both shifts render `02:30` in the overlap, yet they are ordered, 60 minutes apart, and unequal to a stored `02:30`. */
+    /** Both shifts render `02:30` in the overlap, yet they are ordered and 60 minutes apart; a stored `02:30` is the first. */
     @Test
     fun theComputationReadsTheKeptInstant() {
-        assertEquals(mapOf("Ordered" to "VALUE|1", "Matches" to "CLEARED", "Differs" to "VALUE|1",
+        assertEquals(mapOf("Ordered" to "VALUE|1", "Matches" to "VALUE|1", "Differs" to "CLEARED",
             "Days" to "VALUE|0", "Minutes" to "VALUE|60"), outcomes("overlap"))
-        assertEquals(emptyList<String>(), firings("overlap"))
+        assertEquals(listOf("LOGGED_AT_FIRST_HOUR"), firings("overlap"))
     }
 
     @Test

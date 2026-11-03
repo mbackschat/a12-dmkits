@@ -79,11 +79,12 @@ class ModelWideNameUniquenessLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("the fixture untouched — the control", KernelLaws.ADMITTED);
         expected.put("a SECOND root group with a distinct name", KernelLaws.ADMITTED);
-        // A build refusal with NO code, so `MVK_NAME_ROOT_GROUP_DUPLICATE` is not what a stored model draws
+        // A converter sentence with NO code ("Cannot have two child elements with the same name …", KERNEL-FINDINGS
+        // KF652; 30.8.1 could not build it), so `MVK_NAME_ROOT_GROUP_DUPLICATE` is not what a stored model draws
         // — the defect is real and the class is not.
-        expected.put("a second root group with the SAME name as the first", KernelLaws.NOT_BUILDABLE);
+        expected.put("a second root group with the SAME name as the first", KernelLaws.REFUSED_CODELESS);
         // The checker's own `ELEMENT_NAME_UNIQUENESS` law, and the same refusal tier.
-        expected.put("two subgroups of the SAME parent sharing a name", KernelLaws.NOT_BUILDABLE);
+        expected.put("two subgroups of the SAME parent sharing a name", KernelLaws.REFUSED_CODELESS);
         // …and the two MODEL-WIDE laws are not laws of a stored model at all: a name may repeat freely
         // across parents. A checker widening the within-parent law to the model would refuse both of these.
         expected.put("two subgroups of DIFFERENT parents sharing a name", KernelLaws.ADMITTED);

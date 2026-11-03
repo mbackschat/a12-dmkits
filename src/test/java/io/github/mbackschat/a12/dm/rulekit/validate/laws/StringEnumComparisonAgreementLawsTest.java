@@ -19,8 +19,9 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * question that has nothing to do with the enumeration's content, and — only where the partner is a written-out
  * value — a DOMAIN question that never reaches the display-value machinery beside it.
  *
- * <p>The display-value half ({@code MVK_INVALID_COMPARE_ENUM_TO_STRING}, {@code MVK_INVALID_COMPARE_ENUM_TO_ENUM})
- * is measured here as the neighbour it is, not reported by the checker family this grid backs.
+ * <p>Kernel 30.8.1 had a display-value half beside it ({@code MVK_INVALID_COMPARE_ENUM_TO_STRING},
+ * {@code MVK_INVALID_COMPARE_ENUM_TO_ENUM}); kernel 31.1.1 deleted it, and its two rows here are now admitted
+ * (KERNEL-FINDINGS KF655).
  */
 class StringEnumComparisonAgreementLawsTest {
 
@@ -121,10 +122,8 @@ class StringEnumComparisonAgreementLawsTest {
         expected.put("an enumeration against a boolean", "MVK_INVALID_COMPARE_TO_YESNO");
         expected.put("a text declaration ordered against a number", "MVK_INVALID_TYPE_FOR_COMPARISON");
         expected.put("two written-out values", "MVK_INVALID_COMPARE_TO_CONST");
-        expected.put("a DISPLAY-BEARING enumeration against a text declaration",
-                "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("a display-bearing enumeration against a textless one",
-                "MVK_INVALID_COMPARE_ENUM_TO_STRING");
+        expected.put("a DISPLAY-BEARING enumeration against a text declaration", KernelLaws.ADMITTED);
+        expected.put("a display-bearing enumeration against a textless one", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the arms that answer first and the neighbour beside");
     }
 }

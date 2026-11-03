@@ -39,7 +39,7 @@ class IncludeInlineVerbTest {
 
         assertEquals(0, CliTestSupport.run("-m", model.toString(),
                 "group", "extract", "/Order/Shipping", "--reference", "shipping").code());
-        assertTrue(Files.readString(model).contains("\"modelAlias\""), "extracted → mounted");
+        assertTrue(Files.readString(model).contains("\"includeConfig\""), "extracted → mounted");
 
         var res = CliTestSupport.run("-m", model.toString(), "include", "inline", "shipping");
         assertEquals(0, res.code(), res.err());
@@ -48,7 +48,7 @@ class IncludeInlineVerbTest {
         assertEquals("shipping", j.path("changed").path("inlined").asText());
 
         String baseAfter = Files.readString(model);
-        assertFalse(baseAfter.contains("\"modelAlias\""), "the mount became a real group again");
+        assertFalse(baseAfter.contains("\"includeConfig\""), "the mount became a real group again");
         assertTrue(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields are inline in the base again");
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "self-contained + valid");
     }

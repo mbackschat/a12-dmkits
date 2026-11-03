@@ -943,7 +943,7 @@ const value: A12DateTime = A12DateTime.parseLocal(
 
 The value retains enough evaluation context to make later calls context-free. UTC is the initial guaranteed zone; the interpreter's supported set is `{UTC, GMT, Europe/Berlin}` (IF155), so `A12DateTimeWire.timeZone` accepts UTC first and adopts GMT/Europe/Berlin as the projection graduates the set.
 
-`Europe/Berlin`'s supported history is already kernel-exact (IF155); only the wider IANA-zone domain beyond the supported set awaits IG83. For every projected zone, a spring gap is a conversion error, a fall-back ambiguity follows the exact kernel resolution rule, and binary operations reject incompatible zones unless an explicit conversion exists.
+`Europe/Berlin`'s supported history is already kernel-exact (IF155); only the wider IANA-zone domain beyond the supported set awaits IG83. For every projected zone, a spring gap moves forward by its length and a fall-back ambiguity takes the earlier offset, as kernel 31.1.1 resolves them ([KF665](KERNEL-FINDINGS.md#kf665)), and binary operations reject incompatible zones unless an explicit conversion exists.
 
 ## 5. Wrapping and unwrapping native values
 

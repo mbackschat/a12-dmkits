@@ -19,7 +19,6 @@ dmtool -m examples/models/multifile/app/storefront.dm.json model info -w example
   "id": "storefront",
   "includes": [
     {
-      "alias": "catalog",
       "ref": "catalog",
       "resolvedPath": "lib/catalog.dm.json"
     }

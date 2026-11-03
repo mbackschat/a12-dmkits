@@ -40,7 +40,7 @@ class SupportedCharactersTest {
     private fun source(definition: String?, vararg values: String) =
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"shop","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"shop","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},${definition?.let { """"modelConfig":{"supportedCharacters":$it},""" } ?: ""}
               "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shop","Group":{"elements":[
@@ -109,7 +109,7 @@ class SupportedCharactersTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"shop","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"shop","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelConfig":{"supportedCharacters":["A-Z"]},
                   "modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Shop","Group":{"elements":[

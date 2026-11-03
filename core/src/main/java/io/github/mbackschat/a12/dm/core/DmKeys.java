@@ -46,8 +46,13 @@ public final class DmKeys {
     public static final String LOCALES = "locales";
     public static final String TEXT = "text";
     public static final String REFERENCE = "reference";
-    public static final String ALIAS = "alias";
+    /** The DM 28 mount key, gone since DM 29.0 (A12K-4102). Read only to refuse it: A12 drops it silently (KF651). */
     public static final String MODEL_ALIAS = "modelAlias";
+    /** A mount group's include directive, {@code {reference, includeLevel?, excludeRules?, excludeComputations?}}. */
+    public static final String INCLUDE_CONFIG = "includeConfig";
+    public static final String INCLUDE_LEVEL = "includeLevel";
+    public static final String EXCLUDE_RULES = "excludeRules";
+    public static final String EXCLUDE_COMPUTATIONS = "excludeComputations";
     public static final String PURPOSE = "purpose";
     public static final String REPEATABILITY = "repeatability";
     public static final String USAGE_TYPE = "usageType";

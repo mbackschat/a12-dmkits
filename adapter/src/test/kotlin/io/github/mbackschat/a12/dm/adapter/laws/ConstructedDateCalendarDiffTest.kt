@@ -17,45 +17,51 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 /**
- * Both kernel strategies lock `Date(...)` construction reality at the two legacy-calendar separators:
- * the Julian side of the default Gregorian cutover and a model-zone whole-date discontinuity.
+ * Both kernel strategies lock `Date(...)` construction reality on kernel 31.1.1's proleptic ISO calendar
+ * (KERNEL-FINDINGS KF665): `Date(29,2,1500)` is no date, the ten days 1582-10-05..14 are ordinary days, and a zone's
+ * skipped whole day (Pacific/Apia 2011-12-30) is still a date. 30.8.1's hybrid Julian/Gregorian calendar answered
+ * each of these the other way, so every positive row here is one the hybrid account gets wrong.
  */
 class ConstructedDateCalendarDiffTest {
 
     @Test
-    fun utcJulianLeapDayAndNeighborsTriCheck() {
+    fun utcConstructionIsProlepticAtTheJulianLeapDay() {
         val fixture = fixture("UTC")
-        assertClass(fixture, 29, 2, 1500, setOf(VALID), includeInterpreter = true)
+        assertClass(fixture, 29, 2, 1500, setOf(INVALID), includeInterpreter = true)
         assertClass(fixture, 28, 2, 1500, setOf(VALID), includeInterpreter = true)
         assertClass(fixture, 1, 3, 1500, setOf(VALID), includeInterpreter = true)
         assertClass(fixture, 29, 2, 1501, setOf(INVALID), includeInterpreter = true)
+        assertClass(fixture, 29, 2, 1600, setOf(VALID), includeInterpreter = true)
     }
 
     @Test
-    fun julianConstructionRemainsAValueForEveryLegalDateConsumerFamily() {
+    fun aPreCutoverConstructionStepsProlepticallyInEveryLegalDateConsumerFamily() {
         val fixture = fixture("UTC")
-        val expected = setOf(
+        // From 1500-02-28 one day is March 1 (the hybrid calendar's 1500 had a February 29), and one month is
+        // March 28, so the March 29 target misses ADD_MONTH.
+        val relevant = setOf(
             EXTRACTED, DAY_DIFF, DAY_DIFF_YEAR, MONTH_DIFF, YEAR_DIFF, ADD_DAY, ADD_MONTH, ADD_YEAR,
             DATE_TIME_DIFF, DATE_TIME_ADD, MIN_LEGACY,
         )
-        val document = document(29, 2, 1500)
+        val expected = relevant - ADD_MONTH
+        val document = document(28, 2, 1500)
 
         val dynamic = RuntimeLaws.messages(fixture.modelJson, document)
-            .map { it.code() }.filter { it in expected }.toSet()
+            .map { it.code() }.filter { it in relevant }.toSet()
         val generated = fixture.javaEngine.messages(fixture.javaEngine.instance(document))
-            .map { it.code() }.filter { it in expected }.toSet()
-        assertEquals(expected, dynamic, "dynamic-Groovy must preserve the constructed Julian date")
-        assertEquals(dynamic, generated, "generated Java must preserve the same constructed value")
+            .map { it.code() }.filter { it in relevant }.toSet()
+        assertEquals(expected, dynamic, "dynamic-Groovy steps 1500-02-28 proleptically")
+        assertEquals(dynamic, generated, "generated Java steps the same constructed value")
 
         val definition = ModelLoader.load(fixture.modelJson)
         val interpreted = DmInterpreter(definition).validateFull(
-            interpretedDocument(definition, 29, 2, 1500),
-        ).map { it.code }.filter { it in expected }.toSet()
-        assertEquals(dynamic, interpreted, "interpreter must not reparse Date(...) as proleptic Gregorian")
+            interpretedDocument(definition, 28, 2, 1500),
+        ).map { it.code }.filter { it in relevant }.toSet()
+        assertEquals(dynamic, interpreted, "interpreter steps the same constructed value")
     }
 
     @Test
-    fun constructedDatesStepAcrossTheDefaultCutoverWithoutInventingTenDays() {
+    fun constructedDatesCountTheFormerCutoverDays() {
         val fixture = fixture("UTC")
         val expected = setOf(CUTOVER_DIFF, CUTOVER_ADD)
         val document = document(4, 10, 1582)
@@ -64,7 +70,7 @@ class ConstructedDateCalendarDiffTest {
             .map { it.code() }.filter { it in expected }.toSet()
         val generated = fixture.javaEngine.messages(fixture.javaEngine.instance(document))
             .map { it.code() }.filter { it in expected }.toSet()
-        assertEquals(expected, dynamic, "1582-10-04 plus one legacy-calendar day is 1582-10-15")
+        assertEquals(expected, dynamic, "1582-10-04 is eleven proleptic days before 1582-10-15")
         assertEquals(dynamic, generated, "generated Java cutover result")
 
         val definition = ModelLoader.load(fixture.modelJson)
@@ -81,7 +87,8 @@ class ConstructedDateCalendarDiffTest {
             ZERO_EXTRACT, ZERO_QUARTER_EXTRACT, ZERO_DATE_TIME_EXTRACT, ZERO_DATE_TIME_HOUR,
             ZERO_DATE_DIFF, ZERO_DATE_TIME_DIFF, ZERO_MIN_SKIP, ZERO_MAX_SKIP,
         )
-        assertConsumerCodes(fixture, "10", "10", "1582", expected, "cutover-hole Date")
+        assertConsumerCodes(fixture, "29", "2", "1500", expected, "the Julian leap day")
+        assertConsumerCodes(fixture, "10", "10", "1582", setOf(ZERO_MIN_SKIP), "a former cutover-hole day is real")
         assertConsumerCodes(fixture, "abc", "10", "1582", emptySet(), "malformed Date component")
     }
 
@@ -89,12 +96,12 @@ class ConstructedDateCalendarDiffTest {
     fun constructedDateNoValueReasonSurvivesLegalNestedConsumers() {
         val fixture = fixture("UTC")
         assertNestedConsumerCodes(
-            fixture, day = "10", hour = "12",
+            fixture, day = "29", hour = "12",
             expected = setOf(NESTED_SHIFT_ZERO, NESTED_DATE_FROM_ZERO, COMPOSED_DATE_TIME_ZERO),
             clue = "unreal date plus valid time",
         )
         assertNestedConsumerCodes(
-            fixture, day = "15", hour = null,
+            fixture, day = "28", hour = null,
             expected = setOf(NESTED_DATE_FROM_ZERO, COMPOSED_DATE_TIME_ZERO),
             clue = "real date plus empty time",
         )
@@ -106,45 +113,48 @@ class ConstructedDateCalendarDiffTest {
     }
 
     @Test
-    fun monthAndYearArithmeticUsesTheExactLegacyCutoverSeparators() {
+    fun monthAndYearArithmeticIgnoresTheFormerCutover() {
         val fixture = fixture("UTC")
-        val expected = setOf(
+        // The five hybrid separators (a month or year step landing ten days on, a span shortened by the missing
+        // days) stay silent; the four that hold in both calendars prove the rules are live.
+        val relevant = setOf(
             CUTOVER_ADD_MONTH, CUTOVER_ADD_YEAR,
             CUTOVER_MONTH_BEFORE, CUTOVER_MONTH_AT,
             CUTOVER_YEAR_BEFORE, CUTOVER_MONTHS_BEFORE,
             CUTOVER_YEAR_AT, CUTOVER_MONTHS_AT,
             GREGORIAN_END_OF_FEBRUARY,
         )
+        val expected = setOf(CUTOVER_MONTH_AT, CUTOVER_YEAR_AT, CUTOVER_MONTHS_AT, GREGORIAN_END_OF_FEBRUARY)
         val document = document(29, 2, 1500)
         val dynamic = RuntimeLaws.messages(fixture.modelJson, document)
-            .map { it.code() }.filter { it in expected }.toSet()
+            .map { it.code() }.filter { it in relevant }.toSet()
         val generated = fixture.javaEngine.messages(fixture.javaEngine.instance(document))
-            .map { it.code() }.filter { it in expected }.toSet()
-        assertEquals(expected, dynamic, "dynamic-Groovy legacy month/year separators")
-        assertEquals(dynamic, generated, "generated Java legacy month/year separators")
+            .map { it.code() }.filter { it in relevant }.toSet()
+        assertEquals(expected, dynamic, "dynamic-Groovy month/year steps across 1582-10")
+        assertEquals(dynamic, generated, "generated Java month/year steps across 1582-10")
 
         val definition = ModelLoader.load(fixture.modelJson)
         val interpreted = DmInterpreter(definition).validateFull(
             interpretedDocument(definition, 29, 2, 1500),
-        ).map { it.code }.filter { it in expected }.toSet()
-        assertEquals(dynamic, interpreted, "interpreter legacy month/year separators")
+        ).map { it.code }.filter { it in relevant }.toSet()
+        assertEquals(dynamic, interpreted, "interpreter month/year steps across 1582-10")
     }
 
     @Test
-    fun supportedGmtAndBerlinUseTheSameHybridCutoverCalendar() {
+    fun supportedGmtAndBerlinShareTheProlepticCalendar() {
         for (zone in listOf("GMT", "Europe/Berlin")) {
             val fixture = fixture(zone)
-            assertClass(fixture, 29, 2, 1500, setOf(VALID), includeInterpreter = true)
-            assertClass(fixture, 10, 10, 1582, setOf(INVALID), includeInterpreter = true)
+            assertClass(fixture, 29, 2, 1500, setOf(INVALID), includeInterpreter = true)
+            assertClass(fixture, 10, 10, 1582, setOf(VALID), includeInterpreter = true)
             assertClass(fixture, 15, 10, 1582, setOf(VALID), includeInterpreter = true)
         }
     }
 
     @Test
-    fun apiaSkippedDateAndNeighborsAgreeAcrossBothKernelStrategies() {
+    fun apiaSkippedDateIsADateOnBothKernelStrategies() {
         val fixture = fixture("Pacific/Apia")
         assertClass(fixture, 29, 12, 2011, setOf(VALID), includeInterpreter = false)
-        assertClass(fixture, 30, 12, 2011, setOf(INVALID), includeInterpreter = false)
+        assertClass(fixture, 30, 12, 2011, setOf(VALID), includeInterpreter = false)
         assertClass(fixture, 31, 12, 2011, setOf(VALID), includeInterpreter = false)
 
         assertThrows(UnsupportedModelTimeZoneException::class.java) {
@@ -248,9 +258,9 @@ class ConstructedDateCalendarDiffTest {
             rule(model, "ConstructedDateTimeAdd", DATE_TIME_ADD,
                 Dsl.addDays(constructedDateTime, 1).eq(nextDayDateTime)),
             rule(model, "ConstructedDateCutoverDifference", CUTOVER_DIFF,
-                Dsl.differenceInDays(date, octoberFifteenth1582).eq(1)),
+                Dsl.differenceInDays(date, octoberFifteenth1582).eq(11)),
             rule(model, "ConstructedDateCutoverAdd", CUTOVER_ADD,
-                model.num(YEAR).filled().and(Dsl.addDays(octoberFourth1582, 1).eq(octoberFifteenth1582))),
+                model.num(YEAR).filled().and(Dsl.addDays(octoberFourth1582, 11).eq(octoberFifteenth1582))),
             rule(model, "ConstructedDateCutoverAddMonth", CUTOVER_ADD_MONTH,
                 model.num(YEAR).filled().and(Dsl.addMonths(septemberTenth1582, 1).eq(octoberTwentieth1582))),
             rule(model, "ConstructedDateCutoverAddYear", CUTOVER_ADD_YEAR,
@@ -345,8 +355,8 @@ class ConstructedDateCalendarDiffTest {
 
     private fun stateDocument(day: String?, hour: String?): RuntimeLaws.Doc {
         val document = RuntimeLaws.doc().group(ROOT, 1)
-            .field(MONTH, "10", 1, 1)
-            .field(YEAR, "1582", 1, 1)
+            .field(MONTH, "2", 1, 1)
+            .field(YEAR, "1500", 1, 1)
             .field(MINUTE, "0", 1, 1)
             .field(SECOND, "0", 1, 1)
             .withTargets()
@@ -442,7 +452,7 @@ class ConstructedDateCalendarDiffTest {
         day: String?,
         hour: String?,
     ): Document {
-        val document = interpretedDocument(definition, day, "10", "1582")
+        val document = interpretedDocument(definition, day, "2", "1500")
             .field(MINUTE, "0", 1, 1)
             .field(SECOND, "0", 1, 1)
         hour?.let { document.field(HOUR, it, 1, 1) }

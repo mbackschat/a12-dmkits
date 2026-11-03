@@ -43,7 +43,7 @@ class DeclarationSlotTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[$locales]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[$locales]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -263,8 +263,8 @@ class DeclarationSlotTest {
 
         val expected = mapOf(
             "a code — the control" to listOf(),
-            // An absent code also draws A12's empty-code sentence, which is `BasicSentenceTest`'s family (KF579).
-            "no errorCode member" to listOf("MVK_ERROR_CODE_MISSING"),
+            // Kernel 31.1.1 cannot serialize a rule with no code, so the model is not built (KF654).
+            "no errorCode member" to listOf(CK_MODEL_NOT_BUILDABLE),
             "a blank errorCode" to listOf("MVK_ERROR_CODE_MISSING"),
             // Coerced by A12 to the code "7", so refusing it would reject a model the Kernel admits.
             "a numeric errorCode" to listOf(),

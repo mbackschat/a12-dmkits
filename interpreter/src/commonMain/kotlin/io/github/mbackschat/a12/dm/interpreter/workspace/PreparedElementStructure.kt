@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.workspace
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
 internal enum class PreparedElementType(val wireName: String) {
@@ -36,9 +37,13 @@ internal data class PreparedElementStructure(
 
 /**
  * Classify the one authoritative document-element tree for both raw workspace assembly and expanded loading.
- * The Kernel refuses missing identity members and malformed element bodies, except that it coerces present
- * non-string names/ids and admits an absent/null Field body. Portable preparation deliberately requires strings
- * and an object body because otherwise it would lose identity or fabricate a field definition.
+ * Kernel 31.1.1 refuses missing identity members and every non-object Field, Rule or Computation body, an absent
+ * one included, and coerces present non-string names/ids; portable preparation deliberately requires strings,
+ * because otherwise it would lose identity.
+ *
+ * A Group body is the exception: the kernel reads a missing or `null` one as an empty group on every carrier and
+ * refuses any other non-object (KERNEL-FINDINGS KF3, `adapter.WorkspaceIncludeStructureKernelTest`). The returned
+ * [PreparedElementStructure.node] then carries that empty body, so no later stage meets a group without one.
  */
 internal fun requirePreparedElementStructure(
     element: JsonElement,
@@ -64,9 +69,17 @@ internal fun requirePreparedElementStructure(
     if (position == PreparedElementPosition.MODEL_ROOT && type != PreparedElementType.GROUP) {
         invalid(path, "a model root element must be a Group")
     }
-    val body = node[type.wireName] as? JsonObject
-        ?: invalid(path, "a ${type.wireName} element requires an object ${type.wireName} body")
-    return PreparedElementStructure(node, type, name, id, body)
+    return when (val body = node[type.wireName]) {
+        is JsonObject -> PreparedElementStructure(node, type, name, id, body)
+        null, JsonNull -> {
+            if (type != PreparedElementType.GROUP) {
+                invalid(path, "a ${type.wireName} element requires an object ${type.wireName} body")
+            }
+            val empty = JsonObject(emptyMap())
+            PreparedElementStructure(JsonObject(node + (type.wireName to empty)), type, name, id, empty)
+        }
+        else -> invalid(path, "a ${type.wireName} element requires an object ${type.wireName} body")
+    }
 }
 
 internal fun requirePreparedGroupChildren(
@@ -80,5 +93,16 @@ internal fun requirePreparedGroupChildren(
         else -> invalid(path, "Group.elements must be an array")
     }
 
-internal val PREPARED_INCLUDE_DIRECTIVE_MEMBERS =
-    setOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")
+/** The member a DM 29 mount group carries; `null` declares no mount (KF651). */
+internal const val INCLUDE_CONFIG_MEMBER = "includeConfig"
+
+/**
+ * The DM 28 mount members, which A12 has ignored since DM 29.0 moved them into [INCLUDE_CONFIG_MEMBER] (KF651). A12
+ * reads a group carrying one as plain, so the mount or its option is lost without a notification.
+ */
+internal val DM28_MOUNT_MEMBERS = setOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")
+
+/** The include member this group body still carries, or null when it is a plain group. */
+internal fun JsonObject.includeDirectiveMember(): String? =
+    INCLUDE_CONFIG_MEMBER.takeIf { get(it).let { value -> value != null && value !is JsonNull } }
+        ?: DM28_MOUNT_MEMBERS.firstOrNull(::containsKey)

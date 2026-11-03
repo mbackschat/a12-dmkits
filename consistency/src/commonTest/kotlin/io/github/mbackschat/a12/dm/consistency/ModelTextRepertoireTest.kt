@@ -22,8 +22,7 @@ class ModelTextRepertoireTest {
         name: String = "ProbeRule",
         extraMessage: String = "",
         target: String = "../Reference",
-        extraMember: String = "",
-    ) = """{"type":"Rule","id":"r0","name":${q(name)},"Rule":{"errorCondition":${q(condition)},$extraMember
+    ) = """{"type":"Rule","id":"r0","name":${q(name)},"Rule":{"errorCondition":${q(condition)},
         "errorEntityRelPath":${q(target)},"errorCode":${q(code)},
         "errorMessage":[{"locale":"en_US","text":${q(message)}}$extraMessage]}}"""
 
@@ -44,7 +43,7 @@ class ModelTextRepertoireTest {
         reference: String = """{"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}}""",
         groupLabel: String = "Claim",
     ) = """
-        {"header":{"modelVersion":"28.4.0","id":"claims-repertoire","locales":[{"code":"en_US"}],"labels":[{"locale":"en_US","text":"Claims"}]},
+        {"header":{"modelVersion":"29.4.0","id":"claims-repertoire","locales":[{"code":"en_US"}],"labels":[{"locale":"en_US","text":"Claims"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Claim","Group":{"label":[{"locale":"en_US","text":${q(groupLabel)}}],
            "elements":[
@@ -150,7 +149,7 @@ class ModelTextRepertoireTest {
 
     /**
      * It stands beside the classes A12 lists with it. A lone surrogate is refused like a pair, and beside the
-     * message's own `INVALID_CHARACTERS`, since a lone surrogate is `\p{C}` to the message gate.
+     * message's own `WRONG_ENCODING`, since the message gate asks the encoding before `\p{C}` (KERNEL-FINDINGS KF657).
      */
     @Test
     fun itIsReportedBesideTheConditionClassAndForALoneSurrogate() {
@@ -158,8 +157,8 @@ class ModelTextRepertoireTest {
             listOf(
                 setOf(RULE, "MVK_LEXER_STANDARD_ERROR at /Claim/ProbeRule"),
                 setOf(RULE, "MVK_UNEXPECTED_TOKEN at /Claim/ProbeRule"),
-                setOf(RULE, "INVALID_CHARACTERS at /Claim/ProbeRule"),
-                setOf(RULE, "INVALID_CHARACTERS at /Claim/ProbeRule"),
+                setOf(RULE, "WRONG_ENCODING at /Claim/ProbeRule"),
+                setOf(RULE, "WRONG_ENCODING at /Claim/ProbeRule"),
             ),
             listOf(
                 reported(model(rule(condition = "$READS And $GRIN FieldFilled(Note)"))).toSet(),
@@ -174,22 +173,18 @@ class ModelTextRepertoireTest {
 
     /**
      * An error target naming no field stops A12's rule parser and leaves this refusal standing beside the
-     * target's classes; an `ONLY` variant filter takes it away with the rest of the rule, as it does every
-     * finding about the rule (`…ModelTextRepertoireLawsTest.anErrorTargetDoesNotStopItAndAVariantFilterDoes`).
+     * target's classes (`…ModelTextRepertoireLawsTest.anErrorTargetDoesNotStopIt`).
      */
     @Test
-    fun anErrorTargetDoesNotStopItAndAVariantFilterDoes() {
-        val only = """"variantFilter":{"filterType":"ONLY","variants":["premium"]},"""
+    fun anErrorTargetDoesNotStopIt() {
         assertEquals(
             listOf(
                 setOf(RULE, "MVK_ERROR_FIELD_MISSING at /Claim/ProbeRule", "MVK_MISSING_ERROR_FIELD at /Claim/ProbeRule"),
                 setOf(RULE, "MVK_ERROR_FIELD_NOT_REFERENCED at /Claim/ProbeRule"),
-                emptySet(),
             ),
             listOf(
                 reported(model(rule(message = "see $GRIN", target = "../NoSuchField"))).toSet(),
                 reported(model(rule(message = "see $GRIN", target = "../Summary"))).toSet(),
-                reported(model(rule(message = "see $GRIN", extraMember = only))).toSet(),
             ),
         )
     }

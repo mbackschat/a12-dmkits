@@ -127,11 +127,6 @@ class SurvivingDataNotInBuildGuardTest {
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "regenerated scanner-host class comparisons; checker-near-miss/scanner.tsv in test "
                                     + "resources owns the persistent comparison record")),
-            Map.entry("build/checker-$name",
-                    new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
-                            "the variant population's live clusters and witness labels, regenerated on every run; "
-                                    + "adapter/src/test/resources/checker-near-miss/variants.tsv and variants-mixed.tsv "
-                                    + "are the committed comparison records, while KERNEL-FINDINGS records the claims")),
             Map.entry("build/checker-element-paths",
                     new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                             "regenerated path-population differences and prediction diagnostics; "

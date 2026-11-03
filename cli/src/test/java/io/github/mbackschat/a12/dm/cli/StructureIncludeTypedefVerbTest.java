@@ -36,7 +36,7 @@ class StructureIncludeTypedefVerbTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING))
                         .build().toJson());
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
+                "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString());
         assertNotEquals(0, res.code(), () -> "the locale-mismatched mount is rejected: " + res.out());
         String summary = M.readTree(res.out()).path("diagnostics").path(0).path("summary").asText();
@@ -85,13 +85,13 @@ class StructureIncludeTypedefVerbTest {
                         .build().toJson());
 
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
 
         String written = Files.readString(model);
-        assertTrue(written.contains("\"modelAlias\""));
+        assertTrue(written.contains("\"includeConfig\""));
         assertTrue(written.contains("\"reference\""));
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check", "-w", dir.toString()).code());
     }

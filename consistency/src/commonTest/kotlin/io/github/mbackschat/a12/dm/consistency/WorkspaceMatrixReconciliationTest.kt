@@ -22,8 +22,8 @@ import kotlin.test.assertTrue
  * its typed author, so a green `:consistency:check` alone does not mean the oracle is current.
  *
  * **What the matrix does NOT reach, so the hand-written rows stay.** No case spells `includeLevel` as
- * `SINGLE_RG` explicitly, none carries `modelAlias` beside non-empty `elements`, and its multi-root providers
- * are only ever mounted at `MODEL_ROOT`, which admits them — the already-expanded branch, the level spelling
+ * `SINGLE_RG` explicitly, none carries `includeConfig` beside non-empty `elements`, and its multi-root providers
+ * are only ever mounted at `MODEL_ROOT`, which admits them — the replaced-local-elements branch, the level spelling
  * and `SINGLE_RG`'s refusal of a multi-root provider are `WorkspaceMountTest`'s, and this file is not
  * evidence about them.
  *
@@ -51,11 +51,11 @@ class WorkspaceMatrixReconciliationTest {
             "include-contributed-typedef" to agrees,
             "imported-typedef-nested-single" to agrees,
             "imported-typedef-nested-model-root" to agrees,
-            "alias-with-exclusions" to agrees,
+            "mount-with-exclusions" to agrees,
             "rules-excluded-computation-retained" to agrees,
             "computations-excluded-rule-retained" to agrees,
             "model-root-multiple-groups" to agrees,
-            "same-alias-mounted-twice" to agrees,
+            "same-model-mounted-twice" to agrees,
             "nested-rules-excluded" to agrees,
             // The two attachment cases mount the same template at DIFFERENT levels — MODEL_ROOT here, and
             // SINGLE_RG in its sibling, where the shielding `usageType` transfers to the mount group itself.
@@ -88,7 +88,7 @@ class WorkspaceMatrixReconciliationTest {
         val root = Json.parseToJsonElement(provider).jsonObject
             .getValue("content").jsonObject.getValue("modelRoot").jsonObject
             .getValue("rootGroups").jsonArray.single().jsonObject.getValue("Group").jsonObject
-        assertTrue("modelAlias" in root && root["elements"]?.jsonArray.isNullOrEmpty(),
+        assertTrue("includeConfig" in root && root["elements"]?.jsonArray.isNullOrEmpty(),
             "this provider's own ROOT group must still be an unexpanded mount, which is the shape that " +
                 "separates expanding a provider fully from reading its root's elements")
 

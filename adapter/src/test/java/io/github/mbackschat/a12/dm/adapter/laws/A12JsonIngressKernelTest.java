@@ -177,18 +177,17 @@ class A12JsonIngressKernelTest {
     }
 
     /**
-     * A pre-Gregorian date is the ONE date value A12 re-renders into a different spelling: parsing uses
-     * {@code SimpleDateFormat}'s Julian/Gregorian hybrid calendar while
-     * {@code FieldValueConverter.serializeInstant} formats with the proleptic-Gregorian
-     * {@code java.time.DateTimeFormatter}. Both spellings are {@code datumFalsch} regardless, so the shift is
-     * confined to a domain that is already a formal error.
+     * An early date keeps its spelling on kernel 31.1.1: parsing and {@code FieldValueConverter.serializeInstant} both
+     * read it through {@code java.time}, on the proleptic Gregorian calendar. On 30.8.1 parsing went through
+     * {@code SimpleDateFormat}'s Julian/Gregorian hybrid calendar, so this value came back as {@code 1583-10-14}.
+     * It is {@code datumFalsch} either way.
      */
     @Test
-    void aPreGregorianDateIsTheOneDateValueA12RewritesIntoADifferentSpelling() {
+    void anEarlyDateKeepsItsSpellingThroughA12sIngress() {
         RuntimeLaws.JsonIngress observed = RuntimeLaws.jsonIngress(MODEL,
                 "{\"Order\":{\"OrderDate\":\"1583-10-15\"}}");
 
-        assertEquals("{\"Order\":{\"OrderDate\":\"1583-10-14\"}}", observed.rewritten());
+        assertEquals("{\"Order\":{\"OrderDate\":\"1583-10-15\"}}", observed.rewritten());
         assertEquals(List.of("datumFalsch"), observed.codes());
     }
 }

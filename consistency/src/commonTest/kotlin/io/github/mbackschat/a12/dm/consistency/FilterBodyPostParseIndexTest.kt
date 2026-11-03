@@ -18,7 +18,7 @@ class FilterBodyPostParseIndexTest {
 
     private fun source(condition: String): ModelSource = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"claims-policy","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -68,7 +68,7 @@ class FilterBodyPostParseIndexTest {
                 val site = gate.entity
                 assertEquals(SyntaxSite.Kind.ENTITY, site.kind)
                 assertEquals(element.key, refusal.owner)
-                assertEquals("MVK_INVALID_ITERATION_IN_FILTER_CONDITION", refusal.finding.code)
+                assertEquals("MVK_INVALID_ITERATION_IN_SET_EXPRESSION", refusal.finding.code)
                 assertEquals(listOf(refusal), execution.selected(listOf(post, refusal)))
             }
         }
@@ -84,7 +84,7 @@ class FilterBodyPostParseIndexTest {
     fun aParseTimeClassAnswersAheadOfIt() {
         assertEquals(listOf("MVK_NO_ITERATION_FOR_WILDCARD"),
             codes("Sum(Parties*/Count Having [\$Orders/Note For \"A\"] == \"x\") > 0"))
-        assertEquals(listOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION"),
+        assertEquals(listOf("MVK_INVALID_ITERATION_IN_SET_EXPRESSION"),
             codes("Sum(Parties*/Count Having [Parties/Name] == [\$Orders/Note For \"A\"]) > 0 And " +
                 "Sum(Parties*/Count Having [Orders/Note] == \"y\") > 0"))
     }

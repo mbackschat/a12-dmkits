@@ -35,7 +35,7 @@ class IncludeAssemblyTest {
                 result.root.preparedStructure(),
                 caseId,
             )
-            for (directive in listOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")) {
+            for (directive in listOf("includeConfig", "modelAlias", "includeLevel", "excludeRules", "excludeComputations")) {
                 assertFalse(result.json.contains("\"$directive\""), "$caseId retains $directive")
             }
             assertNull(result.root.obj("header")["modelReferences"], caseId)
@@ -43,7 +43,7 @@ class IncludeAssemblyTest {
     }
 
     @Test
-    fun structuralComparatorDetectsUsageTypeLossThatPathAndTypeCannotSee() {
+    fun structuralComparatorDetectsAUsageTypeChangeThatPathAndTypeCannotSee() {
         val caseId = "single-attachment-rules-survive-outer-exclusion"
         val expected = expectedStructure(caseId)
         val actual = assemble(caseId).root.preparedStructure().toMutableMap()
@@ -52,7 +52,7 @@ class IncludeAssemblyTest {
         val facts = mount.obj("facts")
         actual[mountPath] = mount.replacing(
             "facts",
-            facts.replacing("usageType", JsonNull),
+            facts.replacing("usageType", JsonPrimitive("attachment")),
         )
 
         assertEquals(
@@ -89,7 +89,7 @@ class IncludeAssemblyTest {
 
     @Test
     fun exclusionFlagsAreIndependentAndKeepMountedFields() {
-        val bothExcluded = assemble("alias-with-exclusions").root.preparedElementTypes()
+        val bothExcluded = assemble("mount-with-exclusions").root.preparedElementTypes()
         val rulesExcluded = assemble("rules-excluded-computation-retained").root.preparedElementTypes()
         val computationsExcluded =
             assemble("computations-excluded-rule-retained").root.preparedElementTypes()
@@ -135,117 +135,21 @@ class IncludeAssemblyTest {
             .single()
             .obj()
             .obj("Group")
-        assertEquals("attachment", singleMountBody.string("usageType"))
-    }
-
-    @Test
-    fun outerExclusionUsesTheFinalUsageTypeOfAnOrdinaryNestedMount() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "imported-typedef-nested-single",
-            entryModelId = "permit-single",
-            providerModelId = "permit-section",
-            transientMountName = "Inspection",
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/Inspection/NegativeScore" in structure)
-        assertEquals(
-            "complexType",
-            structure.getValue("/Permit/Review/Inspection").obj("facts").string("usageType"),
-        )
-    }
-
-    @Test
-    fun outerExclusionUsesTheFinalUsageTypeOfADiscardedProviderRootMount() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "single-provider-root-include",
-            entryModelId = "permit-root-mount-host",
-            providerModelId = "inspection-root-mount",
-            transientMountName = "InspectionProxy",
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/NegativeScore" in structure)
-        assertEquals(
-            "complexType",
-            structure.getValue("/Permit/Review").obj("facts").string("usageType"),
-        )
-    }
-
-    @Test
-    fun providerAbsenceReplacesAnOrdinaryNestedMountsRawUsageTypeBeforeOuterExclusion() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "imported-typedef-nested-single",
-            entryModelId = "permit-single",
-            providerModelId = "permit-section",
-            transientMountName = "Inspection",
-            providerRootUsageType = null,
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/Inspection/NegativeScore" in structure)
-        assertNull(structure.getValue("/Permit/Review/Inspection").obj("facts").stringOrNull("usageType"))
-    }
-
-    @Test
-    fun providerAbsenceReplacesADiscardedProviderRootMountsRawUsageTypeBeforeOuterExclusion() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "single-provider-root-include",
-            entryModelId = "permit-root-mount-host",
-            providerModelId = "inspection-root-mount",
-            transientMountName = "InspectionProxy",
-            providerRootUsageType = null,
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/NegativeScore" in structure)
-        assertNull(structure.getValue("/Permit/Review").obj("facts").stringOrNull("usageType"))
-    }
-
-    @Test
-    fun ordinaryNestedMountsOwnExclusionUsesTheFinalProviderAbsence() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "imported-typedef-nested-single",
-            entryModelId = "permit-single",
-            providerModelId = "permit-section",
-            transientMountName = "Inspection",
-            providerRootUsageType = null,
-            outerExcludeRules = false,
-            mountExcludeRules = true,
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/Inspection/NegativeScore" in structure)
-        assertNull(structure.getValue("/Permit/Review/Inspection").obj("facts").stringOrNull("usageType"))
-    }
-
-    @Test
-    fun discardedProviderRootMountsOwnExclusionUsesTheFinalProviderAbsence() {
-        val result = assembleWithFinalUsageExclusion(
-            caseId = "single-provider-root-include",
-            entryModelId = "permit-root-mount-host",
-            providerModelId = "inspection-root-mount",
-            transientMountName = "InspectionProxy",
-            providerRootUsageType = null,
-            outerExcludeRules = false,
-            mountExcludeRules = true,
-        )
-        val structure = result.root.preparedStructure()
-
-        assertFalse("/Permit/Review/NegativeScore" in structure)
-        assertNull(structure.getValue("/Permit/Review").obj("facts").stringOrNull("usageType"))
+        // The mount keeps its own (absent) usageType on kernel 31.1.1; the template root's marker shields the rules
+        // above without transferring (KF3, adapter.MountUsageTypeKernelTest).
+        assertNull(singleMountBody["usageType"])
     }
 
     @Test
     fun repeatedMountsProduceAndChargeIndependentOutputOccurrences() {
-        val elements = assemble("same-alias-mounted-twice").root.preparedElementTypes()
+        val elements = assemble("same-model-mounted-twice").root.preparedElementTypes()
 
         assertEquals("Field", elements["/Permit/Primary/Score"])
         assertEquals("Field", elements["/Permit/Secondary/Score"])
 
         val error = assertFailsWith<ModelPreparationError> {
             assemble(
-                "same-alias-mounted-twice",
+                "same-model-mounted-twice",
                 ModelPreparationLimits.builder().maxPreparedElements(9).build(),
             )
         }
@@ -345,7 +249,7 @@ class IncludeAssemblyTest {
             },
         )
 
-        val repeated = assemble("same-alias-mounted-twice")
+        val repeated = assemble("same-model-mounted-twice")
             .mountedExecutableOrigins
             .filter { it.outputPath.endsWith("/CopyScore") }
             .sortedBy(MountedExecutableOrigin::outputPath)
@@ -420,13 +324,13 @@ class IncludeAssemblyTest {
 
     @Test
     fun preparedOutputBytesAreBoundedBeforeJsonMaterialization() {
-        val result = assemble("same-alias-mounted-twice")
+        val result = assemble("same-model-mounted-twice")
         val preparedBytes = result.root.toString().encodeToByteArray().size
         val maximum = preparedBytes - 100
 
         val error = assertFailsWith<ModelPreparationError> {
             assemble(
-                "same-alias-mounted-twice",
+                "same-model-mounted-twice",
                 ModelPreparationLimits.builder()
                     .maxPreparedBytes(maximum)
                     .build(),
@@ -512,7 +416,8 @@ class IncludeAssemblyTest {
 
     /**
      * A12's SINGLE_RG matrix (KERNEL-FINDINGS KF3, `adapter.WorkspaceIncludeStructureKernelTest`): a value its reader
-     * cannot bind, or a bound count above one, refuses the mount; every other count mounts.
+     * cannot bind, or a bound count above one, refuses the mount; every other count mounts. The member is a primitive
+     * `int`, so on kernel 31 a JSON `null` and the empty text are values its reader cannot bind (KF593).
      */
     @Test
     fun refusesExactlyTheSingleRootRepeatabilitiesA12Refuses() {
@@ -526,17 +431,17 @@ class IncludeAssemblyTest {
             JsonPrimitive("2"),
             JsonPrimitive(2),
             JsonPrimitive(2.1),
+            JsonNull,
+            JsonPrimitive(""),
         ).forEach { value ->
             assertInvalidIncludeMount(singleMountWithRepeatability(value))
         }
         listOf(
-            JsonNull,
             JsonPrimitive("1"),
             JsonPrimitive(" 1 "),
             JsonPrimitive("01"),
             JsonPrimitive("0"),
             JsonPrimitive("-1"),
-            JsonPrimitive(""),
             JsonPrimitive(0.5),
             JsonPrimitive(1.9),
             JsonPrimitive(-1.5),
@@ -555,9 +460,7 @@ class IncludeAssemblyTest {
             invalidUnknownIncludedElementType(),
             invalidUnknownIncludedRootType(),
             invalidKnownNonGroupModelRoot(),
-            invalidMissingModelRootGroupBody(),
             invalidScalarSingleRoot(),
-            invalidMissingSingleRootGroupBody(),
             invalidMalformedSingleRootElements(),
         )
 
@@ -574,6 +477,91 @@ class IncludeAssemblyTest {
         }
     }
 
+    /**
+     * Kernel 31.1.1 reads a missing or `null` Group body as an empty group on every carrier and builds no model from
+     * any other non-object body (KERNEL-FINDINGS KF3, `adapter.WorkspaceIncludeStructureKernelTest`). Each carrier is
+     * compared with the same workspace written with a `{}` body; the nested group sits under a mount whose
+     * exclusions rewrite every mounted group body, the step that needs the empty body to be written out.
+     */
+    @Test
+    fun readsANoValueGroupBodyAsAnEmptyGroupAndRefusesAnyOtherNonObjectLikeTheKernel() {
+        val carriers: Map<String, (JsonElement?) -> Pair<String, Map<String, String>>> = mapOf(
+            "MODEL_ROOT provider root" to { body ->
+                val (entryModelId, sources) = multiRootSources()
+                val providerModelId = "permit-multi-root-sections"
+                sources[providerModelId] = sources.getValue(providerModelId).rewriteObjects { node ->
+                    if (node.strictString("name") == "Applicant") node.withGroupBody(body) else node
+                }
+                entryModelId to sources
+            },
+            "SINGLE_RG provider root" to { body -> exclusionWorkspace { it.withRootGroupBody(body) } },
+            "nested group under exclusions" to { body -> exclusionWorkspace { it.withNestedGroup(body) } },
+        )
+        val spellings: Map<String, JsonElement?> = linkedMapOf(
+            "missing" to null, "null" to JsonNull, "true" to JsonPrimitive(true), "7" to JsonPrimitive(7),
+            "\"x\"" to JsonPrimitive("x"), "[]" to JsonArray(emptyList()),
+        )
+        val expected = linkedMapOf<String, Any>()
+        val observed = linkedMapOf<String, Any>()
+        for ((carrier, workspace) in carriers) {
+            val control = prepared(workspace(JsonObject(emptyMap())))
+            assertTrue(control is Map<*, *>, "$carrier: the {} control must prepare, or every row is vacuous: $control")
+            for ((spelling, body) in spellings) {
+                expected["$carrier $spelling"] = if (body == null || body is JsonNull) control else "refused INVALID_MODEL_SOURCE"
+                observed["$carrier $spelling"] = prepared(workspace(body))
+            }
+        }
+        assertEquals(expected, observed)
+    }
+
+    private fun prepared(workspace: Pair<String, Map<String, String>>): Any {
+        val (entryModelId, sources) = workspace
+        return try {
+            WorkspaceIncludeAssembler.assemble(admit(sources), entryModelId).root.preparedElementTypes()
+        } catch (refused: ModelPreparationError) {
+            "refused ${refused.diagnostics.single().code}"
+        }
+    }
+
+    private fun JsonObject.withGroupBody(body: JsonElement?): JsonObject =
+        if (body == null) JsonObject(filterKeys { it != "Group" }) else JsonObject(this + ("Group" to body))
+
+    /** The exclusion fixture's SINGLE_RG workspace, its provider rewritten by [provider]; the entry names no field of it. */
+    private fun exclusionWorkspace(provider: (String) -> String): Pair<String, Map<String, String>> {
+        val caseId = "mount-with-exclusions"
+        val entryModelId = WorkspacePreparationFixtureJson.entryModelId(caseId)
+        return entryModelId to fixtureSources(caseId).mapValues { (modelId, json) ->
+            if (modelId == entryModelId) json else provider(json)
+        }
+    }
+
+    /** The source with each root group's body replaced by [body], or removed when it is null. */
+    private fun String.withRootGroupBody(body: JsonElement?): String = rewriteRootGroups { it.withGroupBody(body) }
+
+    /** The source with a group named `Annex`, whose body is [body], appended to each root group. */
+    private fun String.withNestedGroup(body: JsonElement?): String = rewriteRootGroups { root ->
+        val group = root.obj("Group")
+        val annex = JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("Group"),
+                "id" to JsonPrimitive("/${root.strictString("name")}/Annex"),
+                "name" to JsonPrimitive("Annex"),
+            ),
+        ).withGroupBody(body)
+        root.replacing("Group", group.replacing("elements", JsonArray(group.array("elements") + annex)))
+    }
+
+    private fun String.rewriteRootGroups(transform: (JsonObject) -> JsonObject): String {
+        val provider = Json.parseToJsonElement(this).obj()
+        val content = provider.obj("content")
+        val modelRoot = content.obj("modelRoot")
+        val rootGroups = modelRoot.array("rootGroups").map { transform(it.obj()) }
+        return provider.replacing(
+            "content",
+            content.replacing("modelRoot", modelRoot.replacing("rootGroups", JsonArray(rootGroups))),
+        ).toString()
+    }
+
     @Test
     fun rejectsMalformedExclusionsExplicitly() {
         listOf(
@@ -582,17 +570,62 @@ class IncludeAssemblyTest {
         ).forEach(::assertInvalidIncludeMount)
     }
 
+    /**
+     * The options bind as A12 31.1.1 binds them, so a coerced spelling assembles exactly as its canonical one and an
+     * unbindable one refuses (KF651, `adapter.laws.IncludeConfigShapeLawsTest`).
+     */
+    @Test
+    fun bindsTheMountOptionsAsA12CoercesThem() {
+        val excluded = "mount-with-exclusions"
+        for (spelling in listOf(JsonPrimitive("TRUE"), JsonPrimitive(" True"), JsonPrimitive(7))) {
+            val coerced = assembleWithEntryMounts(excluded) {
+                it.withMountOption("excludeRules", spelling).withMountOption("excludeComputations", spelling)
+            }
+            assertEquals(assemble(excluded).root.preparedStructure(), coerced.root.preparedStructure(), "$spelling")
+        }
+        val modelRoot = "imported-typedef-nested-model-root"
+        for (spelling in listOf(JsonPrimitive(1), JsonPrimitive("1"), JsonPrimitive(" MODEL_ROOT\t"))) {
+            val coerced = assembleWithEntryMounts(modelRoot) { it.withMountOption("includeLevel", spelling) }
+            assertEquals(assemble(modelRoot).root.preparedStructure(), coerced.root.preparedStructure(), "$spelling")
+        }
+        val singleRoot = "imported-typedef-nested-single"
+        for (spelling in listOf(JsonPrimitive(0), JsonPrimitive("0"), JsonPrimitive("SINGLE_RG "))) {
+            val coerced = assembleWithEntryMounts(singleRoot) { it.withMountOption("includeLevel", spelling) }
+            assertEquals(assemble(singleRoot).root.preparedStructure(), coerced.root.preparedStructure(), "$spelling")
+        }
+        val unbindable = listOf(
+            "excludeRules" to JsonPrimitive("tRUE"),
+            "excludeRules" to JsonPrimitive("1"),
+            "excludeRules" to JsonPrimitive(1.5),
+            "excludeRules" to JsonPrimitive(""),
+            "excludeRules" to JsonNull,
+            "includeLevel" to JsonPrimitive("model_root"),
+            "includeLevel" to JsonPrimitive("01"),
+            "includeLevel" to JsonPrimitive(2),
+            "includeLevel" to JsonPrimitive(true),
+        )
+        for ((key, spelling) in unbindable) {
+            assertInvalidIncludeMount(invalidEntryMount { it.withMountOption(key, spelling) })
+        }
+    }
+
     @Test
     fun rejectsMalformedOrMisplacedIncludeDirectivesExplicitly() {
         listOf(
-            invalidNumericAlias(),
-            invalidBlankAlias(),
-            invalidNullAlias(),
+            invalidReference(JsonObject(emptyMap())),
+            invalidReference(JsonPrimitive("")),
+            invalidReference(JsonPrimitive(" ")),
+            invalidReference(JsonNull),
+            invalidEntryMount { group -> group.replacing("includeConfig", JsonObject(emptyMap())) },
+            invalidMountConfig(JsonPrimitive("inspection-checks")),
+            invalidMountConfig(JsonArray(emptyList())),
             invalidScalarElements(),
             invalidNullElements(),
-            invalidDirectiveOnOrdinaryGroup("includeLevel", JsonPrimitive("MODEL_ROOT")),
-            invalidDirectiveOnOrdinaryGroup("excludeRules", JsonPrimitive(true)),
-            invalidDirectiveOnOrdinaryGroup("excludeComputations", JsonPrimitive(true)),
+            invalidDm28MountMember("modelAlias", JsonPrimitive("inspection-checks")),
+            invalidDm28MountMember("includeLevel", JsonPrimitive("MODEL_ROOT")),
+            invalidDm28MountMember("excludeRules", JsonPrimitive(true)),
+            invalidDm28MountMember("excludeComputations", JsonPrimitive(true)),
+            invalidEntryMount { group -> group.replacingOrAdding("excludeRules", JsonPrimitive(true)) },
         ).forEach(::assertInvalidIncludeMount)
     }
 
@@ -647,63 +680,6 @@ class IncludeAssemblyTest {
     private fun fixtureSources(caseId: String): Map<String, String> =
         WorkspacePreparationFixtureJson.sources(caseId)
 
-    private fun assembleWithFinalUsageExclusion(
-        caseId: String,
-        entryModelId: String,
-        providerModelId: String,
-        transientMountName: String,
-        providerRootUsageType: String? = "complexType",
-        outerExcludeRules: Boolean = true,
-        mountExcludeRules: Boolean = false,
-    ): IncludeAssembly {
-        val sources = fixtureSources(caseId).toMutableMap()
-        sources["inspection-checks"] = sources.getValue("inspection-checks").rewriteObjects { node ->
-            val group = node["Group"] as? JsonObject
-            if (node.strictString("name") == "Inspection" && group != null) {
-                if (providerRootUsageType == null) {
-                    node.replacing("Group", JsonObject(group.filterKeys { it != "usageType" }))
-                } else {
-                    node.replacing(
-                        "Group",
-                        group.replacingOrAdding("usageType", JsonPrimitive(providerRootUsageType)),
-                    )
-                }
-            } else {
-                node
-            }
-        }
-        sources[providerModelId] = sources.getValue(providerModelId).rewriteObjects { node ->
-            val group = node["Group"] as? JsonObject
-            if (
-                node.strictString("name") == transientMountName &&
-                group?.strictString("modelAlias") != null
-            ) {
-                val mountBody = group.replacingOrAdding("usageType", JsonPrimitive("attachment"))
-                    .let { body ->
-                        if (mountExcludeRules) {
-                            body.replacingOrAdding("excludeRules", JsonPrimitive(true))
-                        } else {
-                            body
-                        }
-                    }
-                node.replacing("Group", mountBody)
-            } else {
-                node
-            }
-        }
-        if (outerExcludeRules) {
-            sources[entryModelId] = sources.getValue(entryModelId).rewriteObjects { node ->
-                val group = node["Group"] as? JsonObject
-                if (group?.strictString("modelAlias") != null) {
-                    node.replacing("Group", group.replacingOrAdding("excludeRules", JsonPrimitive(true)))
-                } else {
-                    node
-                }
-            }
-        }
-        return WorkspaceIncludeAssembler.assemble(admit(sources), entryModelId)
-    }
-
     private fun admit(sources: Map<String, String>): AdmittedWorkspace =
         WorkspaceSourceAdmission.admit(
             sources.map { (modelId, json) ->
@@ -722,22 +698,16 @@ class IncludeAssemblyTest {
             .obj()
             .mapValues { (_, value) -> value.obj() }
 
-    private fun replaceIncludeReference(source: String, reference: String): String {
-        val root = Json.parseToJsonElement(source).obj()
-        val header = root.obj("header")
-        val references = header.array("modelReferences").map { candidate ->
-            val modelReference = candidate.obj()
-            if (modelReference.string("purpose") == "include") {
-                modelReference.replacing("reference", JsonPrimitive(reference))
+    /** The source with every mount re-pointed at [reference]; the header takes no part in resolution (KF651). */
+    private fun replaceIncludeReference(source: String, reference: String): String =
+        source.rewriteObjects { node ->
+            val group = node["Group"] as? JsonObject
+            if (group?.mountConfig() == null) {
+                node
             } else {
-                modelReference
+                node.replacing("Group", group.withMountOption("reference", JsonPrimitive(reference)))
             }
         }
-        return root.replacing(
-            "header",
-            header.replacing("modelReferences", JsonArray(references)),
-        ).toString()
-    }
 
     private fun invalidUnknownIncludeLevel(): Pair<String, Map<String, String>> {
         val caseId = "imported-typedef-nested-model-root"
@@ -745,12 +715,12 @@ class IncludeAssemblyTest {
         val sources = fixtureSources(caseId).toMutableMap()
         sources[entryModelId] = sources.getValue(entryModelId).rewriteObjects { node ->
             val group = node["Group"] as? JsonObject
-            if (group?.strictString("modelAlias") == null) {
+            if (group?.mountConfig() == null) {
                 node
             } else {
                 node.replacing(
                     "Group",
-                    group.replacing("includeLevel", JsonPrimitive("UNKNOWN")),
+                    group.withMountOption("includeLevel", JsonPrimitive("UNKNOWN")),
                 )
             }
         }
@@ -759,12 +729,12 @@ class IncludeAssemblyTest {
 
     private fun invalidNonStringIncludeLevel(): Pair<String, Map<String, String>> =
         invalidEntryMount { group ->
-            group.replacingOrAdding("includeLevel", JsonObject(emptyMap()))
+            group.withMountOption("includeLevel", JsonObject(emptyMap()))
         }
 
     private fun invalidNullIncludeLevel(): Pair<String, Map<String, String>> =
         invalidEntryMount { group ->
-            group.replacingOrAdding("includeLevel", JsonNull)
+            group.withMountOption("includeLevel", JsonNull)
         }
 
     private fun invalidSingleMountWithMultipleRoots(): Pair<String, Map<String, String>> {
@@ -773,13 +743,10 @@ class IncludeAssemblyTest {
         val sources = fixtureSources(caseId).toMutableMap()
         sources[entryModelId] = sources.getValue(entryModelId).rewriteObjects { node ->
             val group = node["Group"] as? JsonObject
-            if (group?.strictString("modelAlias") == null) {
+            if (group?.mountConfig() == null) {
                 node
             } else {
-                node.replacing(
-                    "Group",
-                    JsonObject(group.filterKeys { it != "includeLevel" }),
-                )
+                node.replacing("Group", group.withoutMountOption("includeLevel"))
             }
         }
         return entryModelId to sources
@@ -879,34 +846,18 @@ class IncludeAssemblyTest {
         return entryModelId to sources
     }
 
-    private fun invalidMissingModelRootGroupBody(): Pair<String, Map<String, String>> {
-        val (entryModelId, sources) = multiRootSources()
-        val providerModelId = "permit-multi-root-sections"
-        sources[providerModelId] = sources.getValue(providerModelId).rewriteObjects { node ->
-            if (node.strictString("name") == "Applicant") {
-                JsonObject(node.filterKeys { it != "Group" })
-            } else {
-                node
-            }
-        }
-        return entryModelId to sources
-    }
-
     private fun invalidScalarSingleRoot(): Pair<String, Map<String, String>> =
-        invalidSingleRootProvider { JsonPrimitive("not-a-root-group") }
-
-    private fun invalidMissingSingleRootGroupBody(): Pair<String, Map<String, String>> =
-        invalidSingleRootProvider { root -> JsonObject(root.filterKeys { it != "Group" }) }
+        singleRootProviderWith { JsonPrimitive("not-a-root-group") }
 
     private fun invalidMalformedSingleRootElements(): Pair<String, Map<String, String>> =
-        invalidSingleRootProvider { root ->
+        singleRootProviderWith { root ->
             root.replacing(
                 "Group",
                 root.obj("Group").replacing("elements", JsonPrimitive("not-an-array")),
             )
         }
 
-    private fun invalidSingleRootProvider(
+    private fun singleRootProviderWith(
         transform: (JsonObject) -> JsonElement,
     ): Pair<String, Map<String, String>> {
         val caseId = "imported-typedef-nested-single"
@@ -960,32 +911,23 @@ class IncludeAssemblyTest {
         val sources = fixtureSources(caseId).toMutableMap()
         sources[entryModelId] = sources.getValue(entryModelId).rewriteObjects { node ->
             val group = node["Group"] as? JsonObject
-            if (group?.strictString("modelAlias") == null) {
+            if (group?.mountConfig() == null) {
                 node
             } else {
                 node.replacing(
                     "Group",
-                    group.replacingOrAdding(key, JsonObject(emptyMap())),
+                    group.withMountOption(key, JsonObject(emptyMap())),
                 )
             }
         }
         return entryModelId to sources
     }
 
-    private fun invalidNumericAlias(): Pair<String, Map<String, String>> =
-        invalidEntryMount { group ->
-            group.replacing("modelAlias", JsonPrimitive(7))
-        }
+    private fun invalidReference(value: JsonElement): Pair<String, Map<String, String>> =
+        invalidEntryMount { group -> group.withMountOption("reference", value) }
 
-    private fun invalidBlankAlias(): Pair<String, Map<String, String>> =
-        invalidEntryMount { group ->
-            group.replacing("modelAlias", JsonPrimitive(""))
-        }
-
-    private fun invalidNullAlias(): Pair<String, Map<String, String>> =
-        invalidEntryMount { group ->
-            group.replacing("modelAlias", JsonNull)
-        }
+    private fun invalidMountConfig(value: JsonElement): Pair<String, Map<String, String>> =
+        invalidEntryMount { group -> group.replacing("includeConfig", value) }
 
     private fun invalidScalarElements(): Pair<String, Map<String, String>> =
         invalidEntryMount { group ->
@@ -997,7 +939,8 @@ class IncludeAssemblyTest {
             group.replacingOrAdding("elements", JsonNull)
         }
 
-    private fun invalidDirectiveOnOrdinaryGroup(
+    /** A DM 28 mount member, which A12 ignores, on an ordinary group: refused so the meant mount is not lost. */
+    private fun invalidDm28MountMember(
         key: String,
         value: JsonElement,
     ): Pair<String, Map<String, String>> {
@@ -1016,6 +959,16 @@ class IncludeAssemblyTest {
             }
         }
         return entryModelId to sources
+    }
+
+    private fun assembleWithEntryMounts(caseId: String, transform: (JsonObject) -> JsonObject): IncludeAssembly {
+        val entryModelId = WorkspacePreparationFixtureJson.entryModelId(caseId)
+        val sources = fixtureSources(caseId).toMutableMap()
+        sources[entryModelId] = sources.getValue(entryModelId).rewriteObjects { node ->
+            val group = node["Group"] as? JsonObject
+            if (group?.mountConfig() == null) node else node.replacing("Group", transform(group))
+        }
+        return WorkspaceIncludeAssembler.assemble(admit(sources), entryModelId)
     }
 
     private fun invalidEntryMount(
@@ -1074,6 +1027,14 @@ class IncludeAssemblyTest {
         ).toString()
         return entryModelId to sources
     }
+
+    private fun JsonObject.mountConfig(): JsonObject? = get("includeConfig") as? JsonObject
+
+    private fun JsonObject.withMountOption(key: String, value: JsonElement): JsonObject =
+        replacing("includeConfig", checkNotNull(mountConfig()).replacingOrAdding(key, value))
+
+    private fun JsonObject.withoutMountOption(key: String): JsonObject =
+        replacing("includeConfig", JsonObject(checkNotNull(mountConfig()).filterKeys { it != key }))
 
     private fun String.rewriteObjects(transform: (JsonObject) -> JsonObject): String =
         Json.parseToJsonElement(this).rewriteObjects(transform).toString()

@@ -173,10 +173,10 @@ class ImpactTest {
 
     @Test
     fun anIncludeThisSourceDoesNotCarryLeavesTheAnalysisIncomplete() {
-        // A12 recognises a mount by a group that declares an alias and NO elements of its own, so the mount
-        // is its own group rather than a member added to an existing one.
+        // A12 recognises a mount by a group's `includeConfig`, so the mount is its own group rather than a member
+        // added to an existing one.
         val mounting = changed(""""type":"Rule","id":"r-code",""",
-            """"type":"Group","id":"g-ship","name":"ShipTo","Group":{"modelAlias":"catalog"}},
+            """"type":"Group","id":"g-ship","name":"ShipTo","Group":{"includeConfig":{"reference":"catalog"}}},
                {"type":"Rule","id":"r-code",""")
         val report = impactOf(ModelSource(mounting), ModelSource(mounting))
 
@@ -197,7 +197,7 @@ class ImpactTest {
 
     /** The canonical model, changed one substitution at a time so each row moves exactly one thing. */
     private val base = """
-        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
           "modelConfig":{"fieldRefByShortNameAllowed":true},
           "modelRoot":{"rootGroups":[

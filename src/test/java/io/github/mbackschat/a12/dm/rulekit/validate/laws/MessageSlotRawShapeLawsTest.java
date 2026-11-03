@@ -15,6 +15,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -331,11 +332,27 @@ class MessageSlotRawShapeLawsTest {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(written);
             ((ObjectNode) root.path("header")).set("locales", MAPPER.readTree(localesJson));
+            // The fixture labels its enumeration for en_US and de_DE. Under any other declared locale those labels
+            // are undeclared, which kernel 31.1.1 refuses on its own (KF655) and would mask the locale verdict here.
+            unlabelEnumerationValues(root);
             ObjectNode rule = ruleBody(root);
             rule.set("errorMessage", MAPPER.readTree(errorMessageJson));
             return root.toString();
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the writer's own output and the raw fragments must parse", unreadable);
+        }
+    }
+
+    /** Removes every enumeration value's `label`, so no display text depends on which locales are declared. */
+    private static void unlabelEnumerationValues(JsonNode node) {
+        if (node.isObject()) {
+            JsonNode values = node.path("EnumerationType").path("values");
+            for (JsonNode value : values) {
+                ((ObjectNode) value).remove("label");
+            }
+            node.forEach(MessageSlotRawShapeLawsTest::unlabelEnumerationValues);
+        } else if (node.isArray()) {
+            node.forEach(MessageSlotRawShapeLawsTest::unlabelEnumerationValues);
         }
     }
 

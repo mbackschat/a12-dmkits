@@ -95,17 +95,14 @@ class TypeDefinitionAssemblyTest {
                 ModelReferenceStep.typeDefinitions(
                     fromModelId = "permit-single",
                     toModelId = "permit-types",
-                    alias = "permit-types",
                 ),
                 ModelReferenceStep.include(
                     fromModelId = "permit-single",
                     toModelId = "permit-section",
-                    alias = "sectionAlias",
                 ),
                 ModelReferenceStep.include(
                     fromModelId = "permit-section",
                     toModelId = "inspection-checks",
-                    alias = "checksAlias",
                 ),
             ),
             result.dependencies.map(ResolvedModelReference::step),
@@ -154,7 +151,6 @@ class TypeDefinitionAssemblyTest {
         val leaf = renameModel(imported.getValue("permit-types"), "permit-types-leaf")
         val intermediate = addTypeDefinitionImport(
             removeTypeDefinitions(imported.getValue("permit-types")),
-            alias = "leaf",
             reference = "permit-types-leaf",
         )
         val result = WorkspaceTypeDefinitionAssembler.assemble(
@@ -189,12 +185,10 @@ class TypeDefinitionAssemblyTest {
         val imported = fixtureSources("imported-typedef-nested-single")
         val branch = addTypeDefinitionImport(
             removeTypeDefinitions(renameModel(imported.getValue("permit-types"), "branch-types")),
-            alias = "shared-types",
             reference = "permit-types",
         )
         val entry = addTypeDefinitionImport(
             imported.getValue("permit-single"),
-            alias = "branch-types",
             reference = "branch-types",
         )
         val result = WorkspaceTypeDefinitionAssembler.assemble(
@@ -309,7 +303,6 @@ class TypeDefinitionAssemblyTest {
         )
         val entry = addTypeDefinitionImport(
             imported.getValue("permit-single"),
-            alias = "alternate-types",
             reference = "alternate-permit-types",
         )
         val diagnostic = failure(
@@ -384,7 +377,6 @@ class TypeDefinitionAssemblyTest {
 
         val selfImportingTypes = addTypeDefinitionImport(
             imported.getValue("permit-types"),
-            alias = "self",
             reference = "permit-types",
         )
         val cycle = failure(
@@ -404,7 +396,6 @@ class TypeDefinitionAssemblyTest {
         val imported = fixtureSources("imported-typedef-nested-single")
         val nestedTypes = addTypeDefinitionImport(
             imported.getValue("permit-types"),
-            alias = "missing",
             reference = "deeper-types",
         )
         val depth = failure(
@@ -419,7 +410,6 @@ class TypeDefinitionAssemblyTest {
 
         val duplicateImport = addTypeDefinitionImport(
             imported.getValue("permit-single"),
-            alias = "second-types",
             reference = "permit-types",
         )
         val edges = failure(
@@ -589,12 +579,11 @@ class TypeDefinitionAssemblyTest {
         replaceDefinitionReference(source, definitionId, definitionId)
 
     /** Add only the invalid import edge under test to an otherwise typed-authored source. */
-    private fun addTypeDefinitionImport(source: String, alias: String, reference: String): String {
+    private fun addTypeDefinitionImport(source: String, reference: String): String {
         val root = Json.parseToJsonElement(source).obj()
         val header = root.obj("header")
         val references = header.array("modelReferences") + JsonObject(
             mapOf(
-                "alias" to JsonPrimitive(alias),
                 "modelType" to JsonPrimitive("document"),
                 "purpose" to JsonPrimitive("typeDefinitions"),
                 "reference" to JsonPrimitive(reference),

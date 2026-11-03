@@ -33,7 +33,7 @@ class SparseOverlapPolicyTest {
         val root = "/Bookings"
         val parent = "$root/Locations"
         val rows = "$parent/Periods"
-        val having = "Having (FieldFilled(Locations/Periods/Permit) Or ([Locations/Periods/Stamp] == \"31.03.2024T02:30:00\"))"
+        val having = "Having (FieldFilled(Locations/Periods/Permit) Or ([Locations/Periods/Stamp] == \"29.02.1500T10:00:00\"))"
         for ((format, window) in listOf("yyyy-MM-dd" to "2025-05-01/2025-05-12", "MM-dd" to "05-01/05-12")) {
             val model = ModelDef(
                 fields = listOf("$root/Reservation", "$rows/Pair", "$rows/Selected").map {

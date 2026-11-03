@@ -43,7 +43,7 @@ class SparseFilteredAggregateDiffTest {
         val parcels = edit.group("/Dispatch/Runs/Parcels")
         val permit = parcels.num("Permit")
         // Static admission under UTC; the model's Berlin zone makes this missing-slot read fail (KF528).
-        val poison = parcels.dateTime("RecordedAt").eq(Dsl.dateTimeValue("31.03.2024T02:30:00"))
+        val poison = parcels.dateTime("RecordedAt").eq(Dsl.dateTimeValue("29.02.1500T10:00:00"))
         val presence = permit.filled().or(poison)
         val strict = permit.eq(1).or(permit.notFilled().and(poison))
         val values = root.flatten("Runs*/Parcels*/Charge")

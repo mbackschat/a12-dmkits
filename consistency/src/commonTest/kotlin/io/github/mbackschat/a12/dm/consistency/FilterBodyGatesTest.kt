@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 class FilterBodyGatesTest {
 
     private val noIteration = "MVK_NO_ITERATION_FOR_WILDCARD"
-    private val invalidIteration = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+    private val invalidIteration = "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
     private val noWildcard = "MVK_NO_WILDCARD"
 
     /**
@@ -28,7 +28,7 @@ class FilterBodyGatesTest {
         return checkRead(
             ModelSource(
                 """
-            {"header":{"modelVersion":"28.4.0","id":"shipment","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"shipment","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Shipment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -132,7 +132,7 @@ class FilterBodyGatesTest {
         actual["a CustomCondition beside a STARRED reference"] =
             fromRoot("[Parcels*/Weight] > 0 And CustomCondition SomeCheck")
 
-        val refused = listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+        val refused = listOf("MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION")
         val expected = mutableMapOf<String, List<String>>()
         expected["an in-scope reference alone — the control"] = emptyList()
         expected["a RepetitionNotUnique beside an in-scope reference"] = refused

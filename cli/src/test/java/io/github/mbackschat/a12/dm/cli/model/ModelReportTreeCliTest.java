@@ -166,7 +166,6 @@ class ModelReportTreeCliTest {
         Files.writeString(dir.resolve("PaymentModule.dm.json"), payment);
 
         String base = DocumentModelDraft.named("OrderTree").locale("en_US")
-                .include("payment", "PaymentModule")
                 .typeDef("EmailType", type -> type.string(string -> string.minLength(5)
                         .pattern(".+@.+", "Use an email-like address.")))
                 .rootGroup("Order", order -> order
@@ -183,7 +182,7 @@ class ModelReportTreeCliTest {
                         .numberField("Total", number -> number.fractionDigits(0))
                         .group("Lines", lines -> lines.repeatable(5)
                                 .stringField("Sku", field -> field.annotation("key", "business")))
-                        .mount("Payment", "payment"))
+                        .mount("Payment", "PaymentModule"))
                 .build().toJson();
         EditSession session = EditSession.read(base,
                 reference -> "PaymentModule".equals(reference) ? payment : null);

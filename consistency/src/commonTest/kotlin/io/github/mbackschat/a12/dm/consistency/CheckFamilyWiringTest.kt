@@ -34,7 +34,8 @@ class CheckFamilyWiringTest {
         CheckFamily.ERROR_TEXT_PRESENCE to ("RULE_HAS_NO_ERRORTEXT" to "/Catalog/CarriesNoMessage"),
         CheckFamily.COMPUTATION_ALTERNATIVES to ("MVK_CONDITION_MISSING" to "/Catalog/NoWork"),
         CheckFamily.RULE_CONDITION_AND_TARGET to (CK_MODEL_NOT_BUILDABLE to "/Catalog/NoCondition"),
-        CheckFamily.ELEMENT_NAME_UNIQUENESS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Twin"),
+        CheckFamily.ELEMENT_NAME_UNIQUENESS to (RK_CHILD_NAME_DUPLICATE to "/Catalog/Twin"),
+        // An empty sort name leaves no model, which no earlier refusal in this fixture withholds (KF653).
         CheckFamily.GROUP_ORDERING_REFERENCES to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Ordered"),
         CheckFamily.COMPUTATION_ROUNDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/BadRounding"),
         CheckFamily.SUPPRESSED_WARNINGS to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/BadSuppression"),
@@ -143,7 +144,7 @@ class CheckFamilyWiringTest {
         // filter off a level beneath it — the only shape in this fixture where one entity id carries both
         // the filter and the parallel marker.
         CheckFamily.FILTERED_ENTITY_ITERATION to
-            ("MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED" to
+            ("MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED" to
                 "/Catalog/FilterUnderAParallelBranch"),
         // Two divisions in one multiplicative chain, with nothing between them to restart the count — the
         // only arithmetic in this fixture that carries a second operator of the same kind.
@@ -218,10 +219,6 @@ class CheckFamilyWiringTest {
         // the family starts reading the operator's result kind instead.
         CheckFamily.RANGE_OPERAND_GATES to
             ("MVK_INVALID_TYPE" to "/Catalog/CutOfANumber"),
-        // One enumeration labels its values and the other does not — a claim about the PAIR, so the row
-        // fails the moment the family starts deciding from one side alone.
-        CheckFamily.ENUM_DISPLAY_COMPARABILITY to
-            ("MVK_INVALID_COMPARE_ENUM_TO_STRING" to "/Catalog/LabelledAgainstPlain"),
         // A TIME field handed to the operator that resolves a partially known date — the kind gate reads
         // the declared precision, so the row fails the moment the family keys on A12's date INTERFACE, which
         // a time field carries.
@@ -289,7 +286,7 @@ class CheckFamilyWiringTest {
         CheckFamily.OUTER_MARKER_POSITION to
             ("MVK_INVALID_OUTER_ITERATION" to "/Catalog/MarksAnOuterIterationOutsideAFilter"),
         CheckFamily.FILTER_BODY_GATES to
-            ("MVK_INVALID_ITERATION_IN_FILTER_CONDITION" to "/Catalog/FilterOffTheOperandsPath"),
+            ("MVK_INVALID_ITERATION_IN_SET_EXPRESSION" to "/Catalog/FilterOffTheOperandsPath"),
         // A day of 32 in a well-formed three-part construction: the other two components are valid and the
         // target is an ordinary full date, so nothing but the slot's own range can be what answers.
         CheckFamily.DATE_CONSTRUCTION_SLOT to
@@ -360,7 +357,7 @@ class CheckFamilyWiringTest {
      */
     private val germanSource = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"wiring-de","locales":[{"code":"de_DE"}]},
+        {"header":{"modelVersion":"29.4.0","id":"wiring-de","locales":[{"code":"de_DE"}]},
          "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"gd0","name":"Bestellung","Group":{"repeatability":9,"elements":[
             {"type":"Field","id":"fd0","name":"Kennzeichen","Field":{"fieldType":{"type":"StringType"}}},
@@ -387,7 +384,7 @@ class CheckFamilyWiringTest {
      */
     private val cycleSource = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"wiring-cycle","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"wiring-cycle","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"gc0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"fc0","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
@@ -420,7 +417,7 @@ class CheckFamilyWiringTest {
      */
     private val orderingSource = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"wiring-ordering","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"wiring-ordering","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"go0","name":"Catalog","Group":{"elements":[
             {"type":"Group","id":"go1","name":"BadKey","Group":{"repeatability":20,
@@ -437,9 +434,49 @@ class CheckFamilyWiringTest {
         CheckFamily.GROUP_ORDERING_FIELD_TYPE to ("MVK_INDEX_FIELD_NO_VALUE_VALIDATION" to "/Catalog/BadKey/Key"),
     )
 
+    /**
+     * A model whose only defect is an undeclared locale's message naming a parameter no declared text names, which
+     * A12's code generation refuses only on a model it otherwise admits (KERNEL-FINDINGS KF659).
+     */
+    private val undeclaredLocaleSource = ModelSource(
+        """
+        {"header":{"modelVersion":"29.4.0","id":"wiring-undeclared-locale","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gu0","name":"Shop","Group":{"elements":[
+            {"type":"Field","id":"fu0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Rule","id":"ru0","name":"SkuGiven","Rule":{
+              "errorEntityRelPath":"../Sku","errorCode":"SKU","errorCondition":"FieldNotFilled(Sku)","severity":"ERROR",
+              "errorMessage":[{"locale":"en_US","text":"x"},{"locale":"fr_FR","text":"voir ${'$'}Sku${'$'}"}]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    private val undeclaredLocaleEvidence = mapOf(
+        CheckFamily.UNDECLARED_LOCALE_MESSAGE_PARAMETERS to (CK_MODEL_NOT_BUILDABLE to "/Shop/SkuGiven"),
+    )
+
+    /** Two fields sharing one id: A12 states the id sentence for each, so the first is enough evidence (KF661). */
+    private val sharedIdSource = ModelSource(
+        """
+        {"header":{"modelVersion":"29.4.0","id":"wiring-shared-id","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gi0","name":"Shop","Group":{"elements":[
+            {"type":"Field","id":"fi0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"fi0","name":"Title","Field":{"fieldType":{"type":"StringType"}}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    private val sharedIdEvidence = mapOf(
+        CheckFamily.ELEMENT_ID_UNIQUENESS to (RK_ELEMENT_ID_NOT_UNIQUE to "/Shop/Sku"),
+    )
+
     /** The models beside [source], each carrying the families only it can reach, with what each proves. */
-    private val sideModels =
-        listOf(germanSource to germanEvidence, cycleSource to cycleEvidence, orderingSource to orderingEvidence)
+    private val sideModels = listOf(germanSource to germanEvidence, cycleSource to cycleEvidence,
+        orderingSource to orderingEvidence, undeclaredLocaleSource to undeclaredLocaleEvidence,
+        sharedIdSource to sharedIdEvidence)
 
     @Test
     fun theFieldReadProducerOwnsTheFilterRead() {
@@ -505,21 +542,11 @@ class CheckFamilyWiringTest {
             "a family whose wire into checkRead() is missing reports nothing while checksCompleted still names it")
     }
 
-    /**
-     * The variant family is the exception by design: its output is a COVERAGE GAP, because A12 accepts the
-     * declaration it concerns. Its wire therefore has to be checked on the gap channel, not the finding one.
-     */
-    @Test
-    fun theVariantFamilyReachesTheReportThroughItsGap() {
-        assertTrue(checkRead(source).gaps.any { it.at == "/Catalog/Filtered" && it.reason.contains("ONLY") },
-            "the ONLY-filtered declaration must be disclosed as unexamined")
-    }
-
     /** Every family is triggered by something above — the half a per-family test cannot supply. */
     @Test
     fun everyFamilyIsAccountedFor() {
         assertEquals(CheckFamily.entries.toSet(),
-            evidence.keys + sideModels.flatMap { (_, rows) -> rows.keys } + CheckFamily.VARIANT_FILTER,
+            evidence.keys + sideModels.flatMap { (_, rows) -> rows.keys },
             "a new CheckFamily constant needs a declaration here that triggers it, not only a call site")
     }
 

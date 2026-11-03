@@ -138,7 +138,7 @@ class CheckerOuterMarkedResidueAgreementTest {
             beside("MinValue(\$Items/Code, Items/Count) > 0", "MVK_NOT_SORTABLE")
             beside("Length(\$Items/RawCode) > 1", "MVK_INVALID_LENGTH_OF_RAW_TYPE")
             beside("Length(Items/RawCode) > 1", "MVK_INVALID_LENGTH_OF_RAW_TYPE")
-            beside("SumOfProducts(\$Items/UnitPrice, Items/UnitPrice) > 0", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+            beside("SumOfProducts(\$Items/UnitPrice, Items/UnitPrice) > 0", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
             beside("NumberOfDifferentValues(\$Items/Tier -> Band, Items/Tier -> Band) > 1", "MVK_CATEGORY_NOT_ALLOWED")
             beside("NumberOfDifferentValues(Items/Tier -> Band, Items/Tier -> Band) > 1", "MVK_CATEGORY_NOT_ALLOWED")
             beside("RoundUpValue([\$Items], 2) > 0", "MVK_UNEXPECTED_TOKEN")
@@ -175,7 +175,7 @@ class CheckerOuterMarkedResidueAgreementTest {
             rule("Items/Count", "FieldFilled(Items/Count) And AtLeastOneFieldFilled(Items*/Count Having [Items/Count] > 0 And " +
                 "AtLeastOneFieldFilled(Parcels*/Weight Having [\$Items/Count] > 0))", "MVK_NO_ITERATION_FOR_WILDCARD")
             rule("Items/Count", "FieldFilled(Items/Count) And AtLeastOneFieldFilled(Items*/Count Having [Items/Count] > 0 And " +
-                "AtLeastOneFieldFilled(Parcels*/Weight Having [Parcels/Weight] > 0))", "MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
+                "AtLeastOneFieldFilled(Parcels*/Weight Having [Parcels/Weight] > 0))", "MVK_INVALID_ITERATION_IN_SET_EXPRESSION")
             rule("Parcels/Weight", "FieldFilled(Returns/Reason) And AtLeastOneFieldFilled(Items*/Count Having [\$Parcels/Weight] > 0)", "MVK_NO_ITERATION_FOR_WILDCARD")
             rule("Parcels/Weight", "FieldFilled(Returns/Reason) And AtLeastOneFieldFilled(Items*/Count Having [Items/Count] > 0)", "MVK_ERROR_FIELD_NOT_REFERENCED")
             beside("RangeAsString(\$Notes, 1, 3) == \"a\"", "MVK_NO_GROUPS_ALLOWED", model = "typed")

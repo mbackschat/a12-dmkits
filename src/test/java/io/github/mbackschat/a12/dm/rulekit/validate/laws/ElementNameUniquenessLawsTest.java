@@ -22,8 +22,8 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 /**
  * How far a declaration's NAME must be unique — the scope, the kinds it spans, and its letter case.
  *
- * <p>{@link RuleSlotLawsTest#aDuplicateRuleNameIsRejectedByAThrowInsideCheckConsistency} establishes that two
- * rules of one name in one group make the model unbuildable. That single observation fits several accounts —
+ * <p>{@link RuleSlotLawsTest#aDuplicateRuleNameIsRefusedByTheConverterSentence} establishes that two rules of
+ * one name in one group are refused. That single observation fits several accounts —
  * unique per group, per model, per kind, case-sensitively or not — which differ on models an author writes by
  * accident, so each boundary gets its own row here rather than being read off the one that is known.
  *
@@ -56,14 +56,15 @@ class ElementNameUniquenessLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("one rule — the control", KernelLaws.ADMITTED);
-        // The Kernel refuses to BUILD the model — a rejection carrying no MVK_ code, so there is no verdict
-        // about any declaration in it.
-        expected.put("two rules, one group", KernelLaws.NOT_BUILDABLE);
+        // Kernel 31.1.1's converter states "Cannot have two child elements with the same name …" with no class
+        // and checks the model without the later child (KERNEL-FINDINGS KF652; 30.8.1 could not build it). These
+        // two rules also share their path-derived id, which A12 states codelessly as well.
+        expected.put("two rules, one group", KernelLaws.REFUSED_CODELESS);
         expected.put("two rules, different groups", KernelLaws.ADMITTED);
         // The demand spans KINDS, which is the row a "rule names are unique" reading gets wrong: the
         // collision is among a group's children, whatever each child is.
-        expected.put("a rule named after a sibling FIELD", KernelLaws.NOT_BUILDABLE);
-        expected.put("a rule named after a sibling GROUP", KernelLaws.NOT_BUILDABLE);
+        expected.put("a rule named after a sibling FIELD", KernelLaws.REFUSED_CODELESS);
+        expected.put("a rule named after a sibling GROUP", KernelLaws.REFUSED_CODELESS);
         expected.put("a rule named after a field in ANOTHER group", KernelLaws.ADMITTED);
         expected.put("two rules, one group, differing case", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "how far an element name must be unique");
@@ -85,8 +86,8 @@ class ElementNameUniquenessLawsTest {
                 verdict(field(Fixtures.subscriptionJson(), "InvoiceEmail")));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("two FIELDS of one name", KernelLaws.NOT_BUILDABLE);
-        expected.put("a field named after a sibling GROUP", KernelLaws.NOT_BUILDABLE);
+        expected.put("two FIELDS of one name", KernelLaws.REFUSED_CODELESS);
+        expected.put("a field named after a sibling GROUP", KernelLaws.REFUSED_CODELESS);
         expected.put("a field in another group — the control", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the collision without a rule in it");
     }
@@ -115,11 +116,13 @@ class ElementNameUniquenessLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a group of a fresh name — the control", KernelLaws.ADMITTED);
-        expected.put("two GROUPS of one name", KernelLaws.NOT_BUILDABLE);
-        expected.put("a group named after a sibling FIELD", KernelLaws.NOT_BUILDABLE);
+        expected.put("two GROUPS of one name", KernelLaws.REFUSED_CODELESS);
+        expected.put("a group named after a sibling FIELD", KernelLaws.REFUSED_CODELESS);
         expected.put("a computation of a fresh name — the control", KernelLaws.ADMITTED);
-        expected.put("a computation named after a sibling GROUP", KernelLaws.NOT_BUILDABLE);
-        expected.put("a computation named after a sibling FIELD", KernelLaws.NOT_BUILDABLE);
+        // The computation is inserted ahead of the group, so A12 keeps it and leaves the group out, and the
+        // computation's operation then names a group the checked model no longer holds.
+        expected.put("a computation named after a sibling GROUP", "MVK_INVALID_ENTITY");
+        expected.put("a computation named after a sibling FIELD", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "the collision when the new child is a group or a computation");
     }
 

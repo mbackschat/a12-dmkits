@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.soleFieldValueReadIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * What a computation whose TARGET is an enumeration may compute from.
@@ -24,15 +23,15 @@ import kotlinx.serialization.json.contentOrNull
  * target does not cover. Both halves are measured, because equality would pass every row a superset test
  * fails and reads identically on a mirrored pair.
  *
- * **This gate lives in the CALC module and runs after the parse, so three of its shapes never reach it** —
+ * **This gate lives in the CALC module and runs after the parse, so two of its shapes never reach it** —
  * and that is what bounds the family rather than any choice of ours. A computation is lowered to a comparison
  * against its target, so the comparison walk answers first wherever it has a class: a constant outside the
- * domain is `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, a display-bearing source against an
- * unlabelled target is `MVK_INVALID_COMPARE_ENUM_TO_STRING` ([KF407]), and a NUMBER source is
+ * domain is `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, and a NUMBER source is
  * `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`. A TEXT source is the discriminating case: the comparison walk
- * ADMITS a plain text against a textless enumeration, so this gate is the only thing that catches it. The three
- * pre-empted shapes are the comparison families' to report, which read the lowered comparison
- * ([loweredComparisonOf], [KERNEL-FINDINGS KF483]).
+ * ADMITS a text against an enumeration, so this gate is the only thing that catches it. The two pre-empted
+ * shapes are the comparison families' to report, which read the lowered comparison
+ * ([loweredComparisonOf], [KERNEL-FINDINGS KF483]). Display labels play no part on kernel 31.1.1, which deleted
+ * both the parser's and this gate's display checks ([KERNEL-FINDINGS KF655]).
  *
  * **Two operations are never judged here, because A12 never reaches this gate on them.** An operation that
  * reads the computed field draws the self-read class, and `checkBerechnungsFunktion` returns on it before this
@@ -44,7 +43,7 @@ import kotlinx.serialization.json.contentOrNull
  * **Silent on every operation shape this reader will not reduce**, which is a disclosed under-report: A12
  * refuses anything outside its three kinds, measured on a concatenation of the target's own declared value,
  * but the shapes between that and an aggregate were not measured and the comparison walk owns a class for
- * some of them. Silent too on a table-backed enumeration, on an unresolvable type definition or an `UnspecifiedType`, and
+ * some of them. Silent too on an unresolvable type definition, and
  * wherever the target or a source does not resolve; a resolvable definition is read as the type it defines.
  */
 internal fun TrackedFactBase.enumComputationSourceContributions(element: TrackedDeclaration): List<DeclarationFinding> {
@@ -82,10 +81,10 @@ private fun TrackedFactBase.sourceDefect(
 ): String? {
     firstFilledOperands(operation, element)?.let { operands ->
         return operands.firstNotNullOfOrNull { operand ->
-            readDefect(operand, admitted, target, declaringGroup, element, aFirstFilledValueOperand = true)
+            readDefect(operand, admitted, target, declaringGroup, element)
         }
     }
-    return readDefect(operation, admitted, target, declaringGroup, element, aFirstFilledValueOperand = false)
+    return readDefect(operation, admitted, target, declaringGroup, element)
 }
 
 /** The operand texts of a sole `FirstFilledValue` call, or null when the operation is not one. */
@@ -100,12 +99,6 @@ private fun TrackedFactBase.firstFilledOperands(operation: String, element: Trac
 
 /**
  * What one SOURCE read is to this gate, or null where the parser answers first and where it cannot be read.
- *
- * For a sole read the display check is the parser's, not this gate's — it draws its own class and pre-empts
- * this one — so a bearing mismatch is silence there. A `FirstFilledValue` operand is the opposite: A12 asks
- * the display check of it only in this gate (`checkDisplayValues`' own note), so a bearing mismatch there is
- * this class in either direction ([KERNEL-FINDINGS KF617]). Two operands that both bear labels are compared
- * label by label, which this reader does not do, so that case stays silent.
  */
 private fun TrackedFactBase.readDefect(
     text: String,
@@ -113,7 +106,6 @@ private fun TrackedFactBase.readDefect(
     target: TrackedDeclaration,
     declaringGroup: String,
     element: TrackedDeclaration,
-    aFirstFilledValueOperand: Boolean,
 ): String? {
     // The bracket's own reader spells a climbing `..`, which the bare-spec reader refuses as a token.
     // The source is the whole operation, so no filter body can hold it.
@@ -136,17 +128,7 @@ private fun TrackedFactBase.readDefect(
             "constant it declares, an enumeration it covers, or a `${OperatorId.FIRST_FILLED_VALUE.catalogId}` over those"
     }
     val body = enumerationBodyOf(source) ?: return null
-    if (body["tableName"] != null) {
-        return null
-    }
     val values = sourceValues(body, category) ?: return null
-    if (category == null && bearsDisplayValues(source) != bearsDisplayValues(target)) {
-        if (!aFirstFilledValueOperand) return null
-        val (bearing, plain) = if (bearsDisplayValues(source)) source.path to target.path else target.path to source.path
-        return "reads `${source.path}` inside `${OperatorId.FIRST_FILLED_VALUE.catalogId}`, and `$bearing` carries display labels while " +
-            "`$plain` carries none — A12 checks that agreement for a `${OperatorId.FIRST_FILLED_VALUE.catalogId}` operand here. Give " +
-            "both the same labels, or neither"
-    }
     val uncovered = values - admitted
     if (uncovered.isEmpty()) {
         return null
@@ -181,25 +163,6 @@ private fun sourceValues(body: JsonObject, category: String?): Set<String>? {
         }
     }.toSet()
 }
-
-/**
- * Whether this enumeration bears DISPLAY values — a text differing from its own token, A12's own test
- * (`IEnumerationType.hasDisplayValues`), so labels that only repeat their tokens bear none. An enumeration copy
- * and `+` both ask it of a raw declaration ([KF396]).
- *
- * Not shared with the comparison family, which asks it of a per-locale map it has already built. The predicate is
- * one line and the shapes are not, so a shared reader would have to carry both.
- */
-internal fun TrackedFactBase.bearsDisplayValues(field: TrackedDeclaration): Boolean {
-    val values = enumerationBodyOf(field)?.get("values") as? JsonArray ?: return false
-    return values.filterIsInstance<JsonObject>().any { entry ->
-        val token = (entry["value"] as? JsonPrimitive)?.contentOrNull
-        localizedTextEntries(entry["label"])
-            .any { label -> (label["text"] as? JsonPrimitive)?.contentOrNull.let { it != null && it != token } }
-    }
-}
-
-private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 
 private fun finding(detail: String, member: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

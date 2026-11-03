@@ -15,7 +15,7 @@ Classifications:
 | **directive** | a raw-DSL form rulekit never authors but whose laws are probe-verified and locked at the validate tier |
 | **queued** | classification or read-tolerance not yet verified — the work-list |
 
-## The ledger (kernel 30.8.1 — 119 productions)
+## The ledger (kernel 31.1.1 — 122 productions)
 
 ### Conditions (the `bedingung` tier)
 
@@ -53,6 +53,7 @@ Classifications:
 | `feldOp` / `feldOpName` | rendered | `AbsValue` (`AbsWert`), `Length`, `FieldValueAsNumber`, `FieldValueAsString` |
 | `feldOperOp` / `feldOperOpName` | rendered | field-level rounding (`RoundDownValue`, `RoundUpValue`, `RoundAccountingValue`) |
 | `feldListenOp` / `feldListenOpName` | rendered | list aggregates: `MaxValue`, `MinValue`, `Sum`, `SumOfProducts`, `FirstFilledValue` |
+| `setOperOp` / `setOperOpName` / `setOperation` | queued | kernel 31.1.1's term sum `SumOfTerms` (`SummeVonTermen`): an iteration entity, then one arithmetic term evaluated per repetition; admission classes in [KF656](KERNEL-FINDINGS.md#kf656). The renderer quotes both spellings in entity paths |
 | `feldListenOperOp` / `feldListenOperOpName` | rendered | operand-list math (`Min`/`Max`/`Abs` over expressions) |
 | `feldListenAnzahlOp` / `feldListenAnzahlOpName` | rendered | `NumberOfFilledFields`, `NumberOfDifferentValues` |
 | `anzahlWertOp` / `anzahlWertOpName` | rendered | `NumberOfValueInFields` (`AnzahlWertInFeldliste`) |

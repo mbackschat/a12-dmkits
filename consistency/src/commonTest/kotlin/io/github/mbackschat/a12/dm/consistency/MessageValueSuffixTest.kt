@@ -25,7 +25,7 @@ class MessageValueSuffixTest {
     private fun codes(condition: String, message: String): List<String> = checkRead(
         ModelSource(
             """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

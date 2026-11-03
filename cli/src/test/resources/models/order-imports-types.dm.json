@@ -2,14 +2,13 @@
   "header" : {
     "id" : "order",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "catalogtypes",
       "modelType" : "document",
       "purpose" : "typeDefinitions",
       "reference" : "catalogtypes"

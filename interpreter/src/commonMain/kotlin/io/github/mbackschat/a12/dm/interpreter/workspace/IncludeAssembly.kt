@@ -1,15 +1,17 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
 import io.github.mbackschat.a12.dm.interpreter.conditionLanguageCode
-import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
-import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
+import io.github.mbackschat.a12.dm.interpreter.bindJavaPrimitiveInt
 import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
 import io.github.mbackschat.a12.dm.interpreter.configFlag
+import io.github.mbackschat.a12.dm.interpreter.isJavaBlank
+import io.github.mbackschat.a12.dm.interpreter.orRefuse
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -221,7 +223,7 @@ private class IncludeMounter(
             when (val element = pending.removeAt(pending.lastIndex)) {
                 is JsonObject -> {
                     val body = element.objectMember(PreparedElementType.GROUP.wireName)
-                    check(body == null || PREPARED_INCLUDE_DIRECTIVE_MEMBERS.none(body::containsKey)) {
+                    check(body?.includeDirectiveMember() == null) {
                         "successful workspace mounting retained an include directive"
                     }
                     pending.addAll(element.values)
@@ -302,7 +304,7 @@ private class IncludeMounter(
 
         val body = structure.body
         val children = requirePreparedGroupChildren(body, sourcePath) { invalidPath, reason ->
-            if ("modelAlias" in body) {
+            if (body.includeDirectiveMember() != null) {
                 throw invalidIncludeMount(owningSource.source.modelId, invalidPath, reason)
             }
             throw invalidModelElement(owningSource, invalidPath, reason)
@@ -342,8 +344,7 @@ private class IncludeMounter(
     ): JsonObject {
         val step = ModelReferenceStep.include(
             fromModelId = owningSource.source.modelId,
-            toModelId = owningSource.root.includeReference(owningSource.source.modelId, mountPath, directive.alias),
-            alias = directive.alias,
+            toModelId = directive.reference,
         )
         val includedSource = context.resolvedSource(step)
         val includedRootGroups = includedSource.root
@@ -384,8 +385,9 @@ private class IncludeMounter(
                 prefixes = mounted.prefixes,
             ),
         )
+        // The mount keeps its own `usageType`: kernel 31.1.1 no longer copies the provider root's onto it
+        // (KERNEL-FINDINGS KF3, adapter.MountUsageTypeKernelTest).
         val mountedBody = body.withoutIncludeDirectives()
-            .withTransferredUsageType(mounted.usageTypeTransfer)
             .setting("elements", JsonArray(mounted.children))
         return node.replacing(PreparedElementType.GROUP.wireName, mountedBody)
     }
@@ -427,7 +429,6 @@ private class IncludeMounter(
         return MountedIncludeContent(
             children = immutableListSnapshot(children),
             prefixes = immutableListSnapshot(prefixes),
-            usageTypeTransfer = UsageTypeTransfer.PreserveMount,
         )
     }
 
@@ -459,7 +460,7 @@ private class IncludeMounter(
         val rootName = rootStructure.name
         val rootBody = rootStructure.body
         val rootChildren = requirePreparedGroupChildren(rootBody, "/$rootName") { invalidPath, reason ->
-            if ("modelAlias" in rootBody) {
+            if (rootBody.includeDirectiveMember() != null) {
                 throw invalidIncludeMount(includedSource.source.modelId, invalidPath, reason)
             }
             throw invalidModelElement(includedSource, invalidPath, reason)
@@ -515,7 +516,6 @@ private class IncludeMounter(
                     .orEmpty(),
             ),
             prefixes = listOf(MountedPrefix(sourcePrefix = "/$rootName", outputPrefix = mountPath)),
-            usageTypeTransfer = UsageTypeTransfer.ReplaceMount(filteredBody["usageType"]),
         )
     }
 
@@ -602,77 +602,99 @@ private class IncludeMounter(
     }
 }
 
-private val INCLUDE_ONLY_DIRECTIVE_KEYS =
-    setOf("includeLevel", "excludeRules", "excludeComputations")
-
 internal sealed interface GroupAssembly {
     data class Ordinary(val elements: JsonArray?) : GroupAssembly
     data class Include(val directive: IncludeDirective) : GroupAssembly
 }
 
 internal data class IncludeDirective(
-    val alias: String,
+    val reference: String,
     val level: IncludeLevel,
     val exclusions: IncludeExclusions,
 )
 
+/**
+ * Whether the group at [path] mounts a model, read as A12 31.1.1 binds DM 29.4's `includeConfig` (KF651): an object
+ * is a mount, an absent member or `null` is a plain group, and any other value builds no model.
+ */
 internal fun classifyGroup(
     body: JsonObject,
     elements: JsonArray?,
     source: ParsedWorkspaceSource,
     path: String,
 ): GroupAssembly {
-    val aliasNode = body["modelAlias"]
-    if (aliasNode == null) {
-        val misplaced = INCLUDE_ONLY_DIRECTIVE_KEYS.firstOrNull(body::containsKey)
-        if (misplaced != null) {
-            throw invalidIncludeMount(
-                source.source.modelId,
-                path,
-                "$misplaced is valid only on an include mount",
-            )
-        }
-        return GroupAssembly.Ordinary(elements)
-    }
-
-    val alias = (aliasNode as? JsonPrimitive)
-        ?.takeIf(JsonPrimitive::isString)
-        ?.content
-        // A12 expands a mount whose alias is spaces when an include entry carries that alias; only "" finds none.
-        ?.takeIf(String::isNotEmpty)
-        ?: throw invalidIncludeMount(
+    // A12 reads a DM 28 member as nothing and keeps the group plain, so the mount or the option the author meant
+    // is lost without a notification (KF651, `adapter.laws.IncludeConfigShapeLawsTest`). Refused on purpose,
+    // matching the kits' reader.
+    DM28_MOUNT_MEMBERS.firstOrNull(body::containsKey)?.let { stale ->
+        throw invalidIncludeMount(
             source.source.modelId,
             path,
-            "modelAlias must be a non-empty string",
+            "$stale is a DM 28 mount member that A12 has ignored since DM 29.0, so it would be lost silently; " +
+                "write the mount as includeConfig {reference, includeLevel?, excludeRules?, excludeComputations?}",
         )
-    // The Kernel accepts this ambiguous shape by silently keeping the local elements and ignoring the include.
-    // Portable preparation refuses instead of discarding either authored source; the oracle behavior is locked by
-    // WorkspaceIncludeStructureKernelTest.
+    }
+    val config = when (val value = body[INCLUDE_CONFIG_MEMBER]) {
+        null, is JsonNull -> return GroupAssembly.Ordinary(elements)
+        is JsonObject -> value
+        else -> throw invalidIncludeMount(
+            source.source.modelId,
+            path,
+            "includeConfig must be an object; A12 builds no model from any other value",
+        )
+    }
+    val reference = includedReference(config, source, path)
+    // A12 mounts the included content and discards the group's own elements without a notification (KF651).
+    // Portable preparation refuses instead of discarding authored content.
     if (!elements.isNullOrEmpty()) {
         throw invalidIncludeMount(
             source.source.modelId,
             path,
-            "a group cannot combine modelAlias with local elements",
+            "a group cannot combine includeConfig with local elements",
         )
     }
-    val level = includeLevel(body, source, path)
     val exclusions = IncludeExclusions.from(
-        excludeRules = includeExclusionFlag(body, "excludeRules", source, path),
-        excludeComputations = includeExclusionFlag(body, "excludeComputations", source, path),
+        excludeRules = includeExclusionFlag(config, "excludeRules", source, path),
+        excludeComputations = includeExclusionFlag(config, "excludeComputations", source, path),
     )
-    return GroupAssembly.Include(IncludeDirective(alias, level, exclusions))
+    return GroupAssembly.Include(IncludeDirective(reference, includeLevel(config, source, path), exclusions))
 }
 
+/**
+ * The included model's id: a scalar's JSON text (a number keeps its zeros, a string is not trimmed). A12 refuses an
+ * absent or Java-blank id as "not specified" and builds no model from `null`, an object or an array (KF651).
+ */
+private fun includedReference(config: JsonObject, source: ParsedWorkspaceSource, path: String): String {
+    val value = config["reference"]
+    val text = (value as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
+    if (value != null && text == null) {
+        throw invalidIncludeMount(source.source.modelId, path, "includeConfig.reference must be a text")
+    }
+    return text?.takeUnless(String::isJavaBlank)
+        ?: throw invalidIncludeMount(
+            source.source.modelId,
+            path,
+            "includeConfig.reference names no model, so A12 refuses to expand the mount",
+        )
+}
+
+/**
+ * The level as A12 binds its enum: a constant's name or its ordinal ([IncludeLevel.SINGLE_RG] is 0), as an integer
+ * token or as the ordinal's digits, all after a Java `trim()`. Every other value refuses the model (KF651).
+ */
 private fun includeLevel(
-    body: JsonObject,
+    config: JsonObject,
     source: ParsedWorkspaceSource,
     path: String,
 ): IncludeLevel {
-    val value = body["includeLevel"] ?: return IncludeLevel.SINGLE_RG
-    val wireName = (value as? JsonPrimitive)
-        ?.takeIf(JsonPrimitive::isString)
-        ?.content
-    return IncludeLevel.fromWireName(wireName)
+    val value = config["includeLevel"] ?: return IncludeLevel.SINGLE_RG
+    val primitive = value as? JsonPrimitive
+    val level = when {
+        primitive == null || primitive is JsonNull -> null
+        primitive.isString -> IncludeLevel.fromBoundText(primitive.content.trim { it <= ' ' })
+        else -> IncludeLevel.fromOrdinalLiteral(primitive.content)
+    }
+    return level
         ?: throw invalidIncludeMount(
             source.source.modelId,
             path,
@@ -680,28 +702,17 @@ private fun includeLevel(
         )
 }
 
+/** An exclusion flag, bound through A12's shared boolean law, which DM 29.4 moved these members onto (KF651). */
 private fun includeExclusionFlag(
-    body: JsonObject,
+    config: JsonObject,
     key: String,
     source: ParsedWorkspaceSource,
     path: String,
-): Boolean {
-    val value = body[key] ?: return false
-    val boolean = (value as? JsonPrimitive)
-        ?.takeIf { !it.isString }
-        ?.content
-        ?.toBooleanStrictOrNull()
-    if (boolean != null) {
-        return boolean
-    }
-
-    // The Kernel treats a malformed exclusion value as false. At the portable boundary that would turn an
-    // authoring error into executable content, so refuse it explicitly; WorkspaceIncludeStructureKernelTest
-    // locks the deliberately stricter policy's external basis.
+): Boolean = configFlag(config[key]).orRefuse {
     throw invalidIncludeMount(
         source.source.modelId,
         path,
-        "$key must be a Boolean",
+        "$key must be a Boolean A12 can bind",
     )
 }
 
@@ -739,13 +750,7 @@ internal fun invalidModelElement(
 private data class MountedIncludeContent(
     val children: List<JsonObject>,
     val prefixes: List<MountedPrefix>,
-    val usageTypeTransfer: UsageTypeTransfer,
 )
-
-private sealed interface UsageTypeTransfer {
-    data object PreserveMount : UsageTypeTransfer
-    data class ReplaceMount(val value: JsonElement?) : UsageTypeTransfer
-}
 
 private data class MountedExecutableOriginDraft(
     val outputPath: String,
@@ -787,10 +792,22 @@ internal enum class IncludeLevel {
     MODEL_ROOT;
 
     companion object {
-        fun fromWireName(value: String?): IncludeLevel? = when (value) {
-            SINGLE_RG.name -> SINGLE_RG
-            MODEL_ROOT.name -> MODEL_ROOT
-            else -> null
+        /** A constant's name, or its ordinal's digits without sign or leading zero. */
+        fun fromBoundText(value: String): IncludeLevel? = entries.firstOrNull { it.name == value }
+            ?: entries.firstOrNull { it.ordinal.toString() == value }
+
+        /** An integer token's literal, judged on its digits; `-0` is the ordinal 0. */
+        fun fromOrdinalLiteral(literal: String): IncludeLevel? {
+            val negative = literal.startsWith("-")
+            val digits = if (negative) literal.drop(1) else literal
+            if (digits.isEmpty() || !digits.all { it in '0'..'9' }) {
+                return null
+            }
+            val magnitude = digits.trimStart('0').ifEmpty { "0" }
+            if (negative && magnitude != "0") {
+                return null
+            }
+            return entries.firstOrNull { it.ordinal.toString() == magnitude }
         }
     }
 }
@@ -829,38 +846,15 @@ private enum class IncludeExclusion {
 }
 
 /**
- * The provider root's count, bound as A12's reader binds a group's (`" 1 "` and `"01"` are 1, no value is 0); null
- * where the reader cannot bind it.
+ * The provider root's count, bound as A12's reader binds a group's primitive count (`" 1 "` and `"01"` are 1); null
+ * where the reader cannot bind it, which on kernel 31 includes the empty text and a JSON or textual null.
  */
 private fun JsonObject.singleRootRepeatabilityOrNull(): Int? {
     val value = get("repeatability") ?: return 1
-    return when (val binding = value.bindJavaInt()) {
-        is JavaIntBinding.Bound -> binding.value
-        JavaIntBinding.NoValue -> 0
-        JavaIntBinding.Unbindable -> null
-    }
+    return value.bindJavaPrimitiveInt()
 }
 
-private fun JsonObject.withoutIncludeDirectives(): JsonObject =
-    JsonObject(
-        filterKeys {
-            it != "modelAlias" &&
-                it != "includeLevel" &&
-                it != "excludeRules" &&
-                it != "excludeComputations"
-        },
-    )
-
-private fun JsonObject.withTransferredUsageType(transfer: UsageTypeTransfer): JsonObject = when (transfer) {
-    UsageTypeTransfer.PreserveMount -> this
-    is UsageTypeTransfer.ReplaceMount -> {
-        if (transfer.value == null) {
-            JsonObject(filterKeys { it != "usageType" })
-        } else {
-            setting("usageType", transfer.value)
-        }
-    }
-}
+private fun JsonObject.withoutIncludeDirectives(): JsonObject = JsonObject(filterKeys { it != INCLUDE_CONFIG_MEMBER })
 
 internal fun JsonObject.withoutModelReferences(): JsonObject {
     val header = objectMember("header") ?: return this

@@ -13,14 +13,15 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
 /**
- * SPEC-2026-10-04-02: a temporal constructor keeps WHY it has no value. A fixed unreal component (`Time(24)`) and a
- * constructed wall time inside the Berlin gap are fixed outcomes, an empty partial date is a missing one, and an
- * extremum over them keeps that provenance, so a rule comparing it fires as VALUE or OMISSION accordingly. The
- * constructed gap clears its target cleanly, where a gap LITERAL is a runtime failure (KF513). `DateTime(date, time)`
- * evaluates its arguments in order and stops early only on a formally invalid Date read: a partial date that has no
- * value still lets the Time argument run, so a malformed clock poisons and a gap literal fails there.
+ * SPEC-2026-10-04-02: a temporal constructor keeps WHY it has no value. A fixed unreal component (`Time(24)`) is a
+ * fixed outcome, an empty partial date is a missing one, and an extremum over them keeps that provenance, so a rule
+ * comparing it fires as VALUE or OMISSION accordingly. A constructed wall time inside the Berlin gap was a fixed
+ * outcome on 30.8.1 too; kernel 31.1.1 moves it forward by the gap, so it is a value (KERNEL-FINDINGS KF665).
+ * `DateTime(date, time)` evaluates its arguments in order and stops early only on a formally invalid Date read: a
+ * partial date that has no value still lets the Time argument run, so a malformed clock poisons and a literal the
+ * model zone cannot read fails there (KF513).
  *
- * The JVM default is pinned to UTC, under which the kernel's static check admits the gap literal
+ * The JVM default is pinned to UTC, under which the kernel's static check admits that literal
  * (`DateTimeConstantZoneSplitDiffTest`); the model zone is Europe/Berlin.
  *
  * Own domain (insurance claim intake).
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.TestInstance
 class ConstructionProvenanceDiffTest {
     private companion object {
         const val ISO_DT = "yyyy-MM-dd'T'HH:mm:ss"
-        const val GAP = "31.03.2024T02:30:00"
+        const val GAP = "29.02.1500T10:00:00"
     }
 
     private val seeds = mapOf("OutConstructed" to "2001-12-25T12:30:00", "AfterConstructed" to "9",
@@ -115,9 +116,9 @@ class ConstructionProvenanceDiffTest {
 
     /**
      * The separating rows, pinned against the normative kernel so the agreement above cannot pass vacuously. Each
-     * names the rival account it rules out: an unreal clock or a gap construction read as missing or as invalid,
-     * a constructed gap poisoning like a gap literal, an empty partial date read as invalid, and a constructor that
-     * stops at any valueless Date argument.
+     * names the rival account it rules out: an unreal clock read as missing or as invalid, a constructed gap still
+     * read as no value, an empty partial date read as invalid, and a constructor that stops at any valueless Date
+     * argument.
      */
     @Test
     fun theSeparatingRowsAreTheKernelsOwn() {
@@ -125,23 +126,24 @@ class ConstructionProvenanceDiffTest {
         fun fired(doc: String, code: String) = run(doc).messages.filter { it.code == code }.map { it.brief }
         val actual = linkedMapOf(
             "an unreal clock is a fixed outcome under Min" to fired("unreal-clock", "ClockMin"),
-            "a constructed gap is a fixed outcome under Min" to fired("constructed-gap", "ConstructedMin"),
-            "a constructed gap clears its target" to run("constructed-gap").outcomes["OutConstructed"],
-            "cleanly, so its guard reads it as empty" to run("constructed-gap").outcomes["AfterConstructed"],
+            "a constructed gap is a value under Min, earlier than the stored 03:30" to
+                fired("constructed-gap", "ConstructedMin"),
+            "a constructed gap stores the wall time one gap later" to run("constructed-gap").outcomes["OutConstructed"],
+            "so its guard reads it as filled" to run("constructed-gap").outcomes["AfterConstructed"],
             "an empty partial date is a missing outcome under Min" to fired("empty-partial", "PartialMin"),
             "a valueless partial date still runs the clock argument" to
                 run("empty-partial-bad-clock").outcomes["AfterPartial"],
-            "and reaches a gap literal there" to fired("malformed-partial", "GapAfterPartial"),
+            "and reaches the unreadable literal there" to fired("malformed-partial", "GapAfterPartial"),
         )
         assertEquals(linkedMapOf(
             "an unreal clock is a fixed outcome under Min" to listOf("ClockMin|VALUE_ERROR|/Claim[1]/Clock"),
-            "a constructed gap is a fixed outcome under Min" to listOf("ConstructedMin|VALUE_ERROR|/Claim[1]/Logged"),
-            "a constructed gap clears its target" to "CLEARED",
-            "cleanly, so its guard reads it as empty" to "VALUE|1",
+            "a constructed gap is a value under Min, earlier than the stored 03:30" to emptyList<String>(),
+            "a constructed gap stores the wall time one gap later" to "VALUE|2024-03-31T03:00:00",
+            "so its guard reads it as filled" to "CLEARED",
             "an empty partial date is a missing outcome under Min" to
                 listOf("PartialMin|OMISSION_ERROR|/Claim[1]/Logged"),
             "a valueless partial date still runs the clock argument" to "CLEARED",
-            "and reaches a gap literal there" to listOf("GapAfterPartial|VALUE_ERROR|/Claim[1]/Logged"),
+            "and reaches the unreadable literal there" to listOf("GapAfterPartial|VALUE_ERROR|/Claim[1]/Logged"),
         ), actual)
     }
 }

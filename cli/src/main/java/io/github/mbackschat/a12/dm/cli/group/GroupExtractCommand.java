@@ -49,7 +49,7 @@ final class GroupExtractCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--reference", required = true, paramLabel = "<subModelId>",
-            description = "the new sub-model's id + include alias; its file is written as <id>.dm.json in the "
+            description = "the new sub-model's id, which the mount's includeConfig references; its file is written as <id>.dm.json in the "
                     + "include-dir — read the exact path from the result's `subModel`, don't guess the filename")
     String reference;
 

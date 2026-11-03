@@ -163,9 +163,10 @@ public final class FirstFilledOperand implements DuplicateOperand {
     /** Adds the owner {@code Having} filter to a wildcard field target. */
     public FirstFilledOperand having(Condition filter) {
         if (field == null) {
-            // Unlike the other two shape refusals, an unstarred repeatable level does not move this class, so
-            // only an index can (validate.laws.FirstFilledOperandShapeLawsTest).
-            throw groupShapeRefusal(semanticIndex == null, KernelCode.MVK_NO_GROUPS_ALLOWED,
+            // Since kernel 31.1.1 A12 asks a filtered group's kind only once its walk passes, so the same three
+            // things move this class as move the other shape refusals (KERNEL-FINDINGS KF656,
+            // validate.laws.FirstFilledOperandShapeLawsTest).
+            throw groupShapeRefusal(groupClassIsFixed(), KernelCode.MVK_NO_GROUPS_ALLOWED,
                     "FirstFilledValue does not accept a Having filter on the group " + renderedPath());
         }
         if (!(field instanceof FieldListRef list)) {
@@ -186,11 +187,12 @@ public final class FirstFilledOperand implements DuplicateOperand {
     }
 
     /**
-     * Whether A12's class for the empty-group and group-category shapes is the shape's own. Three things move it,
+     * Whether A12's class for the group shapes — empty, projected through a category, filtered — is the shape's
+     * own. Three things move it,
      * and the operand is built before the rule and the filter that decide them. A repeatable level left unstarred
      * is bound when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not, an
      * index answers {@code MVK_NO_INDEX_FIELD} first when it resolves to no index field, and the {@code $} marker
-     * is {@code MVK_INVALID_OUTER_ITERATION} outside a filter, though not inside one
+     * is {@code MVK_INVALID_OUTER_ITERATION} outside a filter, and on a filtered group inside one too
      * ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
      */
     private boolean groupClassIsFixed() {

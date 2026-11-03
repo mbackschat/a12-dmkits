@@ -31,13 +31,6 @@ class FilterBodyComparisonLawsTest {
                             .numberField("Units", n -> n.fractionDigits(0))
                             .numberField("Paid", n -> n.fractionDigits(2))
                             .enumField("Cause", e -> e.value("FIRE").value("WATER"))
-                            .enumField("Tier", e -> e
-                                    .value("BASIC", l -> l.label("en_US", "Basic cover"))
-                                    .value("PLUS", l -> l.label("en_US", "Plus cover")))
-                            // One shared stored token carrying a different text than `Tier` gives it.
-                            .enumField("TierConflict", e -> e
-                                    .value("BASIC", l -> l.label("en_US", "Budget cover"))
-                                    .value("PLUS", l -> l.label("en_US", "Plus cover")))
                             .field("Urgent", FieldKind.BOOLEAN)
                             .field("Settled", FieldKind.CONFIRM)
                             .dateField("Reported", d -> d.format("dd.MM.yyyy"))
@@ -79,8 +72,6 @@ class FilterBodyComparisonLawsTest {
         rows.put("[Claims/Cause] == [Claims/Urgent]", "MVK_INVALID_COMPARE_TO_YESNO");
         rows.put("[Claims/Notes] < [Claims/Units]", "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("\"a\" == 1", "MVK_INVALID_COMPARE_TO_CONST");
-        rows.put("[Claims/Tier] == [Claims/Notes]", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        rows.put("[Claims/Tier] == [Claims/TierConflict]", "MVK_INVALID_COMPARE_ENUM_TO_ENUM");
         rows.put("[Claims/Units] DiffersWithToleranceRange1 True", "MVK_INVALID_TYPE_FOR_TOLERANCE_OP");
         rows.put("[Claims/Units] == True", "MVK_INCONSISTENT_TYPES_COMPARED");
         rows.put("[Claims/Units] == [Claims/Paid]", "MVK_INVALID_COMPARE_DEC_PLACES");
@@ -110,7 +101,7 @@ class FilterBodyComparisonLawsTest {
         rows.put("Sum(Claims/Paid Having [Claims/Units] > 5) > 0", "MVK_NO_WILDCARD");
         rows.put("Sum(Claims/Paid Having [Claims/Notes] < [Claims/Units]) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Units] > 5) > 0) > 0",
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
         rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Claims/Notes] < [Claims/Units]) > 0) > 0",
                 "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("Sum(Claims*/Paid Having Sum(Claims*/Units Having [Reference] > 5) > 0) > 0",
@@ -127,21 +118,24 @@ class FilterBodyComparisonLawsTest {
     }
 
     /**
-     * Where the filter's OWN chain is raised around its body. The kind of the filtered entity is asked as the
-     * parser reads the {@code Having} keyword ({@code initFilterCondition}), so a group is refused ahead of
-     * anything its body holds, a refused comparison, a name resolving to nothing and a broken token alike.
-     * Everything else the chain asks — the repetitions the body reads, the key's star, the key's own wildcard —
-     * is asked once the whole spec is read, so the body's comparison is named first; each of those has a sound
-     * body beside it, which names the chain's own class.
+     * Where the filter's OWN chain is raised around its body. Everything the chain asks — the filtered entity's
+     * kind, the repetitions the body reads, the key's star, the key's own wildcard — is asked once the whole spec
+     * is read, so the body's refused comparison, a name resolving to nothing and a broken token are named first;
+     * each has a sound body beside it, which names the chain's own class. Kernel 30.8.1 asked the kind as the
+     * parser read the {@code Having} keyword, ahead of the body (KERNEL-FINDINGS KF656).
      */
     @Test
     void whereTheFilterChainRaisesAroundItsBody() {
         Map<String, String> rows = new LinkedHashMap<>();
-        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Notes] < [Claims/Units]) > 0", NO_GROUPS);
-        rows.put("NumberOfFilledGroups(Claims* Having [NoSuchField] == \"x\") > 0", NO_GROUPS);
-        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Units] + ) > 0", NO_GROUPS);
-        rows.put("Sum(Claims*/Paid For Insured Having [Insured/Name] < [Insured/Count]) > 0", NO_GROUPS);
-        rows.put("Sum(Claims*/Paid Having [Parties/Name] == \"x\") > 0", "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Units] > 5) > 0", NO_GROUPS);
+        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Notes] < [Claims/Units]) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("NumberOfFilledGroups(Claims* Having [NoSuchField] == \"x\") > 0", "MVK_INVALID_ENTITY");
+        rows.put("NumberOfFilledGroups(Claims* Having [Claims/Units] + ) > 0", "MVK_UNEXPECTED_TOKEN");
+        rows.put("Sum(Claims*/Paid For Insured Having [Insured/Name] == \"x\") > 0", NO_GROUPS);
+        rows.put("Sum(Claims*/Paid For Insured Having [Insured/Name] < [Insured/Count]) > 0",
+                "MVK_INVALID_TYPE_FOR_COMPARISON");
+        rows.put("Sum(Claims*/Paid Having [Parties/Name] == \"x\") > 0", "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
         rows.put("Sum(Claims*/Paid Having [Parties/Name] < [Parties/Count]) > 0", "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("Sum(Claims*/Paid Having [Parties/Name] == [Parties/Count]) > 0",
                 "MVK_INVALID_COMPARE_TO_ENUM_OR_STRING");
@@ -151,7 +145,7 @@ class FilterBodyComparisonLawsTest {
         rows.put("Sum(Orders*/Units For Parties*/Name Having [Parties/Name] < [Parties/Count]) > 0",
                 "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("Sum(Orders*/Units For Parties*/Name Having [Orders/Note] == \"x\") > 0",
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
         rows.put("Sum(Orders*/Units For Parties*/Name Having [Orders/Note] < [Orders/Units]) > 0",
                 "MVK_INVALID_TYPE_FOR_COMPARISON");
         rows.put("Sum(Orders*/Units For Reference Having [Orders/Note] == \"x\") > 0", "MVK_WILDCARDS_REQUIRED");

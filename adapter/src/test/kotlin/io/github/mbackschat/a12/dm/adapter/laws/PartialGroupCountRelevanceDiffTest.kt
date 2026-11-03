@@ -29,6 +29,10 @@ import org.junit.jupiter.api.Test
  * (`MVK_PARAMSIZE_INVALIDGN`), so the count takes both. The mixed count over `Batches*` and `Label` is decided
  * only when both operands are, measured with each side undecided in turn.
  *
+ * Kernel 31.1.1 settles the extent on the group's WHOLLY relevant instances rather than on those with any
+ * relevant content, and folds a repeatable group's concrete rows into its wildcard once they cover every declared
+ * slot (KERNEL-FINDINGS KF667), so four rows here moved from 30.8.1.
+ *
  * Every carrier compares with the value full validation gives it, so it fires exactly when it is decidable; the
  * full-validation reading runs beside each row as the liveness control.
  */
@@ -72,7 +76,9 @@ class PartialGroupCountRelevanceDiffTest {
             Case("malformed only", """{"Mass":"bad"}""", whole, null, null, 1),
             Case("admitted beside malformed", """{"Mass":"bad","Volume":2}""", whole,
                 "COUNT2:VALUE_ERROR", "COUNT2:VALUE_ERROR", 1),
-            Case("content visible", """{"Mass":2}""", fields(0, 1), "COUNT2:VALUE_ERROR", "COUNT2:VALUE_ERROR"),
+            // Only row 1's Seal is wholly relevant, so the count's identifiers stay concrete at the starred level
+            // (KERNEL-FINDINGS KF667); 30.8.1 counted row 2 by its admitted content.
+            Case("content visible", """{"Mass":2}""", fields(0, 1), "COUNT2:VALUE_ERROR", null),
             Case("same content hidden", """{"Mass":2}""", fields(1, 0), "COUNT2:VALUE_ERROR", null),
         )
         for (case in cases) {
@@ -166,12 +172,17 @@ class PartialGroupCountRelevanceDiffTest {
         setOf("NFG_BATCHES", "NFG_SEALS"),
     )
 
-    /** The same with the concrete rows on `Code`, a field of the `Seal` count's own group. */
+    /**
+     * The same with the concrete rows on `Code`, a field of the `Seal` count's own group. Every batch is wholly
+     * relevant and its four concrete rows fold into the batch wildcard, so the batch count decides. `Seal` is not
+     * repeatable, so nothing folds its rows: its identifiers stay concrete at the starred batch level and its
+     * count is undecidable on kernel 31.1.1, where 30.8.1 decided it (KERNEL-FINDINGS KF667).
+     */
     @Test
-    fun aSealFieldNamedConcretelyInEveryDeclaredRowIsEncompassedAsWell() = assertFiredUnder(
+    fun aSealFieldNamedConcretelyInEveryDeclaredRowLeavesOnlyTheSealCountUndecidable() = assertFiredUnder(
         4,
         (1..4).map { row(CODE, 0, it, 0, 0) } + listOf(LOT, WEIGHT).map(::everyRow),
-        setOf("NFG_BATCHES", "NFG_SEALS"),
+        setOf("NFG_BATCHES"),
     )
 
     /**
@@ -186,12 +197,16 @@ class PartialGroupCountRelevanceDiffTest {
         setOf("NFG_BATCHES"),
     )
 
-    /** The same with `Lot` named concretely too: now neither count's identifiers wildcard `Batches`. */
+    /**
+     * The same with `Lot` named concretely too. Both declared batches are wholly relevant, so their concrete rows
+     * fold into the batch wildcard and the batch count decides on kernel 31.1.1, where 30.8.1 left it unknown; the
+     * `Seal` count stays undecidable (KERNEL-FINDINGS KF667).
+     */
     @Test
-    fun everyFieldNamedOnlyConcretelyLeavesBothExtentsUnknown() = assertFiredUnder(
+    fun wholeCoverageOfEveryDeclaredBatchFoldsIntoTheBatchWildcard() = assertFiredUnder(
         2,
         (1..2).flatMap { listOf(row(LOT, 0, it, 0), row(CODE, 0, it, 0, 0), row(WEIGHT, 0, it, 0, 0)) },
-        setOf(),
+        setOf("NFG_BATCHES"),
     )
 
     /**
@@ -217,14 +232,15 @@ class PartialGroupCountRelevanceDiffTest {
     )
 
     /**
-     * `Seal` covered in row 1 only. The batch count still decides: row 2 is partly covered but holds admitted
-     * content, which is all a held row needs. The `Seal` count's own identifiers stay concrete.
+     * `Seal` covered in row 1 only. Row 2 is partly covered, so the only wholly relevant batch is row 1 and the
+     * batch count's identifiers stay concrete at the starred level: nothing decides on kernel 31.1.1, where 30.8.1
+     * counted row 2 by its admitted content (KERNEL-FINDINGS KF667).
      */
     @Test
-    fun aPartlyCoveredHeldRowCountsByItsAdmittedContent() = assertFiredUnder(
+    fun aPartlyCoveredHeldRowLeavesTheCountUndecidable() = assertFiredUnder(
         2,
         listOf(everyRow(LOT), row(CODE, 0, 1, 0, 0), row(WEIGHT, 0, 1, 0, 0)),
-        setOf("NFG_BATCHES"),
+        setOf(),
     )
 
     /** The coverage above moved to row 2: now the FIRST row is the partly covered one, and nothing decides. */

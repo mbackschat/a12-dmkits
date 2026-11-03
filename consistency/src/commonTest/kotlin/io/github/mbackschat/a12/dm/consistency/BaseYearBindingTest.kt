@@ -38,7 +38,7 @@ class BaseYearBindingTest {
 
     private fun source(spelling: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"cover","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"cover","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"baseYear":$spelling},
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Cover","Group":{"elements":[]}}

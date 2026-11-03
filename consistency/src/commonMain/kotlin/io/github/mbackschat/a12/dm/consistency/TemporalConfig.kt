@@ -34,7 +34,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * The format itself is gated first, and only over the derived Refused table ([refusedFormatFinding]).
  */
 internal fun TrackedFactBase.temporalConfigFindings(field: TrackedDeclaration): List<Finding> {
-    if (field.declaredKind != DeclaredKind.FIELD || field.body.deletesAtDefaultVariant()) {
+    if (field.declaredKind != DeclaredKind.FIELD) {
         return emptyList()
     }
     return listOfNotNull(refusedFormatFinding(field)) + configFindings(field)

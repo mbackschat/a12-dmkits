@@ -29,7 +29,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
-import io.github.mbackschat.a12.dm.interpreter.workspace.PREPARED_INCLUDE_DIRECTIVE_MEMBERS
+import io.github.mbackschat.a12.dm.interpreter.workspace.includeDirectiveMember
 import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementPosition
 import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementStructure
 import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementType
@@ -111,11 +111,16 @@ object ModelLoader {
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(
             modelConfig.path("supportedCharacters").elements().mapNotNull { it.asTextOrNull() })
-        // Only an ABSENT timeZone slot defaults to UTC. An explicit null/blank is an invalid config value;
-        // outside-set ids reach ModelTimeZone's neutral common refusal. The JVM consumer classifies those ids
-        // against java.util.TimeZone before this kernel-free JVM+JS boundary.
+        // An ABSENT timeZone slot defaults to UTC, and so does an EMPTY one, which kernel 31.1.1's expand copy omits
+        // (KERNEL-FINDINGS KF658, adapter.laws.EmptyTimeZoneDiffTest). An explicit null or a blank is an invalid
+        // config value; outside-set ids reach ModelTimeZone's neutral common refusal. The JVM consumer classifies
+        // those ids against java.util.TimeZone before this kernel-free JVM+JS boundary.
         val timeZoneNode = (modelConfig as? JsonObject)?.get("timeZone")
-        val timeZone = if (timeZoneNode == null) ModelTimeZone.UTC else ModelTimeZone.of(timeZoneNode.asTextOrNull())
+        val timeZone = if (timeZoneNode == null || timeZoneNode.asTextOrNull() == "") {
+            ModelTimeZone.UTC
+        } else {
+            ModelTimeZone.of(timeZoneNode.asTextOrNull())
+        }
         val conditionLanguage = ConditionLanguage.fromCode((root as? JsonObject)?.conditionLanguageCode())
         return ModelDef(
             fields = sink.fields,
@@ -294,15 +299,11 @@ object ModelLoader {
         requireNamePath(id)
         when (structure.type) {
             PreparedElementType.FIELD -> {
-                if (acceptedByVariantFilter(structure.body)) {
-                    sink.fields.add(fieldDef(node, id))
-                }
+                sink.fields.add(fieldDef(node, id))
             }
             PreparedElementType.GROUP -> {
                 sink.groupPaths.add(id)
-                val includeMember = structure.body.keys.firstOrNull {
-                    it in PREPARED_INCLUDE_DIRECTIVE_MEMBERS
-                }
+                val includeMember = structure.body.includeDirectiveMember()
                 if (includeMember != null) {
                     throw UnpreparedModelResidueException(
                         path = id,
@@ -311,8 +312,8 @@ object ModelLoader {
                             "be mounted before loading",
                     )
                 }
-                // A primitive `int`: blank text and a JSON null are 0, which the consistency check refuses.
-                val repeatability = boundJavaInt(structure.body.path("repeatability"), "$id: repeatability") ?: 0
+                // An absent count is A12's default, which is not repeatable either.
+                val repeatability = boundJavaPrimitiveInt(structure.body.path("repeatability"), "$id: repeatability") ?: 1
                 if (repeatability > 1) {
                     sink.repeatable.add(id)
                     sink.declaredReps[id] = repeatability
@@ -329,19 +330,17 @@ object ModelLoader {
             }
             PreparedElementType.RULE -> {
                 val body = structure.body
-                if (acceptedByVariantFilter(body)) {
-                    sink.rules.add(
-                        RuleDef(
-                            path = id,
-                            group = parent(id),
-                            conditionText = body.path("errorCondition").asText(),
-                            errorCode = body.path("errorCode").asText(),
-                            errorEntityRelPath = body.path("errorEntityRelPath").asText(),
-                            severity = Severity.valueOf(body.path("severity").asText("ERROR")),
-                            messages = localizedTexts(body.path("errorMessage")),
-                        ),
-                    )
-                }
+                sink.rules.add(
+                    RuleDef(
+                        path = id,
+                        group = parent(id),
+                        conditionText = body.path("errorCondition").asText(),
+                        errorCode = body.path("errorCode").asText(),
+                        errorEntityRelPath = body.path("errorEntityRelPath").asText(),
+                        severity = Severity.valueOf(body.path("severity").asText("ERROR")),
+                        messages = localizedTexts(body.path("errorMessage")),
+                    ),
+                )
             }
             PreparedElementType.COMPUTATION -> {
                 val body = structure.body
@@ -363,14 +362,12 @@ object ModelLoader {
                         toleranceBandOf(alternative),
                     )
                 }
-                if (acceptedByVariantFilter(body)) {
-                    sink.comps.add(
-                        ComputationDef(
-                            target, parent(id), alternatives, common, structure.name,
-                            localizedTexts(body.path("errorMessage")), roundingModeOf(body),
-                        ),
-                    )
-                }
+                sink.comps.add(
+                    ComputationDef(
+                        target, parent(id), alternatives, common, structure.name,
+                        localizedTexts(body.path("errorMessage")), roundingModeOf(body),
+                    ),
+                )
             }
         }
     }

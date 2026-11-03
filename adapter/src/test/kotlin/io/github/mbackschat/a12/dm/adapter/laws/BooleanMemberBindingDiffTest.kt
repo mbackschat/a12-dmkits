@@ -17,7 +17,7 @@ import java.util.function.Consumer
 /**
  * Differential (groovy-dynamic == java-static == interpreter) for the field types' primitive `boolean` members
  * written in the spellings A12's reader binds but a JSON-boolean reader does not: the integer `1` and the
- * padded `" TRUE"` set a member, `0` and the text `"null"` clear it ([KERNEL-FINDINGS KF569]; the binding is
+ * padded `" TRUE"` set a member, `0` and the text `"false"` clear it ([KERNEL-FINDINGS KF569]; the binding is
  * `:predicates`' `a12BooleanOfString` / `a12BooleanOfNumber`). Each member sits alone on a claim model with a
  * document value it decides — a line break, a zero, a negative, leading zeros, a pre-1900 date, and the
  * eliminated `Length` rule a `noValueValidation` string carries — so a reader that bound the spelling as the
@@ -33,7 +33,7 @@ class BooleanMemberBindingDiffTest {
 
     private companion object {
         val SET = listOf<Any>(1, " TRUE")
-        val CLEARED = listOf<Any>(0, "null", Raw("-0"))
+        val CLEARED = listOf<Any>(0, "false", Raw("-0"))
         val MAPPER = ObjectMapper()
         const val PLACEHOLDER = "boolean-member-token-placeholder"
     }

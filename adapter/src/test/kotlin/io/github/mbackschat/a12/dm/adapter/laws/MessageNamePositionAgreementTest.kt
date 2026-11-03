@@ -65,7 +65,8 @@ class MessageNamePositionAgreementTest {
         row("group-value", "\$Loans.value\$", FIELD)
         row("group-category", "\$Loans->Cat\$", FIELD)
         row("group-form-line", "\$Loans.Vordruckzeile\$", FIELD_IN_PARAMETER)
-        row("group-absolute-form-name", "\$/Library/Loans.Vordruckname\$", FIELD_IN_PARAMETER)
+        // Kernel 31.1.1 dropped the `Vordruckname` suffix: `Loans.Vordruckname` is one name naming nothing (KF657).
+        row("group-absolute-form-name", "\$/Library/Loans.Vordruckname\$", ENTITY)
         row("group-relative-form-line", "\$Shelf.Vordruckzeile\$", FIELD_IN_PARAMETER, reads = Reads.LOANS)
         row("group-relative-form-line-own-name", "\$Loans.Vordruckzeile\$", ENTITY, reads = Reads.LOANS)
         row("field-unread-form-line", "\$Returns/Borrower.Vordruckzeile\$")

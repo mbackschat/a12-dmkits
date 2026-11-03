@@ -23,13 +23,7 @@ package io.github.mbackschat.a12.dm.consistency
  * groups — an aggregate over a repeatable group's field, and an absolute read back out of it — is refused
  * exactly like two sibling reads, so keying on the resolved path alone is correct. Measured, because a
  * family built from same-group rows would have inherited a scope it never tested.
- *
- * **A computation a variant filter takes out of the check is no node**: the code generator that draws the
- * cycle generates the default variant, so a circle through an `ONLY`-filtered computation is admitted
- * whichever of its computations carries the filter
- * (`rulekit.validate.laws.CalculationMemberWithholdingLawsTest.aCircleThroughAFilteredComputationIsNoCycle`).
- * Report assembly's own filter cannot stand in for this: it drops a finding AT a suppressed declaration, and
- * the cycle is placed at one computation of the circle, which need not be the filtered one.
+
  */
 internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
     val writtenBy = computedTargets()
@@ -52,15 +46,13 @@ internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
 
 /** Diagnostic placement uses one declaration per target; dependency collection retains every writer. */
 private fun TrackedFactBase.computedTargets(): Map<String, String> {
-    val suppressed = variantFilterSuppressed()
-    return declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION && it.path !in suppressed }
+    return declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }
         .mapNotNull { element -> computedTargetOf(element)?.let { it to element.path } }.toMap()
 }
 
 private fun TrackedFactBase.dependencyEdges(writtenBy: Map<String, String>): Map<String, Set<String>> {
-    val suppressed = variantFilterSuppressed()
     val computations = declarations().filter {
-        it.declaredKind == DeclaredKind.COMPUTATION && it.path !in suppressed && computedTargetOf(it) in writtenBy
+        it.declaredKind == DeclaredKind.COMPUTATION && computedTargetOf(it) in writtenBy
     }
     return ComputationDependencyProfiles(this, computations).edges()
 }

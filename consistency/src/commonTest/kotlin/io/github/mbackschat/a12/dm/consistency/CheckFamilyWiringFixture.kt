@@ -7,7 +7,7 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal val WIRING_MODEL = ModelSource(
     """
-    {"header":{"modelVersion":"28.4.0","id":"wiring","locales":[{"code":"en_US"}]},
+    {"header":{"modelVersion":"29.4.0","id":"wiring","locales":[{"code":"en_US"}]},
      "content":{"modelInfo":{"name":"model"},"modelConfig":{"supportedCharacters":["A-Z"]},"modelRoot":{"rootGroups":[
       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
         {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
@@ -39,16 +39,20 @@ internal val WIRING_MODEL = ModelSource(
             "hintList":[{"locale":"en_US","values":["ABCD"]}]}}}},
         {"type":"Field","id":"f10","name":"Amount","Field":{"fieldType":{"type":"NumberType",
           "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
+        {"type":"Field","id":"f80","name":"NoWorkTotal","Field":{"fieldType":{"type":"NumberType",
+          "NumberType":{"maxFractionalDigits":2}}}},
+        {"type":"Field","id":"f81","name":"RoundedTotal","Field":{"fieldType":{"type":"NumberType",
+          "NumberType":{"maxFractionalDigits":2}}}},
+        {"type":"Field","id":"f82","name":"SuppressedTotal","Field":{"fieldType":{"type":"NumberType",
+          "NumberType":{"maxFractionalDigits":2}}}},
+        {"type":"Field","id":"f83","name":"AppTotal","Field":{"fieldType":{"type":"NumberType",
+          "NumberType":{"maxFractionalDigits":2}}}},
         {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
           "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
         {"type":"Field","id":"f49","name":"TargetGrade","Field":{"fieldType":{
           "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"}]}}}},
         {"type":"Field","id":"f50","name":"SourceGrade","Field":{"fieldType":{
           "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}]}}}},
-        {"type":"Field","id":"f48","name":"LabelledTier","Field":{"fieldType":{
-          "type":"EnumerationType","EnumerationType":{"values":[
-            {"value":"A","label":[{"locale":"en_US","text":"Alpha"}]},
-            {"value":"B","label":[{"locale":"en_US","text":"Beta"}]}]}}}},
         {"type":"Field","id":"f45","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
         {"type":"Field","id":"f47","name":"ShiftStart","Field":{"fieldType":{"type":"TimeType",
           "TimeType":{"format":"HH:mm:ss"}}}},
@@ -244,10 +248,6 @@ internal val WIRING_MODEL = ModelSource(
           "errorCondition":"FieldFilled(Price) And ValueAsDate(ShiftStart, FirstDay) > [TravelDate]",
           "errorEntityRelPath":"../Price",
           "errorCode":"C60","errorMessage":[{"locale":"en_US","text":"x"}]}},
-        {"type":"Rule","id":"r59","name":"LabelledAgainstPlain","Rule":{
-          "errorCondition":"FieldFilled(Price) And [LabelledTier] == [RepeatedTier]",
-          "errorEntityRelPath":"../Price",
-          "errorCode":"C59","errorMessage":[{"locale":"en_US","text":"x"}]}},
         {"type":"Rule","id":"r58","name":"CutOfANumber","Rule":{
           "errorCondition":"FieldFilled(Price) And RangeAsString(UnitCount, 1, 3) == \"ABC\"",
           "errorEntityRelPath":"../Price",
@@ -366,19 +366,18 @@ internal val WIRING_MODEL = ModelSource(
         {"type":"Rule","id":"r9","name":"Ungrammatical","Rule":{
           "errorCondition":"FieldFilled(Price))","errorEntityRelPath":"../Price",
           "errorCode":"C9","errorMessage":[{"locale":"en_US","text":"x"}]}},
-        {"type":"Rule","id":"r8","name":"Filtered","Rule":{
-          "errorCondition":"FieldFilled(NoSuchEntity)","errorEntityRelPath":"../Price",
-          "errorCode":"C7","errorMessage":[{"locale":"en_US","text":"x"}],
-          "variantFilter":{"filterType":"ONLY","variants":["premium"]}}},
         {"type":"Computation","id":"c61","name":"NarrowedGrade","Computation":{
           "computedFieldRelPath":"../TargetGrade",
           "computationAlternatives":[{"operation":"[SourceGrade]"}],
           "errorMessage":[{"locale":"en_US","text":"x"}]}},
         {"type":"Computation","id":"c1","name":"NoWork","Computation":{
+          "computedFieldRelPath":"../NoWorkTotal",
           "computationAlternatives":[]}},
         {"type":"Computation","id":"c2","name":"BadRounding","Computation":{
+          "computedFieldRelPath":"../RoundedTotal",
           "computationAlternatives":[{"operation":"1.00"}],"roundingMode":"SOMETIMES"}},
         {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
+          "computedFieldRelPath":"../SuppressedTotal",
           "computationAlternatives":[{"operation":"1.00"}],
           "errorCodesToSuppress":["NOT A CODE"]}},
         {"type":"Rule","id":"r22","name":"MessageNamesUnread","Rule":{
@@ -392,6 +391,7 @@ internal val WIRING_MODEL = ModelSource(
           "computedFieldRelPath":"../Label",
           "computationAlternatives":[{"operation":"[Label]"}]}},
         {"type":"Computation","id":"c6","name":"GuardedByAnAppCondition","Computation":{
+          "computedFieldRelPath":"../AppTotal",
           "computationAlternatives":[
             {"precondition":"FieldFilled(Price) And CustomCondition NotReverse",
              "operation":"1.00"}]}},
@@ -438,7 +438,7 @@ internal val WIRING_MODEL = ModelSource(
         {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Field","id":"f2","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatability":20,
-          "indexFieldName":"NoSuchIndex","elements":[
+          "sortFields":[{"name":""}],"elements":[
             {"type":"Field","id":"f3","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
           ]}},
         {"type":"Group","id":"g2","name":"BadKey","Group":{"repeatability":20,

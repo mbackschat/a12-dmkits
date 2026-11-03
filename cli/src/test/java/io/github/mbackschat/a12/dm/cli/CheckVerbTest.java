@@ -45,7 +45,7 @@ class CheckVerbTest {
         assertEquals(0, CliTestSupport.run("-m", catalog.toString(), "field", "add",
                 "--group", "/Catalog", "--name", "Sku", "--kind", "STRING").code());
         assertEquals(0, CliTestSupport.run("-m", base.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
+                "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString()).code(), "mount the catalog under /Subscription");
         var res = CliTestSupport.run("-m", base.toString(), "rule", "check",
                 "--field", "/Subscription/Catalog/Sku", "--condition", "FieldFilled(/Subscription/Catalog/Sku)",

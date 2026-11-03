@@ -31,7 +31,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  * without making the starred list a per-row read, and an unmarked filter read binds nothing at all. The
  * threshold is per operator — one independent slot for {@code AtLeastOneFieldFilled} and
  * {@code FieldsNotCollectivelyFilled}, two for {@code MoreThanOneFieldFilled} and {@code FieldValuesNotUnique},
- * none at all for the three negatives, which a guard on the bound row rescues.
+ * none at all for the three negatives, which a guard on the bound row rescues. Since kernel 31.1.1 a negative
+ * refuses wherever the rule iterates, so the marked filter's bound row is enough to refuse one (KERNEL-FINDINGS
+ * KF656).
  *
  * <p><b>Typed-surface boundary.</b> The subject of both grids is reference SPELLING — starred, per-row, marked or
  * unmarked inside a filter — which is the variable under test, so the rows are condition text.
@@ -174,11 +176,11 @@ class IterationBindingLawsTest {
         // Which shapes each operator refuses; every other shape, and every computation, admits.
         Map<String, List<String>> refusedShapes = new LinkedHashMap<>();
         refusedShapes.put("AllFieldsFilled", List.of());
-        refusedShapes.put("NoFieldFilled", List.of("rowPair", "mixedPair", "starAndRow"));
+        refusedShapes.put("NoFieldFilled", List.of("rowPair", "mixedPair", "starAndRow", "marked"));
         refusedShapes.put("AtLeastOneFieldFilled", List.of("mixedPair", "starAndRow", "marked"));
         refusedShapes.put("MoreThanOneFieldFilled", List.of("starAndRow", "marked"));
-        refusedShapes.put("NotAllFieldsFilled", List.of("rowPair", "mixedPair", "starAndRow"));
-        refusedShapes.put("NotExactlyOneFieldFilled", List.of("rowPair", "mixedPair", "starAndRow"));
+        refusedShapes.put("NotAllFieldsFilled", List.of("rowPair", "mixedPair", "starAndRow", "marked"));
+        refusedShapes.put("NotExactlyOneFieldFilled", List.of("rowPair", "mixedPair", "starAndRow", "marked"));
         refusedShapes.put("FieldsNotCollectivelyFilled", List.of("mixedPair", "starAndRow", "marked"));
         refusedShapes.put("FieldValuesNotUnique", List.of("starAndRow", "marked"));
 

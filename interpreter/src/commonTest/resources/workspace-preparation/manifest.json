@@ -1502,7 +1502,7 @@
         }
       }
     },
-    "alias-with-exclusions" : {
+    "mount-with-exclusions" : {
       "entryModelId" : "permit-excluded",
       "sources" : {
         "inspection-checks" : "shared/inspection-checks.dm.json",
@@ -2171,7 +2171,7 @@
         }
       }
     },
-    "same-alias-mounted-twice" : {
+    "same-model-mounted-twice" : {
       "entryModelId" : "permit-repeated-mount",
       "sources" : {
         "inspection-checks" : "shared/inspection-checks.dm.json",
@@ -3189,7 +3189,7 @@
             "enumValues" : null,
             "enumCategories" : null,
             "repeatability" : 1,
-            "usageType" : "attachment",
+            "usageType" : null,
             "annotations" : [ ]
           }
         },

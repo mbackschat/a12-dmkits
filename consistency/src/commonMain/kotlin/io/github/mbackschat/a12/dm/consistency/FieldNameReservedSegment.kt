@@ -22,16 +22,15 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
  * carrying only the dot names the half that is not the reason.
  *
  * **What it leaves alone**, under-reporting: a model whose condition language is not English. A12 reserves a
- * different set there — `.Wert`, `.Vordruckzeile`, `.Vordruckname` — and nothing in this estate has measured
+ * different set there — `.Wert` and `.Vordruckzeile`, kernel 31.1.1 having dropped `.Vordruckname` from its
+ * German terminals (source-read at `eec9134`) — and nothing in this estate has measured
  * it, so a checker applying the German list would be reproducing a source read rather than a measurement.
  */
 internal fun TrackedFactBase.fieldNameReservedSegmentFinding(field: TrackedDeclaration): Finding? {
     if (conditionLanguage != ConditionLanguage.EN) {
         return null
     }
-    if (field.declaredKind != DeclaredKind.FIELD || !field.name.reservesItsFinalSegment() ||
-        field.body.deletesAtDefaultVariant()
-    ) {
+    if (field.declaredKind != DeclaredKind.FIELD || !field.name.reservesItsFinalSegment()) {
         return null
     }
     return Finding(

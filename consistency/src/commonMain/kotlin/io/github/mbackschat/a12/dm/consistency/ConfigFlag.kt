@@ -34,14 +34,16 @@ internal enum class ConfigFlag {
  * for a reference A12 resolves. It also truncates a fractional number, inventing a verdict (`1.5` → true)
  * for a model A12 will not load at all.
  *
- * **Nor is it the rule A12 uses for `excludeRules`/`excludeComputations`**, which reach a custom
- * deserializer's `JsonNode.booleanValue()` and are false for every non-Boolean ([KERNEL-FINDINGS KF3]). A12
- * has two boolean-reading paths and which one a member takes is per-member, so this function is applied only
- * where the POJO path is measured.
+ * On DM 29.4 the same law binds a mount's `includeConfig.excludeRules`/`excludeComputations` ([KERNEL-FINDINGS
+ * KF651]); the DM 28 custom reader that made them false for every non-Boolean (KF3) is gone. An absent member is
+ * OFF and an explicit JSON `null` is UNREADABLE, as kernel 31.1.1's Jackson 3 refuses null for a primitive.
  */
 internal fun configFlag(value: JsonElement?): ConfigFlag {
-    if (value == null || value is JsonNull) {
+    if (value == null) {
         return ConfigFlag.OFF
+    }
+    if (value is JsonNull) {
+        return ConfigFlag.UNREADABLE
     }
     val primitive = value as? JsonPrimitive ?: return ConfigFlag.UNREADABLE
     val binding = when {

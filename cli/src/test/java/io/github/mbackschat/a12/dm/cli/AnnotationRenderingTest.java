@@ -41,7 +41,7 @@ class AnnotationRenderingTest {
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "store", "--locale", "en_US",
                 "--root", "Store", "-o", parent.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", parent.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog", "--parent", "/Store", "--name", "Catalog",
+                "--reference", "catalog", "--parent", "/Store", "--name", "Catalog",
                 "-w", dir.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", parent.toString(), "config", "modify", "--role", "manager").code());
 

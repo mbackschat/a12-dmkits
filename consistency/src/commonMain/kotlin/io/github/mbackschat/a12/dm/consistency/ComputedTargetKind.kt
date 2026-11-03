@@ -17,8 +17,8 @@ import kotlinx.serialization.json.contentOrNull
  * **It is reported as `CK_MODEL_NOT_BUILDABLE` rather than under A12's own key, and the measurement is what
  * decides that.** `MVK_GROUP_AS_CALCULATED_FIELD` exists in A12's vocabulary, but the Kernel's BUILDER refuses
  * a group-valued computed field before any consistency check runs, so that key is never what a consumer would
- * have seen — the same tier, and for the same reason, as a computed field that resolves to nothing. Reporting
- * the `MVK_*` key here would claim a verdict A12 never reaches.
+ * have seen. Reporting the `MVK_*` key here would claim a verdict A12 never reaches. (A computed field that names
+ * nothing is a different tier on kernel 31.1.1: A12's converter states it and checks on, KF652.)
  *
  * **The shape exists only in stored DM-JSON**, which is why the kits carry no such family: their computed
  * field slot is a typed field handle, so `MVK_GROUP_AS_CALCULATED_FIELD` is `erased` there. The member this

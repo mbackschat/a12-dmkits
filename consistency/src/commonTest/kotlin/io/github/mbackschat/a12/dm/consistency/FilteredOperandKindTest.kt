@@ -23,7 +23,7 @@ class FilteredOperandKindTest {
     /** A policy model whose one rule carries [condition]; `Claims` repeats and is keyed on `ClaimRef`. */
     private fun source(condition: String): ModelSource = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"policy-filter","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"policy-filter","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -67,23 +67,17 @@ class FilteredOperandKindTest {
             assertEquals(index == 2, entry.indexed)
             val contribution = facts.filteredOperandContributions(element, execution).single()
             assertEquals(element.key, contribution.owner)
-            if (index == 0 || index == 3) {
-                assertEquals(noGroups, contribution.finding.code)
-                assertEquals(entry, contribution.site)
-            } else {
-                assertEquals(starRequired, contribution.finding.code)
-                assertEquals(EntityCheckSite(execution.entitiesByStart.getValue(entry.start), EntityCheck.FILTER), contribution.site)
-            }
+            // Both classes are raised once the whole spec is read (kernel 31.1.1, KERNEL-FINDINGS KF656).
+            assertEquals(if (index == 0 || index == 3) noGroups else starRequired, contribution.finding.code)
+            assertEquals(EntityCheckSite(execution.entitiesByStart.getValue(entry.start), EntityCheck.FILTER), contribution.site)
         }
-        for ((probe, expected) in listOf(
-            "NumberOfFilledGroups(Claims* Having [" to listOf(noGroups),
-            "Sum(Claims*/Amount For Reference Having [" to emptyList(),
-        )) {
+        // A body that never closes answers before either class: A12 reads the whole spec first (KERNEL-FINDINGS KF656).
+        for (probe in listOf("NumberOfFilledGroups(Claims* Having [", "Sum(Claims*/Amount For Reference Having [")) {
             val facts = TrackedFactBase(prepare(assertIs<Admission.Admitted>(admit(source(probe)))), ReadTranscript())
             val element = facts.declarations().single { it.declaredKind == DeclaredKind.RULE }
             val execution = assertNotNull(facts.conditionExecution(element))
             assertNotNull(execution.recognition.failure)
-            assertEquals(expected, facts.filteredOperandContributions(element, execution).map { it.finding.code })
+            assertEquals(emptyList(), facts.filteredOperandContributions(element, execution).map { it.finding.code })
         }
     }
 
@@ -103,7 +97,8 @@ class FilteredOperandKindTest {
         expected["a starred field operand — the control"] = emptyList()
         // The star is not a variable on this defect, which is why both rows are here rather than one.
         expected["a starred GROUP operand"] = listOf(noGroups)
-        expected["a GROUP operand with no star either"] = listOf(noGroups)
+        // The iteration walk answers it first, in its own family (kernel 31.1.1, KERNEL-FINDINGS KF656).
+        expected["a GROUP operand with no star either"] = emptyList()
         expected["an operand carrying a SEMANTIC INDEX"] = listOf(starRequired)
 
         assertEquals(expected, actual)

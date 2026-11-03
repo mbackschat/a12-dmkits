@@ -29,7 +29,6 @@ class IncludeRepeatabilityTest {
     /** A base order that mounts the address as a repeatable (3-row) sub-form. */
     private static String orderWithRepeatableMount() {
         return DocumentModelDraft.named("order").locale("en_US")
-                .include("address", "address")
                 .rootGroup("Order", o -> o
                         .field("OrderRef", FieldKind.STRING)
                         .mount("ShipTo", "address", 3))
@@ -61,7 +60,7 @@ class IncludeRepeatabilityTest {
                 .build().toJson();
         EditSession session =
                 EditSession.read(base, resolver());
-        session.addInclude("address", "address", "/Order", "BillTo");   // declare + single mount
+        session.mount("/Order", "BillTo", "address");   // declare + single mount
         session.include("address").mount("/Order", "ShipTo", 3);        // repeatable mount of the same include
         session.validate();
 

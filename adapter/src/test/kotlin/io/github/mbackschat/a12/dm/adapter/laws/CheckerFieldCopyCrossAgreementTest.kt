@@ -15,15 +15,13 @@ import org.junit.jupiter.api.Test
  * in a fixed order ([KF469](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf469)). So the prediction
  * is one function of the two declarations, written before the run: a Confirm on either side, then a Boolean,
  * then a temporal against a non-temporal kind or two temporal kinds of different formats, then a DateRange,
- * then a Number against a text, then the scale. A String or an Enumeration against an Enumeration meets the
- * display arm (a labelled side against an unlabelled one, or two conflicting labellings) ahead of the
- * calculation's own domain class at an Enumeration target.
+ * then a Number against a text, then the scale. A String or an Enumeration copied into an Enumeration then meets
+ * the calculation's own domain class; on kernel 31.1.1 no display arm precedes it, whatever either side's labels
+ * ([KF655](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf655)).
  *
  * The cross is what discriminates. "The target's kind names the class" and "the source's kind names it" each
- * predict one direction of every Confirm and Boolean row wrongly, and "the calculation answers first at an
- * Enumeration target" predicts `MVK_ERROR_INVALID_ENUM_CALCULATION` for the wider unlabelled domain copied into
- * the labelled target, where the display class stands alone. The unlabelled Enumeration copied into a String is
- * the admitted row that refutes "any Enumeration into a String is refused".
+ * predict one direction of every Confirm and Boolean row wrongly. The Enumeration copied into a String is the
+ * admitted row that refutes "any Enumeration into a String is refused", labelled or not.
  *
  * The cross follows a12-kernel-lean's `SPEC-2026-09-26-04`, whose grid over the same shape they report on their
  * own instrument; the rows here are this repository's own measurement on its own fixture.
@@ -69,16 +67,13 @@ class CheckerFieldCopyCrossAgreementTest {
             Kind.DATE_RANGE in kinds && differ -> setOf("MVK_INVALID_COMPARE_TO_DATE_RANGE")
             Kind.NUMBER in kinds && differ -> TO_ENUM_OR_STRING
             source.kind == Kind.NUMBER && source.scale != target.scale -> setOf("MVK_INVALID_COMPARE_DEC_PLACES")
-            source.kind == Kind.ENUMERATION || target.kind == Kind.ENUMERATION -> display(source, target)
+            source.kind == Kind.ENUMERATION || target.kind == Kind.ENUMERATION -> domain(source, target)
             else -> ADMITTED
         }
     }
 
-    /** A String or an Enumeration against an Enumeration: the display arm, then the calculation's domain. */
-    private fun display(source: Decl, target: Decl): Set<String> = when {
-        source.labelled != target.labelled -> setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")
-        source.labelled && source.labels.any { (value, label) -> target.labels[value]?.let { it != label } == true } ->
-            setOf("MVK_INVALID_COMPARE_ENUM_TO_ENUM")
+    /** A String or an Enumeration copied into an Enumeration: the calculation's domain. */
+    private fun domain(source: Decl, target: Decl): Set<String> = when {
         target.kind == Kind.ENUMERATION && (source.kind == Kind.STRING || !target.values.containsAll(source.values)) ->
             setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")
         else -> ADMITTED
@@ -109,7 +104,6 @@ class CheckerFieldCopyCrossAgreementTest {
         val labels: Map<String, String?> = emptyMap(),
     ) {
         val values: Set<String> get() = labels.keys
-        val labelled: Boolean get() = labels.values.any { it != null }
     }
 
     private val validator = RuleValidator()

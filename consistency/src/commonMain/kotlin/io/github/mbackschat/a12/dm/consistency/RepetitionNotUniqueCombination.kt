@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **A call inside a `Having` filter is NOT counted**, and that is a correction rather than a simplification:
  * the call scanner does descend into a filter body, so counting naively named this class on a condition A12
- * answers with `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` — the construct is refused in that position
+ * answers with `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` — the construct is refused in that position
  * outright, so the second call is not a second defect at all and removing the filter's call leaves one legal
  * call behind.
  *

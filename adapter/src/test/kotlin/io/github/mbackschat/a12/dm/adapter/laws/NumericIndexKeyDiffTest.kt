@@ -102,10 +102,10 @@ class NumericIndexKeyDiffTest {
                 mapOf("Tariff" to mapOf("Offered" to rows, "Quoted" to rows)))
             val visits = mutableListOf<Int>()
             val callback = object : com.mgmtp.a12.kernel.md.rt.api.ICustomCondition {
-                override fun check(document: com.mgmtp.a12.kernel.md.document.api.IDocument,
-                    relevant: Set<com.mgmtp.a12.kernel.md.document.api.IEntityInstance>?,
-                    formallyIncorrect: Set<com.mgmtp.a12.kernel.md.document.api.IEntityInstance>,
-                    errorEntity: com.mgmtp.a12.kernel.md.document.api.IEntityInstance): Boolean {
+                override fun check(document: com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2,
+                    relevant: Set<out com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer>?,
+                    formallyIncorrect: Set<com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer>,
+                    errorEntity: com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer): Boolean {
                     visits += errorEntity.repetitions[1]
                     return true
                 }

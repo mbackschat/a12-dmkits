@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -30,24 +31,26 @@ class ModelDocumentAuthoredReferenceStateTest {
     }
 
     @Test
-    void readsIncludeAndTypeDefinitionImportAliasesAndReferences() {
+    void readsIncludedAndTypeDefinitionImportedModelsByTheirIds() {
         String json = DocumentModelDraft.named("store").locale("en_US")
-                .include("prices", "pricing-v2")
                 .importTypeDefs("catalog-types")
                 .typeDef("Sku", type -> type.string(text -> text.maxLength(12)))
-                .rootGroup("Store", store -> store.stringField("Name", text -> { }))
+                .rootGroup("Store", store -> store.stringField("Name", text -> { })
+                        .mount("Prices", "pricing-v2")
+                        .mount("ArchivedPrices", "pricing-v2"))
                 .build().toJson();
 
         // tag::authored-references[]
         ModelDocument document = ModelDocument.read(json);
         ModelDocument.TypeDefinitionState sku = document.typeDefinitions().get("Sku");
-        Map<ModelDocument.ReferencePurpose, Map<String, String>> references =
+        Map<ModelDocument.ReferencePurpose, List<String>> references =
                 document.authoredReferences();
         // end::authored-references[]
 
         assertEquals("StringType", sku.type().jsonType());
-        assertEquals(Map.of("prices", "pricing-v2"), references.get(ModelDocument.ReferencePurpose.INCLUDE));
-        assertEquals(Map.of("catalog-types", "catalog-types"),
+        assertEquals(List.of("pricing-v2"), references.get(ModelDocument.ReferencePurpose.INCLUDE),
+                "two mounts of one model are one include");
+        assertEquals(List.of("catalog-types"),
                 references.get(ModelDocument.ReferencePurpose.TYPE_DEFINITION_IMPORT));
     }
 }

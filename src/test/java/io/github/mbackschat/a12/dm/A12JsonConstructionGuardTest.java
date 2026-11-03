@@ -231,8 +231,6 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/include/IncludeRemoveCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
-            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/include/IncludeRenameCommand.java"
-                    + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/include/IncludeSetReferenceCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
 

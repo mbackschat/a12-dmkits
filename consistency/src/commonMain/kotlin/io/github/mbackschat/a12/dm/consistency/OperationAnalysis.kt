@@ -16,7 +16,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /** KF43 distinguishes an unknown numeric scale from an operation whose type is unsupported. */
 internal sealed interface OperationType {
@@ -35,8 +34,7 @@ internal sealed interface OperationType {
  *
  * [field] and [constant] are an IMMEDIATE read and an immediate literal. [typedBy] and [domainConstant] are the
  * same facts as a brace leaves them: A12 types a braced operand by what it encloses and finds a constant inside
- * any number of braces (`CheckOpUtils.isConstant`), while its display gate against a text asks for an immediate
- * field read (`isFeldWertOp`) — measured on both positions by `adapter.laws.CheckerComparisonOperandShapeAgreementTest`.
+ * any number of braces (`CheckOpUtils.isConstant`).
  * [categoryDomain] is the value domain of a category read, which carries no declaration of its own ([KERNEL-FINDINGS
  * KF610]).
  */
@@ -127,8 +125,8 @@ internal class OperationAnalysis(
 
     /**
      * A category read, typed as A12 types it: the Enumeration it hangs off, looked up in the CATEGORY's values
-     * (`CheckVergleichsBedingungImpl.getValidEnumValues`, [KERNEL-FINDINGS KF610]). It is no immediate field read,
-     * so the display gates that ask for one pass it, and a keyed read stays unjudged because no row measures it.
+     * (`CheckVergleichsBedingungImpl.getValidEnumValues`, [KERNEL-FINDINGS KF610]). A keyed read stays unjudged
+     * because no row measures it.
      */
     private fun categoryRead(read: FieldValueRead): OperationValue = with(facts) {
         val written = read.path ?: return UNKNOWN
@@ -181,8 +179,8 @@ internal class OperationAnalysis(
      */
     private fun field(field: TrackedDeclaration): OperationValue = with(facts) {
         val type = when (effectiveFieldType(field)) {
-            FieldType.NUMBER -> OperationType.Number(((typeBodyOf(field, FieldType.NUMBER)
-                ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0).takeIf { it != UNDEFINED })
+            FieldType.NUMBER -> OperationType.Number(
+                (typeBodyOf(field, FieldType.NUMBER)?.boundInt("maxFractionalDigits") ?: 0).takeIf { it != UNDEFINED })
             FieldType.STRING, FieldType.CUSTOM_FIELD -> OperationType.Text
             FieldType.ENUMERATION -> OperationType.Enumeration
             FieldType.BOOLEAN -> OperationType.Boolean
@@ -206,10 +204,10 @@ internal class OperationAnalysis(
         val b = right.numeric
         if (operator == "+" && (a == null || b == null)) {
             val textual = setOf(OperationType.Text, OperationType.Enumeration)
-            if (left.type in textual && right.type in textual && !left.remapsDisplay() && !right.remapsDisplay())
-                return OperationValue(OperationType.Text)
+            // Kernel 31.1.1 joins an enumeration whatever its labels say (KERNEL-FINDINGS KF655).
+            if (left.type in textual && right.type in textual) return OperationValue(OperationType.Text)
             return refuse("MVK_NO_STRING_OR_NUMBER_FOR_ADD", shape,
-                "`+` adds two numbers or joins two texts; this pair is neither, or reads an enumeration whose display labels differ from its values")
+                "`+` adds two numbers or joins two texts; this pair is neither")
         }
         if (a == null || b == null) return refuse("MVK_NO_NUMBER_FOR_CALC", shape,
             "`${written(shape)}` requires two numeric operands for `$operator`")
@@ -239,12 +237,6 @@ internal class OperationAnalysis(
         }
         return OperationValue(OperationType.Number(scale, expandable))
     }
-
-    /**
-     * `+` refuses an operand only as an immediate field read, so a braced or computed value carries no field here
-     * and passes; a category access reduces to no declaration and passes too ([KF396]).
-     */
-    private fun OperationValue.remapsDisplay(): Boolean = field?.let { facts.bearsDisplayValues(it) } == true
 
     /**
      * A12's division check from one operator node: a pre-order walk carrying one division mark, which a second

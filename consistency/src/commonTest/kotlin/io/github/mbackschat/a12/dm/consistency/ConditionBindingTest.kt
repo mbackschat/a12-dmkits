@@ -15,7 +15,7 @@ class ConditionBindingTest {
 
     private fun model(condition: String, language: String = "en_US") = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
           "modelConfig":{"conditionLanguage":{"code":"$language"},"fieldRefByShortNameAllowed":false},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -201,7 +201,7 @@ class ConditionBindingTest {
     fun everyDslBearingMemberOfAComputationIsRead() {
         val source = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
@@ -240,9 +240,9 @@ class ConditionBindingTest {
     fun anUnexpandedMountSuspendsTheReferenceChecksInsteadOfRejecting() {
         val source = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Group","id":"g1","name":"Address","Group":{"modelAlias":"address-model"}},
+                {"type":"Group","id":"g1","name":"Address","Group":{"includeConfig":{"reference":"address-model"}}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
                   "errorMessage":[{"locale":"en_US","text":"x"}],
                   "errorEntityRelPath":"../Address/Street","errorCondition":"FieldFilled(Address/Street)"}}
@@ -259,14 +259,14 @@ class ConditionBindingTest {
     }
 
     /**
-     * A missing computed field stops A12 before any verdict, so the report says the rest is the checker's
-     * own reading. Reporting the findings without that gap would present them as A12's.
+     * A computed field that names nothing is a sentence of A12's converter, which then checks the model without the
+     * computation (KF652). The report says so as a gap too: the checker judges that computation no further.
      */
     @Test
-    fun anUnbuildableComputedTargetIsAlsoACoverageGap() {
+    fun anUnfoundComputedTargetIsAConverterSentenceAndAGap() {
         val source = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
                   "errorMessage":[{"locale":"en_US","text":"x"}],
@@ -278,10 +278,10 @@ class ConditionBindingTest {
         )
         val report = checkRead(source)
 
-        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code })
+        assertEquals(listOf(RK_COMPUTED_FIELD_NOT_FOUND), report.findings.map { it.code })
         assertTrue(
             report.gaps.any { it.at == "/Order/Comp" },
-            "the build failure must be stated as a gap, not only as a finding: ${report.gaps}",
+            "the computation left out must be stated as a gap, not only as a finding: ${report.gaps}",
         )
     }
 }

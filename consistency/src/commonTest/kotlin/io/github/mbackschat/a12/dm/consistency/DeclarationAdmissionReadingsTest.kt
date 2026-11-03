@@ -11,8 +11,7 @@ import kotlin.test.assertEquals
 class DeclarationAdmissionReadingsTest {
 
     /** A policy model whose one field declares [fieldType], or whose one nested group is named [group]. */
-    private fun codes(fieldType: String = STRING, filter: String? = null, group: String? = null): List<String> {
-        val variant = filter?.let { ""","variantFilter":$it""" }.orEmpty()
+    private fun codes(fieldType: String = STRING, group: String? = null): List<String> {
         val nested = group?.let {
             """,{"type":"Group","id":"/Policy/$it","name":"$it","Group":{"elements":[
                 {"type":"Field","id":"/Policy/$it/Note","name":"Note","Field":{"fieldType":$STRING}}]}}"""
@@ -20,10 +19,10 @@ class DeclarationAdmissionReadingsTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
-                    {"type":"Field","id":"/Policy/Item","name":"Item","Field":{"fieldType":$fieldType$variant}}$nested
+                    {"type":"Field","id":"/Policy/Item","name":"Item","Field":{"fieldType":$fieldType}}$nested
                   ]}}
                  ]}}}
                 """.trimIndent(),
@@ -42,7 +41,6 @@ class DeclarationAdmissionReadingsTest {
     fun eachReadingAgainstItsControl() {
         val repeatedToken = enumeration("""{"value":"BASIC"},{"value":"BASIC"}""")
         val actual = linkedMapOf(
-            "a repeated token on a field ONLY a variant keeps" to codes(repeatedToken, ONLY),
             "a repeated token" to codes(repeatedToken),
             "a label for an undeclared locale only" to codes(enumeration(
                 """{"value":"BASIC","label":[{"locale":"fr_FR","text":"Base"}]},{"value":"PLUS"}""")),
@@ -59,6 +57,7 @@ class DeclarationAdmissionReadingsTest {
             "1.04 over 1, one fraction digit" to
                 codes(number(""""maxFractionalDigits":1,"minValue":1.04,"maxValue":1""")),
             "line breaks 2" to codes(string(""""noValueValidation":true,"lineBreaksPermitted":2""")),
+            "line breaks \"false\"" to codes(string(""""noValueValidation":true,"lineBreaksPermitted":"false"""")),
             "line breaks \"\"" to codes(string(""""noValueValidation":true,"lineBreaksPermitted":"""" + "\"")),
             "line breaks 1.5" to codes(string(""""noValueValidation":true,"lineBreaksPermitted":1.5""")),
             "positivesOnly 1 beside a 16-character length" to
@@ -67,11 +66,9 @@ class DeclarationAdmissionReadingsTest {
                 codes(number(""""maxFractionalDigits":0,"maxLength":17,"positivesOnly":1.5""")),
         )
         val expected = linkedMapOf(
-            // A12's basic sentence survives the filter that hides the class ([KERNEL-FINDINGS KF626]).
-            "a repeated token on a field ONLY a variant keeps" to listOf("RK_ENUM_VALUE_DUPLICATE"),
             "a repeated token" to listOf("MVK_INTERNAL_VALUES_DUPLICATE", "RK_ENUM_VALUE_DUPLICATE"),
-            "a label for an undeclared locale only" to emptyList(),
-            "declared beside undeclared, against undeclared alone" to listOf("MVK_COUNT_OF_VALUES_INVALID"),
+            "a label for an undeclared locale only" to listOf("MVK_COUNT_OF_VALUES_INVALID", "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"),
+            "declared beside undeclared, against undeclared alone" to listOf("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"),
             "an sValue padded with a space" to emptyList(),
             "an sValue that is a tab" to emptyList(),
             "an sValue that is a no-break space" to listOf("MVK_S_VALUE_INVALID"),
@@ -80,7 +77,10 @@ class DeclarationAdmissionReadingsTest {
             "1.4 over 1, no fraction" to emptyList(),
             "1.04 over 1, one fraction digit" to listOf("MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE"),
             "line breaks 2" to emptyList(),
-            "line breaks \"\"" to listOf("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK"),
+            "line breaks \"false\"" to listOf("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK"),
+            // Kernel 31.1.1 binds with Jackson 3, which refuses the null `""` coerces to for a primitive ([KERNEL-FINDINGS KF289],
+            // corrected 2026-11-02; adapter.laws.CheckerDeclarationAdmissionAgreementTest).
+            "line breaks \"\"" to listOf("CK_MODEL_NOT_BUILDABLE"),
             "line breaks 1.5" to listOf("CK_MODEL_NOT_BUILDABLE"),
             "positivesOnly 1 beside a 16-character length" to listOf("MVK_MAX_LENGTH_TOO_BIG"),
             // A12 does not read the model (KF569), and with the sign unknown the budget is too: no length class.
@@ -90,39 +90,33 @@ class DeclarationAdmissionReadingsTest {
     }
 
     /**
-     * KF582's magnitude limit, replayed: judged on every field, a deleted one included, and beside the printed-bound
-     * checks; a bound at a limit `Math.pow` need not compute exactly is disclosed rather than judged.
+     * Kernel 31.1.1 judges no bound by the magnitude its digits allow (KF582): KF582's rows keep only their
+     * printed-bound and inversion classes, and a bound at a limit `Math.pow` need not compute exactly is no gap.
      */
     @Test
-    fun aBoundPastItsDigitLimitIsReportedOnEveryField() {
+    fun noBoundIsJudgedByItsMagnitude() {
         val actual = linkedMapOf(
             "max 999999999999999.4 at scale 0" to codes(number(""""maxFractionalDigits":0,"maxValue":999999999999999.4""")),
             "min 1e15 at scale 0" to codes(number(""""maxFractionalDigits":0,"minValue":1e15""")),
             "max -1e15 at scale 0" to codes(number(""""maxFractionalDigits":0,"maxValue":-1e15""")),
-            "max 1e15 on a deleted field" to codes(number(""""maxFractionalDigits":0,"maxValue":1e15"""), ONLY),
             "max 1e14 over min 1 at scale 1" to codes(number(""""maxFractionalDigits":1,"minValue":1e14,"maxValue":1""")),
         )
         val expected = linkedMapOf(
-            "max 999999999999999.4 at scale 0" to listOf(MAX_EXCEEDED),
-            "min 1e15 at scale 0" to listOf("RK_BOUND_TOO_MANY_DIGITS", MIN_EXCEEDED),
+            "max 999999999999999.4 at scale 0" to emptyList(),
+            "min 1e15 at scale 0" to listOf("RK_BOUND_TOO_MANY_DIGITS"),
             "max -1e15 at scale 0" to listOf("RK_BOUND_TOO_MANY_DIGITS"),
-            "max 1e15 on a deleted field" to listOf(MAX_EXCEEDED),
-            "max 1e14 over min 1 at scale 1" to listOf("MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE", MIN_EXCEEDED),
+            "max 1e14 over min 1 at scale 1" to listOf("MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE"),
         )
         assertEquals<Map<String, List<String>>>(expected, actual.mapValues { it.value.sorted() })
         val atTheLimit = checkRead(ModelSource(
-            """{"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            """{"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[{"type":"Field","id":"/Policy/Item",
               "name":"Item","Field":{"fieldType":${number(""""maxFractionalDigits":-15,"maxValue":${1e30 - 1e15}""")}}}]}}]}}}""",
         ))
-        assertEquals(emptyList(), atTheLimit.findings.filter { it.code == MAX_EXCEEDED })
-        assertEquals(1, atTheLimit.gaps.count { it.at == "/Policy/Item" && "ulps" in it.reason }, "${atTheLimit.gaps}")
+        assertEquals(emptyList(), atTheLimit.gaps.filter { it.at == "/Policy/Item" })
     }
 
     private companion object {
         const val STRING = """{"type":"StringType"}"""
-        const val ONLY = """{"filterType":"ONLY","variants":["Broker"]}"""
-        const val MIN_EXCEEDED = "RK_NUMBER_MIN_VALUE_EXCEEDED"
-        const val MAX_EXCEEDED = "RK_NUMBER_MAX_VALUE_EXCEEDED"
     }
 }

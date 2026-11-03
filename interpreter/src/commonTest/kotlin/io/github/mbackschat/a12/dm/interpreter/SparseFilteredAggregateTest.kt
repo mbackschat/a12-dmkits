@@ -19,7 +19,7 @@ class SparseFilteredAggregateTest {
     private val permit = "$group/Permit"
     private val charge = "$group/Charge"
     private val stamp = "$group/RecordedAt"
-    private val source = "Runs*/Parcels*/Charge Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"31.03.2024T02:30:00\"))"
+    private val source = "Runs*/Parcels*/Charge Having (FieldFilled(Runs/Parcels/Permit) Or ([Runs/Parcels/RecordedAt] == \"29.02.1500T10:00:00\"))"
     private val model = ModelDef(
         fields = listOf(FieldDef(permit, Kind.NUMBER, scale = 0), FieldDef(charge, Kind.NUMBER, scale = 0),
             FieldDef(stamp, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss")) +

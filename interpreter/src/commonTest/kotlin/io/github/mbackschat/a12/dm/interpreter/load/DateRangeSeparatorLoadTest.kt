@@ -2,18 +2,15 @@ package io.github.mbackschat.a12.dm.interpreter.load
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 /**
- * Multiplatform (JVM + JS) lock for the one DATE_RANGE declaration whose separator is legitimately EMPTY:
- * `MM`+`""`, an allowlisted `(format, separator)` pair (KERNEL-FINDINGS KF81), whose stored value the kernel
- * splits in the MIDDLE. The loader folded `""` into null — "unset" — which dropped the field out of
- * `ModelDef.rangeConfig` and disabled the range's whole config downstream: the formal check short-circuits to
- * "nothing to check" and a stored value never resolves as a range (IF306).
+ * Multiplatform (JVM + JS) lock for how a DATE_RANGE declaration's separator loads when the member is EMPTY or ABSENT:
+ * as `/`, the separator kernel 31.1.1 reads in both cases, because its expand copy omits an empty member and its range
+ * reader defaults a missing one (KERNEL-FINDINGS KF658, measured at runtime by the adapter's
+ * `EmptyDeclarationMemberDiffTest`). The field therefore keeps its range config either way.
  *
- * An ABSENT key still loads as null. That is the distinction the fix keeps, and the reason a bare
- * `asText().ifEmpty { null }` was wrong rather than merely lossy: it made a legal declaration indistinguishable
- * from a missing one.
+ * On kernel 30.8.1 the empty separator was a value of its own, split in the middle (IF306), and an absent one left the
+ * field without a range config; this test locked both and was requalified on the 31.1.1 upgrade.
  */
 class DateRangeSeparatorLoadTest {
 
@@ -35,10 +32,10 @@ class DateRangeSeparatorLoadTest {
         """.trimIndent()
     }
 
-    @Test fun aDeclaredEmptySeparatorIsAValueNotUnset() {
+    @Test fun anEmptySeparatorLoadsAsTheSlash() {
         val def = ModelLoader.load(model(""))
-        assertEquals("", def.fields.single().rangeSeparator, "the declared empty separator survives the load")
-        assertEquals("", def.rangeSeparatorOf(window), "so the field keeps its range config")
+        assertEquals("/", def.fields.single().rangeSeparator, "an empty member reads as the default separator")
+        assertEquals("/", def.rangeSeparatorOf(window), "so the field keeps its range config")
         assertEquals("MM", def.dateLikeFormatOf(window), "the format rides the same config entry")
     }
 
@@ -48,9 +45,9 @@ class DateRangeSeparatorLoadTest {
         assertEquals("MM", def.dateLikeFormatOf(window))
     }
 
-    @Test fun anAbsentSeparatorStaysUnset() {
+    @Test fun anAbsentSeparatorLoadsAsTheSlash() {
         val def = ModelLoader.load(model(null))
-        assertNull(def.fields.single().rangeSeparator, "an absent member is genuinely unset")
-        assertNull(def.rangeSeparatorOf(window), "and the field carries no range config")
+        assertEquals("/", def.fields.single().rangeSeparator, "an absent member reads as the default separator")
+        assertEquals("/", def.rangeSeparatorOf(window), "so the field keeps its range config")
     }
 }

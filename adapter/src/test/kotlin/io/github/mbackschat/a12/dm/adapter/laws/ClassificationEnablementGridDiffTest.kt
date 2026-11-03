@@ -25,7 +25,7 @@ import java.util.Date
 class ClassificationEnablementGridDiffTest {
     private companion object {
         const val ISO_DT = "yyyy-MM-dd'T'HH:mm:ss"
-        const val GAP = "31.03.2024T02:30:00"
+        const val GAP = "29.02.1500T10:00:00"
         val KERNEL_CLOCK: Date = Date.from(Instant.parse("2026-10-04T10:00:00Z"))
         val CLOCK = EvalClock(today = "2026-10-04", now = "2026-10-04T12:00:00")
     }

@@ -21,7 +21,7 @@ class StringTypeMessageTest {
     private fun codes(stringType: String, vararg locales: String = arrayOf("en_US")): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[${locales.joinToString(",") { """{"code":"$it"}""" }}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType",
@@ -133,7 +133,7 @@ class StringTypeMessageTest {
         val missingMessage = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType",

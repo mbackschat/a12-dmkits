@@ -36,7 +36,6 @@ class ModelRenameVerbTest {
     /** A storefront that includes (mounts) `catalog`. */
     private static String storefrontJson() {
         return DocumentModelDraft.named("storefront").locale("en_US")
-                .include("catalog", "catalog")
                 .rootGroup("Storefront", s -> s
                         .field("StoreName", FieldKind.STRING)
                         .mount("Items", "catalog"))

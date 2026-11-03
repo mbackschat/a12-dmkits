@@ -25,8 +25,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 
 internal fun fieldDef(node: JsonElement, id: String): FieldDef {
     requireConsistentEnumSValue(node, id)
-    val declaredMinimumFraction = typedInt(node, "NumberType", "minFractionalDigits")
-    val declaredMaximumFraction = scaleOf(node)
+    val declaredMinimumFraction = typedPrimitiveInt(node, id, "NumberType", "minFractionalDigits")
+    val declaredMaximumFraction = scaleOf(node, id)
     val fraction = declaredMaximumFraction?.let { resolveFractionalPair(declaredMinimumFraction, it) }
     return FieldDef(
         path = id,
@@ -51,9 +51,9 @@ internal fun fieldDef(node: JsonElement, id: String): FieldDef {
         enumValueLabels = enumValueLabelsOf(node),
         enumCategories = enumCategoriesOf(node),
         enumSValue = enumSValueOf(node),
-        customType = customFieldTypeOf(node),
-        minLength = typedInt(node, "StringType", "minLength"),
-        maxLength = typedInt(node, "StringType", "maxLength"),
+        customType = customFieldTypeOf(node, id),
+        minLength = typedInteger(node, id, "StringType", "minLength"),
+        maxLength = typedInteger(node, id, "StringType", "maxLength"),
         pattern = stringTypeText(node, "pattern"),
         patternMessages = localizedTexts((typed(node, "StringType") ?: typed(node, "EnumerationType"))
             .path("errorMessage")),
@@ -69,10 +69,10 @@ internal fun fieldDef(node: JsonElement, id: String): FieldDef {
         lineBreaksPermitted = typedBool(node, id, "StringType", "lineBreaksPermitted"),
         leadingZerosAllowed = typedBool(node, id, "NumberType", "leadingZerosAllowed"),
         zeroNotAllowed = typedBool(node, id, "NumberType", "zeroNotAllowed"),
-        maxIntegerDigits = typedInt(node, "NumberType", "maxIntegerDigits"),
+        maxIntegerDigits = typedInteger(node, id, "NumberType", "maxIntegerDigits"),
         amountTrait = "amount" == numberTypeText(node, "trait"),
-        numberMinLength = typedInt(node, "NumberType", "minLength"),
-        numberMaxLength = typedInt(node, "NumberType", "maxLength"),
+        numberMinLength = typedInteger(node, id, "NumberType", "minLength"),
+        numberMaxLength = typedInteger(node, id, "NumberType", "maxLength"),
         global = configFlag(node.path("Field").path("global")).orRefuse { throw unbindableFlag("$id: Field.global") },
     )
 }
@@ -184,17 +184,20 @@ private fun rangeYearInterpretationOf(fieldNode: JsonElement?): RangeYearInterpr
 
 /** A DATE_RANGE field's two-date separator (`DateRangeType.rangeSeparator`), else null.
  *
- *  **An EMPTY declared separator is a VALUE, not "unset"** — `MM`+`""` is one of the eight allowlisted
- *  `(format, separator)` pairs (KERNEL-FINDINGS KF81) and the split-in-the-middle branch `splitDateRange`
- *  exists for exactly it. Folding `""` into null dropped the field out of [ModelDef.rangeConfig], which
- *  disables the range's whole config: the formal check short-circuits to "nothing to check" and a stored
- *  value never resolves as a range (IF306). Only an ABSENT key — which the kernel's required pair never
- *  produces — is null. */
+ *  **An absent and an EMPTY separator are both A12's default `/`** on kernel 31.1.1: the builder pre-initialises the
+ *  member, and the expand copy omits an empty string, so `""` is read back as that default — `0102` under `MM` with
+ *  `""` draws `datumBereichTrennerFehlt` (KERNEL-FINDINGS KF658, `adapter.laws.EmptyDeclarationMemberDiffTest`). On
+ *  30.8.1 `""` was a separator of its own that split the value in the middle (IF306). A null here would drop the field
+ *  out of [ModelDef.rangeConfig] and leave every stored value unchecked, so only a non-range field yields one. */
 private fun rangeSeparatorOf(fieldNode: JsonElement?): String? {
     val type = fieldNode.path("Field").path("fieldType")
     if (type.path("type").asText() != "DateRangeType") return null
-    return type.path("DateRangeType").path("rangeSeparator").asTextOrNull()
+    val declared = type.path("DateRangeType").path("rangeSeparator").asTextOrNull()
+    return if (declared.isNullOrEmpty()) DEFAULT_RANGE_SEPARATOR else declared
 }
+
+/** The kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, measured for an absent and an empty member. */
+private const val DEFAULT_RANGE_SEPARATOR = "/"
 
 /** A DATE field's precision: a `DateFragmentType` is [DatePrecision.FRAGMENT] (its format carries only some
  *  components — the eval completes the rest); a `DateType` accepts the kernel's complete four-value enum.
@@ -242,22 +245,24 @@ private fun requirednessOf(fieldNode: JsonElement?): Requiredness =
  *  `NumberType.maxFractionalDigits` is a **primitive int defaulting to 0** (kernel-md-a12internal), so a
  *  NumberType that omits it is scale-0 — an INTEGER: any decimal separator is `zahlHatDezimalTrenner`. A
  *  null return here means "not a number field", NOT "no scale constraint" (a number is never unconstrained). */
-private fun scaleOf(fieldNode: JsonElement?): Int? {
+private fun scaleOf(fieldNode: JsonElement?, id: String): Int? {
     val type = fieldNode.path("Field").path("fieldType")
     if (type.path("type").asText() != "NumberType") return null
-    val max = type.path("NumberType").path("maxFractionalDigits")
-    return max.intNodeOrNull() ?: 0
+    return typedPrimitiveInt(fieldNode, id, "NumberType", "maxFractionalDigits") ?: 0
 }
 
 /** A `CustomFieldType` field's validator name and optional length-bound inputs; else null. */
-private fun customFieldTypeOf(fieldNode: JsonElement?): CustomFieldTypeDeclaration? {
+private fun customFieldTypeOf(fieldNode: JsonElement?, id: String): CustomFieldTypeDeclaration? {
     val type = typed(fieldNode, "CustomFieldType")
     val name = type.path("name")
     if (!name.isTextual()) return null
     return CustomFieldTypeDeclaration(
         name.asText(),
-        type.path("minLength").intNodeOrNull(),
-        type.path("maxLength").intNodeOrNull(),
+        // Bound as every `Integer` member is: which values build is measured here too
+        // (`FieldTypeIntMemberBindingDiffTest`), while the bound VALUE is assumed from the other types' members, since
+        // A12 only hands it to a registered validator.
+        typedInteger(fieldNode, id, "CustomFieldType", "minLength"),
+        typedInteger(fieldNode, id, "CustomFieldType", "maxLength"),
     )
 }
 
@@ -274,11 +279,15 @@ private fun numberTypeText(fieldNode: JsonElement?, prop: String): String? {
     return if (v.isNumberNode() || v.isTextual()) v.asText() else null
 }
 
-/** An `int` property of a `<typeName>` field type, or null (Jackson `isInt()` — a plain integer literal). */
-private fun typedInt(fieldNode: JsonElement?, typeName: String, prop: String): Int? {
-    val v = typed(fieldNode, typeName).path(prop)
-    return v.intNodeOrNull()
-}
+/** A primitive `int` property of a `<typeName>` field type, bound as A12's POJO reader binds it, `"2"` and `2.7`
+ *  included ([boundJavaPrimitiveInt], KF593); absent → null, and a value A12 cannot bind refuses the model. */
+private fun typedPrimitiveInt(fieldNode: JsonElement?, id: String, typeName: String, prop: String): Int? =
+    boundJavaPrimitiveInt(typed(fieldNode, typeName).path(prop), "$id: $typeName.$prop")
+
+/** A boxed `Integer` property of a `<typeName>` field type, bound as A12's POJO reader binds it, `"2"` and `2.7`
+ *  included ([boundJavaInteger], KF593); absent or no value → null, and a value A12 cannot bind refuses the model. */
+private fun typedInteger(fieldNode: JsonElement?, id: String, typeName: String, prop: String): Int? =
+    boundJavaInteger(typed(fieldNode, typeName).path(prop), "$id: $typeName.$prop")
 
 /** A `boolean` property of a `<typeName>` field type, bound as A12's POJO reader binds it — `1` and `" TRUE"`
  *  set it, `0` and `"null"` clear it (KF569) — rather than as a JSON boolean, which read both set spellings
@@ -301,13 +310,17 @@ private fun typed(fieldNode: JsonElement?, typeName: String): JsonElement? {
  * A NUMBER field's `minValue` or `maxValue` text, which A12's reader binds to a `BigDecimal` (KF591): after Java's
  * `trim` it must spell an ASCII decimal, so a no-break space, a non-ASCII digit or a word leaves A12 with no model
  * and this refuses it. The text `null` is the null value to that reader, so it declares no bound (KF593). An
- * unquoted number is a lexeme the strict parse has already held to JSON's grammar.
+ * unquoted number is a lexeme the strict parse has already held to JSON's grammar, and the decimal rule's scales
+ * still apply to it (KF593).
  */
 private fun numberBoundText(fieldNode: JsonElement?, id: String, prop: String): String? {
     val text = numberTypeText(fieldNode, prop) ?: return null
-    if (!typed(fieldNode, "NumberType").path(prop).isTextual()) return text
-    val trimmed = text.javaTrimmed()
-    if (trimmed == "null") return null
-    if (trimmed.isEmpty() || isA12DecimalText(trimmed)) return text
+    if (!typed(fieldNode, "NumberType").path(prop).isTextual()) {
+        if (isA12DecimalText(text)) return text
+    } else {
+        val trimmed = text.javaTrimmed()
+        if (trimmed == "null") return null
+        if (trimmed.isEmpty() || isA12DecimalText(trimmed)) return text
+    }
     throw invalidElement("$id: NumberType.$prop", "$id: NumberType.$prop '$text' is not a decimal A12 can bind, so A12 does not load the model")
 }

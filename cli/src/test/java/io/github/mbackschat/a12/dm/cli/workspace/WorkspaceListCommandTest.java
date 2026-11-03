@@ -103,7 +103,7 @@ class WorkspaceListCommandTest {
         // re-point Product_Movie at an include that lives under lib/
         write(dir, "Product_Movie.dm.json",
                 ModelDocument.read(Files.readString(dir.resolve("Product_Movie.dm.json")))
-                        .addInclude("shared", "Catalog_Shared").toJson());
+                        .mount("/Movie", "Shared", "Catalog_Shared").toJson());
 
         JsonNode flat = M.readTree(CliTestSupport.run("workspace", "list", dir.toString()).out()).path("data");
         assertEquals(3, flat.path("count").asInt(), "a flat scan does not descend into lib/");
@@ -123,7 +123,7 @@ class WorkspaceListCommandTest {
         write(dir, "Broken.dm.json",
                 ModelDocument.read(DocumentModelDraft.named("Broken").locale("en_US")
                         .rootGroup("Root", g -> g.field("X", FieldKind.STRING)).build().toJson())
-                        .addInclude("missing", "NoSuchModel").mount("", "MissingMount", "missing").toJson());
+                        .mount("", "MissingMount", "NoSuchModel").toJson());
 
         JsonNode data = M.readTree(
                 CliTestSupport.run("workspace", "list", dir.toString(), "--validate").out()).path("data");

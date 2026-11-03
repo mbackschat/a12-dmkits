@@ -2,22 +2,19 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
-// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IF155 → KERNEL-FINDINGS §6) -------------
+// ---- model-timezone instant math — the Europe/Berlin axis (IF155 → KERNEL-FINDINGS §6) ------------------
 //
-// The kernel parses every DATE/DATE_TIME with a zone-set formatter, so under a `Europe/Berlin` model wall
-// clock and instants diverge across the DST transitions. The interpreter keeps its canonical LOCAL ISO form
-// and converts to instants exactly where the kernel's semantics are instant-based. Clean-room encoding of
-// Berlin's COMPLETE history as the kernel actually sees it — the legacy `java.util.TimeZone` path
-// (`SimpleDateFormat` in `ValidationDateParser`), NOT `java.time`. That distinction is pinned in the table
-// below: `java.util` DROPS the pre-1916 LMT (Berlin is flat CET +1 h before the first DST transition), and
-// Berlin has THREE historical offsets — CET (+1 h), CEST (+2 h), and CEMT (+3 h, the 1945/47 double-summer
-// windows). The [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions (1916→1997) are the kernel's own step
-// function (pinned to the JDK 21.0.11 / tzdb 2026a profile and exhaustively differential-locked);
-// beyond them the recurring EU rule governs (CEST from the last Sunday of March 01:00Z to the last Sunday
-// of October 01:00Z). UTC is the identity on every function here.
+// Kernel 31.1.1 holds every DATE/DATE_TIME as an instant and reads it as a `java.time.ZonedDateTime` in the model
+// zone: parsing, construction, shifts, differences and part extraction all go through `ZonedDateTime`
+// (`BedingungsOperatorHelper`, `DateUtil.createDate`, `ValidationDateParser`, source-read at a12-kernel eec9134;
+// KERNEL-FINDINGS KF665). The interpreter keeps a canonical LOCAL ISO label and converts to instants with the same
+// rules, clean-room: the proleptic ISO calendar, Berlin's tzdb history INCLUDING its local mean time before
+// 1893-04-01 (java.time keeps it, where the 30.8.1 `java.util` path dropped it), and `ZonedDateTime.ofLocal`
+// resolution — an overlap takes the EARLIER offset unless a preferred offset is valid, and a gap moves the wall
+// time forward by the gap's length. UTC is the identity on every function here.
 
 /** Epoch day of civil `year-month-day` — Hinnant days_from_civil as PURE integer arithmetic (no string build
- *  or regex, unlike [epochDay]); the DST offset path calls this per datetime value, so it must not allocate. */
+ *  or regex, unlike [epochDay]); the offset path calls this per datetime value, so it must not allocate. */
 internal fun epochDayOfCivil(year: Int, month: Int, day: Int): Long {
     val yAdj = if (month <= 2) year - 1L else year.toLong()
     val era = (if (yAdj >= 0) yAdj else yAdj - 399) / 400
@@ -28,8 +25,14 @@ internal fun epochDayOfCivil(year: Int, month: Int, day: Int): Long {
 }
 
 /** The civil YEAR of an epoch [day] — Hinnant civil_from_days as PURE integer arithmetic (no string build,
- *  unlike `isoFromEpochDay(...).substring(0,4).toInt()`); the DST offset path calls this per datetime value. */
-internal fun yearOfEpochDay(day: Long): Int {
+ *  unlike `isoFromEpochDay(...).substring(0,4).toInt()`); the offset path calls this per datetime value. */
+internal fun yearOfEpochDay(day: Long): Int = civilOfEpochDay(day).year
+
+/** A proleptic civil date. */
+internal data class Civil(val year: Int, val month: Int, val day: Int)
+
+/** The proleptic civil date of an epoch [day] (Hinnant civil_from_days). */
+internal fun civilOfEpochDay(day: Long): Civil {
     val zz = day + 719468
     val era = (if (zz >= 0) zz else zz - 146096) / 146097
     val doe = zz - era * 146097
@@ -37,8 +40,9 @@ internal fun yearOfEpochDay(day: Long): Int {
     val y = yoe + era * 400
     val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
     val mp = (5 * doy + 2) / 153
+    val d = doy - (153 * mp + 2) / 5 + 1
     val mo = if (mp < 10) mp + 3 else mp - 9
-    return (if (mo <= 2) y + 1 else y).toInt()
+    return Civil((if (mo <= 2) y + 1 else y).toInt(), mo.toInt(), d.toInt())
 }
 
 /** Epoch day of the last Sunday of [month] (March or October — both 31 days) in [year].
@@ -54,14 +58,20 @@ private fun berlinDstStart(year: Int): Long = lastSundayEpochDay(year, 3) * 86_4
 /** The instant Berlin DST ends in [year] — last Sunday of October, 01:00:00Z (03:00 CEST → 02:00 CET). */
 private fun berlinDstEnd(year: Int): Long = lastSundayEpochDay(year, 10) * 86_400L + 3_600L
 
-/** The distinct UTC offsets (seconds) Berlin has ever used — CET, CEST, and the 1945/47 CEMT (+3 h) — ASCENDING.
- *  A wall time has at most one instant per offset; the wall→instant resolution tries them in this order. */
-private val BERLIN_OFFSETS = longArrayOf(3_600L, 7_200L, 10_800L)
+/** Berlin's local mean time, +00:53:28 — tzdb's offset before 1893-04-01, which `java.time` applies. */
+private const val BERLIN_LMT = 3_208L
 
-// The kernel's OWN transition step function (`java.util.TimeZone.getOffset` for Europe/Berlin), 1916→1997 —
-// pinned to JDK 21 tzdb 2026a. Each epoch-second in [BERLIN_TX_EPOCH] is when the offset in the aligned slot
-// of [BERLIN_TX_OFFSET] takes effect; before the first entry Berlin is flat CET (java.util drops the LMT),
-// and at/after the last entry the recurring EU rule governs. Ascending, so [berlinOffsetSeconds] binary-searches.
+/** The instant Berlin left local mean time: 1893-04-01T00:00 LMT, when its clocks moved to CET 00:06:32. */
+private val BERLIN_LMT_END = epochDayOfCivil(1893, 4, 1) * 86_400L - BERLIN_LMT
+
+/** Every UTC offset (seconds) Berlin has used — LMT, CET, CEST and the 1945/47 CEMT — ASCENDING. A wall time has
+ *  at most one instant per offset; [localToInstant] tries each. */
+private val BERLIN_OFFSETS = longArrayOf(BERLIN_LMT, 3_600L, 7_200L, 10_800L)
+
+// Berlin's transitions 1916→1997, pinned to JDK 21 tzdb 2026a. Each epoch-second in [BERLIN_TX_EPOCH] is when the
+// offset in the aligned slot of [BERLIN_TX_OFFSET] takes effect; between [BERLIN_LMT_END] and the first entry
+// Berlin is flat CET, and at/after the last entry the recurring EU rule governs. Ascending, so
+// [berlinOffsetSeconds] binary-searches.
 private val BERLIN_TX_EPOCH = longArrayOf(
          -1693706400L, -1680483600L, -1663455600L, -1650150000L, -1632006000L, -1618700400L,
           -938905200L,  -857257200L,  -844556400L,  -828226800L,  -812502000L,  -796777200L,
@@ -94,12 +104,13 @@ internal val berlinPinnedTransitionCount: Int get() = BERLIN_TX_EPOCH.size
 internal fun berlinPinnedTransitionEpoch(index: Int): Long = BERLIN_TX_EPOCH[index]
 internal fun berlinPinnedTransitionOffset(index: Int): Long = BERLIN_TX_OFFSET[index]
 
-/** Berlin's UTC offset in seconds at [instant] over its COMPLETE history — flat CET before 1916 (the kernel's
- *  java.util path drops the LMT), the pinned [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions through 1997
- *  (CET/CEST/CEMT), and the recurring EU rule beyond. Binary search + pure-integer civil math ([berlinEuRuleOffset])
- *  — no per-call string allocation — because this is on the hot path for every conversion under a Berlin model. */
+/** Berlin's UTC offset in seconds at [instant] over its COMPLETE history — local mean time before 1893-04-01,
+ *  flat CET to 1916, the pinned [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions through 1997 (CET/CEST/CEMT),
+ *  and the recurring EU rule beyond. Binary search + pure-integer civil math — no per-call allocation — because
+ *  this is on the hot path for every conversion under a Berlin model. */
 private fun berlinOffsetSeconds(instant: Long): Long {
-    if (instant < BERLIN_TX_EPOCH[0]) return 3_600L                 // pre-1916: flat CET (no LMT on the kernel path)
+    if (instant < BERLIN_LMT_END) return BERLIN_LMT
+    if (instant < BERLIN_TX_EPOCH[0]) return 3_600L
     val last = BERLIN_TX_EPOCH.size - 1
     if (instant >= BERLIN_TX_EPOCH[last]) return berlinEuRuleOffset(instant)   // 1997-10-26 onward: the stable EU rule
     var lo = 0; var hi = last                                       // greatest i with BERLIN_TX_EPOCH[i] <= instant
@@ -118,243 +129,183 @@ private fun berlinEuRuleOffset(instant: Long): Long {
     return if (instant >= berlinDstStart(year) && instant < berlinDstEnd(year)) 7_200L else 3_600L
 }
 
+/** [tz]'s UTC offset in seconds at [instant]. */
+internal fun offsetSeconds(instant: Long, tz: ModelTimeZone): Long = when (tz) {
+    ModelTimeZone.UTC -> 0L
+    ModelTimeZone.EUROPE_BERLIN -> berlinOffsetSeconds(instant)
+}
+
 /**
- * The instant of a LOCAL wall time (naive epoch seconds, [epochSecond]) under [tz] — the kernel's PARSE
- * resolution (a zone-set, non-lenient `SimpleDateFormat`, probe-verified over all of Berlin's history):
- *  - a wall time with exactly one consistent offset resolves to it (winter CET, summer CEST, midsummer CEMT);
- *  - the **ambiguous** fall-back hour (two consistent offsets) resolves to the **smaller (after) offset** —
- *    standard-time in a normal fall-back, CEST in the 1945 CEMT→CEST overlap;
- *  - the **nonexistent** spring-forward gap resolves to **null** — the kernel REJECTS it (`datumFormatFalsch`).
+ * The instant of a LOCAL wall time (naive epoch seconds, [epochSecond]) under [tz], resolved the way
+ * `ZonedDateTime.ofLocal` resolves it — the rule behind every value A12 31.1.1 parses, constructs or shifts:
+ *  - a wall time with exactly one valid offset takes it;
+ *  - an **overlap** takes [preferredOffset] when that is one of its two valid offsets, else the **earlier** offset
+ *    (the one in force before the transition, the larger) — probe-measured: 2024-10-27T02:30 to 03:00 is 90 minutes;
+ *  - a **gap** moves the wall time forward by the gap's length, which is the instant at the pre-gap offset —
+ *    probe-measured: 2024-03-31T02:30 and 03:30 are the same instant, and so are 1945-05-24T02:30 and 03:30.
  *
- * The rule is one loop: try the candidate offsets ASCENDING and take the first instant whose true offset
- * ([berlinOffsetSeconds]) equals the offset assumed — so an overlap picks the smaller offset (the kernel's
- * after/standard choice) and a gap matches none.
+ * Total: every wall time has an instant (KERNEL-FINDINGS KF665).
  */
-fun localToInstant(localSeconds: Long, tz: ModelTimeZone): Long? = when (tz) {
+fun localToInstant(localSeconds: Long, tz: ModelTimeZone, preferredOffset: Long? = null): Long = when (tz) {
     ModelTimeZone.UTC -> localSeconds
     ModelTimeZone.EUROPE_BERLIN -> {
+        var earliest = Long.MAX_VALUE
+        var gapBeforeOffset = Long.MIN_VALUE
         var resolved: Long? = null
         for (offset in BERLIN_OFFSETS) {
             val instant = localSeconds - offset
-            if (berlinOffsetSeconds(instant) == offset) { resolved = instant; break }
+            val actual = berlinOffsetSeconds(instant)
+            if (actual == offset) {
+                if (offset == preferredOffset) resolved = instant
+                earliest = minOf(earliest, instant)
+            } else if (actual > offset) {
+                // In a gap every offset up to the pre-gap one lands past the transition; the largest such offset
+                // IS the pre-gap offset, because any larger one lands before the transition, on that very offset.
+                gapBeforeOffset = offset
+            }
         }
-        resolved                                           // null ⇒ the spring gap — no such wall time
+        when {
+            resolved != null -> resolved
+            earliest != Long.MAX_VALUE -> earliest
+            else -> {
+                check(gapBeforeOffset != Long.MIN_VALUE) { "Berlin wall time $localSeconds has no bracketing offset" }
+                localSeconds - gapBeforeOffset
+            }
+        }
     }
 }
 
 /** The LOCAL wall time (naive epoch seconds) of [instant] under [tz]. */
-fun instantToLocal(instant: Long, tz: ModelTimeZone): Long = when (tz) {
-    ModelTimeZone.UTC -> instant
-    ModelTimeZone.EUROPE_BERLIN -> instant + berlinOffsetSeconds(instant)
-}
+fun instantToLocal(instant: Long, tz: ModelTimeZone): Long = instant + offsetSeconds(instant, tz)
 
-/** The instant of a canonical ISO date-time under [tz], or null when malformed OR a gap wall time. */
+/** The instant of a canonical ISO date-time under [tz], or null when malformed. */
 fun zonedInstantOf(iso: String, tz: ModelTimeZone): Long? = epochSecond(iso)?.let { localToInstant(it, tz) }
 
-/** The canonical ISO date-time rendering of [instant]'s wall clock under [tz]. */
+/** The canonical ISO date-time rendering of [instant]'s wall clock under [tz] — proleptic, as `ZonedDateTime` reads it. */
 fun isoFromZonedInstant(instant: Long, tz: ModelTimeZone): String = isoFromEpochSecond(instantToLocal(instant, tz))
 
-/** Canonical wall rendering of [instant] on A12's hybrid calendar (see [calendarDateParts]). */
-internal fun isoFromCalendarInstant(instant: Long, tz: ModelTimeZone): String {
-    val local = instantToLocal(instant, tz)
-    val date = isoFromLegacyEpochDay(local.floorDiv(86_400L))
-    val time = local.mod(86_400L)
-    return "$date" + "T" + twoDigits((time / 3_600L).toInt()) + ":" +
-        twoDigits(((time % 3_600L) / 60L).toInt()) + ":" + twoDigits((time % 60L).toInt())
+// ---- the kernel's ZonedDateTime operations, over instants in MILLISECONDS ---------------------------------
+//
+// A12 carries a `java.util.Date`, so an instant has millisecond precision (a clock reading keeps its remainder);
+// every transition sits on a whole second, so the remainder rides along unchanged.
+
+private const val MILLIS_PER_DAY = 86_400_000L
+
+private fun localMillis(instantMillis: Long, tz: ModelTimeZone): Long =
+    instantMillis + offsetSeconds(instantMillis.floorDiv(1_000L), tz) * 1_000L
+
+private fun instantMillisOfLocal(localMillis: Long, tz: ModelTimeZone, preferredOffset: Long?): Long =
+    localToInstant(localMillis.floorDiv(1_000L), tz, preferredOffset) * 1_000L + localMillis.mod(1_000L)
+
+/** The proleptic civil date of [instantMillis]'s wall clock under [tz] — `ZonedDateTime.get` of the date fields. */
+internal fun localCivil(instantMillis: Long, tz: ModelTimeZone): Civil =
+    civilOfEpochDay(localMillis(instantMillis, tz).floorDiv(MILLIS_PER_DAY))
+
+/** Midnight of the local date [epochDay] — `LocalDate.atStartOfDay(zone)`. Its gap rule (the first valid time after
+ *  the gap) and [localToInstant]'s (forward by the gap length) agree for Berlin, whose only midnight gap starts at
+ *  midnight (1893-04-01, LMT → CET). */
+internal fun startOfDayMillis(epochDay: Long, tz: ModelTimeZone): Long =
+    localToInstant(epochDay * 86_400L, tz) * 1_000L
+
+/** `ZonedDateTime.plusDays`: the wall clock moves by whole days, keeping the source's offset where it stays valid. */
+internal fun plusLocalDays(instantMillis: Long, days: Long, tz: ModelTimeZone): Long =
+    instantMillisOfLocal(localMillis(instantMillis, tz) + days * MILLIS_PER_DAY, tz, sourceOffset(instantMillis, tz))
+
+/** `ZonedDateTime.plusMonths`: the day clamps to the target month's length; time and preferred offset ride along. */
+internal fun plusLocalMonths(instantMillis: Long, months: Long, tz: ModelTimeZone): Long? {
+    val local = localMillis(instantMillis, tz)
+    val civil = civilOfEpochDay(local.floorDiv(MILLIS_PER_DAY))
+    val total = civil.year * 12L + (civil.month - 1) + months
+    return civilLanding(total.floorDiv(12L), total.mod(12L).toInt() + 1, civil.day, local, instantMillis, tz)
 }
 
-/** Whether a well-formed local date-time falls in [tz]'s spring-forward gap (a wall time that does not
- *  exist) — the kernel's `datumFormatFalsch` for a stored value (probe-verified, KERNEL-FINDINGS §6). */
-fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
-    tz != ModelTimeZone.UTC && epochSecond(iso)?.let { localToInstant(it, tz) == null } == true
+/** `ZonedDateTime.plusYears`: a February 29 clamps to the 28th in a common year. */
+internal fun plusLocalYears(instantMillis: Long, years: Long, tz: ModelTimeZone): Long? {
+    val local = localMillis(instantMillis, tz)
+    val civil = civilOfEpochDay(local.floorDiv(MILLIS_PER_DAY))
+    return civilLanding(civil.year + years, civil.month, civil.day, local, instantMillis, tz)
+}
+
+/** `java.time`'s year range; beyond it a `ZonedDateTime` cannot exist. */
+private const val MAX_YEAR = 999_999_999L
+
+private fun civilLanding(year: Long, month: Int, day: Int, local: Long, source: Long, tz: ModelTimeZone): Long? {
+    if (year !in -MAX_YEAR..MAX_YEAR) return null
+    val y = year.toInt()
+    val landingDay = epochDayOfCivil(y, month, minOf(day, daysInMonth(y, month)))
+    return instantMillisOfLocal(landingDay * MILLIS_PER_DAY + local.mod(MILLIS_PER_DAY), tz, sourceOffset(source, tz))
+}
+
+private fun sourceOffset(instantMillis: Long, tz: ModelTimeZone): Long = offsetSeconds(instantMillis.floorDiv(1_000L), tz)
+
+private fun Civil.isFebruary28(): Boolean = month == 2 && day == 28
 
 /**
- * The landing instant of a `Calendar.DAY_OF_MONTH` add — the kernel's `BedingungsOperatorHelper.addTime` day
- * arm, which is `GregorianCalendar.add(DAY_OF_MONTH, n)` on a model-zone calendar.
- *
- * The mechanism is **source-instant-based and direction-INDEPENDENT** (SPEC-2026-07-29-01; the earlier account
- * here resolved a nominal wall LABEL by direction of travel, which agrees on adjacent ±1-day steps and
- * diverges once the source and the landing sit in different offset seasons):
- *
- *  1. add the raw elapsed span — `[sourceInstant] + n·86 400`, so the source's offset AND its sub-second
- *     remainder ride along;
- *  2. if the offset at that instant differs from the source's, **re-fit** by the offset delta so the wall
- *     clock is preserved;
- *  3. keep the re-fit **only when it lands on the EXPECTED civil date** — the source's civil date plus [n] —
- *     otherwise the raw instant stands.
- *
- * Step 3 is judged against the expected date, not against the raw landing's own date, and the two differ exactly
- * when the source sits within the offset delta of midnight: `AddDays(2024-10-27T00:30, 1)` raw-lands on
- * `27T23:30` CET, and its re-fit `28T00:30` is kept because the 28th is the date asked for, while
- * `AddDays(2024-03-30T23:30, 1)` raw-lands on `04-01T00:30` CEST and its re-fit `03-31T23:30` is kept for the same
- * reason. Comparing against the raw date rejected both re-fits (SPEC-2026-10-02-01's row and our spring twin,
- * `adapter.laws.ComputedDateTimeJoinDiffTest`, both kernel strategies).
- *
- * Two adjacent additions can therefore select different sides of one overlap: `AddDays` reaching 1916-10-01
- * from a CEST September source lands on the daylight side, while a 214-day add from a CET March source lands
- * on the fresh CET side — same civil label, one hour apart.
+ * `AddYears` as A12 31.1.1 computes it: `plusYears`, then one correction on February 28 — a common-year source
+ * landing on a leap year's 28th moves to the 29th, and a leap-year source landing on a common year's 28th is reset to
+ * that day's start, dropping its time of day.
  */
-fun wallDayLandingInstant(sourceInstant: Long, n: Int, tz: ModelTimeZone): Long {
-    val raw = sourceInstant + n * 86_400L
-    if (tz == ModelTimeZone.UTC) return raw
-    val sourceOffset = berlinOffsetSeconds(sourceInstant)
-    val rawOffset = berlinOffsetSeconds(raw)
-    if (rawOffset == sourceOffset) return raw
-    val refit = raw + (sourceOffset - rawOffset)
-    val expectedDay = instantToLocal(sourceInstant, tz).floorDiv(86_400L) + n
-    val refitDay = instantToLocal(refit, tz).floorDiv(86_400L)
-    return if (refitDay == expectedDay) refit else raw
+internal fun shiftYears(instantMillis: Long, years: Long, tz: ModelTimeZone): Long? {
+    val result = plusLocalYears(instantMillis, years, tz) ?: return null
+    val source = localCivil(instantMillis, tz)
+    val landed = localCivil(result, tz)
+    if (!source.isFebruary28() || !landed.isFebruary28()) return result
+    return when {
+        !isGregorianLeapYear(source.year) && isGregorianLeapYear(landed.year) -> plusLocalDays(result, 1, tz)
+        isGregorianLeapYear(source.year) && !isGregorianLeapYear(landed.year) ->
+            startOfDayMillis(localMillis(result, tz).floorDiv(MILLIS_PER_DAY), tz)
+        else -> result
+    }
 }
 
-/**
- * Signed model-zone calendar-day count from [a] to [b]. Each operand is a canonical local DATE or DATE_TIME.
- * The count follows the kernel's legacy calendar stepping, including a special-hour landing under Berlin;
- * sub-day differences remain instant arithmetic in their own operations.
- */
-internal fun differenceInCalendarDays(a: String, b: String, tz: ModelTimeZone): Int? {
-    val aInstant = calendarOperandInstant(a, tz) ?: return null
-    val bInstant = calendarOperandInstant(b, tz) ?: return null
-    return differenceInCalendarDays(aInstant, bInstant, tz)
-}
-
-/** The instant of a canonical local DATE or DATE_TIME operand, its label read on A12's hybrid calendar. */
-internal fun calendarOperandInstant(value: String, tz: ModelTimeZone): Long? {
-    val local = if ('T' in value) {
-        val date = value.substringBefore('T')
-        val time = TIME_OF_DAY.matchEntire(value.substringAfter('T')) ?: return null
-        val day = legacyEpochDay(date) ?: return null
-        val hour = time.groupValues[1].toLong()
-        val minute = time.groupValues[2].toLong()
-        val second = time.groupValues[3].toLong()
-        if (hour > 23L || minute > 59L || second > 59L) return null
-        day * 86_400L + hour * 3_600L + minute * 60L + second
+/** `AddMonths` as A12 31.1.1 computes it: `plusMonths`, then the leap-year February 28 time reset of [shiftYears]. */
+internal fun shiftMonths(instantMillis: Long, months: Long, tz: ModelTimeZone): Long? {
+    val result = plusLocalMonths(instantMillis, months, tz) ?: return null
+    val source = localCivil(instantMillis, tz)
+    val landed = localCivil(result, tz)
+    return if (source.isFebruary28() && isGregorianLeapYear(source.year) &&
+        landed.isFebruary28() && !isGregorianLeapYear(landed.year)) {
+        startOfDayMillis(localMillis(result, tz).floorDiv(MILLIS_PER_DAY), tz)
     } else {
-        legacyEpochDay(value)?.times(86_400L)
+        result
     }
-    return local?.let { localToInstant(it, tz) }
-}
-
-/** The instant-preserving variant used by the expression evaluator for composed DATE_TIME operands. */
-internal fun differenceInCalendarDays(aInstant: Long, bInstant: Long, tz: ModelTimeZone): Int =
-    calendarDayDifferenceDetail(aInstant, bInstant, tz).days
-
-/** Test-visible structural performance evidence for the bounded seed residual. */
-internal data class CalendarDayDifferenceDetail(val days: Int, val residualSteps: Int)
-
-internal fun calendarDayDifferenceDetail(
-    aInstant: Long,
-    bInstant: Long,
-    tz: ModelTimeZone,
-): CalendarDayDifferenceDetail {
-    val forward = aInstant <= bInstant
-    val earlier = if (forward) aInstant else bInstant
-    val later = if (forward) bInstant else aInstant
-
-    val wholeYears = wholeLegacyCalendarYears(earlier, later, tz)
-    var count = wholeYears * 365
-    var residualSteps = 0
-    var cursor = if (count == 0) earlier
-        else wallDayLandingInstant(earlier, count, tz)
-    // The repeated +1 is intentionally stateful. A Berlin gap landing can change the clock (02:30→01:30),
-    // and subsequent Calendar.DAY additions retain that changed clock; replacing the loop by one ordinal jump
-    // is observably wrong. The runtime's 365-day year seed bounds this residual to the accumulated leap days
-    // (fewer than 2,800 successful iterations over the full four-digit label domain, including the final
-    // partial year), rather than total elapsed days.
-    while (true) {
-        val next = wallDayLandingInstant(cursor, 1, tz)
-        if (next > later) break
-        cursor = next
-        count++
-        residualSteps++
-    }
-    return CalendarDayDifferenceDetail(if (forward) count else -count, residualSteps)
-}
-
-/** Complete legacy-calendar years between ordered instants — the runtime's lower-bound seed for day diff. */
-private fun wholeLegacyCalendarYears(earlier: Long, later: Long, tz: ModelTimeZone): Int {
-    val earlierDate = legacyDateAtInstant(earlier, tz)
-    val laterDate = legacyDateAtInstant(later, tz)
-    val candidate = laterDate.first - earlierDate.first
-    if (candidate == 0) return 0
-    return if (legacyCalendarYearLandingInstant(earlier, candidate, tz) > later) candidate - 1 else candidate
-}
-
-/** Model-zone legacy civil date fields at [instant]. */
-private fun legacyDateAtInstant(instant: Long, tz: ModelTimeZone): Triple<Int, Int, Int> {
-    val localDay = instantToLocal(instant, tz).floorDiv(86_400L)
-    return dateParts(isoFromLegacyEpochDay(localDay))!!
-}
-
-/** A `Calendar.YEAR` landing, including the runtime's February-28 correction and retained time-of-day. */
-private fun legacyCalendarYearLandingInstant(instant: Long, years: Int, tz: ModelTimeZone): Long {
-    val local = instantToLocal(instant, tz)
-    val sourceDate = isoFromLegacyEpochDay(local.floorDiv(86_400L))
-    val sourceParts = dateParts(sourceDate)!!
-    val shiftedDate = addLegacyCalendarYears(sourceDate, years)
-        ?: error("legacy calendar year landing overflow: $sourceDate + $years years")
-    val targetYear = sourceParts.first + years
-    val sourceTime = local.mod(86_400L)
-    val shiftedTime = if (sourceParts.second == 2 && sourceParts.third == 28 &&
-        isGregorianLeapYear(sourceParts.first) && !isGregorianLeapYear(targetYear)) 0L else sourceTime
-    val nominal = legacyEpochDay(shiftedDate)!! * 86_400L + shiftedTime
-    return fieldMutationLandingInstant(nominal, tz)
 }
 
 /**
- * The landing instant of a `Calendar.MONTH`/`Calendar.YEAR` mutation that produced the civil DATE label
- * [isoDate] — midnight of that label, resolved by [fieldMutationLandingInstant]. A Date-valued month/year
- * shift retains this so a consumer observes the instant the mutation selected rather than re-resolving the
- * label (SPEC-2026-07-29-01). Null when the label is not a real date on A12's hybrid calendar.
+ * Signed `DifferenceInDays(a, b)`: complete days between the two WALL CLOCKS, as `ChronoUnit.DAYS.between` counts two
+ * `ZonedDateTime`s in one zone — the date difference, less one when the later time of day has not been reached. The
+ * operands are ordered by instant first and the sign reapplied, as A12 does.
  */
-internal fun fieldMutationInstantOfDate(isoDate: String, tz: ModelTimeZone): Long? {
-    val day = legacyEpochDay(isoDate) ?: return null
-    return fieldMutationLandingInstant(day * 86_400L, tz)
+internal fun differenceInDays(aMillis: Long, bMillis: Long, tz: ModelTimeZone): Long {
+    val forward = aMillis < bMillis
+    val first = localMillis(if (forward) aMillis else bMillis, tz)
+    val second = localMillis(if (forward) bMillis else aMillis, tz)
+    var days = second.floorDiv(MILLIS_PER_DAY) - first.floorDiv(MILLIS_PER_DAY)
+    val time = second.mod(MILLIS_PER_DAY) - first.mod(MILLIS_PER_DAY)
+    if (days > 0 && time < 0) days-- else if (days < 0 && time > 0) days++
+    return if (forward) days else -days
 }
 
-/**
- * The instant of a FRESHLY CONSTRUCTED / parsed DATE label — midnight resolved the way the kernel's
- * non-lenient zone parse resolves it ([localToInstant]): an overlap takes the smaller (after) offset, i.e.
- * the LATER copy. Retained on a constructed Date so a comparison against a shifted Date can observe that the
- * two selected different sides of one overlap. Null for a gap label (which the kernel rejects formally).
- */
-internal fun freshDateInstant(isoDate: String, tz: ModelTimeZone): Long? {
-    val day = legacyEpochDay(isoDate) ?: return null
-    return localToInstant(day * 86_400L, tz)
+/** Signed complete years: the year difference, less one when [shiftYears] of the earlier passes the later. */
+internal fun differenceInYears(aMillis: Long, bMillis: Long, tz: ModelTimeZone): Long {
+    val forward = aMillis < bMillis
+    val first = if (forward) aMillis else bMillis
+    val second = if (forward) bMillis else aMillis
+    val years = positiveYears(first, second, tz)
+    return if (forward) years else -years
 }
 
-/**
- * A `Calendar.MONTH` / `Calendar.YEAR` landing — resolved at COMPUTE time from the nominal civil label alone
- * and INDEPENDENTLY of the sign of the mutation (SPEC-2026-07-29-01). Unlike the day arm
- * ([wallDayLandingInstant]) this carries no source instant: `GregorianCalendar` re-resolves the mutated
- * fields, so an **overlap** label takes the LATER instant and a **gap** label normalizes to the POST-gap
- * label (`02:30` → `03:30`, one hour past the transition).
- *
- * Both halves are now differentially separated. The GAP half:
- * `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both kernel strategies, because the
- * 21-year candidate's post-gap landing falls after the later endpoint and is rejected, where the previous
- * direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP half: direct Date equality
- * over the one ambiguous midnight — `AddMonths(Date("1","9","1916"), 1) == Date("1","10","1916")` and the
- * `AddYears` twin are both **true** while the `AddDays` shape is **false**, so taking the LATER copy here is
- * observed rather than assumed (`ConstructedDateInstantDiffTest`). A `DifferenceInDays` construction cannot
- * show the overlap half — its day loop only ever adds, so a seed difference self-corrects — which is why the
- * observer has to be a comparison that introduces no second calendar mutation.
- */
-private fun fieldMutationLandingInstant(nominal: Long, tz: ModelTimeZone): Long {
-    if (tz == ModelTimeZone.UTC) return nominal
+/** Signed complete months: from the whole years, count months on a fresh copy of the earlier until one passes the later. */
+internal fun differenceInMonths(aMillis: Long, bMillis: Long, tz: ModelTimeZone): Long {
+    val forward = aMillis < bMillis
+    val first = if (forward) aMillis else bMillis
+    val second = if (forward) bMillis else aMillis
+    var months = 12L * positiveYears(first, second, tz)
+    while (checkNotNull(shiftMonths(first, months, tz)) <= second) months++
+    return if (forward) months - 1 else -(months - 1)
+}
 
-    var latestConsistent = Long.MIN_VALUE
-    var gapBeforeOffset = Long.MIN_VALUE
-    for (offset in BERLIN_OFFSETS) {
-        val instant = nominal - offset
-        val actualOffset = berlinOffsetSeconds(instant)
-        if (actualOffset == offset) latestConsistent = maxOf(latestConsistent, instant)
-        else if (actualOffset > offset) gapBeforeOffset = offset   // the PRE-transition offset brackets the gap
-    }
-    if (latestConsistent != Long.MIN_VALUE) return latestConsistent
-    // The gap: no consistent instant. Assuming the pre-gap offset lands one transition-delta past the gap,
-    // which IS the post-gap wall label the lenient field resolution produces.
-    check(gapBeforeOffset != Long.MIN_VALUE) {
-        "Berlin field-mutation landing has no consistent or bracketing offset for local=$nominal"
-    }
-    return nominal - gapBeforeOffset
+private fun positiveYears(first: Long, second: Long, tz: ModelTimeZone): Long {
+    val candidate = (localCivil(second, tz).year - localCivil(first, tz).year).toLong()
+    return if (checkNotNull(shiftYears(first, candidate, tz)) > second) candidate - 1 else candidate
 }

@@ -15,26 +15,24 @@ import kotlinx.serialization.json.JsonObject
  * token are all ADMITTED. The four `MVK_VALUE_*` codes that read as if they governed this member fire for no
  * shape reachable here, so reproducing any of them would refuse a model A12 takes.
  *
- * **The label law is "started and not finished", and it is NOT "every value has a label".** Once any value
- * carries an entry for any DECLARED locale, every value must carry a non-blank text for every declared
- * locale. Two rows pin it and neither follows from the other: labels written only for an UNDECLARED locale
- * are admitted, because no declared locale has an entry at all — while labels present for a declared locale
- * with every text BLANK are refused, because the entries are there. A checker asking "is this locale
- * answered" gets the first row wrong; one asking "is any label present" gets the second wrong.
+ * **The label law, on kernel 31.1.1, reads a `label` list as A12's converter does** ([KERNEL-FINDINGS KF655]): a value
+ * whose list holds ANY entry is labelled, and is then given a text for every DECLARED locale, the declared locale's
+ * own text or none. Three classes follow, and none pre-empts another:
  *
- * **The two codes are separated by WHOSE disagreement it is.** Values that disagree on carrying a label at
- * all draw `MVK_COUNT_OF_VALUES_INVALID`, and A12 reports that INSTEAD of the locale code, so this family does
- * the same. **A label is carried only for a DECLARED locale** ([KERNEL-FINDINGS KF569]): a value labelled
- * only for an undeclared locale carries none, exactly like an empty `label` array. The row that separates
- * this from "any entry labels" is one value labelled for the declared and an undeclared locale beside one
- * labelled only for the undeclared locale — A12 answers the count code, where "any entry" would say both
- * values carry a label and name the locale code instead.
+ * - values that disagree on being labelled draw `MVK_COUNT_OF_VALUES_INVALID`, an empty `label` list counting as none;
+ * - a labelled value with a token and no non-blank text for a declared locale, or with a text and no token, draws
+ *   `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` for that locale;
+ * - a labelled value with no token draws `MVK_INTERNAL_VALUE_MISSING`.
  *
- * **The family judges the DEFAULT-VARIANT model**, as its sibling enumeration families do (KF569): a field an
- * `ONLY` filter deletes there is not checked for its values, its labels or its tokens.
+ * The rows that separate this from kernel 30.8.1's law ("a label is carried only for a declared locale", KF569)
+ * are the undeclared ones: a value labelled only for an undeclared locale beside an unlabelled value now draws both
+ * the count and the locale class, where 30.8.1 admitted it.
+ *
+ * **A value entry with no `value` member is a value with no token** (KERNEL-FINDINGS KF654, KF655): when no entry has one, A12 draws
+ * `MVK_INTERNAL_VALUES_MISSING`. An entry whose `value` is present and not a string is not judged here.
  */
 internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
-    defaultVariantFields().flatMap { field ->
+    fieldDeclarations().flatMap { field ->
         val values = field.ownEnumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         val entries = values.map { it as? JsonObject }
         duplicateTokenFindings(field, entries) + labelFindings(field, entries)
@@ -59,43 +57,41 @@ private fun TrackedFactBase.labelFindings(
     field: TrackedDeclaration,
     values: List<JsonObject?>,
 ): List<Finding> {
-    val texts = values.map { value ->
-        localizedTextEntries(value?.get("label"))
+    val labelled = values.filterNotNull().filter { localizedTextEntries(it["label"]).isNotEmpty() }
+    val tokenless = values.filterNotNull().filter { "value" !in it }
+    val texts = labelled.map { value ->
+        localizedTextEntries(value["label"])
             .mapNotNull { entry -> entry.string("locale")?.let { localeKeyOrNull(it) }?.to(entry) }
             .filter { (locale, _) -> locale in declaredLocales }
             // A later entry for one locale replaces an earlier one, as everywhere else A12 collects texts.
             .toMap()
     }
-    // A value whose entries name no declared locale carries no label, which is the row that separates the
-    // two codes: A12 answers the values' own disagreement and says nothing about the locales.
-    if (texts.any { it.isNotEmpty() } && texts.any { it.isEmpty() }) {
-        return listOf(
-            finding(
-                field,
-                "MVK_COUNT_OF_VALUES_INVALID",
-                "some of this enumeration's values carry a `label` and others do not, which A12 refuses; " +
-                    "an empty `label` list counts as carrying none",
-            ),
-        )
+    val findings = mutableListOf<Finding>()
+    if (values.isNotEmpty() && tokenless.size == values.size) {
+        findings += finding(field, "MVK_INTERNAL_VALUES_MISSING",
+            "no entry of this enumeration's `values` carries a `value` token, so it declares no value A12 can store")
     }
-    if (texts.all { it.isEmpty() }) {
-        return emptyList()
+    if (labelled.isNotEmpty() && labelled.size < values.size) {
+        findings += finding(field, "MVK_COUNT_OF_VALUES_INVALID",
+            "some of this enumeration's values carry a `label` and others do not, which A12 refuses; an empty " +
+                "`label` list counts as carrying none")
     }
     val unanswered = declaredLocales.filter { locale ->
-        texts.any { value -> value[locale]?.string("text")?.isA12Blank() != false }
-    }
-    if (unanswered.isNotEmpty()) {
-        return unanswered.map { locale ->
-            finding(
-                field,
-                "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES",
-                "this enumeration labels some of its values for a declared locale and leaves `$locale` " +
-                    "without a text on at least one of them; A12 refuses a label set that is started and " +
-                    "not finished, and a blank text is no text",
-            )
+        labelled.indices.any { index ->
+            val answered = texts[index][locale]?.string("text")?.isA12Blank() == false
+            if ("value" in labelled[index]) !answered else answered
         }
     }
-    return repeatedLabelFindings(field, texts)
+    findings += unanswered.map { locale ->
+        finding(field, "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES",
+            "a labelled value of this enumeration lacks either its token or a text for `$locale`; A12 gives a " +
+                "labelled value a text for every declared locale and asks both to be filled, and a blank text is no text")
+    }
+    if (labelled.any { "value" !in it }) {
+        findings += finding(field, "MVK_INTERNAL_VALUE_MISSING",
+            "a labelled value of this enumeration carries no `value` token, which A12 refuses")
+    }
+    return findings.ifEmpty { repeatedLabelFindings(field, texts) }
 }
 
 /**

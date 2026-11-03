@@ -137,17 +137,17 @@ class CheckerOuterMarkedOperandAgreementTest {
             defect("FieldValuesNotUnique(\$Items*/Code, Items*/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
             defect("FieldValuesNotUnique(\$Items/Code, \$Items/ShipOn)", "MVK_VARYING_TYPES_NOT_ALLOWED")
             // SumOfProducts reads a marked operand's levels as bound by the rule, as it reads an unmarked one.
-            defect("SumOfProducts(\$Items/UnitPrice, Items/Count) > 0", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED")
+            defect("SumOfProducts(\$Items/UnitPrice, Items/Count) > 0", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED")
             sound("SumOfProducts(\$Items*/UnitPrice, Items*/Count) > 0")
             sound("SumOfProducts(\$Items*/UnitPrice, \$Items*/Count) > 0")
             defect("SumOfProducts(\$Items*, Items*/Count) > 0", "MVK_DUPLICATE_PARAM2")
             defect("SumOfProducts(\$Items*) > 0", NO_GROUPS)
             // A repetition key may not be read in a filter at all, so a marked key never reaches its gates.
-            defect("RepetitionNotUnique(Items/Code)", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+            defect("RepetitionNotUnique(Items/Code)", "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION")
             put("RepetitionNotUnique(\$Items/Code), alone",
                 Row("Items/Count", ALONE.format("RepetitionNotUnique(\$Items/Code)"), listOf(FILTER_END)))
             put("RepetitionNotUnique(\$Items/Code), beside", Row("Items/Count",
-                BESIDE.format("RepetitionNotUnique(\$Items/Code)"), listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")))
+                BESIDE.format("RepetitionNotUnique(\$Items/Code)"), listOf("MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION")))
 
             // An unmarked repeatable group that something addresses is the family's own group class.
             defect("RangeAsString(Items, 1, 3) == \"a\"", NO_GROUPS)

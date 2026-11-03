@@ -2,14 +2,13 @@
   "header" : {
     "id" : "permit-include-typedef",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "section-types",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "permit-section-types"
@@ -55,7 +54,9 @@
             "name" : "Details",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "section-types"
+              "includeConfig" : {
+                "reference" : "permit-section-types"
+              }
             }
           } ]
         }

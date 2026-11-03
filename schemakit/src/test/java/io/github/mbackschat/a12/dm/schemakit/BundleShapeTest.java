@@ -49,7 +49,7 @@ class BundleShapeTest {
 
         assertEquals(2, bundle.models().size(), "one model per component");
         String customer = bundle.models().get("Customer").dmJson();
-        assertTrue(customer.contains("modelAlias"), "the object ref became a mount");
+        assertTrue(customer.contains("includeConfig"), "the object ref became a mount");
         assertTrue(customer.contains("Address"), "the mount references the Address model");
         assertFalse(customer.contains("city"), "Address is mounted, not inlined — city is not duplicated into Customer");
         assertKernelAcceptsBundle(bundle);
@@ -71,7 +71,7 @@ class BundleShapeTest {
                 """, MappingProfile.defaults(), Dialect.AUTO);
 
         String customer = bundle.models().get("Customer").dmJson();
-        assertTrue(customer.contains("modelAlias"), "Address is mounted");
+        assertTrue(customer.contains("includeConfig"), "Address is mounted");
         assertTrue(bundle.models().get("Customer").report().dispositions().stream()
                         .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS),
                 "the discount exclusive bound synthesized a rule on the mounting component");
@@ -126,7 +126,7 @@ class BundleShapeTest {
                 """, MappingProfile.defaults(), Dialect.AUTO);
 
         String order = bundle.models().get("Order").dmJson();
-        assertTrue(order.contains("modelAlias") && order.contains("Line"), "the array-of-$ref became a repeatable mount → Line");
+        assertTrue(order.contains("includeConfig") && order.contains("Line"), "the array-of-$ref became a repeatable mount → Line");
         assertFalse(order.contains("sku"), "Line is mounted, not inlined into Order");
         assertKernelAcceptsBundle(bundle);
     }

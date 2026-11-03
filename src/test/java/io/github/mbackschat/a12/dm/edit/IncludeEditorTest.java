@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -23,7 +25,7 @@ class IncludeEditorTest {
     @Test
     void mountsAgainAndRemovesAnIncludeByHeldReference() {
         EditSession s = EditSession.read(Fixtures.subscriptionJson(), resolver());
-        s.addInclude("catalog", "catalog", "/Subscription", "Catalog");   // declare + first mount
+        s.mount("/Subscription", "Catalog", "catalog");   // declare + first mount
         s.validate();
         assertTrue(ModelDocument.read(s.toJson()).groupPaths().contains("/Subscription/Catalog"));
 
@@ -39,31 +41,19 @@ class IncludeEditorTest {
     }
 
     @Test
-    void rePointsAnIncludeAtADifferentModel() {
+    void rePointsEveryMountAtADifferentModelAndHandsBackItsEditor() {
         EditSession s = EditSession.read(Fixtures.subscriptionJson(), resolver());
-        s.addInclude("catalog", "catalog", "/Subscription", "Catalog");
+        s.mount("/Subscription", "Catalog", "catalog");
         s.validate();
 
-        // re-point at a different referenced model — alias unchanged, so the mounts are untouched
-        s.include("catalog").setReference("catalog-v2");
+        // the mount follows the include: DM 29.4 names the included model on the mount itself (KF651)
+        IncludeEditor repointed = s.include("catalog").setReference("catalog-v2");
         s.validate();   // resolver() resolves "catalog-v2" too
 
-        assertEquals("catalog-v2", ModelDocument.read(s.toJson()).includes().get(0).reference());
-    }
-
-    @Test
-    void renamesAnIncludeAlias() {
-        EditSession s = EditSession.read(Fixtures.subscriptionJson(), resolver());
-        s.addInclude("catalog", "catalog", "/Subscription", "Catalog");
-        s.validate();
-
-        // the header alias AND the mount's modelAlias move together; validate() passing proves nothing dangles
-        s.include("catalog").rename("pricelist");
-        s.validate();
-
         ModelDocument doc = ModelDocument.read(s.toJson());
-        assertEquals("pricelist", doc.includes().get(0).alias());
-        assertTrue(doc.groupPaths().contains("/Subscription/Catalog"));   // mount path (name-keyed) is unchanged
+        assertEquals("catalog-v2", repointed.reference());
+        assertEquals(List.of(new ModelDocument.Include("catalog-v2")), doc.includes());
+        assertEquals(List.of("/Subscription/Catalog"), doc.mountsOfInclude("catalog-v2"));
     }
 
     /** A tiny included model authored with modelkit (same locales as subscription). */

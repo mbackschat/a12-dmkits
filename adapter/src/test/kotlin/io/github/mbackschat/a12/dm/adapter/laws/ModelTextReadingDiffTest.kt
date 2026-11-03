@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.util.RawValue
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
@@ -73,15 +74,23 @@ class ModelTextReadingDiffTest {
         val rows = linkedMapOf<String, Pair<Any, String>>(
             "\"5\", the control" to ("5" to BUILT), "\" 5 \"" to (" 5 " to BUILT), "\"5.0\"" to ("5.0" to BUILT), "5" to (5 to BUILT),
             "\"\\u00A05\"" to ("\u00A05" to NOT_BUILT), "\"\\u0665\"" to ("\u0665" to NOT_BUILT), "\"abc\"" to ("abc" to NOT_BUILT),
-            // The text `null` declares no bound; the reader refuses text past 1000 characters and a scale past `Int`.
+            // The text `null` declares no bound; the reader refuses text past 1000 characters and, since kernel 31.1.1
+            // parses through Jackson 3's fast parser, a scale outside `Int.MIN_VALUE + 1 .. Int.MAX_VALUE` (KF593).
             "\"null\"" to ("null" to BUILT), "1000 digits" to ("1".repeat(1000) to BUILT), "1001 digits" to ("1".repeat(1001) to NOT_BUILT),
-            "\"1e2147483648\"" to ("1e2147483648" to BUILT), "\"1e9999999999\"" to ("1e9999999999" to NOT_BUILT),
+            "\"1e2147483647\"" to ("1e2147483647" to BUILT), "\"1e2147483648\"" to ("1e2147483648" to NOT_BUILT),
+            "\"1e-2147483647\"" to ("1e-2147483647" to BUILT), "\"1e-2147483648\"" to ("1e-2147483648" to NOT_BUILT),
+            "\"1e9999999999\"" to ("1e9999999999" to NOT_BUILT),
+            // A number token is held to the same scales; it is written as raw text, which no Java BigDecimal prints.
+            "1e2147483647" to (RawValue("1e2147483647") to BUILT), "1e2147483648" to (RawValue("1e2147483648") to NOT_BUILT),
+            "0e2147483648" to (RawValue("0e2147483648") to NOT_BUILT), "1e-2147483648" to (RawValue("1e-2147483648") to NOT_BUILT),
+            "a 1000-digit token" to (RawValue("1".repeat(1000)) to BUILT), "a 1001-digit token" to (RawValue("1".repeat(1001)) to NOT_BUILT),
             "\"5.\"" to ("5." to BUILT), "\".5\"" to (".5" to BUILT), "\"1e5\"" to ("1e5" to BUILT), "\"+5\"" to ("+5" to BUILT),
         )
         val observed = rows.mapValues { (_, row) ->
             val root = cover { it }
-            (root.at("/content/modelRoot/rootGroups/0/Group/elements/0/Field/fieldType/NumberType") as ObjectNode)
-                .set<ObjectNode>("minValue", MAPPER.valueToTree(row.first))
+            val type = root.at("/content/modelRoot/rootGroups/0/Group/elements/0/Field/fieldType/NumberType") as ObjectNode
+            val value = row.first
+            if (value is RawValue) type.putRawValue("minValue", value) else type.set<ObjectNode>("minValue", MAPPER.valueToTree(value))
             val json = root.toString()
             val checker = check(ModelSource(json)).findings.any { it.code == "CK_MODEL_NOT_BUILDABLE" }
             "A12 ${a12(json) { false }}, interpreter ${interpreter(json) { false }}, checker ${if (checker) NOT_BUILT else BUILT}"

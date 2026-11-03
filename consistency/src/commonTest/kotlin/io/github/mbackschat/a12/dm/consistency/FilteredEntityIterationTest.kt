@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
  */
 class FilteredEntityIterationTest {
 
-    private val filtered = "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED"
+    private val filtered = "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED"
     private val notAllowed = "MVK_PARALLEL_ITERATION_NOT_ALLOWED"
 
     /**
@@ -25,7 +25,7 @@ class FilteredEntityIterationTest {
     private fun source(group: String, errorField: String, condition: String): ModelSource =
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"OrderRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -161,7 +161,7 @@ class FilteredEntityIterationTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":50,

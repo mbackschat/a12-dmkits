@@ -82,14 +82,15 @@ class WorkspaceReachedModelDiffTest {
         val checkOnly = setOf("header.modelVersion absent", "content.modelInfo absent", "content.modelConfig.supportedCharacters [null]")
         // A12's runtime cannot evaluate these two on the entry, so runtime preparation refuses them there (KF650).
         val unevaluable = setOf("content.modelInfo absent", "content.modelConfig.supportedCharacters [null]")
-        // No text `header.id` or no `content` object: the checker's admission refuses the source and names why, and a
-        // library it cannot admit leaves the entry's library type unresolved, which is a refusal of its own.
+        // No text `header.id` or no `content` object: the checker's admission refuses the source and names why. A
+        // library it cannot admit leaves the entry's library type unfound, which kernel 31.1.1 states as a sentence
+        // rather than leaving no model (KF652), so a library row reads as unadmitted like an include row.
         val unadmitted = setOf("header absent", "content absent", "header.id []")
         assertEquals(observed.mapValues { (row, _) ->
             val edit = row.substringAfter(' ')
             when {
                 edit == "untouched" -> BUILT_AND_CHECKED
-                edit in unadmitted && !row.startsWith("TYPE_DEFINITIONS") -> NOT_BUILT_OR_ADMITTED
+                edit in unadmitted -> NOT_BUILT_OR_ADMITTED
                 edit !in checkOnly -> NOT_BUILT_OR_CHECKED
                 row.startsWith("ENTRY") && edit in unevaluable -> BUILT_NOT_CHECKED_OR_PREPARED
                 row.startsWith("ENTRY") -> BUILT_NOT_CHECKED
@@ -99,12 +100,12 @@ class WorkspaceReachedModelDiffTest {
     }
 
     /**
-     * A type-definition library is expanded only when it declares no root group: one root group, empty or not, leaves
-     * the entry unbuilt ("Cannot expand import because the root group of the imported model … contains elements").
-     * The library without a root group is the control.
+     * A type-definition library is expanded whatever root groups it holds on kernel 31.1.1, empty or not. Kernel
+     * 30.8.1 refused any ("Cannot expand import because the root group of the imported model … contains elements"),
+     * in a compatibility check 31.1.0 removed with `DocumentModelExpandSanityChecks`.
      */
     @Test
-    fun aTypeDefinitionLibraryWithARootGroupLeavesTheEntryUnbuilt() {
+    fun aTypeDefinitionLibraryWithARootGroupIsExpanded() {
         fun library(edit: (ObjectNode) -> Unit) = (MAPPER.readTree(TYPES) as ObjectNode).also { edit(it.path("content") as ObjectNode) }.toString()
         fun group(name: String, elements: String) =
             MAPPER.readTree("""{"type":"Group","id":"/$name","name":"$name","Group":{"elements":$elements}}""")
@@ -119,15 +120,16 @@ class WorkspaceReachedModelDiffTest {
             },
         )
         val observed = rows.mapValues { (_, library) -> observe(coded().toString(), library) }
-        assertEquals(rows.mapValues { (row, _) -> if (row.startsWith("no ")) BUILT else NOT_BUILT }, observed)
+        assertEquals(rows.mapValues { BUILT }, observed)
     }
 
     /**
-     * A reached model must declare every locale the entry declares, an included model and a type-definition library
-     * alike: the demand is coverage, so a superset is admitted (`DocumentModelExpandSanityChecks.checkLocaleCompatibility`).
+     * An included model must declare every locale the entry declares: the demand is coverage, so a superset is
+     * admitted. A type-definition library is held to none of it on kernel 31.1.1, where 30.8.1 held it to the same
+     * demand (`DocumentModelExpandSanityChecks.checkLocaleCompatibility`, removed in 31.1.0).
      */
     @Test
-    fun aReachedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt() {
+    fun anIncludedModelMissingAnEntryLocaleLeavesTheEntryUnbuilt() {
         val rows = linkedMapOf<String, String>()
         for (carrier in listOf(Carrier.INCLUDE, Carrier.TYPE_DEFINITIONS)) {
             for ((row, locales) in listOf("same locales" to listOf("en_US", "de_DE"), "a superset" to listOf("en_US", "de_DE", "fr_FR"),
@@ -141,7 +143,7 @@ class WorkspaceReachedModelDiffTest {
                 rows["$carrier $row"] = observe(entry.toString(), provider.toString())
             }
         }
-        assertEquals(rows.mapValues { (row, _) -> if (row.endsWith("missing de_DE")) NOT_BUILT else BUILT }, rows)
+        assertEquals(rows.mapValues { (row, _) -> if (row == "${Carrier.INCLUDE} missing de_DE") NOT_BUILT else BUILT }, rows)
     }
 
     /**
@@ -280,7 +282,7 @@ class WorkspaceReachedModelDiffTest {
     private fun cover() = MAPPER.readTree(DocumentModelDraft.named("cover").locale("en_US")
         .rootGroup("Cover") { g -> g.numberField("Amount") { it.fractionDigits(0) } }.build().toJson()) as ObjectNode
 
-    private fun permit() = MAPPER.readTree(DocumentModelDraft.named("permit").locale("en_US").include("component", "component")
+    private fun permit() = MAPPER.readTree(DocumentModelDraft.named("permit").locale("en_US")
         .rootGroup("Permit") { p -> p.mount("Details", "component") }.build().toJson()) as ObjectNode
 
     /** `cover` with a `Code` field of the library type `CoverCode`, which `types` declares. */

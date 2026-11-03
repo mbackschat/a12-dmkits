@@ -6,7 +6,8 @@ import kotlin.test.assertEquals
 
 /**
  * Which authored message entries the message families judge: exactly the ones A12's error-text checker
- * examines, each declared locale's LAST entry and nothing for an undeclared locale
+ * examines, each declared locale's LAST entry and nothing for an undeclared locale, beside which only code generation's
+ * parameter lookup reports
  * (`rulekit.validate.laws.ErrorTextLocaleScopeLawsTest.whichEntriesTheErrorTextCheckerExamines`, [KERNEL-FINDINGS
  * KF197]).
  *
@@ -26,7 +27,10 @@ class ErrorTextExaminedEntriesTest {
             expected["$family — the declared twin"] = listOf(code)
             actual["$family, in an undeclared locale"] =
                 rejections(listOf("en_US" to WELL_FORMED, "de_DE" to WELL_FORMED, "fr_FR" to text))
-            expected["$family, in an undeclared locale"] = emptyList()
+            // No message family judges it; code generation fails the build on a parameter no declared text spells
+            // (UNDECLARED_LOCALE_MESSAGE_PARAMETERS, KERNEL-FINDINGS KF659), which the character defect has none of.
+            expected["$family, in an undeclared locale"] =
+                if (family == "MESSAGE_TEXT_CHARACTERS") emptyList() else listOf(CK_MODEL_NOT_BUILDABLE)
             actual["$family, in a declared locale's replaced entry"] =
                 rejections(listOf("en_US" to text, "en_US" to WELL_FORMED, "de_DE" to WELL_FORMED))
             expected["$family, in a declared locale's replaced entry"] = emptyList()
@@ -55,7 +59,7 @@ class ErrorTextExaminedEntriesTest {
         return checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+                {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

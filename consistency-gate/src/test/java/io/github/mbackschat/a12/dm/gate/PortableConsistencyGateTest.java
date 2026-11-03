@@ -182,7 +182,7 @@ class PortableConsistencyGateTest {
     void aProvidersOwnReferenceIsResolvedTooRatherThanLeftAtOneLevel() {
         String catalogMountingGeo = catalog(
                 ",{\"type\":\"Group\",\"id\":\"cg-region\",\"name\":\"Region\","
-                        + "\"Group\":{\"modelAlias\":\"geo\"}}");
+                        + "\"Group\":{\"includeConfig\":{\"reference\":\"geo\"}}}");
         ModelResolver both = resolver(Map.of("catalog", catalogMountingGeo, "geo", geo()));
 
         PortableGateRun resolved = PortableConsistencyGate.check(
@@ -218,7 +218,7 @@ class PortableConsistencyGateTest {
 
     private static String order(String errorTarget, String condition) {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -232,12 +232,12 @@ class PortableConsistencyGateTest {
 
     private static String mounting(String condition) {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
-              "modelReferences":[{"alias":"catalog","reference":"catalog"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}],
+              "modelReferences":[{"reference":"catalog"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
-                {"type":"Group","id":"g-ship","name":"ShipTo","Group":{"modelAlias":"catalog"}},
+                {"type":"Group","id":"g-ship","name":"ShipTo","Group":{"includeConfig":{"reference":"catalog"}}},
                 {"type":"Rule","id":"r-code","name":"CodeRequired","Rule":{
                   "errorCondition":"%s","errorEntityRelPath":"../Code",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"the order code"}]}}
@@ -248,8 +248,8 @@ class PortableConsistencyGateTest {
 
     private static String catalog(String extraElements) {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}],
-              "modelReferences":[{"alias":"geo","reference":"geo"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}],
+              "modelReferences":[{"reference":"geo"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"cg0","name":"Address","Group":{"elements":[
                 {"type":"Field","id":"cf0","name":"Zip","Field":{"fieldType":{"type":"StringType"}}}%s
@@ -260,7 +260,7 @@ class PortableConsistencyGateTest {
 
     private static String duplicateMessageLocale() {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -275,8 +275,8 @@ class PortableConsistencyGateTest {
 
     private static String importingTypes() {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
-              "modelReferences":[{"alias":"types","reference":"types","purpose":"typeDefinitions"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}],
+              "modelReferences":[{"reference":"types","purpose":"typeDefinitions"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f-code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -290,10 +290,10 @@ class PortableConsistencyGateTest {
             """;
     }
 
-    /** A library declares no root group: A12 does not expand an import whose root holds one (KF594). */
+    /** A type-definition library: its definitions and an empty model root, the type-def-only shape (KF594). */
     private static String types() {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"types","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"types","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],
               "modelRoot":{"rootGroups":[]}}}
             """;
@@ -301,7 +301,7 @@ class PortableConsistencyGateTest {
 
     private static String geo() {
         return """
-            {"header":{"modelVersion":"28.4.0","id":"geo","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"geo","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"gg0","name":"Territory","Group":{"elements":[
                 {"type":"Field","id":"gf0","name":"Country","Field":{"fieldType":{"type":"StringType"}}}

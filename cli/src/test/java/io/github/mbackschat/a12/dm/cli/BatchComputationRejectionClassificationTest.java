@@ -138,10 +138,11 @@ class BatchComputationRejectionClassificationTest {
     @Test
     void aPreflightRejectionWithNoSubjectVerdictIsStillAFailure(@TempDir Path dir) throws Exception {
         Path model = model(dir);
+        // A spec missing its computed field: only the CLI's schema pre-flight can refuse it. An unknown computed
+        // field no longer serves, because kernel 31.1.1 states it and so gives a verdict (KERNEL-FINDINGS KF652).
         Path spec = dir.resolve("unknown-field.json");
         Files.writeString(spec, """
                 {
-                  "computedField": "/Subscription/Billing/Nope",
                   "alternatives": [{"operation": "[/Subscription/Billing/BaseFee]"}],
                   "messages": [{"locale": "en_US", "text": "Unknown computed field."},
                                {"locale": "de_DE", "text": "Unbekanntes berechnetes Feld."}]

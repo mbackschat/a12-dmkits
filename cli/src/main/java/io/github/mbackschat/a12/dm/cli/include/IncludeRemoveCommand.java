@@ -23,7 +23,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool include remove <alias>} — remove an include (its header model-reference <em>and</em> every
+ * {@code dmtool include remove <reference>} — remove an include (its header model-reference <em>and</em> every
  * mount group) and write the model back. There is no proactive safe-delete gate for includes; a rule still
  * referencing the mounted content is caught by the kernel on re-bind — a {@code rejected} envelope.
  */
@@ -33,9 +33,9 @@ final class IncludeRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.INCLUDE_ALIAS)
-    @Parameters(index = "0", paramLabel = "<alias>", description = "the include alias to remove")
-    String alias;
+    @ParamKind(ParamKind.Kind.INCLUDE_REFERENCE)
+    @Parameters(index = "0", paramLabel = "<reference>", description = "the included model's id to remove")
+    String reference;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -57,23 +57,23 @@ final class IncludeRemoveCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
         Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.includeExists(doc, alias))
+                .require(SafetyChecks.includeExists(doc, reference))
                 .firstFailure();
         if (refusal.isPresent()) {
             return refuse(refusal.get());
         }
         String resultJson;
         try {
-            doc.removeInclude(alias);
+            doc.removeInclude(reference);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("removal left the model invalid", e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
-        changed.put("removed", alias);
+        changed.put("removed", reference);
         return emitMutation(ModelWrite.of(resultIdentity())
-                .summaries("would remove include " + alias,
-                        "removed include " + alias)
+                .summaries("would remove include " + reference,
+                        "removed include " + reference)
                 .changed(changed)
                 .json(resultJson)
                 .gatedBy(ConsistencyEvidence.of(doc))

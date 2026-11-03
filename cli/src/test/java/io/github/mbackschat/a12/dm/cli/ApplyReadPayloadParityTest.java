@@ -112,7 +112,7 @@ class ApplyReadPayloadParityTest {
                 "apply", ops.toString()).out()).path("data").path("results").get(0).path("data");
 
         assertEquals(standalone, embedded, "apply include read == standalone include read");
-        assertEquals("catalog", embedded.path("includes").get(0).path("alias").asText());
+        assertEquals("catalog", embedded.path("includes").get(0).path("reference").asText());
     }
 
     private static Path copyModel(String resource, Path target) throws Exception {

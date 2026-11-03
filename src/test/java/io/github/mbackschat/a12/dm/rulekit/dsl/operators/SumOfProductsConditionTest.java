@@ -96,9 +96,9 @@ class SumOfProductsConditionTest {
     void rejectsAFilteredOperandOnEitherSide() {
         FieldListRef filtered = QTY.having(BASKET.num("/Basket/Lines/Qty").gt(0));
 
-        assertTrue(message(filtered, QTY).contains("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"),
+        assertTrue(message(filtered, QTY).contains("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"),
                 () -> message(filtered, QTY));
-        assertTrue(message(QTY, filtered).contains("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"),
+        assertTrue(message(QTY, filtered).contains("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"),
                 () -> message(QTY, filtered));
     }
 
@@ -109,7 +109,7 @@ class SumOfProductsConditionTest {
         FieldListRef filtered = multiStar.having(PROJECT.str("/Project/Milestones/Tasks/TaskId").eq("x"));
 
         assertEquals(java.util.List.of(
-                        "filtered on the left -> MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+                        "filtered on the left -> MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
                         "filtered on the right -> MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"),
                 java.util.List.of(reading("filtered on the left", filtered, multiStar),
                         reading("filtered on the right", multiStar, filtered)));

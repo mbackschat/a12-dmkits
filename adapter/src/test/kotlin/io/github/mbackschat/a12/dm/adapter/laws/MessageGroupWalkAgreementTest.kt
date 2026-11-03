@@ -83,7 +83,7 @@ class MessageGroupWalkAgreementTest {
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         val observed = rows.map { it.id to kernel(it.model) }
         assertEquals(rows.map { it.id to it.classes }, observed, "kernel classes")
-        val declined = setOf("dotted-value-inside", "dotted-form-name-inside", "dotted-usb-inside",
+        val declined = setOf("dotted-value-inside", "dotted-usb-inside",
             "dotted-rootgroup-inside", "dotted-value-end", "dotted-digits", "dotted-empty")
         MessageParameterProbes.replay("group-walk", rows.map { Triple(it.id, it.model, it.classes) }, declined.associateWith {
             when (it) {

@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
  * JVM + Node peer of `adapter.laws.MessageParameterRowDiffTest` (KERNEL-FINDINGS KF561): every spelling of a
  * message field reads the same cell, whitespace inside the parameter included, and a key-selected token reads the
  * row its key selects. A value read through a
- * key that selects no row ends the rule with the evaluation-fault message alone, at the first iterated row.
+ * key that selects no row renders empty on every iterated row (KERNEL-FINDINGS KF668).
  */
 class MessageParameterRowRenderTest {
 
@@ -68,8 +68,8 @@ class MessageParameterRowRenderTest {
             "ENCLOSING rel=[n1] abs=[n1]",
             "KEYED kn=[n1] kl=[Note]",
             "MISS_LABEL ml=[Note]",
-            "MISS_ROW An error occurred while evaluating the data check: the message parameter " +
-                "\$/Policy/Claims/Note.value For \"c9\"\$ selects no row",
+            "MISS_ROW mr=[]",
+            "MISS_ROW mr=[]",
             "SHORT h=[Ada] hl=[Holder]",
             "SHORT h=[Ada] hl=[Holder]",
             "SPACED s=[n0] h=[Ada]",

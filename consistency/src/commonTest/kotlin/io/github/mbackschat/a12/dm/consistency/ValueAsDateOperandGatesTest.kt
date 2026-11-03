@@ -118,7 +118,7 @@ class ValueAsDateOperandGatesTest {
 
     /** An e-commerce returns desk mirroring the laws test's carrier. */
     private fun model(formRule: String, rowRule: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"returns-valueasdate","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"returns-valueasdate","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Returns","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -144,7 +144,7 @@ class ValueAsDateOperandGatesTest {
             {"type":"Field","id":"f11","name":"ItemCount","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f12","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"RESALE"},{"value":"SCRAP"}],
-              "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}},
+              "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}},
             {"type":"Field","id":"f13","name":"Expedited","Field":{"fieldType":{"type":"BooleanType"}}},
             {"type":"Field","id":"f14","name":"Acknowledged","Field":{"fieldType":{"type":"ConfirmType"}}},
             {"type":"Field","id":"f15","name":"Handler","Field":{"fieldType":{"type":"CustomFieldType",
@@ -158,7 +158,7 @@ class ValueAsDateOperandGatesTest {
                 "DateType":{"format":"yyyy-MM-dd","datePrecision":"DAY_OPTIONAL"}}}},
               {"type":"Field","id":"f19","name":"LineGrade","Field":{"fieldType":{"type":"EnumerationType",
                 "EnumerationType":{"values":[{"value":"KEEP"},{"value":"SEND"}],
-                "categories":[{"name":"Band","values":[{"value":"LOW"},{"value":"HIGH"}]}]}}}}$rowRule
+                "categories":[{"name":"Band","values":["LOW","HIGH"]}]}}}}$rowRule
             ]}}$formRule
           ]}}
          ]}}}

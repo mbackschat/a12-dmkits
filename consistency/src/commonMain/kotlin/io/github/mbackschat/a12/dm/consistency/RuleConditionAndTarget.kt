@@ -31,14 +31,9 @@ internal fun TrackedFactBase.ruleConditionAndTargetFindings(element: TrackedDecl
 internal fun TrackedFactBase.ruleMemberContributions(element: TrackedDeclaration): List<DeclarationFinding> {
     if (element.declaredKind != DeclaredKind.RULE) return emptyList()
     val body = element.body ?: return listOf(DeclarationFinding(element.key, DeclarationStage.TARGET, unreadableEnvelope(element)))
-    // A missing condition fails while A12 converts the rule, which it never does for one an `ONLY` filter
-    // suppresses; its basic sentence states the defect there instead ([KERNEL-FINDINGS KF643]). A missing
-    // target is different: the reader itself refuses it, before any filter applies.
-    val conversionLifted = element.filtersItselfOut()
     return requiredTextFindings(element, body["errorEntityRelPath"], ERROR_TARGET).map {
         DeclarationFinding(element.key, DeclarationStage.TARGET, it)
     } + requiredTextFindings(element, body["errorCondition"], CONDITION)
-        .filterNot { conversionLifted && it.code == CK_MODEL_NOT_BUILDABLE }
         .map { DeclarationFinding(element.key, DeclarationStage.CONDITION, it) }
 }
 

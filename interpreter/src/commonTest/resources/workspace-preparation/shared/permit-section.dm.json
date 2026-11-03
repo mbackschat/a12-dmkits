@@ -2,14 +2,13 @@
   "header" : {
     "id" : "permit-section",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "checksAlias",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "inspection-checks"
@@ -52,7 +51,9 @@
             "name" : "Inspection",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "checksAlias"
+              "includeConfig" : {
+                "reference" : "inspection-checks"
+              }
             }
           }, {
             "type" : "Rule",

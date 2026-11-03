@@ -844,8 +844,6 @@ final class io.github.mbackschat.a12.dm.interpreter/InterpreterSupportReport { /
 }
 
 final class io.github.mbackschat.a12.dm.interpreter/ModelDependency { // io.github.mbackschat.a12.dm.interpreter/ModelDependency|null[0]
-    final val alias // io.github.mbackschat.a12.dm.interpreter/ModelDependency.alias|{}alias[0]
-        final fun <get-alias>(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelDependency.alias.<get-alias>|<get-alias>(){}[0]
     final val diagnosticLabel // io.github.mbackschat.a12.dm.interpreter/ModelDependency.diagnosticLabel|{}diagnosticLabel[0]
         final fun <get-diagnosticLabel>(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelDependency.diagnosticLabel.<get-diagnosticLabel>|<get-diagnosticLabel>(){}[0]
     final val fromModelId // io.github.mbackschat.a12.dm.interpreter/ModelDependency.fromModelId|{}fromModelId[0]
@@ -861,8 +859,7 @@ final class io.github.mbackschat.a12.dm.interpreter/ModelDependency { // io.gith
     final fun component2(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component2|component2(){}[0]
     final fun component3(): io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component3|component3(){}[0]
     final fun component4(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component4|component4(){}[0]
-    final fun component5(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component5|component5(){}[0]
-    final fun component6(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component6|component6(){}[0]
+    final fun component5(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelDependency.component5|component5(){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/ModelDependency.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/ModelDependency.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelDependency.toString|toString(){}[0]
@@ -978,8 +975,6 @@ final class io.github.mbackschat.a12.dm.interpreter/ModelPreparationLimits { // 
 }
 
 final class io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep { // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep|null[0]
-    final val alias // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.alias|{}alias[0]
-        final fun <get-alias>(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.alias.<get-alias>|<get-alias>(){}[0]
     final val fromModelId // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.fromModelId|{}fromModelId[0]
         final fun <get-fromModelId>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.fromModelId.<get-fromModelId>|<get-fromModelId>(){}[0]
     final val purpose // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.purpose|{}purpose[0]
@@ -990,7 +985,6 @@ final class io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep { // io.g
     final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.component1|component1(){}[0]
     final fun component2(): io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.component2|component2(){}[0]
     final fun component3(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.component3|component3(){}[0]
-    final fun component4(): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.component4|component4(){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep.toString|toString(){}[0]

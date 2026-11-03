@@ -24,7 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-/** Byte-level mutation safety across all 49 mutating profiles, through the packaged process boundary. */
+/** Byte-level mutation safety across all 48 mutating profiles, through the packaged process boundary. */
 @Execution(ExecutionMode.CONCURRENT)
 class DmtoolMutationSafetyTest {
 
@@ -33,7 +33,7 @@ class DmtoolMutationSafetyTest {
     private record PreviewCase(String verb, String modelResource, List<String> args) {}
 
     @Test
-    void all39DryRunProfilesAreByteIdenticalAndTheirRealWriteIsThePositiveControl(@TempDir Path dir)
+    void all38DryRunProfilesAreByteIdenticalAndTheirRealWriteIsThePositiveControl(@TempDir Path dir)
             throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Set<String> exercised = new HashSet<>();
@@ -53,7 +53,7 @@ class DmtoolMutationSafetyTest {
         assertEquals(declared, exercised,
                 () -> "dry-run cases and live registry differ; missing=" + difference(declared, exercised)
                         + ", stale=" + difference(exercised, declared));
-        assertEquals(39, exercised.size());
+        assertEquals(38, exercised.size());
     }
 
     @Test

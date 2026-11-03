@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test
  * How often A12 repeats a coded class it draws once per carrier, against the portable checker (KERNEL-FINDINGS
  * KF558). A root or nested group whose name begins with `xml` draws `MVK_NAME_STARTS_WITH_XML` once for itself and
  * once for every group below it, fields not counted, and not at all when the path is refused above it; `RULE_HAS_NO_ERRORTEXT` comes once per declared locale
- * without a text; the opaque-string, unspecified-type and category-duplicate classes once per field or category.
+ * without a text; the opaque-string and category-duplicate classes once per field or category. The unspecified-type
+ * class left with its type: kernel 31.1.1 cannot read `UnspecifiedType` at all ([KF654]).
  * The codeless repeated-value sentence an enum draws beside its duplicate class is deliberately unpublished
  * ([KF551]).
  *
@@ -45,9 +46,6 @@ class CheckerClassMultiplicityAgreementTest {
             "two opaque strings without line breaks" to draft().also { r ->
                 for (name in listOf("Reference", "Note")) field(r, name).putObject("fieldType").put("type", "StringType")
                     .putObject("StringType").put("noValueValidation", true)
-            }.toString(),
-            "two unspecified fields" to draft().also { r ->
-                for (name in listOf("Reference", "Note")) field(r, name).putObject("fieldType").put("type", "UnspecifiedType")
             }.toString(),
             "a rule with no message in two locales" to draft(bilingual = true).also { r ->
                 val rule = fields(r).addObject().put("type", "Rule").put("id", "r1").put("name", "Probe")
@@ -129,7 +127,6 @@ class CheckerClassMultiplicityAgreementTest {
         assertEquals(2, count("a rule with no message in two locales", NO_TEXT))
         assertEquals(2, count("a message under an empty locale code, two locales", NO_TEXT))
         assertEquals(2, count("two opaque strings without line breaks", "MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK"))
-        assertEquals(2, count("two unspecified fields", "MVK_UNSPECIFIED_TYPE_NO_CODEGEN"))
         assertEquals(2, count("an enum value repeated under two categories", "MVK_CATEGORY_VALUE_DUPLICATE"))
     }
 

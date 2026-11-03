@@ -185,7 +185,7 @@ class ComputationCycleTest {
         val inCrates = calcs.withIndex().filter { it.value.group == "Crates" }
             .joinToString("") { (index, calc) -> "," + declaration(calc, index) }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"depot","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"depot","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},

@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
  * kernel-md-document-service}). No unclassified class (a kernel upgrade adding an evaluation class
  * fails here, proactively) and no stale row (a removed class fails too).
  *
- * <p>The package and artifact embed the kernel's major.minor (<code>_30_8</code>), so the scan
+ * <p>The package and artifact embed the kernel's major.minor (<code>_31_1</code> on kernel 31.1.1), so the scan
  * matches the version segment by pattern — a version bump changes the package name, the scan still
  * finds it, and any class-set difference lands in the ledger queue instead of slipping through.
  */

@@ -14,9 +14,9 @@ import picocli.CommandLine.Spec;
  * envelope).
  */
 @Command(name = "include", mixinStandardHelpOptions = true,
-        description = "Model-include operations: add, read, set-reference, rename, remove, inline.",
+        description = "Model-include operations: add, read, set-reference, remove, inline.",
         subcommands = { IncludeAddCommand.class, IncludeReadCommand.class, IncludeSetReferenceCommand.class,
-                IncludeRenameCommand.class, IncludeRemoveCommand.class, IncludeInlineCommand.class })
+                IncludeRemoveCommand.class, IncludeInlineCommand.class })
 public final class IncludeCommand implements Callable<Integer> {
 
     @Spec

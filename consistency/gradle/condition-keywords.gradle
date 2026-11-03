@@ -22,7 +22,7 @@ def generatedKeywords =
         file('src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/syntax/ConditionKeywords.kt')
 
 // Terminals the lexer resolves that the OPERATOR catalog does not carry, so the projection alone is short.
-// Measured against `LexerTerminals_{en,de}` at kernel 30.8.1 on 2026-09-12. This is the same population
+// Measured against `LexerTerminals_{en,de}` at kernel 31.1.1 on 2026-11-03. This is the same population
 // `KeywordReverseParityTest.EXCLUDED` reasons about, reached from the other side: that test asks which
 // terminals the catalog may omit, this asks which the checker must add back, and `ConditionKeywordProjectionTest`
 // re-derives the union from the bundles so neither list can drift from the lexer or from the other.
@@ -35,11 +35,14 @@ def uncatalogedTerminals = [
                 // An operator rulekit defers (dynamic-enumeration dependent columns) and so does not
                 // catalog. The checker cannot defer it: unlisted, it reads as an undeclared field.
                 'ValueNotConsistent',
+                // Kernel 31.1.1's term sum, outside the catalog; unlisted, it too reads as an undeclared field.
+                'SumOfTerms',
         ],
         de: [
                 'und', 'UND', 'oder', 'ODER', 'In', 'in', 'IN', 'Zu', 'zu', 'ZU',
                 'RegelKontext', 'UnterdrueckeWarnung',
                 'WertNichtKonsistent',
+                'SummeVonTermen',
                 // H-model operators. They exist ONLY in the German bundle, so in an English model these
                 // spellings are ordinary field names — which is the sharpest case for keeping the tables apart.
                 'AktuelleVordruckNummer', 'AnzahlAngegebeneUsb', 'AnzahlAngegebenerVordrucke',

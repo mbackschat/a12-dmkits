@@ -24,7 +24,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  */
 class FilteredEntityParallelIterationLawsTest {
 
-    private static final String FILTERED = "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED";
+    private static final String FILTERED = "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED";
 
     private static final String FULFILMENT = DocumentModelDraft.named("fulfilment-parallel").locale("en_US")
             .rootGroup("Fulfilment", d -> d

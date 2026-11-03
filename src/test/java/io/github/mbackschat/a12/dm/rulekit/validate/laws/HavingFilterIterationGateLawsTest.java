@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *
  * <p><b>What is measured.</b> The SCOPE gate ({@code MVK_NO_ITERATION_FOR_WILDCARD}) asks whether the condition
  * carries any reference into a level the operand's star reopens; ANY in-scope conjunct clears it. The ITERATION
- * gate ({@code MVK_INVALID_ITERATION_IN_FILTER_CONDITION}) prohibits naming a repeatable level that lies
+ * gate ({@code MVK_INVALID_ITERATION_IN_SET_EXPRESSION}) prohibits naming a repeatable level that lies
  * outside the operand's path, and NO conjunct rescues it — the enclosing rule iteration does not either, which
  * is the row that surprises. Either column alone is consistent with a single gate whose code varies: drop the
  * conjunct column and the two codes read as a spelling difference, drop the repeatability column and the second
@@ -50,7 +50,7 @@ class HavingFilterIterationGateLawsTest {
     private static final String ADMITTED = "admitted";
     private static final String NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD";
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
-    private static final String INVALID_ITERATION_IN_FILTER = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION";
+    private static final String INVALID_ITERATION_IN_FILTER = "MVK_INVALID_ITERATION_IN_SET_EXPRESSION";
 
     private static final String SHIPMENT = "/Shipment";
     private static final String CARRIER = "/Shipment/Carrier";

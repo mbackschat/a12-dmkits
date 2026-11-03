@@ -216,32 +216,23 @@ class DocumentTransportTest {
         assertEquals(StoredCellState.Absent, document.cellStateAt("/Order/Placed", listOf(1, 1)))
     }
 
+    /**
+     * A repetition array is read whole or not at all: kernel 31.1.1 refuses the Document for any element that is not an
+     * object, where 30.8.1 dropped it and compacted the survivors (KERNEL-FINDINGS KF664). An empty object is a row.
+     */
     @Test
-    fun jsonRepetitionsCompactSurvivingObjectsIndependentlyAtEachParent() {
+    fun jsonRepetitionsHoldOnlyObjectsAndNumberTheirRowsAtEachParent() {
         val documents = prepared().documents
         val row = """{"Qty":7}"""
-        val cases = listOf(
-            "object" to row,
-            "single" to "[$row]",
-            "null-prefix" to "[null,$row]",
-            "null-suffix" to "[$row,null]",
-            "mixed" to "[null,7,[],true,\"skip\",$row]",
-            "empty-row" to "[{},$row]",
-            "two-survivors" to "[null,$row,false,$row]",
-            "null-only" to "[null]",
-        )
-        for ((label, items) in cases) {
-            val snapshot = documents.readDocument("""{"Order":{"Items":$items}}""")
-            val expected = when (label) {
-                "empty-row" -> "[{},$row]"
-                "two-survivors" -> "[$row,$row]"
-                "null-only" -> null
-                else -> "[$row]"
-            }
-            assertEquals(if (expected == null) """{"Order":{}}""" else """{"Order":{"Items":$expected}}""",
-                documents.encodeDocument(snapshot), label)
+        for ((items, expected) in listOf(row to "[$row]", "[$row]" to "[$row]", "[{},$row]" to "[{},$row]")) {
+            assertEquals("""{"Order":{"Items":$expected}}""",
+                documents.encodeDocument(documents.readDocument("""{"Order":{"Items":$items}}""")), items)
         }
-        val nested = documents.readDocument("""{"Order":[null,{"Items":[null,$row]},false,{"Items":[null,{},$row]}]}""")
+        for (items in listOf("[null,$row]", "[$row,null]", "[7,$row]", "[[],$row]", "[true,$row]", "[\"skip\",$row]", "[null]")) {
+            val refusal = assertFailsWith<DocumentInputError>(items) { documents.readDocument("""{"Order":{"Items":$items}}""") }
+            assertEquals(DocumentInputReasonCode.MALFORMED_JSON, refusal.diagnostics.single().reasonCode, items)
+        }
+        val nested = documents.readDocument("""{"Order":[{"Items":[$row]},{"Items":[{},$row]}]}""")
         assertEquals(StoredCellState.PresentValue("7"), nested.document().cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)))
         assertEquals(StoredCellState.PresentValue("7"), nested.document().cellStateAt("/Order/Items/Qty", listOf(2, 2, 1)))
         assertEquals(listOf(listOf(1, 1), listOf(2, 1), listOf(2, 2)), nested.document().instantiatedRows("/Order/Items"))
@@ -251,7 +242,7 @@ class DocumentTransportTest {
     fun notificationOnlyNodesAreDiscardedWithoutLosingValidSiblings() {
         val documents = prepared().documents
         val json = """
-            {"Order":{"Ref":"kept","Nowhere":{},"Express":{"nested":1},"Items":"not-an-array","Shipping":[null,{},7]}}
+            {"Order":{"Ref":"kept","Nowhere":{},"Express":{"nested":1},"Items":"not-an-array","Shipping":[{}]}}
         """.trimIndent()
         assertEquals("""{"Order":{"Ref":"kept","Shipping":{}}}""", documents.encodeDocument(documents.readDocument(json)))
     }
@@ -443,7 +434,7 @@ class DocumentTransportTest {
 
     private fun foreignModel(): String = """
         {
-          "header":{"id":"claims","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+          "header":{"id":"claims","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
           "content":{"modelInfo":{"name":"claims"},
             "modelRoot":{"rootGroups":[{
               "type":"Group","id":"/Claim","name":"Claim",
@@ -459,7 +450,7 @@ class DocumentTransportTest {
     private companion object {
         val ORDER_MODEL = """
             {
-              "header":{"id":"orders","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+              "header":{"id":"orders","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
               "content":{"modelInfo":{"name":"orders"},
                 "modelRoot":{"rootGroups":[{
                   "type":"Group","id":"/Order","name":"Order",

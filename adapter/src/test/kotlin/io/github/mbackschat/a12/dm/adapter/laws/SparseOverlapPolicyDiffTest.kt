@@ -29,7 +29,7 @@ class SparseOverlapPolicyDiffTest {
         val edit = EditSession.read(draft).also { it.config().timeZone("Europe/Berlin") }
         val root = edit.group("/Bookings")
         val periods = edit.group("/Bookings/Locations/Periods")
-        val filter = periods.num("Permit").filled().or(periods.dateTime("RecordedAt").eq(Dsl.dateTimeValue("31.03.2024T02:30:00")))
+        val filter = periods.num("Permit").filled().or(periods.dateTime("RecordedAt").eq(Dsl.dateTimeValue("29.02.1500T10:00:00")))
         fun kept(field: String) = root.flatten("Locations*/Periods*/$field").having(filter)
         val guards = linkedMapOf(
             "OneExact" to Dsl.atLeastOneDateRangeOverlaps(root.dateRange("Reservation").field(), kept("ListWindow")),

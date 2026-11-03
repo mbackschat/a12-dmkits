@@ -31,13 +31,11 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  *
  * <p><b>Three carriers, measured separately.</b> A rule's own members, a computation alternative's, and a
  * group's are three different readers, and this project has been wrong before by measuring one carrier and
- * transferring the result. The sibling presentation grid is the standing warning: `guiPatterns` and
- * `variantErrorMessages` sit side by side on one element and their null rows land in different tiers,
- * because one value type is {@code @NonNull}-bound and the other is not. So no row here is read off another.
+ * transferring the result. So no row here is read off another.
  *
  * <p><b>Both container shapes, because they are not one shape.</b> An object and an array reach a string
- * slot through different Jackson paths, and the presentation grid already showed a member that admits a
- * scalar into a slot typed for an array while refusing an object into the same slot. Measuring only {@code
+ * slot through different Jackson paths, and the {@code guiPatterns} grid already showed a member that admits a
+ * scalar into its value slot while refusing a container there. Measuring only {@code
  * {}} would leave the array answer to inference.
  *
  * <p>Own domain (the shared subscription and order fixtures).

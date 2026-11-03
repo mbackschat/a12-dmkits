@@ -44,7 +44,7 @@ dmtool -m examples/models/order-ruled.dm.json model check
   "verification" : "KERNEL_CONFIRMED",
   "engineRequested" : "A12_KERNEL",
   "engineExecuted" : "A12_KERNEL",
-  "engineVersion" : "30.8.1",
+  "engineVersion" : "31.1.1",
   "summary" : "model is valid",
   "diagnostics" : [ ],
   "written" : false
@@ -173,9 +173,9 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
       "id": "DifferenceInDays",
       "keyword": "DifferenceInDays",
       "kind": "FUNCTION",
-      "meaning": "The signed number of complete model-zone legacy-calendar day steps from the first date/date-time to the second.",
+      "meaning": "The signed number of complete days between the model-zone wall clocks of the first date/date-time and the second.",
       "gotchas": [
-        "this is calendar stepping, not elapsed or wall-label seconds divided by 86,400: time of day matters, and a DST-gap landing can change the retained clock for later steps (Berlin 2024-03-30T02:30 to 2024-03-31T01:45 is 1)"
+        "this counts wall-clock days, not elapsed seconds divided by 86,400: time of day matters, and a DST transition does not shorten a day (Berlin 2024-03-30T02:30 to 2024-03-31T01:45 is 0, because 01:45 has not reached 02:30)"
       ]
     }
   ],
@@ -243,7 +243,7 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
   "verification" : "KERNEL_CONFIRMED",
   "engineRequested" : "A12_KERNEL",
   "engineExecuted" : "A12_KERNEL",
-  "engineVersion" : "30.8.1",
+  "engineVersion" : "31.1.1",
   "summary" : "candidate is kernel-valid",
   "diagnostics" : [ {
     "severity" : "WARNING",

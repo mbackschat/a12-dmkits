@@ -31,7 +31,7 @@ internal fun checkRead(source: ModelSource): ConsistencyReport =
 internal fun checkableSource(model: String): ModelSource {
     val root = Json.parseToJsonElement(model).jsonObject
     fun JsonObject.with(name: String, value: JsonElement) = if (name in this) this else JsonObject(this + (name to value))
-    val header = root.getValue("header").jsonObject.with("modelVersion", JsonPrimitive("28.4.0"))
+    val header = root.getValue("header").jsonObject.with("modelVersion", JsonPrimitive("29.4.0"))
     val written = root.getValue("content").jsonObject
     val info = ((written["modelInfo"] as? JsonObject) ?: JsonObject(emptyMap())).with("name", JsonPrimitive("model"))
     val content = JsonObject(written + ("modelInfo" to info))

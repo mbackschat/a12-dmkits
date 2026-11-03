@@ -61,7 +61,7 @@ class ModelDocumentTest {
     void enumeratesTheModelHeaderAndConfig() {
         ModelDocument doc = ModelDocument.read(Fixtures.json("models/subscription.dm.json"));
         assertEquals("subscription", doc.id());
-        assertEquals("28.4.0", doc.modelVersion());
+        assertEquals("29.4.0", doc.modelVersion());
         assertEquals(List.of("en_US", "de_DE"), doc.locales());
 
         ModelDocument.DocConfig cfg = doc.config();
@@ -104,7 +104,6 @@ class ModelDocumentTest {
         ModelDocument doc = ModelDocument.read(Fixtures.json("models/storefront.dm.json"));
         List<ModelDocument.Include> includes = doc.includes();
         assertEquals(1, includes.size());
-        assertEquals("catalog", includes.get(0).alias());
         assertEquals("catalog", includes.get(0).reference());
     }
 

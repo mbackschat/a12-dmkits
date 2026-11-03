@@ -80,7 +80,7 @@ class RepetitionNotUniqueCombinationLawsTest {
         // is refused in that POSITION, so the second call is not a second defect and a checker reporting the
         // combination class there would name a class A12 never draws on this model.
         expected.put("two calls, the second inside a Having filter",
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
         assertEquals(expected, actual, "a construct's own gate reports ahead of the whole-rule one");
     }
 }

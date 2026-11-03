@@ -23,10 +23,10 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * MIXED pair is {@code MVK_NO_STRING_OR_NUMBER_FOR_ADD} — not {@code MVK_NO_NUMBER_FOR_CALC}, which is the
  * class every other operator draws on the same operand.
  *
- * <p><b>…and it refuses an enumeration whose display LABELS remap its values</b>, under that same class, even
- * though a labelless enumeration of the same tokens is admitted. The grid varies exactly that one property; labels
- * that only repeat their values, and a braced operand, are {@code adapter.laws.CheckerEnumerationAdditionAgreementTest}'s
- * rows (KERNEL-FINDINGS KF396).
+ * <p><b>An enumeration's display LABELS play no part</b> on kernel 31.1.1, which deleted the gate that refused a
+ * remapping one under that same class (KERNEL-FINDINGS KF396, KF655). The grid varies exactly that one property;
+ * labels that only repeat their values, and a braced operand, are
+ * {@code adapter.laws.CheckerEnumerationAdditionAgreementTest}'s rows.
  *
  * <p><b>A custom-typed field is string-LIKE here</b>, which the operation-type map makes explicit — it sorts
  * {@code IStringType} and {@code IPredefinedType} into one STRING base type, and {@code IPredefinedType} is what the
@@ -114,9 +114,9 @@ class ArithmeticOperandKindLawsTest {
         assertEquals(expected, actual, "addition's two admitted pairings and the mixed ones it refuses");
     }
 
-    /** The property that separates two enumerations of the same tokens: whether they carry display labels. */
+    /** Whether two enumerations of the same tokens carry display labels no longer separates them. */
     @Test
-    void additionRefusesAnEnumerationThatCarriesDisplayLabels() {
+    void additionJoinsAnEnumerationWhateverItsLabels() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("a labelless enumeration on the left", verdict("{[PlainChannel] + [Notes]} == \"x\""));
         actual.put("a labelled enumeration on the left", verdict("{[LabelledChannel] + [Notes]} == \"x\""));
@@ -127,12 +127,11 @@ class ArithmeticOperandKindLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a labelless enumeration on the left", KernelLaws.ADMITTED);
-        expected.put("a labelled enumeration on the left", MIXED_ADD);
-        expected.put("a labelled enumeration on the right", MIXED_ADD);
+        expected.put("a labelled enumeration on the left", KernelLaws.ADMITTED);
+        expected.put("a labelled enumeration on the right", KernelLaws.ADMITTED);
         expected.put("two labelless enumerations", KernelLaws.ADMITTED);
-        // The numeric operators never reach the display question; the kind gate answers first.
         expected.put("a labelled enumeration under a numeric operator", NOT_A_NUMBER);
-        assertEquals(expected, actual, "display labels decide, and only on the addition arm");
+        assertEquals(expected, actual, "display labels decide nothing, and the numeric arm still refuses");
     }
 
     /**

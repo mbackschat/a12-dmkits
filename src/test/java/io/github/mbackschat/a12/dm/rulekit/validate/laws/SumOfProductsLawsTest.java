@@ -77,8 +77,8 @@ class SumOfProductsLawsTest {
         expected.put("Lines*/Qty, Lines/Packaging/Weight", "MVK_NO_WILDCARD");
         expected.put("Fees/Note, Fees/Handling", "MVK_REPEATABLE_LEVEL_REQUIRED");
         expected.put("Fees/Surcharge, Fees/Handling", "MVK_REPEATABLE_LEVEL_REQUIRED");
-        expected.put("Lines*/Label Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
-        expected.put("Lines*/Qty Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+        expected.put("Lines*/Label Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
+        expected.put("Lines*/Qty Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
         expected.put("Lines*/Parts*/Code, Lines*/Parts*/Count", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         expected.put("Lines*/Parts*/Count, Lines*/Parts*/Count", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         // the gate rulekit cannot see: Lines is repeatable and unstarred, which needs the model to know
@@ -100,7 +100,7 @@ class SumOfProductsLawsTest {
         assertEquals("MVK_DIFFERENT_GROUPS", code(() -> Dsl.sumOfProducts(labels, m.field("/Basket/Fees/Handling"))));
         assertEquals("MVK_REPEATABLE_LEVEL_REQUIRED",
                 code(() -> Dsl.sumOfProducts(m.field("/Basket/Fees/Note"), m.field("/Basket/Fees/Handling"))));
-        assertEquals("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+        assertEquals("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
                 code(() -> Dsl.sumOfProducts(labels.having(m.num("/Basket/Lines/Qty").gt(0)), quantities)));
         assertEquals("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", code(() -> Dsl.sumOfProducts(
                 m.flatten("/Basket/Lines*/Parts*/Code"), m.flatten("/Basket/Lines*/Parts*/Count"))));
@@ -252,7 +252,7 @@ class SumOfProductsLawsTest {
      * <p>The grid above measures the classes; these are the cells around them — the arity gate, the kind
      * gate, and the two cells where a FILTER competes with another live defect. The filter matters more than
      * it looks: {@code isWildcardRestricted} reads a filter as restricting EVERY level, so a filtered operand
-     * is the only way to reach {@code MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED} at all — the reference reader
+     * is the only way to reach {@code MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED} at all — the reference reader
      * answers a plain missing star with {@code MVK_NO_WILDCARD} long before this method runs.
      */
     @Test
@@ -286,7 +286,7 @@ class SumOfProductsLawsTest {
         expected.put("a filtered operand whose owning group also differs", "MVK_DIFFERENT_GROUPS");
         // …and where the owning groups agree the filter wins over the multi-star, because the restriction is
         // read at the LOWEST level, which the loop reaches first.
-        expected.put("a filtered operand that also stars two levels", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+        expected.put("a filtered operand that also stars two levels", "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
         expected.put("the same two levels starred, unfiltered — the control",
                 "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
         // The wildcard gate walks the operands in order, so a left operand starring two levels answers before the
@@ -313,10 +313,10 @@ class SumOfProductsLawsTest {
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And "
                         + "SumOfProducts(Items*/Count Having [Items/Sku] == \"X\", Items*/UnitWeight) > 0",
-                "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+                "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And "
                         + "SumOfProducts(Items*/Count, Items*/UnitWeight Having [Items/Sku] == \"X\") > 0",
-                "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+                "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED");
     }
 }

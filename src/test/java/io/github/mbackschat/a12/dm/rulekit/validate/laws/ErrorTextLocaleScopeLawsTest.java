@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -31,6 +32,13 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  * <em>exactly one</em> variable — the message's locale — while the text, the condition, the model, and the rule
  * are byte-identical. That is a within-model control: the same {@code $Nonexistent$} draws
  * {@code INVALID_ENTITY} in {@code en_US} and no diagnostic at all in {@code fr_FR}.
+ *
+ * <p><b>Kernel 31.1.1 adds a second reader, and it is not the checker.</b> The model BUILD now reaches the
+ * undeclared text: code generation looks its parameters up among the declared texts' and fails the build on a
+ * miss ([KF659], {@link #anUndeclaredLocalesParametersMustBeSpelledAsADeclaredTextSpellsThem}). The rows through
+ * {@link RuleValidator#check} below stay admitted because that route checks without generating code; the
+ * whole-model rows of {@link #whichEntriesTheErrorTextCheckerExamines} build, and three of its four undeclared
+ * defects now fail there. "Unexamined" remains the error-text checker's law.
  *
  * <p>{@link #anUndeclaredLocaleIsUnexaminedRatherThanLeniently} is the row that makes "unexamined" a
  * measurement rather than an inference: a well-formed text in the same undeclared locale is also accepted, so
@@ -70,6 +78,9 @@ class ErrorTextLocaleScopeLawsTest {
     /** One condition for every row, authored typed, so only the message's locale varies across the table. */
     private static final String CONDITION =
             KernelLaws.render(Dsl.fieldNotFilled(M.field(GROUP + "/Reference")));
+
+    /** A precondition that reads {@code Reference}, so a computation's declared text may name it. */
+    private static final String READS_REFERENCE = KernelLaws.render(Dsl.fieldFilled(M.field(GROUP + "/Reference")));
 
     /** The one text under test — invalid in any locale the checker actually reads. */
     private static final String NAMES_NOTHING = "See $Nonexistent$";
@@ -163,12 +174,19 @@ class ErrorTextLocaleScopeLawsTest {
                 "a control character", "INVALID_CHARACTERS",
                 "an odd number of dollars", "WRONG_NUMBER_OF_DOLLARS",
                 "the base year, in a model without one", "NO_BASE_YEAR");
+        // The checker never examines them, but code generation looks every parameter up among the declared texts'
+        // (KF659): a control character is not a parameter, so it alone still builds.
+        Map<String, String> undeclared = Map.of(
+                "a parameter naming nothing", KernelLaws.NOT_BUILDABLE,
+                "a control character", KernelLaws.ADMITTED,
+                "an odd number of dollars", KernelLaws.NOT_BUILDABLE,
+                "the base year, in a model without one", KernelLaws.NOT_BUILDABLE);
         defects.forEach((defect, text) -> {
             actual.put("en_US: " + defect + " — the twin", verdict(en(text), de(WELL_FORMED)));
             expected.put("en_US: " + defect + " — the twin", classes.get(defect));
             actual.put("fr_FR: " + defect, verdict(en(WELL_FORMED), de(WELL_FORMED),
                     new LocalizedText("fr_FR", text)));
-            expected.put("fr_FR: " + defect, KernelLaws.ADMITTED);
+            expected.put("fr_FR: " + defect, undeclared.get(defect));
         });
         actual.put("en_US twice, the EARLIER naming nothing",
                 verdict(en(NAMES_NOTHING), en(WELL_FORMED), de(WELL_FORMED)));
@@ -177,6 +195,64 @@ class ErrorTextLocaleScopeLawsTest {
         expected.put("en_US twice, the EARLIER naming nothing", KernelLaws.ADMITTED);
         expected.put("en_US twice, the LATER naming nothing", INVALID_ENTITY);
         assertEquals(expected, actual, "which authored entries A12's error-text checker examines");
+    }
+
+    /**
+     * What an undeclared locale's text must satisfy for the model to BUILD on kernel 31.1.1 ([KF659]): each
+     * non-empty part between two {@code $} is spelled as some declared locale's text spells a parameter.
+     *
+     * <p>A12's error-text checker still never reads the text — {@link #theSameTextInAnUndeclaredLocaleIsNotCheckedAtAll}
+     * stays green through the validator, which does not generate code. Code generation does: {@code FehlertextBuilder}
+     * looks every message entry's parameters up among those parsed from the DECLARED locales and throws on a miss
+     * (source-read at {@code eec9134}). So the rows separate spelling from meaning: a valid field the declared texts
+     * do not name fails, the same field written as an absolute path fails, and the identical spelling builds. A
+     * defective declared text keeps its own class and the build failure never comes, because code generation runs
+     * only on a model without errors.
+     */
+    @Test
+    void anUndeclaredLocalesParametersMustBeSpelledAsADeclaredTextSpellsThem() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a valid field no declared text names", verdict(en(WELL_FORMED), de(WELL_FORMED),
+                new LocalizedText("fr_FR", "Voir $Reference$")));
+        actual.put("the same spelling in the declared texts", verdict(en("See $Reference$"), de("Siehe $Reference$"),
+                new LocalizedText("fr_FR", "Voir $Reference$")));
+        actual.put("the same field spelled another way", verdict(en("See $Reference$"), de("Siehe $Reference$"),
+                new LocalizedText("fr_FR", "Voir $/Order/Reference$")));
+        actual.put("an empty pair", verdict(en(WELL_FORMED), de(WELL_FORMED), new LocalizedText("fr_FR", "Voir $$ ici")));
+        actual.put("a defective declared text beside it", verdict(en(NAMES_NOTHING), de(NAMES_NOTHING),
+                new LocalizedText("fr_FR", "Voir $Nonexistent$")));
+        actual.put("a computation's message, a name no declared text names",
+                computationVerdict(new LocalizedText("fr_FR", "Voir $Reference$"), WELL_FORMED));
+        actual.put("a computation's message, the same spelling",
+                computationVerdict(new LocalizedText("fr_FR", "Voir $Reference$"), "See $Reference$"));
+        actual.put("a field type's pattern message", KernelLaws.verdictOf(DocumentModelDraft.named("order")
+                .locale("en_US").locale("de_DE").rootGroup("Order", o -> o.stringField("Reference", s -> s
+                        .pattern("[A-Z]+", "capitals").patternMessage("de_DE", "Grossbuchstaben")
+                        .patternMessage("fr_FR", "Voir $Nonexistent$"))).build().toJson()));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a valid field no declared text names", KernelLaws.NOT_BUILDABLE);
+        expected.put("the same spelling in the declared texts", KernelLaws.ADMITTED);
+        expected.put("the same field spelled another way", KernelLaws.NOT_BUILDABLE);
+        expected.put("an empty pair", KernelLaws.ADMITTED);
+        expected.put("a defective declared text beside it", INVALID_ENTITY + "," + INVALID_ENTITY);
+        expected.put("a computation's message, a name no declared text names", KernelLaws.NOT_BUILDABLE);
+        expected.put("a computation's message, the same spelling", KernelLaws.ADMITTED);
+        expected.put("a field type's pattern message", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "which undeclared-locale parameters A12's code generation can build");
+    }
+
+    /**
+     * A computation into {@code Amount} whose precondition reads {@code Reference}, so a declared text may name it,
+     * with two declared messages {@code declared} and one undeclared entry.
+     */
+    private static String computationVerdict(LocalizedText undeclared, String declared) {
+        DraftComputation draft = DraftComputation.builder()
+                .groupPath(GROUP).name("AmountCalc").computedFieldRelPath("../Amount")
+                .alternatives(List.of(new DraftComputation.Alternative(READS_REFERENCE, "1", null)))
+                .messages(List.of()).build();
+        return KernelLaws.verdictOf(ModelWriter.addComputation(ORDER, draft,
+                List.of(en(declared), de(declared.replace("See", "Siehe")), undeclared)));
     }
 
     private static String verdict(LocalizedText... messages) {

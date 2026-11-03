@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
  * one that shared the binding would resolve a provider's reference against the wrong subtree — the defect the
  * mount-instance denominator already cost once (KERNEL-FINDINGS KF287).
  *
- * The workspace is the Kernel-locked `same-alias-mounted-twice` case rather than a fixture written here, so a
+ * The workspace is the Kernel-locked `same-model-mounted-twice` case rather than a fixture written here, so a
  * shape this claim depends on cannot be quietly simplified; [WorkspaceMatrixReconciliationTest] holds its
  * placement against the Kernel.
  */
@@ -28,7 +28,7 @@ class PreparationReuseTest {
 
     @Test
     fun aProviderMountedTwiceIsRetainedOnceAndBoundTwice() {
-        val prepared = prepare(admitted("same-alias-mounted-twice"))
+        val prepared = prepare(admitted("same-model-mounted-twice"))
 
         val score = prepared.elements.filter { it.name == "Score" && it.kind == "Field" }
         assertEquals(

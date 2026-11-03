@@ -37,8 +37,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
  * **The format walk remembers a date's spelling past the fields between**, so a Number between two
  * differently spelled Dates is this class, where a Number beside one Date passes on to the base-type class.
  *
- * **Silent on every type this reader does not judge** — `CustomFieldType`, an unresolvable type definition,
- * `UnspecifiedType` and the two boolean kinds — because the refusal set is an allow-list of what was
+ * **Silent on every type this reader does not judge** — `CustomFieldType`, an unresolvable type definition and
+ * the two boolean kinds — because the refusal set is an allow-list of what was
  * measured, never the complement of the admitted one. The base-type gate is silent on a field without a
  * [BaseTypeClass] for the same reason.
  */

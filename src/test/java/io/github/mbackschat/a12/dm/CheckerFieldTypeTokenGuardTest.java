@@ -103,8 +103,9 @@ class CheckerFieldTypeTokenGuardTest {
     @Test
     void bothDenominatorsAreNonEmpty() {
         Set<String> declared = declaredFieldTypes();
-        assertTrue(declared.size() == 13 && declared.contains("StringType") && declared.contains("CustomFieldType"),
-                "FieldType no longer parses into the thirteen discriminators A12's switch has: " + declared);
+        // Twelve since kernel 31.1.1 stopped reading `UnspecifiedType` (KERNEL-FINDINGS KF654).
+        assertTrue(declared.size() == 12 && declared.contains("StringType") && declared.contains("CustomFieldType"),
+                "FieldType no longer parses into the twelve discriminators A12's switch has: " + declared);
         Set<String> seen = TYPE_LITERAL.matcher(withoutComments(read(OWNER))).results()
                 .map(m -> m.group(1)).collect(Collectors.toSet());
         assertEquals(declared, seen, "the scan must see every literal of the enum itself, or it would pass on any "

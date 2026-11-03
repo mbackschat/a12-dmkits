@@ -17,6 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
  * The target-first {@code include} group (CLI-SPEC §5) — model includes: {@code add} (declare a header
@@ -43,7 +44,7 @@ class IncludeVerbTest {
     void addDeclaresAndMountsAnInclude(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
@@ -51,16 +52,16 @@ class IncludeVerbTest {
         assertEquals("applied", j.get("outcome").asText());
         assertEquals("catalog", j.path("changed").path("added").asText());
         assertEquals("/Subscription/Catalog", j.path("changed").path("mountedAt").asText());
-        String written = Files.readString(model);
-        assertTrue(written.contains("\"modelAlias\""));
-        assertTrue(written.contains("\"reference\""));
+        assertEquals(java.util.List.of("/Subscription/Catalog"),
+                ModelDocument.read(Files.readString(model)).mountsOfInclude("catalog"),
+                "the mount names the included model in its includeConfig");
     }
 
     @Test
     void addMountsARepeatableInclude(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog", "--repeatability", "3",
                 "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
@@ -75,7 +76,7 @@ class IncludeVerbTest {
     void addMountsAnIncludeExcludingItsRules(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog", "--exclude-rules",
                 "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
@@ -90,7 +91,7 @@ class IncludeVerbTest {
     void readListsTheDeclaredIncludes(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "read");
@@ -101,34 +102,33 @@ class IncludeVerbTest {
         assertTrue(incs.isArray() && incs.size() >= 1);
         boolean hasCatalog = false;
         for (JsonNode inc : incs) {
-            if ("catalog".equals(inc.path("alias").asText())) {
+            if ("catalog".equals(inc.path("reference").asText())) {
                 hasCatalog = true;
             }
         }
-        assertTrue(hasCatalog, "expected an include aliased 'catalog' in data.includes");
+        assertTrue(hasCatalog, "expected the included model 'catalog' in data.includes");
     }
 
     @Test
-    void readWithAnAliasReadsThatOneInclude(@TempDir Path dir) throws Exception {
-        // unified read: a path/specifier reads one (here an alias), no arg lists — symmetric with the family.
+    void readWithAReferenceReadsThatOneInclude(@TempDir Path dir) throws Exception {
+        // unified read: a specifier reads one (here the included model's id), no arg lists — symmetric with the family.
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "read", "catalog");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText());
-        assertEquals("catalog", j.path("data").path("alias").asText());
         assertEquals("catalog", j.path("data").path("reference").asText());
     }
 
     @Test
-    void readWithAnUnknownAliasFails(@TempDir Path dir) throws Exception {
+    void readWithAnUnknownReferenceFails(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         var res = CliTestSupport.run("-m", model.toString(), "include", "read", "nope");
-        assertFalse(res.code() == 0, "an unknown alias is a clean failure");
+        assertFalse(res.code() == 0, "an unknown reference is a clean failure");
     }
 
     @Test
@@ -139,7 +139,7 @@ class IncludeVerbTest {
                         .rootGroup("Catalog2", g -> g.field("Code", FieldKind.STRING))
                         .build().toJson());
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "set-reference", "catalog",
@@ -147,14 +147,16 @@ class IncludeVerbTest {
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
-        assertEquals("catalog2", j.path("changed").path("reference").asText());
-        // header re-pointed, the mount (keyed by alias) kept
-        assertTrue(Files.readString(model).contains("\"reference\" : \"catalog2\""));
-        assertTrue(Files.readString(model).contains("\"modelAlias\" : \"catalog\""));
+        assertEquals("catalog", j.path("changed").path("reference").asText());
+        assertEquals("catalog2", j.path("changed").path("to").asText());
+        ModelDocument written = ModelDocument.read(Files.readString(model));
+        assertEquals(java.util.List.of("/Subscription/Catalog"), written.mountsOfInclude("catalog2"),
+                "the mount keeps its place and now names the new model");
+        assertEquals(java.util.List.of(), written.mountsOfInclude("catalog"), "and nothing names the old one");
     }
 
     @Test
-    void setReferenceOnUnknownAliasRefuses(@TempDir Path dir) throws Exception {
+    void setReferenceOnAnUnknownReferenceRefuses(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         var res = CliTestSupport.run("-m", model.toString(), "include", "set-reference", "nope",
                 "--to", "catalog", "-w", dir.toString());
@@ -165,57 +167,16 @@ class IncludeVerbTest {
     }
 
     @Test
-    void renamesAnIncludeAliasAndItsMount(@TempDir Path dir) throws Exception {
-        Path model = subscriptionWithCatalog(dir);
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
-                "--parent", "/Subscription", "--name", "Catalog",
-                "-w", dir.toString()).code());
-        var res = CliTestSupport.run("-m", model.toString(), "include", "rename", "catalog",
-                "--to", "products", "-w", dir.toString());
-        assertEquals(0, res.code(), res.err());
-        JsonNode j = M.readTree(res.out());
-        assertEquals("applied", j.get("outcome").asText());
-        assertEquals("catalog", j.path("changed").path("renamed").asText());
-        assertEquals("products", j.path("changed").path("to").asText());
-        String written = Files.readString(model);
-        assertTrue(written.contains("\"modelAlias\" : \"products\""), "the mount's alias moved");
-        assertFalse(written.contains("\"products\"") && written.contains("\"catalog\" :"), "no dangling old alias");
-    }
-
-    @Test
-    void renameToTakenAliasRefuses(@TempDir Path dir) throws Exception {
-        // the refactor safety gate (CLI-SPEC §6): renaming onto an existing include alias is refused, nothing written.
-        Path model = subscriptionWithCatalog(dir);
-        Files.writeString(dir.resolve("catalog2.dm.json"),
-                DocumentModelDraft.named("catalog2").locale("en_US").locale("de_DE")
-                        .rootGroup("Catalog2", g -> g.field("Code", FieldKind.STRING))
-                        .build().toJson());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
-                "--parent", "/Subscription", "--name", "Catalog", "-w", dir.toString()).code());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog2", "--reference", "catalog2",
-                "--parent", "/Subscription", "--name", "Catalog2", "-w", dir.toString()).code());
-        var res = CliTestSupport.run("-m", model.toString(), "include", "rename", "catalog",
-                "--to", "catalog2", "-w", dir.toString());
-        assertEquals(2, res.code(), res.err());
-        JsonNode j = M.readTree(res.out());
-        assertEquals("refused", j.get("outcome").asText());
-        assertEquals("RK_NAME_EXISTS", j.path("diagnostics").get(0).path("code").asText());
-    }
-
-    @Test
     void removesAnInclude(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
-                "--alias", "catalog", "--reference", "catalog",
+                "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "remove", "catalog",
                 "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
-        assertFalse(Files.readString(model).contains("\"modelAlias\""));
+        assertFalse(Files.readString(model).contains("\"includeConfig\""));
     }
 }

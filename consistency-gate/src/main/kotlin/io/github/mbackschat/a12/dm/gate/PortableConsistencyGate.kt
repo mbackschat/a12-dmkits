@@ -80,7 +80,7 @@ object PortableConsistencyGate {
      * both contribute declarations the checker needs and neither is optional to supply.
      */
     private fun referencedIds(document: ModelDocument): List<String> =
-        document.authoredReferences().values.flatMap { it.values }
+        document.authoredReferences().values.flatten()
 
     /**
      * The document's header, or null when the text is not readable as DM-JSON at all.

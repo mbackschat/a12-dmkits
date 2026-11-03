@@ -20,10 +20,9 @@ import io.github.mbackschat.a12.dm.predicates.BooleanBindingPredicatesKt;
  * short-name tier, so a bare reference A12 resolves reads as undeclared. It also truncates a fractional
  * number, answering (affirmatively, for {@code 1.5}) about a model A12 will not load.
  *
- * <p><b>Nor is it the rule A12 uses for {@code excludeRules}/{@code excludeComputations}</b>, which reach a
- * custom deserializer's {@code JsonNode.booleanValue()} and are false for every non-Boolean (KERNEL-FINDINGS
- * KF3). A12 has two boolean-reading paths and which one a member takes is per-member, so this is applied only
- * where the POJO path is measured.
+ * <p>On DM 29.4 the same law also binds a mount's {@code includeConfig.excludeRules}/{@code excludeComputations},
+ * which A12 reads through the same POJO binding (KERNEL-FINDINGS KF651); the custom reader that made them false for
+ * every non-Boolean (KF3) left with DM 28.
  *
  * <p>The signature takes the value's JSON TEXT rather than a {@code JsonNode} because dmkits-core publishes no
  * third-party type on a public signature (the {@code PublicApiGuardTest} hard rule). Reading the literal is
@@ -46,14 +45,18 @@ public enum ConfigFlag {
      * of ours.
      *
      * @param jsonText the member's value rendered as JSON ({@code JsonNode.toString()}), or {@code null} when
-     *     the member is absent. An absent member and an explicit {@code null} both read as {@link #OFF}.
+     *     the member is absent. An absent member reads as {@link #OFF}; an explicit {@code null} is
+     *     {@link #UNREADABLE} on kernel 31.1.1, whose Jackson 3 refuses null for a primitive (30.8.1 read it as off).
      *     The text is trusted to BE such a rendering, never parsed as a whole: a malformed string literal
      *     throws {@link IllegalArgumentException}, and any other text that is not JSON reaches the number
      *     branch and reads as {@link #UNREADABLE}.
      */
     public static ConfigFlag ofJsonText(String jsonText) {
-        if (jsonText == null || "null".equals(jsonText)) {
+        if (jsonText == null) {
             return OFF;
+        }
+        if ("null".equals(jsonText)) {
+            return UNREADABLE;
         }
         A12BooleanBinding binding;
         if (jsonText.startsWith("\"")) {

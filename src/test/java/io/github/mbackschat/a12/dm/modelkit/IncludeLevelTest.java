@@ -38,14 +38,12 @@ class IncludeLevelTest {
     @Test
     void modelRootMountEmitsIncludeLevel_singleRgOmitsIt() {
         String modelRoot = DocumentModelDraft.named("order").locale("en_US")
-                .include("address", "address")
                 .rootGroup("Order", o -> o.mount("ShipTo", "address", MountOptions.single().asModelRoot()))
                 .build().toJson();
         assertTrue(modelRoot.contains("\"includeLevel\" : \"MODEL_ROOT\""),
                 "a MODEL_ROOT mount carries the includeLevel attribute");
 
         String singleRg = DocumentModelDraft.named("order").locale("en_US")
-                .include("address", "address")
                 .rootGroup("Order", o -> o.mount("ShipTo", "address"))
                 .build().toJson();
         assertFalse(singleRg.contains("includeLevel"),
@@ -55,7 +53,6 @@ class IncludeLevelTest {
     @Test
     void modelRootMountIsAcceptedByTheKernel() throws Exception {
         String model = DocumentModelDraft.named("order").locale("en_US")
-                .include("address", "address")
                 .rootGroup("Order", o -> o.mount("ShipTo", "address", MountOptions.single().asModelRoot()))
                 .build().toJson();
         // loading runs expand + checkConsistency — a throw would mean the kernel rejects includeLevel
@@ -66,7 +63,7 @@ class IncludeLevelTest {
     void transitiveIncludeIsDistinguishedFromDirectIncludeOnRead() {
         // a foreign/expanded model carrying both a direct include and a kernel-added transitive one
         String json = """
-                { "header": { "id": "host", "modelType": "document", "modelVersion": "28.4.0",
+                { "header": { "id": "host", "modelType": "document", "modelVersion": "29.4.0",
                     "locales": ["en_US"],
                     "modelReferences": [
                       { "alias": "addr", "modelType": "document", "purpose": "include", "reference": "address" },

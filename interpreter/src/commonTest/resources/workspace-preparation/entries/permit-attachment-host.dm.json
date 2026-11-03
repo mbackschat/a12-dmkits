@@ -2,14 +2,13 @@
   "header" : {
     "id" : "permit-attachment-host",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "evidence",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "permit-attachment-template"
@@ -43,10 +42,12 @@
             "name" : "Documents",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "evidence",
-              "includeLevel" : "MODEL_ROOT",
-              "excludeRules" : true,
-              "excludeComputations" : true
+              "includeConfig" : {
+                "reference" : "permit-attachment-template",
+                "includeLevel" : "MODEL_ROOT",
+                "excludeRules" : true,
+                "excludeComputations" : true
+              }
             }
           } ]
         }

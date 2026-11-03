@@ -70,8 +70,7 @@ class PortRegistrationTest {
             "the condition itself must be bridge-supported in its declared German language: $direct"
         }
         val host = DocumentModelDraft.named("english-host").locale("en_US")
-            .include("basket", "german-basket")
-            .rootGroup("Order") { it.mount("Basket", "basket") }
+            .rootGroup("Order") { it.mount("Basket", "german-basket") }
             .build().toJson()
 
         val mounted = InterpreterConditionReadBack().readAll(host) { reference ->

@@ -20,7 +20,7 @@ class EnumCategoriesTest {
     private fun report(body: String) = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{
@@ -72,7 +72,7 @@ class EnumCategoriesTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{
@@ -92,38 +92,60 @@ class EnumCategoriesTest {
     }
 
     /**
-     * Shapes nobody has put to A12, each deliberately silent.
-     *
-     * A body A12's reader would refuse never reaches this family in practice — an unknown member makes the
-     * model unreadable, measured — so these rows are about shapes that READ and that no grid covers. A
-     * verdict on one would be this checker's own reading dressed as A12's.
+     * A value entry with no `value` keeps its position in the pairing (KERNEL-FINDINGS KF655): the token
+     * paired with it and the token past the values each classify nothing. Measured on the kernel by
+     * `adapter.laws.CheckerReaderBindingAgreementTest`; this row locks the checker's half where no kernel runs.
+     */
+    @Test
+    fun aValueEntryWithNoTokenKeepsItsPosition() {
+        assertEquals(
+            listOf("MVK_MISSING_INTERNAL_VALUE", "MVK_MISSING_INTERNAL_VALUE"),
+            codes("""{"values":[{}],"categories":[{"name":"Band","values":["A","B"]}]}""")
+                .filter { it == "MVK_MISSING_INTERNAL_VALUE" },
+        )
+    }
+
+    /**
+     * Shapes nobody has put to A12, each deliberately silent: shapes that READ and that no grid covers. A verdict
+     * on one would be this checker's own reading dressed as A12's.
      */
     @Test
     fun anUnmeasuredShapeIsLeftToA12() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["a value entry with no `value`"] = codes(
-            """{"values":[{}],"categories":[{"name":"Band","values":["A","B"]}]}""",
+        actual["a value entry whose `value` is a number"] = codes(
+            """{"values":[{"value":5}],"categories":[{"name":"Band","values":["A","B"]}]}""",
         )
         actual["a category that is not an object"] = codes(
             """{"values":[{"value":"BASIC"}],"categories":["Band"]}""",
         )
-        actual["a category with no `name`"] = codes(
-            """{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}""",
-        )
-        // An enumeration with NO values is refused a tier earlier — A12 cannot build the model, with or
-        // without categories — so the pairing is never asked and reporting it would invent A12's verdict.
-        actual["no values at all, with tokens"] = codes(
-            """{"values":[],"categories":[{"name":"Band","values":["X","Y"]}]}""",
-        )
         actual["a category whose tokens are not an array"] = codes(
             """{"values":[{"value":"BASIC"}],"categories":[{"name":"Band","values":"STANDARD"}]}""",
-        )
-        actual["categories with no `values` member at all"] = codes(
-            """{"values":[{"value":"BASIC"}],"categories":[{"name":"Band"}]}""",
         )
 
         val expected = actual.keys.associateWith { emptyList<String>() }
         assertEquals(expected, actual, "an unmeasured shape draws nothing")
+    }
+
+    /**
+     * Three shapes that were left to A12 until kernel 31.1.1 measured them, each mirroring a row of
+     * `adapter.laws.CheckerEmptyMemberAgreementTest`: a nameless category is A12's `MVK_NAME_MISSING` and is paired
+     * with nothing, an absent token list is the empty one, and an enumeration with no values is not built.
+     */
+    @Test
+    fun theShapesKernel31MeasuredAreJudged() {
+        val actual = linkedMapOf(
+            "a category with no `name`" to codes("""{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}"""),
+            "categories with no `values` member at all" to
+                codes("""{"values":[{"value":"BASIC"}],"categories":[{"name":"Band"}]}"""),
+            "no values at all, with tokens" to
+                codes("""{"values":[],"categories":[{"name":"Band","values":["X","Y"]}]}"""),
+        )
+        val expected = linkedMapOf(
+            "a category with no `name`" to listOf("MVK_NAME_MISSING"),
+            "categories with no `values` member at all" to listOf("MVK_MISSING_CATEGORY_VALUE"),
+            "no values at all, with tokens" to listOf(CK_MODEL_NOT_BUILDABLE),
+        )
+        assertEquals(expected, actual, "the shapes A12 31.1.1 answers")
     }
 
     /**
@@ -135,14 +157,11 @@ class EnumCategoriesTest {
     @Test
     fun anUnmeasuredShapeIsPublishedAsACoverageGap() {
         val actual = mutableMapOf<String, List<String?>>()
-        actual["a value entry with no `value`"] = gapPaths(
-            """{"values":[{}],"categories":[{"name":"Band","values":["A","B"]}]}""",
+        actual["a value entry whose `value` is a number"] = gapPaths(
+            """{"values":[{"value":5}],"categories":[{"name":"Band","values":["A","B"]}]}""",
         )
         actual["a category that is not an object"] = gapPaths(
             """{"values":[{"value":"BASIC"}],"categories":["Band"]}""",
-        )
-        actual["a category with no `name`"] = gapPaths(
-            """{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}""",
         )
         actual["no values at all, with tokens"] = gapPaths(
             """{"values":[],"categories":[{"name":"Band","values":["X","Y"]}]}""",
@@ -154,9 +173,8 @@ class EnumCategoriesTest {
             gapPaths("""{"values":[{"value":"BASIC"}]}""")
 
         val expected = mutableMapOf<String, List<String?>>()
-        expected["a value entry with no `value`"] = listOf("/Catalog/Tier")
+        expected["a value entry whose `value` is a number"] = listOf("/Catalog/Tier")
         expected["a category that is not an object"] = listOf("/Catalog/Tier")
-        expected["a category with no `name`"] = listOf("/Catalog/Tier")
         expected["no values at all, with tokens"] = listOf("/Catalog/Tier")
         expected["an aligned pairing — the control"] = emptyList()
         expected["no categories at all — the control"] = emptyList()

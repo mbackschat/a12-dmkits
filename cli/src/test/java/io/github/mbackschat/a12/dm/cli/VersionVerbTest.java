@@ -60,7 +60,7 @@ class VersionVerbTest {
         assertTrue(v.path("kernel").path("runtime").isTextual());
         assertTrue(v.path("kernel").path("skewed").isBoolean());
         assertTrue(v.path("catalogVerifiedAgainst").isTextual());
-        assertEquals("28.4.0", v.path("modelVersion").asText(), "the document-model reference version");
+        assertEquals("29.4.0", v.path("modelVersion").asText(), "the document-model reference version");
     }
 
     @Test

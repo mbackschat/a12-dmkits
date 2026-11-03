@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
+## [Unreleased] — kernel 31.1.1 (A12 Tools 2026.06-ext1)
+
+### Changed
+
+- **BREAKING:** targets A12 Kernel `31.1.1` / A12 Tools `2026.06-ext1` and the DM `29.4.0` model format. An include resolves by its `includeConfig.reference` alone, so `include rename` is gone, and models written for kernel 30.8.1 need A12's own migration first.
+- Evaluation follows kernel 31.1.1's date runtime: the proleptic calendar, Europe/Berlin's historical offsets, a daylight-saving gap moved forward and an overlap at its earlier offset, and `DifferenceInDays` counted on wall clocks.
+
 ## [0.14.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added

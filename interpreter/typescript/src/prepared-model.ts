@@ -22,7 +22,6 @@ export interface ModelDependency {
   readonly fromModelId: string;
   readonly toModelId: string;
   readonly purpose: "include" | "type-definitions";
-  readonly alias?: string;
   readonly diagnosticLabel?: string;
   readonly sha256: string;
 }
@@ -34,9 +33,6 @@ const dependency = (
     fromModelId: source.fromModelId,
     toModelId: source.toModelId,
     purpose: source.purpose as "include" | "type-definitions",
-    ...(source.alias === null || source.alias === undefined
-      ? {}
-      : {alias: source.alias}),
     ...(source.diagnosticLabel === null || source.diagnosticLabel === undefined
       ? {}
       : {diagnosticLabel: source.diagnosticLabel}),

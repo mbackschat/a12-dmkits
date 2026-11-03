@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -70,7 +69,6 @@ private fun countSentence(group: TrackedDeclaration): Finding? {
         return null
     }
     val member = group.body?.get("repeatability") ?: return null
-    // A literal null is held as no count at all, which the metamodel reads as not greater than 0.
     val declared = (member as? JsonPrimitive)?.boundRepetitionCount() ?: return null
     val violation = MemberRange.REPEATABILITY.violationOf(declared) ?: return null
     return Finding(
@@ -83,12 +81,9 @@ private fun countSentence(group: TrackedDeclaration): Finding? {
     )
 }
 
-/** Whether a group's [JsonObject] body declares a count A12 reads and holds below 1, the literal null included. */
+/** Whether a group's [JsonObject] body declares a count A12 reads and holds below 1. */
 internal fun JsonObject?.declaresNonPositiveCount(): Boolean {
     val member = this?.get("repeatability") ?: return false
-    if (member is JsonNull) {
-        return true
-    }
     val declared = (member as? JsonPrimitive)?.boundRepetitionCount() ?: return false
     return declared <= 0
 }
@@ -97,16 +92,12 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
     if (group.declaredKind != DeclaredKind.GROUP) {
         return null
     }
-    val member = group.body?.get("repeatability") ?: return null
+    // The group carrier's one reporter of an envelope A12 cannot bind (UnreadableEnvelopeTest).
+    val member = (group.body ?: return unreadableEnvelope(group))["repeatability"] ?: return null
     val cap = if (group.path.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
-    // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
-    // here: absence means a group that simply does not repeat, while a declared null draws
-    // `MVK_MAX_VALUES_INVALID` with the same *greater than 0* wording `0` does (KF221). Reading the
-    // member through `longOrNull` alone collapses them, which left this silent on a value A12 refuses.
-    if (member is JsonNull) {
-        return group.invalidCount("null")
-    }
-    // An object or an array binds no count either, and A12's reader refuses the model (RepeatabilityTextReadingDiffTest).
+    // An explicit `null` is not the absent key: absence is a group that simply does not repeat, while on kernel 31 a
+    // declared null is a primitive `int` A12's reader cannot bind (KF221, corrected 2026-11-02), as are an object and
+    // an array (RepeatabilityTextReadingDiffTest).
     val primitive = member as? JsonPrimitive ?: return unreadableCount(group, member)
     val declared = primitive.boundRepetitionCount() ?: return unreadableCount(group, primitive)
     return when {
@@ -126,16 +117,12 @@ private fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaratio
 }
 
 /**
- * The count A12's reader holds for a stored `repeatability` ([JavaIntBinding], KF590, KF593): `" 3 "` and
- * `"\u0663"` are 3; the empty text, the text `null` and a JSON null bind no value, which the `int` member holds as 0;
- * `3.7` is 3 and `1e1` is 10. Null where the reader binds nothing and so leaves no model: a no-break space, a fraction
- * or an exponent in text, a count past `Int`, and a Boolean (`RepeatabilityTextReadingDiffTest`).
+ * The count A12's reader holds for a stored `repeatability`, a primitive `int` ([bindJavaPrimitiveInt], KF590,
+ * KF593): `" 3 "` and `"\u0663"` are 3, `3.7` is 3 and `1e1` is 10. Null where the reader binds nothing and so leaves
+ * no model: the empty text, the text `null` and a JSON null on kernel 31, a no-break space, a fraction or an exponent
+ * in text, a count past `Int`, and a Boolean (`RepeatabilityTextReadingDiffTest`).
  */
-internal fun JsonPrimitive.boundRepetitionCount(): Int? = when (val binding = bindJavaInt()) {
-    is JavaIntBinding.Bound -> binding.value
-    JavaIntBinding.NoValue -> 0
-    JavaIntBinding.Unbindable -> null
-}
+internal fun JsonPrimitive.boundRepetitionCount(): Int? = bindJavaPrimitiveInt()
 
 private fun unreadableCount(group: TrackedDeclaration, member: JsonElement) = Finding(
     FindingCategory.A12_CONSTRAINT,

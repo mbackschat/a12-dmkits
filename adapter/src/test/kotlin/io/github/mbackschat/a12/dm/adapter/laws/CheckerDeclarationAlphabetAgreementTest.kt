@@ -27,7 +27,6 @@ class CheckerDeclarationAlphabetAgreementTest {
         val name: String = "Probe",
         val code: String? = "C1",
         val computation: Boolean = false,
-        val only: Boolean = false,
         val condition: String = "FieldFilled(Reference)",
         val target: String = "../Reference",
         val numericCode: Number? = null,
@@ -70,8 +69,6 @@ class CheckerDeclarationAlphabetAgreementTest {
         "a name with a supplementary character" to Row(name = "Probe\uD83D\uDE00"),
         "a computation named with a supplementary character" to Row(name = "Prem\uD83D\uDE00", computation = true),
         "a dotted name and code" to Row(name = "Pro.be", code = "C.1"),
-        "a refused name, deleted at the default variant" to Row(name = "1Probe", only = true),
-        "a refused code, deleted at the default variant" to Row(code = "C.1", only = true),
         "a refused name beside a broken target" to Row(name = "1Probe", target = "../NoSuchField"),
         "a refused code beside a broken condition" to Row(code = "C.1", condition = "FieldFilled(NoSuchField)"),
         "a computation" to Row(name = "Premium", computation = true),
@@ -79,7 +76,6 @@ class CheckerDeclarationAlphabetAgreementTest {
         "a dotted computation" to Row(name = "Prem.ium", computation = true),
         "a computation named with a space" to Row(name = "Prem ium", computation = true),
         "a computation named with an umlaut" to Row(name = "Prämie", computation = true),
-        "a dotted computation, deleted at the default variant" to Row(name = "Prem.ium", computation = true, only = true),
         // Whether the two alphabets read the value Java-trimmed, as the element-path sentences do (KF580).
         "a name with a trailing space" to Row(name = "Probe "),
         "a name with a leading space" to Row(name = " Probe"),
@@ -113,7 +109,6 @@ class CheckerDeclarationAlphabetAgreementTest {
             "a code with an accent" to listOf(CODE),
             "a code with a no-break space" to listOf(CODE),
             "a dotted name and code" to listOf(CODE, NAME),
-            "a refused name, deleted at the default variant" to emptyList(),
             "a dotted computation" to listOf(CODE, NAME),
             "a computation named with a space" to listOf(NAME),
         ), sentences.filterKeys { it in PINNED })
@@ -164,7 +159,6 @@ class CheckerDeclarationAlphabetAgreementTest {
                 else -> body.put("errorCode", row.code)
             }
         }
-        if (row.only) body.putObject("variantFilter").put("filterType", "ONLY").putArray("variants").add("Broker")
         return mapper.writeValueAsString(root)
     }
 
@@ -176,6 +170,6 @@ class CheckerDeclarationAlphabetAgreementTest {
         const val CODE = "RK_ERROR_CODE_ALPHABET"
         val PINNED = setOf("control", "a name with an umlaut", "a reserved dotted name", "a code with umlauts",
             "a code with an accent", "a code with a no-break space", "a dotted name and code",
-            "a refused name, deleted at the default variant", "a dotted computation", "a computation named with a space")
+            "a dotted computation", "a computation named with a space")
     }
 }

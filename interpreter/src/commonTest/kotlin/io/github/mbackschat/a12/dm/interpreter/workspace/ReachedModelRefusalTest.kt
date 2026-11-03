@@ -47,9 +47,13 @@ class ReachedModelRefusalTest {
         assertEquals("prepares", refusal(WorkspacePreparationFixtureJson.sources(caseId)))
     }
 
-    /** Every model declares `de_DE` beside `en_US` but one; a model declaring a third as well is the control. */
+    /**
+     * Every model declares `de_DE` beside `en_US` but one; a model declaring a third as well is the control. An included
+     * model leaving it out refuses, and the type-definition library `permit-types` prepares: kernel 31.1.1 expands a
+     * library whatever locales it declares (`adapter.WorkspaceReachedModelDiffTest`).
+     */
     @Test
-    fun eachReachedModelMissingAnEntryLocaleRefuses() {
+    fun eachIncludedModelMissingAnEntryLocaleRefuses() {
         val sources = WorkspacePreparationFixtureJson.sources(caseId)
         fun locales(vararg codes: String) = JsonArray(codes.map { JsonObject(mapOf("code" to JsonPrimitive(it))) })
         val bilingual = sources.mapValues { (_, json) -> json.setting("header.locales", locales("en_US", "de_DE")) }
@@ -57,7 +61,7 @@ class ReachedModelRefusalTest {
         val observed = sources.keys.filter { it != entryId }.associateWith { narrow ->
             refusal(bilingual + (narrow to sources.getValue(narrow).setting("header.locales", locales("en_US"))))
         }
-        assertEquals(observed.mapValues { "${it.key} header.locales" }, observed)
+        assertEquals(observed.mapValues { if (it.key == "permit-types") "prepares" else "${it.key} header.locales" }, observed)
         assertEquals("prepares", refusal(bilingual.mapValues { (id, json) ->
             if (id == entryId) json else json.setting("header.locales", locales("en_US", "de_DE", "fr_FR"))
         }))
@@ -84,11 +88,12 @@ class ReachedModelRefusalTest {
         }, observed)
     }
 
+    /** Kernel 31.1.1 expands a type-definition library whatever root groups it holds (`adapter.WorkspaceReachedModelDiffTest`). */
     @Test
-    fun aTypeDefinitionLibraryWithARootGroupRefuses() {
+    fun aTypeDefinitionLibraryWithARootGroupPrepares() {
         val sources = WorkspacePreparationFixtureJson.sources(caseId)
         val group = Json.parseToJsonElement("""{"type":"Group","id":"/Types","name":"Types","Group":{"elements":[]}}""")
-        assertEquals("permit-types content.modelRoot.rootGroups",
+        assertEquals("prepares",
             refusal(sources + ("permit-types" to sources.getValue("permit-types").setting("content.modelRoot.rootGroups", JsonArray(listOf(group))))))
     }
 

@@ -16,7 +16,7 @@ class ComputationPreconditionFeaturesTest {
 
     private val prohibited = "MVK_ERROR_INVALID_LANGUAGE_FEATURE"
 
-    private val inAFilter = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+    private val inAFilter = "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
 
     private fun computing(
         precondition: String? = null,
@@ -153,7 +153,7 @@ class ComputationPreconditionFeaturesTest {
                  "errorMessage":[{"locale":"en_US","text":"x"}]}}"""
         }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"basket","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"basket","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[

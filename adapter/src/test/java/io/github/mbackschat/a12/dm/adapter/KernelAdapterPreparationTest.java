@@ -76,7 +76,7 @@ class KernelAdapterPreparationTest {
                 .rootGroup("Quote", group -> group.field("Reference", FieldKind.STRING))
                 .build()
                 .toJson(), resolver);
-        session.addInclude("tariff", "tariff", "/Quote", "CurrentTariff");
+        session.mount("/Quote", "CurrentTariff", "tariff");
         return new Fixture(session, included);
     }
 

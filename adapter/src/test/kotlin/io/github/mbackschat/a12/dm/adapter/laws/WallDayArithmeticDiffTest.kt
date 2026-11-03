@@ -16,12 +16,12 @@ import org.junit.jupiter.api.Test
 /**
  * Differential — **model-zone calendar-day arithmetic over DATE_TIME operands** (KERNEL-FINDINGS §6):
  *
- *  - `DifferenceInDays` is **time-of-day aware** and counts complete stateful legacy-calendar steps, not
- *    elapsed/wall-label seconds divided by 86,400. `23:00 → 01:00` next day is 0; a mixed
+ *  - `DifferenceInDays` is **time-of-day aware**: it counts complete days between the two model-zone wall clocks
+ *    (`ChronoUnit.DAYS`, KF665), not elapsed seconds divided by 86,400. `23:00 → 01:00` next day is 0; a mixed
  *    `(datetime, date)` pair is legal, the date reading as model-zone midnight.
  *  - `AddDays` over a datetime is legal and **time-preserving** (`15T22:00 + 1 day = 16T22:00`,
- *    [addDaysOverADateTimeIsTimePreserving]) — the kernel's zone-calendar `add(DAY)`; the interpreter
- *    previously resolved it to Unknown (a silent suppression divergence).
+ *    [addDaysOverADateTimeIsTimePreserving]) — the kernel's `ZonedDateTime.plusDays`, which moves a landing in
+ *    a gap forward by the gap; the interpreter previously resolved it to Unknown (a silent suppression divergence).
  *  - `DifferenceIn{Months,Years}` and `Add{Months,Years}` REJECT datetime operands at model validation
  *    (`MVK_WRONG_DATE_FORMAT_FOR_OP`), so their date-part semantics stay unreachable-safe (no lock needed).
  *
@@ -73,13 +73,13 @@ class WallDayArithmeticDiffTest {
         render(m.dateTime(SA).filled().and(Dsl.differenceInDays(m.dateTime(SA), m.dateTime(CA)).eq(0))),
         "2024-06-16T01:00:00", "2024-06-15T23:00:00", null, "reverse −2 wall hours = 0, not −1")
 
-    @Test fun diffDaysCountsCalendarStepsAcrossTheSpringTransition() = agree(
+    @Test fun diffDaysCountsWallClockDaysAcrossTheSpringTransition() = agree(
         render(m.dateTime(SA).filled().and(Dsl.differenceInDays(m.dateTime(SA), m.dateTime(CA)).eq(1))),
-        "2024-03-30T12:00:00", "2024-03-31T12:00:00", null, "one model-zone calendar step reaches the endpoint")
+        "2024-03-30T12:00:00", "2024-03-31T12:00:00", null, "one complete wall-clock day reaches the endpoint")
 
-    @Test fun diffDaysGapSeriesUsesStatefulCalendarLandings() = agree(
+    @Test fun diffDaysAcrossTheGapCountsWallClocks() = agree(
         render(m.dateTime(SA).filled().and(Dsl.differenceInDays(m.dateTime(SA), m.dateTime(CA)).eq(2))),
-        "2024-03-29T02:30:00", "2024-03-31T03:00:00", null, "two stateful calendar landings fit (probe P15)")
+        "2024-03-29T02:30:00", "2024-03-31T03:00:00", null, "03:00 has passed 02:30, so two complete wall-clock days (probe P15)")
 
     @Test fun mixedOperandsAreLegal() = agree(
         render(m.dateTime(SA).filled().and(Dsl.differenceInDays(m.dateTime(SA), m.date(DD)).eq(0))),
@@ -89,10 +89,15 @@ class WallDayArithmeticDiffTest {
         "AddDays(ScheduledAt, 1) == [CompletedAt]",
         "2024-06-15T22:00:00", "2024-06-16T22:00:00", null, "AddDays keeps the clock time (probe P16)")
 
-    @Test fun addDaysLandingInTheGapUsesTheEarlierNoOvershootInstant() = agree(
-        "AddDays(ScheduledAt, 1) == [CompletedAt]",
-        "2024-03-30T02:30:00", "2024-03-31T01:30:00", null,
-        "a forward landing on nonexistent 02:30 selects the earlier 01:30 instant", expected = true)
+    /** On 30.8.1 the landing was the earlier 01:30 instant; kernel 31.1.1's `plusDays` moves it past the gap (KF665). */
+    @Test fun addDaysLandingInTheGapMovesForwardByTheGap() {
+        agree("AddDays(ScheduledAt, 1) == [CompletedAt]",
+            "2024-03-30T02:30:00", "2024-03-31T03:30:00", null,
+            "a forward landing on nonexistent 02:30 resolves one gap later, to 03:30", expected = true)
+        agree("AddDays(ScheduledAt, 1) == [CompletedAt]",
+            "2024-03-30T02:30:00", "2024-03-31T01:30:00", null,
+            "and not to the earlier 01:30 instant", expected = false)
+    }
 
     private companion object {
         const val SA = "/Order/ScheduledAt"

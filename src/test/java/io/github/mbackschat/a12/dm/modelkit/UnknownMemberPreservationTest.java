@@ -16,19 +16,17 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * The kernel's {@code variantFilter} is OUT OF SCOPE for authoring (dmkits never sets or interprets it —
- * DEV-API-GAPS §3), but an EXISTING document model may carry it. So it must survive a modelkit load → edit
- * → save <b>untouched</b> — the "preserve the unknown" invariant: {@link ModelDocument} edits the raw
- * DM-JSON tree, so a slot it doesn't model is neither stripped nor rewritten. This guard locks both halves:
- * such a model loads through the real kernel, and its {@code variantFilter} is byte-identical after an
- * unrelated edit. (We inject the {@code variantFilter} into the raw JSON here precisely because there is no
- * authoring API for it — that is the point.)
+ * A member A12 does not declare survives a modelkit load, edit and save untouched: {@link ModelDocument} edits
+ * the raw DM-JSON tree, so a slot it does not model is neither stripped nor rewritten. The example is a field's
+ * {@code variantFilter}, which DM 29.1 retired (A12K-3986) and which a hand-written model may still carry; kernel
+ * 31.1.1 reads past it ({@code rulekit.validate.laws.RetiredVariantMembersLawsTest}). Both halves are locked: the
+ * model loads through the real kernel, and the member is unchanged after an unrelated edit.
  */
-class VariantFilterPreservationTest {
+class UnknownMemberPreservationTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** A model whose {@code Coupon} field carries a {@code variantFilter} — simulating an existing model. */
+    /** A model whose {@code Coupon} field carries the retired {@code variantFilter}. */
     private static String modelWithVariantFilter() throws Exception {
         String base = DocumentModelDraft.named("order").locale("en_US")
                 .rootGroup("Order", o -> o.stringField("Coupon", s -> { }).numberField("Total", n -> { }))
@@ -42,12 +40,12 @@ class VariantFilterPreservationTest {
     }
 
     @Test
-    void existingModelWithVariantFilterLoadsThroughTheKernel() throws Exception {
+    void aModelWithAnUnknownMemberLoadsThroughTheKernel() throws Exception {
         assertDoesNotThrow(() -> ModelLoader.loadSelfContained(modelWithVariantFilter()));
     }
 
     @Test
-    void variantFilterSurvivesAnUnrelatedEditRoundTrip() throws Exception {
+    void anUnknownMemberSurvivesAnUnrelatedEdit() throws Exception {
         String saved = ModelDocument.read(modelWithVariantFilter())
                 .setLabel("/Order/Total", Map.of("en_US", "Total amount"))   // an UNRELATED edit elsewhere
                 .toJson();

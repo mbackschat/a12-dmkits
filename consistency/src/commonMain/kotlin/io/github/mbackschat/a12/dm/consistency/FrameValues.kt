@@ -38,7 +38,9 @@ internal fun JsonObject?.entryFrameValues(): EntryFrameValues {
     val content = this?.get("content") as? JsonObject
     val values = FrameValues(
         generatedCodeName = (content?.get("modelInfo") as? JsonObject)?.generatedCodeName(refusals),
-        timeZone = (content?.get("modelConfig") as? JsonObject)?.get("timeZone").frameText(),
+        // Kernel 31.1.1's expand copy omits an empty string, so an empty zone is the default one, never judged
+        // (KERNEL-FINDINGS KF658, `adapter.laws.CheckerEmptyMemberAgreementTest`).
+        timeZone = (content?.get("modelConfig") as? JsonObject)?.get("timeZone").frameText()?.ifEmpty { null },
         modelVersion = version,
     )
     return EntryFrameValues(values, refusals)
@@ -51,11 +53,12 @@ internal fun JsonObject?.entryFrameValues(): EntryFrameValues {
  * is `xmlb`, and an absent name is the empty name — unless a branch is declared, which A12 compares against the absent
  * name and fails on.
  *
- * A12 cuts the ORIGINAL name at the index it found in the lower-cased one, which differs where lower-casing changes a
- * name's length: each `İ` (U+0130) lower-cases to two units, so `xmlİİ_b` on the branch `b` keeps all of `xmlİİ_b`
- * and is refused, and in `İİİ_b` the index lies past the name's end, where A12's check throws. Both are measured.
- * Lower-casing is the root locale's, as A12's is on a host whose default locale lower-cases like it; a Turkish,
- * Azeri or Lithuanian default locale lower-cases `I` differently, and no such host is measured.
+ * Kernel 31.1.1 decides the branch on the lower-cased name and then removes `_` and branch from the ORIGINAL name with
+ * a case-blind end match (`Strings.CI.removeEnd`), which compares character by character. Lower-casing can lengthen a
+ * name, each `İ` (U+0130) becoming two units, so the two tests can part: `xmlİİ_b` on the branch `b` becomes `xmlİİ`
+ * and is refused, and `İİİ_b` becomes `İİİ` and is admitted, where 30.8.1 cut at an index past its end and threw.
+ * Both are measured. Lower-casing is the root locale's, as A12's is on a host whose default locale lower-cases like
+ * it; a Turkish, Azeri or Lithuanian default locale lower-cases `I` differently, and no such host is measured.
  *
  * Null where A12 never derives it: a name or branch of a kind A12 cannot bind.
  */
@@ -72,16 +75,9 @@ private fun JsonObject.generatedCodeName(refusals: MutableList<String>): String?
             "the branch against, so A12 builds the model but its consistency check cannot run"
         null
     }
-    val lowered = written.javaLowercase()
-    val version = branch?.frameText()?.javaLowercase()?.takeIf { lowered.endsWith("_$it") }
-    val cut = version?.let { lowered.lastIndexOf("_$it") }
-    if (cut != null && cut > written.length) {
-        refusals += "In the entry model, `content.modelInfo.name` holds `$written`, which A12 cuts before its branch " +
-            "at an index past the name's end, because lower-casing lengthens it, so A12 builds the model but its " +
-            "consistency check cannot run"
-        return null
-    }
-    val modelName = cut?.let { written.substring(0, it) } ?: written
+    val version = branch?.frameText()?.javaLowercase()?.takeIf { written.javaLowercase().endsWith("_$it") }
+    val suffix = version?.let { "_$it" }
+    val modelName = if (suffix != null && written.javaEndsWithIgnoringCase(suffix)) written.dropLast(suffix.length) else written
     return listOfNotNull(modelName, version).filterNot { it.isA12Blank() }.joinToString("_") { it.javaLowercase() }
 }
 
@@ -96,8 +92,8 @@ private fun JsonElement?.frameText(): String? =
 /** `VersionChecker`'s pattern, its digits ASCII as Java's `\d` is: a major, then a minor read as a decimal. */
 private val VERSION = Regex("([0-9]+)\\.([0-9]+\\.[0-9]+)")
 
-/** The version A12 30.8.1 writes and reads up to, `DocumentModelContent.VERSION` (KERNEL-UPGRADE). */
-private const val A12_VERSION = "28.4.0"
+/** The version A12 31.1.1 writes and reads up to, `DocumentModelContent.VERSION` (KERNEL-UPGRADE). */
+private const val A12_VERSION = "29.4.0"
 private val A12_PARTS = VERSION.matchEntire(A12_VERSION)!!.groupValues
 private val A12_MAJOR = A12_PARTS[1].toInt()
 private val A12_MINOR = A12_PARTS[2].toDouble()
@@ -128,8 +124,8 @@ internal fun TrackedFactBase.frameValueFindings(): List<Finding> {
 /**
  * The two codeless sentences A12's version rules state, published under this checker's codes: [RK_MODEL_VERSION_PATTERN]
  * when the entry's version is not `major.minor.patch` in ASCII digits, and [RK_MODEL_VERSION_INCOMPATIBLE] unless the
- * major is 28 and the minor and patch, read as one decimal, at most `4.0`, so `28.3.99` and `28.04.0` are compatible
- * and `28.4.1` is not. A text failing the pattern draws both, in that order, as A12 states both.
+ * major is 29 and the minor and patch, read as one decimal, at most `4.0`, so `29.3.99` and `29.04.0` are compatible
+ * and `29.4.1` is not. A text failing the pattern draws both, in that order, as A12 states both.
  *
  * A12 states them first and they withhold nothing, which is why they are asked at their own stage
  * ([ModelStage.VERSION]). A major past Java's `int` never reaches them: A12's check throws on it, a refusal of the

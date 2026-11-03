@@ -41,9 +41,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **The string arm stops at enumeration membership.** A12 walks the list field by field and a non-member constant on
  * an Enumeration draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` there and then, so the walk names that class at
  * such a field instead of continuing to a later one it could refuse. The domain is the declared tokens, in their case
- * and never a label (`adapter.laws.CheckerValueInFieldsMembershipAgreementTest`). A table-backed enumeration carries
- * no domain in the model, and a category read is counted against the category's tokens, which is unmeasured, so
- * both leave the call unjudged.
+ * and never a label (`adapter.laws.CheckerValueInFieldsMembershipAgreementTest`), a `tableName` beside them being read
+ * past (KERNEL-FINDINGS KF654). A category read is counted against the category's tokens, which is unmeasured, so it
+ * leaves the call unjudged.
  *
  * **Two classes of this construct are deliberately unreported because they cannot be reached through a
  * consistency check at all.** `MVK_DIFFERENT_YES_VALUE` and `MVK_DIFFERENT_NO_VALUE` compare the two
@@ -65,7 +65,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * the typing switches on LENGTH first, so `"01.02"` is never tested, and `"32.01.2024"` matches its pattern
  * and fails a non-lenient parse. Both stay strings and are counted.
  *
- * **Silent on an unresolvable type definition or an `UnspecifiedType` declaration**, whose type this reader cannot know; a resolvable
+ * **Silent on an unresolvable type definition**, whose type this reader cannot know; a resolvable
  * definition is judged as the type it defines ([KERNEL-FINDINGS KF602]).
  */
 internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> = declarations().flatMap { element ->
@@ -265,10 +265,9 @@ private fun TrackedFactBase.typeWalkVerdict(
         }
         if (arm == ConstantArm.TEXT && type == FieldType.ENUMERATION) {
             val body = enumerationBodyOf(field) ?: return ListVerdict.Opaque
-            val domain = body.declaredEnumValues() ?: return ListVerdict.Opaque
+            val domain = body.lookupDomain(null) ?: return ListVerdict.Opaque
             if (stringConstantOf(constantText) !in domain) {
-                val judged = !categoryRead && body["tableName"] == null
-                return if (judged) ListVerdict.NotAMember(field, domain) else ListVerdict.Opaque
+                return if (categoryRead) ListVerdict.Opaque else ListVerdict.NotAMember(field, domain)
             }
             return@forEach
         }

@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 
 internal data class MessageEntity(val written: String, val ruleGroup: Boolean = false)
 internal data class MessageKey(val literal: String? = null, val entity: MessageEntity? = null)
-internal enum class MessageSuffix { NONE, VALUE, CATEGORY, FORM_LINE, FORM_NAME }
+internal enum class MessageSuffix { NONE, VALUE, CATEGORY, FORM_LINE }
 
 internal sealed interface MessageParameter {
     data class Field(val entity: MessageEntity, val suffix: MessageSuffix, val category: String?, val key: MessageKey?) : MessageParameter
@@ -42,7 +42,7 @@ internal fun readMessageParameter(
 ): MessageParameterRead = MessageParameterReader(messageTokens(text), language, actions).read()
 
 private class MessageReadFailure(val code: String?) : RuntimeException()
-private enum class Word { NAME, RULE, ROOT, LINE, USER, FOR, BASE_YEAR, VALUE, FORM_LINE, FORM_NAME, INDEX }
+private enum class Word { NAME, RULE, ROOT, LINE, USER, FOR, BASE_YEAR, VALUE, FORM_LINE, INDEX }
 
 private class MessageParameterReader(
     private val tokens: List<Token>,
@@ -123,7 +123,6 @@ private class MessageParameterReader(
             val suffix = when (word(peek())) {
                 Word.VALUE -> MessageSuffix.VALUE
                 Word.FORM_LINE -> MessageSuffix.FORM_LINE
-                Word.FORM_NAME -> MessageSuffix.FORM_NAME
                 else -> fail(UNEXPECTED)
             }
             consume()
@@ -164,7 +163,7 @@ private class MessageParameterReader(
         val suffix = if (checkFollower && peek()?.text == ".") suffix().first else MessageSuffix.NONE
         val next = peek()
         // KF501's form alternatives end at the suffix; selecting them cannot consume a field's key.
-        if (word(next) == Word.FOR && suffix in listOf(MessageSuffix.FORM_LINE, MessageSuffix.FORM_NAME)) fail(UNEXPECTED)
+        if (word(next) == Word.FOR && suffix == MessageSuffix.FORM_LINE) fail(UNEXPECTED)
         if (checkFollower && next != null && next.text !in listOf("->", ".", ")") && word(next) != Word.FOR) fail(UNEXPECTED)
         at = saved
         predicting = false
@@ -206,7 +205,7 @@ private class MessageParameterReader(
         while (peek()?.text == ".") {
             val next = peek(1)
             if (!groupPosition && !turning && !indexPosition && word(next) in
-                listOf(Word.VALUE, Word.FORM_LINE, Word.FORM_NAME) && peek(2)?.text != ".") break
+                listOf(Word.VALUE, Word.FORM_LINE) && peek(2)?.text != ".") break
             // Preserve the explicit bounded decline in MessageGroupDottedBoundaryAgreementTest.
             if (next == null || next.kind !in listOf(TokenKind.NAME, TokenKind.QUOTED_NAME) || word(next) != Word.NAME)
                 throw MessageReadFailure(null)
@@ -235,7 +234,6 @@ private class MessageParameterReader(
             if (language == ConditionLanguage.EN) "For" else "Fuer" -> Word.FOR
             if (language == ConditionLanguage.EN) "BaseYear" else "Referenzjahr" -> Word.BASE_YEAR
             if (language == ConditionLanguage.EN) "value" else "Wert" -> Word.VALUE
-            "Vordruckname" -> Word.FORM_NAME
             "Vordruckzeile" -> Word.FORM_LINE
             "index" -> Word.INDEX
             "Zeile" -> Word.LINE

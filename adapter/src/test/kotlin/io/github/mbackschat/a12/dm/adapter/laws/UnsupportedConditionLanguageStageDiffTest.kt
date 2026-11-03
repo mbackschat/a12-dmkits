@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test
  * A12 does not support stops the check and both strategies with its uncoded "Sprache … wird nicht unterstützt". A code
  * its locale parser refuses ("Invalid locale format") is not read at all. A12 reads the code by the locale key it
  * parses, so `de-DE` is German; the interpreter reads it alike, refuses the unread codes at load and the unsupported
- * ones at runtime preparation. Own domain: an insurance policy whose reference is required.
+ * ones at runtime preparation. The empty code is neither on kernel 31.1.1: A12's expand copy reads it as an absent one
+ * and then cannot write the model, so no column builds it (KERNEL-FINDINGS KF658; on 30.8.1 it was unsupported). Own
+ * domain: an insurance policy whose reference is required.
  */
 class UnsupportedConditionLanguageStageDiffTest {
 
@@ -37,7 +39,7 @@ class UnsupportedConditionLanguageStageDiffTest {
     /**
      * Which language a column read the English rule in: `en` when it parses, `de` when the German vocabulary refuses
      * `FieldNotFilled`, `unsupported` for A12's uncoded refusal of the language, `unread` when A12's reader refuses the
-     * code. Anything else is reported verbatim, so an outcome this classification did not foresee cannot hide in it.
+     * code, `unbuilt` when A12 cannot build the model at all. Anything else is reported verbatim, so an outcome this classification did not foresee cannot hide in it.
      */
     private fun reading(stage: () -> String): String = try {
         when (val answer = stage()) {
@@ -50,6 +52,8 @@ class UnsupportedConditionLanguageStageDiffTest {
         when {
             "wird nicht unterstützt" in text -> "unsupported"
             "Invalid locale format" in text -> "unread"
+            // The expand copy's own failure on a condition language read as absent (KF658).
+            "Pipe closed" in text -> "unbuilt"
             "MVK_UNEXPECTED_TOKEN" in text || "is not a function keyword in de_DE" in text -> "de"
             else -> text
         }
@@ -86,7 +90,7 @@ class UnsupportedConditionLanguageStageDiffTest {
         assertEquals(
             mapOf(
                 "en_US" to english, "de_DE" to german, "en-US" to english, "de-DE" to german,
-                "de_DE_x" to unsupported, "zz" to unsupported, "" to unsupported, "fr_FR" to unsupported,
+                "de_DE_x" to unsupported, "zz" to unsupported, "" to listOf("unbuilt", "unbuilt", "unbuilt", language), "fr_FR" to unsupported,
                 "de" to unsupported, "en" to unsupported,
                 "en_us" to unread, "EN_US" to unread, "klingon" to unread, "en_USA" to unread,
                 " " to unread, "\u00a0" to unread, "\u2003" to unread,

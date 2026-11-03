@@ -15,8 +15,9 @@ import kotlin.test.assertEquals
  * it. All three shapes below land on the civil label `1916-10-01`, the one ambiguous midnight in Berlin's
  * pinned history, so the label cannot separate them:
  *
- *  - the **day** mutation carries the source instant → keeps the earlier (CEST) copy → **not equal** to fresh;
- *  - **month** and **year** mutation resolve the mutated fields at compute time → later (CET) copy → **equal**.
+ *  - fresh construction takes the **earlier** (CEST) copy (kernel 31.1.1, KERNEL-FINDINGS KF665);
+ *  - a **day**, **month** or **year** mutation keeps its SOURCE's offset where the overlap admits it, so a CEST
+ *    source meets the fresh copy and a CET source (`1915-10-01`, `1916-04-01`) takes the later copy and does not.
  *
  * Each row carries its `!=` inverse, so no row can pass by the comparison going UNKNOWN. Kernel-verified on
  * both strategies in `adapter.laws.ConstructedDateInstantDiffTest`, which is also mutation-checked: disabling
@@ -37,22 +38,28 @@ class ConstructedDateInstantTest {
     private fun guarded(op: String) = "FieldFilled($NAME) And $op"
     private val octoberFirst = "Date(\"1\", \"10\", \"1916\")"
 
-    @Test fun aDayShiftRetainsTheEarlierOverlapCopy() {
-        assertEquals(false, fires(guarded("AddDays(Date(\"30\", \"9\", \"1916\"), 1) == $octoberFirst")),
-            "the day step keeps its CEST source season; fresh construction is CET")
-        assertEquals(true, fires(guarded("AddDays(Date(\"30\", \"9\", \"1916\"), 1) != $octoberFirst")))
+    @Test fun aDayShiftFromASummerSourceMeetsTheFreshCopy() {
+        assertEquals(true, fires(guarded("AddDays(Date(\"30\", \"9\", \"1916\"), 1) == $octoberFirst")),
+            "the day step keeps its CEST source offset, as fresh construction takes it")
+        assertEquals(false, fires(guarded("AddDays(Date(\"30\", \"9\", \"1916\"), 1) != $octoberFirst")))
     }
 
-    @Test fun aMonthShiftSelectsTheLaterOverlapCopy() {
+    @Test fun aMonthShiftFromASummerSourceMeetsTheFreshCopy() {
         assertEquals(true, fires(guarded("AddMonths(Date(\"1\", \"9\", \"1916\"), 1) == $octoberFirst")),
-            "compute-time field resolution takes the later copy, equal to fresh construction")
+            "the month step keeps its CEST source offset")
         assertEquals(false, fires(guarded("AddMonths(Date(\"1\", \"9\", \"1916\"), 1) != $octoberFirst")))
     }
 
-    @Test fun aYearShiftSelectsTheLaterOverlapCopy() {
-        assertEquals(true, fires(guarded("AddYears(Date(\"1\", \"10\", \"1915\"), 1) == $octoberFirst")),
-            "the same compute-time resolution as the month arm")
-        assertEquals(false, fires(guarded("AddYears(Date(\"1\", \"10\", \"1915\"), 1) != $octoberFirst")))
+    @Test fun aYearShiftFromAWinterSourceTakesTheLaterCopy() {
+        assertEquals(false, fires(guarded("AddYears(Date(\"1\", \"10\", \"1915\"), 1) == $octoberFirst")),
+            "the year step keeps its CET source offset, so it misses the fresh copy")
+        assertEquals(true, fires(guarded("AddYears(Date(\"1\", \"10\", \"1915\"), 1) != $octoberFirst")))
+    }
+
+    /** Separates source-offset preference from a per-operation rule: day and month steps from a CET source miss too. */
+    @Test fun dayAndMonthShiftsFromAWinterSourceTakeTheLaterCopy() {
+        assertEquals(false, fires(guarded("AddDays(Date(\"1\", \"4\", \"1916\"), 183) == $octoberFirst")))
+        assertEquals(false, fires(guarded("AddMonths(Date(\"1\", \"4\", \"1916\"), 6) == $octoberFirst")))
     }
 
     /** On an unambiguous midnight every mutation agrees with fresh construction — the discrimination above is

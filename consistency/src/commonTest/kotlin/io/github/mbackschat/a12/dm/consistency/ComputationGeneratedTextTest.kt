@@ -115,7 +115,7 @@ class ComputationGeneratedTextTest {
 internal fun computationSyntaxModel(common: String?, vararg alternatives: String): ModelSource =
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"subscription","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"subscription","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Subscription","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}}},

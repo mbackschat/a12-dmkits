@@ -4,9 +4,8 @@ package io.github.mbackschat.a12.dm.modelkit;
  * How a model include is mounted (FEATURE-GAPS): its {@code repeatability} (1 = single, &gt; 1 a
  * repeating sub-form), whether to exclude the <em>included</em> model's own rules / computations when the
  * kernel expands the mount, and the {@link IncludeLevel} (SINGLE_RG = the include becomes one group;
- * MODEL_ROOT = its root becomes the mount — DG6/A12K-3234). The kernel ties the exclusions to a mount —
- * {@code excludeRules} / {@code excludeComputations} are valid only where {@code modelAlias} is set
- * (metamodel rule {@code EXCLUDE_RULES_INVALID}), which a mount always is.
+ * MODEL_ROOT = its root becomes the mount — DG6/A12K-3234). All three live in the mount group's
+ * {@code includeConfig} beside its {@code reference} (A12K-4102, KF651), so they exist only on a mount.
  *
  * <p>An immutable value object built by fluent peeling so call sites read as prose and there is no
  * ambiguous argument list: {@code MountOptions.single().excludingRules()},

@@ -43,7 +43,7 @@ class SnapshotTest {
             "a field's kind" to order(quantityType = "StringType"),
             "the model config" to order(config = """"modelConfig":{"fieldRefByShortNameAllowed":true},"""),
             "a type definition" to order(typeDefinitions = """[{"id":"Other","name":"Other","fieldType":{"type":"NumberType"}}]"""),
-            "the include's own mount" to order(mountAlias = "nosuchmodel"),
+            "the include's own mount" to order(mountReference = "nosuchmodel"),
         )
         val actual = updates.mapValues { (_, updated) ->
             snapshot().withSource(ModelSource(updated)).report
@@ -171,11 +171,11 @@ class SnapshotTest {
         quantityType: String = "NumberType",
         config: String = "",
         typeDefinitions: String = """[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}]""",
-        mountAlias: String = "catalog",
-        mount: String = """{"type":"Group","id":"g-ship","name":"ShipTo","Group":{"modelAlias":"catalog"}},""",
+        mountReference: String = "catalog",
+        mount: String = """{"type":"Group","id":"g-ship","name":"ShipTo","Group":{"includeConfig":{"reference":"$mountReference"}}},""",
     ) = """
-        {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}],
-          "modelReferences":[{"alias":"catalog","reference":"$mountAlias"}]},
+        {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}],
+          "modelReferences":[{"purpose":"include","reference":"$mountReference"}]},
          "content":{"modelInfo":{"name":"model"},"typeDefinitions":$typeDefinitions,$config
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -192,7 +192,7 @@ class SnapshotTest {
     """.trimIndent()
 
     private fun catalog() = """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"cg0","name":"Address","Group":{"elements":[
             {"type":"Field","id":"cf0","name":"Zip","Field":{"fieldType":{"type":"StringType"}}}

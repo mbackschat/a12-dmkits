@@ -76,7 +76,6 @@ typedef unimport
 include add
 include read
 include set-reference
-include rename
 include remove
 include inline
 config read
@@ -170,7 +169,7 @@ dmtool operators | jq "{verifiedAgainst, count: (.operators|length), kinds: (.op
 
 ```output
 {
-  "verifiedAgainst": "30.8.1",
+  "verifiedAgainst": "31.1.1",
   "count": 110,
   "kinds": [
     "CONSTANT",
@@ -194,7 +193,7 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 {
   "id": "DifferenceInDays",
   "kind": "FUNCTION",
-  "meaning": "The signed number of complete model-zone legacy-calendar day steps from the first date/date-time to the second."
+  "meaning": "The signed number of complete days between the model-zone wall clocks of the first date/date-time and the second."
 }
 ```
 
@@ -256,7 +255,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
 
 ```output
 {
-  "count": 84,
+  "count": 90,
   "severities": [
     "ERROR",
     "INFO",

@@ -500,7 +500,7 @@ Condition someRows = Dsl.atLeastOneGroupFilled(samples);
 
 Typed read-back retains the star and the collection-scan meaning; `WildcardGroupFillQuantifierReadTest` locks the render → parse → typed-read → render identity for both polarity siblings.
 
-Inside a `Having` filter a group-presence leaf takes the `$` outer-correlation marker, exactly as a field reference does — `Dsl.groupFilled(group, true)` and `Dsl.groupNotFilled(group, true)`, the group twin of `Dsl.currentRepetition(group, true)`. The marker moves no verdict when the named group is **not repeatable**: as a filter's **sole** condition either spelling draws `MVK_NO_ITERATION_FOR_WILDCARD`, and beside a reference into the filtered list's own iterated group both are admitted ([KF242](KERNEL-FINDINGS.md#kf242)). So a refusal of the marked form alone is about the missing in-scope reference, never about the `$`. Naming a **repeatable** group outside the operand's path is a different gate and a different code — `MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, which no conjunct clears and which the enclosing rule iteration does not clear either, so there the marker is the remedy rather than a redundancy ([KF244](KERNEL-FINDINGS.md#kf244)).
+Inside a `Having` filter a group-presence leaf takes the `$` outer-correlation marker, exactly as a field reference does — `Dsl.groupFilled(group, true)` and `Dsl.groupNotFilled(group, true)`, the group twin of `Dsl.currentRepetition(group, true)`. The marker moves no verdict when the named group is **not repeatable**: as a filter's **sole** condition either spelling draws `MVK_NO_ITERATION_FOR_WILDCARD`, and beside a reference into the filtered list's own iterated group both are admitted ([KF242](KERNEL-FINDINGS.md#kf242)). So a refusal of the marked form alone is about the missing in-scope reference, never about the `$`. Naming a **repeatable** group outside the operand's path is a different gate and a different code — `MVK_INVALID_ITERATION_IN_SET_EXPRESSION`, which no conjunct clears and which the enclosing rule iteration does not clear either, so there the marker is the remedy rather than a redundancy ([KF244](KERNEL-FINDINGS.md#kf244)).
 
 <!-- snippet: correlated-group-presence -->
 ```java
@@ -1210,7 +1210,7 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 
 ### 5.2 Read a foreign, BA-authored rule — the full loop, load to save
 
-`read` is **kernel-mm-complete** (553/553 typed) — including `X And CustomCondition Y`, which converts to a typed, editable AST (the custom condition is the name-only `CustomConditionRef`). The loop below is the real API.
+`read` is **kernel-mm-complete** (550/550 typed on the 2026.06-ext0 metamodels) — including `X And CustomCondition Y`, which converts to a typed, editable AST (the custom condition is the name-only `CustomConditionRef`). The loop below is the real API.
 
 <!-- teaser -->
 ```java
@@ -1745,7 +1745,7 @@ address(order, "BillingAddress",  Country.US);                      // … and r
 
 ## 5d. Working across models — includes & type-defs
 
-Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a kernel-free resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`) into `ModelReader`, which expands the structure, imports effective typedefs, and normalizes name-path ids; an available backend separately supplies the kernel consistency verdict. Mounting is a reference-aware **MOVE**: included rules/computations are bound before the move and their element references are remapped to the mounted path, while literals and comments are not rewritten. The retained authored JSON writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
+Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a kernel-free resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`) into `ModelReader`, which expands the structure, imports effective typedefs, and normalizes name-path ids; an available backend separately supplies the kernel consistency verdict. Mounting is a reference-aware **MOVE**: included rules/computations are bound before the move and their element references are remapped to the mounted path, while literals and comments are not rewritten. The retained authored JSON writes back **without inlining** the include — the mount's `includeConfig` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
 
 <!-- teaser -->
 ```java
@@ -1777,7 +1777,7 @@ catalog.addRule(r -> r.name("SkuFormat").errorField(sku)
 s.validate();                                                        // the resolver threads through the gate
 ```
 
-The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. An included model may also declare a type definition used by a field in the base; `DocumentModelDraft` defers that externally supplied reference to resolver-backed preparation just as it does for an explicit `typeDefinitions` import. A closed self-contained draft still rejects an undeclared id immediately. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def), `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render), and `modelkit.TypeDefModelImportTest` (include-contributed definition; finding 99).*
+The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. An included model may also declare a type definition used by a field in the base; `DocumentModelDraft` defers that externally supplied reference to resolver-backed preparation just as it does for an explicit `typeDefinitions` import. A closed self-contained draft still rejects an undeclared id immediately. The written-back DM-JSON keeps the include as the mount's `includeConfig` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def), `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render), and `modelkit.TypeDefModelImportTest` (include-contributed definition; finding 99).*
 
 ### 5d.1 Compare two model states headlessly (`ModelDiff`)
 
@@ -1832,7 +1832,7 @@ Reusable declarations and model references stay typed as well:
 ```java
 ModelDocument document = ModelDocument.read(json);
 ModelDocument.TypeDefinitionState sku = document.typeDefinitions().get("Sku");
-Map<ModelDocument.ReferencePurpose, Map<String, String>> references =
+Map<ModelDocument.ReferencePurpose, List<String>> references =
         document.authoredReferences();
 ```
 
@@ -1962,7 +1962,7 @@ it.suggestedCode();// "DATE_ORDER"
 
 The condition is built — not string-templated — inside the pattern: `Dsl.allFieldsFilled(earlier.field(), later.field()).and(Dsl.differenceInDays(earlier, later).lt(0))`. The `skeleton` string an agent browses (`${earlier}`/`${later}`) is illustration; the typed build is authoritative.
 
-`DifferenceInDays` means signed complete **model-zone legacy-calendar steps**, not milliseconds or wall-label seconds divided by 86,400. Time of day and a DST-gap landing can therefore affect the count. `Date(...)` uses the same model-zone non-lenient legacy calendar (Julian through 1582-10-04, then the ten-label cutover hole, then Gregorian), distinct from the later 1583-10-16 floor applied to stored/computed values. Tooling that previews these expressions should surface that calendar/zone contract rather than silently assuming proleptic Gregorian arithmetic.
+`DifferenceInDays` means signed complete **days between the two model-zone wall clocks**, not milliseconds divided by 86,400: time of day matters, and a daylight-saving transition does not shorten a day. `Date(...)` builds on the same proleptic ISO calendar in the model zone, distinct from the 1583-10-16 floor applied to stored and computed values ([KF665](KERNEL-FINDINGS.md#kf665)). Tooling that previews these expressions should surface that calendar and zone contract rather than assume UTC instant arithmetic.
 
 **Two design decisions worth recording.** *(1) Typed built-ins, data-extensible later.* The shipped idioms are code (typed fragments — correct by construction, composing the §5c.1 document-part builders), behind a `PatternEntry` **interface**. That interface is the seam a future *user* extension plugs into — a `${param}` data-template loaded from a workspace file and kernel-validated on load — so "users extend the catalogue" is additive, not a rewrite. The tension is real and was chosen consciously: typed = correct-by-construction but not user-authorable without recompiling; data = user-authorable but validated only at runtime (consistent with the BA persona's no-compile-step model, D7). *(2) The no-rot gate.* Exactly as the operator catalogue CI-validates every `validExample`, every pattern's `example` is instantiated and run through the real kernel (`PatternCatalogKernelTest`) — a pattern that no longer scaffolds a valid rule fails the build.
 

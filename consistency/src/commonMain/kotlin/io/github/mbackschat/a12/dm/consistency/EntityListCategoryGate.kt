@@ -130,6 +130,6 @@ private fun TrackedFactBase.categoryGateFinding(
 /** Whether [target] is an Enumeration declaring [read]'s category, the one categorized spec that reads. */
 private fun TrackedFactBase.declaresTheCategory(target: String, read: OperandReference): Boolean {
     val declared = declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return false
-    val enumeration = enumerationBodyOf(declared)?.takeIf { it["tableName"] == null } ?: return false
+    val enumeration = enumerationBodyOf(declared) ?: return false
     return read.category in enumeration.declaredCategoryNames().orEmpty()
 }

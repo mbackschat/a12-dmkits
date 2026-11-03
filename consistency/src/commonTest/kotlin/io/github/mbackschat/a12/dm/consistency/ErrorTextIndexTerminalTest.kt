@@ -165,7 +165,7 @@ class ErrorTextIndexTerminalTest {
         .findings.filter { it.at == "/Policy/Claims/Items/ItemRule" }.map { it.code }
 
     private fun model(text: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"policy-index-terminal","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy-index-terminal","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -183,7 +183,7 @@ class ErrorTextIndexTerminalTest {
 
     /** The same desk with the inner group re-declaring its parent's index-field NAME. */
     private fun ambiguousModel(text: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"policy-ambiguous-index","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy-ambiguous-index","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
@@ -255,7 +255,7 @@ class ErrorTextIndexTerminalTest {
                 {"type":"Field","id":"f6","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
               ]}}"""
         return """
-        {"header":{"modelVersion":"28.4.0","id":"warehouse-index","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"warehouse-index","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Warehouse","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

@@ -24,11 +24,23 @@ class ConfigTimeZoneContractTest {
 
     @Test
     void standaloneInvalidValuesCarryTheCorrectiveKernelDiagnostic(@TempDir Path dir) throws Exception {
-        for (String zone : java.util.List.of("", "   ", "Europe/Berln")) {
+        for (String zone : java.util.List.of("   ", "Europe/Berln")) {
             Path model = CliTestSupport.orderRuled(dir);
             var result = CliTestSupport.run("-m", model.toString(), "config", "modify", "--time-zone", zone);
             assertCorrectiveInvalid(result);
         }
+    }
+
+    /** An empty zone is the absent one on kernel 31.1.1, UTC (KERNEL-FINDINGS KF658): applied, and the model checks valid. */
+    @Test
+    void anEmptyZoneIsTheAbsentDefault(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var result = CliTestSupport.run("-m", model.toString(), "config", "modify", "--time-zone", "");
+        assertEquals(0, result.code(), result::out);
+        assertEquals("applied", MAPPER.readTree(result.out()).path("outcome").asText(), result::out);
+        var check = CliTestSupport.run("-m", model.toString(), "model", "check");
+        assertEquals(0, check.code(), check::out);
+        assertTrue(MAPPER.readTree(check.out()).path("valid").asBoolean(), check::out);
     }
 
     @Test

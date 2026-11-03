@@ -14,10 +14,9 @@ import kotlinx.serialization.json.JsonObject
  * same twenty times over ([KERNEL-FINDINGS KF304], `rulekit.validate.laws.StringSlotContainerLawsTest`).
  *
  * **Uniformity is the reason this is one family rather than a branch in each owning family, and it was not
- * the safe guess.** The adjacent presentation members are the standing warning: `guiPatterns` and
- * `variantErrorMessages` sit on one element and answer the identical shape in different tiers, and one of
- * them coerces a bare scalar into a slot typed for a list while refusing an object into that same slot. So
- * the uniformity here is a measurement, not an inference from them — and having measured it, restating the
+ * the safe guess.** The adjacent presentation member is the standing warning: `guiPatterns` coerces a bare
+ * scalar into its value slot while refusing a container there (`RuleGuiPatternsLawsTest`). So the uniformity
+ * here is a measurement, not an inference from it — and having measured it, restating the
  * shape test in three families would be three chances to disagree about one law.
  *
  * **What this family deliberately does NOT judge.** A non-string SCALAR is coerced into A12's string slot, so

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,15 +10,15 @@ final class IncludeDiffProjector {
 
     private IncludeDiffProjector() {}
 
+    /** Each referenced model, keyed by its id (DM 29.4 has no include alias, KF651), with the purposes it is
+     *  referenced for, so turning an include into a type-definition import is one MODIFIED change. */
     static Map<String, Map<String, String>> project(ModelDiffState state) {
-        Map<String, Map<String, String>> references = new LinkedHashMap<>();
-        state.document().authoredReferences().forEach((purpose, entries) -> entries.forEach((alias, reference) -> {
-            Map<String, String> aspects = new LinkedHashMap<>();
-            aspects.put("purpose", purpose.name());
-            aspects.put("reference", reference);
-            references.put(alias, aspects);
-        }));
-        return references;
+        Map<String, List<String>> purposes = new LinkedHashMap<>();
+        state.document().authoredReferences().forEach((purpose, references) -> references.forEach(reference ->
+                purposes.computeIfAbsent(reference, r -> new ArrayList<>()).add(purpose.name())));
+        Map<String, Map<String, String>> projected = new LinkedHashMap<>();
+        purposes.forEach((reference, names) -> projected.put(reference, Map.of("purpose", String.join(",", names))));
+        return projected;
     }
 
     static List<String> reasons(ModelDiff.ChangeKind change) {

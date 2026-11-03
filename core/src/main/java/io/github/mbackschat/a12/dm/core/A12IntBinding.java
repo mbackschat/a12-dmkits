@@ -5,8 +5,9 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 /**
- * How A12's reader binds one model member to a Java {@code int} or {@code Integer} (KERNEL-FINDINGS KF590, KF591,
- * KF593).
+ * How A12's reader binds one model member to a Java {@code Integer} (KERNEL-FINDINGS KF590, KF591, KF593). A primitive
+ * {@code int} member cannot hold the "no value" outcome on kernel 31, whose Jackson 3 refuses a null for one, so for
+ * such a member {@link A12IntBinding.NoValue} is a value A12 cannot bind ({@link A12Ints#repetitionCount(String)}).
  *
  * <p>Text is read after {@code String.trim}: the empty text and {@code null}, in that exact case, bind no value; any
  * other text binds through {@code Integer.parseInt}, so a decimal digit of any script counts and a fraction or an
@@ -43,6 +44,11 @@ sealed interface A12IntBinding {
         }
         if (member.isNumber()) {
             BigDecimal value = member.decimalValue();
+            // Kernel 31.1.1 parses through Jackson 3's fast parser, which refuses a scale of Integer.MIN_VALUE that the
+            // JDK builds (KERNEL-FINDINGS KF593).
+            if (value.scale() == Integer.MIN_VALUE) {
+                return new Unbindable();
+            }
             boolean fits = value.compareTo(BigDecimal.valueOf(Integer.MIN_VALUE)) >= 0
                     && value.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) <= 0;
             return fits ? new Bound(value.intValue()) : new Unbindable();

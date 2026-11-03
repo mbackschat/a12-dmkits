@@ -162,8 +162,8 @@ class CheckerRepetitionNotUniqueGateAgreementTest {
         val WILDCARD = setOf("MVK_NO_WILDCARDS_ALLOWED")
         val RAW = setOf("MVK_INVALID_RAW_TYPE")
         val NOT_IN_GROUP = setOf("MVK_NOT_IN_GROUP")
-        val DISALLOWED = setOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
-        val ITERATION = setOf("MVK_INVALID_ITERATION_IN_FILTER_CONDITION")
+        val DISALLOWED = setOf("MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION")
+        val ITERATION = setOf("MVK_INVALID_ITERATION_IN_SET_EXPRESSION")
 
         /** The rows where the checker answers otherwise, with what it answers. */
         val OURS: Map<String, Set<String>> = mapOf()

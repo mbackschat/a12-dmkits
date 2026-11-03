@@ -53,7 +53,7 @@ private val KEYED_SUFFIX = Regex("\\[(\\w+)]$")
  * These sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a refused temporal format's is `RK_DATE_FORMAT_INVALID` ([KF648](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf648)), and a bound past the magnitude its digits allow is `RK_NUMBER_MIN_VALUE_EXCEEDED` or `RK_NUMBER_MAX_VALUE_EXCEEDED` ([KF582](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf582)), and A12's nine basic sentences are the checker's `RK_ID_EMPTY` to `RK_TYPE_REFERENCE_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)), and a model version's two are `RK_MODEL_VERSION_PATTERN` and `RK_MODEL_VERSION_INCOMPATIBLE` ([KF650](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf650)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a refused temporal format's is `RK_DATE_FORMAT_INVALID` ([KF648](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf648)), and A12's ten basic sentences are the checker's `RK_ID_EMPTY` to `RK_INDEX_FIELD_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)), and a model version's two are `RK_MODEL_VERSION_PATTERN` and `RK_MODEL_VERSION_INCOMPATIBLE` ([KF650](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf650)), and a shared element id's is `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf661)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words and names only the field, while each maximum is a sentence of
  * its own. That keys the two digit maxima faithfully, because among the numeric members A12's collector writes only the
  * integer places can draw the 15 sentence and only the fractional pair the 14 one: group repetitions, the other
@@ -63,14 +63,16 @@ private val KEYED_SUFFIX = Regex("\\[(\\w+)]$")
 internal fun codelessClass(message: String): String = when {
     A12_REPERTOIRE_REFUSAL in message -> RK_UNSUPPORTED_CHARACTER
     SORT_CAPACITY_REFUSAL.containsMatchIn(message) -> "RK_SORT_LIST_ABOVE_CAPACITY"
-    MINIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MIN_VALUE_EXCEEDED"
-    MAXIMUM_MAGNITUDE.containsMatchIn(message) -> "RK_NUMBER_MAX_VALUE_EXCEEDED"
     REPEATED_ENUM_VALUE.containsMatchIn(message) -> "RK_ENUM_VALUE_DUPLICATE"
     REPEATED_ENUM_CATEGORY.containsMatchIn(message) -> "RK_ENUM_CATEGORY_DUPLICATE"
     VERSION_PATTERN_REFUSAL.containsMatchIn(message) -> "RK_MODEL_VERSION_PATTERN"
     VERSION_MISMATCH.containsMatchIn(message) -> "RK_MODEL_VERSION_INCOMPATIBLE"
+    COMPUTED_FIELD_NOT_FOUND.containsMatchIn(message) -> "RK_COMPUTED_FIELD_NOT_FOUND"
+    TYPE_DEFINITION_NOT_FOUND.containsMatchIn(message) -> "RK_TYPE_DEFINITION_NOT_FOUND"
+    CHILD_NAME_DUPLICATE.containsMatchIn(message) -> "RK_CHILD_NAME_DUPLICATE"
+    ELEMENT_ID_NOT_UNIQUE.containsMatchIn(message) -> "RK_ELEMENT_ID_NOT_UNIQUE"
     else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
-        TEMPORAL_FORMAT_SENTENCES + BASIC_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+        TEMPORAL_FORMAT_SENTENCES + BASIC_SENTENCES + CONVERTER_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -82,11 +84,6 @@ private const val RK_UNSUPPORTED_CHARACTER = "RK_UNSUPPORTED_CHARACTER"
 
 private val SORT_CAPACITY_REFUSAL =
     Regex("""The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with \d+, but at most 3 is allowed\.$""")
-
-private val MINIMUM_MAGNITUDE = Regex(
-    """The minimum value of the number type in field \[id: [^\]]*] is specified with '[^']*'\. It may not exceed '-[^']*'\.$""")
-private val MAXIMUM_MAGNITUDE = Regex(
-    """The maximum value of the number type in field \[id: [^\]]*] is specified with '[^']*'\. It may not exceed '[^']*'\.$""")
 
 private val MEMBER_RANGE_SENTENCES = mapOf(
     "Only values without a sign are allowed." to "RK_MEMBER_SIGNED",
@@ -121,7 +118,23 @@ private val BASIC_SENTENCES = mapOf(
     "The computed field is not set properly." to "RK_COMPUTED_FIELD_EMPTY",
     "One of the computation operations is empty." to "RK_COMPUTATION_OPERATION_EMPTY",
     "The id of the referenced type definition is not set properly." to "RK_TYPE_REFERENCE_EMPTY",
+    "The name of the index field is not set properly." to "RK_INDEX_FIELD_EMPTY",
 )
+
+/**
+ * The sentences A12's validation-model converter reports where 30.8.1 threw ([KF652](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf652)):
+ * each drops the declaration it names from the converted model, and the check goes on without it.
+ */
+private val CONVERTER_SENTENCES = mapOf(
+    "Element must have a name." to "RK_ELEMENT_NAME_MISSING",
+    "Root group must have a name." to "RK_ROOT_GROUP_NAME_MISSING",
+    "The computed field was not specified." to "RK_COMPUTED_FIELD_NOT_SPECIFIED",
+)
+private val COMPUTED_FIELD_NOT_FOUND = Regex("""The computed field "[^"]*" was not found\.$""")
+private val TYPE_DEFINITION_NOT_FOUND = Regex("""Typedefinition with id '.*' could not be found\.$""")
+private val CHILD_NAME_DUPLICATE = Regex("""Cannot have two child elements with the same name \[.*] in group '[^']*'\.$""")
+
+private val ELEMENT_ID_NOT_UNIQUE = Regex("""The id \[.*] of element on path '.*' is not unique: Used by \[.*]\.$""")
 
 private val VERSION_PATTERN_REFUSAL =
     Regex("""Document model version .* does not match proper version schema\. Expected version is [^ ]*\.$""")

@@ -92,7 +92,7 @@ class ValueInFieldsDateConstantTest {
 
     /** An insurance endorsement desk mirroring the laws test's carrier. */
     private fun model(constant: String, list: String): String = """
-        {"header":{"modelVersion":"28.4.0","id":"endorsement-count","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"endorsement-count","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Endorsement","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

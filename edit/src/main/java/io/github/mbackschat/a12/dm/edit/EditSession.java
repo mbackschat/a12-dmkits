@@ -346,15 +346,6 @@ public final class EditSession {
         return editStructure(ModelDocument::clearBaseYear);
     }
 
-    public EditSession addInclude(String alias, String reference, String parentPath, String name) {
-        return editStructure(d -> d.addInclude(alias, reference).mount(parentPath, name, alias));
-    }
-
-    /** Declare a header include ({@code alias} → {@code reference}) without mounting it yet — mount via {@link #include(String)}. */
-    public EditSession addInclude(String alias, String reference) {
-        return editStructure(d -> d.addInclude(alias, reference));
-    }
-
     /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted. */
     public EditSession addImport(String reference) {
         return editStructure(d -> d.addImport(reference));
@@ -377,22 +368,25 @@ public final class EditSession {
         return editStructure(d -> d.addAttachmentGroup(parentPath, name, body));
     }
 
-    public EditSession mount(String parentPath, String name, String alias) {
-        return editStructure(d -> d.mount(parentPath, name, alias));
+    /** Mount the model {@code reference} names at {@code parentPath} as a group named {@code name}; the first
+     *  mount of a model also writes its header include entry (KF651). */
+    public EditSession mount(String parentPath, String name, String reference) {
+        return editStructure(d -> d.mount(parentPath, name, reference));
     }
 
-    /** Mount a declared include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS). */
-    public EditSession mount(String parentPath, String name, String alias, int repeatability) {
-        return editStructure(d -> d.mount(parentPath, name, alias, repeatability));
+    /** Mount an included model as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS). */
+    public EditSession mount(String parentPath, String name, String reference, int repeatability) {
+        return editStructure(d -> d.mount(parentPath, name, reference, repeatability));
     }
 
-    /** Mount a declared include with explicit {@link MountOptions} (repeatability + rule/computation exclusions). */
-    public EditSession mount(String parentPath, String name, String alias, MountOptions options) {
-        return editStructure(d -> d.mount(parentPath, name, alias, options));
+    /** Mount an included model with explicit {@link MountOptions} (repeatability + rule/computation exclusions). */
+    public EditSession mount(String parentPath, String name, String reference, MountOptions options) {
+        return editStructure(d -> d.mount(parentPath, name, reference, options));
     }
 
-    public EditSession removeInclude(String alias) {
-        return editStructure(d -> d.removeInclude(alias));
+    /** Remove the include {@code reference}: every mount of that model and its header entry. */
+    public EditSession removeInclude(String reference) {
+        return editStructure(d -> d.removeInclude(reference));
     }
 
     /**
@@ -408,20 +402,17 @@ public final class EditSession {
     }
 
     /**
-     * Inline the include aliased {@code alias} — the inverse of {@link #extractGroupAsInclude}: fold the
-     * included model's content (supplied as {@code includedModelJson} — the caller's, since this session is
-     * resolver-agnostic) back into every mount as a real group, then drop the header reference.
+     * Inline the include {@code reference} — the inverse of {@link #extractGroupAsInclude}: fold the included
+     * model's content (supplied as {@code includedModelJson} — the caller's, since this session is
+     * resolver-agnostic) back into every mount as a real group, then drop the header entry.
      */
-    public EditSession inlineInclude(String alias, String includedModelJson) {
-        return editStructure(d -> d.inlineInclude(alias, includedModelJson));
+    public EditSession inlineInclude(String reference, String includedModelJson) {
+        return editStructure(d -> d.inlineInclude(reference, includedModelJson));
     }
 
-    public EditSession setIncludeReference(String alias, String newReference) {
-        return editStructure(d -> d.setIncludeReference(alias, newReference));
-    }
-
-    public EditSession renameInclude(String oldAlias, String newAlias) {
-        return editStructure(d -> d.renameInclude(oldAlias, newAlias));
+    /** Re-point every mount of {@code reference}, and its header entry, at the model {@code newReference}. */
+    public EditSession setIncludeReference(String reference, String newReference) {
+        return editStructure(d -> d.setIncludeReference(reference, newReference));
     }
 
     // --- L2c: the session-bound editor (refs as currency) ---------------------------------------
@@ -470,9 +461,9 @@ public final class EditSession {
         return new TypeDefEditor(this, id);
     }
 
-    /** A held reference to the declared include {@code alias} — mount it (again) or remove it. */
-    public IncludeEditor include(String alias) {
-        return new IncludeEditor(this, alias);
+    /** A held reference to the include of model {@code reference} — mount it (again), re-point or remove it. */
+    public IncludeEditor include(String reference) {
+        return new IncludeEditor(this, reference);
     }
 
     /** The model bound to the current state — navigation and rule edits re-read this after each edit.

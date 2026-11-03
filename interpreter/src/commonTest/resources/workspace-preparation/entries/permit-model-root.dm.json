@@ -2,19 +2,17 @@
   "header" : {
     "id" : "permit-model-root",
     "modelType" : "document",
-    "modelVersion" : "28.4.0",
+    "modelVersion" : "29.4.0",
     "locales" : [ {
       "code" : "en_US"
     } ],
     "labels" : [ ],
     "annotations" : [ ],
     "modelReferences" : [ {
-      "alias" : "sectionAlias",
       "modelType" : "document",
       "purpose" : "include",
       "reference" : "permit-section"
     }, {
-      "alias" : "permit-types",
       "modelType" : "document",
       "purpose" : "typeDefinitions",
       "reference" : "permit-types"
@@ -72,8 +70,10 @@
             "name" : "Review",
             "Group" : {
               "repeatability" : 1,
-              "modelAlias" : "sectionAlias",
-              "includeLevel" : "MODEL_ROOT"
+              "includeConfig" : {
+                "reference" : "permit-section",
+                "includeLevel" : "MODEL_ROOT"
+              }
             }
           }, {
             "type" : "Rule",

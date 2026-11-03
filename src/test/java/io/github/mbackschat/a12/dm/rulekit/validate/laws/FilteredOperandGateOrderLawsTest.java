@@ -66,9 +66,11 @@ class FilteredOperandGateOrderLawsTest {
         // The ITERATION gate outruns `checkHasWildCards`, so a plainly unstarred filtered field is NOT
         // `MVK_WILDCARDS_REQUIRED` — which is what the code's name predicts and the measurement denies.
         expected.put("an UNSTARRED field operand", "MVK_NO_WILDCARD");
-        // `checkIsField` runs first in the chain and the star is not a variable for it: both rows agree.
+        // `checkIsField` runs first in the chain, but since kernel 31.1.1 the chain itself runs after the
+        // iteration walk, which answers an unstarred group as it answers an unstarred field (KERNEL-FINDINGS
+        // KF656); the starred group is what the kind class is left to.
         expected.put("a starred GROUP operand", "MVK_NO_GROUPS_ALLOWED");
-        expected.put("a GROUP operand with no star either", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("a GROUP operand with no star either", "MVK_NO_WILDCARD");
         // Both draw the class `checkHasWildCards` raises — for the filtered entity the control below
         // identifies as the key, not the indexed field.
         expected.put("an operand carrying a SEMANTIC INDEX", "MVK_WILDCARDS_REQUIRED");
@@ -84,12 +86,12 @@ class FilteredOperandGateOrderLawsTest {
         // prediction took the GROUP for the filtered entity; the filtered entity is the key `Reference`, a
         // field, so the written order holds and the wildcard class is its answer.
         expected.put("BOTH defects at once — a group operand carrying a semantic index", "MVK_WILDCARDS_REQUIRED");
-        expected.put("a disallowed construct in the filter BODY", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+        expected.put("a disallowed construct in the filter BODY", "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
         // The conjunct only helps the iteration gate before it, so the construct class survives it — the row
         // that stops a checker from transferring the sole-construct measurement to the conjoined shape
         // silently, since the two differ in what the gate BEFORE this one sees.
         expected.put("a disallowed construct BESIDE an in-scope conjunct",
-                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+                "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION");
 
         assertEquals(expected, actual);
     }

@@ -10,20 +10,21 @@ package io.github.mbackschat.a12.dm.consistency
  * it places a new key at the HEAD of its bucket, and it resizes BEFORE a call once the map already holds more than
  * three quarters of its capacity, a call finding its key included, rather than right after the insertion that
  * crossed it. The map starts with 16 buckets, doubles on each resize keeping each bucket's order, and places a key
- * by `String.hashCode` spread as `h ^ (h >>> 16)`.
+ * by `String.hashCode` spread as `h ^ (h >>> 16)`. A null key is one of them: `HashMap.hash(null)` is 0, and A12 maps
+ * a value entry with no token to one (KERNEL-FINDINGS KF655).
  *
  * Exact while no bucket would hold eight keys at 64 buckets or more: Java resizes a smaller table at that point,
  * as here, but at 64 buckets it turns the bucket into a tree, whose order this does not reproduce. That needs
  * eight keys colliding in their low six hash bits among more than 24, and a key set reaching it is left in
  * first-call order.
  */
-internal fun computeIfAbsentOrder(calls: List<String>): List<String> {
+internal fun computeIfAbsentOrder(calls: List<String?>): List<String?> {
     var capacity = 0
     var size = 0
-    var buckets = emptyList<MutableList<String>>()
+    var buckets = emptyList<MutableList<String?>>()
     fun grow() {
         capacity = if (capacity == 0) INITIAL_CAPACITY else capacity * 2
-        buckets = List(capacity) { mutableListOf<String>() }.also { grown ->
+        buckets = List(capacity) { mutableListOf<String?>() }.also { grown ->
             buckets.flatten().forEach { grown[indexOf(it, capacity)] += it }
         }
     }
@@ -42,9 +43,9 @@ internal fun computeIfAbsentOrder(calls: List<String>): List<String> {
     return buckets.flatten()
 }
 
-private fun indexOf(key: String, capacity: Int): Int {
+private fun indexOf(key: String?, capacity: Int): Int {
     var h = 0
-    for (unit in key) h = 31 * h + unit.code
+    for (unit in key.orEmpty()) h = 31 * h + unit.code
     return (h xor (h ushr 16)) and (capacity - 1)
 }
 

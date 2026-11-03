@@ -23,7 +23,7 @@ class SumOfProductsOperandReachTest {
             "Ledger | $every/Weight, $every/Label" to "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED",
             "Ledger | $every/Weight, /Fulfilment/Ledger/Total" to "MVK_DIFFERENT_GROUPS",
             "Ledger | $every/Weight Having [/Fulfilment/Shipments/Parcels/Quantity] > 0, $every/Quantity" to
-                "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+                "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED",
             "Summary | $every/Weight, $every/Quantity" to "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED",
             "Shipments | $every/Weight, $every/Quantity" to "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED",
         ),
@@ -59,7 +59,7 @@ class SumOfProductsOperandReachTest {
         """.trimIndent()
         fun into(name: String) = if (name == group) rule else ""
         val source = """
-            {"header":{"modelVersion":"28.4.0","id":"fulfilment-products","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"fulfilment-products","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Summary","Group":{"elements":[

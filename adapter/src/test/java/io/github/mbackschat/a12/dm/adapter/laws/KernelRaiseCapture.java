@@ -1,7 +1,13 @@
 package io.github.mbackschat.a12.dm.adapter.laws;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.slf4j.ILoggerFactory;
 import org.slf4j.IMarkerFactory;
@@ -22,7 +28,7 @@ import org.slf4j.spi.SLF4JServiceProvider;
  * <p><b>Why logging is the only route.</b> The generated rule body catches any exception its condition raises and
  * calls {@code MainValidatorController.addValidatorMessage(field, idx, code, e)}, which publishes a message whose
  * text is a fixed prefix plus {@code e.getMessage()} and then calls {@code ValidationLogger.error(text, e)}
- * ({@code CodeGenRuleDefinition.st}, both the {@code java} and {@code groovy} dialects; kernel 30.8.1). The message
+ * ({@code CodeGenRuleDefinition.st}, both the {@code java} and {@code groovy} dialects; kernel 30.8.1 and 31.1.1). The message
  * keeps neither the exception's class nor its cause, so the log call is the one place the throwable leaves the
  * kernel. It is the only Throwable-carrying error call in {@code kernel-core-runtime}'s main source.
  *
@@ -32,9 +38,14 @@ import org.slf4j.spi.SLF4JServiceProvider;
  */
 public final class KernelRaiseCapture implements SLF4JServiceProvider {
 
-    /** The logger A12's {@code ValidationLogger} obtains through {@code LoggerFactory.getLogger(Class)}. */
-    static final String VALIDATION_LOGGER =
-            "com.mgmtp.a12.kernel.core.rt._30_8.internal.logging.ValidationLogger";
+    /**
+     * The logger A12's {@code ValidationLogger} obtains through {@code LoggerFactory.getLogger(Class)}, whatever
+     * runtime release it sits in. The runtime's package embeds the kernel's major.minor ({@code rt._31_1} on kernel
+     * 31.1.1, {@code rt._30_8} before it), and a name pinned to one release silently captured nothing after the bump
+     * ({@code KernelProbeCustomConditionTest#anUndeclaredNameStaysUnregisteredBesideADeclaredOne} found it).
+     */
+    static final Pattern VALIDATION_LOGGER =
+            Pattern.compile("com\\.mgmtp\\.a12\\.kernel\\.core\\.rt\\._\\d+_\\d+\\.internal\\.logging\\.ValidationLogger");
 
     private static final ThreadLocal<List<Throwable>> SINK = new ThreadLocal<>();
 
@@ -43,8 +54,10 @@ public final class KernelRaiseCapture implements SLF4JServiceProvider {
     private final MDCAdapter mdcAdapter = new NOPMDCAdapter();
 
     /**
-     * Refuse to observe when SLF4J bound some other provider: absent raises would then read as "A12 caught
-     * none" rather than "nobody listened", the misreading the probe's absent-versus-empty rule exists to prevent.
+     * Refuse to observe when nobody would listen: when SLF4J bound some other provider, or when no class on the
+     * classpath carries the logger name {@link #VALIDATION_LOGGER} matches. Either way absent raises would read as "A12
+     * caught none" rather than "nobody listened", the misreading the probe's absent-versus-empty rule exists to
+     * prevent. The second arm is the one the kernel 31.1.1 bump got past, with the provider bound and the name stale.
      */
     static void requireInstalled() {
         if (!(LoggerFactory.getILoggerFactory() instanceof Factory)) {
@@ -53,6 +66,34 @@ public final class KernelRaiseCapture implements SLF4JServiceProvider {
                     + LoggerFactory.getILoggerFactory().getClass().getName()
                     + "; remove the other provider from the adapter test classpath");
         }
+        if (!LOGGER_CLASS_PRESENT) {
+            throw new IllegalStateException("kernel-probe listens for A12's rule raises on a logger matching "
+                    + VALIDATION_LOGGER.pattern() + ", but no class on the classpath has that name; the runtime moved, "
+                    + "so update the pattern before trusting an absent raise");
+        }
+    }
+
+    /** Whether some classpath jar holds the class {@link #VALIDATION_LOGGER} names, scanned once. */
+    private static final boolean LOGGER_CLASS_PRESENT = loggerClassPresent();
+
+    private static boolean loggerClassPresent() {
+        for (String entry : System.getProperty("java.class.path").split(File.pathSeparator)) {
+            if (!entry.endsWith(".jar")) {
+                continue;
+            }
+            try (ZipFile jar = new ZipFile(entry)) {
+                boolean found = jar.stream().map(ZipEntry::getName)
+                        .filter(name -> name.endsWith(".class"))
+                        .map(name -> name.substring(0, name.length() - ".class".length()).replace('/', '.'))
+                        .anyMatch(name -> VALIDATION_LOGGER.matcher(name).matches());
+                if (found) {
+                    return true;
+                }
+            } catch (IOException unreadable) {
+                throw new UncheckedIOException(unreadable);
+            }
+        }
+        return false;
     }
 
     /** Start collecting this thread's rule raises, discarding any left by an unclosed earlier window. */
@@ -95,7 +136,7 @@ public final class KernelRaiseCapture implements SLF4JServiceProvider {
 
         @Override
         public org.slf4j.Logger getLogger(String name) {
-            return VALIDATION_LOGGER.equals(name) ? new RaiseLogger() : NOPLogger.NOP_LOGGER;
+            return VALIDATION_LOGGER.matcher(name).matches() ? new RaiseLogger(name) : NOPLogger.NOP_LOGGER;
         }
     }
 
@@ -104,8 +145,8 @@ public final class KernelRaiseCapture implements SLF4JServiceProvider {
 
         private static final long serialVersionUID = 1L;
 
-        RaiseLogger() {
-            this.name = VALIDATION_LOGGER;
+        RaiseLogger(String name) {
+            this.name = name;
         }
 
         @Override

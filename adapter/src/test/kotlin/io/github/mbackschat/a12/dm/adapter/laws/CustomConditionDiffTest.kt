@@ -1,10 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition
-import com.mgmtp.a12.kernel.md.document.api.IDocument
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
-import com.mgmtp.a12.kernel.md.document.api.IFieldInstance
 import io.github.mbackschat.a12.dm.adapter.KernelCustomConditions
 import io.github.mbackschat.a12.dm.interpreter.CustomCondition as PublicCustomCondition
 import io.github.mbackschat.a12.dm.interpreter.CustomConditionRegistry
@@ -62,14 +63,12 @@ class CustomConditionDiffTest {
     /** Kernel side — an md condition reading the error field's value from the document (fires iff "ACME"). */
     private val mdNameIsAcme = object : com.mgmtp.a12.kernel.md.rt.api.ICustomCondition {
         override fun check(
-            doc: IDocument,
-            relevant: Set<IEntityInstance>?,
-            formallyIncorrect: Set<IEntityInstance>,
-            errorEntity: IEntityInstance,
+            doc: DocumentV2,
+            relevant: Set<out DocumentMultiPointer>?,
+            formallyIncorrect: Set<DocumentPointer>,
+            errorEntity: PartiallyKnownDocumentMultiPointer,
         ): Boolean {
-            val v = doc.entityInstances.filterIsInstance<IFieldInstance>()
-                .firstOrNull { it.path == errorEntity.path && it.repetitions.contentEquals(errorEntity.repetitions) }
-                ?.value?.orElse(null)?.toString()
+            val v = errorEntity.toDocumentPointer().map { doc.fieldValue(it) }.orElse(null)?.toString()
             return v == "ACME"
         }
     }

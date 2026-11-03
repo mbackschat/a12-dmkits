@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class BlankDateFormatKf584Test {
 
     private fun report(fieldType: String, typeDefinitions: String = "") = checkRead(ModelSource("""
-        {"header":{"modelVersion":"28.4.0","id":"policies","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$typeDefinitions"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"29.4.0","id":"policies","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},$typeDefinitions"modelRoot":{"rootGroups":[
          {"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
           {"type":"Field","id":"/Policy/Start","name":"Start","Field":{"fieldType":$fieldType}}
          ]}}
@@ -33,7 +33,8 @@ class BlankDateFormatKf584Test {
         }
         val unbuilt = listOf(CK_MODEL_NOT_BUILDABLE)
         val expected = listOf("DateType", "DateTimeType", "TimeType").associateWith {
-            listOf(emptyList(), unbuilt, unbuilt, unbuilt, emptyList(), emptyList())
+            // An empty format is read as absent on kernel 31.1.1, a blank one still leaves the model unbuilt (KF658).
+            listOf(emptyList(), emptyList(), unbuilt, unbuilt, emptyList(), emptyList())
         }
         assertEquals<Map<String, List<List<String>>>>(expected, actual)
     }
@@ -43,7 +44,7 @@ class BlankDateFormatKf584Test {
         val gaps = report(
             """{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"StartType"}}""",
             """"typeDefinitions":[{"id":"StartType","name":"StartType","revision":"1",""" +
-                """"fieldType":{"type":"DateType","DateType":{"format":""}}}],""",
+                """"fieldType":{"type":"DateType","DateType":{"format":" "}}}],""",
         ).gaps
         assertTrue(gaps.any { it.at == "/Policy/Start" && "`StartType`" in it.reason }, "$gaps")
     }

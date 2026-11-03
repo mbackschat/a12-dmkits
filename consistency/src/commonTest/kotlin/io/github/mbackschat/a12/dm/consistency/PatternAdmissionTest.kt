@@ -29,7 +29,7 @@ class PatternAdmissionTest {
     private fun codes(pattern: String?): List<String> = checkRead(
         ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
@@ -93,7 +93,7 @@ class PatternAdmissionTest {
         val finding = checkRead(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType",
@@ -118,14 +118,14 @@ class PatternAdmissionTest {
      */
     @Test
     fun theUndecidableHalfIsPublishedAsACoverageGap() {
-        fun compilability(pattern: String?, filtered: Boolean = false): Int =
+        fun compilability(pattern: String?): Int =
             checkRead(
                 ModelSource(
                     """
-                    {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+                    {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Reference","Field":{${if (filtered) """"variantFilter":{"filterType":"ONLY"},""" else ""}"fieldType":{"type":"StringType"${
+                        {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
                         pattern?.let { ""","StringType":{"pattern":"$it",$patternMessage}""" } ?: ""
                     }}}}
                       ]}}
@@ -136,6 +136,5 @@ class PatternAdmissionTest {
         assertEquals(1, compilability("[A-Z]+"), "a model with a pattern discloses the half left to A12")
         assertEquals(0, compilability(""), "an inactive empty declaration needs no Java compilation coverage")
         assertEquals(0, compilability(null), "a model with no pattern has nothing to disclose")
-        assertEquals(0, compilability("[A-Z]+", filtered = true), "a removed field has no pattern to examine")
     }
 }

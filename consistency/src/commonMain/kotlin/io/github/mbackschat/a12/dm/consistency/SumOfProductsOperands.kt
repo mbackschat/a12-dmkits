@@ -18,12 +18,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.capturedPath
  * predicted wrongly from the laws alone:
  *
  * 1. the fields' owning groups differ — `MVK_DIFFERENT_GROUPS`, and it outranks everything below it;
- * 2. an operand carries a `Having` filter — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`, because
+ * 2. an operand carries a `Having` filter — `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED`, because
  *    `isWildcardRestricted` reads a filter as restricting EVERY level, so the lowest one fails first;
  * 3. an operand stars two levels — `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED`;
  * 4. neither operand has a repeatable level at all — `MVK_REPEATABLE_LEVEL_REQUIRED`;
  * 5. an operand leaves its lowest repeatable level unstarred because the rule binds that level, by iterating
- *    it through its error field or by being declared inside it — `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`
+ *    it through its error field or by being declared inside it — `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED`
  *    again, for one unstarred operand or both ([KERNEL-FINDINGS KF370], measured 2026-10-20 by
  *    `adapter.laws.CheckerSumOfProductsBoundOperandAgreementTest`) — and so does a selection whose key A12
  *    admits, which addresses one row of its level and stars none ([KERNEL-FINDINGS KF605]);
@@ -123,7 +123,7 @@ private class ParallelOperand(
     val outerMarked: Boolean,
     /** The category the operand projects onto, which keys it apart from its plain field ([KERNEL-FINDINGS KF613]). */
     val category: String?,
-    /** Whether the field is plainly not a number; a typedef or an unspecified type is not judged. */
+    /** Whether the field is plainly not a number; an unresolvable typedef is not judged. */
     val notANumber: Boolean,
 )
 
@@ -206,14 +206,14 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     left.stars == 0 && right.stars == 0 && left.at == right.at && left.outerMarked == right.outerMarked &&
         left.category == right.category -> null
     !left.repeats && !right.repeats -> "MVK_REPEATABLE_LEVEL_REQUIRED"
-    left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+    left.lowestUnstarred || right.lowestUnstarred -> "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
     left.notANumber || right.notANumber -> "MVK_NO_NUMBER"
     else -> null
 }
 
 /** The wildcard gate's verdict on [operand]: its filter first, read at the lowest level, then its extra stars. */
 private fun wildcardClassOf(operand: ParallelOperand, other: ParallelOperand): String? = when {
-    operand.filtered -> "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+    operand.filtered -> "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
     // Withheld where a level is also left unstarred: which of the two A12 names there is unmeasured.
     operand.lowestUnstarred || other.lowestUnstarred -> null
     else -> "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
@@ -233,7 +233,7 @@ private fun finding(code: String, element: TrackedDeclaration, member: String, s
 /** What the author has to change, which differs per class though the shape is one pair. */
 private val ADVICE = mapOf(
     "MVK_DIFFERENT_GROUPS" to "these two name fields of different groups",
-    "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED" to
+    "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED" to
         "one of them leaves the lowest repeatable level without an unrestricted star, either unstarred or " +
         "restricted by a `${OperatorId.HAVING.catalogId}` filter, so star that level on both",
     "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED" to "one of them stars more than the lowest level",

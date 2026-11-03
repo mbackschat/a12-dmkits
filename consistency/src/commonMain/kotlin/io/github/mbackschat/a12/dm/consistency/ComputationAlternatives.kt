@@ -46,6 +46,28 @@ internal fun TrackedFactBase.computationAlternativeContributions(element: Tracke
     // An envelope A12 cannot bind is a tier ABOVE any verdict about this member, and reading it as an
     // absent member would report two codes about a model A12 never examined.
     val body = element.body ?: return listOf(DeclarationFinding(element.key, DeclarationStage.TARGET, unreadableEnvelope(element)))
+    return absentTargetFindings(element, body) + alternativeContributions(element, body)
+}
+
+/**
+ * A computation that names no computed field at all: kernel 31.1.1 reads it and then cannot build the model on the
+ * missing reference (KERNEL-FINDINGS KF654, `adapter.laws.CheckerReaderBindingAgreementTest`), where an EMPTY one is
+ * a converter sentence of its own ([DeclaredReference.findings]). An explicit `null` is read the same way and also
+ * leaves no model (measured 2026-11-03, same test).
+ */
+private fun absentTargetFindings(element: TrackedDeclaration, body: JsonObject): List<OwnedFinding> =
+    if (body["computedFieldRelPath"].let { it != null && it !is JsonNull }) emptyList() else listOf(
+        DeclarationFinding(element.key, DeclarationStage.TARGET, Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "this computation declares no `computedFieldRelPath`, and A12 cannot build the model without the field " +
+                "it writes — so no consistency verdict about this model exists",
+            element.path,
+        )),
+    )
+
+private fun TrackedFactBase.alternativeContributions(element: TrackedDeclaration, body: JsonObject): List<OwnedFinding> {
     val member = body["computationAlternatives"]
     return when {
         member == null || member is JsonArray && member.isEmpty() -> noWorkFindings(element)

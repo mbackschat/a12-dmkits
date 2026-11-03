@@ -11,7 +11,7 @@ package io.github.mbackschat.a12.dm.consistency
  * It is a checker-owned type all the same, because the published checker carries no interpreter dependency.
  *
  * **Identity is the source's own `header.id`**, never a caller-supplied key: that is what an include's
- * `header.modelReferences[alias].reference` names, so a map keyed by anything else would resolve by
+ * `includeConfig.reference` names, so a map keyed by anything else would resolve by
  * coincidence. A repeated id is a diagnostic and the first source wins, so a report never depends on argument order.
  *
  * Construction admits every source; nothing is expanded until [check] names an entry.

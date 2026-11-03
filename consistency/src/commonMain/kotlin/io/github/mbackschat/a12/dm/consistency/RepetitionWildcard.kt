@@ -43,7 +43,7 @@ internal val TrackedDeclaration.isRepeatableGroup: Boolean
  * The same reading through the read barrier, charged as this declaration's CONTENT.
  *
  * Repeatability is a body member, so it is charged per declaration rather than folded into the set's shape.
- * Folding it in would be defensible — it is structural, like the variant filter — and it would be less
+ * Folding it in would be defensible — it is structural — and it would be less
  * precise and easy to get wrong: the shape would have to be redefined to include it in the same change, and
  * a charge narrower than what was read is the one direction that makes reuse UNSOUND rather than coarse.
  */

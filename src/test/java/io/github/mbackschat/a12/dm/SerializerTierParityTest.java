@@ -42,6 +42,7 @@ class SerializerTierParityTest {
             Map.entry("ENUM_TYPE_DUPLICATE_CATEGORIES", "n/a-structural: rulekit does not author enum types"),
             Map.entry("LOCALIZED_TEXT_ELEMENT_NULL_PROBLEM", "pre-checked: LocalizedText.checkDeclared (every declared locale)"),
             Map.entry("LOCALIZED_TEXT_TYPEDEF_NULL_PROBLEM", "n/a-structural: rulekit does not author typedefs"),
+            Map.entry("LOCALIZED_TEXT_UNIQUENESS_CRITERION_NULL_PROBLEM", "n/a-structural: rulekit does not author uniqueness criteria"),
             Map.entry("INDEX_FIELD_NAME_EMPTY", "n/a-structural: index fields are model structure (7f)"),
             Map.entry("SORT_FIELD_NAME_EMPTY", "n/a-structural: sort fields are model structure"),
             Map.entry("TYPEDEF_TYPE_REF_EMPTY", "n/a-structural: rulekit does not author typedefs"),

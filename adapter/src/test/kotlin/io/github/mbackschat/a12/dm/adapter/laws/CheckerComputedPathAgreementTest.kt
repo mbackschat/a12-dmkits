@@ -29,7 +29,6 @@ class CheckerComputedPathAgreementTest {
     private data class Row(
         val names: Map<At, String> = emptyMap(),
         val computation: Boolean = true,
-        val only: At? = null,
         val operation: String? = null,
         val indexedByLabel: Boolean = false,
     )
@@ -57,32 +56,32 @@ class CheckerComputedPathAgreementTest {
     }
 
     /**
-     * A blank name leaves the model unbuilt, and the checker says so; a no-break space is not blank, so its row
-     * is an ordinary agreement row. A blank name an `ONLY` filter deletes is built.
+     * A blank name is a sentence of A12's converter, which checks the model without that declaration (KF652), and the
+     * checker states the same classes; a no-break space is not blank, so its row is an ordinary agreement row.
+     *
+     * The root's sentence is its own. Two kinds of row leave no model at all, and ask only that the checker reports
+     * the model unbuildable too (KF652): an EMPTY root name, because this model's computation then resolves its path
+     * from a full name that starts with two slashes, and a blank computed field, because A12's reader finds the field
+     * its converter then leaves out, so the calculation check runs on a computation with no target.
      */
     @Test
-    fun aBlankNameLeavesTheModelUnbuilt() {
+    fun aBlankNameDrawsTheConverterSentence() {
         val wrong = BLANKS.flatMap { blank -> At.entries.map { at -> blank to at } }.mapNotNull { (blank, at) ->
             val json = model(Row(mapOf(at to blank)))
-            val a12 = kernel(json)
-            val ours = ours(json)
-            val label = "$at named ${blank.map { "U+%04X".format(it.code) }}"
-            when {
-                a12 != listOf(UNBUILT) -> "$label: A12 built it: $a12"
-                UNBUILT !in ours.map { it.substringBefore('@') } -> "$label: ours $ours"
-                else -> null
+            val a12 = kernel(json).map { it.substringBefore('@') }.sorted()
+            val ours = ours(json).map { it.substringBefore('@') }.sorted()
+            val agrees = when {
+                at == At.ROOT && blank.isEmpty() || at == At.LABEL -> a12 == listOf(UNBUILT) && UNBUILT in ours
+                at == At.ROOT -> a12 == ours && ROOT_GROUP_NAME_MISSING in a12
+                else -> a12 == ours && ELEMENT_NAME_MISSING in a12
             }
+            "$at named ${blank.map { "U+%04X".format(it.code) }}: A12 $a12, ours $ours".takeIf { !agrees }
         }
         assertEquals(emptyList<String>(), wrong)
         // The computed field's renamed relative path is also LEXED, so its row carries the lexer class (KF586).
         for (at in At.entries) {
             val json = model(Row(mapOf(at to "\u00A0")))
             assertEquals(kernel(json), ours(json), "$at named a no-break space")
-        }
-        for (at in listOf(At.LABEL, At.CHECK, At.FILL)) {
-            val json = model(Row(mapOf(at to " "), computation = at != At.LABEL, only = at))
-            assertEquals(emptyList<String>(), kernel(json), "$at blank but deleted: A12 builds it")
-            assertTrue(UNBUILT !in ours(json).map { it.substringBefore('@') }, "$at blank but deleted: ours")
         }
     }
 
@@ -114,11 +113,6 @@ class CheckerComputedPathAgreementTest {
         row.operation?.let { (fill.path("computationAlternatives")[0] as ObjectNode).put("operation", it) }
         if (row.indexedByLabel) (tree.at(At.BIN.pointer + "/Group") as ObjectNode).put("repeatability", 5)
             .put("indexFieldName", "Label")
-        row.only?.let { at ->
-            val element = tree.at(at.pointer) as ObjectNode
-            (element.path(element.path("type").asText()) as ObjectNode).putObject("variantFilter")
-                .put("filterType", "ONLY").putArray("variants").add("Wholesale")
-        }
         if (!row.computation) (tree.at(At.BIN.pointer + "/Group/elements") as ArrayNode).remove(3)
         // Renamed bottom-up, so each pointer still names the element it named in the drafted tree.
         for ((at, name) in row.names.entries.sortedByDescending { it.key.pointer.length }) {
@@ -147,6 +141,8 @@ class CheckerComputedPathAgreementTest {
     private companion object {
         const val ROOT_POINTER = "/content/modelRoot/rootGroups/0"
         const val UNBUILT = "CK_MODEL_NOT_BUILDABLE"
+        const val ELEMENT_NAME_MISSING = "RK_ELEMENT_NAME_MISSING"
+        const val ROOT_GROUP_NAME_MISSING = "RK_ROOT_GROUP_NAME_MISSING"
         const val PATH = "MVK_PATH_INVALID"
         const val INVALID_FIELDNAME = "MVK_ERROR_INVALID_FIELDNAME"
         const val GROUP_SENTENCE = "RK_GROUP_PATH_INVALID"
@@ -173,7 +169,6 @@ class CheckerComputedPathAgreementTest {
             "a dotted computed field beside a refused operation" to Row(mapOf(At.LABEL to "La.bel"), operation = "[Nope]"),
             "a dotted part beside an index target" to Row(mapOf(At.PART to "Co.de"), indexedByLabel = true),
             "an index target, the control" to Row(indexedByLabel = true),
-            "a dotted part beside a suppressed computation" to Row(mapOf(At.PART to "Co.de"), only = At.FILL),
             "an xml part" to Row(mapOf(At.PART to "xmlCode")),
             "an underscore bin below an xml part" to Row(mapOf(At.PART to "xmlCode", At.BIN to "_Bin")),
             "an underscore bin below an upper-case xml part" to Row(mapOf(At.PART to "XMLCode", At.BIN to "_Bin")),
@@ -190,7 +185,6 @@ class CheckerComputedPathAgreementTest {
             "a dotted computed field" to listOf(INVALID_FIELDNAME, "MVK_NAME_INVALID_DOT_COLON_A12_DV"),
             "a dotted part beside a refused operation" to listOf("MVK_INVALID_ENTITY", PATH),
             "a dotted part beside an index target" to listOf("MVK_ERROR_INDEX_AS_CALCULATED_FIELD", PATH),
-            "a dotted part beside a suppressed computation" to listOf(PATH),
             "an underscore bin below an xml part" to listOf(XML, XML, UNDERSCORE),
         )
     }

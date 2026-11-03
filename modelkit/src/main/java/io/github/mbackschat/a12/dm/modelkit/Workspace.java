@@ -39,12 +39,12 @@ public final class Workspace {
     }
 
     /**
-     * A model this one references — an {@code include} (carrying its mount {@code alias}) or a type-def
-     * import ({@code alias == null}) — and where it resolves <em>within the scanned set</em>:
+     * A model this one references — an {@code include} or a type-def import, by the referenced model's id — and
+     * where it resolves <em>within the scanned set</em>:
      * {@code resolvedPath} is the referenced model's relative path, or {@code null} when no scanned model
      * has that id (the reference dangles, or its target is out of the scan's scope).
      */
-    public record Reference(String ref, String alias, String resolvedPath) {
+    public record Reference(String ref, String resolvedPath) {
     }
 
     /**
@@ -158,11 +158,11 @@ public final class Workspace {
 
         List<Reference> includes = new ArrayList<>();
         for (ModelDocument.Include inc : doc.includes()) {
-            includes.add(new Reference(inc.reference(), inc.alias(), idToPath.get(inc.reference())));
+            includes.add(new Reference(inc.reference(), idToPath.get(inc.reference())));
         }
         List<Reference> imports = new ArrayList<>();
         for (String ref : doc.typeDefImports()) {
-            imports.add(new Reference(ref, null, idToPath.get(ref)));
+            imports.add(new Reference(ref, idToPath.get(ref)));
         }
 
         return new Model(

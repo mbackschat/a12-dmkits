@@ -2,13 +2,14 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * The model currently being descended: its own header (an alias resolves against the model that WROTE it,
- * not against the entry model), the origin every element it declares carries, and the include chain so far.
+ * The model currently being descended: its own header, the origin every element it declares carries, and the
+ * include chain so far.
  */
 internal data class PreparationScope(
     val header: JsonObject?,
@@ -24,16 +25,45 @@ internal data class PreparationScope(
     val exclusions: MountExclusions = MountExclusions.NONE,
     /** Whether these are the entry model's own declarations rather than a mounted provider's. */
     val isEntry: Boolean = false,
+    /** Whether these lie beneath an entry root group whose `name` is written as the empty text ([emptyRootRefusal]). */
+    val beneathEmptyRoot: Boolean = false,
 )
 
 /**
- * An entry declaration's `name` written as an object or an array, which A12 reads as the EMPTY name: the build
- * fails where the declaration is kept, and a filter that removes it leaves the empty-name sentence alone
- * ([KERNEL-FINDINGS KF644], measured on fields, rules and computations). Only the entry is measured, so a mounted
- * provider's declaration stays with the not-well-formed diagnostic.
+ * The reference member through which kernel 31.1.1's reader refuses a declaration beneath an empty-named root group,
+ * or null when it has none ([KERNEL-FINDINGS KF652]).
+ *
+ * The reader resolves every non-empty relative reference from the declaring element's full name, and under a root
+ * named `""` that name starts with two slashes, which its path arithmetic refuses as an illegal relative path. The
+ * references are a rule's error field, a computation's computed field and a group's index and sort fields; an empty
+ * one is not resolved, so it refuses nothing. The root's own index and sort fields resolve from `/` and pass, and
+ * so does every reference under an absent or `null` root name, which A12 joins into the path as the text `null`
+ * (all measured: `adapter.laws.CheckerConverterSentenceAgreementTest`).
+ */
+private fun emptyRootRefusal(body: JsonObject?, kind: DeclaredKind?): String? {
+    fun written(member: String) = member.takeIf { !body?.scalarText(it).isNullOrEmpty() }
+    return when (kind) {
+        DeclaredKind.RULE -> written("errorEntityRelPath")
+        DeclaredKind.COMPUTATION -> written("computedFieldRelPath")
+        DeclaredKind.GROUP -> written("indexFieldName")
+            ?: "sortFields[].name".takeIf {
+                (body?.get("sortFields") as? JsonArray)?.any { !(it as? JsonObject)?.scalarText("name").isNullOrEmpty() } == true
+            }
+        DeclaredKind.FIELD, null -> null
+    }
+}
+
+/** Whether this declaration writes its `name` as the empty text, as opposed to omitting it or writing `null`. */
+private fun JsonObject.writesEmptyName(): Boolean = (this["name"] as? JsonPrimitive)?.let { it.isString && it.content.isEmpty() } == true
+
+/**
+ * An entry declaration's `name` that is absent or `null`, which kernel 31.1.1's reader binds as no name: A12's
+ * converter states that and leaves the declaration out, and its basic sentence reads the name as empty, so the
+ * preparation reads the EMPTY name ([KERNEL-FINDINGS KF652], measured on fields, rules, computations and groups).
+ * Only the entry is measured, so a mounted provider's declaration stays with the not-well-formed diagnostic.
  */
 private fun PreparationScope.entryNameRead(member: JsonElement?): String? =
-    "".takeIf { isEntry && (member is JsonObject || member is JsonArray) }
+    "".takeIf { isEntry && (member == null || member is JsonNull) }
 
 /**
  * The executables an enclosing mount drops, as they reach the declaration being collected.
@@ -55,11 +85,15 @@ internal data class MountExclusions(val rules: Boolean, val computations: Boolea
         DeclaredKind.FIELD, DeclaredKind.GROUP -> false
     }
 
-    /** These, plus whatever the mount at [body] declares. */
-    fun and(body: JsonObject) = MountExclusions(
-        rules = rules || body.flagIsOn("excludeRules"),
-        computations = computations || body.flagIsOn("excludeComputations"),
-    )
+    /**
+     * These, plus whatever the mount's [includeConfig] declares; null when A12's reader refuses a flag, which DM 29.4
+     * binds through A12's shared boolean law ([KERNEL-FINDINGS KF651]).
+     */
+    fun and(includeConfig: JsonObject): MountExclusions? {
+        val excludesRules = includeConfig.flag("excludeRules") ?: return null
+        val excludesComputations = includeConfig.flag("excludeComputations") ?: return null
+        return MountExclusions(rules = rules || excludesRules, computations = computations || excludesComputations)
+    }
 
     companion object {
         val NONE = MountExclusions(rules = false, computations = false)
@@ -91,10 +125,11 @@ internal class Collector(
         // `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
         // descended into. `id` is not in that set: it identifies the element but no longer locates it.
         if (kind == null || name == null) {
-            // An ABSENT name is refused by A12's reader, so no model loads (KF644); a `null` one it admits.
-            if (scope.isEntry && kind != null && "name" !in element) {
-                readerRefusals += "A declaration under `${enclosing ?: "the model root"}` has no `name`, which A12's reader " +
-                    "refuses, so the model never loads"
+            // Kernel 31.1.1's reader cannot bind an object or an array as a name, so no model loads (KF652).
+            val written = element["name"]
+            if (scope.isEntry && kind != null && (written is JsonObject || written is JsonArray)) {
+                readerRefusals += "A declaration under `${enclosing ?: "the model root"}` has a `name` that is not text, " +
+                    "which A12's reader refuses, so the model never loads"
             }
             return malformed(enclosing, "a declaration must carry both `type` and `name`", scope)
         }
@@ -107,18 +142,25 @@ internal class Collector(
         // An enclosing mount's exclusion drops this declaration from the model A12 checks, so it is not
         // collected at all.
         val excluded = declared != null && scope.exclusions.excludes(declared)
-        // The envelope is optional — the Kernel default-constructs the element when it is absent — but a
-        // present one must be an object, since the Kernel binds it to the kind's type. Diagnosed BEFORE the
-        // exclusion, for the reason the `id` check above states: A12's reader binds every declaration before
-        // expansion drops any of them, so either unreadable member makes the source unreadable whether or
-        // not this mount keeps the declaration.
+        // A present envelope must be an object, since the Kernel binds it to the kind's type; a Group's is
+        // read as an empty group when it is missing or `null` (KF3). Diagnosed BEFORE the exclusion, for the
+        // reason the `id` check above states: A12's reader binds every declaration before expansion drops any
+        // of them, so either unreadable member makes the source unreadable whether or not this mount keeps the
+        // declaration.
         val envelope = element[kind]
-        val unreadableEnvelope = envelope != null && envelope !is JsonObject
+        val noValueGroupBody = declared == DeclaredKind.GROUP && (envelope == null || envelope is JsonNull)
+        val unreadableEnvelope = envelope != null && envelope !is JsonObject && !noValueGroupBody
         if (unreadableEnvelope) {
             malformed(path, "`$kind` must be a JSON object", scope)
         }
         if (scope.isEntry) {
             readerRefusals += element.declarationTextRefusals(kind).map { "In `$path`, $it, so A12's reader refuses the source and the model never loads" }
+        }
+        if (scope.beneathEmptyRoot) {
+            emptyRootRefusal(envelope as? JsonObject, declared)?.let { member ->
+                readerRefusals += "`$path` resolves its `$member` from beneath a root group whose name is empty, which " +
+                    "A12's reader cannot do, so the model never loads"
+            }
         }
         if (excluded) {
             return
@@ -128,7 +170,8 @@ internal class Collector(
             return
         }
         when (declared) {
-            DeclaredKind.GROUP -> descendGroup(envelope, path, scope)
+            DeclaredKind.GROUP -> descendGroup(envelope as? JsonObject, path,
+                if (scope.isEntry && enclosing == null && element.writesEmptyName()) scope.copy(beneathEmptyRoot = true) else scope)
             // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
             // rather than passing as an inert declaration this build merely does not handle.
             null -> malformed(path, "`$kind` is not an A12 element type", scope)
@@ -137,64 +180,68 @@ internal class Collector(
     }
 
     /**
-     * A group either mounts another model or holds its own elements — never both.
+     * A group either mounts another model or holds its own elements, and a mount wins: A12 31.1.1 replaces a
+     * mount group's local elements with the included content ([KERNEL-FINDINGS KF651]). A DM 28 member (`modelAlias`
+     * or a mount option beside `includeConfig`) is ignored by A12, which reads the group as plain, so it is read
+     * as plain here too.
      *
-     * The test is the Kernel's own idempotency guard: an alias with elements already beside it is an
-     * ALREADY-EXPANDED mount, and its local elements win while the reference is silently ignored (KF3's
-     * malformed-input matrix). So a group with elements is descended, whatever its alias says.
-     *
-     * An `attachment`-usage group SHIELDS its subtree from every exclusion applied from above it (KF3), which
-     * is why the shield is read HERE — from the body being descended — rather than from the mount group that
-     * named the provider. That placement is what reproduces the two halves A12 measures: a `SINGLE_RG`
-     * mount's slot is REPLACED by its provider root's, so an `attachment` marker on the mount is cleared by a
-     * provider that declares none, while the provider root's own marker shields the subtree that landed on
-     * the mount's path.
+     * An `attachment`-usage group SHIELDS its subtree from every exclusion applied from above it (KF3). On kernel
+     * 31.1.1 a mount group keeps its OWN `usageType`, so its marker is read here, before the mount dispatches, and
+     * shields its content from every enclosing mount's exclusions. The one group whose marker shields nothing above
+     * it is a SINGLE_RG provider root ([discardedRoot]): it disappears into its mount, and its marker shields only
+     * that mount's own exclusions, which [mountSingleRoot] has already dropped (measured by
+     * `adapter.MountUsageTypeKernelTest`; 30.8.1 instead copied the root's slot onto the mount).
      */
-    private fun descendGroup(body: JsonObject?, path: String, scope: PreparationScope) {
-        val elements = body?.get("elements")
-        val alias = (body?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
-        if (alias != null && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
-            // A12 refuses an empty `modelAlias` on a mount ("cannot be found", KF593), so it is a mount A12 never
-            // expands rather than an ordinary empty group.
-            if (alias.isEmpty()) return unexpanded(path, alias, "the `modelAlias` is empty, so A12 cannot find the included model")
-            return mount(alias, path, body, scope)
-        }
-        val inner = if (body?.scalarText("usageType") == ATTACHMENT_USAGE) {
+    private fun descendGroup(body: JsonObject?, path: String, scope: PreparationScope, discardedRoot: Boolean = false) {
+        val inner = if (!discardedRoot && body?.scalarText("usageType") == ATTACHMENT_USAGE) {
             scope.copy(exclusions = MountExclusions.NONE)
         } else {
             scope
         }
-        each(elements, path, "$path's `elements`", inner) { collect(it, path, path, inner) }
+        when (val config = body?.get("includeConfig")) {
+            null, is JsonNull -> Unit
+            is JsonObject -> return mount(config, path, inner)
+            else -> return unexpanded(path, null, "`includeConfig` is not an object, so A12 builds no model from " +
+                "the source and nothing here is a verdict about it")
+        }
+        each(body?.get("elements"), path, "$path's `elements`", inner) { collect(it, path, path, inner) }
     }
 
-    /** Expand the model [alias] names into the mount group at [path], or state why it stayed unexpanded. */
-    private fun mount(alias: String, path: String, body: JsonObject, scope: PreparationScope) {
-        // `includeLevel` is a strict two-valued enum: any other spelling — `model_root`, a number, a blank —
-        // makes the model UNREADABLE ("No enum constant …IncludeLevel.x", measured 2026-09-12), so A12 never
-        // judges it, and expanding it as the default would invent a verdict for a source the Kernel refuses.
-        // This states it as a gap rather than as the rejection A12 issues, which under-reports deliberately:
-        // the checker owns no code for an unbuildable model beyond `CK_MODEL_NOT_BUILDABLE`, and reaching
-        // that from here would need the mount path to carry findings as well as gaps.
-        val level = IncludeLevel.declaredIn(body) ?: return unexpanded(
-            path, alias,
-            "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
+    /**
+     * Expand the model [config] names into the mount group at [path], or state why it stayed unexpanded.
+     *
+     * Each refusal of A12's own reader below is stated as a gap rather than as the rejection A12 issues, which
+     * under-reports deliberately: the checker owns no code for an unbuildable model beyond
+     * `CK_MODEL_NOT_BUILDABLE`, and reaching that from here would need the mount path to carry findings as well
+     * as gaps.
+     */
+    private fun mount(config: JsonObject, path: String, scope: PreparationScope) {
+        val declared = config["reference"]
+        val reference = (declared as? JsonPrimitive)?.contentOrNull
+        if (declared != null && reference == null) {
+            return unexpanded(path, null, "`includeConfig.reference` is not a text, so A12 builds no model from " +
+                "the source and nothing here is a verdict about it")
+        }
+        // StringUtils.isBlank, so a no-break-space reference names a model (KF651).
+        if (reference == null || reference.isA12Blank()) {
+            return unexpanded(path, reference, "`includeConfig.reference` names no model, so A12 refuses to " +
+                "expand the mount")
+        }
+        val level = IncludeLevel.declaredIn(config) ?: return unexpanded(
+            path, reference,
+            "`includeLevel` carries a value A12's own reader refuses, so the model does not load at all " +
                 "and nothing here is a verdict about it",
         )
-        val entry = scope.header.entryForAlias(alias)
-        if (entry?.scalarText("purpose") == TYPE_DEFINITIONS_PURPOSE) {
-            return unexpanded(path, alias, "the `header.modelReferences` entry for this alias has purpose " +
-                "`typeDefinitions`, and A12 refuses to expand a mount through one")
-        }
-        val reference = entry?.scalarText("reference")
-            // StringUtils.isBlank, so a no-break-space reference names a model (measured: WorkspaceBlankTextDiffTest).
-            ?.takeUnless { it.isA12Blank() }
-            ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias with a non-blank " +
-                "`reference`, so A12 cannot find the included model")
+        val exclusions = scope.exclusions.and(config) ?: return unexpanded(
+            path, reference,
+            "an exclusion flag carries a value A12's own reader refuses, so the model does not load at all " +
+                "and nothing here is a verdict about it",
+        )
         if (reference in scope.visiting) {
-            return unexpanded(path, alias, "`$reference` is already being included, so the mount is a cycle")
+            return unexpanded(path, reference, "`$reference` is already being included, so the mount is a cycle")
         }
         val provider = providers[reference]
-            ?: return unexpanded(path, alias, "no source with `header.id` `$reference` was supplied")
+            ?: return unexpanded(path, reference, "no source with `header.id` `$reference` was supplied")
         val providerHeader = provider.header
         // A12 refuses to expand a provider that does not declare every locale of the entry model — a
         // DocumentModelExpansionException raised before any declaration is read, so the whole model is
@@ -205,13 +252,13 @@ internal class Collector(
         // never builds.
         val providerLocales = providerHeader.declaredLocales()
         if (providerLocales.unreadable.isNotEmpty()) {
-            return unexpanded(path, alias, "`$reference` declares the locale code " +
+            return unexpanded(path, reference, "`$reference` declares the locale code " +
                 "${providerLocales.unreadable.joinToString(", ")}, which A12 cannot use, so that source " +
                 "never loads and nothing here is a verdict about the model")
         }
         val uncovered = entryLocales - providerLocales.keys.toSet()
         if (uncovered.isNotEmpty()) {
-            return unexpanded(path, alias, "`$reference` does not declare the entry model's " +
+            return unexpanded(path, reference, "`$reference` does not declare the entry model's " +
                 "${uncovered.joinToString(", ")}, so A12 refuses to expand this include at all and " +
                 "nothing here is a verdict about the model")
         }
@@ -222,7 +269,7 @@ internal class Collector(
         // filtered out and mounted around: at MODEL_ROOT that silently placed the remaining roots and at
         // SINGLE_RG it silently satisfied the single-root count.
         if (roots.size != declaredRoots?.size ?: 0) {
-            return unexpanded(path, alias, "a root element of `$reference` is not a JSON object, which " +
+            return unexpanded(path, reference, "a root element of `$reference` is not a JSON object, which " +
                 "A12's own expansion refuses, so nothing here is a verdict about the model")
         }
         val target = MountTarget(
@@ -234,42 +281,52 @@ internal class Collector(
             shortNameFallbackAllowed = providerContent.fieldRefByShortNameAllowed(),
             diagnosticLabel = provider.source.diagnosticLabel,
             visiting = scope.visiting + reference,
-            // This mount's own exclusions on top of whatever it was mounted under. The mount group's own
-            // `usageType` is deliberately not consulted: A12 filters the mounted CHILDREN, so the shield is
-            // always some descended group's, never the mount's (KF3).
-            exclusions = scope.exclusions.and(body),
+            // This mount's own exclusions on top of whatever it was mounted under, kept apart from the outer ones
+            // because the provider root's marker shields only the former (see [descendGroup]).
+            outerExclusions = scope.exclusions,
+            exclusions = exclusions,
         )
         when (level) {
-            IncludeLevel.SINGLE_RG -> mountSingleRoot(alias, path, roots, target)
-            IncludeLevel.MODEL_ROOT -> mountModelRoots(alias, path, roots, target)
+            IncludeLevel.SINGLE_RG -> mountSingleRoot(path, roots, target)
+            IncludeLevel.MODEL_ROOT -> mountModelRoots(path, roots, target)
         }
     }
 
     /** The default level: the provider's sole root group is REPLACED by the mount group (KF3). */
-    private fun mountSingleRoot(alias: String, path: String, roots: List<JsonObject>, target: MountTarget) {
+    private fun mountSingleRoot(path: String, roots: List<JsonObject>, target: MountTarget) {
         // SINGLE_RG requires exactly one root group in the provider, and the Kernel refuses zero or several
         // rather than choosing (KF3). Choosing here would mount a tree A12 would not have built.
         val root = roots.singleOrNull()
-            ?: return unexpanded(path, alias, "a SINGLE_RG include needs exactly one root group in " +
+            ?: return unexpanded(path, target.reference, "a SINGLE_RG include needs exactly one root group in " +
                 "`${target.reference}`, which declares ${roots.size}")
-        unmountableRoot(root, target.reference)?.let { return unexpanded(path, alias, it) }
+        unmountableRoot(root, target.reference)?.let { return unexpanded(path, target.reference, it) }
         val rootName = root.scalarText("name")
-            ?: return unexpanded(path, alias, "the root group of `${target.reference}` carries no `name`")
+            ?: return unexpanded(path, target.reference, "the root group of `${target.reference}` carries no `name`")
         // SINGLE_RG additionally demands a NON-REPEATABLE root, which this level cannot express any other
         // way: the provider root becomes the mount group, and the mount's own repeatability is the host's.
-        (root["Group"] as? JsonObject).singleRootRepeatabilityRefusal()?.let { refusal ->
-            return unexpanded(path, alias, "the root group of `${target.reference}` $refusal, so nothing " +
+        val rootBody = when (val body = root["Group"]) {
+            null, is JsonNull -> null
+            is JsonObject -> body
+            // A reader refusal, stated as a gap for the reason [mount] gives ([KERNEL-FINDINGS KF3],
+            // `adapter.ElementBodyReadingDiffTest`); a MODEL_ROOT root is a collected declaration, reported by its family.
+            else -> return unexpanded(path, target.reference, "the root group of `${target.reference}` has a " +
+                "`Group` body that is not an object, which A12's reader refuses, so nothing here is a verdict about the model")
+        }
+        rootBody.singleRootRepeatabilityRefusal()?.let { refusal ->
+            return unexpanded(path, target.reference, "the root group of `${target.reference}` $refusal, so nothing " +
                 "here is a verdict about the model")
         }
+        // The discarded root's attachment marker shields this mount's own exclusions and nothing above them.
+        val exclusions = if (rootBody?.scalarText("usageType") == ATTACHMENT_USAGE) target.outerExclusions else null
         // The provider's root group DISAPPEARS into the mount, so its own absolute paths — which all begin
         // with that root — now begin with the mount's path instead.
-        val nested = target.scope(mapOf("/$rootName" to path))
+        val nested = target.scope(mapOf("/$rootName" to path), exclusions)
         // The provider is FULLY EXPANDED before it is mounted (KF3), so its root group gets the same
         // treatment as any other: when it is itself an unexpanded mount, that include is expanded into this
         // same path. Reading its `elements` directly instead would find the empty array a mount group carries
-        // and mount nothing at all — silently, since the inner alias is never visited and so never reported
+        // and mount nothing at all — silently, since the inner mount is never visited and so never reported
         // (measured against the Kernel by the `single-provider-root-include` case of the shared matrix).
-        descendGroup(root["Group"] as? JsonObject, path, nested)
+        descendGroup(rootBody, path, nested, discardedRoot = true)
     }
 
     /**
@@ -282,17 +339,16 @@ internal class Collector(
      * outright, so placing its siblings would mount a tree the Kernel never builds — and dropping one root
      * silently is exactly the confidently-wrong tree this module refuses to produce.
      */
-    private fun mountModelRoots(alias: String, path: String, roots: List<JsonObject>, target: MountTarget) {
-        // Whether A12 admits a provider with no root group at all is not measured; mounting nothing is the
-        // one reading this module refuses either way, because it leaves no facts AND no gap saying so.
+    private fun mountModelRoots(path: String, roots: List<JsonObject>, target: MountTarget) {
+        // Kernel 31.1.1 builds and checks a provider with no root group here, and the mount holds nothing
+        // ([KERNEL-FINDINGS KF3], `adapter.ElementBodyReadingDiffTest`), so there is nothing to collect.
         if (roots.isEmpty()) {
-            return unexpanded(path, alias, "a MODEL_ROOT include has nothing to mount from " +
-                "`${target.reference}`, which declares no root group")
+            return
         }
-        roots.forEach { root -> unmountableRoot(root, target.reference)?.let { return unexpanded(path, alias, it) } }
+        roots.forEach { root -> unmountableRoot(root, target.reference)?.let { return unexpanded(path, target.reference, it) } }
         val names = roots.map { root ->
             root.scalarText("name")
-                ?: return unexpanded(path, alias, "a root group of `${target.reference}` carries no `name`")
+                ?: return unexpanded(path, target.reference, "a root group of `${target.reference}` carries no `name`")
         }
         val nested = target.scope(names.associate { name -> "/$name" to "$path/$name" })
         // Each root is collected as an ordinary declaration, which places it at `$path/$name` and descends —
@@ -313,19 +369,22 @@ internal class Collector(
         private val shortNameFallbackAllowed: Boolean,
         private val diagnosticLabel: String?,
         private val visiting: Set<String>,
+        /** What the enclosing mounts exclude, without this mount's own flags. */
+        val outerExclusions: MountExclusions,
         private val exclusions: MountExclusions,
     ) {
-        fun scope(mountedPrefixes: Map<String, String>) = PreparationScope(
+        /** The scope this mount's declarations are collected in; [shieldedExclusions] replaces its exclusions. */
+        fun scope(mountedPrefixes: Map<String, String>, shieldedExclusions: MountExclusions? = null) = PreparationScope(
             header = header,
             origin = DeclarationOrigin(reference, mountedPrefixes, shortNameFallbackAllowed),
             visiting = visiting,
             diagnosticLabel = diagnosticLabel,
-            exclusions = exclusions,
+            exclusions = shieldedExclusions ?: exclusions,
         )
     }
 
-    private fun unexpanded(path: String, alias: String, reason: String) {
-        unexpandedMounts += UnexpandedMount(path, alias, reason)
+    private fun unexpanded(path: String, reference: String?, reason: String) {
+        unexpandedMounts += UnexpandedMount(path, reference, reason)
     }
 
     /** Iterate a member that must be an array, diagnosing rather than raising when it is not. */
@@ -354,23 +413,19 @@ internal class Collector(
 /**
  * Why A12's own expansion refuses to mount this provider root, or null when it will mount it.
  *
- * Both shapes are measured refusals — a known non-Group root element, and a Group root without its object
- * body ([KERNEL-FINDINGS KF3], `adapter.WorkspaceIncludeStructureKernelTest`). Reading them as an empty
- * subtree instead is the quieter failure and the worse one: the mount contributes nothing, no gap says so,
- * and every reference into it becomes a finding against a model A12 never built.
- *
- * KF3 measures both on a `SINGLE_RG` mount. They are applied at `MODEL_ROOT` as well, where the direction is
- * what settles it: the two levels reach the same deserializer, so suspending costs coverage if A12 turns out
- * to admit such a root there and invents nothing if it does not.
+ * A known non-Group root element is a measured refusal ([KERNEL-FINDINGS KF3], `adapter.WorkspaceIncludeStructureKernelTest`).
+ * Reading it as an empty subtree instead is the quieter failure and the worse one: the mount contributes nothing,
+ * no gap says so, and every reference into it becomes a finding against a model A12 never built. A root's `Group`
+ * body is not judged here: a missing or `null` one is an empty group, and any other non-object one is a reader
+ * refusal each include level states where it reads the body.
  */
-private fun unmountableRoot(root: JsonObject, reference: String): String? = when {
-    root.scalarText("type") != DeclaredKind.GROUP.wire -> "the root element of `$reference` is " +
-        "`${root.scalarText("type")}` rather than a Group, which A12's own expansion refuses, so nothing here is " +
-        "a verdict about the model"
-    root["Group"] !is JsonObject -> "the root group of `$reference` carries no `Group` body, so A12's " +
-        "expansion has nothing to mount and refuses the model"
-    else -> null
-}
+private fun unmountableRoot(root: JsonObject, reference: String): String? =
+    if (root.scalarText("type") != DeclaredKind.GROUP.wire) {
+        "the root element of `$reference` is `${root.scalarText("type")}` rather than a Group, which A12's own " +
+            "expansion refuses, so nothing here is a verdict about the model"
+    } else {
+        null
+    }
 
 /**
  * Why A12 refuses this provider root's `repeatability` under `SINGLE_RG`, or null when it admits it.
@@ -382,20 +437,18 @@ private fun unmountableRoot(root: JsonObject, reference: String): String? = when
  *
  * The admitted sets are measured and are NOT the member's obvious reading. A NUMBER truncates toward zero, so
  * `1.9`, `1.5`, `1.1`, `0.5`, `0`, `-1`, `-1.5` are admitted while `2` and `2.1` are not ([KERNEL-FINDINGS
- * KF3]). A STRING binds as an INTEGER instead: `"1"`, `" 1 "`, `"01"`, `"0"`, `"-1"` and the empty string are
- * admitted, `"1.5"`, `"1f"`, `"NaN"` and `"one"` are reader refusals, and `"2"` reaches the repeatable test
- * (measured 2026-09-15, `adapter.WorkspaceIncludeStructureKernelTest`, after this function had generalized
- * the number rule to strings and so mounted providers A12 refuses).
+ * KF3]). A STRING binds as an INTEGER instead: `"1"`, `" 1 "`, `"01"`, `"0"` and `"-1"` are admitted, `"1.5"`,
+ * `"1f"`, `"NaN"` and `"one"` are reader refusals, and `"2"` reaches the repeatable test (measured 2026-09-15,
+ * `adapter.WorkspaceIncludeStructureKernelTest`, after this function had generalized the number rule to strings and
+ * so mounted providers A12 refuses). The member is a primitive `int`, so on kernel 31 a JSON `null` and the empty
+ * string are reader refusals too (KF593).
  */
 private fun JsonObject?.singleRootRepeatabilityRefusal(): String? {
     val declared = this?.get("repeatability") ?: return null
     val primitive = declared as? JsonPrimitive ?: return UNREADABLE_REPEATABILITY
-    // The group reader's own binding (KF590, KF593); no value, a JSON or textual null included, is admitted.
-    return when (val binding = primitive.bindJavaInt()) {
-        is JavaIntBinding.Bound -> if (binding.value > 1) REPEATABLE_ROOT else null
-        JavaIntBinding.NoValue -> null
-        JavaIntBinding.Unbindable -> UNREADABLE_REPEATABILITY
-    }
+    // The group reader's own primitive binding (KF590, KF593): on kernel 31 a JSON or textual null is unbindable.
+    val count = primitive.bindJavaPrimitiveInt() ?: return UNREADABLE_REPEATABILITY
+    return if (count > 1) REPEATABLE_ROOT else null
 }
 
 private const val UNREADABLE_REPEATABILITY =
@@ -413,13 +466,31 @@ private enum class IncludeLevel {
 
     companion object {
         /**
-         * The level [body] declares — an absent member is [SINGLE_RG], A12's own default — and null for any
-         * other spelling, including a non-string one, which A12's reader refuses outright.
+         * The level [includeConfig] declares, bound as A12 binds its enum, and null where A12's reader refuses it
+         * ([KERNEL-FINDINGS KF651]). An absent member is [SINGLE_RG]; a constant's name or its ordinal binds, as an
+         * integer token or as the ordinal's digits, all after a Java `trim()`.
          */
-        fun declaredIn(body: JsonObject): IncludeLevel? {
-            val declared = body["includeLevel"] ?: return SINGLE_RG
-            val spelling = (declared as? JsonPrimitive)?.contentOrNull
-            return entries.firstOrNull { it.name == spelling }
+        fun declaredIn(includeConfig: JsonObject): IncludeLevel? {
+            val declared = includeConfig["includeLevel"] ?: return SINGLE_RG
+            val primitive = declared as? JsonPrimitive ?: return null
+            return when {
+                primitive is JsonNull -> null
+                primitive.isString -> primitive.content.trim { it <= ' ' }.let { text ->
+                    entries.firstOrNull { it.name == text || it.ordinal.toString() == text }
+                }
+                else -> ordinalLiteral(primitive.content)?.let { ordinal -> entries.getOrNull(ordinal) }
+            }
+        }
+
+        /** An integer token's value when it is a small ordinal; `-0` is 0. */
+        private fun ordinalLiteral(literal: String): Int? {
+            val negative = literal.startsWith("-")
+            val digits = if (negative) literal.drop(1) else literal
+            if (digits.isEmpty() || !digits.all { it in '0'..'9' }) {
+                return null
+            }
+            val magnitude = digits.trimStart('0').ifEmpty { "0" }
+            return magnitude.takeIf { it.length == 1 && (!negative || it == "0") }?.toInt()
         }
     }
 }
@@ -464,33 +535,6 @@ internal fun JsonObject?.declaredLocales(): DeclaredLocales {
     }
     return DeclaredLocales(keys, unreadable, repeated.toList())
 }
-
-/**
- * The model reference entry an alias names. `modelAlias` is only a header lookup key — never a tree node — and the
- * header it is looked up in is the one belonging to the model that WROTE the mount, which is what makes a
- * nested include resolve against its own provider's references rather than the entry model's (KF3). The LAST entry
- * carrying the alias, whatever its purpose, is the one A12 keys it to (KF593).
- */
-private fun JsonObject?.entryForAlias(alias: String): JsonObject? =
-    (this?.get("modelReferences") as? JsonArray)
-        ?.filterIsInstance<JsonObject>()
-        ?.lastOrNull { it.scalarText("alias") == alias }
-
-private const val TYPE_DEFINITIONS_PURPOSE = "typeDefinitions"
-
-/**
- * Whether a mount flag is ON. Only the JSON BOOLEAN `true` counts: the Kernel reads every non-Boolean
- * `excludeRules`/`excludeComputations` as FALSE and lets the content survive (KF3's coercion matrix, and
- * re-measured 2026-09-12 over `true`, `"true"`, `"yes"`, `1` and `{}` — only the boolean drops the rule), so
- * a malformed value must not suspend an include that A12 would expand in full. The quoted `"true"` is the one
- * that looks harmless and is not, which is why `isString` decides rather than the text.
- *
- * Deliberately NOT the coercion [flag] applies: `fieldRefByShortNameAllowed` DOES accept its quoted
- * spelling (measured separately). Two members, two Jackson bindings, and assuming one rule for both is how
- * this was wrong in the first place.
- */
-private fun JsonObject.flagIsOn(key: String): Boolean =
-    (this[key] as? JsonPrimitive)?.let { !it.isString && it.content == "true" } == true
 
 /**
  * A member read the way the Kernel reads it: `ElementDeserializer` takes `type`, `id` and `name` through

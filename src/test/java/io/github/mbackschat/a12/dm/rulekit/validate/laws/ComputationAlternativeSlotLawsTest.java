@@ -261,6 +261,16 @@ class ComputationAlternativeSlotLawsTest {
     }
 
     /**
+     * An OMITTED envelope is not the empty one the alternative rows above read: it names no computed field, so
+     * kernel 31.1.1 reads it and cannot build the model (KERNEL-FINDINGS KF654), which is why the portable checker
+     * reports {@code CK_MODEL_NOT_BUILDABLE} beside its alternative analysis.
+     */
+    @Test
+    void anOmittedComputationEnvelopeLeavesNoModel() {
+        assertEquals(KernelLaws.NOT_BUILDABLE, KernelLaws.verdictOf(withEnvelope(null)));
+    }
+
+    /**
      * How many notifications A12 raises for two unguarded alternatives — one shared, or one each.
      *
      * <p>The code table cannot answer it, because {@link KernelLaws#verdictOf} de-duplicates codes and one
@@ -282,7 +292,7 @@ class ComputationAlternativeSlotLawsTest {
         assertEquals(1, raised, () -> "notifications for two unguarded alternatives: " + rejected.notifications());
     }
 
-    /** The probe with the computation's whole envelope replaced by [rawJson]. */
+    /** The probe with the computation's whole envelope replaced by [rawJson], or removed when null. */
     private static String withEnvelope(String rawJson) {
         String written = ModelWriter.addComputation(Fixtures.subscriptionJson(), DraftComputation.builder()
                 .groupPath(GROUP).name("AlternativeProbe").computedFieldRelPath("../EffectiveFee")
@@ -292,7 +302,7 @@ class ComputationAlternativeSlotLawsTest {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(written);
             for (var top : root.path("content").path("modelRoot").path("rootGroups")) {
-                if (replaceEnvelope(top, MAPPER.readTree(rawJson))) {
+                if (replaceEnvelope(top, rawJson == null ? MAPPER.missingNode() : MAPPER.readTree(rawJson))) {
                     return root.toString();
                 }
             }
@@ -305,7 +315,11 @@ class ComputationAlternativeSlotLawsTest {
     private static boolean replaceEnvelope(JsonNode node,
             JsonNode envelope) {
         if ("AlternativeProbe".equals(node.path("name").asText()) && node.has("Computation")) {
-            ((ObjectNode) node).set("Computation", envelope);
+            if (envelope.isMissingNode()) {
+                ((ObjectNode) node).remove("Computation");
+            } else {
+                ((ObjectNode) node).set("Computation", envelope);
+            }
             return true;
         }
         for (var child : node.path("Group").path("elements")) {

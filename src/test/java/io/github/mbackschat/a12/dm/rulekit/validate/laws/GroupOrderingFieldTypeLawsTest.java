@@ -117,11 +117,10 @@ class GroupOrderingFieldTypeLawsTest {
         // An empty object carries no `type` discriminator, so A12's reader refuses the source — a different
         // tier from an absent member, and the reason those two shapes are separate rows.
         expected.put("an EMPTY fieldType object", KernelLaws.UNREADABLE);
-        // The flag is structurally string-only rather than merely read string-only: `NumberType` declares no
-        // such member, so the reader refuses outright. That settles the source reading of
-        // `isNoValueValidation()` being declared on `FormatDefinitionString` — the same flag on another type
-        // is not a legal model at all, so there is no "same flag, other type" case for a checker to judge.
-        expected.put("a NUMBER type carrying the same flag", KernelLaws.UNREADABLE);
+        // The flag is structurally string-only: `NumberType` declares no such member, and kernel 31.1.1's reader
+        // passes over a member it does not know (30.8.1 refused it), so the field is a plain number and a legal
+        // key (KERNEL-FINDINGS KF653).
+        expected.put("a NUMBER type carrying the same flag", KernelLaws.ADMITTED);
         expected.put("a plain number type", KernelLaws.ADMITTED);
         // COERCED: Jackson binds the string "true" into the boolean member, so the gate fires — and a second
         // law fires with it, since `noValueValidation` without `lineBreaksPermitted` is its own refusal. A
@@ -136,7 +135,8 @@ class GroupOrderingFieldTypeLawsTest {
         expected.put("the flag as an arbitrary string", KernelLaws.UNREADABLE);
         expected.put("a type name A12 does not have", KernelLaws.UNREADABLE);
         expected.put("a type discriminator naming a body that is absent", KernelLaws.ADMITTED);
-        expected.put("the flag explicitly null", KernelLaws.ADMITTED);
+        // Kernel 31.1.1's Jackson 3 refuses a `null` for the primitive boolean (30.8.1 read it as false).
+        expected.put("the flag explicitly null", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "the shapes around a no-value-validation string as an ordering field");
     }
 
@@ -150,7 +150,9 @@ class GroupOrderingFieldTypeLawsTest {
      * <ul>
      * <li>the DM-JSON binding — {@code md.model.a12internal.fieldtypes.EnumerationType} declares
      *     {@code values}, {@code categories}, {@code errorMessage}, {@code alphabeticalSorting} and
-     *     {@code sValue}, and no table member at all. That is what this test MEASURES;</li>
+     *     {@code sValue}, and no table member at all. That is what this test MEASURES: 30.8.1's reader refused
+     *     {@code tableName}, and 31.1.1's passes over it, leaving an enumeration with no values, which no model
+     *     may hold whatever the field is used for (KERNEL-FINDINGS KF653);</li>
      * <li>the construction path — {@code TypeConverter.convertEnumeration} builds
      *     {@code EnumerationTypeImpl(errorMessages, values, categoryValues, xmlValues, sValue)}, whose
      *     constructor takes no table argument, so no caller could supply one;</li>
@@ -176,12 +178,15 @@ class GroupOrderingFieldTypeLawsTest {
         actual.put("a plain value-list enumeration, as the index", verdictWith(VALUE_LIST_ENUM, "indexFieldName"));
         actual.put("an enumeration naming a value table, as a SORT field",
                 verdictWith(TABLE_ENUM, "sortFields"));
+        actual.put("an enumeration naming a value table, ordering nothing", verdictWith(TABLE_ENUM, null));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        // The READER refuses it — the model never reaches the gate, on either member.
-        expected.put("an enumeration naming a value table, as the index", KernelLaws.UNREADABLE);
+        // The model is not built, on either member, and the last row shows the ordering is not why: "The model
+        // is invalid. It contains Enumerations without any values."
+        expected.put("an enumeration naming a value table, as the index", KernelLaws.NOT_BUILDABLE);
         expected.put("a plain value-list enumeration, as the index", KernelLaws.ADMITTED);
-        expected.put("an enumeration naming a value table, as a SORT field", KernelLaws.UNREADABLE);
+        expected.put("an enumeration naming a value table, as a SORT field", KernelLaws.NOT_BUILDABLE);
+        expected.put("an enumeration naming a value table, ordering nothing", KernelLaws.NOT_BUILDABLE);
         assertEquals(expected, actual, "a table-referencing enumeration as an ordering field");
     }
 
@@ -203,7 +208,7 @@ class GroupOrderingFieldTypeLawsTest {
 
     /**
      * The order fixture with {@code /Order/Items/Sku} retyped to [fieldType] (or left alone when null) and
-     * named by [member] as that group's ordering key.
+     * named by [member] as that group's ordering key, or by none when [member] is null.
      */
     private static String verdictWith(String fieldType, String member) {
         try {
@@ -219,8 +224,10 @@ class GroupOrderingFieldTypeLawsTest {
             // The fixture already keys this group by `Sku`, so leaving that in place would fire the INDEX
             // gate beside the sort one and measure both at once.
             items.remove("indexFieldName");
-            items.set(member, MAPPER.readTree(
-                    "sortFields".equals(member) ? "[{\"name\":\"Sku\"}]" : "\"Sku\""));
+            if (member != null) {
+                items.set(member, MAPPER.readTree(
+                        "sortFields".equals(member) ? "[{\"name\":\"Sku\"}]" : "\"Sku\""));
+            }
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture and the raw type fragment must parse", unreadable);
@@ -237,4 +244,5 @@ class GroupOrderingFieldTypeLawsTest {
         }
         throw new IllegalStateException("the fixture no longer declares the group `" + name + "`");
     }
+
 }

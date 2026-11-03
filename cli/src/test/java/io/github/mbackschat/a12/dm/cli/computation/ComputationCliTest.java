@@ -153,7 +153,6 @@ class ComputationCliTest {
                 .rootGroup("Pricelist", p -> p.numberField("ListPrice", n -> n.fractionDigits(2)))
                 .build().toJson();
         String invoice = DocumentModelDraft.named("invoice").locale("en_US")
-                .include("pricelist", "pricelist")
                 .rootGroup("Invoice", i -> i
                         .numberField("Subtotal", n -> { })
                         .numberField("Tax", n -> { })

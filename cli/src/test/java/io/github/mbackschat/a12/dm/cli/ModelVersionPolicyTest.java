@@ -45,7 +45,7 @@ class ModelVersionPolicyTest {
 
     @Test
     void referenceVersionRaisesNoVersionDiagnostic(@TempDir Path dir) throws Exception {
-        Path model = withModelVersion(dir, "28.4.0"); // the build's reference
+        Path model = withModelVersion(dir, "29.4.0"); // the build's reference
         var res = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
@@ -56,7 +56,7 @@ class ModelVersionPolicyTest {
 
     @Test
     void olderSameMajorIsToleratedWithAnExplicitInfo(@TempDir Path dir) throws Exception {
-        Path model = withModelVersion(dir, "28.0.0"); // older, same major → kernel accepts
+        Path model = withModelVersion(dir, "29.0.0"); // older, same major → kernel accepts
         var res = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, res.code(), res.err()); // tolerant: still valid, exit 0
         JsonNode j = M.readTree(res.out());
@@ -75,14 +75,26 @@ class ModelVersionPolicyTest {
                 () -> "the kernel's version-mismatch is coded for machine detection: " + res.out());
     }
 
+    /** An older MAJOR is refused too, and its corrective points at A12's own migrator rather than re-authoring. */
+    @Test
+    void anOlderMajorFailsFastAndPointsAtTheMigrator(@TempDir Path dir) throws Exception {
+        Path model = withModelVersion(dir, "28.4.0"); // the previous project version; kernel 31.1.1 refuses it
+        var res = CliTestSupport.run("-m", model.toString(), "model", "check");
+        assertEquals(1, res.code(), () -> "fail-fast: invalid, exit 1: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("valid").asBoolean());
+        assertTrue(hasCode(j, "RK_MODEL_VERSION_INCOMPATIBLE"), res::out);
+        assertTrue(res.out().contains("migrator"), () -> "an older model is migrated, not re-authored: " + res.out());
+    }
+
     @Test
     void writeBackDoesNotBumpModelVersion(@TempDir Path dir) throws Exception {
         // A loaded model's version MUST survive a write-back unchanged — no implicit bump to the reference.
-        Path model = withModelVersion(dir, "28.0.0"); // a non-reference, kernel-accepted version
+        Path model = withModelVersion(dir, "29.0.0"); // a non-reference, kernel-accepted version
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--decimal-separator", ",");
         assertEquals(0, res.code(), res.err());
         JsonNode written = M.readTree(Files.readString(model));
-        assertEquals("28.0.0", written.path("header").path("modelVersion").asText(),
+        assertEquals("29.0.0", written.path("header").path("modelVersion").asText(),
                 "write-back must preserve header.modelVersion (no implicit bump)");
     }
 }

@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test
  * its target with its operation, so a copy of one declared kind into another draws the class
  * `CheckVergleichsBedingungImpl` raises for that pair in a rule, after the target's own `[<target>]` read has
  * passed the field-value read's gates. Where the comparison admits the pair, a later gate may answer: a String
- * into an unlabelled Enumeration draws the calculation's own class ([KERNEL-FINDINGS KF411]). The controls
+ * into an Enumeration draws the calculation's own class ([KERNEL-FINDINGS KF411]), labelled or not on kernel
+ * 31.1.1, which has no display gate ([KF655]). The controls
  * separate the lowering from a computation-specific gate: a copy between two fields of one kind is admitted on
  * every kind.
  *
@@ -71,11 +72,11 @@ class CheckerComputationJoinedConditionAgreementTest {
             "a String from a written-out number" to (Copy("../Label", "1") to TO_ENUM),
             "a Number from a written-out text" to (Copy("../Total", "\"abc\"") to TO_ENUM),
             "an Enumeration from a value it does not declare" to (Copy("../TierCopy", "\"PLATINUM\"") to OUTSIDE_DOMAIN),
-            "an Enumeration from a labelled Enumeration" to (Copy("../TierCopy", "[Plan]") to setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")),
-            // A String into an Enumeration: the comparison admits a text against a textless target, so the
-            // calculation's own class answers ([KF411]); a labelled target refuses the text first ([KF407]).
+            "an Enumeration from a labelled Enumeration" to (Copy("../TierCopy", "[Plan]") to ADMITTED),
+            // A String into an Enumeration: the comparison admits a text against the target, labelled or not, so
+            // the calculation's own class answers ([KF411], [KF655]).
             "an Enumeration from a String" to (Copy("../TierCopy", "[Label]") to setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")),
-            "a labelled Enumeration from a String" to (Copy("../Plan", "[Label]") to setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")),
+            "a labelled Enumeration from a String" to (Copy("../Plan", "[Label]") to setOf("MVK_ERROR_INVALID_ENUM_CALCULATION")),
             "an Enumeration from a value it declares, the control" to (Copy("../TierCopy", "\"GOLD\"") to ADMITTED),
             "an Enumeration from an Enumeration, the control" to (Copy("../TierCopy", "[Tier]") to ADMITTED),
             "a String from a String, the control" to (Copy("../Label", "[Note]") to ADMITTED),

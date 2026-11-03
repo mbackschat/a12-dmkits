@@ -211,6 +211,11 @@ class EnumValueForbiddenCharactersLawsTest {
      * is a NAME alphabet ("starts with a letter and may contain only letters, digits and the underscore"), so
      * a family reporting {@code MVK_CATEGORY_VALUE_INVALID} there would cite a class A12 does not use for a
      * reason that is not the character it keyed on.
+     *
+     * <p><i>Corrected 2026-11-03 (kernel 31.1.1):</i> a value labelled only for an undeclared locale now lacks its
+     * display text for the declared one and draws {@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} whatever the text
+     * says (KERNEL-FINDINGS KF655). The tab-free twin is what still shows the character gate does not reach that
+     * text: both rows draw the display class alone.
      */
     @Test
     void theTwoNeighbouringTextsTheGateDoesAndDoesNotReach() {
@@ -218,12 +223,16 @@ class EnumValueForbiddenCharactersLawsTest {
         actual.put("a label for an UNDECLARED locale carrying a tab",
                 verdict("\"values\":[{\"value\":\"BASIC\",\"label\":[{\"locale\":\"de_DE\",\"text\":\"Ba\\tsis\"}]},"
                         + "{\"value\":\"PLUS\",\"label\":[{\"locale\":\"de_DE\",\"text\":\"Plus\"}]}]"));
+        actual.put("the same label without the tab — the twin",
+                verdict("\"values\":[{\"value\":\"BASIC\",\"label\":[{\"locale\":\"de_DE\",\"text\":\"Basis\"}]},"
+                        + "{\"value\":\"PLUS\",\"label\":[{\"locale\":\"de_DE\",\"text\":\"Plus\"}]}]"));
         actual.put("a category NAME carrying a tab",
                 verdict("\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}],"
                         + "\"categories\":[{\"name\":\"Ba\\tnd\",\"values\":[\"LOW\",\"HIGH\"]}]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("a label for an UNDECLARED locale carrying a tab", KernelLaws.ADMITTED);
+        expected.put("a label for an UNDECLARED locale carrying a tab", "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES");
+        expected.put("the same label without the tab — the twin", "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES");
         expected.put("a category NAME carrying a tab", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "which neighbouring enumeration texts the gate reaches");
     }

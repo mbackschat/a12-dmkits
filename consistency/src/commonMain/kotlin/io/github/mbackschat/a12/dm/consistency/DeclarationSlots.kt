@@ -210,7 +210,19 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
     }
     val declared = (element.body ?: return emptyList())["errorCode"]
     return when {
-        declared == null || (declared is JsonPrimitive && declared.isString && declared.content.isA12Blank()) ->
+        // Kernel 31.1.1 builds a rule with no code and then cannot serialize it for its basic check, so the model
+        // is not built (KERNEL-FINDINGS KF654); 30.8.1 drew the class below.
+        declared == null -> listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "this rule declares no `errorCode`, and A12 cannot serialize such a rule for its basic check, so " +
+                    "the model is not built — a blank code draws a verdict instead",
+                element.path,
+            ),
+        )
+        declared is JsonPrimitive && declared.isString && declared.content.isA12Blank() ->
             listOf(
                 Finding(
                     FindingCategory.A12_CONSTRAINT,
@@ -430,8 +442,8 @@ private fun authoredLocalePolicyFindings(
             FindingCategory.AUTHORING_POLICY,
             FindingSeverity.WARNING,
             "RK_UNDECLARED_MESSAGE_LOCALE",
-            "this declaration has an error message for `$locale`, which the model does not declare, so A12 " +
-                "never collects the text and it can cover no locale",
+            "this declaration has an error message for `$locale`, which the model does not declare, so the text " +
+                "can cover no locale and A12's error-text checker never examines it",
             element.path,
         )
     }

@@ -170,7 +170,7 @@ class RuleConditionCompositionLawsTest {
         // Two filters inside ONE argument list would be the finer case — they would share a parenthesis pair
         // as well as a depth — and it is deliberately absent: `SumOfProducts` is the only operator whose
         // argument list takes two entity specs, and a `Having` filter on either of them draws
-        // `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` whatever the filter says (the unfiltered call is ADMITTED,
+        // `MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED` whatever the filter says (the unfiltered call is ADMITTED,
         // so that is the operator's own wildcard law and not a connective verdict). No oracle for that shape
         // exists here, so the checker opens a frame at a filter too, which can only under-report.
         actual.put("two filtered calls compared, one And and one Or",

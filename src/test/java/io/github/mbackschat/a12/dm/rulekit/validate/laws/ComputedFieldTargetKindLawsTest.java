@@ -72,7 +72,9 @@ class ComputedFieldTargetKindLawsTest {
         expected.put("a FIXED group", "NOT BUILDABLE");
         expected.put("a REPEATABLE group", "NOT BUILDABLE");
         expected.put("a field inside a fixed group", KernelLaws.ADMITTED);
-        expected.put("a path that resolves to nothing", "NOT BUILDABLE");
+        // Kernel 31.1.1's converter states "The computed field … was not found." with no class (KERNEL-FINDINGS
+        // KF652); 30.8.1 could not build the model.
+        expected.put("a path that resolves to nothing", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "what a computation may compute into");
     }
 

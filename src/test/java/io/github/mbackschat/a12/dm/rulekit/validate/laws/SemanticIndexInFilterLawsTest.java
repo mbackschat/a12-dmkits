@@ -85,7 +85,7 @@ class SemanticIndexInFilterLawsTest {
         // admitted where the rule reads it directly.
         expected.put("the same index OUTSIDE any filter — the control", KernelLaws.ADMITTED);
         expected.put("an off-path iterating reference BEFORE the indexed one",
-                "MVK_INVALID_ITERATION_IN_FILTER_CONDITION");
+                "MVK_INVALID_ITERATION_IN_SET_EXPRESSION");
         expected.put("the same two, the indexed reference FIRST", NOT_ALLOWED);
         expected.put("an index in the filter whose key names a GROUP", "MVK_SEMANTIC_INDEX_NO_FIELD");
         assertEquals(expected, actual, "where a semantic index is refused for sitting in a filter");
@@ -114,7 +114,7 @@ class SemanticIndexInFilterLawsTest {
         // The control: the identical operand without the index reaches the post-parse gate, so the row
         // above is the parse-time throw erasing it rather than the two gates being ranked.
         expected.put("the same operand with a filter carrying NO index",
-                "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED");
+                "MVK_PARALLEL_ITERATION_FOR_PATH_WITH_ASTERISKS_NOT_ALLOWED");
         assertEquals(expected, actual, "the filter walk throws before the whole-rule gates run");
     }
 }

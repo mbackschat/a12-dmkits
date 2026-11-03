@@ -453,7 +453,7 @@ class StarBindingContainmentTest {
             val shipmentsIndex = if (shipmentsKeyed) "\"indexFieldName\":\"ShipKey\"," else ""
             val parcelsIndex = if (parcelsKeyed) "\"indexFieldName\":\"ParcelKey\"," else ""
             return """
-                {"header":{"modelVersion":"28.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"fulfilment","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Fulfilment","Group":{"elements":[
                     {"type":"Group","id":"g1","name":"Summary","Group":{"elements":[

@@ -258,9 +258,9 @@ class ConditionClassWithholdingLawsTest {
         expected.put("a bad name, then a bracket never closed", "MVK_INVALID_ENTITY");
         // A field operand's argument is not a condition, so the parser stops at the connective.
         expected.put("a connective inside a field operand's brackets", "MVK_UNEXPECTED_TOKEN");
-        // A group handed to a filter is refused ahead of its walk, so the unfiltered read ahead of it is the
-        // row that asks whether that refusal is about the operand or about the group's spelling.
-        expected.put("a group filtered in a count", "MVK_NO_GROUPS_ALLOWED");
+        // Since kernel 31.1.1 a filtered group's kind is asked after its walk, so the unstarred group draws the
+        // walk's class exactly as the unfiltered read beside it does (KERNEL-FINDINGS KF656).
+        expected.put("a group filtered in a count", "MVK_NO_WILDCARD");
         expected.put("the same group read unfiltered first", "MVK_NO_WILDCARD");
         assertEquals(expected, actual, "where a filtered operand's defects fall in text order");
     }
@@ -277,8 +277,9 @@ class ConditionClassWithholdingLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         measure(actual, expected, "text in a rounding slot", "0 < RoundUpValue(Reference, 2)", "MVK_NO_NUMBER");
         measure(actual, expected, "an argument too many", "FieldFilled(Reference, Score)", "MVK_PARAMSIZE_INVALID1");
+        // Starred, so the walk passes it and the group's kind is what answers (KERNEL-FINDINGS KF656).
         measure(actual, expected, "a filtered group in a count",
-                "NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+                "NumberOfFilledGroups(Claims* Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
         measure(actual, expected, "text in a date slot", "DifferenceInDays(Reference, Reference) > 0",
                 "MVK_NO_DATE");
         measure(actual, expected, "text ordered against a number", "[Reference] > 5",
@@ -318,7 +319,7 @@ class ConditionClassWithholdingLawsTest {
         Map<String, String> gates = new LinkedHashMap<>();
         gates.put("0 < RoundUpValue(Reference, 2)", "MVK_NO_NUMBER");
         gates.put("FieldFilled(Reference, Score)", "MVK_PARAMSIZE_INVALID1");
-        gates.put("NumberOfFilledGroups(Claims Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
+        gates.put("NumberOfFilledGroups(Claims* Having [Claims/Amount] > 0) > 0", "MVK_NO_GROUPS_ALLOWED");
         gates.put("DifferenceInDays(Reference, Reference) > 0", "MVK_NO_DATE");
         gates.put("[Reference] > 5", "MVK_INVALID_TYPE_FOR_COMPARISON");
         gates.put("[Premium] == [Score]", "MVK_INVALID_COMPARE_DEC_PLACES");

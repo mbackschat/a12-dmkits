@@ -42,7 +42,8 @@ internal fun JsonObject.authoredMessages(): AuthoredMessages {
  * Which of [declaredLocales] these entries actually give A12 a message for.
  *
  * Three measured rules ride here and each is the direction a naive reader gets wrong: an entry for a locale
- * the model does not declare is never collected at all, a LATER entry for one locale replaces an earlier one
+ * the model does not declare is never collected for the checker (code generation reads it on kernel 31.1.1,
+ * [undeclaredLocaleMessageFindings]), a LATER entry for one locale replaces an earlier one
  * whether or not it has a text, and a BLANK text is no message rather than an empty one.
  */
 internal fun List<AuthoredMessage>.coveredLocales(declaredLocales: List<String>): Set<String> =
@@ -55,10 +56,17 @@ internal fun List<AuthoredMessage>.coveredLocales(declaredLocales: List<String>)
  * themselves rather than which locales are covered, and restating the collection there would put a measured
  * rule in two places.
  */
-internal fun List<AuthoredMessage>.collectedTexts(declaredLocales: List<String>): Map<String, String> {
+internal fun List<AuthoredMessage>.collectedTexts(declaredLocales: List<String>): Map<String, String> =
+    textsCollectedFor { it in declaredLocales }
+
+/**
+ * The last text for each locale [kept] accepts, in the order the locales first appear — the one statement of the
+ * last-wins rule, shared by the declared locales' view above and [undeclaredLocaleMessageFindings]' undeclared one.
+ */
+internal fun List<AuthoredMessage>.textsCollectedFor(kept: (String) -> Boolean): Map<String, String> {
     val collected = mutableMapOf<String, String>()
     for (entry in this) {
-        val key = entry.localeKey?.takeIf { it in declaredLocales } ?: continue
+        val key = entry.localeKey?.takeIf(kept) ?: continue
         collected[key] = entry.text
     }
     return collected

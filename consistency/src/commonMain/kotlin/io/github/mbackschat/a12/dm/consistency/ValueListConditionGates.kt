@@ -69,9 +69,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * cannot ride. A12 reports nothing after it, so this family stays SILENT there rather than adding the class
  * its own lists would draw.
  *
- * **Silent on an unresolvable type definition or an `UnspecifiedType` declaration**, whose type this reader cannot know; on the date-range arm's two format-and-year walks, which run after everything here and belong to
- * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
- * domain check and which makes a model unreadable here anyway.
+ * **Silent on an unresolvable type definition**, whose type this reader cannot know, and on the date-range arm's two
+ * format-and-year walks, which run after everything here and belong to [dateRangeOperandListFindings]. A `tableName`
+ * beside an enumeration's values is read past, so the domain check applies (KERNEL-FINDINGS KF654).
  */
 internal fun TrackedFactBase.valueListConditionGateFindings(): List<Finding> = declarations().flatMap { element ->
     valueListConditionContributions(element).take(1).map { it.finding }
@@ -277,9 +277,6 @@ private fun TrackedFactBase.constantDomainFinding(
 /** What this entry adds to the lookup domain, or null where this reader cannot settle its contribution. */
 private fun TrackedFactBase.contributedValues(entry: ListedField): List<String>? {
     val body = enumerationBodyOf(entry.field) ?: return null
-    if (body["tableName"] != null) {
-        return null
-    }
     return body.lookupDomain(entry.category)
 }
 
@@ -309,10 +306,9 @@ private fun TrackedFactBase.listedFields(
  * Whether an operand's category access is one another family already answers for.
  *
  * A GROUP under an access is one, and for a field it asks [contributedValues], so the answer is
- * exactly "this reader cannot settle what the access contributes" — a field that is no enumeration, an
- * enumeration declaring no such category, or a table-backed one whose values are not in the model. The group
- * and the first two are classes A12 reports from the access's own gates; the third is beyond any reader
- * here, and silence is the safe direction for it too.
+ * exactly "this reader cannot settle what the access contributes" — a field that is no enumeration, or an
+ * enumeration declaring no such category. The group and both of those are classes A12 reports from the access's
+ * own gates.
  */
 private fun TrackedFactBase.aCategoryAccessAnotherFamilyOwns(
     operands: List<String>,

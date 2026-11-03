@@ -15,18 +15,20 @@ import java.time.Instant
 import java.util.Date
 
 /**
- * Tri-engine lock for `Today` at a pinned instant before the Gregorian cutover (KF576).
+ * Tri-engine lock for `Today` at a pinned instant before the Gregorian cutover (KF576, corrected by KF665).
  *
- * A12 reads its validation clock through a `GregorianCalendar` in the model's zone, which is Julian before
- * 1582-10-15, while the interpreter's clock was proleptic. Every date before 1583-10-16 is `datumFalsch` when
- * stored, so the rows read `Today` itself: its day, month and year, and `Now`'s day, one rule per candidate value, so each instant
- * fires exactly the calendar it is read in. 1582-10-15 and a modern instant are the controls on which both
- * calendars agree; the modern one also carries a stored-date comparison.
+ * Kernel 31.1.1 reads its validation clock through java.time in the model's zone, which is proleptic Gregorian, so
+ * `1500-03-10T12:00Z` is March 10 and `1582-10-14T12:00Z` is October 14; 30.8.1's `GregorianCalendar` read them as
+ * the Julian `1500-02-29` and `1582-10-04`. Every date before 1583-10-16 is `datumFalsch` when stored, so the rows
+ * read `Today` itself: its day, month and year, and `Now`'s day, one rule per candidate value, so each instant fires
+ * exactly the calendar it is read in; the Julian candidates (29, 2, 4) are the rival account's. Two rules compare
+ * `Today` with a constant, which fires only when both sides are read in one calendar. 1582-10-15 and a modern instant
+ * are the controls on which both calendars agree; the modern one also carries a stored-date comparison.
  */
 class HybridCalendarClockDiffTest {
 
     @Test
-    fun todayBeforeTheCutoverAgreesOnAllThreeEngines() {
+    fun todayBeforeTheCutoverReadsProlepticallyOnAllThreeEngines() {
         val base = RuntimeLaws.model("models/order.dm.json")
         val model = BoundModel.ofJson(base)
         val today = Dsl.today()
@@ -37,9 +39,10 @@ class HybridCalendarClockDiffTest {
             for (month in listOf(2, 3, 6, 10)) add(rule(model, "Month$month", NAME, named.and(Dsl.monthFromDate(today).eq(month.toLong()))))
             for (year in listOf(1500, 1582, 2025)) add(rule(model, "Year$year", NAME, named.and(Dsl.yearFromDate(today).eq(year.toLong()))))
             for (day in listOf(4, 10, 14, 29)) add(rule(model, "NowDay$day", NAME, named.and(Dsl.dayFromDate(Dsl.now()).eq(day.toLong()))))
-            // `Today` compared with a constant: both sides are hybrid instants, so the labels must not be compared.
-            add(rule(model, "TodayBeforeMarch1500", NAME, named.and(today.before(Dsl.dateValue("01.03.1500")))))
-            add(rule(model, "TodayIsLeapDay1500", NAME, named.and(today.eq(Dsl.dateValue("29.02.1500")))))
+            // `Today` compared with a constant. The Julian leap day itself is no constant here: Europe/Berlin cannot read
+            // "29.02.1500", so a rule over it fails at evaluation on every instant (KF665).
+            add(rule(model, "TodayBeforeMarch11th1500", NAME, named.and(today.before(Dsl.dateValue("11.03.1500")))))
+            add(rule(model, "TodayIsMarch10th1500", NAME, named.and(today.eq(Dsl.dateValue("10.03.1500")))))
         }
         val modelJson = rules.fold(base, TypedRules::inject)
         val java = RuntimeLaws.kernelJavaEngine(modelJson)
@@ -56,11 +59,11 @@ class HybridCalendarClockDiffTest {
                 .map { it.code }.toSortedSet()
             observed[instant] = listOf(dynamic, generated, interpreted)
         }
-        // KF576's measured values, so agreement cannot pass on three engines sharing one wrong reading.
+        // KF665's measured values, so agreement cannot pass on three engines sharing one wrong reading.
         assertEquals(
             mapOf(
-                "1500-03-10T12:00:00Z" to sortedSetOf("Day29", "Month2", "NowDay29", "TodayBeforeMarch1500", "TodayIsLeapDay1500", "Year1500"),
-                "1582-10-14T12:00:00Z" to sortedSetOf("Day4", "Month10", "NowDay4", "Year1582"),
+                "1500-03-10T12:00:00Z" to sortedSetOf("Day10", "Month3", "NowDay10", "TodayBeforeMarch11th1500", "TodayIsMarch10th1500", "Year1500"),
+                "1582-10-14T12:00:00Z" to sortedSetOf("Day14", "Month10", "NowDay14", "Year1582"),
                 "1582-10-15T12:00:00Z" to sortedSetOf("Day15", "Month10", "Year1582"),
                 "2025-06-23T10:00:00Z" to sortedSetOf("Day23", "Month6", "TodayEquals", "Year2025"),
             ),
@@ -89,8 +92,8 @@ class HybridCalendarClockDiffTest {
         /** A stored date only the modern control's `Today` equals; any date before 1583-10-16 is `datumFalsch`. */
         const val STORED = "2025-06-23"
 
-        /** Proleptic → hybrid label in Europe/Berlin: 1500-03-10 → 1500-02-29, 1582-10-14 → 1582-10-04; the
-         *  first Gregorian day and the modern instant read alike in both. */
+        /** Two instants whose proleptic and hybrid labels differ (1500-03-10 / 1500-02-29, 1582-10-14 / 1582-10-04);
+         *  the first Gregorian day and the modern instant read alike in both. */
         val INSTANTS = listOf("1500-03-10T12:00:00Z", "1582-10-14T12:00:00Z", "1582-10-15T12:00:00Z", "2025-06-23T10:00:00Z")
     }
 }

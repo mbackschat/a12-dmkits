@@ -63,13 +63,12 @@ class IncludedShortNameBindingLawsTest {
 
     private static String host(boolean flag, boolean collide) {
         return withFlag(DocumentModelDraft.named("order").locale("en_US")
-                .include("addr", "address")
                 .rootGroup("Order", order -> {
                     order.field("Note", FieldKind.STRING);
                     if (collide) {
                         order.field("Zip", FieldKind.STRING);
                     }
-                    order.mount("ShipTo", "addr");
+                    order.mount("ShipTo", "address");
                 })
                 .build().toJson(), flag);
     }

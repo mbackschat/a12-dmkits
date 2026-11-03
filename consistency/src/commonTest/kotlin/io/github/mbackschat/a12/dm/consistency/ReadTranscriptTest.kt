@@ -18,7 +18,7 @@ class ReadTranscriptTest {
     /** Two fields in one group, so a transcript can name one declaration and not the other. */
     private fun twoFieldModel(secondFieldBody: String) = ModelSource(
         """
-        {"header":{"modelVersion":"28.4.0","id":"catalog","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{
@@ -141,7 +141,7 @@ class ReadTranscriptTest {
     fun aDerivedReferenceIsChargedAgainstItsOwnDeclarationAlone() {
         val twoRules = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"orders","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"orders","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
@@ -255,7 +255,7 @@ class ReadTranscriptTest {
         val prepared = preparedOf(
             ModelSource(
                 """
-                {"header":{"modelVersion":"28.4.0","id":"scoped","locales":[{"code":"en_US"}]},
+                {"header":{"modelVersion":"29.4.0","id":"scoped","locales":[{"code":"en_US"}]},
                  "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"NumberType"}}},

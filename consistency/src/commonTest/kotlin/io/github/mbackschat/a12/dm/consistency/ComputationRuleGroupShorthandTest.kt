@@ -30,7 +30,7 @@ class ComputationRuleGroupShorthandTest {
             computation("PremiumComp", "../Premium", "[Base] + 1")
         else computation("GrossComp", "../Gross", "[Amount] * 2")
         return """
-            {"header":{"modelVersion":"28.4.0","id":"quote-rule-group-shorthand","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"quote-rule-group-shorthand","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Quote","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Premium","Field":{"fieldType":{"type":"NumberType","maxFractionalDigits":0}}},

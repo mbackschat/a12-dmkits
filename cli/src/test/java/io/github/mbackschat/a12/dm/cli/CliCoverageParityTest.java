@@ -113,12 +113,10 @@ class CliCoverageParityTest {
             Map.entry("addImport", "typedef import"),
             Map.entry("removeImport", "typedef unimport"),
             // ── includes ──
-            Map.entry("addInclude", "include add"),
             Map.entry("removeInclude", "include remove"),
-            Map.entry("mount", "include add (mount a declared include)"),
+            Map.entry("mount", "include add"),
             Map.entry("inlineInclude", "include inline"),
             Map.entry("setIncludeReference", "include set-reference"),
-            Map.entry("renameInclude", "include rename"),
             // ── terminal (not a CLI-authored mutation) ──
             Map.entry("validate", "EXCLUDED: terminal validate-and-bind, not an authoring op"));
 

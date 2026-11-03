@@ -16,11 +16,12 @@ import org.junit.jupiter.api.Test
  * test. All three shapes land on the SAME civil label, `1916-10-01`, whose midnight is the one ambiguous
  * midnight in Berlin's pinned history — so the label cannot separate them and the instant must.
  *
- *  - **fresh construction** resolves midnight the parse way: the LATER (CET) copy;
- *  - the **day** mutation carries the source instant, so a step from a CEST September source retains the
- *    EARLIER (CEST) copy → `AddDays(Date(30,9,1916), 1) == Date(1,10,1916)` is **false**;
- *  - **month** and **year** mutation resolve the mutated civil fields at compute time and take the later copy
- *    → both `== Date(1,10,1916)` are **true**.
+ *  - **fresh construction** resolves midnight the parse way, which on kernel 31.1.1 is the EARLIER (CEST) copy
+ *    (KERNEL-FINDINGS KF665; 30.8.1 took the later, CET copy);
+ *  - a **day**, **month** or **year** mutation lands on the copy whose offset its SOURCE carried: from a CEST
+ *    source (`Date(30,9,1916)`, `Date(1,9,1916)`) it meets the fresh copy, from a CET source (`Date(1,10,1915)`,
+ *    `Date(1,4,1916)`) it takes the later copy and does not. The CET-source day and month rows separate this from a
+ *    per-operation account, under which the year shift alone would differ (30.8.1 split by operation instead).
  *
  * Every row carries its `!=` inverse control, so a row cannot pass by the comparison silently going UNKNOWN.
  * Tri-checked: dynamic-Groovy (normative, IF136), static-Java, interpreter. The JVM/Node half is
@@ -41,6 +42,8 @@ class ConstructedDateInstantDiffTest {
     private val dayShift = Dsl.addDays(Dsl.date(num("30"), num("9"), num("1916")), 1L)
     private val monthShift = Dsl.addMonths(Dsl.date(num("1"), num("9"), num("1916")), 1L)
     private val yearShift = Dsl.addYears(Dsl.date(num("1"), num("10"), num("1915")), 1L)
+    private val winterDayShift = Dsl.addDays(Dsl.date(num("1"), num("4"), num("1916")), 183L)
+    private val winterMonthShift = Dsl.addMonths(Dsl.date(num("1"), num("4"), num("1916")), 6L)
 
     /** groovy-dynamic == java-static == interpreter, with the kernel outcome itself pinned by [fires]. */
     private fun triCheck(condition: Condition, fires: Boolean, msg: String) {
@@ -59,22 +62,27 @@ class ConstructedDateInstantDiffTest {
         assertEquals(groovy, interp, "$msg (interp≠groovy)\n  groovy=$groovy interp=$interp\n  $cond")
     }
 
-    @Test fun aDayShiftRetainsTheEarlierOverlapCopy() {
-        triCheck(dayShift.eq(octoberFirst()), false,
-            "AddDays keeps its CEST source season, fresh construction is CET → NOT equal")
-        triCheck(dayShift.ne(octoberFirst()), true, "and its != inverse fires")
+    @Test fun aDayShiftFromASummerSourceMeetsTheFreshCopy() {
+        triCheck(dayShift.eq(octoberFirst()), true, "AddDays keeps its CEST source offset, as fresh construction does")
+        triCheck(dayShift.ne(octoberFirst()), false, "and its != inverse does not fire")
     }
 
-    @Test fun aMonthShiftSelectsTheLaterOverlapCopy() {
-        triCheck(monthShift.eq(octoberFirst()), true,
-            "AddMonths resolves the mutated fields at compute time → the later copy, equal to fresh")
+    @Test fun aMonthShiftFromASummerSourceMeetsTheFreshCopy() {
+        triCheck(monthShift.eq(octoberFirst()), true, "AddMonths keeps its CEST source offset → equal to fresh")
         triCheck(monthShift.ne(octoberFirst()), false, "and its != inverse does not fire")
     }
 
-    @Test fun aYearShiftSelectsTheLaterOverlapCopy() {
-        triCheck(yearShift.eq(octoberFirst()), true,
-            "AddYears uses the same compute-time resolution → the later copy, equal to fresh")
-        triCheck(yearShift.ne(octoberFirst()), false, "and its != inverse does not fire")
+    @Test fun aYearShiftFromAWinterSourceTakesTheLaterCopy() {
+        triCheck(yearShift.eq(octoberFirst()), false, "AddYears keeps its CET source offset → NOT the fresh copy")
+        triCheck(yearShift.ne(octoberFirst()), true, "and its != inverse fires")
+    }
+
+    /** The discriminator against a per-operation account: day and month shifts from a CET source miss the fresh copy too. */
+    @Test fun dayAndMonthShiftsFromAWinterSourceTakeTheLaterCopy() {
+        triCheck(winterDayShift.eq(octoberFirst()), false, "AddDays from a CET source → NOT the fresh copy")
+        triCheck(winterDayShift.ne(octoberFirst()), true, "and its != inverse fires")
+        triCheck(winterMonthShift.eq(octoberFirst()), false, "AddMonths from a CET source → NOT the fresh copy")
+        triCheck(winterMonthShift.ne(octoberFirst()), true, "and its != inverse fires")
     }
 
     /** Control: on an ORDINARY date the three mutations and fresh construction all agree, so the instant

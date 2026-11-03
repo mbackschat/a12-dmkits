@@ -4,23 +4,44 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /**
- * Render String-pattern and enum invalid-value text in one pass; inserted values remain opaque.
- * FieldConstraintFormalDiffTest's dual-strategy grid separates condition-language tokens from display locale
- * and locks literal terminal dollar pairs (KF42/KF490). Requiredness follows a different law, below.
+ * Render String-pattern and enum invalid-value text: two literal replace-all passes over the whole text, the label
+ * tokens `$Feld$` and `$field$` first, then the value tokens `$Feld.Wert$` and `$field.value$`, each in both
+ * languages whatever the condition language, and every other dollar sequence verbatim. Kernel 31.1.1 admits an
+ * empty `$$` pair anywhere in such a text (KERNEL-FINDINGS KF657), so the pass order is observable: `$$field$$`
+ * renders the label between two dollars, and a value is never searched for a label token
+ * (`adapter.laws.FieldConstraintFormalDiffTest`'s dual-strategy grid, KF42/KF490).
+ *
+ * A text A12's field-message check refuses never reaches A12's runtime, so it is unsupported here rather than
+ * rendered: an odd number of dollars, or a non-empty part between two dollars that is not the condition language's
+ * `field`/`field.value` (`Feld`/`Feld.Wert`). The field-name token `$<fieldName>$`, which the kernel substitutes
+ * before both passes, is not measured and stays unsupported too.
  */
 internal fun renderPatternFieldMessage(
     template: String,
     language: ConditionLanguage,
     fieldLabel: String,
     storedValue: String,
-): String = renderFixedFieldTokens(
-    template = template,
-    producer = "invalid-value",
-    replacements = when (language) {
-        ConditionLanguage.EN -> mapOf("\$field.value\$" to storedValue, "\$field\$" to fieldLabel)
-        ConditionLanguage.DE -> mapOf("\$Feld.Wert\$" to storedValue, "\$Feld\$" to fieldLabel)
-    },
-)
+): String {
+    refusedFieldMessageForm(template, language)?.let { form ->
+        throw UnsupportedConstructException("invalid-value field-owned error template contains unsupported form '$form'")
+    }
+    return template
+        .replace("\$Feld\$", fieldLabel)
+        .replace("\$field\$", fieldLabel)
+        .replace("\$Feld.Wert\$", storedValue)
+        .replace("\$field.value\$", storedValue)
+}
+
+/** The first form A12's field-message check refuses in [template], spelled as written, or null when it admits it. */
+private fun refusedFieldMessageForm(template: String, language: ConditionLanguage): String? {
+    if (template.count { it == '$' } % 2 != 0) return "an odd number of '$'"
+    val allowed = when (language) {
+        ConditionLanguage.EN -> setOf("field", "field.value")
+        ConditionLanguage.DE -> setOf("Feld", "Feld.Wert")
+    }
+    return template.split('$').filterIndexed { index, part -> index % 2 == 1 && part.isNotEmpty() }
+        .firstOrNull { it !in allowed }?.let { "\$$it\$" }
+}
 
 /**
  * Render a requiredness message: five literal replace-all passes over the whole text, `$<fieldName>.Value$` by the
@@ -50,41 +71,4 @@ private fun requireEnglishFieldTemplate(locale: String, producer: String) {
             "$producer field-owned error templates are measured only for locale en_US; requested '$locale'",
         )
     }
-}
-
-private fun renderFixedFieldTokens(
-    template: String,
-    producer: String,
-    replacements: Map<String, String>,
-): String {
-    val out = StringBuilder(template.length)
-    var index = 0
-    while (index < template.length) {
-        val dollar = template.indexOf('$', index)
-        if (dollar < 0) {
-            out.append(template, index, template.length)
-            break
-        }
-        out.append(template, index, dollar)
-        val token = replacements.keys.firstOrNull { template.startsWith(it, dollar) }
-        when {
-            token != null -> {
-                out.append(replacements.getValue(token))
-                index = dollar + token.length
-            }
-            template.startsWith("\$\$", dollar) && (template.length - dollar) % 2 == 0 &&
-                (dollar until template.length).all { template[it] == '$' } -> {
-                out.append(template, dollar, template.length)
-                index = template.length
-            }
-            else -> {
-                val close = template.indexOf('$', dollar + 1)
-                val form = if (close < 0) template.substring(dollar) else template.substring(dollar, close + 1)
-                throw UnsupportedConstructException(
-                    "$producer field-owned error template contains unsupported form '$form'",
-                )
-            }
-        }
-    }
-    return out.toString()
 }

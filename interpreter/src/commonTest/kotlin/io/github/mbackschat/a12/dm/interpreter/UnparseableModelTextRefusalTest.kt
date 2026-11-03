@@ -37,7 +37,7 @@ class UnparseableModelTextRefusalTest {
     }
 
     private fun model(language: String, condition: String = "FieldNotFilled(Ref)") = """
-        {"header":{"id":"policy","modelVersion":"28.4.0","locales":[{"code":"en_US"}]},
+        {"header":{"id":"policy","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"policy"},"modelConfig":{"conditionLanguage":{"code":"$language"}},
           "modelRoot":{"rootGroups":[{"type":"Group","id":"/Policy","name":"Policy","Group":{"elements":[
            {"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},

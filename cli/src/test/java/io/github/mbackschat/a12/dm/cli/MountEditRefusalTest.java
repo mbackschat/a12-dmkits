@@ -36,7 +36,7 @@ class MountEditRefusalTest {
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "person", "--locale", "en_US",
                 "--root", "Person", "-o", person.toString()).code());
         assertEquals(0, CliTestSupport.run("-w", dir.toString(), "-m", person.toString(), "include", "add",
-                "--reference", "address", "--alias", "addr", "--name", "Addr", "--parent", "/Person").code());
+                "--reference", "address", "--name", "Addr", "--parent", "/Person").code());
         return person;
     }
 

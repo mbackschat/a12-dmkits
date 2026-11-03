@@ -12,18 +12,19 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — a starred `FirstFilledValue` over a repeatable DATE_RANGE column, computed into a DATE_RANGE
- * target of the SAME declaration profile, across ALL EIGHT `(format, separator)` pairs the kernel admits for a
+ * target of the SAME declaration profile, across ALL SEVEN `(format, separator)` pairs the kernel admits for a
  * range DECLARATION (SPEC-2026-08-19-03; the enumerated declaration grid is KERNEL-FINDINGS KF81): the two
- * exact profiles, the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`, the halved `MM`+`""`, and
- * `dd.MM`+`-`.
+ * exact profiles, the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`, and `dd.MM`+`-`. Kernel 30.8.1
+ * admitted an eighth, the halved `MM`+`""`; on 31.1.1 an empty separator reads as `/` (KERNEL-FINDINGS KF658), so
+ * that row is the `MM` row and was retired on the upgrade.
  *
  * **An admitted DECLARATION pair is not thereby an admitted COMPUTATION profile — that is a separate claim, and
  * this matrix is what measures it:** [everyProfileAndTheCrossedTargetAreKernelAdmitted] runs the kernel's MVK
- * gate on all nine models this class executes, and the runtime rows put each through both kernel strategies.
+ * gate on all eight models this class executes, and the runtime rows put each through both kernel strategies.
  * The admission half used to be asserted by nobody — `BoundModel.ofJson` gates the BASE and the computation is
- * spliced in after it (TESTING-SPEC "the admission gate"). The matrix held only the first six for a while and read exactly like the whole class; running
- * the remaining two is what found IF306. The halved `MM`+`""` — the one declaration whose separator is legally
- * EMPTY — was the row that diverged, and it diverged in the model LOADER rather than the evaluator.
+ * spliced in after it (TESTING-SPEC "the admission gate"). The matrix held only the first six for a while and read
+ * exactly like the whole class; running the remaining pairs is what found IF306, in the model LOADER rather than the
+ * evaluator.
  *
  * The point of the matrix is the *stored form*. A year-bearing profile round-trips its exact endpoints; a
  * yearless one keeps the ordered component labels it declared and gains no synthetic year, because the target
@@ -44,7 +45,6 @@ class DateRangeFirstFilledProfileDiffTest {
         YEAR_MONTH("yyyy-MM", "/"),
         MONTH("MM", "/"),
         MONTH_DAY("MM-dd", "/"),
-        MONTH_HALVED("MM", ""),
         DAY_MONTH("dd.MM", "-"),
     }
 
@@ -124,7 +124,7 @@ class DateRangeFirstFilledProfileDiffTest {
 
     /**
      * The ADMISSION half, asserted rather than inferred: the kernel's `checkConsistency` reports NOTHING for
-     * each of the nine models this class executes. Codegen succeeding is not this claim — the MVK gate is a
+     * each of the eight models this class executes. Codegen succeeding is not this claim — the MVK gate is a
      * separate route, and until it was called here the "all of which pass `checkConsistency`" line rested on
      * the runtime rows, which cannot see it (TESTING-SPEC "the admission gate").
      */
@@ -157,12 +157,6 @@ class DateRangeFirstFilledProfileDiffTest {
     /** No Base Year: the pair keeps month and day on both sides and gains no year. */
     @Test fun aYearlessMonthDayWindowRetainsItsComponentPair() =
         agree(Profile.MONTH_DAY, "VALUE|06-01/09-30", null, "06-01/09-30")
-
-    /** The halved pair: the one declaration whose stored value splits in the MIDDLE rather than on a separator
-     *  (the split's own shape stays `DateRangeFormalDiffTest`'s subject; this row is about what a computation
-     *  STORES into it). */
-    @Test fun aHalvedMonthPairRetainsItsComponentPair() =
-        agree(Profile.MONTH_HALVED, "VALUE|0609", null, "0609")
 
     /** No Base Year: the pair keeps day and month on both sides and gains no year. */
     @Test fun aYearlessDayMonthWindowRetainsItsComponentPair() =

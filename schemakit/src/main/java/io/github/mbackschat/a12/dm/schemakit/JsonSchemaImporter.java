@@ -111,7 +111,7 @@ public final class JsonSchemaImporter {
      *  (recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
     private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
                        TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile,
-                       boolean bundle, Set<String> includes, String modelId, Set<String> breakEdges,
+                       boolean bundle, String modelId, Set<String> breakEdges,
                        Map<String, String> indexFields, Set<String> rootPaths) {
 
         /** Would mounting {@code targetId} from this model close an include cycle (break it by inlining instead)? */
@@ -282,7 +282,7 @@ public final class JsonSchemaImporter {
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
-                bundle, new LinkedHashSet<>(), modelId, breakEdges, new LinkedHashMap<>(), new LinkedHashSet<>());
+                bundle, modelId, breakEdges, new LinkedHashMap<>(), new LinkedHashSet<>());
         DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         if (roots.isEmpty()) {
@@ -312,7 +312,6 @@ public final class JsonSchemaImporter {
                 report.mapped(path + "/" + Carriage.X_ROOT_GROUP_NAME, path, TranscodeReport.Tier.CARRIED);
             });
         }
-        ctx.includes().forEach(refId -> b.include(refId, refId));   // header includes for the mounts emitted above
         String dmJson = b.build().toJson();
         if (!ctx.indexFields().isEmpty()) {
             ObjectNode tree = (ObjectNode) parse(dmJson);
@@ -728,7 +727,6 @@ public final class JsonSchemaImporter {
                 String alias = identifier(defName);
                 if (ctx.bundle() && !alias.equals(ctx.modelId()) && !ctx.isCycleEdge(alias)) {   // §4e: cross-component ref → a mount
                     g.mount(name, alias);
-                    ctx.includes().add(alias);
                     ctx.report().structure(path, "mount → " + alias + " (include)");
                 } else {   // self-ref / a cycle-breaking edge (kernel forbids cyclic includes) / single mode → inline
                     if (ctx.isCycleEdge(alias)) {
@@ -815,7 +813,6 @@ public final class JsonSchemaImporter {
         String alias = identifier(defName);
         if (ctx.bundle() && !alias.equals(ctx.modelId()) && !ctx.isCycleEdge(alias)) {   // §4e: array of a cross-component object → a repeatable mount
             g.mount(name, alias, max);
-            ctx.includes().add(alias);
             ctx.report().structure(path, "repeatable mount → " + alias + " (max " + max + ")");
         } else {
             g.group(name, sub -> {

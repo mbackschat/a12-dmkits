@@ -128,6 +128,9 @@ public final class Cli {
                         hint = metadataRelocationHint(ex);
                     }
                     if (hint == null) {
+                        hint = includeAliasHint(ex);
+                    }
+                    if (hint == null) {
                         hint = instanceFlagHint(ex, parsedArgs);
                     }
                     if (hint == null) {
@@ -277,6 +280,14 @@ public final class Cli {
         return flag == null ? null
                 : MetadataRelocation.flagHint(ex.getCommandLine().getCommandSpec().qualifiedName(), flag)
                         .orElse(null);
+    }
+
+    /** Point a DM 28 include-alias argument, or the retired {@code include rename}, at the reference-only form. */
+    private static String includeAliasHint(CommandLine.ParameterException ex) {
+        return ex instanceof CommandLine.UnmatchedArgumentException unmatched
+                ? IncludeAliasRetirement.parseHint(ex.getCommandLine().getCommandSpec().qualifiedName(),
+                        unmatched.getUnmatched()).orElse(null)
+                : null;
     }
 
     /**

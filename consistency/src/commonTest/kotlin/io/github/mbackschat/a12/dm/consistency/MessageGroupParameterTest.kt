@@ -159,7 +159,7 @@ class MessageGroupParameterTest {
               "errorEntityRelPath":"${if (deep) "../Amount" else "../Reference"}","errorCode":"C1",
               "errorMessage":[{"locale":"en_US","text":"row ${'$'}#$argument${'$'} needs an amount."}]}}"""
         return """
-        {"header":{"modelVersion":"28.4.0","id":"policy-group-parameter","locales":[{"code":"en_US"}]},
+        {"header":{"modelVersion":"29.4.0","id":"policy-group-parameter","locales":[{"code":"en_US"}]},
          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
             {"type":"Field","id":"f9","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},

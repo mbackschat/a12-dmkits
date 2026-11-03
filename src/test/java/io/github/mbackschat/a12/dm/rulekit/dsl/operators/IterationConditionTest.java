@@ -138,7 +138,7 @@ class IterationConditionTest {
     @Test
     void havingRejectsForbiddenFilterConstructs() {
         FieldListRef fees = m.flatten("/Subscription/Addons*/MonthlyFee");
-        // RepetitionNotUnique in a filter → MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION (pre-checked)
+        // RepetitionNotUnique in a filter → MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION (pre-checked)
         assertThrows(IllegalArgumentException.class,
                 () -> fees.having(Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name"))));
         // nested Having (a filtered list inside the filter) → same code (pre-checked)

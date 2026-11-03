@@ -390,7 +390,7 @@ class BuilderCheckerDivergenceGuardTest {
             // reach the gate once the four gates before it pass. Changed from PROSE_ONLY 2026-09-15, when
             // the checker gained the gate; it reports RepetitionNotUnique alone, the other two being
             // unreachable from its own parse (FilterBodyGates).
-            Map.entry("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             // The usual direction: the checker reports it, the kit names it only as a diagnostic hint
             // in StructuralKernelFix for the kernel's own verdict.
             Map.entry("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE", Disposition.PROSE_ONLY),
@@ -514,14 +514,10 @@ class BuilderCheckerDivergenceGuardTest {
             // the checker projects that very entry onto its own findings.
             Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", Disposition.PROSE_ONLY),
 
-            // modelkit's `FieldKind` simply has no UNSPECIFIED constant, and names this code in the javadoc
-            // saying why. That is a type-level erasure rather than a refusal, which is the harder shape to
-            // audit — no runtime error, just a missing factory — so it is worth stating that the erasure is
-            // now MEASURED and not merely reasoned: A12 refuses every `UnspecifiedType` declaration, with a
-            // body and without, on a root and a nested field, per declaration
-            // (`validate.laws.FieldTypeBindingLawsTest`). The checker reads stored JSON, where the shape is
-            // authorable by other tools, so it reports the code rather than erasing it.
-            Map.entry("MVK_UNSPECIFIED_TYPE_NO_CODEGEN", Disposition.PROSE_ONLY),
+            // rulekit only NAMES it, in the meaning of `RK_INDEX_FIELD_EMPTY`, the portable-checker sentence
+            // A12 states beside it; the checker reports the code itself, for an index field outside its group
+            // ([KERNEL-FINDINGS KF653]).
+            Map.entry("MVK_INVALID_INDEX_FIELD", Disposition.PROSE_ONLY),
 
             // Both estates enforce the same measured law and reached it independently: `covers` is an exact
             // field match OR strictly-inside a referenced group, and the checker's is the target or an
@@ -587,7 +583,7 @@ class BuilderCheckerDivergenceGuardTest {
             // operands cannot express (KF370).
             Map.entry("MVK_DIFFERENT_GROUPS", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_REPEATABLE_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
-            Map.entry("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
             // The semantic index's own structure, added 2026-09-14 with the family that reports it.

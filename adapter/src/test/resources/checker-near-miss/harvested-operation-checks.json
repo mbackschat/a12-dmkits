@@ -440,17 +440,13 @@
         },
         {
           "id": "ArithmeticOperationGatesTest.whatEachOperatorAdmitsAsAnOperand#7",
-          "classes": [
-            "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
-          ],
+          "classes": [],
           "onlyCodes": null,
           "hostClasses": [],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
-          "completedKernelClasses": [
-            "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
-          ],
+          "completedKernelClasses": [],
           "modelMiddle": "{[Notes] + [LabelledChannel]} == \\\"x\\\"",
           "modelSha256": "54f3275e7649680908b84e39c364da2355ad4b01a60f98347a95a84b3aea6357"
         },
@@ -1035,7 +1031,7 @@
       ]
     },
     {
-      "prefix": "{\"header\":{\"id\":\"policy-enum-display\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Policy\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Holder\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Field\",\"id\":\"f1\",\"name\":\"Plain\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f2\",\"name\":\"PlainTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f3\",\"name\":\"Mirrored\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"BASIC\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"PLUS\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f4\",\"name\":\"Labelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f5\",\"name\":\"LabelledTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f6\",\"name\":\"TokenConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f7\",\"name\":\"DisplayConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"ECONOMY\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f8\",\"name\":\"ForeignLabelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Categorized\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}],\n      \"categories\":[{\"name\":\"Band\",\"values\":[{\"value\":\"LOW\"},{\"value\":\"HIGH\"}]}]}}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"Probe\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Holder) And [",
+      "prefix": "{\"header\":{\"id\":\"policy-enum-display\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Policy\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Holder\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Field\",\"id\":\"f1\",\"name\":\"Plain\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f2\",\"name\":\"PlainTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f3\",\"name\":\"Mirrored\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"BASIC\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"PLUS\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f4\",\"name\":\"Labelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f5\",\"name\":\"LabelledTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f6\",\"name\":\"TokenConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f7\",\"name\":\"DisplayConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"ECONOMY\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f8\",\"name\":\"ForeignLabelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Categorized\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}],\n      \"categories\":[{\"name\":\"Band\",\"values\":[\"LOW\",\"HIGH\"]}]}}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"Probe\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Holder) And [",
       "suffix": "\",\n      \"errorEntityRelPath\":\"../Holder\",\n      \"errorCode\":\"C0\",\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"x\"}]}}\n  ]}}\n ]}}}",
       "rows": [
         {
@@ -1046,16 +1042,16 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Plain] == [Holder]",
-          "modelSha256": "8852b06903b9d7ceed9e4a2f6a52e2a190fa59ff7ff81446e19409c505bb1295"
+          "modelSha256": "5a09098fe6ab4eef79632c37c3f371a44f31e16989e58654cb22fb3dd7520ad2"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#2",
@@ -1065,82 +1061,73 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Mirrored] == [Holder]",
-          "modelSha256": "1c6c57f48888385c74f4a2fec4004b004783468808e81ce5aba87a9c3b5c39d1"
+          "modelSha256": "fb866a4518a0c748e59134c0b313a6bba36fa15f3a555579490d17f8315e904f"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#3",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [Holder]",
-          "modelSha256": "0274822aca65c7f580be0ec0ab3b736b8c38428efd894994b570732f83b69513"
+          "modelSha256": "2ab87eb2230d40f649afa03059a6d0f2c46c24d587040e85516c50d1dd7d93c5"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#4",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Holder] == [Labelled]",
-          "modelSha256": "04ed557e6a9f936f88c62796224547fcab34b4dcb0b77d39b84c3edfe90e2a38"
+          "modelSha256": "f5dc62b47104a5771630c1537204ce1f3d73d4fe9a7d5a1ff45f668c71061a3f"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#5",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] != [Holder]",
-          "modelSha256": "e653ccf260e88ecb59a53f48bc3abbaf39ce3eb1729af9a4b7c93141c42a36a3"
+          "modelSha256": "99ea3d7b5bc82b77b2084034b27478d18f4df0fef031ff49922e5ff15c0adbe7"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#6",
@@ -1150,16 +1137,16 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == RangeAsString(Holder, 1, 3)",
-          "modelSha256": "f20d5205f3b2b567dde3b7b5fd19761869d4a91cc072a1621da380eb2d540c64"
+          "modelSha256": "1b25a20d7949bbf9361e97b2fd428031dea35ecb1928513373a4d527c5431c5b"
         },
         {
           "id": "EnumDisplayComparabilityTest.whatTheTextGateReadsOnTheTextSide#7",
@@ -1169,21 +1156,21 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Categorized -> Band] == [Holder]",
-          "modelSha256": "bc279928025530e86c7825cc1b87a0789ceaaa4cfb263489464c7a4aefea93b1"
+          "modelSha256": "519662d949bb5233efc585f26fb4b43a39efd5c334ebfbca6c4843f1af3c13b1"
         }
       ]
     },
     {
-      "prefix": "{\"header\":{\"id\":\"policy-enum-display\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Policy\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Holder\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Field\",\"id\":\"f1\",\"name\":\"Plain\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f2\",\"name\":\"PlainTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f3\",\"name\":\"Mirrored\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"BASIC\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"PLUS\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f4\",\"name\":\"Labelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f5\",\"name\":\"LabelledTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f6\",\"name\":\"TokenConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f7\",\"name\":\"DisplayConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"ECONOMY\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f8\",\"name\":\"ForeignLabelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Categorized\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}],\n      \"categories\":[{\"name\":\"Band\",\"values\":[{\"value\":\"LOW\"},{\"value\":\"HIGH\"}]}]}}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"Probe\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Holder) And [",
+      "prefix": "{\"header\":{\"id\":\"policy-enum-display\",\"locales\":[{\"code\":\"en_US\"}]},\n \"content\":{\"modelRoot\":{\"rootGroups\":[\n  {\"type\":\"Group\",\"id\":\"g0\",\"name\":\"Policy\",\"Group\":{\"elements\":[\n    {\"type\":\"Field\",\"id\":\"f0\",\"name\":\"Holder\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}},\n    {\"type\":\"Field\",\"id\":\"f1\",\"name\":\"Plain\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f2\",\"name\":\"PlainTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}]}}}},\n    {\"type\":\"Field\",\"id\":\"f3\",\"name\":\"Mirrored\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"BASIC\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"PLUS\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f4\",\"name\":\"Labelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f5\",\"name\":\"LabelledTwin\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f6\",\"name\":\"TokenConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f7\",\"name\":\"DisplayConflict\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"ECONOMY\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Basic cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f8\",\"name\":\"ForeignLabelled\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"fr_FR\",\"text\":\"Plus cover\"}]}]}}}},\n    {\"type\":\"Field\",\"id\":\"f9\",\"name\":\"Categorized\",\"Field\":{\"fieldType\":{\"type\":\"EnumerationType\",\n      \"EnumerationType\":{\"values\":[\n        {\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Budget cover\"}]},\n        {\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus cover\"}]}],\n      \"categories\":[{\"name\":\"Band\",\"values\":[\"LOW\",\"HIGH\"]}]}}}},\n    {\"type\":\"Rule\",\"id\":\"r0\",\"name\":\"Probe\",\"Rule\":{\n      \"errorCondition\":\"FieldFilled(Holder) And [",
       "suffix": "]\",\n      \"errorEntityRelPath\":\"../Holder\",\n      \"errorCode\":\"C0\",\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"x\"}]}}\n  ]}}\n ]}}}",
       "rows": [
         {
@@ -1194,38 +1181,35 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Plain] == [PlainTwin",
-          "modelSha256": "07afe5b73b2c40537f19540cb7657be42d51b04a00dfe929babad388eb16b13f"
+          "modelSha256": "8100e6a9c27886626587364fdd6eaabd3e5326a7df8db4127be7bb6a4fe6dd9f"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#10",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [Categorized",
-          "modelSha256": "d477aa84ca886b66d4881859ebfeda335a6f0e11fd9d22a9f57ca8c16ba6c981"
+          "modelSha256": "a87e1c8b9efe73a8f1eb1486f50f5c407218c9a8f3000aadecbc2a81acb1f7c7"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#2",
@@ -1235,16 +1219,16 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Mirrored] == [Plain",
-          "modelSha256": "01116cc3fdc67b0a5641a0285a83db1b45e84f5283d0987023cb0d4d5e40a8e4"
+          "modelSha256": "e3a9dc48b0ad29f42d493e99cba900dccc1981222639c49de965a76979c580fc"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#3",
@@ -1254,104 +1238,92 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [LabelledTwin",
-          "modelSha256": "615e14142a04fbaa1d9574c19c577144176c664550913cec52f109fab8707280"
+          "modelSha256": "1b17e735be3e34284237ef9fec08a56a6e50b04593f29aec0c9af703625610df"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#4",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [Plain",
-          "modelSha256": "70cc3f998030f40ecbc88b0f63713157762839de831d5ce8af260ec136c35115"
+          "modelSha256": "338fa35f910206b98e8b2628576da2722ff58304893294f290b05bbd00ffa838"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#5",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [TokenConflict",
-          "modelSha256": "09cb0df1b0c63d56bc385ba5552a56c7a53cc876659046fb415d42371101a6e8"
+          "modelSha256": "ccbc24ed1a4df02526651843311e0e8a98541427cb1ae504d27b8a13320bf3f3"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#6",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_ENUM",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [DisplayConflict",
-          "modelSha256": "8c754b580542c76a0d3be4737298c8999013ce5e7e14ae3c2c2995af2e8870b9"
+          "modelSha256": "2ac29800599a04461f4c7837a4c3feb329151b864a360d6e11d93d03d5c58b24"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#7",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": [
             "MVK_INVALID_COMPARE_ENUM_TO_STRING",
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING",
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [ForeignLabelled",
-          "modelSha256": "89bb712a0a0bc2352ff647c351c772131853aba6b0678fd0601c48ad0a91f5cc"
+          "modelSha256": "3711127829a5fd3f8945b2ed55831927a13751ad0e0e779ebf5169e0cc4b958c"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#8",
@@ -1361,16 +1333,16 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "ForeignLabelled] == [Plain",
-          "modelSha256": "ae99786dcabb5f26db514d6ee56618416de69b3edce1aa2aa3a0c619c5afba09"
+          "modelSha256": "afb17eb46d5eed1b1d463f9ad2c6c3235228dc28d7a3ebbafe4221f2e221c250"
         },
         {
           "id": "EnumDisplayComparabilityTest.whenTwoEnumerationsMayBeCompared#9",
@@ -1380,16 +1352,16 @@
             "MVK_INVALID_COMPARE_ENUM_TO_ENUM"
           ],
           "hostClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
           "completedKernelClasses": [
-            "MVK_MISSING_CATEGORY_VALUE"
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"
           ],
           "modelMiddle": "Labelled] == [Categorized -> Band",
-          "modelSha256": "525d011ccc827d0a515a9141064fed4addd93d698d95ee905a9ea2e51790a97a"
+          "modelSha256": "8891ad1d2086e743265c3a74652991edbd31f51fa084bd840fd523775ee3ff28"
         }
       ]
     },
@@ -1939,33 +1911,25 @@
         },
         {
           "id": "StringEnumComparisonAgreementTest.theArmsThisFamilyYieldsTo#5",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": null,
           "hostClasses": [],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
-          "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "completedKernelClasses": [],
           "modelMiddle": "[Tier] == [GiftNote]",
           "modelSha256": "fde636c48367e6c547de881bed9e06b18e953d887ad9096ebff6dab1a518c6e8"
         },
         {
           "id": "StringEnumComparisonAgreementTest.theArmsThisFamilyYieldsTo#6",
-          "classes": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "classes": [],
           "onlyCodes": null,
           "hostClasses": [],
           "originalKernelClasses": [
             "CK_MODEL_NOT_BUILDABLE"
           ],
-          "completedKernelClasses": [
-            "MVK_INVALID_COMPARE_ENUM_TO_STRING"
-          ],
+          "completedKernelClasses": [],
           "modelMiddle": "[Tier] == [Channel]",
           "modelSha256": "daf4a08bbbd4bef0bdf398f5190f656d313ecf39fe9ab1bed22b5a18ac5f1ae3"
         }

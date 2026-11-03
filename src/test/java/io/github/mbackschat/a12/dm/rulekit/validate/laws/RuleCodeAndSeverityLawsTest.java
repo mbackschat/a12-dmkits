@@ -57,7 +57,9 @@ class RuleCodeAndSeverityLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("PROBE — the control", KernelLaws.ADMITTED);
-        expected.put("absent", "MVK_ERROR_CODE_MISSING");
+        // Kernel 31.1.1 cannot serialize a rule with no code for its basic check ("The given document model could
+        // not be serialized."), so the model is not built (KERNEL-FINDINGS KF654); 30.8.1 drew the class.
+        expected.put("absent", KernelLaws.NOT_BUILDABLE);
         expected.put("empty", "MVK_ERROR_CODE_MISSING");
         expected.put("whitespace only", "MVK_ERROR_CODE_MISSING");
         // Jackson coerces a scalar to the String member, so `7` is the error code "7" and the model is

@@ -225,7 +225,6 @@ class EvalDocVerbTest {
                 .rootGroup("Pricelist", p -> p.numberField("ListPrice", n -> n.fractionDigits(2)))
                 .build().toJson();
         String storefront = DocumentModelDraft.named("storefront").locale("en_US")
-                .include("pricelist", "pricelist")
                 .rootGroup("Storefront", s -> s.field("StoreName", FieldKind.STRING).mount("Prices", "pricelist"))
                 .build().toJson();
         Path lib = Files.createDirectories(dir.resolve("lib"));

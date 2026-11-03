@@ -9,8 +9,8 @@ import io.github.mbackschat.a12.dm.core.ConfigFlag;
  * KF569) rather than by {@code JsonNode.asBoolean}, which misses the padded and capitalized spellings A12 takes as
  * set — {@code " TRUE"} read as the default on every field-type member until IF404.
  *
- * <p>Not for {@code excludeRules}/{@code excludeComputations}: A12 reads those through {@code JsonNode.booleanValue()}
- * instead (KF3), which {@code AuthoredStateReader} mirrors.
+ * <p>Since DM 29.4 this includes a mount's {@code includeConfig.excludeRules}/{@code excludeComputations} (KF651),
+ * which kernel 30.8.1 read through {@code JsonNode.booleanValue()} instead.
  */
 final class A12Booleans {
 

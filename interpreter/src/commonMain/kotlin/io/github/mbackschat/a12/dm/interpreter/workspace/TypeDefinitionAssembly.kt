@@ -166,6 +166,10 @@ internal class TypeDefinitionRegistry(
             val fieldType = definition.objectMember("fieldType")
                 ?: throw invalidTypeDefinition(model.source.modelId, path, "fieldType must be an object")
             requireCompleteTypeDefinitionReference(model.source.modelId, path, fieldType)
+            // Measured on the entry's own definitions (KF593); an included or imported model's are left to inlining.
+            if (model.source.modelId == entryModelId) {
+                unbindableTypeMember(fieldType)?.let { throw invalidTypeDefinition(model.source.modelId, path, it) }
+            }
             register(
                 definitionId,
                 RegisteredTypeDefinition(
@@ -473,30 +477,3 @@ internal fun JsonObject.objectMember(key: String): JsonObject? = get(key) as? Js
 
 internal fun JsonObject.arrayMember(key: String): JsonArray? = get(key) as? JsonArray
 
-/**
- * The model the include mount at [path] names through [alias]: the `reference` of the LAST `header.modelReferences`
- * entry carrying that alias, whatever its `purpose`, which is the entry A12 keys the alias to (KF593). A12 finds no
- * included model when no entry carries the alias or its reference is absent, null or blank as Java's
- * `Character.isWhitespace` reads it, and refuses the expansion ("cannot be found"), so this refuses too rather than
- * reading the alias as the reference; a no-break-space reference is text and resolves exactly (KF592).
- */
-internal fun JsonObject.includeReference(modelId: String, path: String, alias: String): String {
-    val entry = objectMember("header")?.arrayMember("modelReferences")
-        ?.filterIsInstance<JsonObject>()
-        ?.lastOrNull { it.strictString("alias") == alias }
-    if (entry?.strictString("purpose") == ModelReferencePurpose.TYPE_DEFINITIONS.wireName) {
-        throw invalidIncludeMount(
-            modelId,
-            path,
-            "the header.modelReferences entry for alias '$alias' has purpose typeDefinitions, and A12 refuses to " +
-                "expand a mount through one; declare it with purpose include",
-        )
-    }
-    return entry?.strictString("reference")?.takeUnless { it.isJavaBlank() }
-        ?: throw invalidIncludeMount(
-            modelId,
-            path,
-            "no header.modelReferences include entry for alias '$alias' names a model, so A12 cannot find the " +
-                "included model; declare its non-blank reference",
-        )
-}

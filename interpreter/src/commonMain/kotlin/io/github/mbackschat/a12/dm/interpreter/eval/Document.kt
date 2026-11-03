@@ -2341,7 +2341,7 @@ class Document(internal val config: DocumentConfig) {
         if (formallyInvalid(path, input)) return null
         val raw = input.value
         val format = declaredTemporalFormat(path, kindOf(path)) ?: "yyyy-MM-dd"
-        return resolvePartialDate(raw, format, precision, lastDay)?.let { Val.Txt(it) }
+        return resolvePartialDate(raw, format, precision, lastDay, timeZone)?.let { Val.Txt(it) }
     }
 
     /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]
@@ -2426,7 +2426,7 @@ class Document(internal val config: DocumentConfig) {
             // evaluates instead of going Unknown; a full-format range is unchanged. The base year fills a
             // year-less fragment endpoint (a `MM`/`MM-dd` range), matching the kernel's completion.
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
-                parseRangeToIso(raw, format, sep, baseYear ?: 2000, yearInterpretationOf(path))
+                parseRangeToIso(raw, format, sep, timeZone, baseYear ?: 2000, yearInterpretationOf(path))
                     ?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
             // A DATE field canonicalizes to ISO, precision-aware:
@@ -2440,11 +2440,11 @@ class Document(internal val config: DocumentConfig) {
                 val fmt = declared ?: "yyyy-MM-dd"
                 when {
                     precision == DatePrecision.FRAGMENT ->
-                        completeFragmentToIso(raw, fmt, baseYear ?: 2000)?.let { Val.Txt(it) } ?: Val.Unknown
+                        completeFragmentToIso(raw, fmt, baseYear ?: 2000, timeZone)?.let { Val.Txt(it) } ?: Val.Unknown
                     precision == DatePrecision.DAY_OPTIONAL ||
                         precision == DatePrecision.MONTH_OPTIONAL ||
                         precision == DatePrecision.YEAR_OPTIONAL -> {
-                        val parts = partialDateParts(raw, fmt, precision) ?: return Val.Unknown
+                        val parts = partialDateParts(raw, fmt, precision, timeZone) ?: return Val.Unknown
                         if (parts.first == 0 || parts.second == 0 || parts.third == 0) Val.Unknown
                         else Val.Txt(isoDate(parts.first, parts.second, parts.third))
                     }
@@ -2454,7 +2454,7 @@ class Document(internal val config: DocumentConfig) {
                     // year, so it is the base year and not a constant). The formal gate above admits such a
                     // cell, so resolution MUST produce a value for it — returning Unknown here made every
                     // referencing rule silently non-evaluable while the cell was perfectly legal (IG110).
-                    else -> (parseDateToIso(raw, fmt) ?: completeFragmentToIso(raw, fmt, baseYear ?: 2000))
+                    else -> (parseDateToIso(raw, fmt, timeZone) ?: completeFragmentToIso(raw, fmt, baseYear ?: 2000, timeZone))
                         ?.let { Val.Txt(it) } ?: Val.Unknown
                 }
             }
@@ -2464,7 +2464,7 @@ class Document(internal val config: DocumentConfig) {
             // formal gate above admits such a cell, so resolution MUST produce a value for it; returning
             // Unknown made every referencing rule silently non-evaluable (IF301, the DATE_TIME sibling of the
             // IG110/IF250 class its sweep had ruled out).
-            Kind.DATE_TIME -> parseDeclaredDateTime(raw, declared ?: "yyyy-MM-dd'T'HH:mm:ss")
+            Kind.DATE_TIME -> parseDeclaredDateTime(raw, declared ?: "yyyy-MM-dd'T'HH:mm:ss", timeZone)
                 ?.let { Val.Txt(it) } ?: Val.Unknown
             // A clock-shaped declaration canonicalizes through the same parser the formal gate used, so the two
             // tiers agree by construction rather than by both happening to accept the raw text.

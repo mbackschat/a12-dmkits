@@ -12,7 +12,11 @@ class MessageFormAlternativeAgreementTest {
                 for (subject in listOf("Branch", "Loans", "Nope")) {
                     for ((tailId, tail) in listOf("none" to "", "literal" to " For \"k\"", "unknown" to " For Nope", "word" to " x")) {
                         val expected = when {
-                            tailId == "word" || suffix != "value" && tailId != "none" -> listOf("MVK_UNEXPECTED_TOKEN")
+                            tailId == "word" -> listOf("MVK_UNEXPECTED_TOKEN")
+                            // Kernel 31.1.1 dropped the suffix from its grammar, so `X.Vordruckname` is one dotted name
+                            // that names nothing, looked up before any tail (KERNEL-FINDINGS KF657).
+                            suffix == "Vordruckname" -> listOf("INVALID_ENTITY")
+                            suffix != "value" && tailId != "none" -> listOf("MVK_UNEXPECTED_TOKEN")
                             subject == "Nope" || tailId == "unknown" -> listOf("INVALID_ENTITY")
                             tailId == "literal" -> listOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
                             subject == "Loans" -> listOf(if (suffix == "value") "INVALID_FIELD" else "INVALID_FIELD_IN_PARAMETER")

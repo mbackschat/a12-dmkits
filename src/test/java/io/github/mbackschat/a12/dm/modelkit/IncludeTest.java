@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,8 +15,8 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * modelkit M5 — a model can <b>include</b> another (a header {@code modelReferences} entry + a mount
- * group carrying {@code modelAlias}, no inline elements). The kernel expands the mount against a
+ * modelkit M5 — a model can <b>include</b> another (a mount group carrying {@code includeConfig}, no inline
+ * elements, plus its header {@code modelReferences} entry). The kernel expands the mount against a
  * resolver; the included fields then resolve under the mount's name-path (the included root-group
  * name is dropped — KERNEL-FINDINGS §10). Dogfood: both base and included models are authored by
  * modelkit. Own domain (a showroom including a pricelist).
@@ -32,7 +33,6 @@ class IncludeTest {
 
     private static DocumentModelDraft showroom() {
         return DocumentModelDraft.named("showroom").locale("en_US")
-                .include("pricelist", "pricelist")
                 .rootGroup("Showroom", s -> s
                         .field("Name", FieldKind.STRING)
                         .mount("Prices", "pricelist"))
@@ -70,15 +70,8 @@ class IncludeTest {
     @Test
     void emitsTheHeaderReferenceAndTheMountGroup() {
         String json = showroom().toJson();
-        assertTrue(json.contains("\"alias\" : \"pricelist\""), json);
         assertTrue(json.contains("\"purpose\" : \"include\""), json);
-        assertTrue(json.contains("\"modelAlias\" : \"pricelist\""), json);
-    }
-
-    @Test
-    void mountingAnUndeclaredAliasIsRejected() {
-        assertThrows(IllegalStateException.class, () -> DocumentModelDraft.named("m").locale("en_US")
-                .rootGroup("G", g -> g.mount("M", "nope"))
-                .build().toJson());
+        assertTrue(json.matches("(?s).*\"includeConfig\" : \\{\\s*\"reference\" : \"pricelist\".*"), json);
+        assertFalse(json.contains("alias"), "DM 29.4 writes no alias anywhere: " + json);
     }
 }

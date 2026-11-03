@@ -22,7 +22,7 @@ class WorkspaceMountTest {
     /** A provider whose root group carries [elements]; its own root name must never survive into a path. */
     private fun provider(id: String, root: String, elements: String, flag: Boolean = false) = source(
         """
-        {"header":{"modelVersion":"28.4.0","id":"$id","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
+        {"header":{"modelVersion":"29.4.0","id":"$id","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},
           "modelConfig":{"fieldRefByShortNameAllowed":$flag},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g","name":"$root","Group":{"elements":[$elements]}}
@@ -49,11 +49,11 @@ class WorkspaceMountTest {
      * A host whose root group `Order` holds a field `Code`, [extra], and a mount group `ShipTo` carrying
      * [mountBody] — the one member each row varies.
      */
-    private fun host(mountBody: String = """"modelAlias":"addr"""", extra: String = "", flag: Boolean = false) =
+    private fun host(mountBody: String = """"includeConfig":{"reference":"address"}""", extra: String = "", flag: Boolean = false) =
         source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"addr","purpose":"include","reference":"address"}
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"address"}
             ]},"content":{"modelInfo":{"name":"model"},
               "modelConfig":{"fieldRefByShortNameAllowed":$flag},
               "modelRoot":{"rootGroups":[
@@ -141,14 +141,14 @@ class WorkspaceMountTest {
      */
     private fun twoRootProvider(rules: String = "") = source(
         """
-        {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+        {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}$rules]}},
           {"type":"Group","id":"g2","name":"Contact","Group":{"elements":[${field("Email")}]}}
         ]}}}
         """,
     )
 
-    private val modelRoot = """"modelAlias":"addr","includeLevel":"MODEL_ROOT""""
+    private val modelRoot = """"includeConfig":{"reference":"address","includeLevel":"MODEL_ROOT"}"""
 
     /**
      * The `MODEL_ROOT` placement is the OPPOSITE of `SINGLE_RG`'s: every top-level group of the provider is
@@ -225,12 +225,12 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val address = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"g","purpose":"include","reference":"geo"}
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"geo"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 ${field("Street")},
-                {"type":"Group","id":"gg","name":"Where","Group":{"modelAlias":"g"}}
+                {"type":"Group","id":"gg","name":"Where","Group":{"includeConfig":{"reference":"geo"}}}
               ]}}
             ]}}}
             """,
@@ -246,12 +246,12 @@ class WorkspaceMountTest {
         val address = provider("address", "Address", field("Street"))
         val entry = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"addr","purpose":"include","reference":"address"}
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"address"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
-                {"type":"Group","id":"g2","name":"BillTo","Group":{"modelAlias":"addr"}},
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"address"}}},
+                {"type":"Group","id":"g2","name":"BillTo","Group":{"includeConfig":{"reference":"address"}}},
                 ${rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street) And FieldFilled(BillTo/Street)")}
               ]}}
             ]}}}
@@ -269,11 +269,11 @@ class WorkspaceMountTest {
     fun anIncludeCycleIsReportedRatherThanFollowed() {
         val address = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"back","purpose":"include","reference":"order"}
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"order"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
-                {"type":"Group","id":"gg","name":"Loop","Group":{"modelAlias":"back"}}
+                {"type":"Group","id":"gg","name":"Loop","Group":{"includeConfig":{"reference":"order"}}}
               ]}}
             ]}}}
             """,
@@ -317,8 +317,8 @@ class WorkspaceMountTest {
         val ruleProvider = provider("address", "Address", field("Street") + "," + broken())
         val computationProvider = provider("address", "Address", field("Street") + "," + brokenComputation())
         val excluded = mapOf(
-            """"modelAlias":"addr","excludeRules":true""" to ruleProvider,
-            """"modelAlias":"addr","excludeComputations":true""" to computationProvider,
+            """"includeConfig":{"reference":"address","excludeRules":true}""" to ruleProvider,
+            """"includeConfig":{"reference":"address","excludeComputations":true}""" to computationProvider,
         )
 
         excluded.forEach { (mountBody, source) ->
@@ -332,9 +332,9 @@ class WorkspaceMountTest {
             "without the flag the same provider's rule is checked",
         )
         assertEquals(
-            listOf("CK_MODEL_NOT_BUILDABLE"),
+            listOf(RK_COMPUTED_FIELD_NOT_FOUND),
             check(host(), computationProvider).findings.map { it.code },
-            "and without the flag its unresolvable computed field costs the model its verdict",
+            "and without the flag its unresolvable computed field draws A12's converter sentence",
         )
     }
 
@@ -352,7 +352,7 @@ class WorkspaceMountTest {
             field("Street") + ",{\"type\":\"Rule\",\"id\":\"r\",\"name\":\"R\",\"Rule\":5}",
         )
 
-        listOf(""""modelAlias":"addr"""", """"modelAlias":"addr","excludeRules":true""").forEach { mountBody ->
+        listOf(""""includeConfig":{"reference":"address"}""", """"includeConfig":{"reference":"address","excludeRules":true}""").forEach { mountBody ->
             val report = check(host(mountBody = mountBody), unbindable)
 
             assertEquals(
@@ -364,18 +364,15 @@ class WorkspaceMountTest {
     }
 
     /**
-     * An `attachment`-usage group shields its subtree from an exclusion applied from above it, and the shield
-     * is read from the FINAL expanded `usageType` (KF3). Under `SINGLE_RG` that is the provider root's own
-     * slot, which REPLACES the mount's — so the second row is the one that separates the two readings: an
-     * `attachment` marker authored on the MOUNT group is cleared by a provider root that declares none, and
-     * supplies no shield. Both are locked against the Kernel for the placement half by the shared matrix's
-     * two attachment cases; what is measured here is which declaration the shield is read from.
+     * A mount's OWN exclusion is shielded by its provider root's `attachment` marker and never by the mount's own
+     * (KF3; kernel rows in `adapter.MountUsageTypeKernelTest`). The second row separates the two: the mount is
+     * marked and the provider root is not, so the exclusion applies.
      */
     @Test
     fun anAttachmentProviderRootShieldsItsSubtreeAndAMountsOwnMarkerDoesNot() {
         val shielded = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"usageType":"attachment","elements":[
                 ${field("Street")},${broken()}
               ]}}
@@ -383,24 +380,59 @@ class WorkspaceMountTest {
             """,
         )
         val plain = provider("address", "Address", field("Street") + "," + broken())
-        val markedMount = """"modelAlias":"addr","excludeRules":true,"usageType":"attachment""""
+        val markedMount = """"includeConfig":{"reference":"address","excludeRules":true},"usageType":"attachment""""
 
         assertEquals(
             TARGET_PAIR,
-            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), shielded).findings.map { it.code },
+            check(host(mountBody = """"includeConfig":{"reference":"address","excludeRules":true}"""), shielded).findings.map { it.code },
             "the provider root is an attachment, so its rules survive the outer exclusion",
         )
         assertEquals(
             emptyList(),
             check(host(mountBody = markedMount), plain).findings,
-            "the mount's own marker is replaced by the provider root's absent slot, so nothing is shielded",
+            "a mount's own marker shields only what is excluded above it, so its own exclusion applies",
         )
     }
 
     /**
-     * The exclusion members are INCLUDE directives: on an ordinary group A12 accepts them inertly and the
-     * content survives (KF3), so a checker that read them wherever they appear would drop declarations A12
-     * checks — an under-report that hides real defects.
+     * An OUTER exclusion is shielded by the nested mount group's own marker, which kernel 31.1.1 keeps, and not by
+     * the provider root beneath it, whose marker no longer transfers (KF3; kernel rows in
+     * `adapter.MountUsageTypeKernelTest`). Each row sets exactly one of the two markers; under 30.8.1's slot
+     * replacement both answers would invert.
+     */
+    @Test
+    fun aNestedMountsOwnMarkerShieldsItFromAnOuterExclusion() {
+        val attachmentRoot = source(
+            """
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"usageType":"attachment","elements":[
+                ${field("Street")},${broken()}
+              ]}}
+            ]}}}
+            """,
+        )
+        val plainRoot = provider("address", "Address", field("Street") + "," + broken())
+        fun section(innerMarked: Boolean) = provider("section", "Section",
+            """{"type":"Group","id":"i","name":"Inspection","Group":{"includeConfig":{"reference":"address"}""" +
+                (if (innerMarked) ""","usageType":"attachment"}}""" else "}}"))
+        val outer = host(mountBody = """"includeConfig":{"reference":"section","excludeRules":true}""")
+
+        assertEquals(
+            TARGET_PAIR,
+            check(outer, section(innerMarked = true), plainRoot).findings.map { it.code },
+            "the nested mount is an attachment, so the outer exclusion leaves its content's rules",
+        )
+        assertEquals(
+            emptyList(),
+            check(outer, section(innerMarked = false), attachmentRoot).findings,
+            "the provider root's marker shields only its own mount's exclusion, not the outer one",
+        )
+    }
+
+    /**
+     * The exclusion members belong to `includeConfig`: on an ordinary group's body they are DM 28 members A12
+     * ignores and the content survives ([KERNEL-FINDINGS KF651]), so a checker that read them wherever they appear
+     * would drop declarations A12 checks — an under-report that hides real defects.
      */
     @Test
     fun anOrdinaryGroupsExclusionFlagsAreInert() {
@@ -415,45 +447,49 @@ class WorkspaceMountTest {
     }
 
     /**
-     * Every non-Boolean exclusion value is FALSE to the Kernel and the content survives (KF3's coercion
-     * matrix, re-measured 2026-09-12 across these four), so none may drop a declaration A12 checks — the
-     * read-path half of the over-strictness rule. The
-     * QUOTED `"true"` is the row that matters: it reads as the flag being set and is not, so a check on the
-     * text rather than the type silences findings about a rule A12 judges.
+     * DM 29.4 binds the exclusion flags through A12's shared boolean law ([KERNEL-FINDINGS KF651]): a coerced
+     * spelling drops the rule as the literal does, `false`'s spellings keep it, and a value the law refuses makes
+     * the model unloadable, so the mount is suspended rather than expanded either way.
      */
     @Test
-    fun noMalformedExclusionValueDropsAnIncludedRule() {
+    fun anExclusionFlagBindsAsA12BindsABoolean() {
         val address = provider("address", "Address", field("Street") + "," + broken())
-
-        listOf("\"true\"", "\"yes\"", "1", "{}").forEach { value ->
-            val report = check(host(mountBody = """"modelAlias":"addr","excludeRules":$value"""), address)
-            assertEquals(TARGET_PAIR, report.findings.map { it.code }, value)
-        }
-        assertEquals(
-            emptyList(),
-            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), address).findings,
-            "the boolean IS the flag, and that one drops the rule",
+        fun mounted(value: String) = check(
+            host(mountBody = """"includeConfig":{"reference":"address","excludeRules":$value}"""),
+            address,
         )
+
+        listOf("true", "\"true\"", "\"TRUE\"", "1").forEach { value ->
+            assertEquals(emptyList(), mounted(value).findings, value)
+        }
+        listOf("false", "\"False\"", "0").forEach { value ->
+            assertEquals(TARGET_PAIR, mounted(value).findings.map { it.code }, value)
+        }
+        listOf("\"yes\"", "{}", "1.5").forEach { value ->
+            val report = mounted(value)
+            assertEquals(emptySet(), report.checksCompleted, value)
+            assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "refuses" in it.reason }, value)
+        }
     }
 
     /**
-     * `includeLevel` is a strict two-valued enum, so any other spelling makes the model unreadable to A12
-     * ("No enum constant …IncludeLevel.model_root", measured). Expanding it as the default would produce a
-     * verdict for a source the Kernel refuses to load — the explicit `SINGLE_RG` row is the control that this
-     * is about the spelling rather than about the member being present.
+     * `includeLevel` binds as A12 binds its enum, by name or by ordinal after a Java `trim()`, and any other value
+     * makes the model unreadable to A12 ([KERNEL-FINDINGS KF651]). Expanding it as the default would produce a
+     * verdict for a source the Kernel refuses to load — the bound spellings are the control that this is about the
+     * value rather than about the member being present.
      */
     @Test
     fun anIncludeLevelSpellingA12CannotReadSuspendsTheMount() {
         val address = provider("address", "Address", field("Street"))
-        val report = check(host(mountBody = """"modelAlias":"addr","includeLevel":"model_root""""), address)
-
-        assertEquals(emptySet(), report.checksCompleted)
-        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "refuses" in it.reason }, report.gaps.toString())
-        assertTrue(
-            CheckFamily.CONDITION_REFERENCES in
-                check(host(mountBody = """"modelAlias":"addr","includeLevel":"SINGLE_RG""""), address)
-                    .checksCompleted,
-        )
+        listOf("\"model_root\"", "\"01\"", "2", "true").forEach { value ->
+            val report = check(host(mountBody = """"includeConfig":{"reference":"address","includeLevel":$value}"""), address)
+            assertEquals(emptySet(), report.checksCompleted, value)
+            assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "refuses" in it.reason }, value)
+        }
+        listOf("\"SINGLE_RG\"", "\" SINGLE_RG\"", "0", "\"0\"").forEach { value ->
+            val report = check(host(mountBody = """"includeConfig":{"reference":"address","includeLevel":$value}"""), address)
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, value)
+        }
     }
 
     /**
@@ -469,7 +505,7 @@ class WorkspaceMountTest {
     fun aProviderMissingAnEntryLocaleSuspendsTheMount() {
         val narrow = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
             ]}}}
             """,
@@ -485,7 +521,7 @@ class WorkspaceMountTest {
     fun aProviderCoveringEveryEntryLocaleMountsNormally() {
         val wide = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
             ]}}}
@@ -508,7 +544,7 @@ class WorkspaceMountTest {
     fun aMountedDeclarationsMessagesAreJudgedAgainstTheEntrysLocales() {
         val provider = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 ${field("Street")},
@@ -538,11 +574,11 @@ class WorkspaceMountTest {
     /** The host of the rows above, declaring two locales where [host] declares one. */
     private fun bilingualHost() = source(
         """
-        {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
-          {"alias":"addr","purpose":"include","reference":"address"}
+        {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
+          {"purpose":"include","reference":"address"}
         ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-            {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
+            {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"address"}}}
           ]}}
         ]}}}
         """,
@@ -553,7 +589,7 @@ class WorkspaceMountTest {
     fun aProviderWithoutExactlyOneRootGroupSuspendsTheMount() {
         val two = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"a","name":"Address","Group":{"elements":[${field("Street")}]}},
               {"type":"Group","id":"b","name":"Other","Group":{"elements":[${field("City")}]}}
             ]}}}
@@ -566,7 +602,7 @@ class WorkspaceMountTest {
 
     /** A provider whose sole root group is [root] verbatim, so a row can vary the root itself. */
     private fun providerWithRoot(root: String) = source(
-        """{"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+        """{"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},
            "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[$root]}}}""",
     )
 
@@ -586,7 +622,9 @@ class WorkspaceMountTest {
      * The `repeatability` rows are two measured matrices rather than one derived rule, and the STRING arm is
      * the half that cost a defect: a NUMBER truncates toward zero (`1.9` in, `2.1` out) while a STRING binds
      * as an integer, so `"1.5"` is a reader refusal where the number `1.5` is admitted (measured 2026-09-15,
-     * after this checker had generalized the number rule and mounted providers A12 refuses).
+     * after this checker had generalized the number rule and mounted providers A12 refuses). The member is a
+     * primitive `int`, so on kernel 31 a JSON `null` and the empty text are reader refusals too (KF593). A missing or
+     * `null` `Group` body is an empty group on kernel 31.1.1, so such a root mounts nothing and suspends nothing.
      */
     @Test
     fun aProviderRootA12RefusesToMountSuspendsTheAnalysis() {
@@ -601,19 +639,19 @@ class WorkspaceMountTest {
             addressRoot(""""repeatability":"1.5",""") to unreadable,
             addressRoot(""""repeatability":"NaN",""") to unreadable,
             addressRoot(""""repeatability":{},""") to unreadable,
+            addressRoot(""""repeatability":null,""") to unreadable,
+            addressRoot(""""repeatability":"",""") to unreadable,
             """{"type":"Field","id":"g","name":"Address","Field":{}}""" to "rather than a Group",
-            """{"type":"Group","id":"g","name":"Address"}""" to "no `Group` body",
+            """{"type":"Group","id":"g","name":"Address","Group":true}""" to "is not an object",
         )
         val mounted = listOf(
             addressRoot(),
             addressRoot(""""repeatability":1,"""),
             addressRoot(""""repeatability":1.9,"""),
             addressRoot(""""repeatability":-1,"""),
-            addressRoot(""""repeatability":null,"""),
             addressRoot(""""repeatability":"1","""),
             addressRoot(""""repeatability":" 1 ","""),
             addressRoot(""""repeatability":"01","""),
-            addressRoot(""""repeatability":"","""),
         )
 
         refused.forEach { (root, reason) ->
@@ -630,6 +668,12 @@ class WorkspaceMountTest {
             assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$root: ${report.gaps}")
             assertEquals(emptyList(), report.findings, root)
         }
+        listOf("""{"type":"Group","id":"g","name":"Address"}""", """{"type":"Group","id":"g","name":"Address","Group":null}""")
+            .forEach { root ->
+                val report = check(host(), providerWithRoot(root))
+                assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$root: ${report.gaps}")
+                assertEquals(emptyList(), report.findings, root)
+            }
     }
 
     /**
@@ -642,12 +686,12 @@ class WorkspaceMountTest {
     fun aNonObjectRootElementSuspendsTheMountAtEitherLevel() {
         val provider = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[${addressRoot()},5]}}}
             """,
         )
 
-        listOf(""""modelAlias":"addr"""", modelRoot).forEach { mountBody ->
+        listOf(""""includeConfig":{"reference":"address"}""", modelRoot).forEach { mountBody ->
             val report = check(host(mountBody = mountBody), provider)
 
             assertEquals(emptySet(), report.checksCompleted, mountBody)
@@ -659,20 +703,21 @@ class WorkspaceMountTest {
     }
 
     /**
-     * A MODEL_ROOT include of a provider with no root group is refused by A12 (measured 2026-09-15,
-     * `adapter.WorkspaceIncludeStructureKernelTest`), and mounting nothing silently is the reading this
-     * module refuses in any case: no facts and no gap saying so.
+     * A MODEL_ROOT include of a provider with no root group mounts nothing: kernel 31.1.1 builds and checks the entry
+     * with the mount empty ([KERNEL-FINDINGS KF3], `adapter.ElementBodyReadingDiffTest`), so the checker completes and
+     * leaves no gap, where kernel 30.8.1 refused the expansion.
      */
     @Test
-    fun aModelRootIncludeOfARootlessProviderSuspendsTheMount() {
+    fun aModelRootIncludeOfARootlessProviderMountsNothing() {
         val provider = source(
-            """{"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},
+            """{"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},
                 "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[]}}}""",
         )
         val report = check(host(mountBody = modelRoot), provider)
 
-        assertEquals(emptySet(), report.checksCompleted)
-        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "no root group" in it.reason }, report.gaps.toString())
+        assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, report.gaps.toString())
+        assertEquals(emptyList(), report.gaps.filter { it.at == "/Order/ShipTo" })
+        assertEquals(emptyList(), report.findings)
     }
 
     /**
@@ -685,7 +730,7 @@ class WorkspaceMountTest {
     fun aNamelessModelRootRootSuspendsTheWholeMount() {
         val provider = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               ${addressRoot()},
               {"type":"Group","id":"g2","Group":{"elements":[${field("Email")}]}}
             ]}}}
@@ -714,19 +759,26 @@ class WorkspaceMountTest {
     }
 
     /**
-     * A mount group that also carries local elements is ALREADY EXPANDED to the Kernel: the local elements
-     * survive and the reference is silently ignored (KF3). So it needs no provider at all, which is the row
-     * a checker that keyed only on the alias would get wrong.
+     * A mount group that also carries local elements still mounts: A12 31.1.1 replaces them with the included
+     * content ([KERNEL-FINDINGS KF651]), the reverse of 30.8.1, which kept them and ignored the reference. Without
+     * its provider the mount is therefore unexpanded, however complete the local elements look.
      */
     @Test
-    fun aMountGroupWithLocalElementsIsAlreadyExpanded() {
+    fun aMountGroupsLocalElementsAreReplacedByTheIncludedContent() {
         val entry = host(
-            mountBody = """"modelAlias":"addr","elements":[${field("Street")}]""",
+            mountBody = """"includeConfig":{"reference":"address"},"elements":[${field("Street")}]""",
             extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)"),
         )
-        val report = check(entry)
 
-        assertEquals(emptyList(), report.findings)
+        assertTrue(check(entry).gaps.any { it.at == "/Order/ShipTo" }, "no provider, so nothing is mounted")
+        assertEquals(emptyList(), check(entry, provider("address", "Address", field("Street"))).findings)
+    }
+
+    /** A DM 28 `modelAlias` declares no mount to A12 31.1.1, which reads the group as plain ([KERNEL-FINDINGS KF651]). */
+    @Test
+    fun aDm28ModelAliasIsAPlainGroupToA12() {
+        val report = check(host(mountBody = """"modelAlias":"address""""))
+
         assertEquals(emptyList(), report.gaps.filter { it.at == "/Order/ShipTo" })
     }
 
@@ -786,13 +838,13 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val nesting = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"g","purpose":"include","reference":"geo"}
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"geo"}
             ]},"content":{"modelInfo":{"name":"model"},
               "modelConfig":{"fieldRefByShortNameAllowed":true},
               "modelRoot":{"rootGroups":[
                 {"type":"Group","id":"g","name":"Address","Group":{"elements":[
-                  {"type":"Group","id":"gg","name":"Where","Group":{"modelAlias":"g"}},
+                  {"type":"Group","id":"gg","name":"Where","Group":{"includeConfig":{"reference":"geo"}}},
                   ${rule("Own", "../Where/Zip", "FieldFilled(Zip)")}
                 ]}}
               ]}}}
@@ -807,12 +859,12 @@ class WorkspaceMountTest {
 
         val twice = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"addr","purpose":"include","reference":"address"}
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"address"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
-                {"type":"Group","id":"g2","name":"BillTo","Group":{"modelAlias":"addr"}}
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"address"}}},
+                {"type":"Group","id":"g2","name":"BillTo","Group":{"includeConfig":{"reference":"address"}}}
               ]}}
             ]}}}
             """,
@@ -837,12 +889,12 @@ class WorkspaceMountTest {
         // index makes a resolvable provider-bound reference ambiguous — a model A12 accepts, refused.
         val prefixSiblings = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"addr","purpose":"include","reference":"address"}
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"address"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
-                {"type":"Group","id":"g2","name":"ShipToBilling","Group":{"modelAlias":"addr"}}
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"address"}}},
+                {"type":"Group","id":"g2","name":"ShipToBilling","Group":{"includeConfig":{"reference":"address"}}}
               ]}}
             ]}}}
             """,
@@ -880,22 +932,22 @@ class WorkspaceMountTest {
     fun aCycleThatNeverReachesTheEntryModelIsStillReported() {
         fun mutual(id: String, other: String) = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"$id","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"x","purpose":"include","reference":"$other"}
+            {"header":{"modelVersion":"29.4.0","id":"$id","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"$other"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"${id.uppercase()}","Group":{"elements":[
-                {"type":"Group","id":"gg","name":"Next","Group":{"modelAlias":"x"}}
+                {"type":"Group","id":"gg","name":"Next","Group":{"includeConfig":{"reference":"$other"}}}
               ]}}
             ]}}}
             """,
         )
         val entry = source(
             """
-            {"header":{"modelVersion":"28.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
-              {"alias":"addr","purpose":"include","reference":"ma"}
+            {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"purpose":"include","reference":"ma"}
             ]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"includeConfig":{"reference":"ma"}}}
               ]}}
             ]}}}
             """,
@@ -908,16 +960,12 @@ class WorkspaceMountTest {
         )
     }
 
-    /**
-     * An EMPTY `elements` array beside an alias is still an unexpanded mount — the Kernel's own idempotency
-     * test is "missing or empty", so reading only the missing half would leave the include unresolved and the
-     * subtree silently absent.
-     */
+    /** An EMPTY `elements` array beside an `includeConfig` is still a mount, as any local elements are. */
     @Test
-    fun anEmptyElementsArrayBesideAnAliasIsStillAMount() {
+    fun anEmptyElementsArrayBesideIncludeConfigIsStillAMount() {
         val address = provider("address", "Address", field("Street"))
         val entry = host(
-            mountBody = """"modelAlias":"addr","elements":[]""",
+            mountBody = """"includeConfig":{"reference":"address"},"elements":[]""",
             extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)"),
         )
 
@@ -932,7 +980,7 @@ class WorkspaceMountTest {
     fun aBrokenDeclarationInAProviderNamesTheProvider() {
         val address = ModelSource(
             """
-            {"header":{"modelVersion":"28.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+            {"header":{"modelVersion":"29.4.0","id":"address","locales":[{"code":"en_US"}]},"content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 {"type":"Field","name":"Street","Field":{"fieldType":{"type":"StringType"}}}
               ]}}

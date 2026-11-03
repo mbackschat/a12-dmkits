@@ -53,7 +53,6 @@ class ModelSeedPreparationTest {
     /** A policy mounting benefits at /Policy/Cover. */
     private static String policyMountingBenefits() {
         return DocumentModelDraft.named("policy").locale("en_US")
-                .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p
                         .field("PolicyNo", FieldKind.STRING)
                         .mount("Cover", "benefits"))

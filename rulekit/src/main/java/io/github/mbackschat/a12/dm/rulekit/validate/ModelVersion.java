@@ -80,9 +80,7 @@ public final class ModelVersion {
             if (d.code().isEmpty() && isVersionMismatch(d.summary())) {
                 out.add(new Diagnostic(d.severity(), d.source(),
                         Optional.of("RK_MODEL_VERSION_INCOMPATIBLE"), d.summary(), d.where(),
-                        Optional.of("the kernel implements model-format " + REFERENCE + " and cannot load a"
-                                + " newer or different-major model — re-author the model against " + REFERENCE
-                                + ", or run with a kernel that implements the model's version"),
+                        Optional.of(incompatibleFix(declared)),
                         d.explain()));
                 flaggedIncompatible = true;
             } else {
@@ -100,5 +98,30 @@ public final class ModelVersion {
                     Optional.empty()));
         }
         return out;
+    }
+
+    /**
+     * The corrective for a version the kernel refuses, by direction. An older major is what A12's document-model
+     * migrator ({@code IDocumentModelMigrator}, which the real-corpus harness {@code KernelMmCorpus} runs on 28.x
+     * models) exists for, so re-authoring it by hand would be the wrong advice; a newer one needs a kernel that
+     * implements it.
+     */
+    private static String incompatibleFix(String declared) {
+        String base = "the kernel implements model-format " + REFERENCE + " and cannot load model-format "
+                + (declared == null ? "this model's version" : declared);
+        if (declared != null && major(declared) < major(REFERENCE)) {
+            return base + " — migrate the model to " + REFERENCE + " with A12's document-model migrator";
+        }
+        return base + " — run with a kernel that implements the model's version, or re-author the model against "
+                + REFERENCE;
+    }
+
+    private static int major(String version) {
+        String head = version.split("\\.", 2)[0];
+        try {
+            return Integer.parseInt(head);
+        } catch (NumberFormatException notANumber) {
+            return Integer.MAX_VALUE;
+        }
     }
 }

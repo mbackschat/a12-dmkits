@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A declared string type's own parameters, against each other.
@@ -31,8 +32,6 @@ import kotlinx.serialization.json.JsonObject
  */
 internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
     declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        // A12 is silent on a field deleted from the default variant, on both carriers (KF556).
-        if (field.body.deletesAtDefaultVariant()) return@flatMap emptyList()
         field.stringTypeBody()?.let { body ->
             return@flatMap memberRangeFindings(field, body.lengthMembers(admitsUndefined = true)) +
                 noValueValidationFindings(field, body) + lengthFindings(field, body)
@@ -140,10 +139,13 @@ private fun TrackedDeclaration.customTypeBody(): JsonObject? {
     return FieldType.CUSTOM_FIELD.bodyIn(declared)
 }
 
-/** Whether the member is declared as something A12 reads as set — the sentinel counts as unset. */
+/**
+ * Whether the member is declared as something A12 reads as set — the sentinel counts as unset, and so does an empty
+ * `pattern`, which kernel 31.1.1's expand copy omits ([KERNEL-FINDINGS KF658], `adapter.laws.CheckerEmptyMemberAgreementTest`).
+ */
 private fun JsonObject.declares(member: String): Boolean = when (member) {
     "minLength", "maxLength" -> lengthInRange(member) != null
-    else -> this[member] != null
+    else -> this[member].let { it != null && !(it is JsonPrimitive && it.isString && it.content.isEmpty()) }
 }
 
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()

@@ -7,13 +7,11 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * Which operand SHAPES an Enumeration's equality gates read (a12-kernel-lean SPEC-2026-10-09-02). [KF407] settled
- * the gates on direct field reads; these rows put a brace or a selector on either side. In Kernel 30.8.1
- * `CheckVergleichsBedingungImpl` the three gates read three different things:
- * - the display gate against a TEXT reads how the text side is WRITTEN (`isFeldWertOp`: an immediate field read)
- *   and only the enumeration's TYPE, so a braced text partner passes and a braced enumeration does not;
- * - the display gate between two enumerations reads both types and nothing written;
- * - the value-domain gate reads a CONSTANT, which `CheckOpUtils.isConstant` finds inside any brace.
+ * Which operand SHAPES an Enumeration's equality gate reads (a12-kernel-lean SPEC-2026-10-09-02). [KF407] settled
+ * the gates on direct field reads; these rows put a brace or a selector on either side. Kernel 30.8.1 had two display
+ * gates beside the value-domain one, which kernel 31.1.1 deleted (KF655), so every shape that once met one is now
+ * admitted, and those rows stay as the lock that no remnant of either survives on any written arm. The value-domain
+ * gate reads a CONSTANT, which `CheckOpUtils.isConstant` finds inside any brace.
  *
  * `FirstFilledValue` over textual fields is a String (`CheckEntityListenUtils.treatEnumAsString`), even over two
  * Enumerations, so it meets neither the display gate as an immediate read nor the domain gate as an Enumeration.
@@ -48,27 +46,21 @@ class CheckerComparisonOperandShapeAgreementTest {
     private val validator = RuleValidator()
 
     @Test
-    fun theTextGateReadsTheWrittenTextSideAndTheEnumerationsType() {
+    fun noShapeMeetsADisplayGate() {
         assertAgreement(linkedMapOf(
-            "a text left of a labelled one — control" to ("[Holder] == [Labelled]" to TO_STRING),
-            "a text right of a labelled one — control" to ("[Labelled] == [Holder]" to TO_STRING),
+            "a text left of a labelled one" to ("[Holder] == [Labelled]" to ADMITTED),
+            "a text right of a labelled one" to ("[Labelled] == [Holder]" to ADMITTED),
             "a braced text, left" to ("{[Holder]} == [Labelled]" to ADMITTED),
             "a braced text, right" to ("[Labelled] == {[Holder]}" to ADMITTED),
-            "a braced labelled one, right" to ("[Holder] == {[Labelled]}" to TO_STRING),
-            "a braced labelled one, left" to ("{[Labelled]} == [Holder]" to TO_STRING),
+            "a braced labelled one, right" to ("[Holder] == {[Labelled]}" to ADMITTED),
+            "a braced labelled one, left" to ("{[Labelled]} == [Holder]" to ADMITTED),
             "identity labels" to ("[Holder] == [Mirrored]" to ADMITTED),
             "braced identity labels" to ("[Holder] == {[Mirrored]}" to ADMITTED),
             "a category access" to ("[Holder] == [Categorized -> Band]" to ADMITTED),
-        ))
-    }
-
-    @Test
-    fun theEnumerationGateReadsBothTypesWhateverIsWritten() {
-        assertAgreement(linkedMapOf(
-            "conflicting labels, the labelled one braced" to ("[TokenConflict] == {[Labelled]}" to TO_ENUM),
-            "conflicting labels, the other braced" to ("{[TokenConflict]} == [Labelled]" to TO_ENUM),
+            "conflicting labels, the labelled one braced" to ("[TokenConflict] == {[Labelled]}" to ADMITTED),
+            "conflicting labels, the other braced" to ("{[TokenConflict]} == [Labelled]" to ADMITTED),
             "matching labels, one braced" to ("[LabelledTwin] == {[Labelled]}" to ADMITTED),
-            "labels beside none, one braced" to ("[Plain] == {[Labelled]}" to TO_STRING),
+            "labels beside none, one braced" to ("[Plain] == {[Labelled]}" to ADMITTED),
             "conflicting labels under a category" to ("[Labelled] == [Categorized -> Band]" to ADMITTED),
         ))
     }
@@ -116,8 +108,6 @@ class CheckerComparisonOperandShapeAgreementTest {
 
     private companion object {
         val ADMITTED = emptySet<String>()
-        val TO_STRING = setOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")
-        val TO_ENUM = setOf("MVK_INVALID_COMPARE_ENUM_TO_ENUM")
         val NOT_A_VALUE = setOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON")
 
         /** The rows where the checker answers otherwise, with what it answers. */

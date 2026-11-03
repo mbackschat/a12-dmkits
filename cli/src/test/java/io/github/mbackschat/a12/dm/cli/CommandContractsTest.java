@@ -54,7 +54,7 @@ class CommandContractsTest {
     }
 
     @Test
-    void theDerivedOperationalDenominatorHasAll48WritesAnd39Previews() throws Exception {
+    void theDerivedOperationalDenominatorCountsEveryWriteAndPreview() throws Exception {
         JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
         int writes = 0;
         int previews = 0;
@@ -69,9 +69,9 @@ class CommandContractsTest {
                 }
             }
         }
-        assertEquals(49, writes,
-                "36 shared editors + 3 custom editors + 8 artifact writers + two batch dispatch modes");
-        assertEquals(39, previews, "every live --dry-run editing leaf has one active-preview profile");
+        assertEquals(48, writes,
+                "35 shared editors + 3 custom editors + 8 artifact writers + two batch dispatch modes");
+        assertEquals(38, previews, "every live --dry-run editing leaf has one active-preview profile");
     }
 
     @Test
@@ -145,7 +145,7 @@ class CommandContractsTest {
                         () -> name + " writes nothing, so a persistence scope there is noise");
             }
         }
-        assertEquals(47, writing, "every leaf with at least one writing profile carries the scope");
+        assertEquals(46, writing, "every leaf with at least one writing profile carries the scope");
         // 35 since `mcp` landed: it serves editing verbs but accepts no destination, so no bytes survive a
         // call and a persistence scope there would describe a write that cannot happen (MCP-SPEC §5).
         assertEquals(35, readOnly, "the always-read-only leaves stay free of it");
@@ -258,7 +258,7 @@ class CommandContractsTest {
         // write their own selectors. It deliberately excludes the editor verbs, whose commit/preview pair comes
         // from the one shared `modelEditorProfiles` derivation that `group extract` already controls: controlling
         // each MECHANISM once is the design, and re-controlling every reuse of it would assert nothing new.
-        // Their count is asserted live by theDerivedOperationalDenominatorHasAll48WritesAnd39Previews, so it is
+        // Their count is asserted live by theDerivedOperationalDenominatorCountsEveryWriteAndPreview, so it is
         // deliberately not restated here.
         Set<String> bespoke = new HashSet<>();
         JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());

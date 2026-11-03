@@ -22,7 +22,7 @@ class MessageParameterReferenceTest {
     private fun germanSaying(text: String): List<String> = checkRead(
         ModelSource(
             """
-        {"header":{"modelVersion":"28.4.0","id":"vertrag","locales":[{"code":"de_DE"}]},
+        {"header":{"modelVersion":"29.4.0","id":"vertrag","locales":[{"code":"de_DE"}]},
          "content":{"modelInfo":{"name":"model"},"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Vertrag","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Referenz","Field":{"fieldType":{"type":"StringType"}}},
@@ -170,12 +170,12 @@ class MessageParameterReferenceTest {
     }
 
     /**
-     * The FORM-LINE suffixes, which skip membership and still have to address a field.
+     * The FORM-LINE suffix, which skips membership and still has to address a field.
      *
-     * Three rows on one condition: the plain form on an unread field is refused, both suffixes on that same
-     * field are admitted, and the same suffix on a GROUP is refused under a class of its own. The admitted
-     * rows carry the risk — enforcing membership uniformly across the name-position forms would refuse two
-     * shapes A12 admits.
+     * Rows on one condition: the plain form on an unread field is refused, the form-line suffix on that same
+     * field is admitted, and the same suffix on a GROUP is refused under a class of its own. The admitted
+     * row carries the risk — enforcing membership uniformly across the name-position forms would refuse a
+     * shape A12 admits. The `Vordruckname` rows are the retired suffix, now a name naming nothing (KF657).
      */
     @Test
     fun theFormLineSuffixesSkipMembershipAndStillAddressAField() {
@@ -192,9 +192,10 @@ class MessageParameterReferenceTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["the plain form on an unread field — the control"] = listOf(invalidField)
         expected["the Vordruckzeile suffix on that field"] = emptyList()
-        expected["the Vordruckname suffix on that field"] = emptyList()
+        // Kernel 31.1.1 dropped the `Vordruckname` suffix (KF657): the text is a dotted name that names nothing.
+        expected["the Vordruckname suffix on that field"] = listOf("INVALID_ENTITY")
         expected["the Vordruckzeile suffix on a GROUP"] = refused
-        expected["the Vordruckname suffix on a GROUP"] = refused
+        expected["the Vordruckname suffix on a GROUP"] = listOf("INVALID_ENTITY")
         // MessageNamePositionAgreementTest measures the lookup before form-position completion.
         expected["the same suffix on a name that resolves to nothing"] = listOf("INVALID_ENTITY")
         assertEquals(expected, actual, "the form-line suffixes skip membership and still address a field")
@@ -281,7 +282,7 @@ class MessageParameterReferenceTest {
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
         }
         return """
-            {"header":{"modelVersion":"28.4.0","id":"policy","locales":[{"code":"en_US"}]},
+            {"header":{"modelVersion":"29.4.0","id":"policy","locales":[{"code":"en_US"}]},
              "content":{"modelInfo":{"name":"model"},"modelConfig":{"fieldRefByShortNameAllowed":"True"},
               "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[

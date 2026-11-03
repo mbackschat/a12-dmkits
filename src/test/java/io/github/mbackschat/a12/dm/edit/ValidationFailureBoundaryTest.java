@@ -22,7 +22,7 @@ class ValidationFailureBoundaryTest {
     private static String host(boolean bilingual) {
         var builder = DocumentModelDraft.named("host").locale("en_US");
         if (bilingual) builder.locale("de_DE");
-        return builder.include("library", "library")
+        return builder
                 .rootGroup("Host", root -> root.mount("Included", "library")).build().toJson();
     }
 

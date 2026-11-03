@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test
  * one.
  *
  * Only a missing `modelVersion` is evaluated by the Kernel. The other three throw before any rule runs: in the
- * generated-code id, in model expansion and in the code generator's character pre-check. The interpreter's runtime
+ * generated-code id, in the runtime's A12 settings (on kernel 30.8.1 missing locales failed in model expansion
+ * instead) and in the code generator's character pre-check. The interpreter's runtime
  * preparation refuses the same three by the member's path and evaluates the fourth (INTERPRETER-FINDINGS IF451). Own
  * domain: an insurance policy whose reference is required.
  */
@@ -89,14 +90,13 @@ class CheckOnlyFrameRuntimeDiffTest {
     fun onlyAMissingVersionIsEvaluatedAndTheInterpreterRefusesTheOtherThreeAsTheKernelDoes() {
         fun unevaluated(thrower: String, member: String) =
             listOf("A12 throws in $thrower", "A12 throws in $thrower", "refused INVALID_MODEL_SOURCE $member", "A12 throws in $thrower")
-        val expansion = "DocumentModelExpandService\$IncludeExpandVisitor"
         assertEquals(
             mapOf(
                 "control" to listOf("REF", "REF", "REF", "consistent"),
                 "modelVersion absent" to listOf("REF", "REF", "REF", "A12 throws in VersionChecker"),
                 "modelInfo absent" to unevaluated("DocumentModelInfoWrapper", "content.modelInfo"),
-                "locales absent" to unevaluated(expansion, "header.locales"),
-                "locales null" to unevaluated(expansion, "header.locales"),
+                "locales absent" to unevaluated("A12SpecificSettings", "header.locales"),
+                "locales null" to unevaluated("A12SpecificSettings", "header.locales"),
                 "a null supported character" to unevaluated("CharsetUtil", "content.modelConfig.supportedCharacters[1]"),
             ),
             shapes(sound).mapValues { (_, model) -> observed(model) },
@@ -107,7 +107,8 @@ class CheckOnlyFrameRuntimeDiffTest {
     /**
      * The rule is not what stops A12: the same shapes on the policy with no rule, which has no localized text for
      * expansion to fail on, still stop both strategies, so a refusal does not depend on the model carrying a rule.
-     * Missing locales then fail in the runtime's own settings instead of in expansion.
+     * On kernel 31.1.1 missing locales fail in the runtime's A12 settings on both strategies, as with the rule; on
+     * 30.8.1 dynamic Groovy failed earlier, in its runtime service.
      */
     @Test
     fun withNoRuleA12StillCannotEvaluateTheThree() {
@@ -118,8 +119,8 @@ class CheckOnlyFrameRuntimeDiffTest {
                 "control" to listOf("", "", "", "consistent"),
                 "modelVersion absent" to listOf("", "", "", "A12 throws in VersionChecker"),
                 "modelInfo absent" to unevaluated("DocumentModelInfoWrapper", "DocumentModelInfoWrapper", "content.modelInfo"),
-                "locales absent" to unevaluated("DocumentAbstractRtService", "A12SpecificSettings", "header.locales"),
-                "locales null" to unevaluated("DocumentAbstractRtService", "A12SpecificSettings", "header.locales"),
+                "locales absent" to unevaluated("A12SpecificSettings", "A12SpecificSettings", "header.locales"),
+                "locales null" to unevaluated("A12SpecificSettings", "A12SpecificSettings", "header.locales"),
                 "a null supported character" to
                     unevaluated("CharsetUtil", "CharsetUtil", "content.modelConfig.supportedCharacters[1]"),
             ),
@@ -138,7 +139,7 @@ class CheckOnlyFrameRuntimeDiffTest {
     fun aReachedModelsShapeIsEvaluatedByEveryEngine() {
         val component = DocumentModelDraft.named("component").locale("en_US")
             .rootGroup("Component") { c -> c.stringField("Description") {} }.build().toJson()
-        val entry = DocumentModelDraft.named("policy-frame-runtime").locale("en_US").include("component", "component")
+        val entry = DocumentModelDraft.named("policy-frame-runtime").locale("en_US")
             .rootGroup("Policy") { p -> p.stringField("Ref") {}.mount("Details", "component") }.build().toJson()
             .let { RuntimeLaws.withRule(it, "/Policy", "RRef", "../Ref", "REF", ruleCondition) }
         val reached = shapes(component).filterKeys { !it.startsWith("locales") }

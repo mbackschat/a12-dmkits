@@ -16,14 +16,18 @@ class MessageGroupDottedBoundaryAgreementTest {
         val models = MessageGroupEventAgreementTest()
         for (language in ConditionLanguage.entries) {
             val allowedAtEnd = listOf(if (language == ConditionLanguage.EN) "RootGroup" else "LfdNr", "Zeile", "Usb", "index")
-            val reserved = listOf("Vordruckname", "Vordruckzeile") + when (language) {
+            val reserved = listOf("Vordruckzeile") + when (language) {
                 ConditionLanguage.EN -> listOf("RuleGroup", "For", "BaseYear", "value")
                 ConditionLanguage.DE -> listOf("RegelKontext", "Fuer", "Referenzjahr", "Wert")
             }
-            for (word in allowedAtEnd + reserved + "Archive") for (quoted in listOf(false, true)) {
+            // `Vordruckname` left the grammar on kernel 31.1.1 and is an ordinary name like `Archive` (KF657); it keeps
+            // its place in the grid, which the stored corpus replays in order.
+            val ordinary = listOf("Vordruckname", "Archive")
+            val words = allowedAtEnd + "Vordruckname" + reserved + "Archive"
+            for (word in words) for (quoted in listOf(false, true)) {
                 val name = if (quoted) "'$word'" else word
                 val code = if (!quoted && word in reserved) "MVK_UNEXPECTED_TOKEN" else "INVALID_GROUP"
-                val portable = if (!quoted && word != "Archive") emptyList() else listOf(code)
+                val portable = if (!quoted && word !in ordinary) emptyList() else listOf(code)
                 add(Row("${language.name.lowercase()}-$word-${if (quoted) "quoted" else "bare"}",
                     models.boundaryModel(language, 1, "Loans.$name"), listOf(code), portable))
             }

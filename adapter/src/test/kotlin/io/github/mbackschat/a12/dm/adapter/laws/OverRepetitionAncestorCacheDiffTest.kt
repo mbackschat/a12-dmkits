@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.md.document.api.IDocument
-import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2
 import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import io.github.mbackschat.a12.dm.interpreter.CustomCondition
@@ -126,8 +128,8 @@ class OverRepetitionAncestorCacheDiffTest {
                 listOf("/Shipment/Manifests/Crates/Items/Quantity@[1, $parent, 1, 1, 1]") else emptyList()
             val observations = mutableListOf<List<String>>()
             val callback = object : ICustomCondition {
-                override fun check(document: IDocument, relevant: Set<IEntityInstance>?,
-                    invalid: Set<IEntityInstance>, error: IEntityInstance): Boolean {
+                override fun check(document: DocumentV2, relevant: Set<out DocumentMultiPointer>?,
+                    invalid: Set<DocumentPointer>, error: PartiallyKnownDocumentMultiPointer): Boolean {
                     assertEquals(null, relevant)
                     assertEquals("/Shipment/Title", error.path)
                     assertEquals(listOf(1, 1), error.repetitions.toList())

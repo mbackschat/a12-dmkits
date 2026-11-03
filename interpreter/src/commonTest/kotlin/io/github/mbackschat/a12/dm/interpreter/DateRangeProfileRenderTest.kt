@@ -11,7 +11,8 @@ import kotlin.test.assertEquals
 
 /**
  * Multiplatform (JVM + Node) peer for SPEC-2026-08-19-03/-05: what a DATE_RANGE computation STORES, across all
- * eight admitted `(format, separator)` declaration pairs (KERNEL-FINDINGS KF81). The kernel side is
+ * eight `(format, separator)` declaration pairs kernel 30.8.1 admitted (KERNEL-FINDINGS KF81); 31.1.1 adds
+ * their empty-separator twins, which read as `/` (KF658). The kernel side is
  * `adapter.laws.DateRangeFirstFilledProfileDiffTest` and
  * `ConstructedRangeTargetDiffTest`; those run only on the JVM, and the ledger entries ask for the JVM/Node
  * route as well.

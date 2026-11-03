@@ -1551,7 +1551,7 @@
         "field": "../Quantity",
         "dsl": "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Count] > 0 And RepetitionNotUnique(Items/Sku))) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Order",
@@ -1608,7 +1608,7 @@
         "field": "../ProjectName",
         "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having CurrentRepetition(/Project/Milestones/Tasks) > 0) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Project",
@@ -1627,7 +1627,7 @@
         "field": "../ProjectName",
         "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having CurrentRepetition(/Project/Milestones/Tasks) > 0 And [/Project/Milestones/Budget] > 0) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Project",
@@ -1684,7 +1684,7 @@
         "field": "../Quantity",
         "dsl": "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\" And CustomCondition SomeCheck)) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Order",
@@ -1989,7 +1989,7 @@
         "field": "../Items/Count",
         "dsl": "FieldFilled(Items/Count) And SumOfProducts(Items/Count, Items*/UnitWeight) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "control": {
         "group": "/Order",
@@ -2034,7 +2034,7 @@
         "field": "../ProjectName",
         "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Tasks*/Effort Having [Milestones/Tasks/TaskId] == \"x\", Milestones*/Tasks*/Effort) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       }
     },
     {
@@ -2086,7 +2086,7 @@
         "field": "../Quantity",
         "dsl": "FieldFilled(Quantity) And SumOfProducts(Items*/Count Having [Items/Sku] == \"X\", Items*/UnitWeight) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+        "code": "MVK_WILDCARD_AT_LOWEST_REPEATABLE_LEVEL_REQUIRED"
       },
       "control": {
         "group": "/Order",
@@ -2428,7 +2428,7 @@
         "field": "../Quantity",
         "dsl": "FieldFilled(Quantity) And Sum(Items*/Count Having Sum(Items*/UnitWeight Having [Items/UnitWeight] > 0) > 0) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Order",
@@ -5470,7 +5470,7 @@
         "field": "../Lines/OrderedQty",
         "dsl": "FieldFilled(Lines/OrderedQty) And Sum(Lines*/OrderedQty Having ([Lines/OrderedQty] > 0 And [Picks/PickedQty] > 0)) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Shipment",
@@ -5814,7 +5814,7 @@
         "field": "../Quantity",
         "dsl": "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\" And CustomCondition SomeCheck)) > 0",
         "verdict": "REJECTED",
-        "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
       },
       "control": {
         "group": "/Order",
@@ -6746,13 +6746,13 @@
       "trigger": {
         "group": "/Doc",
         "field": "../Str",
-        "dsl": "[Str] == { [WithText] } + [Str]",
+        "dsl": "[Str] == [WithText] + [Str]",
         "verdict": "ACCEPTED"
       },
       "control": {
         "group": "/Doc",
         "field": "../Str",
-        "dsl": "[Str] == [WithText] + [Str]",
+        "dsl": "[Str] == [WithText] + 5",
         "verdict": "REJECTED",
         "code": "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
       }

@@ -32,9 +32,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  * substitutes the category's tokens for the field's, which is the one spelling that can rescue a source the
  * target does not cover.
  *
- * <p><b>The display half rides along</b>, reusing the same {@code checkDisplayValues} the comparison walk
- * uses ([KF407](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)) — so a labelled source and an
- * unlabelled target are incomparable here for the same reason they are there.
+ * <p><b>Display labels play no part</b> on kernel 31.1.1, which deleted the {@code checkDisplayValues} this gate and
+ * the comparison walk shared on 30.8.1 (KERNEL-FINDINGS KF407, KF655).
  *
  * <p>Own domain (a policy administration desk).
  */
@@ -90,8 +89,7 @@ class EnumComputationSourceLawsTest {
         // Containment runs one way, so the pair of rows is the measurement rather than either alone.
         expected.put("an enumeration declaring FEWER", KernelLaws.ADMITTED);
         expected.put("an enumeration declaring MORE", REFUSED);
-        expected.put("a LABELLED enumeration against an unlabelled target",
-                "MVK_INVALID_COMPARE_ENUM_TO_STRING");
+        expected.put("a LABELLED enumeration against an unlabelled target", KernelLaws.ADMITTED);
         expected.put("a category whose tokens the target covers", KernelLaws.ADMITTED);
         expected.put("a category whose tokens it does not", REFUSED);
         expected.put("a text field", REFUSED);
@@ -171,18 +169,17 @@ class EnumComputationSourceLawsTest {
             .build().toJson();
 
     /**
-     * What a {@code FirstFilledValue} operand owes the gate that a sole read does not. A sole read meets the
-     * display check in the comparison walk; inside {@code FirstFilledValue} A12 asks it only here, as
-     * {@code checkDisplayValues}' own note says, so a bearing mismatch there draws this class in either
-     * direction. Any operand that is not an enumeration fails {@code isEntityIdCompatibleWithEnumValues},
-     * a custom type included (replay of SPEC-2026-10-24-16, s4 {@code va12} and {@code vb14}).
+     * Labels play no part in what a {@code FirstFilledValue} operand or a sole read owes the gate: kernel 31.1.1
+     * deleted the display check that 30.8.1 asked of an operand here (KF655). Any operand that is not an
+     * enumeration still fails {@code isEntityIdCompatibleWithEnumValues}, a custom type included (replay of
+     * SPEC-2026-10-24-16, s4 {@code va12} and {@code vb14}).
      */
     @Test
-    void aFirstFilledValueOperandOwesThisGateTheDisplayCheck() {
+    void labelsPlayNoPartInAFirstFilledValueOperand() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("an unlabelled and a labelled operand into an unlabelled target",
                 computedOn(LABELS, "../Status", "FirstFilledValue(Mirror, Labelled)"));
-        actual.put("the labelled read alone — the parser's control", computedOn(LABELS, "../Status", "[Labelled]"));
+        actual.put("the labelled read alone", computedOn(LABELS, "../Status", "[Labelled]"));
         actual.put("two unlabelled operands into a labelled target",
                 computedOn(LABELS, "../Labelled", "FirstFilledValue(Status, Mirror)"));
         actual.put("a custom-typed field", computedOn(LABELS, "../Status", "[Loose]"));
@@ -190,9 +187,9 @@ class EnumComputationSourceLawsTest {
                 computedOn(LABELS, "../Status", "FirstFilledValue(Mirror, Loose)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("an unlabelled and a labelled operand into an unlabelled target", REFUSED);
-        expected.put("the labelled read alone — the parser's control", "MVK_INVALID_COMPARE_ENUM_TO_STRING");
-        expected.put("two unlabelled operands into a labelled target", REFUSED);
+        expected.put("an unlabelled and a labelled operand into an unlabelled target", KernelLaws.ADMITTED);
+        expected.put("the labelled read alone", KernelLaws.ADMITTED);
+        expected.put("two unlabelled operands into a labelled target", KernelLaws.ADMITTED);
         expected.put("a custom-typed field", REFUSED);
         expected.put("a custom-typed operand among enumerations", REFUSED);
         assertEquals(expected, actual, "what a FirstFilledValue operand owes this gate");
