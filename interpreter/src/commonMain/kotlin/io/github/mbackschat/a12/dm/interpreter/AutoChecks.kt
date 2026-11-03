@@ -96,8 +96,7 @@ internal class AutoChecks(
                         MsgType.VALUE,
                         customMessage(failure.rejection, vf.path, locale),
                     )
-                    is FormalFailure.OverRepetition -> null
-                    is FormalFailure.Generated -> null
+                    is FormalFailure.OverRepetition, is FormalFailure.Generated -> null
                 }
             }
         }

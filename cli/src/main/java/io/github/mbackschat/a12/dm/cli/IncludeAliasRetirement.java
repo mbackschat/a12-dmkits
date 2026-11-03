@@ -31,8 +31,8 @@ final class IncludeAliasRetirement {
 
     /** The parse-error hint for {@code --alias} on an include verb, or for the retired {@code include rename}. */
     static Optional<String> parseHint(String qualifiedCommand, Iterable<String> unmatched) {
-        boolean includeVerb = qualifiedCommand.endsWith(" include") || qualifiedCommand.contains(" include ");
-        if (!includeVerb) {
+        boolean includeGroup = qualifiedCommand.endsWith(" include");
+        if (!includeGroup && !qualifiedCommand.contains(" include ")) {
             return Optional.empty();
         }
         for (String arg : unmatched) {
@@ -40,7 +40,7 @@ final class IncludeAliasRetirement {
             if ("--alias".equals(flag)) {
                 return Optional.of("→ " + NO_ALIAS + " — pass it as --reference <model id> (or positionally).");
             }
-            if (qualifiedCommand.endsWith(" include") && "rename".equals(arg)) {
+            if (includeGroup && "rename".equals(arg)) {
                 return Optional.of("→ " + renameFix("`include set-reference <model id> --to <new model id>`"));
             }
         }

@@ -25,8 +25,9 @@ internal fun TrackedFactBase.undeclaredLocaleMessageFindings(): List<Finding> = 
     .filter { it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION }
     .mapNotNull { element ->
         val messages = element.body?.authoredMessages() as? AuthoredMessages.Read ?: return@mapNotNull null
-        val declared = messages.examined(declaredLocales).flatMap { it.text.parameterParts() }.toSet()
         val undeclared = messages.entries.textsCollectedFor { it !in declaredLocales }
+        if (undeclared.isEmpty()) return@mapNotNull null
+        val declared = messages.examined(declaredLocales).flatMap { it.text.parameterParts() }.toSet()
         undeclared.firstNotNullOfOrNull { (locale, text) ->
             text.parameterParts().firstOrNull { it !in declared }?.let { locale to it }
         }?.let { (locale, part) ->
@@ -43,5 +44,5 @@ internal fun TrackedFactBase.undeclaredLocaleMessageFindings(): List<Finding> = 
     }
 
 /** The non-empty parts between two `$`, in the order A12's parameter mapping meets them. */
-private fun String.parameterParts(): List<String> =
+internal fun String.parameterParts(): List<String> =
     split('$').filterIndexed { index, part -> index % 2 == 1 && part.isNotEmpty() }

@@ -331,6 +331,7 @@ internal fun rulesOwnReadsIn(text: String, language: ConditionLanguage): String 
  */
 internal fun termBodiesIn(text: String, language: ConditionLanguage): List<IntRange> {
     val operator = OPERATOR_SPELLINGS[language]?.get(OperatorId.SUM_OF_TERMS) ?: return emptyList()
+    if (operator !in text) return emptyList()
     val tokens = tokenize(text).filter { it.kind != TokenKind.COMMENT }
     val terms = mutableListOf<IntRange>()
     // One entry per open delimiter: for a term sum's `(`, where its term starts once the `,` is read (-1 before).

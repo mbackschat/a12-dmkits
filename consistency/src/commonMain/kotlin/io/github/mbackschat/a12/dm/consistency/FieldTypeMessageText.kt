@@ -92,8 +92,7 @@ private fun String.fieldMessageRefusal(language: ConditionLanguage): Pair<String
         return "WRONG_NUMBER_OF_DOLLARS" to "carries an odd number of `$`, so a parameter is opened and never closed"
     }
     val allowed = language.fieldMessageParameters()
-    val parameter = split('$').filterIndexed { index, part -> index % 2 == 1 && part.isNotEmpty() }
-        .firstOrNull { it !in allowed } ?: return null
+    val parameter = parameterParts().firstOrNull { it !in allowed } ?: return null
     return "INVALID_PARAMETER" to "writes `$$parameter$`, and a field's own message takes only " +
         allowed.joinToString(" and ") { "`$$it$`" } + ", which stand for the field being validated — the " +
         "names follow the model's condition language, not the message's locale"

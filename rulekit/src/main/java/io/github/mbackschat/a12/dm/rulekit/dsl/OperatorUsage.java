@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -172,10 +173,7 @@ public final class OperatorUsage {
             }
             case SumOfTerms s -> {
                 ops.add(s.operatorId());
-                s.filter().ifPresent(filter -> {
-                    ops.add("Having");
-                    collect(filter, ops);
-                });
+                collectHaving(s.filter(), ops);
                 collect(s.term(), ops);
             }
             case DateConstruction dc -> {
@@ -220,6 +218,14 @@ public final class OperatorUsage {
         }
     }
 
+    /** A {@code Having} filter is its own catalog operator, and its condition is read like any other. */
+    private static void collectHaving(Optional<Condition> filter, Set<String> ops) {
+        filter.ifPresent(condition -> {
+            ops.add("Having");
+            collect(condition, ops);
+        });
+    }
+
     /** A category projection, and the {@code For} key when one selects its row. */
     private static void collectCategory(EnumCategoryAccess category, Set<String> ops) {
         ops.add(category.operatorId());
@@ -237,10 +243,7 @@ public final class OperatorUsage {
             ops.add(index.operatorId());
         } else if (operand instanceof FieldListRef list) {
             if (list.semanticIndex().isPresent()) ops.add("SemanticIndex");
-            list.filter().ifPresent(filter -> {
-                ops.add("Having");
-                collect(filter, ops);
-            });
+            collectHaving(list.filter(), ops);
         }
     }
 }

@@ -9,6 +9,8 @@ import java.util.Set;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentUniquenessCriterion;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
+
 /**
  * The document uniqueness criteria of an expanded model, indexed by the fields they name (KERNEL-FINDINGS KF671).
  *
@@ -48,9 +50,8 @@ public final class UniquenessCriteria {
      */
     public Set<String> within(String entityPath) {
         Set<String> within = new LinkedHashSet<>();
-        String subtree = entityPath + "/";
         byField.forEach((field, names) -> {
-            if (field.equals(entityPath) || field.startsWith(subtree)) {
+            if (EntityPaths.isInside(field, entityPath)) {
                 within.addAll(names);
             }
         });

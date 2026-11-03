@@ -29,9 +29,7 @@ internal fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
         val c = ctxOf(arg)
         if (arg is Expr.Star) {
             val rows = c.groupListEnvironments(arg.path, arg.bindDepth)
-            if (gate != null &&
-                !gate.admits(arg.path, arg.bindDepth, c.repsOf(arg.path), rows.mapTo(HashSet()) { it.repsOf(arg.path) })
-            ) return Val.Unknown
+            if (gate.refusesRows(arg, c, rows)) return Val.Unknown
             for (row in rows) count += countedGroup(groupPresence(row, arg.path)) ?: return Val.Unknown
         } else {
             val path = pathOf(arg)
@@ -71,13 +69,14 @@ internal fun Interpreter.termSumRows(e: Expr.TermSum): List<EvalContext>? {
     val star = e.iteration
     val c = ctxOf(star)
     val rows = c.groupListEnvironments(star.path, star.bindDepth)
-    val gate = groupCountGate
-    if (gate != null && !gate.admits(star.path, star.bindDepth, c.repsOf(star.path), rows.mapTo(HashSet()) { it.repsOf(star.path) })) {
-        return null
-    }
+    if (groupCountGate.refusesRows(star, c, rows)) return null
     val having = star.having ?: return rows
     return keptRowsWithSuccessorLookahead(rows, having).toList()
 }
+
+/** Whether the partial-validation gate refuses to count [star]'s [rows] under [c]; no gate refuses nothing. */
+private fun GroupCountGate?.refusesRows(star: Expr.Star, c: EvalContext, rows: List<EvalContext>): Boolean =
+    this != null && !admits(star.path, star.bindDepth, c.repsOf(star.path), rows.mapTo(HashSet()) { it.repsOf(star.path) })
 
 /** One counted instance's addition to the count, or null when it leaves the count undecidable. */
 private fun countedGroup(state: GroupPresenceState): Int? = when (state.fillProduct) {

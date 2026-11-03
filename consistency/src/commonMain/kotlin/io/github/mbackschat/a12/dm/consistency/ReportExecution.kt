@@ -122,10 +122,11 @@ internal fun TrackedFactBase.withheldComputations(): Set<DeclarationKey> = decla
 /** Cells hold local outcomes; every report re-enters the outer stages against the current model. */
 internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding> {
     val withheld = facts.withheldComputations()
+    val withheldPaths = withheld.mapTo(HashSet()) { it.path }
     val local = cells.values.flatMap { it.contributions }
         .filterNot { it is OwnedFinding && it.owner in withheld }
         .filterNot { it is ModelFinding && it.stage != ModelStage.BASIC && it.finding.code !in CONVERTER_SENTENCE_CODES &&
-            withheld.any { key -> key.path == it.finding.at } }
+            it.finding.at in withheldPaths }
     val targets = facts.declarations().flatMap { element ->
         val reference = element.declaredReference() ?: return@flatMap emptyList()
         reference.findings().map { DeclarationFinding(element.key, DeclarationStage.TARGET, it) }

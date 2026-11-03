@@ -9,8 +9,8 @@ package io.github.mbackschat.a12.dm.consistency
  * a blank-named one the converter leaves out included) and states the sentence once for each element that shares
  * its id, at that element's path. An empty id is an id like any other, so two empty ids share one; type definitions
  * are not elements and never share. Neither does an element that arrived through a mount: one provider mounted twice,
-and a host field reusing a provider field's id, draw nothing, while the mount group itself, written in the model,
-shares its id like any element. Nothing is left out and nothing later is withheld: A12 goes on to judge every
+ * and a host field reusing a provider field's id, draw nothing, while the mount group itself, written in the model,
+ * shares its id like any element. Nothing is left out and nothing later is withheld: A12 goes on to judge every
  * sharer. All of this is measured on kernel 31.1.1 (`adapter.laws.CheckerDuplicateIdAgreementTest`).
  *
  * The ids come in the order A12's `HashMap` hands them out ([computeIfAbsentOrder]): the rule calls `computeIfAbsent`

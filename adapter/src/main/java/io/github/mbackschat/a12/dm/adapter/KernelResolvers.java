@@ -74,8 +74,7 @@ final class KernelResolvers {
             if (ours != null) {
                 throw ours;
             }
-            String why = thrown.getMessage() != null ? thrown.getMessage() : thrown.getClass().getSimpleName();
-            throw new ConsistencyCheckFailedException("the kernel could not build this model: " + why, thrown);
+            throw KernelModelInput.couldNotBuild(thrown);
         }
         List<RankedNotification> errors = reported.stream()
                 .filter(notification -> notification.getSeverity().isAtLeastAsSevereAs(Severity.ERROR))
@@ -103,23 +102,26 @@ final class KernelResolvers {
         return unexpanded(resolver, new AtomicReference<>());
     }
 
+    /** The resolved {@code json} of {@code reference}, once it is known to be a model the kernel can read. */
+    private static String readable(IDocumentModelSerializer serializer, String reference, String json) {
+        if (json == null) {
+            throw new UnresolvedReferenceException(reference, "no model resolved for reference \"" + reference + "\"");
+        }
+        try {
+            KernelModelInput.deserialize(serializer, json);
+        } catch (ModelInputException e) {
+            throw new ModelInputException("invalid resolved model \"" + reference + "\": " + e.getMessage(), e);
+        }
+        return json;
+    }
+
     /** {@link #unexpanded(ModelResolver)}, recording the first failure that leaves the bridge in {@code failure}. */
     private static IUnexpandedModelResolver unexpanded(ModelResolver resolver, AtomicReference<RuntimeException> failure) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         Map<String, String> resolved = new HashMap<>();
         return new UnexpandedModelResolverImpl(reference -> {
             try {
-                String json = resolved.computeIfAbsent(reference, resolver::resolve);
-                if (json == null) {
-                    throw new UnresolvedReferenceException(reference,
-                            "no model resolved for reference \"" + reference + "\"");
-                }
-                try {
-                    KernelModelInput.deserialize(serializer, json);
-                } catch (ModelInputException e) {
-                    throw new ModelInputException("invalid resolved model \"" + reference + "\": " + e.getMessage(), e);
-                }
-                return new StringReader(json);
+                return new StringReader(resolved.computeIfAbsent(reference, r -> readable(serializer, r, resolver.resolve(r))));
             } catch (RuntimeException leaving) {
                 failure.compareAndSet(null, leaving);
                 throw leaving;

@@ -30,7 +30,7 @@ sealed class RuntimeEvaluationFailure(message: String) : RuntimeException(messag
 /** An empty authored pattern is rejected on execution, after its operand read (SPEC-2026-10-10-13). */
 class EmptyPatternFailure : RuntimeEvaluationFailure("an authored pattern must not be empty")
 
-class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the wall label $label has no instant in the model zone")
+class TemporalLabelFailure(val label: String) : RuntimeEvaluationFailure("the temporal literal $label names no date in the model zone")
 
 /**
  * A custom condition reached in a rule whose error entity is a group. A12 converts the rule's error field into the

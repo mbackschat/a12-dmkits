@@ -23,7 +23,6 @@ package io.github.mbackschat.a12.dm.consistency
  * groups — an aggregate over a repeatable group's field, and an absolute read back out of it — is refused
  * exactly like two sibling reads, so keying on the resolved path alone is correct. Measured, because a
  * family built from same-group rows would have inherited a scope it never tested.
-
  */
 internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
     val writtenBy = computedTargets()

@@ -24,8 +24,8 @@ internal fun epochDayOfCivil(year: Int, month: Int, day: Int): Long {
     return era * 146097 + doe - 719468
 }
 
-/** The civil YEAR of an epoch [day] — Hinnant civil_from_days as PURE integer arithmetic (no string build,
- *  unlike `isoFromEpochDay(...).substring(0,4).toInt()`); the offset path calls this per datetime value. */
+/** The civil YEAR of an epoch [day], read off [civilOfEpochDay] rather than parsed back out of the string
+ *  [isoFromEpochDay] builds; the offset path calls this per datetime value. */
 internal fun yearOfEpochDay(day: Long): Int = civilOfEpochDay(day).year
 
 /** A proleptic civil date. */

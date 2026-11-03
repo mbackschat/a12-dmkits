@@ -172,13 +172,7 @@ private fun JsonObject.unreadableHalf(): String? {
  * Null rather than a short list is what three families depend on: a shortened domain turns a neighbouring
  * `values` defect into a wrong constant class on every literal compared against it.
  */
-internal fun JsonObject.declaredEnumValues(): List<String>? {
-    val declared = this["values"] as? JsonArray ?: return null
-    return declared.map { entry ->
-        val value = ((entry as? JsonObject)?.get("value") as? JsonPrimitive)?.takeIf { it.isString }
-        value?.content ?: return null
-    }
-}
+internal fun JsonObject.declaredEnumValues(): List<String>? = declaredEnumPositions()?.takeIf { null !in it }?.filterNotNull()
 
 /**
  * The enum's value positions, in declaration order, an entry with no `value` member as null, or null when an entry is

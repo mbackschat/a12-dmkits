@@ -129,7 +129,7 @@ class ComputedDateGregorianFloorDiffTest {
     // ── The stored-value floor across a PARTIAL precision (DAY_OPTIONAL). The kernel completes an omitted
     //    day to 01 BEFORE the floor check (`PartiallyKnownDatesUtil.replaceUnknownDateParts` runs ahead of
     //    `dateInvalid`), so a day-omitted October 1583 is `datumFalsch` even though days 16–31 of that month
-    //    are valid — pinning the completion↔floor ORDER that the interpreter's `dayOptionalParts` day-0→01
+    //    are valid — pinning the completion↔floor ORDER that the interpreter's `partialDateParts` day-0→01
     //    mapping reproduces (IF88). ────────────────────────────────────────────────────────────────────────
 
     private val order = RuntimeLaws.model("models/order.dm.json")

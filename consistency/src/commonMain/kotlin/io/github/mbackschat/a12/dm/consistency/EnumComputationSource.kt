@@ -79,12 +79,8 @@ private fun TrackedFactBase.sourceDefect(
     declaringGroup: String,
     element: TrackedDeclaration,
 ): String? {
-    firstFilledOperands(operation, element)?.let { operands ->
-        return operands.firstNotNullOfOrNull { operand ->
-            readDefect(operand, admitted, target, declaringGroup, element)
-        }
-    }
-    return readDefect(operation, admitted, target, declaringGroup, element)
+    val reads = firstFilledOperands(operation, element) ?: listOf(operation)
+    return reads.firstNotNullOfOrNull { readDefect(it, admitted, target, declaringGroup, element) }
 }
 
 /** The operand texts of a sole `FirstFilledValue` call, or null when the operation is not one. */

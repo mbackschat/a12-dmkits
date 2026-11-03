@@ -119,9 +119,8 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
             val childTuples = model.fields.filter { parentOf(it.path) == groupPath }.map { field ->
                 reducedStarRelevantCandidates(candidates, field.path).mapTo(HashSet()) { it.indices.take(depth) }
             } + groupsBelow(groupPath).map { child ->
-                val own = depth
                 val repeatable = child in model.repeatable
-                fullyRelevantIdentifiers(child).filter { !repeatable || it[own] == RelevantEntity.ALL }
+                fullyRelevantIdentifiers(child).filter { !repeatable || it[depth] == RelevantEntity.ALL }
                     .mapTo(HashSet()) { it.take(depth) }
             }
             if (childTuples.isEmpty()) return@getOrPut emptySet()

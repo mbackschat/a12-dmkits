@@ -219,7 +219,7 @@ private fun unbindableFieldType(
     // Check the required member rather than body emptiness: optional members do not satisfy it (KF308).
     // KF498 measures the filter-sensitive absent-member carriers; explicit null remains unjudged.
     val required = REQUIRED_BODY_MEMBER[type]
-    if (required != null && body is JsonObject && body.lacks(required)) {
+    if (required != null && body != null && body.lacks(required)) {
         val explain = "`fieldType` names `$discriminator` without the `$required` A12 constructs that " +
             "type from"
         // The custom type is the one of the four that reaches a VERDICT rather than dying silently at the
@@ -229,7 +229,7 @@ private fun unbindableFieldType(
             ?: unbuildable(field, explain)
     }
     val defaulted = DEFAULTED_BUILD_MEMBER[type]
-    if (defaulted != null && body is JsonObject && body.holdsBlank(defaulted)) {
+    if (defaulted != null && body != null && body.holdsBlank(defaulted)) {
         return unbuildable(
             field,
             "`fieldType` names `$discriminator` with a blank `$defaulted`, which A12 cannot construct that " +
@@ -237,23 +237,23 @@ private fun unbindableFieldType(
         )
     }
     if (type == FieldType.STRING) {
-        (body as? JsonObject)?.hintEntryLacking()?.let { member ->
+        body?.hintEntryLacking()?.let { member ->
             // A12's reader binds a hint entry's `locale` and `values` as non-null; each absent one leaves no model,
             // where an empty one builds (`adapter.laws.CheckerEmptyMemberAgreementTest`).
             return unbuildable(field, "a `hintList` entry declares no `$member`, which A12's reader requires")
         }
     }
-    if (type == FieldType.ENUMERATION && (body as? JsonObject)?.categoryNamedNull() == true) {
+    if (type == FieldType.ENUMERATION && body?.categoryNamedNull() == true) {
         // A12's reader binds a category's `name` as non-null: "name is marked non-null but is null" (measured,
         // `adapter.laws.CheckerEmptyMemberAgreementTest`), where an absent name reaches the converter as none.
         return unbuildable(field, "a `categories` entry writes `name` as `null`, which A12's reader refuses to bind")
     }
-    if (type == FieldType.ENUMERATION && (body as? JsonObject)?.categoryTokenNotScalar() == true) {
+    if (type == FieldType.ENUMERATION && body?.categoryTokenNotScalar() == true) {
         // A12's reader binds each category token as a string and refuses an object or an array there, where a number
         // or a boolean binds as its text (measured, `adapter.laws.CheckerCategoryTokenAgreementTest`).
         return unbuildable(field, "a category's `values` holds an object or an array, and A12 reads each token as a string")
     }
-    return (body as? JsonObject)?.repeatedBuildKey(type)?.let { (list, key, value) ->
+    return body?.repeatedBuildKey(type)?.let { (list, key, value) ->
         val written = if (value.isEmpty()) "absent or empty" else "`$value`"
         unbuildable(field, "`$list` holds two entries whose `$key` is $written, and A12 keys that list by `$key` " +
             "while it builds the type")

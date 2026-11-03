@@ -44,8 +44,7 @@ internal fun JsonPrimitive.bindJavaPrimitiveInt(): Int? = (bindJavaInt() as? Jav
  * where the member is absent, binds no value, or cannot be bound. The last two differ between a primitive `int` and an
  * `Integer` only in whether A12 builds the model, which `FieldTypeBinding` judges, so every reading site shares this.
  */
-internal fun JsonObject.boundInt(member: String): Int? =
-    ((this[member] as? JsonPrimitive)?.bindJavaInt() as? JavaIntBinding.Bound)?.value
+internal fun JsonObject.boundInt(member: String): Int? = (this[member] as? JsonPrimitive)?.bindJavaPrimitiveInt()
 
 /**
  * A JSON number lexeme's value truncated toward zero, or null when the exact value lies outside `Int`'s range, its

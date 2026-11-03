@@ -73,6 +73,12 @@ final class KernelModelInput {
         });
     }
 
+    /** The kernel's own throw while building a model, as the typed failure its callers fold into a verdict (KF259). */
+    static ConsistencyCheckFailedException couldNotBuild(RuntimeException thrown) {
+        String why = thrown.getMessage() != null ? thrown.getMessage() : thrown.getClass().getSimpleName();
+        return new ConsistencyCheckFailedException("the kernel could not build this model: " + why, thrown);
+    }
+
     /**
      * Names the build failure by the stored member the model lacks, when it lacks one.
      *

@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 import io.github.mbackschat.a12.dm.consistency.syntax.asCall
 import io.github.mbackschat.a12.dm.consistency.syntax.encloses
 import io.github.mbackschat.a12.dm.consistency.syntax.filterBodiesIn
-import kotlinx.serialization.json.JsonPrimitive
 
 /** KF43 distinguishes an unknown numeric scale from an operation whose type is unsupported. */
 internal sealed interface OperationType {

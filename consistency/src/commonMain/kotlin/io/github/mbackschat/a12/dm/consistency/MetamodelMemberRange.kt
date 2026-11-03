@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A declared type member against the range A12's own metamodel admits for it (KERNEL-FINDINGS KF556, KF559).

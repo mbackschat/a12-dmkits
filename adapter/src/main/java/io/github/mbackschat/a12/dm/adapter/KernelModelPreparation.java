@@ -33,8 +33,8 @@ final class KernelModelPreparation {
         ExpandedModel expanded;
         try {
             expanded = expand(modelJson, resolver);
-        } catch (ConsistencyCheckFailedException couldNotBuild) {
-            throw couldNotBuild(couldNotBuild);
+        } catch (ConsistencyCheckFailedException failure) {
+            throw couldNotBuild(failure);
         }
         return expanded.requireConsistent();
     }
@@ -56,8 +56,8 @@ final class KernelModelPreparation {
         IDocumentModel model;
         try {
             model = KernelResolvers.expand(unexpanded, resolver);
-        } catch (ConsistencyCheckFailedException couldNotBuild) {
-            throw KernelModelInput.namingAbsentMember(modelJson, couldNotBuild);
+        } catch (ConsistencyCheckFailedException failure) {
+            throw KernelModelInput.namingAbsentMember(modelJson, failure);
         } catch (DocumentModelExpansionException rejected) {
             // KernelResolvers.expand throws this type for reported ERRORs; callback defects have no verdict.
             throw ModelConsistencyException.notKernelValid(rejected);
@@ -98,11 +98,7 @@ final class KernelModelPreparation {
                 // receipt. That is the inverse of the defect this guard exists to fix.
                 underJudgingZone(() -> service.checkConsistency(model, raw::add));
             } catch (RuntimeException kernelCouldNotBuildTheModel) {
-                String why = kernelCouldNotBuildTheModel.getMessage() != null
-                        ? kernelCouldNotBuildTheModel.getMessage()
-                        : kernelCouldNotBuildTheModel.getClass().getSimpleName();
-                throw KernelModelInput.namingAbsentMember(modelJson, new ConsistencyCheckFailedException(
-                        "the kernel could not build this model: " + why, kernelCouldNotBuildTheModel));
+                throw KernelModelInput.namingAbsentMember(modelJson, KernelModelInput.couldNotBuild(kernelCouldNotBuildTheModel));
             }
             return raw.stream().map(KernelNotifications::toCore).toList();
         }

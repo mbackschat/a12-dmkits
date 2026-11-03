@@ -22,6 +22,7 @@ internal fun renderPatternFieldMessage(
     fieldLabel: String,
     storedValue: String,
 ): String {
+    if ('$' !in template) return template
     refusedFieldMessageForm(template, language)?.let { form ->
         throw UnsupportedConstructException("invalid-value field-owned error template contains unsupported form '$form'")
     }

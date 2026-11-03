@@ -40,19 +40,8 @@ fun epochDay(iso: String): Long? {
 }
 
 /** Inverse of [epochDay] — the ISO `yyyy-MM-dd` for a day number (Hinnant civil_from_days). */
-fun isoFromEpochDay(z: Long): String {
-    val zz = z + 719468
-    val era = (if (zz >= 0) zz else zz - 146096) / 146097
-    val doe = zz - era * 146097                                  // [0, 146096]
-    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365   // [0, 399]
-    val y = yoe + era * 400
-    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)            // [0, 365]
-    val mp = (5 * doy + 2) / 153                                 // [0, 11]
-    val d = doy - (153 * mp + 2) / 5 + 1                         // [1, 31]
-    val mo = if (mp < 10) mp + 3 else mp - 9                     // [1, 12]
-    val yy = if (mo <= 2) y + 1 else y
-    return iso(yy.toInt(), mo.toInt(), d.toInt())
-}
+fun isoFromEpochDay(z: Long): String =
+    civilOfEpochDay(z).let { iso(it.year, it.month, it.day) }
 
 private val ISO_DATE_TIME = Regex("""(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})""")
 internal val TIME_OF_DAY = Regex("""(\d{2}):(\d{2}):(\d{2})""")
@@ -88,8 +77,7 @@ internal fun isConstructibleDate(year: Int, month: Int, day: Int): Boolean =
 
 /** Whether (year, month, day) is a real proleptic date with a year of era, which is what a strict
  *  `yyyy` parse admits: year 0 is not one. */
-internal fun isRealDate(year: Int, month: Int, day: Int): Boolean =
-    year >= 1 && month in 1..12 && day in 1..daysInMonth(year, month)
+internal fun isRealDate(year: Int, month: Int, day: Int): Boolean = year >= 1 && isConstructibleDate(year, month, day)
 
 /** The proleptic length of [month] in [year]. */
 internal fun daysInMonth(year: Int, month: Int): Int = when (month) {
@@ -198,10 +186,6 @@ internal fun invalidPartialDateOmissionShape(raw: String, format: String, precis
         (year == 0 && (!yearMayBeUnknown || month != 0 || day != 0))
 }
 
-/** Backward-compatible narrow parser for the original DAY_OPTIONAL owner. */
-fun dayOptionalParts(raw: String, format: String, timeZone: ModelTimeZone): Triple<Int, Int, Int>? =
-    partialDateParts(raw, format, DatePrecision.DAY_OPTIONAL, timeZone)
-
 /**
  * Complete a **date FRAGMENT** value (rendered in its `getFormatOfFragment` [format], one of `yyyy-MM`,
  * `yyyy`, `MM`, `MM-dd`) to its **earliest** concrete ISO `yyyy-MM-dd` date — the kernel's `feldWertAlsDatum`
@@ -270,10 +254,6 @@ fun resolvePartialDate(
     val day = if (storedDay != 0) storedDay else if (lastDay) daysInMonth(y, month) else 1
     return iso(y, month, day)
 }
-
-/** Source-compatible DAY_OPTIONAL overload retained for consumers of the original helper. */
-fun resolvePartialDate(raw: String, format: String, lastDay: Boolean, timeZone: ModelTimeZone): String? =
-    resolvePartialDate(raw, format, DatePrecision.DAY_OPTIONAL, lastDay, timeZone)
 
 /** The canonical ISO `yyyy-MM-dd` for (year, month, day) — zero-padded; the `Date(...)` constructor's value. */
 fun isoDate(year: Int, month: Int, day: Int): String = iso(year, month, day)
