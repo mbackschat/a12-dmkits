@@ -23926,11 +23926,12 @@
       }
     },
     "kf671": {
-      "sha256": "e6fc11c0d82dc57a6aa86d2ae7e5ca844a0a2034da215dcee6297212da8d0e2f",
+      "sha256": "716fcfeb0362a75700126ff62f49574983d8a6cf7c05e284841f2de2ae06f292",
       "task": "K31",
       "scope": {
         "adapter": [
-          "move support"
+          "move support",
+          "structure changes"
         ],
         "dmkits": [
           "admission"
@@ -23945,11 +23946,15 @@
       "consumers": {
         "adapter": {
           "state": "APPLIED",
-          "basis": "Every rename and move runs A12's move support, which carries the criterion's fields and text parameters along (KF671).",
+          "basis": "Every rename and move runs A12's move support, which carries the criterion's fields and text parameters along, and the kernel gate reads the expanded model, which keeps only the entry's criteria (KF671).",
           "evidence": {
             "move support": {
               "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/UniquenessCriterionRewriteTest.java#aRenameOrMoveOfACriterionFieldRewritesItsFieldsAndItsText",
               "witness": "A field renamed, a field moved into a group and the root renamed, against the unchanged control."
+            },
+            "structure changes": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/UniquenessCriterionStructureKernelTest.java#aCriterionFollowsTheStructureItNames",
+              "witness": "Removal, both include levels, a mounted field, a shared name and group extraction, against the inline control."
             }
           }
         },
