@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/where-used.schema.json",
   "title": "WhereUsed",
-  "description": "The `data` payload of `dmtool -m <model> where-used <entityPath>` (CLI-SPEC §6) — the rules and computations whose condition directly references a given field or group. The inverse of a rule's referenced entities; the per-entity peer of the model-wide `model usage`. Built on the kernel's `getDirectlyReferencedEntities`, and EXACT: a rule that references an enclosing GROUP is not listed for a field inside it — it is listed for the group. `model usage` deliberately answers the wider reachability question (it walks ancestor groups, since the kernel expands a group operand to every field below it), so the two differ on exactly the group-reached fields. `rules` and `computations` are kept as separate arrays (a field read only inside a computation's operation appears under `computations`, not `rules`).",
+  "description": "The `data` payload of `dmtool -m <model> where-used <entityPath>` (CLI-SPEC §6) — the rules and computations whose condition directly references a given field or group. The inverse of a rule's referenced entities; the per-entity peer of the model-wide `model usage`. Built on the kernel's `getDirectlyReferencedEntities`, and EXACT: a rule that references an enclosing GROUP is not listed for a field inside it — it is listed for the group. `model usage` deliberately answers the wider reachability question (it walks ancestor groups, since the kernel expands a group operand to every field below it), so the two differ on exactly the group-reached fields. `rules` and `computations` are kept as separate arrays (a field read only inside a computation's operation appears under `computations`, not `rules`), and the document uniqueness criteria that name the field are a third, listed by name because A12 gives a criterion no path.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entity", "rules", "computations", "count"],
+  "required": ["entity", "rules", "computations", "documentUniquenessCriteria", "count"],
   "properties": {
     "entity": { "type": "string", "description": "the queried field/group's full (absolute) path" },
     "rules": {
@@ -18,6 +18,11 @@
       "description": "the full names of the computations that directly reference the entity (kept separate from rules)",
       "items": { "type": "string" }
     },
-    "count": { "type": "integer", "description": "rules.length + computations.length — the total referrer count" }
+    "documentUniquenessCriteria": {
+      "type": "array",
+      "description": "the names of the document uniqueness criteria that name the entity; always empty for a group, since a criterion names fields only",
+      "items": { "type": "string" }
+    },
+    "count": { "type": "integer", "description": "rules.length + computations.length + documentUniquenessCriteria.length — the total referrer count" }
   }
 }

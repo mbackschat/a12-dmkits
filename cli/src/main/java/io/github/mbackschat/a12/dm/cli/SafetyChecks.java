@@ -404,18 +404,28 @@ public final class SafetyChecks {
         return new Refusal("'" + name + "' already exists — refusing", null, diagnostic);
     }
 
-    /** The RK_REFERENCED refusal for safe-delete: the referrers in {@code data.referencedBy}, with a fix. */
-    public static Refusal referencedBy(String target, Set<String> rules, Set<String> computations, String fix) {
+    /**
+     * The RK_REFERENCED refusal for safe-delete: the referrers in {@code data.referencedBy}, with a fix. A document
+     * uniqueness criterion naming the target replaces the fix, since {@code --cascade} removes rules and computations
+     * only and A12 refuses a criterion naming a missing field (KF671).
+     */
+    public static Refusal referencedBy(String target, Set<String> rules, Set<String> computations,
+            Set<String> criteria, String fix) {
         ObjectNode data = MAPPER.createObjectNode();
         ObjectNode referencedBy = data.putObject("referencedBy");
         ArrayNode ruleArray = referencedBy.putArray("rules");
         rules.forEach(ruleArray::add);
         ArrayNode computationArray = referencedBy.putArray("computations");
         computations.forEach(computationArray::add);
+        ArrayNode criterionArray = referencedBy.putArray("documentUniquenessCriteria");
+        criteria.forEach(criterionArray::add);
+        String effectiveFix = criteria.isEmpty() ? fix
+                : "take " + target + " out of the document uniqueness criteria " + String.join(", ", criteria)
+                        + " first; --cascade removes only rules and computations, never a criterion";
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_REFERENCED"),
-                target + " is referenced by " + (rules.size() + computations.size())
+                target + " is referenced by " + (rules.size() + computations.size() + criteria.size())
                         + " element(s); removing it would dangle them",
-                Diagnostic.Where.path(target), Optional.of(fix), Optional.empty());
+                Diagnostic.Where.path(target), Optional.of(effectiveFix), Optional.empty());
         return new Refusal(target + " is referenced — refusing to remove", data, diagnostic);
     }
 }

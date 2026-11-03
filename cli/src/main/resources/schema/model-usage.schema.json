@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-usage.schema.json",
   "title": "ModelUsage",
-  "description": "The `data` payload of `dmtool -m <model> model usage` (CLI-SPEC §6) — the model-wide usage/audit read. `usage` maps EVERY field path to the full names of the rules and computations that READ it (an empty array = read by nothing); `unreferenced` is the subset of fields nothing reads. Reading includes reaching the field through an ancestor GROUP operand, because the kernel expands a group operand recursively to every field below it: `AllFieldsFilled(/Order/Address)` reads `/Order/Address/Region/Code` while naming neither. This is DELIBERATELY wider than `where-used`, which answers the exact question 'which rules name this entity?' and does not list a rule that names an enclosing group — so the two differ on exactly those fields, by design. It is also deliberately CONSERVATIVE: it answers 'a rule reaches into this group', not 'this particular field enters that operator's expansion'. A group-list predicate over a repeatable group counts instantiated ROWS rather than reading each field's value, so a field under such a group is reported read though that operator never inspects it. Erring toward 'read' is the correct direction for an audit whose `unreferenced` half is acted on as safe-to-delete. Fields are in model order; referrers are sorted.",
+  "description": "The `data` payload of `dmtool -m <model> model usage` (CLI-SPEC §6) — the model-wide usage/audit read. `usage` maps EVERY field path to the full names of the rules and computations that READ it (an empty array = read by nothing); `documentUniquenessCriteria` maps the fields a uniqueness criterion names to those criteria; `unreferenced` is the subset of fields nothing reads and no criterion names. Reading includes reaching the field through an ancestor GROUP operand, because the kernel expands a group operand recursively to every field below it: `AllFieldsFilled(/Order/Address)` reads `/Order/Address/Region/Code` while naming neither. This is DELIBERATELY wider than `where-used`, which answers the exact question 'which rules name this entity?' and does not list a rule that names an enclosing group — so the two differ on exactly those fields, by design. It is also deliberately CONSERVATIVE: it answers 'a rule reaches into this group', not 'this particular field enters that operator's expansion'. A group-list predicate over a repeatable group counts instantiated ROWS rather than reading each field's value, so a field under such a group is reported read though that operator never inspects it. Erring toward 'read' is the correct direction for an audit whose `unreferenced` half is acted on as safe-to-delete. Fields are in model order; referrers are sorted.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["usage", "unreferenced"],
+  "required": ["usage", "documentUniquenessCriteria", "unreferenced"],
   "properties": {
     "usage": {
       "type": "object",
@@ -15,9 +15,17 @@
         "items": { "type": "string", "description": "a referencing rule's or computation's full name" }
       }
     },
+    "documentUniquenessCriteria": {
+      "type": "object",
+      "description": "field path → the names of the document uniqueness criteria that name it, listing only the fields a criterion names; a criterion is addressed by its name, since A12 gives it no path",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "description": "a criterion's name" }
+      }
+    },
     "unreferenced": {
       "type": "array",
-      "description": "the fields no rule or computation reads — the audit headline (candidates for removal, or a missing rule)",
+      "description": "the fields no rule or computation reads and no document uniqueness criterion names — the audit headline (candidates for removal, or a missing rule)",
       "items": { "type": "string", "description": "an unreferenced field's full path" }
     }
   }

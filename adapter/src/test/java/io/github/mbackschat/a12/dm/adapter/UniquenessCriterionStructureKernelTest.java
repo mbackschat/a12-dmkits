@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter;
 
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.criterion;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.withCriteria;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
@@ -25,22 +27,11 @@ import io.github.mbackschat.a12.dm.modelkit.MountOptions;
  * <p>Each row reports A12's verdict and, where the model builds, the criteria of the model A12 expands, read
  * through its typed {@code IDocumentUniquenessCriterion}. Expansion keeps only the entry model's criteria, at both
  * include levels: an included model's own criterion is gone, and an entry criterion may name a mounted field. So the
- * criteria a group extraction copies into its sub-model only make that sub-model invalid on its own. Own domain
+ * parent's criteria copied into an extracted sub-model only make that sub-model invalid on its own, which is why
+ * extraction leaves them with the parent. Own domain
  * (insurance policies and their branch offices).
  */
 class UniquenessCriterionStructureKernelTest {
-
-    private static String criterion(String name, String field, String text) {
-        return "{\"name\":\"" + name + "\",\"fields\":[{\"fullName\":\"" + field + "\"}],"
-                + "\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"" + text + "\"}]}";
-    }
-
-    /** [json] with these criteria inserted as the content member A12 reads. */
-    private static String withCriteria(String json, String... criteria) {
-        int at = json.indexOf("\"modelRoot\"");
-        return json.substring(0, at) + "\"documentUniquenessCriteria\":[" + String.join(",", criteria) + "],"
-                + json.substring(at);
-    }
 
     /** A policy with a required number and an inline office whose code is required. */
     private static String inlinePolicy() {
@@ -95,9 +86,9 @@ class UniquenessCriterionStructureKernelTest {
 
     @Test
     void aCriterionFollowsTheStructureItNames() {
-        String policyKey = criterion("PolicyKey", "/Policy/PolicyNo", "Policy $/Policy/PolicyNo$ exists");
-        String officeKey = criterion("OfficeKey", "/Policy/Office/Code", "Office $/Policy/Office/Code$ exists");
-        String branchKey = criterion("BranchKey", "/Branch/Code", "Branch $/Branch/Code$ exists");
+        String policyKey = criterion("PolicyKey", "Policy $/Policy/PolicyNo$ exists", "/Policy/PolicyNo");
+        String officeKey = criterion("OfficeKey", "Office $/Policy/Office/Code$ exists", "/Policy/Office/Code");
+        String branchKey = criterion("BranchKey", "Branch $/Branch/Code$ exists", "/Branch/Code");
         ModelResolver none = asked -> null;
 
         Map<String, String> actual = new LinkedHashMap<>();
@@ -113,12 +104,14 @@ class UniquenessCriterionStructureKernelTest {
         actual.put("an entry criterion naming a mounted field", measured(withCriteria(mountingPolicy(), officeKey),
                 resolving("branch", branch())));
         actual.put("an entry and an included criterion of one name", measured(withCriteria(mountingPolicy(),
-                criterion("BranchKey", "/Policy/Office/Code", "Taken")), resolving("branch", withCriteria(branch(), branchKey))));
+                criterion("BranchKey", "Taken", "/Policy/Office/Code")), resolving("branch", withCriteria(branch(), branchKey))));
 
         ModelDocument extracting = ModelDocument.read(withCriteria(inlinePolicy(), policyKey, officeKey));
         String office = extracting.extractGroupAsInclude("/Policy/Office", "office");
         String remainder = extracting.toJson();
-        actual.put("the extracted sub-model alone", measured(office, none));
+        actual.put("the extracted sub-model, carrying the parent's criteria", measured(
+                withCriteria(office, policyKey, officeKey), none));
+        actual.put("the extracted sub-model as extraction writes it", measured(office, none));
         actual.put("the model the group was extracted from", measured(remainder, resolving("office", office)));
 
         Map<String, String> expected = new LinkedHashMap<>();
@@ -129,7 +122,8 @@ class UniquenessCriterionStructureKernelTest {
         expected.put("an included model's criterion, mounted at the model root", "admitted; criteria []");
         expected.put("an entry criterion naming a mounted field", "admitted; criteria [OfficeKey [/Policy/Office/Code] [Office $/Policy/Office/Code$ exists]]");
         expected.put("an entry and an included criterion of one name", "admitted; criteria [BranchKey [/Policy/Office/Code] [Taken]]");
-        expected.put("the extracted sub-model alone", "Document Uniqueness Criterion 'PolicyKey': The field '/Policy/PolicyNo' does not exist in the Document Model. | Document Uniqueness Criterion 'OfficeKey': The field '/Policy/Office/Code' does not exist in the Document Model.");
+        expected.put("the extracted sub-model, carrying the parent's criteria", "Document Uniqueness Criterion 'PolicyKey': The field '/Policy/PolicyNo' does not exist in the Document Model. | Document Uniqueness Criterion 'OfficeKey': The field '/Policy/Office/Code' does not exist in the Document Model.");
+        expected.put("the extracted sub-model as extraction writes it", "admitted; criteria []");
         expected.put("the model the group was extracted from", "admitted; criteria [PolicyKey [/Policy/PolicyNo] [Policy $/Policy/PolicyNo$ exists], OfficeKey [/Policy/Office/Code] [Office $/Policy/Office/Code$ exists]]");
         assertEquals(expected, actual);
     }

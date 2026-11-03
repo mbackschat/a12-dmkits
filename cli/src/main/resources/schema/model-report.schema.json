@@ -73,7 +73,7 @@
     "unreferenced": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "the fields no rule or computation reads — the dead-field audit headline (the full field→referrers map is `model usage`)"
+      "description": "the fields no rule or computation reads and no document uniqueness criterion names — the dead-field audit headline (the full field→referrers map is `model usage`)"
     },
     "rules": {
       "type": "array",

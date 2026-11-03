@@ -50,6 +50,7 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String DECIMAL_SEPARATOR
   public static final java.lang.String DESCRIPTION
   public static final java.lang.String DOCUMENT
+  public static final java.lang.String DOCUMENT_UNIQUENESS_CRITERIA
   public static final java.lang.String ELEMENTS
   public static final java.lang.String ERROR_CODE
   public static final java.lang.String ERROR_CONDITION

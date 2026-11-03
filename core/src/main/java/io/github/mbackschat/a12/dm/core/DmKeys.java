@@ -34,6 +34,7 @@ public final class DmKeys {
     public static final String TYPE_DEFINITIONS = "typeDefinitions";
     public static final String MODEL_INFO = "modelInfo";
     public static final String MODEL_CONFIG = "modelConfig";
+    public static final String DOCUMENT_UNIQUENESS_CRITERIA = "documentUniquenessCriteria";
     public static final String MODEL_TYPE = "modelType";
     public static final String DOCUMENT = "document";
     public static final String INCLUDE = "include";

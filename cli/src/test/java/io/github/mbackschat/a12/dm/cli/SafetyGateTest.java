@@ -29,8 +29,8 @@ class SafetyGateTest {
 
     @Test
     void firstFailureReturnsTheFirstFailingCheckInRegistrationOrder() {
-        Refusal first = SafetyChecks.referencedBy("/Order/A", Set.of("/Order/R1"), Set.of(), "fix A");
-        Refusal second = SafetyChecks.referencedBy("/Order/B", Set.of("/Order/R2"), Set.of(), "fix B");
+        Refusal first = SafetyChecks.referencedBy("/Order/A", Set.of("/Order/R1"), Set.of(), Set.of(), "fix A");
+        Refusal second = SafetyChecks.referencedBy("/Order/B", Set.of("/Order/R2"), Set.of(), Set.of(), "fix B");
         SafetyGate gate = new SafetyGate()
                 .require(Optional::empty)
                 .require(() -> Optional.of(first))
@@ -43,7 +43,7 @@ class SafetyGateTest {
     @Test
     void referencedByCarriesTheReferrersAndACorrectiveFix() {
         Refusal refusal = SafetyChecks.referencedBy("/Order/DeliveryDate",
-                Set.of("/Order/DeliveryNotBeforeOrder"), Set.of("/Order/LeadTimeComp"),
+                Set.of("/Order/DeliveryNotBeforeOrder"), Set.of("/Order/LeadTimeComp"), Set.of(),
                 "rename the referrers first");
 
         assertEquals("RK_REFERENCED", refusal.diagnostic().code().orElseThrow());
@@ -58,7 +58,7 @@ class SafetyGateTest {
     @Test
     void referencedByEmitsAPrecheckErrorDiagnostic() {
         // the safe-delete reference gate's contract (its end-to-end use is covered by the remove verb tests).
-        Diagnostic d = SafetyChecks.referencedBy("/X", Set.of("/R"), Set.of(), "do Y").diagnostic();
+        Diagnostic d = SafetyChecks.referencedBy("/X", Set.of("/R"), Set.of(), Set.of(), "do Y").diagnostic();
         assertEquals(io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource.PRECHECK, d.source());
         assertEquals(io.github.mbackschat.a12.dm.core.Severity.ERROR, d.severity());
     }

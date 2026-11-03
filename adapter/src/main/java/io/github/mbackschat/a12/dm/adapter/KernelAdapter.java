@@ -118,6 +118,7 @@ public final class KernelAdapter {
     private static final Pattern HEADER_ID = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
 
     private final IMVK_Service mvk;
+    private final UniquenessCriteria criteria;
     private final ElementContainer elements;
     private final BoundModel model;
     /** The gate receipt: null for the deliberately unchecked {@link #of} path, else how the gate was arbitrated. */
@@ -127,8 +128,9 @@ public final class KernelAdapter {
     private Map<String, IRule> ruleIndex;                    // lazily built name→rule index (kills the per-lookup O(R) scan)
     private Map<String, ICalculationRule> calcIndex;         // lazily built name→computation index (the ICalculationRule peer)
 
-    private KernelAdapter(IMVK_Service mvk, BoundModel model, Verification consistencyGate) {
-        this.mvk = mvk;
+    private KernelAdapter(Prepared prepared, BoundModel model, Verification consistencyGate) {
+        this.mvk = prepared.mvk();
+        this.criteria = prepared.criteria();
         this.model = model;
         this.consistencyGate = consistencyGate;
         IEC iec = mvk.getIEC();
@@ -185,8 +187,11 @@ public final class KernelAdapter {
         return checkAndOpen(BoundModel.ofJsonLenient(modelJson, resolver));
     }
 
+    /** The MVK service and the criteria of the expanded model it was built from. */
+    private record Prepared(IMVK_Service mvk, UniquenessCriteria criteria) {}
+
     /** Deserialize + expand once, optionally check, convert to internal, and bootstrap the MVK service. */
-    private static IMVK_Service buildService(
+    private static Prepared buildService(
             String modelJson,
             ModelResolver resolver,
             ConsistencyGate gate) {
@@ -194,7 +199,8 @@ public final class KernelAdapter {
                 ? KernelModelPreparation.requireConsistent(modelJson, resolver)
                 : KernelModelPreparation.expand(modelJson, resolver).model();
         DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(expanded);
-        return new DocumentModelService().getMvkServiceForModel(intern, SILENT);
+        return new Prepared(new DocumentModelService().getMvkServiceForModel(intern, SILENT),
+                UniquenessCriteria.of(expanded));
     }
 
     private enum ConsistencyGate {
@@ -305,6 +311,11 @@ public final class KernelAdapter {
             }
         }
         return byEntity;
+    }
+
+    /** The expanded model's document uniqueness criteria, by the fields they name (KF671). */
+    public UniquenessCriteria uniquenessCriteria() {
+        return criteria;
     }
 
     /**

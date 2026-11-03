@@ -31,13 +31,15 @@ final class FieldDiffProjector {
     }
 
     static List<String> reasons(ModelDiff.ChangeKind change, String id, List<ModelDiff.Delta> deltas,
-            Map<String, Set<String>> baseReferrers, Map<String, Set<String>> headReferrers) {
+            Map<String, Set<String>> baseReferrers, Map<String, Set<String>> headReferrers,
+            Map<String, Set<String>> baseCriteria) {
         List<String> reasons = new ArrayList<>();
         switch (change) {
             case ADDED -> reasons.add("STRUCTURE_ADDED");
             case REMOVED -> {
                 reasons.add("STRUCTURE_REMOVED");
-                if (hasReaders(baseReferrers, id)) {
+                // a uniqueness criterion names the field too; removing it leaves the model invalid (KF671)
+                if (hasReaders(baseReferrers, id) || baseCriteria.containsKey(id)) {
                     reasons.add("REFERENCED_ELEMENT_REMOVED");
                 }
             }

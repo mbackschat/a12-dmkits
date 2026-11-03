@@ -77,7 +77,11 @@ final class WhereUsedCommand extends BaseCommand {
             rules.forEach(rulesArr::add);
             ArrayNode compsArr = data.putArray("computations");
             computations.forEach(compsArr::add);
-            int count = rules.size() + computations.size();
+            // a criterion names fields only, so a group's exact answer is none (KF671)
+            Set<String> criteria = adapter.uniquenessCriteria().byField().getOrDefault(entity, Set.of());
+            ArrayNode criteriaArr = data.putArray("documentUniquenessCriteria");
+            criteria.forEach(criteriaArr::add);
+            int count = rules.size() + computations.size() + criteria.size();
             data.put("count", count);
             ResultEnvelope env = ResultEnvelope.queryResult(ResultIdentity.WHERE_USED_READ,
                     count + " referrer(s) of " + entity, data, ConsistencyEvidence.of(adapter));

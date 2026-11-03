@@ -55,8 +55,10 @@ final class ModelUsageCommand extends BaseCommand {
             // the whole-model reference inverse, built ONCE (O(R+C)) — not the per-field where-used
             // recomputation that made this O(F·(R+C)) and stalled on huge models (Set RP)
             Map<String, Set<String>> byEntity = adapter.referrersByEntity();
+            Map<String, Set<String>> criteria = adapter.uniquenessCriteria().byField();
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode usage = data.putObject("usage");
+            ObjectNode criteriaUsage = data.putObject("documentUniquenessCriteria");
             ArrayNode unreferenced = data.putArray("unreferenced");
             for (String field : fields) {
                 // reachability, NOT exactness: a group operand expands recursively to every field below it, so a
@@ -65,7 +67,11 @@ final class ModelUsageCommand extends BaseCommand {
                 Set<String> referrers = new TreeSet<>(KernelAdapter.referrersReaching(byEntity, field));
                 ArrayNode arr = usage.putArray(field);
                 referrers.forEach(arr::add);
-                if (referrers.isEmpty()) {
+                Set<String> naming = new TreeSet<>(criteria.getOrDefault(field, Set.of()));
+                if (!naming.isEmpty()) {
+                    naming.forEach(criteriaUsage.putArray(field)::add);
+                }
+                if (referrers.isEmpty() && naming.isEmpty()) {
                     unreferenced.add(field);
                 }
             }

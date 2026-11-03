@@ -1881,11 +1881,13 @@ public final class ModelDocument {
         ObjectNode subHeader = (ObjectNode) sub.path(DmKeys.HEADER);
         subHeader.put(DmKeys.ID, reference);
         subHeader.putArray(DmKeys.MODEL_REFERENCES);   // empty (not absent — the kernel expects a list), no inherited includes
+        // the parent's uniqueness criteria stay with the parent: copied, they name fields the sub-model lacks and
+        // refuse it, while A12's expansion would drop an included model's criteria anyway (KF671)
+        ((ObjectNode) sub.path(DmKeys.CONTENT)).remove(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA);
         // the deep-copy carried the parent's modelInfo.name — rename it for the new sub-model (else an
         // extracted "address" sub-model stays named "person"; probe P4).
-        JsonNode subInfo = sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO);
-        if (subInfo.isObject()) {
-            ((ObjectNode) subInfo).put(DmKeys.NAME, reference);
+        if (sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO) instanceof ObjectNode subInfo) {
+            subInfo.put(DmKeys.NAME, reference);
         }
         ObjectNode subGroup = group.deepCopy();
         subGroup.put(DmKeys.NAME, subRoot);   // the sub-model root's own name (= the group's, unless rootName overrides)

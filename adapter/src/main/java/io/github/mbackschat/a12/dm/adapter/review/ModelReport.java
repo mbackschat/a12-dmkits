@@ -411,9 +411,11 @@ public final class ModelReport {
      *  peer, and it walks ancestors segment-wise rather than by string prefix. */
     private static Usage usage(KernelAdapter adapter, ModelCard card) {
         Map<String, Set<String>> referrers = adapter.referrersByEntity();
+        Map<String, Set<String>> criteria = adapter.uniquenessCriteria().byField();
         List<String> unreferenced = new ArrayList<>();
         for (ModelCard.Field field : card.fields()) {
-            if (!KernelAdapter.isReadByAnything(referrers, field.path())) {
+            // a field a uniqueness criterion names is live too, though no rule reads it (KF671)
+            if (!KernelAdapter.isReadByAnything(referrers, field.path()) && !criteria.containsKey(field.path())) {
                 unreferenced.add(field.path());
             }
         }

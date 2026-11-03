@@ -269,7 +269,7 @@ dmtool -m order.dm.json rule deps /Order/DeliveryNotBeforeOrder
 # the kernel's canonical text, switched EN↔DE
 dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
 
-# the inverse: which rules/computations use a field
+# the inverse: which rules, computations and document uniqueness criteria use a field
 dmtool -m order.dm.json where-used /Order/DeliveryDate
 
 # whole-model audit: every field's readers + the unreferenced set

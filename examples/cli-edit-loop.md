@@ -28,6 +28,7 @@ dmtool -m examples/models/subscription-computed.dm.json \
     "entity" : "/Subscription/Billing/BaseFee",
     "rules" : [ ],
     "computations" : [ "/Subscription/Billing/EffectiveFeeComp" ],
+    "documentUniquenessCriteria" : [ ],
     "count" : 1
   },
   "diagnostics" : [ ],

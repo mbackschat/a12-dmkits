@@ -132,7 +132,8 @@ dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate >/tmp/struct-refu
   "data" : {
     "referencedBy" : {
       "rules" : [ "/Order/DeliveryNotBeforeOrder" ],
-      "computations" : [ ]
+      "computations" : [ ],
+      "documentUniquenessCriteria" : [ ]
     }
   },
   "diagnostics" : [ {

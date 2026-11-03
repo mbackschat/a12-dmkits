@@ -2026,6 +2026,11 @@ Set<String> comps = adapter.whereUsedInComputations(field);     // 2026-06-08 �
 // → rules: [/Customer/AgeCheckRule, /Customer/BirthDateRule]   computations: [/Customer/AgeComp]
 //   (a computation is also a rule in the kernel's getAllRules(); the two legs keep the kinds distinct — a field
 //    read only inside a computation's operation shows up under computations, never under rules)
+UniquenessCriteria criteria = adapter.uniquenessCriteria();      // 2026-11-03 — document uniqueness criteria
+criteria.byField();                                             //    by the fields they name
+criteria.within("/Customer");                                   //    naming a field, or any field below a group
+// → byField: {/Customer/CustomerNo=[CustomerKey]}   A12 gives a criterion no path, so it is listed by name,
+//   from the expanded model: an included model's own criteria are dropped there (KF671)
 
 if (adapter.read(rule) instanceof ReadResult.Converted c) ctx.explain(c.condition());  // F9 explain → RuleExplanation
 ctx.explainComputation(comp);                                   // 2026-06-08 → ComputationExplanation

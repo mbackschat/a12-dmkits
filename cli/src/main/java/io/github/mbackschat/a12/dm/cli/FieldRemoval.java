@@ -56,15 +56,17 @@ public final class FieldRemoval {
     public static Plan plan(KernelAdapter adapter, String field, boolean cascade, String fixHint) {
         var byEntity = adapter.referrersByEntity();
         Set<String> reaching = new TreeSet<>(KernelAdapter.referrersReaching(byEntity, field));
-        if (reaching.isEmpty()) {
+        Set<String> criteria = new TreeSet<>(adapter.uniquenessCriteria().within(field));
+        if (reaching.isEmpty() && criteria.isEmpty()) {
             return new Plan(Optional.empty(), List.of(), List.of());
         }
         Set<String> rules = new TreeSet<>(adapter.ruleFullNames());
         rules.retainAll(reaching);
         Set<String> computations = new TreeSet<>(reaching);
         computations.removeAll(rules);
-        if (!cascade) {
-            return new Plan(Optional.of(SafetyChecks.referencedBy(field, rules, computations,
+        // a criterion refuses even under --cascade, which removes rules and computations only (KF671)
+        if (!cascade || !criteria.isEmpty()) {
+            return new Plan(Optional.of(SafetyChecks.referencedBy(field, rules, computations, criteria,
                     reachHint(byEntity, field, fixHint))), List.of(), List.of());
         }
         return new Plan(Optional.empty(), List.copyOf(rules), List.copyOf(computations));

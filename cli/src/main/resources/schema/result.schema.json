@@ -168,7 +168,8 @@
           "rules": [
             "/Order/DeliveryNotBeforeOrder"
           ],
-          "computations": []
+          "computations": [],
+          "documentUniquenessCriteria": []
         }
       },
       "diagnostics": [

@@ -20,7 +20,7 @@
 
 ## 1. Open
 
-_None open._
+- **DG178 — `export-jsonschema` drops a model's document uniqueness criteria and reports nothing omitted (opened 2026-11-03).** Measured 2026-11-03: a policy model with one criterion exports without it, and the report reads `2 mapped, 0 omitted`. No schemakit source reads the member (`grep -rli uniquenesscriteri schemakit/src`, no match). A criterion constrains values across documents, which one document's JSON Schema cannot state. Settle by reporting it as omitted, or carrying it as an `x-a12-*` extension the way rules are carried.
 
 ---
 

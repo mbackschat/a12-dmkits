@@ -51,11 +51,13 @@ public final class GroupRemoval {
         String subtree = group + "/";
         rules.removeIf(r -> r.startsWith(subtree));
         computations.removeIf(c -> c.startsWith(subtree));
-        if (rules.isEmpty() && computations.isEmpty()) {
+        // a criterion lives at the model level, so one naming any field below the group always dangles (KF671)
+        Set<String> criteria = new TreeSet<>(adapter.uniquenessCriteria().within(group));
+        if (rules.isEmpty() && computations.isEmpty() && criteria.isEmpty()) {
             return new Plan(Optional.empty(), List.of(), List.of());
         }
-        if (!cascade) {
-            return new Plan(Optional.of(SafetyChecks.referencedBy(group, rules, computations, fixHint)),
+        if (!cascade || !criteria.isEmpty()) {
+            return new Plan(Optional.of(SafetyChecks.referencedBy(group, rules, computations, criteria, fixHint)),
                     List.of(), List.of());
         }
         return new Plan(Optional.empty(), List.copyOf(rules), List.copyOf(computations));
