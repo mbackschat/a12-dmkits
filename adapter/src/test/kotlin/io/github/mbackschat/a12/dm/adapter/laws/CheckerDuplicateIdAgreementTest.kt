@@ -84,6 +84,34 @@ class CheckerDuplicateIdAgreementTest {
             "A12's own answer on the rows that separate the account from its rivals")
     }
 
+    /**
+     * A computation whose target the checker withholds still carries A12's id sentence, on both withholding arms. The
+     * id sentences alone are compared: beside them A12 states the target's own classes, and its empty-target basic
+     * sentence names no element where the checker names the computation, which `CheckerBasicSentenceAgreementTest` owns.
+     * The control is the shared-id computation with a declared target, which nothing withholds.
+     */
+    @Test
+    fun aWithheldComputationStillSharesItsId() {
+        val rows = linkedMapOf(
+            "a declared target — the control" to sharedIdComputation("../Note"),
+            "an empty target" to sharedIdComputation(""),
+            "a target naming no field" to sharedIdComputation("../Missing"),
+        )
+        val observed = rows.mapValues { (_, json) ->
+            a12(json, ReferenceResolvers.selfContained()).idSentences() to ours(check(ModelSource(json))).idSentences()
+        }
+        val shared = listOf("$ID@/Policy/Code", "$ID@/Policy/NoteCalc")
+        assertEquals(rows.keys.associateWith { shared to shared }, observed, "(row → A12's id sentences, the checker's)")
+    }
+
+    private fun sharedIdComputation(target: String) = edited("Code" to "shared") { tree ->
+        val body = elements(tree).addObject().put("type", "Computation").put("id", "shared").put("name", "NoteCalc")
+            .putObject("Computation").put("computedFieldRelPath", target)
+        body.putArray("computationAlternatives").addObject().put("operation", "\"x\"")
+    }
+
+    private fun List<String>.idSentences() = filter { it.startsWith("$ID@") }
+
     @Test
     fun anElementThatArrivedThroughAMountSharesNothing(@TempDir dir: Path) {
         Files.writeString(dir.resolve("address.dm.json"), ADDRESS)

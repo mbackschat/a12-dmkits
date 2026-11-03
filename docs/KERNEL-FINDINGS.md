@@ -16384,6 +16384,7 @@ The sentence is `IdUniqueRule`'s, "The id [x] of element on path 'p' is not uniq
 | a field and a type definition | admitted |
 | two fields, beside a rule naming no field | the sentences and `MVK_INVALID_ENTITY` |
 | two fields, a rule naming the second | the sentences only: the second sharer is kept and judged |
+| a field and a computation whose `computedFieldRelPath` is `""`, or names a field that does not exist | the sentence for each, beside the computation's target classes (added 2026-11-03) |
 
 On a workspace whose entry mounts one provider (`ShipTo`), measured through the expansion:
 
@@ -16394,7 +16395,7 @@ On a workspace whose entry mounts one provider (`ShipTo`), measured through the 
 
 So the rule walks the model as read, a declaration the converter leaves out included, and reaches only elements written in the checked model. Within one id the sharers come in walk order; across ids, in the order of the rule's `HashMap`. The two last rows of the first table separate this from "a sharer is left out as a converter sentence's declaration is" ([KF652](#kf652)).
 
-*Locked by:* `adapter.laws.CheckerDuplicateIdAgreementTest` (A12's classes in order against the checker's, on both tables).
+*Locked by:* `adapter.laws.CheckerDuplicateIdAgreementTest` (A12's classes in order against the checker's, on both tables; `aWithheldComputationStillSharesItsId` compares the id sentences alone on the computation rows, where the checker withholds the computation's other classes).
 
 ## §13 supplement — kernel 31.1.1 builds no model naming `ja_JP_JP` or `th_TH_TH`, the two locales whose JDK tag carries an extension, though its parser reads both (Kernel gate, kernel 31.1.1, 2026-11-03) <a id="kf662"></a>
 

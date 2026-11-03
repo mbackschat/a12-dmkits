@@ -9,18 +9,23 @@ internal data class MessageFinding(
     override val finding: Finding,
 ) : OwnedFinding
 
-internal enum class ModelStage {
+/**
+ * Where in A12's rule list a model-wide finding is stated. [readsTheModelAsWritten] marks the stages whose rule walks
+ * the model as read rather than what the converter kept, so a computation the converter withholds still carries them
+ * (`adapter.laws.CheckerDuplicateIdAgreementTest`).
+ */
+internal enum class ModelStage(val readsTheModelAsWritten: Boolean = false) {
     /**
      * A12's two version sentences, which its rule list asks first: they precede every class and withhold none, measured
      * beside a computation cycle, a time zone and a missing field ([KERNEL-FINDINGS KF650]).
      */
-    VERSION,
+    VERSION(readsTheModelAsWritten = true),
 
     /**
      * A12's id sentences, which its rule list asks right after the version sentences and before code generation; they
      * withhold nothing, because the rule that states them is not the one that builds ([KERNEL-FINDINGS KF661]).
      */
-    IDENTITY,
+    IDENTITY(readsTheModelAsWritten = true),
 
     DECLARATION, METAMODEL, GENERATION,
 
@@ -30,7 +35,7 @@ internal enum class ModelStage {
      * stated by A12 only where a filter removes its declaration; beside a kept, unbuilt model the sentence is the
      * checker's own addition, naming what the build failure does not.
      */
-    BASIC,
+    BASIC(readsTheModelAsWritten = true),
 }
 
 internal data class ModelFinding(val stage: ModelStage, override val finding: Finding) : ReportFinding
@@ -125,7 +130,7 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     val withheldPaths = withheld.mapTo(HashSet()) { it.path }
     val local = cells.values.flatMap { it.contributions }
         .filterNot { it is OwnedFinding && it.owner in withheld }
-        .filterNot { it is ModelFinding && it.stage != ModelStage.BASIC && it.finding.code !in CONVERTER_SENTENCE_CODES &&
+        .filterNot { it is ModelFinding && !it.stage.readsTheModelAsWritten &&it.finding.code !in CONVERTER_SENTENCE_CODES &&
             it.finding.at in withheldPaths }
     val targets = facts.declarations().flatMap { element ->
         val reference = element.declaredReference() ?: return@flatMap emptyList()
