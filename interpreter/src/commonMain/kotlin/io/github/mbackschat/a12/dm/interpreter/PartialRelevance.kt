@@ -116,7 +116,7 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
          */
         private fun fullyRelevantIdentifiers(groupPath: String): Set<List<Int>> = fullyByGroup.getOrPut(groupPath) {
             val depth = pathParts(groupPath).size
-            val childTuples = model.fields.filter { parentOf(it.path) == groupPath }.map { field ->
+            val childTuples: List<Set<List<Int>>> = model.fields.filter { parentOf(it.path) == groupPath }.map { field ->
                 reducedStarRelevantCandidates(candidates, field.path).mapTo(HashSet()) { it.indices.take(depth) }
             } + groupsBelow(groupPath).map { child ->
                 val repeatable = child in model.repeatable
@@ -124,10 +124,8 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
                     .mapTo(HashSet()) { it.take(depth) }
             }
             if (childTuples.isEmpty()) return@getOrPut emptySet()
-            val intersected = childTuples.reduce { acc, next ->
-                acc.flatMapTo(HashSet()) { a -> next.mapNotNull { b -> intersection(a, b) } }
-            }
-            folded(groupPath, withoutEncompassed(intersected))
+            val intersected = childTuples.reduce { acc, next -> intersections(acc, next, depth) }
+            folded(groupPath, withoutEncompassed(intersected, depth))
         }
 
         private val fullyByGroup = HashMap<String, Set<List<Int>>>()
@@ -153,10 +151,26 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
                 }
             }
 
-        private fun withoutEncompassed(tuples: Set<List<Int>>): Set<List<Int>> =
-            tuples.filterTo(HashSet()) { candidate ->
-                tuples.none { other -> other != candidate && intersection(other, candidate) == candidate }
+        /**
+         * Every [intersection] of a [left] tuple with a [right] tuple, each [depth] entries long. Two tuples are
+         * compatible exactly when they agree on the levels both name concretely, so each pair of wildcard masks
+         * finds its partners by a hash lookup on those levels rather than by a scan of [right]: one relevant
+         * identifier per row makes both sets grow with the document, and the pairwise scan this replaces cost
+         * O(rows²) (`GrowingRelevancePartialPerfTest`).
+         */
+        private fun intersections(left: Set<List<Int>>, right: Set<List<Int>>, depth: Int): Set<List<Int>> {
+            if (depth > MASKABLE_DEPTH) return left.flatMapTo(HashSet()) { a -> right.mapNotNull { b -> intersection(a, b) } }
+            val rightByMask = right.groupBy(::wildcardMask)
+            val result = HashSet<List<Int>>()
+            left.groupBy(::wildcardMask).forEach { (leftMask, lefts) ->
+                rightByMask.forEach { (rightMask, rights) ->
+                    val shared = (0 until depth).filter { (leftMask or rightMask) shr it and 1L == 0L }
+                    val byShared = rights.groupBy { b -> shared.map(b::get) }
+                    lefts.forEach { a -> byShared[shared.map(a::get)]?.forEach { b -> intersection(a, b)?.let(result::add) } }
+                }
             }
+            return result
+        }
 
         private fun folded(groupPath: String, tuples: Set<List<Int>>): Set<List<Int>> {
             val capacity = model.declaredReps[groupPath] ?: return tuples
@@ -164,11 +178,13 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
             val result = HashSet(tuples)
             tuples.filter { it[own] != RelevantEntity.ALL }.groupBy { it.take(own) }.forEach { (prefix, rows) ->
                 if (rows.mapTo(HashSet()) { it[own] }.count { it in 1..capacity } >= capacity) {
-                    result.removeAll(rows.toSet())
+                    // One removal per row, not `removeAll`, whose cost depends on which side a platform iterates:
+                    // walking `result` once per folded prefix would be quadratic in the parent rows.
+                    rows.forEach(result::remove)
                     result.add(prefix + RelevantEntity.ALL)
                 }
             }
-            return withoutEncompassed(result)
+            return withoutEncompassed(result, own + 1)
         }
 
         private fun firstInstance(groupPath: String, scope: StarScope): List<Int> =
@@ -240,16 +256,6 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
      * by `EntityIterator.certainlyNotInSameSubtree`. This preserves IF257's row-local answer when one outer row is
      * wildcarded and another is concrete. SumOfProducts does not use this combiner iterator and keeps the separate
      * [starFullyEnumeratedOf] path. See IF262 for the source trace and discriminating cases.
-     *
-     * **Cost.** A candidate is removed exactly when the set contains a tuple whose wildcard mask is a STRICT
-     * SUPERSET of the candidate's and whose remaining coordinates match it — so only masks with a strictly
-     * larger wildcard count can remove anything, which is what [wildcardMasksByBreadth] orders by. Testing a
-     * mask first and materializing the broader tuple only on a hit is what keeps this off the quadratic path:
-     * scanning every distinct mask and hashing a fresh list for each took **1306 ms** on 3000 relevant
-     * identifiers whose masks form an antichain (equal wildcard counts, so nothing removes anything and every
-     * probe was wasted), growing 3.86x when the set doubled — measured, not predicted, by
-     * `StarRelevanceReductionGrowthTest`. The residual worst case is a set mixing many wildcard counts, bounded
-     * by cheap `Long` comparisons rather than allocation.
      */
     private fun reducedStarRelevantCandidates(
         relevant: List<RelevantEntity>,
@@ -258,20 +264,37 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
         val depth = pathParts(starPath).size
         val expanded = relevant.asSequence()
             .filter { covers(it, starPath) }
-            .map { entity ->
-                RelevantEntity(starPath, entity.indices + List(depth - entity.indices.size) { RelevantEntity.ALL })
-            }
-            .distinctBy { it.indices }
+            .map { entity -> entity.indices + List(depth - entity.indices.size) { RelevantEntity.ALL } }
+            .distinct()
             .toList()
-        if (depth > MASKABLE_DEPTH) return reducedByPatternScan(expanded)
-        val tuples = expanded.mapTo(HashSet()) { it.indices }
-        val byBreadth = wildcardMasksByBreadth(expanded)
-        return expanded.filter { candidate ->
-            val own = wildcardMask(candidate.indices)
+        return withoutEncompassed(expanded, depth).map { RelevantEntity(starPath, it) }
+    }
+
+    /**
+     * [tuples], each [depth] entries long, in their given order without every one a broader tuple of the set
+     * encompasses: a tuple that is [RelevantEntity.ALL] or equal at every level, and differs somewhere.
+     *
+     * **Cost.** A candidate is removed exactly when the set contains a tuple whose wildcard mask is a STRICT
+     * SUPERSET of the candidate's and whose remaining coordinates match it — so only masks with a strictly
+     * larger wildcard count can remove anything, which is what [wildcardMasksByBreadth] orders by. Testing a
+     * mask first and materializing the broader tuple only on a hit is what keeps this off the quadratic path:
+     * scanning every distinct mask and hashing a fresh list for each took **1306 ms** on 3000 relevant
+     * identifiers whose masks form an antichain (equal wildcard counts, so nothing removes anything and every
+     * probe was wasted), growing 3.86x when the set doubled — measured, not predicted, by the growth test whose
+     * antichain lane is now `StarRelevanceReductionPerfTest`. The residual worst case is a set mixing many wildcard counts, bounded
+     * by cheap `Long` comparisons rather than allocation. The group-count gate's wholly relevant identifiers
+     * use it too, where a pairwise scan of their own cost O(rows²) (`GrowingRelevancePartialPerfTest`).
+     */
+    private fun withoutEncompassed(tuples: Collection<List<Int>>, depth: Int): Set<List<Int>> {
+        if (depth > MASKABLE_DEPTH) return withoutEncompassedByPatternScan(tuples)
+        val members = tuples.toHashSet()
+        val byBreadth = wildcardMasksByBreadth(tuples)
+        return tuples.filterTo(LinkedHashSet()) { candidate ->
+            val own = wildcardMask(candidate)
             val ownBreadth = own.countOneBits()
             byBreadth.none { (breadth, masks) ->
                 breadth > ownBreadth && masks.any { mask ->
-                    mask and own == own && broaderTuple(candidate.indices, mask) in tuples
+                    mask and own == own && broaderTuple(candidate, mask) in members
                 }
             }
         }
@@ -282,19 +305,19 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
      * kept because it needs no mask and is provably equivalent. It is quadratic, but a path this deep does not
      * occur: reaching it needs more than [MASKABLE_DEPTH] segments in one field path.
      */
-    private fun reducedByPatternScan(expanded: List<RelevantEntity>): List<RelevantEntity> {
-        val tuples = expanded.mapTo(HashSet()) { it.indices }
-        val patterns = expanded.asSequence()
-            .map { entity -> entity.indices.map { it == RelevantEntity.ALL } }
+    private fun withoutEncompassedByPatternScan(tuples: Collection<List<Int>>): Set<List<Int>> {
+        val members = tuples.toHashSet()
+        val patterns = tuples.asSequence()
+            .map { tuple -> tuple.map { it == RelevantEntity.ALL } }
             .filter { pattern -> pattern.any { it } }
             .distinct()
             .toList()
-        return expanded.filter { candidate ->
+        return tuples.filterTo(LinkedHashSet()) { candidate ->
             patterns.none { pattern ->
-                val broader = candidate.indices.mapIndexed { level, index ->
+                val broader = candidate.mapIndexed { level, index ->
                     if (pattern[level]) RelevantEntity.ALL else index
                 }
-                broader != candidate.indices && broader in tuples
+                broader != candidate && broader in members
             }
         }
     }
@@ -304,9 +327,9 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
      * Only a mask that wildcards strictly MORE levels than a candidate can encompass it, so a candidate whose
      * own breadth is maximal — the antichain case — skips every group without touching a single mask.
      */
-    private fun wildcardMasksByBreadth(expanded: List<RelevantEntity>): List<Pair<Int, List<Long>>> =
-        expanded.asSequence()
-            .map { wildcardMask(it.indices) }
+    private fun wildcardMasksByBreadth(tuples: Collection<List<Int>>): List<Pair<Int, List<Long>>> =
+        tuples.asSequence()
+            .map { wildcardMask(it) }
             .filter { it != 0L }
             .distinct()
             .groupBy { it.countOneBits() }

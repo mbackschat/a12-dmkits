@@ -21,6 +21,21 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-11-03-kf667-gate"></a>
+### Checkpoint 2026-11-03 — the kernel-31 migration made the group-count gate quadratic, and the growth lane caught it
+
+Three routine gate runs at `b9a629005`, the first after the migration to kernel 31.1.1, each started at a 1-minute load below 4 (the records' headers read 4.21, 3.72 and 3.04). Each failed 39 of 73 tests. 38 were `UNANCHORED`: the migrated fixtures changed the scenario fingerprints, which is the refresh the release plan expected. The 39th was not an anchor at all. `GrowingRelevancePartialPerfTest` breached its 9.0× catastrophe floor in all nine re-measurements across the three runs:
+
+| run | N=1000 → N=4000, the three re-measurements |
+|---|---|
+| 1 | 104.4 → 1451.3 ms (13.55×) · 110.6 → 1393.1 ms (13.21×) · 104.3 → 1380.4 ms (13.29×) |
+| 2 | 110.1 → 1480.9 ms (13.42×) · 109.5 → 1482.7 ms (13.56×) · 110.0 → 1478.4 ms (13.51×) |
+| 3 | 104.4 → 1390.0 ms (13.31×) · 104.1 → 1396.5 ms (13.36×) · 105.2 → 1388.2 ms (13.23×) |
+
+The last pre-migration record (`847ac6d8e`, `2026-11-01T034912Z`) reads 21.8 → 93.5 ms on the same keys, 4.29×. Quadratic growth would read 16×, so 13.4× with a fivefold slower small end is a pairwise term dominating a linear one. Five commits touched `interpreter/src/commonMain` since that record (`git log 847ac6d8e..b9a629005`). Only the migration changed what a partial gate computes, with [KF667](KERNEL-FINDINGS.md#kf667)'s wholly-relevant identifiers; the other four add and correct `SumOfTerms` evaluation, prepare a mount's local elements, or simplify without changing behaviour. The mechanism and fix are in [IF412](INTERPRETER-FINDINGS.md#if412).
+
+**The discriminator.** Replacing only that computation's two pairwise scans, and changing nothing else the migration touched, gives **24.0 → 90.1 ms (3.75×)** in one isolated run of the lane at a load of 2.4. A cause anywhere else would have survived that change. The 37 partial differential classes stay green on the fix. These figures live only here: the three records were captured on the defective revision, so they cannot seed the anchor refresh, which refuses runs of mixed revisions, and they were left uncommitted.
+
 <a id="checkpoint-2026-10-26-cold-start"></a>
 ### Checkpoint 2026-10-26 — the cold-start lane breached on machine state, not on the join-planning decline
 
