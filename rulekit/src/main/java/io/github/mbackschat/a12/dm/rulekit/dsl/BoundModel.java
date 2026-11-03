@@ -843,43 +843,43 @@ public final class BoundModel {
 
     /** {@code MaxValue(…)} over DATE operands, checked against this model. catalog:MaxValue */
     public DateExpr latestOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestOf(first, rest);
     }
 
     /** {@code MinValue(…)} over DATE operands, checked against this model. catalog:MinValue */
     public DateExpr earliestOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestOf(first, rest);
     }
 
     /** {@code MaxValue(…)} over TIME operands, checked against this model. catalog:MaxValue */
     public TimeExpr latestTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestTimeOf(first, rest);
     }
 
     /** {@code MinValue(…)} over TIME operands, checked against this model. catalog:MinValue */
     public TimeExpr earliestTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestTimeOf(first, rest);
     }
 
     /** {@code MaxValue(…)} over DATETIME operands, checked against this model. catalog:MaxValue */
     public DateTimeExpr latestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MaxValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MaxValue", this, first, rest);
         return Dsl.latestDateTimeOf(first, rest);
     }
 
     /** {@code MinValue(…)} over DATETIME operands, checked against this model. catalog:MinValue */
     public DateTimeExpr earliestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireComparableTemporalList("MinValue", this, first, rest);
+        EntityListOperandReads.requireComparableTemporalList("MinValue", this, first, rest);
         return Dsl.earliestDateTimeOf(first, rest);
     }
 
     /** {@code NumberOfDifferentValues(…)}, checked against this model. catalog:NumberOfDifferentValues */
     public NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
-        Dsl.requireDifferentValuesList(this, first, rest);
+        EntityListOperandReads.requireDifferentValuesList(this, first, rest);
         return Dsl.numberOfDifferentValues(first, rest);
     }
 
@@ -892,14 +892,14 @@ public final class BoundModel {
      */
     public NumberExpr sum(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
-        Dsl.readOperandsThen("Sum", this, operands, () -> requireListOverExpansion(ListAggregate.AggOp.SUM, operands));
+        EntityListOperandReads.readOperandsThen("Sum", this, operands, () -> requireListOverExpansion(ListAggregate.AggOp.SUM, operands));
         return Dsl.sum(first, rest);
     }
 
     /** {@code MaxValue(…)} over numbers, checked against this model as {@link #sum} is. catalog:MaxValue */
     public NumberExpr maxValue(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
-        Dsl.readOperandsThen("MaxValue", this, operands,
+        EntityListOperandReads.readOperandsThen("MaxValue", this, operands,
                 () -> requireListOverExpansion(ListAggregate.AggOp.MAX_VALUE, operands));
         return Dsl.maxValue(first, rest);
     }
@@ -907,7 +907,7 @@ public final class BoundModel {
     /** {@code MinValue(…)} over numbers, checked against this model as {@link #sum} is. catalog:MinValue */
     public NumberExpr minValue(AggregateOperand first, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, rest);
-        Dsl.readOperandsThen("MinValue", this, operands,
+        EntityListOperandReads.readOperandsThen("MinValue", this, operands,
                 () -> requireListOverExpansion(ListAggregate.AggOp.MIN_VALUE, operands));
         return Dsl.minValue(first, rest);
     }
@@ -915,7 +915,7 @@ public final class BoundModel {
     /** {@code NumberOfFilledFields(…)}, checked against this model as {@link #sum} is. catalog:NumberOfFilledFields */
     public NumberExpr numberOfFilledFields(AggregateOperand first, AggregateOperand second, AggregateOperand... rest) {
         List<AggregateOperand> operands = listOf(first, second, rest);
-        Dsl.readOperandsThen("NumberOfFilledFields", this, operands,
+        EntityListOperandReads.readOperandsThen("NumberOfFilledFields", this, operands,
                 () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, operands));
         return Dsl.numberOfFilledFields(first, second, rest);
     }
@@ -923,7 +923,7 @@ public final class BoundModel {
     /** {@code NumberOfFilledFields(group, …)}, checked against this model as {@link #sum} is. */
     public NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
         List<AggregateOperand> scopes = CountAggregate.scopesOf(listOf(first, rest));
-        Dsl.readOperandsThen("NumberOfFilledFields", this, scopes,
+        EntityListOperandReads.readOperandsThen("NumberOfFilledFields", this, scopes,
                 () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_FIELDS, scopes));
         return Dsl.numberOfFilledFields(first, rest);
     }
@@ -931,7 +931,7 @@ public final class BoundModel {
     /** {@code NumberOfFilledGroups(g1, g2, …)}, checked against this model as {@link #sum} is. */
     public NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
         List<AggregateOperand> scopes = CountAggregate.scopesOf(listOf(first, second, rest));
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+        EntityListOperandReads.readOperandsThen("NumberOfFilledGroups", this, scopes,
                 () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(first, second, rest);
     }
@@ -943,7 +943,7 @@ public final class BoundModel {
      */
     public NumberExpr numberOfFilledGroups(GroupRef repeatableGroup) {
         List<AggregateOperand> scopes = CountAggregate.scopesOf(List.of(repeatableGroup));
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+        EntityListOperandReads.readOperandsThen("NumberOfFilledGroups", this, scopes,
                 () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(repeatableGroup);
     }
@@ -955,7 +955,7 @@ public final class BoundModel {
      */
     public NumberExpr numberOfFilledGroups(GroupListRef first, GroupListRef... rest) {
         List<AggregateOperand> scopes = List.copyOf(listOf(first, rest));
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, scopes,
+        EntityListOperandReads.readOperandsThen("NumberOfFilledGroups", this, scopes,
                 () -> CountAggregate.requireList(CountAggregate.CountOp.FILLED_GROUPS, scopes));
         return Dsl.numberOfFilledGroups(first, rest);
     }
@@ -967,7 +967,7 @@ public final class BoundModel {
      */
     public NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
         RootGroupCount.requireRepeatable(rootGroup);
-        Dsl.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.scopesOf(List.of(rootGroup)), () -> { });
+        EntityListOperandReads.readOperandsThen("NumberOfFilledGroups", this, CountAggregate.scopesOf(List.of(rootGroup)), () -> { });
         return Dsl.numberOfFilledRootGroups(rootGroup);
     }
 

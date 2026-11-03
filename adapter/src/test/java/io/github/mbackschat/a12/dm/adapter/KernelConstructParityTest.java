@@ -2,13 +2,21 @@ package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,14 +44,17 @@ class KernelConstructParityTest {
 
     private static final String PKG = "com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.";
 
-    /** Every construct-name enum in the parsetree-api {@code types} package (kernel 30.8.1). */
-    private static final List<String> ENUMS = List.of(
-            "BoolConstantOperationName", "CalcOp", "ComparisonOperation",
-            "DateAddOperationName", "DateDiffOperationName", "DateExtractionOperationName",
-            "DateRangeExtractionOperationName", "EntityListAndValueListConditionName",
-            "EntityListConditionName", "EntityListOperationName", "FieldIdOperationName",
-            "GroupOperationName", "LogOp", "OpListOperationName", "PointInTimeOperationName",
-            "RootGroupConditionName", "ValidityConditionName", "ValueListConditionName");
+    /**
+     * Enums of the {@code types} package that name no construct, each with its reason. Every other enum there is a
+     * construct-name enum, so the set is discovered rather than listed: kernel 31.1.1 added
+     * {@code SetOpOperationName} to a hand-written list this test used to carry, and the operator it names stayed
+     * invisible here (KERNEL-FINDINGS KF656).
+     */
+    private static final Map<String, String> NOT_CONSTRUCT_ENUMS = Map.of(
+            "OperationType", "the value type an operation yields, not a construct name");
+
+    /** Every construct-name enum in the parsetree-api {@code types} package, read off the classpath. */
+    private static final List<String> ENUMS = constructEnums();
 
     /**
      * Kernel construct {@code Enum.MEMBER} → why it is NOT a rulekit catalog construct. Each must be a
@@ -129,6 +140,54 @@ class KernelConstructParityTest {
             names.add(e.keywords().de());
         }
         return names;
+    }
+
+    @Test
+    void theEnumDiscoveryReadsThePackageAndItsExclusionsAreLive() {
+        Set<String> all = new TreeSet<>(ENUMS);
+        all.addAll(NOT_CONSTRUCT_ENUMS.keySet());
+        assertTrue(enumsInTypesPackage().containsAll(all), "an excluded non-construct enum is no longer in the package");
+        assertTrue(ENUMS.containsAll(List.of("CalcOp", "EntityListConditionName", "SetOpOperationName")),
+                () -> "the discovery must reach the package's construct enums, kernel 31.1.1's included: " + ENUMS);
+    }
+
+    private static List<String> constructEnums() {
+        return enumsInTypesPackage().stream().filter(name -> !NOT_CONSTRUCT_ENUMS.containsKey(name)).toList();
+    }
+
+    /** The top-level enums of the {@code types} package, from the jar or directory that holds {@code CalcOp}. */
+    private static List<String> enumsInTypesPackage() {
+        String dir = PKG.replace('.', '/');
+        URL anchor = KernelConstructParityTest.class.getClassLoader().getResource(dir + "CalcOp.class");
+        if (anchor == null) {
+            throw new IllegalStateException("the kernel parsetree-api is not on the test classpath");
+        }
+        List<String> names = new ArrayList<>();
+        try {
+            if (anchor.getProtocol().equals("jar")) {
+                try (JarFile jar = ((JarURLConnection) anchor.openConnection()).getJarFile()) {
+                    jar.stream().map(JarEntry::getName).filter(entry -> entry.startsWith(dir))
+                            .map(entry -> entry.substring(dir.length())).forEach(names::add);
+                }
+            } else {
+                try (var files = Files.list(Path.of(anchor.toURI()).getParent())) {
+                    files.map(file -> file.getFileName().toString()).forEach(names::add);
+                }
+            }
+        } catch (IOException | URISyntaxException e) {
+            throw new IllegalStateException("cannot list " + PKG, e);
+        }
+        return names.stream().filter(name -> name.endsWith(".class") && !name.contains("$") && !name.contains("/"))
+                .map(name -> name.substring(0, name.length() - ".class".length()))
+                .filter(simple -> loadClass(simple).isEnum()).sorted().toList();
+    }
+
+    private static Class<?> loadClass(String simple) {
+        try {
+            return Class.forName(PKG + simple);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Method methodOrNull(Class<?> c, String name) {

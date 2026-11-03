@@ -1601,6 +1601,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sum(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfTerms(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfTerms(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent temporalComponent(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr text(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText text(java.lang.String, java.lang.String)
@@ -2677,6 +2679,17 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts implements i
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand left()
   public java.lang.String operatorId()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand right()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.SumOfTerms implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public SumOfTerms(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> filter()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef iteration()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation term()
   public final java.lang.String toString()
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent

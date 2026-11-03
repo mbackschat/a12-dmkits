@@ -113,17 +113,15 @@ class GrammarProductionLedgerTest {
         }
 
         Map<String, Integer> expected = new LinkedHashMap<>();
-        expected.put("rendered", 70);
+        expected.put("rendered", 73);
         expected.put("plumbing", 23);
         expected.put("entry", 3);
         expected.put("directive", 2);
         expected.put("legacy", 21);
-        // Kernel 31.1.1 added the three SumOfTerms productions (KERNEL-FINDINGS KF656), queued until classified.
-        expected.put("queued", 3);
         assertEquals(expected, actual,
                 "docs/GRAMMAR-LEDGER.md's classification split, measured 2026-11-03 against kernel 31.1.1: the "
-                        + "98 the portable checker owns, the 21 legacy productions it names as its non-goal, and "
-                        + "3 queued. Changing a production's class is a scope decision — update these numbers "
+                        + "101 the portable checker owns, with the three SumOfTerms productions rendered since "
+                        + "KF670, and the 21 legacy productions it names as its non-goal. Changing a production's class is a scope decision — update these numbers "
                         + "deliberately, in the commit that makes it");
     }
 

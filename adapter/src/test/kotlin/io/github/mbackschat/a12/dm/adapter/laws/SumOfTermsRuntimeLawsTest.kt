@@ -10,19 +10,20 @@ import org.junit.jupiter.api.Test
 
 /**
  * KERNEL-FINDINGS KF670 — what kernel 31.1.1's `SumOfTerms` evaluates to, read on BOTH kernel strategies (the
- * dynamic-Groovy anchor and generated Java) from one model and one document per row.
+ * dynamic-Groovy anchor and generated Java) and the interpreter from one model and one document per row.
  *
  * Each document is read as the sorted signatures of every rule and computation, `code|type|pointer` and
  * `pointer|VALUE|value`. The rules share one term, so a row that moves one of them and not the others names the
  * comparison, not the sum. The rival the rows are built to refute is `SumOfProducts`' contract, where a malformed
  * cell makes the whole sum undecidable ([SumOfProductsDiffTest]).
  *
- * The conditions are raw strings because the typed surface does not author `SumOfTerms` yet.
+ * The conditions are raw strings so the rows read the kernel's own spelling, independent of the typed surface.
  */
 class SumOfTermsRuntimeLawsTest {
 
     private companion object {
         const val HOLDER = "/Policy/Holder"
+        const val TOTAL = "/Policy/Total"
         const val CLAIMS = "/Policy/Claims"
         const val AMOUNT = "/Policy/Claims/Amount"
         const val RESERVE = "/Policy/Claims/Reserve"
@@ -82,16 +83,19 @@ class SumOfTermsRuntimeLawsTest {
             placements += Placement(PlacementKind.FIELD, DEDUCTIBLE, listOf(1, row, 1), value)
         }
 
+        fun total(value: String) = apply { placements += Placement(PlacementKind.FIELD, TOTAL, listOf(1, 1), value) }
+
         fun part(row: Int, part: Int, qty: String) = apply {
             placements += Placement(PlacementKind.GROUP, PARTS, listOf(1, row, part))
             placements += Placement(PlacementKind.FIELD, QTY, listOf(1, row, part, 1), qty)
         }
     }
 
-    /** Both strategies' readings of [doc] under [op], asserted equal, the Groovy one returned. */
+    /** Both strategies' readings of [doc] under [op] and the interpreter's, asserted equal, the Groovy one returned. */
     private fun read(doc: Doc, op: Op): List<String> {
         val groovy = CorpusEngines.groovyDynamic(model, doc.placements, op)
         assertEquals(groovy, CorpusEngines.javaStatic(model, doc.placements, op), "generated Java parts from Groovy")
+        assertEquals(groovy, CorpusEngines.interpret(model, doc.placements, op), "the interpreter parts from Groovy")
         return groovy
     }
 
@@ -106,6 +110,16 @@ class SumOfTermsRuntimeLawsTest {
             "two rows, every operand filled" to Doc().claim(1, "30", "10").claim(2, "50", "20"),
             "every row of the capacity filled" to
                 Doc().claim(1, "30", "10").claim(2, "30", "10").claim(3, "30", "10").claim(4, "30", "10"),
+            "every row of the capacity filled, one reserve empty" to
+                Doc().claim(1, "30", "10").claim(2, "30", "10").claim(3, "30", "10").claim(4, "30"),
+            "every row of the capacity filled, one dividing by zero" to
+                Doc().claim(1, "30", "10").claim(2, "30", "10").claim(3, "30", "10").claim(4, "50", "0"),
+            "every row of the capacity open" to Doc().claim(1, "30", "0", "open").claim(2, "30", "0", "open")
+                .claim(3, "30", "0", "open").claim(4, "30", "0", "open"),
+            "every row of the capacity filled, one closed" to Doc().claim(1, "50", "0", "open")
+                .claim(2, "50", "0", "open").claim(3, "50", "0", "open").claim(4, "50", "0", "closed"),
+            "every part of every claim filled" to (1..4).fold(Doc()) { d, c ->
+                (1..3).fold(d.claim(c, "1", "0")) { dd, p -> dd.part(c, p, "1") } },
             "no row" to Doc(),
             "one row, its reserve empty" to Doc().claim(1, "30"),
             "one row's amount malformed" to Doc().claim(1, "30", "10").claim(2, "abc", "20"),
@@ -121,6 +135,12 @@ class SumOfTermsRuntimeLawsTest {
         val expected = linkedMapOf(
             "two rows, every operand filled" to listOf("DIV|OMISSION_ERROR|$AT", "GT|OMISSION_ERROR|$AT"),
             "every row of the capacity filled" to listOf("DIV|VALUE_ERROR|$AT", "GT|VALUE_ERROR|$AT"),
+            "every row of the capacity filled, one reserve empty" to listOf("DIV|OMISSION_ERROR|$AT", "GT|OMISSION_ERROR|$AT"),
+            "every row of the capacity filled, one dividing by zero" to listOf("DIV|OMISSION_ERROR|$AT", "GT|VALUE_ERROR|$AT"),
+            "every row of the capacity open" to listOf("FILT|VALUE_ERROR|$AT", "GT|VALUE_ERROR|$AT"),
+            "every row of the capacity filled, one closed" to
+                listOf("FILT|OMISSION_ERROR|$AT", "GT|VALUE_ERROR|$AT"),
+            "every part of every claim filled" to listOf("LT|VALUE_ERROR|$AT", "NEST|VALUE_ERROR|$AT"),
             "no row" to listOf("EQ0|OMISSION_ERROR|$AT", "LT|OMISSION_ERROR|$AT"),
             "one row, its reserve empty" to listOf("LT|OMISSION_ERROR|$AT"),
             "one row's amount malformed" to listOf(),
@@ -135,17 +155,21 @@ class SumOfTermsRuntimeLawsTest {
         assertEquals(expected, documents.mapValues { (_, doc) -> validated(doc) })
     }
 
+    /**
+     * Every document stores a total, because A12 reports no outcome for a target that was empty and is cleared,
+     * where the placement replay reports every outcome: a stored total is what lets "cleared" and "unassigned" differ.
+     */
     @Test
     fun aComputedTermSum() {
         val documents = linkedMapOf(
-            "two rows, every operand filled" to Doc().claim(1, "30", "10").claim(2, "50", "20.5"),
-            "no row" to Doc(),
-            "one row's amount malformed" to Doc().claim(1, "30", "10").claim(2, "abc", "20"),
+            "two rows, every operand filled" to Doc().claim(1, "30", "10").claim(2, "50", "20.5").total("5"),
+            "no row" to Doc().total("5"),
+            "one row's amount malformed" to Doc().claim(1, "30", "10").claim(2, "abc", "20").total("5"),
         )
         val expected = linkedMapOf(
             "two rows, every operand filled" to listOf("/Policy[1]/Total|VALUE|110.5"),
             "no row" to listOf("/Policy[1]/Total|VALUE|0"),
-            "one row's amount malformed" to listOf(),
+            "one row's amount malformed" to listOf("/Policy[1]/Total|CLEARED"),
         )
         assertEquals(expected, documents.mapValues { (_, doc) -> read(doc, Op.Compute) })
     }
@@ -189,5 +213,55 @@ class SumOfTermsRuntimeLawsTest {
         assertEquals(expected, actual)
     }
 
+    /** The gate's error arm: an erroneous FIRST instance, against the same error in the second, under a relevant group. */
+    @Test
+    fun partialValidationNeedsAnErrorFreeFirstInstance() {
+        val relevant = Op.ValidatePart(listOf(RelevantPointer(HOLDER, listOf(1, 1)), RelevantPointer(CLAIMS, listOf(1, 0))))
+        val actual = linkedMapOf(
+            "the first row's deductible malformed" to
+                validated(Doc().claim(1, "30", "10").claim(2, "50", "20").deductible(1, "abc"), relevant),
+            "the second row's deductible malformed" to
+                validated(Doc().claim(1, "30", "10").claim(2, "50", "20").deductible(2, "abc"), relevant),
+        )
+        val expected = linkedMapOf(
+            "the first row's deductible malformed" to listOf("CTRL|OMISSION_ERROR|$AT"),
+            "the second row's deductible malformed" to listOf("CTRL|OMISSION_ERROR|$AT", "GT|OMISSION_ERROR|$AT"),
+        )
+        assertEquals(expected, actual)
+    }
+
+    /** A12 skips a rule holding any filter in partial validation; whether the term sum's own filter is one. */
+    @Test
+    fun partialValidationSkipsAFilteredTermSum() {
+        val doc = Doc().claim(1, "150", "0", "open").claim(2, "10", "0", "closed")
+        val relevant = Op.ValidatePart(listOf(RelevantPointer(HOLDER, listOf(1, 1)), RelevantPointer(CLAIMS, listOf(1, 0))))
+        assertEquals(listOf("GT|OMISSION_ERROR|$AT"),
+            read(doc, relevant).filter { it.substringBefore('|') in setOf("GT", "FILT") })
+    }
+
     private fun validated(doc: Doc, op: Op) = read(doc, op).filter { it.substringBefore('|') in setOf("GT", "CTRL") }
+
+    /**
+     * Which operands a fired term-sum message names as referenced and as fill-to-fix. One document fires every
+     * rule, so each list is read against the same rows; the three engines are asserted equal on it as well.
+     */
+    @Test
+    fun aTermSumMessageNamesItsOperands() {
+        val json = """{"Policy":{"Holder":"Ada","Claims":[""" +
+            """{"Status":"open","Amount":30,"Reserve":10,"Parts":[{"Qty":4},{"Qty":3}]},""" +
+            """{"Status":"open","Amount":80,"Reserve":20}]}}"""
+        DocumentDifferential.assertAgree(model, mapOf("every rule fired" to json))
+        fun short(pointers: List<String>) = pointers.map { it.removePrefix("/Policy[1]/") }
+        val actual = DocumentDifferential.kernel(model, json, dynamic = true).messages
+            .map { "${it.code}|${short(it.referenced)}|${short(it.fillToFix)}" }
+        // Deductible, a field of every row no term reads, is named nowhere: the term's fields are, not the group's.
+        assertEquals(listOf(
+            "CTRL|[Claims[0]/Amount, Holder]|[Claims[0]/Amount]",
+            "DIV|[Claims[0]/Amount, Claims[0]/Reserve, Holder]|[Claims[0]/Amount, Claims[0]/Reserve]",
+            "FILT|[Claims[0]/Amount, Claims[0]/Status, Holder]|[Claims[0]/Amount, Claims[0]/Status]",
+            "GT|[Claims[0]/Amount, Claims[0]/Reserve, Holder]|[Claims[0]/Amount, Claims[0]/Reserve]",
+            "NEST|[Claims[0]/Parts[0]/Qty, Holder]|[Claims[0]/Parts[0]/Qty]",
+            "ROW|[Claims[1]/Amount, Claims[1]/Parts[0]/Qty]|[Claims[1]/Parts[0]/Qty]",
+        ), actual)
+    }
 }

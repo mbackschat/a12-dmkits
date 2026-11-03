@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition
@@ -43,6 +44,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts
+import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfTerms
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate
@@ -854,16 +856,23 @@ class FunctionsTest {
         assertEquals(2, range.end())
     }
 
-    // --- the third outcome ----------------------------------------------------------------------
+    // --- SumOfTerms ---------------------------------------------------------------------------------
 
-    /**
-     * SumOfTerms is deliberately not mapped — it is a real kernel operator dmkits knows nothing about
-     * (absent from both the catalog and `ConditionLanguage`). A gap must stay an admission of
-     * ignorance: were it to arrive as a rejection, it would read as a rulekit finding.
-     */
     @Test
-    fun anUnmappedFunctionIsNotARejection() {
-        assertThrows(UnmappedConstructException::class.java) { translate("SumOfTerms(Quantity, UnitPrice) > 1") }
+    fun aTermSumConvertsWithItsIterationAndTerm() {
+        val sum = assertInstanceOf(SumOfTerms::class.java,
+            left("SumOfTerms(Items*, [Items/Count] * [Items/UnitWeight]) > 1"))
+        assertEquals("/Order/Items", sum.iteration().path())
+        assertFalse(sum.filter().isPresent)
+        assertInstanceOf(Arithmetic::class.java, sum.term())
+    }
+
+    /** The filter moves from the iteration scope onto the term sum, the one place rulekit keeps it. */
+    @Test
+    fun aFilteredTermSumKeepsItsFilter() {
+        val sum = assertInstanceOf(SumOfTerms::class.java,
+            left("SumOfTerms(Items* Having [Items/Count] > 2, [Items/Count]) > 1"))
+        assertTrue(sum.filter().isPresent)
     }
 
     /** The pre-existing arms still map — the switch grew, it did not move. */

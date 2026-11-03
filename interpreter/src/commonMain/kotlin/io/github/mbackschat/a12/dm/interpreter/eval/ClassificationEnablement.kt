@@ -62,6 +62,7 @@ private fun readsValue(e: Expr): Boolean = when (e) {
     is Expr.Field, is Expr.Star, is Expr.EntitySpec, is Expr.SemanticIndex, is Expr.EnumCategory -> true
     // `CurrentRepetition` names a group as an entity id; it reads no value.
     is Expr.Func -> FunctionOp.byName(e.name) != FunctionOp.CURRENT_REPETITION && e.args.any(::readsValue)
+    is Expr.TermSum -> true
     is Expr.Arith -> readsValue(e.left) || readsValue(e.right)
     is Expr.Const, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit -> false
 }
@@ -118,6 +119,7 @@ private fun expressionCanRaiseRuntimeFailure(e: Expr): Boolean = when (e) {
     is Expr.Func -> e.args.any(::expressionCanRaiseRuntimeFailure)
     is Expr.Arith -> expressionCanRaiseRuntimeFailure(e.left) || expressionCanRaiseRuntimeFailure(e.right)
     is Expr.Star -> e.having?.let(::canRaiseRuntimeFailure) ?: false
+    is Expr.TermSum -> expressionCanRaiseRuntimeFailure(e.iteration) || expressionCanRaiseRuntimeFailure(e.term)
     is Expr.EntitySpec -> expressionCanRaiseRuntimeFailure(e.source)
     is Expr.Field, is Expr.SemanticIndex, is Expr.EnumCategory, is Expr.Const, is Expr.NumLit, is Expr.BoolLit -> false
 }

@@ -159,6 +159,29 @@ public final class ModelDrafts {
     }
 
     /**
+     * A policy with a repeatable claim list holding a nested repeatable and a non-repeatable group, beside a second
+     * repeatable group and a non-repeatable one: the shape every {@code SumOfTerms} admission row is measured on
+     * ({@code validate.laws.SumOfTermsTermLawsTest}, the catalog's claim probes).
+     */
+    public static DocumentModelDraft policyClaims() {
+        return DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US")
+                .rootGroup("Policy", p -> p
+                        .stringField("Holder", f -> { })
+                        .numberField("Total", n -> n.fractionDigits(2))
+                        .group("Address", a -> a.numberField("Zip", n -> n.fractionDigits(0)))
+                        .group("Vehicles", v -> v.repeatable(2).numberField("Value", n -> n.fractionDigits(0)))
+                        .group("Claims", c -> c.repeatable(3).indexField("ClaimRef")
+                                .stringField("ClaimRef", f -> { })
+                                .stringField("Status", f -> { })
+                                .numberField("Amount", n -> n.fractionDigits(2))
+                                .group("Assessment", g -> g.numberField("Score", n -> n.fractionDigits(0)))
+                                .group("Parts", pp -> pp.repeatable(4)
+                                        .numberField("Qty", n -> n.fractionDigits(0))
+                                        .numberField("Price", n -> n.fractionDigits(2)))))
+                .build();
+    }
+
+    /**
      * Shipping — an index group with a repeatable group BELOW it ({@code Packages}/{@code Parcels}), one with a
      * repeatable group ABOVE it ({@code Regions}/{@code Stores}), and a repeatable group with no index group on
      * its chain ({@code Lines}): the three star placements a semantic index is judged by (KERNEL-FINDINGS KF351).

@@ -53,7 +53,7 @@ Classifications:
 | `feldOp` / `feldOpName` | rendered | `AbsValue` (`AbsWert`), `Length`, `FieldValueAsNumber`, `FieldValueAsString` |
 | `feldOperOp` / `feldOperOpName` | rendered | field-level rounding (`RoundDownValue`, `RoundUpValue`, `RoundAccountingValue`) |
 | `feldListenOp` / `feldListenOpName` | rendered | list aggregates: `MaxValue`, `MinValue`, `Sum`, `SumOfProducts`, `FirstFilledValue` |
-| `setOperOp` / `setOperOpName` / `setOperation` | queued | kernel 31.1.1's term sum `SumOfTerms` (`SummeVonTermen`): an iteration entity, then one arithmetic term evaluated per repetition; admission classes in [KF656](KERNEL-FINDINGS.md#kf656). The renderer quotes both spellings in entity paths |
+| `setOperOp` / `setOperOpName` / `setOperation` | rendered | kernel 31.1.1's term sum `SumOfTerms` (`SummeVonTermen`): an iteration entity, then one arithmetic term evaluated per repetition (`Dsl.sumOfTerms`); admission classes in [KF656](KERNEL-FINDINGS.md#kf656) and [KF670](KERNEL-FINDINGS.md#kf670) |
 | `feldListenOperOp` / `feldListenOperOpName` | rendered | operand-list math (`Min`/`Max`/`Abs` over expressions) |
 | `feldListenAnzahlOp` / `feldListenAnzahlOpName` | rendered | `NumberOfFilledFields`, `NumberOfDifferentValues` |
 | `anzahlWertOp` / `anzahlWertOpName` | rendered | `NumberOfValueInFields` (`AnzahlWertInFeldliste`) |

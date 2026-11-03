@@ -274,7 +274,8 @@ private class ConditionParser(
                                 require(quoted || !language.isForeignKeyword(authoredName)) {
                                     "parser: '$authoredName' is not a function keyword in ${language.code}"
                                 }
-                                Expr.Func(keyword ?: authoredName, readArgs(allowEmpty = keyword == "Time"))
+                                val args = readArgs(allowEmpty = keyword == "Time")
+                                if (keyword == "SumOfTerms") termSum(args) else Expr.Func(keyword ?: authoredName, args)
                             } else {
                                 entitySuffix(pathFrom(authoredName))
                             }
@@ -532,6 +533,15 @@ private class ConditionParser(
             }
             else -> throw UnsupportedConstructException("Having applies to a starred operand")
         }
+    }
+
+    /** `SumOfTerms` takes a starred group and one term; any other shape is a model the kernel would refuse. */
+    private fun termSum(args: List<Expr>): Expr.TermSum {
+        val iteration = args.firstOrNull() as? Expr.Star
+        if (args.size != 2 || iteration == null) {
+            throw UnsupportedConstructException("SumOfTerms takes a starred group and one term")
+        }
+        return Expr.TermSum(iteration, args[1])
     }
 
     /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */

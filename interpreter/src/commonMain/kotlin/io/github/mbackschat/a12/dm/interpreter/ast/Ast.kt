@@ -172,6 +172,17 @@ sealed interface Expr {
         val groupPath: String get() = path.substringBeforeLast('/')
     }
 
+    /**
+     * `SumOfTerms(<group*>, <term>)` — [term] evaluated once per row of the starred GROUP [iteration] and summed
+     * (KERNEL-FINDINGS KF670). [iteration] names the group itself, so its [Star.path] is a group path, and its
+     * optional [Star.having] keeps the rows the sum visits.
+     *
+     * A node of its own rather than a [Func], because [term] is bound to the iteration row the way a filter body
+     * is: its references read that row and must not make the RULE iterate, and the generic walk over a [Func]'s
+     * arguments would read them as rule-level references.
+     */
+    data class TermSum(val iteration: Star, val term: Expr) : Expr
+
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr
 

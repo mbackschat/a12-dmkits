@@ -16547,13 +16547,16 @@ Every `testIDNummer` row of the retained custom-type matrix now equals its `PROJ
 | `[Claims/Status]` (a string) | `MVK_NO_NUMBER` |
 | `[Claims/Amount] + [Vehicles/Value]` (another repeatable group) | `MVK_INVALID_ITERATION_IN_SET_EXPRESSION` |
 | `[Claims/Amount] + [Claims/Amount For "C1"]` | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
-| `[$Claims/Amount]` | `MVK_INVALID_OUTER_ITERATION` |
+| `[$Claims/Amount]`; `[Claims/Amount] + [$Total]`, the marker on a field no star iterates | `MVK_INVALID_OUTER_ITERATION` |
 | `[Claims/Amount] + NumberOfFilledFields(Vehicles*/Value Having …)`, against the same aggregate unfiltered (admitted) | `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` |
 | `NumberOfFilledGroups(Claims/Parts* Having …)`, a filter its own check refuses | `MVK_NO_WILDCARD`: the inner filter answers first |
 | a nested `SumOfTerms` | `MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION` |
 | `Claims*/Parts*` with `[Claims/Parts/Qty] * [Claims/Parts/Price]` / with `[Claims/Amount]` | admitted / `MVK_NO_ITERATION_FOR_LOWEST_WILDCARD` |
 | `Claims/Parts*`, the rule iterating `Claims` / not iterating it | admitted / `MVK_NO_WILDCARD` |
 | `Address*` (a starred non-repeatable group) | `MVK_INVALID_WILDCARD` |
+| `Claims*/Parts` (a repeatable group below the star left unstarred) / `Claims*/Assessment` (a non-repeatable one) | `MVK_NO_WILDCARD` / `MVK_GROUP_NOT_REPEATABLE` |
+
+**The error field** (`rule check`, the error field `Total` read nowhere else). A read inside the term is never the rule's own reference to it: `[Claims/Amount] + [Total]` is `MVK_ERROR_FIELD_NOT_REFERENCED`, as is an unmarked read inside the iteration's filter, while the filter read marked `[$Total]` is admitted, as in any filter body ([KF488](#kf488)). The starred group itself is the rule's reference: an error field inside `Claims` that no term reads is admitted.
 
 `CheckSetExpressionUtil.checkNoDisallowedConstructsInSetExpression` also names an application condition and `RepetitionNotUnique`. Both reach an operation only inside a `Having` filter, and draw the same code as the filter: over the operation productions of `GrammarOnly_ConditionParser.g4` at `eec9134` (lines 200–640, through `entitySpec`), `grep -n -i bedingung` finds one non-comment reference to a condition, the `Mit` filter of `entitySpec`.
 
@@ -16566,13 +16569,19 @@ Every `testIDNummer` row of the retained custom-type matrix now equals its `PROJ
 | no row | 0: `== 0` and `< 50` fire OMISSION errors; the computed value is `0` |
 | `(30, empty)` | `< 50` fires an OMISSION error |
 | `(30,10)` beside `(50,0)`, or beside a row holding only a status, under `[Amount] / [Reserve]` | 3: `> 1` fires; the dividing row counts as empty |
-| a malformed amount in one row | no rule decides and the computation assigns nothing |
+| a malformed amount in one row | no rule decides, and the computation clears a stored target; over an empty target A12 reports no outcome at all |
 | a malformed field in one row that no term reads | every rule decides as though it were absent |
 | `Having [Status] == "open"`, an open `150` beside a closed `10` | 150: `> 100` fires |
 | `Claims*/Parts*` / `Claims/Parts*` in a rule iterating `Claims` | every part of every claim / the parts of the current claim |
 
+*Corrected 2026-11-03:* the malformed-amount row read "the computation assigns nothing". That held only on an empty target: a stored target is cleared.
+
+**The message type is decided by the capacity, row by row.** A firing rule is a VALUE error only when every declared row was visited, filled and decided. With all four rows filled, one empty reserve makes `> 100` an OMISSION error. A division by zero in one row makes the dividing rule OMISSION and leaves `[Amount] + [Reserve]` a VALUE error. `Having [Status] == "open"` over four open rows is a VALUE error, and over three open and one closed it is an OMISSION error: a row the filter drops counts as one not visited, with no blanket for the filtered list. `Claims*/Parts*` is a VALUE error once every part of every claim is filled.
+
+**The message names the term's fields** at the iteration's any-row index, both as referenced and as fill-to-fix, with the filter's fields beside them (`Claims[0]/Amount`, `Claims[0]/Status`; `Claims[0]/Parts[0]/Qty` for the nested sum). A field of the row that no term reads is named nowhere, so the group is not expanded the way a starred group operand is.
+
 The capacity row is the one that tells the two readings of OMISSION apart. The source-read mechanism (`RuntimeController.summeVonTermen` at `eec9134`) agrees: a sum that visited fewer rows than the iterator counts adds an unspecified number, and a term whose value is invalid is added as one. A malformed cell the term reads stays unknown and suppresses the rule, as `SumOfProducts` does on any malformed cell (`adapter.laws.SumOfProductsDiffTest`); an invalid *term* does not.
 
-**Partial validation** decides a term sum only when every row of the iteration entity, over the whole capacity, is relevant as a whole: the group pointer on any row (`[1,0]`) or on every declared row, or every field the group holds, including fields no term reads. The term's own fields over any row are not enough, and neither are the two filled rows. A plain `Sum(Claims*/Amount)` over the same document, the liveness control, splits from it twice: it is decided by its own field over any row, and it is NOT decided by group pointers on every declared row.
+**Partial validation** decides a term sum only when every row of the iteration entity, over the whole capacity, is relevant as a whole: the group pointer on any row (`[1,0]`) or on every declared row, or every field the group holds, including fields no term reads. The term's own fields over any row are not enough, and neither are the two filled rows. A plain `Sum(Claims*/Amount)` over the same document, the liveness control, splits from it twice: it is decided by its own field over any row, and it is NOT decided by group pointers on every declared row. Under a relevant group the first row must be error-free: a malformed field no term reads, in row 1, leaves the sum undecided, while the same field in row 2 does not. A term sum with its own filter is skipped in partial validation, as every filtered rule is.
 
-*Locked by:* `validate.laws.SumOfTermsTermLawsTest` and `SumOfTermsIterationEntityLawsTest` (admission); `adapter.laws.SumOfTermsRuntimeLawsTest` (runtime, both strategies, with the `Sum` control).
+*Locked by:* `validate.laws.SumOfTermsTermLawsTest` and `SumOfTermsIterationEntityLawsTest` (admission and the error-field reference); `adapter.laws.SumOfTermsRuntimeLawsTest` (runtime and message references, both strategies, with the `Sum` control and the interpreter asserted equal on every row).

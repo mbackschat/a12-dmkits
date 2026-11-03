@@ -9015,6 +9015,132 @@
           "id": "adapter.laws.ParallelValidationDispatchDiffTest.groupContentAndIndexAvailabilityPrecedeGroupAbsence"
         }
       ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "MEANING",
+      "ordinal": 0,
+      "digest": "sha256:40d4afd24e336bae4b6def8d302c39a697c3989dc7bda0818d8d4b0f0f35dfd3",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SumOfTermsRuntimeLawsTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "FACET",
+          "id": "SumOfTerms.semantics.aggregateIdentity.probes[0]"
+        }
+      ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "CONSTRAINT",
+      "ordinal": 0,
+      "digest": "sha256:05965427c2ab5271637e062663268f58c45cf3335b93a151491c6066fcecbc6b",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:d1a9f46cc7b0cd5701d0afc6c6ccf23ae9e77a781b74e2a7c34dbf57d3a62253",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-reads-another-repeatable-group",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "CONSTRAINT",
+      "ordinal": 2,
+      "digest": "sha256:0c8d1928936ed2fa549f3d2f2cc5353e6579a9571f8a3f2f16197cc3c875261f",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-filtered-aggregate",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "GOTCHA",
+      "ordinal": 0,
+      "digest": "sha256:2802228b4d605801b292479317df3efd9873bfb9327684f03e9a4b4e3545f261",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SumOfTermsRuntimeLawsTest#aTermSumOverRowsComparesAndAssigns"
+        }
+      ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:98bf99ff0a961d97d461f56d62bc540d19840043acef515a4d786b2a980ce304",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SumOfTermsRuntimeLawsTest#aTermSumOverRowsComparesAndAssigns"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.SumOfTermsRuntimeLawsTest#aComputedTermSum"
+        }
+      ]
+    },
+    {
+      "operator": "SumOfTerms",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:b9d48b59fe16dad999e654892e6376020f4fd649aa77056880d87d12a5d2988e",
+      "classifications": [
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "validate.laws.SumOfTermsTermLawsTest#theTermAndTheFilterEachReferenceTheErrorField"
+        }
+      ]
     }
   ],
   "claims": [
@@ -28764,6 +28890,278 @@
           "type": "CLAIM_PROBE",
           "id": "Concatenation.braced-enumeration",
           "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint0.starred-field",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_FIELDS_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.starred-field"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint0.starred-non-repeatable-group",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.starred-non-repeatable-group"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint0.non-repeatable-group-below-the-star",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_GROUP_NOT_REPEATABLE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.non-repeatable-group-below-the-star"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint0.unstarred-group-the-rule-iterates",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.unstarred-group-the-rule-iterates"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint0.unstarred-group-the-rule-does-not-iterate",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.unstarred-group-the-rule-does-not-iterate"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint1.text-term",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_NUMBER"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.text-term"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint1.term-misses-the-lowest-star",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_ITERATION_FOR_LOWEST_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-misses-the-lowest-star"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint1.term-reads-another-repeatable-group",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-reads-another-repeatable-group"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint1.term-semantic-index",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-semantic-index"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint1.term-outer-marker",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_OUTER_ITERATION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-outer-marker"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint2.term-filtered-aggregate",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-filtered-aggregate"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.constraint2.term-nested-term-sum",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfTerms.term-nested-term-sum"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfTerms.invalidExample.MVK_NO_NUMBER",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_NUMBER"
+      },
+      "evidence": [
+        {
+          "type": "INVALID_EXAMPLE"
         }
       ]
     }

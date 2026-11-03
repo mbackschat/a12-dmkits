@@ -35,14 +35,11 @@ def uncatalogedTerminals = [
                 // An operator rulekit defers (dynamic-enumeration dependent columns) and so does not
                 // catalog. The checker cannot defer it: unlisted, it reads as an undeclared field.
                 'ValueNotConsistent',
-                // Kernel 31.1.1's term sum, outside the catalog; unlisted, it too reads as an undeclared field.
-                'SumOfTerms',
         ],
         de: [
                 'und', 'UND', 'oder', 'ODER', 'In', 'in', 'IN', 'Zu', 'zu', 'ZU',
                 'RegelKontext', 'UnterdrueckeWarnung',
                 'WertNichtKonsistent',
-                'SummeVonTermen',
                 // H-model operators. They exist ONLY in the German bundle, so in an English model these
                 // spellings are ordinary field names — which is the sharpest case for keeping the tables apart.
                 'AktuelleVordruckNummer', 'AnzahlAngegebeneUsb', 'AnzahlAngegebenerVordrucke',

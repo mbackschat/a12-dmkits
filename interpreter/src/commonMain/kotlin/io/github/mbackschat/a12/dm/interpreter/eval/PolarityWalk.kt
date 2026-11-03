@@ -172,6 +172,7 @@ private fun Interpreter.fillOf(e: Expr): Fill = when (e) {
     // exactly when empty, with the target field's sign, so its directional polarity matches a field ref.
     is Expr.SemanticIndex -> if (semanticIndexFilled(e)) Fill.of(false, false) else Fill.of(true, ctx.signed(e.path))
     is Expr.Arith -> arithFill(e)
+    is Expr.TermSum -> termSumFill(e)
     else -> leafOmission(e).let { Fill.of(it, it) }
 }
 
@@ -398,6 +399,31 @@ private fun Interpreter.filledGroupCountFill(f: Expr.Func): Fill {
         total += declared
     }
     return Fill.of(canGrow = total > given, canShrink = false)
+}
+
+/**
+ * Directional fill of a `SumOfTerms` (KERNEL-FINDINGS KF670). The sum stays movable in BOTH directions while any
+ * instance of its iteration extent did not contribute a decided term: a row the star does not hold or its filter
+ * drops, a row holding no value, or a row whose term fails its domain. Only when every declared instance
+ * contributed does the sum move exactly as its terms do. Its own filter is part of that count, so it does not take
+ * the filtered-combiner blanket [fill] gives other filtered operands: a filter that keeps every row leaves the sum
+ * fixed (measured on both kernel strategies, `adapter.laws.SumOfTermsRuntimeLawsTest`).
+ */
+private fun Interpreter.termSumFill(e: Expr.TermSum): Fill {
+    val both = Fill.of(canGrow = true, canShrink = true)
+    val rows = termSumRows(e) ?: return both
+    var canGrow = false
+    var canShrink = false
+    for (row in rows) {
+        if (groupPresence(row, e.iteration.path).fillProduct != Tri.TRUE) return both
+        val term = termRowInterp(row)
+        if (term.evalExpr(e.term) !is Val.Num) return both
+        val fill = term.fill(e.term)
+        canGrow = canGrow || fill.canGrow
+        canShrink = canShrink || fill.canShrink
+    }
+    val declared = ctxOf(e.iteration).declaredGroupListExtent(e.iteration.path, e.iteration.bindDepth) ?: return both
+    return if (rows.size < declared) both else Fill.of(canGrow, canShrink)
 }
 
 /** Directional fill of an operand-list `Min`/`Max` — [ArithFill.min]/[ArithFill.max] left-folded over the

@@ -323,6 +323,23 @@ var selected = Dsl.numberOfFilledFields(labels).gt(0);
 
 `sumOfProducts(left, right)` has a narrower list contract than the general aggregates: each operand must be an unfiltered single-star number list, and the two **fields** must share one owning group — sharing a starred group is not enough, so `Dsl.sumOfProducts(basket.flatten("Lines*/Qty"), basket.flatten("Lines*/Packaging/Weight"))` is rejected even though both star `Lines`. `Dsl.sumOfProducts(order.flatten("Items*/Quantity"), order.flatten("Items*/UnitPrice"))` is admitted. Each refusal quotes the code the kernel emits for that **pair**: an operand below a repeatable level it does not wildcard is `MVK_NO_WILDCARD`, one outside the other's starred group is `MVK_DIFFERENT_GROUPS`, and only a pair with no repeatable level at all is `MVK_REPEATABLE_LEVEL_REQUIRED`. One check is deliberately left to the kernel — that the star sits on the *lowest* repeatable segment needs model repeatability the operand does not carry, so `Milestones*/Tasks/Effort` passes construction and `rule check` rejects it. Multi-star totals remain available through aggregates such as `sum`.
 
+`sumOfTerms(iteration, term)` is the per-row counterpart: it reads a number term once per row of a starred group and adds the results (KERNEL-FINDINGS [KF670](KERNEL-FINDINGS.md#kf670)). The term names the row's fields unstarred, and an optional filter narrows the rows.
+
+<!-- snippet: sum-of-terms -->
+```java
+// SumOfTerms reads its term once per row of the starred group and adds the results. The term names
+// the row's own fields unstarred, so its operands come off the row group's handle.
+GroupInfo order = m.groupAt("/Order").orElseThrow();
+GroupInfo item = m.groupAt("/Order/Items").orElseThrow();
+NumberExpr weight = Dsl.sumOfTerms(order.flattenGroup("Items*"),
+        item.num("Count").times(item.num("UnitWeight")));
+// The filter narrows the rows; rulekit keeps it on the term sum, since a group scope carries none.
+NumberExpr heavyWeight = Dsl.sumOfTerms(order.flattenGroup("Items*"), item.num("UnitWeight").gt(10),
+        item.num("Count").times(item.num("UnitWeight")));
+```
+
+The record checks only that the term is a number. The kernel's refusals here, such as a misplaced star or a term reading another repeatable group, depend on the model or on the rule the sum sits in, so `rule check` reports them. A read inside the term is never the rule's own reference to its error field; the starred group is.
+
 **An aggregate operand may be a whole GROUP, not just a field list.** `Sum`, `MaxValue`, `MinValue`, `NumberOfDifferentValues` and `NumberOfFilledFields` all take an `AggregateOperand`, which is either the familiar field operand or the `GroupListRef` from `flattenGroup` — so `Dsl.sum(invoice.flattenGroup("/Invoice/Lines*"))` totals every number the kernel expands `Lines` to, recursively into nested subgroups, without naming one field. That is the kernel's own `ExpandService` shape; before, it could only be written as a condition string.
 
 It behaves like a repetition list at every entity-list gate: one group scope satisfies the arity law alone, the same starred group may be listed twice, and nested stars (`flattenGroup("/Invoice/Lines*/Fees*")`) both survive. One gate stays with the kernel, and for a reason: the **kind** rule applies to the *expansion*, not to the group — `Sum` over a group containing a string is `MVK_NO_NUMBER` — so pre-checking it would mean owning the expansion's extent. A group beside a **descendant** of itself is `MVK_DUPLICATE_PARAM2` — the one duplicate arm a wildcard does not escape — and that one IS pre-checked, ahead of the kind loop because the kernel answers the overlap even when the descendant is also the wrong kind. **Do not forget the star on a repeatable group:** `flattenGroup("/Invoice/Lines")` is a legal bare scope for the group-list quantifiers but `MVK_NO_WILDCARD` inside an aggregate. A `Having` filter on a group operand is rejected outright (`MVK_NO_GROUPS_ALLOWED`), which is why the typed surface offers none. (Finding 121; measured matrix in `AggregateGroupOperandLawsTest`, runtime behaviour in `GroupStarValueAggregateDiffTest`.)

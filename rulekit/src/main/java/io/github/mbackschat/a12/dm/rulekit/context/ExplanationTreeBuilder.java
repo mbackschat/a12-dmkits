@@ -22,6 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfTerms;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
@@ -171,6 +172,7 @@ final class ExplanationTreeBuilder {
             case DateTimePart e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
             case SumOfProducts s -> List.of(leaf(s.operatorId(), s));
+            case SumOfTerms s -> List.of(new RuleExplanation.Node(s.operatorId(), renderer.render(s), operand(s.term())));
             case FieldRounding r -> List.of(leaf(r.operatorId(), r));
             case DateRangeBound b -> List.of(new RuleExplanation.Node(b.operatorId(), renderer.render(b),
                     operand(b.source())));

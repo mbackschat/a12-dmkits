@@ -6911,6 +6911,79 @@
       "sinceKernel": "30.8.x"
     },
     {
+      "id": "SumOfTerms",
+      "dslEntry": [
+        "sumOfTerms"
+      ],
+      "kind": "function",
+      "keywords": {
+        "en": "SumOfTerms",
+        "de": "SummeVonTermen"
+      },
+      "operands": [
+        {
+          "type": "repeatable-group"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "returns": "number",
+      "meaning": "The sum of a number term evaluated once per row of a starred group, optionally narrowed by a Having filter. The term names the group's fields unstarred: SumOfTerms(Items*, [Items/Count] * [Items/UnitWeight]).",
+      "constraints": [
+        "the first operand is a starred group, starred at its lowest level: a starred field is MVK_NO_FIELDS_ALLOWED, a starred non-repeatable group MVK_INVALID_WILDCARD, a non-repeatable group below the star MVK_GROUP_NOT_REPEATABLE; an unstarred repeatable group is MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED where the rule iterates it and MVK_NO_WILDCARD where it does not",
+        "the term is a number (MVK_NO_NUMBER) that reads the lowest starred level (MVK_NO_ITERATION_FOR_LOWEST_WILDCARD); it may also read non-repeatable fields, but no other repeatable group (MVK_INVALID_ITERATION_IN_SET_EXPRESSION), no semantic index (MVK_SEMANTIC_INDEX_NOT_ALLOWED) and no $ marker (MVK_INVALID_OUTER_ITERATION)",
+        "the term may hold an unfiltered aggregate, but neither a filtered one nor another SumOfTerms (MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION)"
+      ],
+      "gotchas": [
+        {
+          "text": "the message type depends on the declared capacity: unless every declared row was visited, filled and decided, a firing rule is an OMISSION error, and a Having that drops a row counts as an unvisited row",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "a row whose term is invalid (a division by zero or by an empty field) counts as an empty row and the other rows still decide, but a malformed value the term reads leaves the sum unknown: no rule decides, and a computation clears its stored target",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "a read inside the term is never the rule's own reference to its error field, and a read inside the Having filter is one only with the $ marker; the starred group itself is, so an error field inside it is referenced",
+          "kind": "AUTHORING"
+        }
+      ],
+      "validExample": {
+        "dsl": "FieldFilled(CustomerName) And SumOfTerms(Items*, [Items/Count] * [Items/UnitWeight]) > 1000",
+        "note": "fires when the order's count-weighted item total exceeds 1000"
+      },
+      "invalidExample": {
+        "dsl": "FieldFilled(CustomerName) And SumOfTerms(Items*, [Items/Sku]) > 0",
+        "error": "MVK_NO_NUMBER",
+        "fix": "SumOfTerms takes a number term"
+      },
+      "semantics": {
+        "aggregateIdentity": {
+          "value": "ZERO",
+          "basis": "KERNEL-FINDINGS KF670 / adapter.laws.SumOfTermsRuntimeLawsTest",
+          "note": "a row holding no value adds nothing, so a sum over empty rows is the fillable 0 and == 0 fires",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And SumOfTerms(Items*, [Items/Count]) == 0",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "empty": [
+                "/Order/Items[1]/Count",
+                "/Order/Items[2]/Count"
+              ],
+              "fires": true,
+              "note": "both rows empty → each adds nothing → the sum is 0 → == 0 fires"
+            }
+          ]
+        }
+      },
+      "sinceKernel": "31.1.x"
+    },
+    {
       "id": "FirstFilledValue",
       "dslEntry": [
         "firstFilledBoolean",

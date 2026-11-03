@@ -137,6 +137,18 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             inFilterBody = enclosing;
         }
 
+        /**
+         * A term sum's term, read per row: a reference, never the rule's own, as an unmarked filter body is. The
+         * kernel refuses the {@code $} marker anywhere in a term, so no marked read reaches here
+         * ({@code validate.laws.SumOfTermsTermLawsTest}).
+         */
+        void termBody(Calculation term) {
+            boolean enclosing = inFilterBody;
+            inFilterBody = true;
+            collect(term, this);
+            inFilterBody = enclosing;
+        }
+
         ReadMode readModeOf(String fieldPath) {
             if (projected.contains(fieldPath)) {
                 return ReadMode.PROJECTED;
@@ -311,6 +323,11 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case SumOfProducts s -> {
                 collectOperand(s.left(), refs);
                 collectOperand(s.right(), refs);
+            }
+            case SumOfTerms s -> {
+                refs.group(s.iteration().path(), s.iteration().correlated());
+                s.filter().ifPresent(refs::filterBody);
+                refs.termBody(s.term());
             }
             case DateConstruction dc -> dc.components().forEach(component -> collect(component, refs));
             case TimeConstruction tc -> {

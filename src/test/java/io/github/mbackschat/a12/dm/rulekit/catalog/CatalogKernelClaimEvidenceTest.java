@@ -68,6 +68,7 @@ class CatalogKernelClaimEvidenceTest {
     private static String enumComparabilityJson;
     private static String basketJson;
     private static String shippingJson;
+    private static String policyClaimsJson;
 
     @BeforeAll
     static void loadFixtures() throws Exception {
@@ -85,6 +86,7 @@ class CatalogKernelClaimEvidenceTest {
         logisticsJson = ModelDrafts.logistics().toJson();
         basketJson = ModelDrafts.basket().toJson();
         shippingJson = ModelDrafts.shipping().toJson();
+        policyClaimsJson = ModelDrafts.policyClaims().toJson();
         projectJson = readResource("models/project.dm.json");
         subscriptionJson = readResource("models/subscription.dm.json");
         twoRootJson = DocumentModelDraft.named("claimform").locale("en_US")
@@ -392,6 +394,7 @@ class CatalogKernelClaimEvidenceTest {
             case PROJECT -> projectJson;
             case BASKET -> basketJson;
             case SHIPPING -> shippingJson;
+            case POLICY_CLAIMS -> policyClaimsJson;
             case SUBSCRIPTION -> subscriptionJson;
             case TWO_ROOT -> twoRootJson;
             case BASE_YEAR_ORDER -> baseYearOrderJson;
@@ -438,7 +441,8 @@ class CatalogKernelClaimEvidenceTest {
         FIELD_VALUE_AS_NUMBER,
         ENUM_COMPARABILITY,
         BASKET,
-        SHIPPING
+        SHIPPING,
+        POLICY_CLAIMS
     }
 
     enum Verdict {

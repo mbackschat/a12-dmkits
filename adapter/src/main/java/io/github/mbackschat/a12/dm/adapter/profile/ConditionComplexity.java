@@ -325,6 +325,15 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     constructs.add(Construct.AGGREGATE);
                     yield 1 + Math.max(operandDepth(s.left()), operandDepth(s.right()));
                 }
+                case SumOfTerms s -> {
+                    op(s.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    int filterDepth = s.filter().map(filter -> {
+                        op("Having");
+                        return depth(filter);
+                    }).orElse(0);
+                    yield 1 + Math.max(filterDepth, depth(s.term()));
+                }
                 case DateConstruction dc -> {
                     op(dc.operatorId());
                     constructs.add(Construct.DATE_MATH);

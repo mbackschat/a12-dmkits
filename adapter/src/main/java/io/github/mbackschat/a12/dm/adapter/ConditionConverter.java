@@ -36,6 +36,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOpe
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.ISetOpOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateRangeConstructionOperation;
@@ -132,7 +133,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -513,7 +513,7 @@ final class ConditionConverter {
         // a field-fill quantifier over a MIXED group+field scope (FieldsNotCollectivelyFilled(A, B/G2), where A
         // is a group and B/G2 a field): the kernel expands each group to every descendant field recursively
         // — make that explicit and build a field-list quantifier over the flattened field paths.
-        if (entityListQuantifier(name).isPresent() && entities.stream().anyMatch(e -> !e.isField())
+        if (EntityListNames.entityListQuantifier(name).isPresent() && entities.stream().anyMatch(e -> !e.isField())
                 && entities.stream().anyMatch(IEntityId::isField)) {
             // A MIXED entity list keeps each member as the author wrote it — the kernel's own shape, one
             // list whose members may be fields or groups (KERNEL-FINDINGS kf187: accepted in both operand
@@ -526,14 +526,14 @@ final class ConditionConverter {
                             ? (AggregateOperand) toFieldOperand(e)
                             : groupAggregateOperand(e, reconstructStarPath(e), entityList))
                     .toList();
-            return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
+            return Dsl.entityListPredicate(EntityListNames.entityListQuantifier(name).orElseThrow(), operands);
         }
         // A FIXED group-list quantifier whose entity list carries a FIELD (mixed or field-only —
         // SPEC-2026-07-23-09): despite the names, the five admit the common field-or-group entity
         // list. Build the typed GroupListOperand sum. Precedes the field-first and group branches,
         // both of which would mis-route these lists (the field branch has no group-list cases; the
         // group branch resolves every path as a group).
-        if (isGroupListQuantifier(name) && entities.stream().anyMatch(IEntityId::isField)) {
+        if (EntityListNames.isGroupListQuantifier(name) && entities.stream().anyMatch(IEntityId::isField)) {
             GroupListOperand[] operands = entities.stream().map(e -> {
                 if (e.isField()) {
                     if (isWildcard(e) || e.getFilterCondition() != null) {
@@ -580,14 +580,14 @@ final class ConditionConverter {
             // build the filtered FieldListRef (flattenScope converts the filter — threading any $) and apply
             // the quantifier over it. The plain path form below drops the wildcard + filter, so it must not
             // be taken here.
-            if (single && entities.get(0).getFilterCondition() != null && isFieldFillQuantifier(name)) {
+            if (single && entities.get(0).getFilterCondition() != null && EntityListNames.isFieldFillQuantifier(name)) {
                 FieldListRef scope = (FieldListRef) toFieldOperand(entities.get(0));
                 return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
             // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x], marked or
             // not, so one plain field reads back as the presence leaf the typed surface builds
             if (single && !isWildcard(entities.get(0))) {
-                Optional<Condition> presence = singleFieldPresence(name, markedField(entities.get(0)));
+                Optional<Condition> presence = EntityListNames.singleFieldPresence(name, markedField(entities.get(0)));
                 if (presence.isPresent()) {
                     return presence.get();
                 }
@@ -604,7 +604,7 @@ final class ConditionConverter {
             // through the wildcard-aware converter so a single starred operand and mixed starred/plain lists
             // retain their per-repetition meaning instead of falling into the plain-path canonicalization. An
             // indexed member takes the same route, because the plain-path form below keeps only its path.
-            if (isFieldFillQuantifier(name) && entities.stream()
+            if (EntityListNames.isFieldFillQuantifier(name) && entities.stream()
                     .anyMatch(e -> isWildcard(e) || hasSemanticIndex(e))) {
                 FieldOperand[] operands = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
                 return fieldFillQuantifier(name, operands, entityList);
@@ -695,53 +695,6 @@ final class ConditionConverter {
         };
     }
 
-    /** The presence leaf one field under {@code AllFieldsFilled}/{@code NoFieldFilled} reads back as. */
-    private static Optional<Condition> singleFieldPresence(EntityListConditionName name, FieldRef field) {
-        return switch (name) {
-            case AllFieldsFilled -> Optional.of(field.filled());
-            case NoFieldFilled -> Optional.of(field.notFilled());
-            default -> Optional.empty();
-        };
-    }
-
-    /** The five fixed group-list quantifier names — the common field-or-group entity list. */
-    private static boolean isGroupListQuantifier(EntityListConditionName name) {
-        return switch (name) {
-            case AllGroupsFilled, NoGroupFilled, AtLeastOneGroupFilled, NotAllGroupsFilled,
-                    GroupsNotCollectivelyFilled -> true;
-            default -> false;
-        };
-    }
-
-    /**
-     * The typed quantifier behind an entity-list condition name, for the operators whose entity list may
-     * legitimately mix fields and groups — the seven fill quantifiers plus {@code FieldValuesNotUnique}
-     * (KERNEL-FINDINGS {@code kf187}). {@code DateRangesOverlap} is deliberately absent: it refuses a group
-     * operand outright, so a mixed list of its is not a shape any stored model can contain.
-     */
-    private static Optional<Quantifier> entityListQuantifier(EntityListConditionName name) {
-        return Optional.ofNullable(switch (name) {
-            case AllFieldsFilled -> Quantifier.ALL_FIELDS_FILLED;
-            case NoFieldFilled -> Quantifier.NO_FIELD_FILLED;
-            case AtLeastOneFieldFilled -> Quantifier.AT_LEAST_ONE_FIELD_FILLED;
-            case NotAllFieldsFilled -> Quantifier.NOT_ALL_FIELDS_FILLED;
-            case FieldsNotCollectivelyFilled -> Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED;
-            case NotExactlyOneFieldFilled -> Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED;
-            case MoreThanOneFieldFilled -> Quantifier.MORE_THAN_ONE_FIELD_FILLED;
-            case FieldValuesNotUnique -> Quantifier.FIELD_VALUES_NOT_UNIQUE;
-            default -> null;
-        });
-    }
-
-    /** The seven field-fill quantifier names (over fields, not groups). */
-    private static boolean isFieldFillQuantifier(EntityListConditionName name) {
-        return switch (name) {
-            case AllFieldsFilled, NoFieldFilled, AtLeastOneFieldFilled, NotAllFieldsFilled,
-                    FieldsNotCollectivelyFilled, NotExactlyOneFieldFilled, MoreThanOneFieldFilled -> true;
-            default -> false;
-        };
-    }
-
     /** A field-fill quantifier over explicit field paths (used for the mixed group+field expansion). */
     private Condition fieldFillQuantifier(EntityListConditionName name, String[] p, ICondition origin) {
         return switch (name) {
@@ -780,7 +733,7 @@ final class ConditionConverter {
             ICondition origin) {
         List<AggregateOperand> scopes = entities.stream()
                 .map(e -> groupAggregateOperand(e, reconstructStarPath(e), origin)).toList();
-        return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), scopes);
+        return Dsl.entityListPredicate(EntityListNames.entityListQuantifier(name).orElseThrow(), scopes);
     }
 
     /** The one group of a single-operand {@code GroupFilled}; see the switch in {@code convertEntityList}. */
@@ -1709,6 +1662,23 @@ final class ConditionConverter {
         return convertFirstFilledValue(aggregate).kind();
     }
 
+    /**
+     * {@code SumOfTerms(Group* Having filter, term)}. A12 keeps the filter on the iteration entity, rulekit on the
+     * term sum, because a group scope carries no filter anywhere else. The switch is exhaustive on purpose: a set
+     * operation a later kernel adds must fail this build rather than read back as a sum.
+     */
+    private NumberExpr convertSetOperation(ISetOpOperation setOperation) {
+        return switch (setOperation.getOperatorName()) {
+            case SumOfTerms -> {
+                IEntityId iteration = setOperation.getIterationEntity();
+                GroupListRef scope = groupScopeOf(iteration, reconstructStarPath(iteration));
+                NumberExpr term = numericExpr(setOperation.getOperation());
+                ICondition filter = iteration.getFilterCondition();
+                yield filter == null ? Dsl.sumOfTerms(scope, term) : Dsl.sumOfTerms(scope, convert(filter), term);
+            }
+        };
+    }
+
     /** Rebuild the wildcard scope (e.g. {@code Items} flattened) from the resolved path + indices, plus any Having filter. */
     private FieldListRef flattenScope(IEntityId entity) {
         FieldListRef scope = model.flatten(reconstructStarPath(entity));
@@ -1844,6 +1814,9 @@ final class ConditionConverter {
     private NumberExpr numericExpr(IOperation operand) {
         if (operand instanceof IEntityListOperation aggregate) {
             return convertAggregate(aggregate);
+        }
+        if (operand instanceof ISetOpOperation setOperation) {
+            return convertSetOperation(setOperation);
         }
         if (operand instanceof IDateDiffOperation diff) {
             return convertDateDiff(diff);

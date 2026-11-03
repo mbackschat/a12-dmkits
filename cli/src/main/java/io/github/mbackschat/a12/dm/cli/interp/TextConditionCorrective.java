@@ -251,6 +251,7 @@ public final class TextConditionCorrective {
                     collect(star.getHaving(), out);
                 }
             }
+            case Expr.TermSum sum -> { collectIn(sum.getIteration(), out); collectIn(sum.getTerm(), out); }
             case Expr.Arith arith -> { collectIn(arith.getLeft(), out); collectIn(arith.getRight(), out); }
             case Expr.Func func -> func.getArgs().forEach(arg -> collectIn(arg, out));
             case Expr.Field ignored -> { }

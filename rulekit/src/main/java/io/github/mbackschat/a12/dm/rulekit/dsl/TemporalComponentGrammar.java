@@ -64,6 +64,7 @@ public final class TemporalComponentGrammar {
             case NumberOfValueInFields n -> throw outside(operatorId);
             case ValueAsDate v -> throw outside(operatorId);
             case SumOfProducts s -> throw outside(operatorId);
+            case SumOfTerms s -> throw outside(operatorId);
             case DateConstruction d -> throw outside(operatorId);
             case TimeConstruction t -> throw outside(operatorId);
             case DateTimeConstruction d -> throw outside(operatorId);

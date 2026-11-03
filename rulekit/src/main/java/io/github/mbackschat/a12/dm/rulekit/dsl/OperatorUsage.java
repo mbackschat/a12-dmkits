@@ -170,6 +170,14 @@ public final class OperatorUsage {
                 collectOperand(s.left(), ops);
                 collectOperand(s.right(), ops);
             }
+            case SumOfTerms s -> {
+                ops.add(s.operatorId());
+                s.filter().ifPresent(filter -> {
+                    ops.add("Having");
+                    collect(filter, ops);
+                });
+                collect(s.term(), ops);
+            }
             case DateConstruction dc -> {
                 ops.add(dc.operatorId());
                 dc.components().forEach(component -> collect(component, ops));

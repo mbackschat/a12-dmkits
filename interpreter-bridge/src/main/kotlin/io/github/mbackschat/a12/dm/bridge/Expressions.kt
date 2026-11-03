@@ -10,8 +10,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral
+import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfTerms
 import java.util.Optional
 
 /**
@@ -33,11 +35,27 @@ internal class Expressions(private val mapping: Mapping) {
         is Expr.Arith -> arithmetic(node)
         is Expr.EnumCategory -> enumCategory(node)
         is Expr.EntitySpec -> keyedCategory(node)
+        is Expr.TermSum -> termSum(node)
         is Expr.Star -> throw NoTypedOperationException(
             "a star in a scalar value slot: rulekit types the slot to a single field value, which is how it" +
                 " states MVK_NO_WILDCARDS_ALLOWED"
         )
         else -> throw UnmappedConstructException("expression node " + node.javaClass.simpleName)
+    }
+
+    /**
+     * `SumOfTerms(Group* Having filter, term)`. The iteration is read as a plain group scope with its filter set
+     * aside, because rulekit keeps the filter on the term sum rather than on the scope: a group scope carries no
+     * filter anywhere else ([Operands.groupRef]).
+     */
+    private fun termSum(node: Expr.TermSum): Calculation {
+        val iteration = mapping.aggregateOperand(node.iteration.copy(having = null)) as? GroupListRef
+            ?: throw UnmappedConstructException("SumOfTerms over a field list — the iteration entity is a group")
+        val term = mapping.calculation(node.term)
+        if (term.kind() != ValueKind.NUMBER) {
+            throw NoTypedOperationException("a " + term.kind() + " term: rulekit's term sum takes a number term")
+        }
+        return SumOfTerms(iteration, Optional.ofNullable(node.iteration.having?.let(mapping::condition)), term)
     }
 
     /**

@@ -131,8 +131,6 @@ class KeywordReverseParityTest {
         // deferred constructs (also in adapter.KernelConstructParityTest's exclusion list)
         put(m, "deferred: dynamic-enumeration dependent-column check (ValueNotConsistent)",
                 "EN ValueNotConsistent", "DE WertNichtKonsistent");
-        put(m, "uncataloged: kernel 31.1.1's term sum over a repeatable group's rows (SumOfTerms, KF656)",
-                "EN SumOfTerms", "DE SummeVonTermen");
         put(m, "deferred: legacy German-only / multi-form (Vordruck/USB) construct — not modeled",
                 "DE AktuelleVordruckNummer", "DE AnzahlAngegebeneUsb", "DE AnzahlAngegebenerVordrucke",
                 "DE MaximalAngegebenerZeilenindex", "DE UsbNichtFortlaufend", "DE VordruckNichtFortlaufend",

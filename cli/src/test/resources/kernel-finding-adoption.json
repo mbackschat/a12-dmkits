@@ -23812,15 +23812,21 @@
       }
     },
     "kf670": {
-      "sha256": "3a7702df3c6eb77528e3e1bf0aec79de97fc62bdcc7613f650b15b6dc00eea2e",
+      "sha256": "edafd46e406ba066f737ea383d6d54499d412116b22496c7e5eed8c4698d8344",
       "task": "K31",
       "scope": {
         "adapter": [
           "the runtime matrix",
-          "partial validation"
+          "partial validation",
+          "message references"
         ],
-        "dmkits": [],
-        "interpreter": [],
+        "dmkits": [
+          "the typed term sum"
+        ],
+        "interpreter": [
+          "the runtime matrix",
+          "the JavaScript target"
+        ],
         "checker": [],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -23839,22 +23845,40 @@
             "partial validation": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#partialValidationNeedsEveryRowOfTheCapacityRelevantAsAWhole",
               "witness": "Whole-row relevance against the plain Sum control."
+            },
+            "message references": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#aTermSumMessageNamesItsOperands",
+              "witness": "The term's and the filter's fields at the any-row index, and a field no term reads named nowhere."
             }
           }
         },
         "dmkits": {
-          "state": "OPEN",
-          "basis": "The typed rulekit surface does not author SumOfTerms.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Dsl.sumOfTerms authors the term sum, its filter kept on the record, and the adapter reads a stored one back into it (KF670).",
+          "evidence": {
+            "the typed term sum": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java#sumOfTermsSnippet",
+              "witness": "The plain and filtered forms render as A12 spells them and the kernel admits both."
+            }
+          }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "The interpreter reports a SumOfTerms rule unsupported rather than evaluating it (TermSumRefusalTest).",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The interpreter evaluates SumOfTerms clean-room and is asserted equal to both kernel strategies on every row of the differential (KF670).",
+          "evidence": {
+            "the runtime matrix": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SumOfTermsRuntimeLawsTest.kt#aTermSumOverRowsComparesAndAssigns",
+              "witness": "Every runtime row read by the interpreter beside both strategies."
+            },
+            "the JavaScript target": {
+              "reference": "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TermSumEvaluationTest.kt#aTermSumOverTheWholeCapacityIsAValueError",
+              "witness": "The capacity, invalid-term and malformed-cell rows on JVM and JavaScript."
+            }
+          }
         },
         "checker": {
           "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "basis": "The checker reads SumOfTerms as a catalog function but states none of its admission classes.",
           "evidence": {}
         },
         "dmtool-cli": {

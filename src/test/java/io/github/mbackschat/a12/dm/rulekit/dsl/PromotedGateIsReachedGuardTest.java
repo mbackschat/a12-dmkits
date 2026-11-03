@@ -91,9 +91,12 @@ class PromotedGateIsReachedGuardTest {
      * which also asks the base-type question, so two refusal sites became three behind the same seven gates.
      * And 12 → 13, again with no new public gate: that walk now reads each group operand first and cites an
      * empty one, as A12 does ahead of every list gate ({@code validate.laws.EntityListOperandReadLawsTest}).
+     *
+     * <p>Split 2026-11-03, with no site added: that walk and the operand read left Dsl.java for
+     * EntityListOperandReads.java, because only BoundModel calls them, so four of the thirteen moved with them.
      */
-    private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 7, "Dsl.java", 13, "DuplicateGate.java", 2);
+    private static final Map<String, Integer> REFUSAL_SITES = Map.of("BoundModel.java", 7, "Dsl.java", 9,
+            "EntityListOperandReads.java", 4, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

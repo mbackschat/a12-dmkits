@@ -16,6 +16,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 internal fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)
     is Expr.Star -> listOf(expr.path) + (expr.having?.let { condDepRefs(it) } ?: emptyList())
+    // The term reads its iteration row as a filter body does, so its references are dependencies too.
+    is Expr.TermSum -> referencedFieldPaths(expr.iteration) + referencedFieldPaths(expr.term)
     // CurrentRepetition reads a structural row coordinate, not the values contained by its group operand.
     // Treating that group path as a cell dependency makes expandGroupDependency invent edges to every
     // computation below the group and can manufacture cycles between otherwise independent computations.
@@ -68,6 +70,7 @@ internal fun starRefs(cond: Cond): List<Expr.Star> = when (cond) {
 
 internal fun exprStars(expr: Expr): List<Expr.Star> = when (expr) {
     is Expr.Star -> listOf(expr)
+    is Expr.TermSum -> listOf(expr.iteration)
     is Expr.Func -> expr.args.flatMap { exprStars(it) }
     is Expr.Arith -> exprStars(expr.left) + exprStars(expr.right)
     else -> emptyList()
@@ -213,6 +216,7 @@ private fun filterReferences(expr: Expr): List<MessageReference> = when (expr) {
     is Expr.Star -> expr.having?.let { messageReferences(it, expr.bindDepth, excludeRepetitionNotUniqueKeys = false) }
         .orEmpty()
     is Expr.Func -> expr.args.flatMap(::filterReferences)
+    is Expr.TermSum -> filterReferences(expr.iteration) + filterReferences(expr.term)
     is Expr.Arith -> filterReferences(expr.left) + filterReferences(expr.right)
     is Expr.EntitySpec -> if (expr.semanticIndex == null) filterReferences(expr.source) else emptyList()
     else -> emptyList()
@@ -223,6 +227,11 @@ private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<Message
     is Expr.Star -> (expr.having?.let {
         messageReferences(it, expr.bindDepth, excludeRepetitionNotUniqueKeys = false)
     } ?: emptyList()) + MessageReference.Wildcard(expr.path, expr.bindDepth)
+    // The term's own fields at the iteration's any-row, never the iteration group whole: a field of the group no
+    // term reads is named nowhere (KF670, `SumOfTermsRuntimeLawsTest`).
+    is Expr.TermSum -> (expr.iteration.having?.let {
+        messageReferences(it, expr.iteration.bindDepth, excludeRepetitionNotUniqueKeys = false)
+    } ?: emptyList()) + messageReferences(expr.term, expr.iteration.bindDepth)
     is Expr.Func -> if (FunctionOp.byName(expr.name) == FunctionOp.CURRENT_REPETITION) emptyList()
         else expr.args.flatMap { messageReferences(it, wildcardBindDepth) }
     is Expr.Arith -> messageReferences(expr.left, wildcardBindDepth) + messageReferences(expr.right, wildcardBindDepth)
@@ -279,6 +288,7 @@ internal fun exprRefs(expr: Expr): List<String> = when (expr) {
 internal fun semanticIndexTargets(expr: Expr): List<String> = when (expr) {
     is Expr.SemanticIndex -> listOf(expr.path)
     is Expr.Star -> expr.having?.let(::semanticIndexTargets).orEmpty()
+    is Expr.TermSum -> semanticIndexTargets(expr.iteration) + semanticIndexTargets(expr.term)
     is Expr.Func -> expr.args.flatMap(::semanticIndexTargets)
     is Expr.Arith -> semanticIndexTargets(expr.left) + semanticIndexTargets(expr.right)
     is Expr.EntitySpec -> semanticIndexTargets(expr.source) +
@@ -334,6 +344,8 @@ private fun semanticIndexSpecs(expr: Expr, includeFilterBodies: Boolean): List<E
         else -> null
     }))
     is Expr.Star -> if (includeFilterBodies) expr.having?.let { semanticIndexSpecs(it, true) }.orEmpty() else emptyList()
+    is Expr.TermSum -> semanticIndexSpecs(expr.iteration, includeFilterBodies) +
+        if (includeFilterBodies) semanticIndexSpecs(expr.term, true) else emptyList()
     is Expr.Func -> expr.args.flatMap { semanticIndexSpecs(it, includeFilterBodies) }
     is Expr.Arith -> semanticIndexSpecs(expr.left, includeFilterBodies) + semanticIndexSpecs(expr.right, includeFilterBodies)
     is Expr.EntitySpec -> listOfNotNull(expr.takeIf { it.semanticIndex != null }) +
@@ -374,6 +386,7 @@ internal fun namedEntityPaths(cond: Cond): List<String> = when (cond) {
 internal fun namedEntityPaths(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)
     is Expr.Star -> listOf(expr.path) + expr.having?.let { namedEntityPaths(it) }.orEmpty()
+    is Expr.TermSum -> namedEntityPaths(expr.iteration) + namedEntityPaths(expr.term)
     is Expr.Func -> expr.args.flatMap { namedEntityPaths(it) }
     is Expr.Arith -> namedEntityPaths(expr.left) + namedEntityPaths(expr.right)
     is Expr.EnumCategory -> listOf(expr.path)
@@ -405,6 +418,7 @@ internal fun entityPaths(cond: Cond): List<String> = when (cond) {
 private fun entityPaths(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)
     is Expr.Star -> listOf(expr.path) + expr.having?.let(::entityPaths).orEmpty()
+    is Expr.TermSum -> entityPaths(expr.iteration) + entityPaths(expr.term)
     is Expr.Func -> expr.args.flatMap(::entityPaths)
     is Expr.Arith -> entityPaths(expr.left) + entityPaths(expr.right)
     is Expr.EnumCategory -> listOf(expr.path)

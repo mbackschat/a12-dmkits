@@ -172,6 +172,7 @@ enum class ConditionLanguage(val code: String) {
             "Gueltig" to "Valid",
             "Ungueltig" to "Invalid",
             "SummeVonProdukten" to "SumOfProducts",
+            "SummeVonTermen" to "SumOfTerms",
             "ErsterAngegebenerWert" to "FirstFilledValue",
             "DatumBereich" to "DateRange",
             "RegelKontext" to "RuleGroup",

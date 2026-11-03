@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
@@ -20,20 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  */
 class SumOfTermsTermLawsTest {
 
-    private static final String POLICY = DocumentModelDraft.named("policy-sum-of-terms-term").locale("en_US")
-            .rootGroup("Policy", p -> p
-                    .stringField("Holder", f -> { })
-                    .numberField("Total", n -> n.fractionDigits(2))
-                    .group("Address", a -> a.numberField("Zip", n -> n.fractionDigits(0)))
-                    .group("Vehicles", v -> v.repeatable(2).numberField("Value", n -> n.fractionDigits(0)))
-                    .group("Claims", c -> c.repeatable(3).indexField("ClaimRef")
-                            .stringField("ClaimRef", f -> { })
-                            .stringField("Status", f -> { })
-                            .numberField("Amount", n -> n.fractionDigits(2))
-                            .group("Parts", pp -> pp.repeatable(4)
-                                    .numberField("Qty", n -> n.fractionDigits(0))
-                                    .numberField("Price", n -> n.fractionDigits(2)))))
-            .build().toJson();
+    private static final String POLICY = ModelDrafts.policyClaims().toJson();
 
     private static String atPolicy(String condition) {
         return KernelLaws.verdictModel(POLICY, "/Policy", "../Holder", "FieldFilled(Holder) And " + condition);
@@ -92,6 +79,10 @@ class SumOfTermsTermLawsTest {
         actual.put("the upper level neither starred nor iterated by the rule",
                 atPolicy("SumOfTerms(Claims/Parts*, [Claims/Parts/Qty]) > 10"));
         actual.put("a starred non-repeatable group", atPolicy("SumOfTerms(Address*, [Address/Zip]) > 0"));
+        actual.put("the star above a repeatable group left unstarred",
+                atPolicy("SumOfTerms(Claims*/Parts, [Claims/Parts/Qty]) > 0"));
+        actual.put("the star above a non-repeatable group",
+                atPolicy("SumOfTerms(Claims*/Assessment, [Claims/Assessment/Score]) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("both levels starred, the term iterates both", KernelLaws.ADMITTED);
@@ -99,6 +90,47 @@ class SumOfTermsTermLawsTest {
         expected.put("the upper level iterated by the rule", KernelLaws.ADMITTED);
         expected.put("the upper level neither starred nor iterated by the rule", "MVK_NO_WILDCARD");
         expected.put("a starred non-repeatable group", "MVK_INVALID_WILDCARD");
+        expected.put("the star above a repeatable group left unstarred", "MVK_NO_WILDCARD");
+        expected.put("the star above a non-repeatable group", "MVK_GROUP_NOT_REPEATABLE");
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * Whether a read inside the term, or inside the iteration's filter, counts as the rule's own reference to its
+     * error field. The error field {@code Total} is read nowhere else, so the verdict is that reference's alone: a
+     * term read never counts and refuses the {@code $} marker outright, while a filter read counts once marked, as
+     * in any filter body (KF488). The iteration group is the rule's own reference: an error field inside it that no
+     * term reads is admitted.
+     */
+    @Test
+    void theTermAndTheFilterEachReferenceTheErrorField() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the error field read in the term", KernelLaws.verdictModel(POLICY, "/Policy", "../Total",
+                "SumOfTerms(Claims*, [Claims/Amount] + [Total]) > 0"));
+        actual.put("the error field read in the term, marked", KernelLaws.verdictModel(POLICY, "/Policy", "../Total",
+                "SumOfTerms(Claims*, [Claims/Amount] + [$Total]) > 0"));
+        actual.put("the error field read in the filter", KernelLaws.verdictModel(POLICY, "/Policy", "../Total",
+                "SumOfTerms(Claims* Having [Claims/Amount] > [Total], [Claims/Amount]) > 0"));
+        actual.put("the error field read in the filter, marked", KernelLaws.verdictModel(POLICY, "/Policy", "../Total",
+                "SumOfTerms(Claims* Having [Claims/Amount] > [$Total], [Claims/Amount]) > 0"));
+        actual.put("control: the error field read nowhere", KernelLaws.verdictModel(POLICY, "/Policy", "../Total",
+                "SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("control: the error field read beside the sum", KernelLaws.verdictModel(POLICY, "/Policy",
+                "../Total", "FieldFilled(Total) And SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("an error field inside the iteration group, read by no term", KernelLaws.verdictModel(POLICY, "/Policy",
+                "../Claims/Status", "SumOfTerms(Claims*, [Claims/Amount]) > 0"));
+        actual.put("an error field inside the iteration group, read beside the sum", KernelLaws.verdictModel(POLICY,
+                "/Policy", "../Claims/Status", "FieldFilled(Claims/Status) And SumOfTerms(Claims/Parts*, [Claims/Parts/Qty]) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the error field read in the term", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("the error field read in the term, marked", "MVK_INVALID_OUTER_ITERATION");
+        expected.put("the error field read in the filter", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("the error field read in the filter, marked", KernelLaws.ADMITTED);
+        expected.put("control: the error field read nowhere", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("control: the error field read beside the sum", KernelLaws.ADMITTED);
+        expected.put("an error field inside the iteration group, read by no term", KernelLaws.ADMITTED);
+        expected.put("an error field inside the iteration group, read beside the sum", KernelLaws.ADMITTED);
         assertEquals(expected, actual);
     }
 

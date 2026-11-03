@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
@@ -410,6 +411,30 @@ class NewShapesSnippetsTest {
         assertEquals("FieldsNotCollectivelyFilled(/Order/ShippingAddress, /Order/Quantity)",
                 new DslRenderer().render(partiallyFilled));
         assertKernelAccepts(partiallyFilled, "../Quantity");
+    }
+
+    @Test
+    void sumOfTermsSnippet() {
+        // tag::sum-of-terms[]
+        // SumOfTerms reads its term once per row of the starred group and adds the results. The term names
+        // the row's own fields unstarred, so its operands come off the row group's handle.
+        GroupInfo order = m.groupAt("/Order").orElseThrow();
+        GroupInfo item = m.groupAt("/Order/Items").orElseThrow();
+        NumberExpr weight = Dsl.sumOfTerms(order.flattenGroup("Items*"),
+                item.num("Count").times(item.num("UnitWeight")));
+        // The filter narrows the rows; rulekit keeps it on the term sum, since a group scope carries none.
+        NumberExpr heavyWeight = Dsl.sumOfTerms(order.flattenGroup("Items*"), item.num("UnitWeight").gt(10),
+                item.num("Count").times(item.num("UnitWeight")));
+        // end::sum-of-terms[]
+        Condition heavy = order.str("CustomerName").filled().and(weight.gt(1000));
+        assertEquals("FieldFilled(/Order/CustomerName) And SumOfTerms(/Order/Items*, "
+                + "[/Order/Items/Count] * [/Order/Items/UnitWeight]) > 1000", new DslRenderer().render(heavy));
+        assertKernelAccepts(heavy, "../CustomerName");
+        Condition filtered = order.str("CustomerName").filled().and(heavyWeight.gt(1000));
+        assertEquals("FieldFilled(/Order/CustomerName) And SumOfTerms(/Order/Items* Having "
+                + "[/Order/Items/UnitWeight] > 10, [/Order/Items/Count] * [/Order/Items/UnitWeight]) > 1000",
+                new DslRenderer().render(filtered));
+        assertKernelAccepts(filtered, "../CustomerName");
     }
 
     @Test

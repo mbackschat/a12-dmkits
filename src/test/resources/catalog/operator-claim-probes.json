@@ -6756,6 +6756,234 @@
         "verdict": "REJECTED",
         "code": "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
       }
+    },
+    {
+      "id": "SumOfTerms.starred-field",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*/Amount, [Claims/Amount]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_FIELDS_ALLOWED"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.starred-non-repeatable-group",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Address*, [Address/Zip]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_WILDCARD"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.non-repeatable-group-below-the-star",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*/Assessment, [Claims/Assessment/Score]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_GROUP_NOT_REPEATABLE"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty] * [Claims/Parts/Price]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.unstarred-group-the-rule-iterates",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Claims/Amount",
+        "dsl": "FieldFilled(Claims/Amount) And SumOfTerms(Claims, [Claims/Amount]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Claims/Amount",
+        "dsl": "FieldFilled(Claims/Amount) And SumOfTerms(Claims/Parts*, [Claims/Parts/Qty]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.unstarred-group-the-rule-does-not-iterate",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims, [Claims/Amount]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.text-term",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Status]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_NUMBER"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-misses-the-lowest-star",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*/Parts*, [Claims/Amount]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_ITERATION_FOR_LOWEST_WILDCARD"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*/Parts*, [Claims/Parts/Qty] * [Claims/Parts/Price]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-reads-another-repeatable-group",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount] + [Vehicles/Value]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_ITERATION_IN_SET_EXPRESSION"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount] + [Address/Zip]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-semantic-index",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount] + [Claims/Amount For \"C1\"]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-outer-marker",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [$Claims/Amount]) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_OUTER_ITERATION"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount]) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-filtered-aggregate",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount] + NumberOfFilledFields(Vehicles*/Value Having [Vehicles/Value] > 1)) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, [Claims/Amount] + NumberOfFilledFields(Vehicles*/Value)) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SumOfTerms.term-nested-term-sum",
+      "operator": "SumOfTerms",
+      "kind": "CONDITION",
+      "fixture": "POLICY_CLAIMS",
+      "trigger": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, SumOfTerms(Claims/Parts*, [Claims/Parts/Qty])) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DISALLOWED_CONSTRUCT_IN_SET_EXPRESSION"
+      },
+      "control": {
+        "group": "/Policy",
+        "field": "../Holder",
+        "dsl": "FieldFilled(Holder) And SumOfTerms(Claims*, Sum(Claims/Parts*/Qty)) > 0",
+        "verdict": "ACCEPTED"
+      }
     }
   ]
 }

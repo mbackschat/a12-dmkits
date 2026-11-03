@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **DG175 — the JavaScript checker once read `YearFromDate(Time(Hour))` as valid where A12 and the JVM checker draw `MVK_WRONG_DATE_FORMAT_FOR_OP` (opened 2026-11-03).** `TemporalExtractorOperandsTest.aNestedOperationCarriesTheFormatA12RegistersForIt` failed on `:consistency:jsNodeTest` in four consecutive runs on 2026-11-03, a clean `--rerun-tasks` rebuild among them. Its row "the year of a built time" came back `[]`, while the JVM target stayed green throughout. It then passed in the four later runs: three on byte-identical sources, and one with a temporary trace line in `TemporalOperandReading`. Moving the regenerated `OperatorId.SUM_OF_TERMS` to the end of the enum also passed once, and the failing model checked on its own read correctly. Neither establishes a mechanism. The suspected class, an order dependence on a JavaScript identity-hash iteration, is a hypothesis without a run that discriminates it. Settled by a repeated-run harness that reproduces the failure, followed by the one change that removes it.
 
 ## 2. Out of scope
 

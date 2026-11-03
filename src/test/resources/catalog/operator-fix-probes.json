@@ -1044,6 +1044,18 @@
       "group": "/Order",
       "field": "../ScheduledAt",
       "dsl": "FieldFilled(ScheduledAt) And [ScheduledAt] > Now"
+    },
+    {
+      "locator": {
+        "operator": "SumOfTerms",
+        "source": "INVALID_EXAMPLE",
+        "ordinal": 0
+      },
+      "digest": "sha256:f7a68040f97e4b31571e4663993ad65b803a96e14e1222b74cec86cf43b80a25",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And SumOfTerms(Items*, [Items/Count]) > 0"
     }
   ]
 }

@@ -70,6 +70,7 @@ record NumericScaleSummary(State state, int scale, boolean expandable) {
             case ValueAsDate ignored -> deferred();
             case DateTimePart ignored -> deferred();
             case SumOfProducts ignored -> deferred();
+            case SumOfTerms ignored -> deferred();
             case DateConstruction ignored -> deferred();
             case TimeConstruction ignored -> deferred();
             case DateTimeConstruction ignored -> deferred();

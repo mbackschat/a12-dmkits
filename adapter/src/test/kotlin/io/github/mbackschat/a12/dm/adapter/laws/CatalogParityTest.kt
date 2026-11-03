@@ -58,6 +58,7 @@ class CatalogParityTest {
         "EnumCategory",                                                    // [field -> Category] — Expr.EnumCategory, positional enum-value→category map
         "ValidType", "InvalidType",                                        // Valid/Invalid(field, "Name") — predefined-type validity via the consumer-supplied registry
         "CustomCondition",                                                 // CustomCondition X — Cond.Custom, dispatched to a consumer-supplied CustomCondition SPI (cross-platform JVM+JS)
+        "SumOfTerms",                                                      // SumOfTerms(Group*, term) — Expr.TermSum, the term read per row (KF670, SumOfTermsRuntimeLawsTest)
     )
 
     private val handled: Set<String> = enumHandled + astHandled

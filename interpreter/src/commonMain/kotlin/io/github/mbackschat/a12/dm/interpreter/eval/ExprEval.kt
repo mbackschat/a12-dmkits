@@ -117,45 +117,6 @@ private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, b
 private fun Interpreter.starColumnNonEvaluable(c: EvalContext, star: Expr.Star): Boolean =
     indexOperandNonEvaluable(c, star.path, star.bindDepth) || starHasUnavailableEmpty(c, star)
 
-/**
- * `NumberOfFilledGroups(...)`'s count over its group list, whatever mix of shapes it holds. Every operand
- * expands to the group instances it names — a fixed group its own, a starred scope one per environment
- * [Interpreter.groupFillStates] also selects, so a repeatable terminal counts each instantiated row (a
- * created-but-empty one too, IF46) and a fixed group below starred levels counts by its content — and each
- * instance contributes its [GroupPresenceState.fillProduct]. Under partial validation an operand is counted
- * only once its [GroupCountGate] admits it, which asks about the declared instances the document lacks and
- * so cannot be read off the held ones (KF464). One undecidable operand or instance makes the whole count
- * Unknown rather than a partial count (KF463). Linear in the instances.
- */
-private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
-    rejectHaving(args, "NumberOfFilledGroups")
-    val gate = groupCountGate
-    var count = 0
-    for (arg in args) {
-        val c = ctxOf(arg)
-        if (arg is Expr.Star) {
-            val rows = c.groupListEnvironments(arg.path, arg.bindDepth)
-            if (gate != null &&
-                !gate.admits(arg.path, arg.bindDepth, c.repsOf(arg.path), rows.mapTo(HashSet()) { it.repsOf(arg.path) })
-            ) return Val.Unknown
-            for (row in rows) count += countedGroup(groupPresence(row, arg.path)) ?: return Val.Unknown
-        } else {
-            val path = pathOf(arg)
-            // Every level of a fixed operand is bound, so the gate asks about this one instance alone.
-            if (gate != null && !gate.admits(path, pathParts(path).size, c.repsOf(path), emptySet())) return Val.Unknown
-            count += countedGroup(groupPresence(c, path)) ?: return Val.Unknown
-        }
-    }
-    return Val.Num(dec(count))
-}
-
-/** One counted instance's addition to the count, or null when it leaves the count undecidable. */
-private fun countedGroup(state: GroupPresenceState): Int? = when (state.fillProduct) {
-    Tri.TRUE -> 1
-    Tri.FALSE -> 0
-    Tri.UNKNOWN -> null
-}
-
 /** Whether [arg] names a GROUP rather than a declared field — a group holds no value of its own, so an operand
  *  that names one has to be expanded to the fields below it before anything can read a cell. */
 internal fun Interpreter.namesAGroup(arg: Expr): Boolean =
@@ -319,6 +280,7 @@ private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.Field -> gatedField(ctxOf(e), e.path)
     is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
     is Expr.Func -> evalFunc(e)
+    is Expr.TermSum -> termSum(e)
     is Expr.Arith -> evalArith(e)
     is Expr.Const -> evalConst(e.name)
     is Expr.SemanticIndex -> evalSemanticIndex(e)

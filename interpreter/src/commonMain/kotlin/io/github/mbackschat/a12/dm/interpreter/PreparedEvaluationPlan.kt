@@ -226,6 +226,12 @@ internal class PreparedEvaluationPlan(
                 requireOuterAllowed(expr.outer, outerAllowed)
                 expr.having?.let { auditCond(it, outerAllowed = true) }
             }
+            // A12 refuses a `$` read, a filter and a nested term sum inside the term (KERNEL-FINDINGS KF670), so the
+            // term is audited as a plain number operation over its row.
+            is Expr.TermSum -> {
+                auditExpr(expr.iteration, outerAllowed, starAllowed = true)
+                auditExpr(expr.term, outerAllowed = false, starAllowed = true)
+            }
             is Expr.Func -> {
                 val op = FunctionOp.byName(expr.name)
                     ?: throw UnsupportedConstructException("unsupported function ${expr.name}")

@@ -52,7 +52,7 @@ JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is d
 | W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | open |
 | W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | done 2026-11-03 — see the W4 batches below |
 | W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | in progress — every batch below is done except W5-perf |
-| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | kernel laws done ([KF670](KERNEL-FINDINGS.md#kf670)); typed surface, interpreter and checker open |
+| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | kernel laws, typed surface, adapter read-back and interpreter done ([KF670](KERNEL-FINDINGS.md#kf670)); checker open |
 | W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | in progress — version surfaces (the CI and native workflows included) and docs done 2026-11-03; the native re-capture and gate run with W8 |
 | W8 | Gated release (D6) | open |
 
@@ -145,7 +145,7 @@ The kernel renamed most Gradle projects `kernel-*` → `kernel-internal-*`, and 
 A new **set operation** (parse tree `ISetOpOperation`, enum `SetOpOperationName`, lexer terminal `SUMME_VON_TERMEN`; EN `SumOfTerms`, DE `SummeVonTermen`, re-verified at `eec9134`).
 
 - **Syntax / arity:** `SumOfTerms(<iterationGroup*>, <term>)`. Argument 1 is a starred repeatable group path; argument 2 is a numeric term evaluated per iteration. It is usable wherever a number-valued operation is, and **returns NUMBER**.
-- **Checker constraints** (July source read of `CheckSetOperOpImpl` + `CheckSetExpressionUtil`, to be re-measured in W6):
+- **Checker constraints** (July source read of `CheckSetOperOpImpl` + `CheckSetExpressionUtil`; the measured classes are [KF670](KERNEL-FINDINGS.md#kf670)):
   - The iteration entity must be a group, repeatable and wildcarded on its lowest level, with no semantic index.
   - The term must be numeric and may not contain application conditions, `RepetitionNotUnique`, a `Mit` filter or a nested `SumOfTerms`.
   - The lowest wildcard level must be iterated.
@@ -204,7 +204,7 @@ The root fix for items 1–2 is **one shared, model-aware V2 document materializ
 **Non-breaking but notable:**
 - `IMVK_Service` lost two super-interfaces, but every call we make resolves through the remaining parents.
 - `MoveSupportDM.changePathReferencesForMove` now also rewrites Document Uniqueness Criteria.
-- `ASTVisitor` gained a default `visit(ISetOpOperation)`, so `ConditionConverter` still compiles but drops `SumOfTerms` until W6.
+- `ASTVisitor` gained a default `visit(ISetOpOperation)`; `ConditionConverter` reads `SumOfTerms` back into the typed record since W6.
 - The core custom-condition SPI (`ICustomCondition`, `IData`, `IIdentifier`) is unchanged.
 - The computation read surface is unchanged.
 - Dynamic configuration adds default `modelCodeHashProvider` and `considerNotInD`; both belong in the customization-surface audit (W5).
@@ -279,7 +279,7 @@ Several guardians detect additions but not stale removals, or scan a hardcoded s
 |---|---|---|
 | model format 28.4→29.4 | `ModelVersionPolicyTest`, `VersionVerbTest`, `VersionMentionFreshnessTest`; no migration golden | migrate fixtures + inline/default versions through the kernel migrator; add preservation and direct-serializer loss guards |
 | V1 document + removed extension APIs | compilation; the Java `-Xlint:removal` ratchet misses Kotlin | compile every source set; add a removed-API source guard across Java **and** Kotlin; one V2 materializer |
-| new `SumOfTerms` construct | `KernelConstructParityTest` hardcodes known enum classes, so `SetOpOperationName` is invisible | make construct-class discovery exhaustive, then land W6 |
+| new `SumOfTerms` construct | `KernelConstructParityTest` discovers every enum of the `types` package, `SetOpOperationName` included | done in W6 |
 | enum-comparison / `+` relaxations | `EnumComparabilityLawsTest` and N7 invalid examples assert the old errors | flip to accepted laws after measuring; update the contradicted finding and catalog gotcha |
 | filter → set-expression codes | N7 examples plus source strings | rename across catalog, [MVK-LEDGER.md](MVK-LEDGER.md), `FieldListRef`, `CustomConditionRef`, diagnostics, tests |
 | removed / renamed / re-meant MVK codes | `MvkLedgerTest` is one-way | exact two-way equality, then realign entries **and meanings** (§3 trap) |

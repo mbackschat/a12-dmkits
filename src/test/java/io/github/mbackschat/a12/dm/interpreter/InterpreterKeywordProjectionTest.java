@@ -79,13 +79,11 @@ class InterpreterKeywordProjectionTest {
             "SuppressWarning", "UnterdrueckeWarnung");
 
     /**
-     * Operators the interpreter does not evaluate: the one rulekit defers (it depends on dynamically enumerated
-     * columns) and kernel 31.1.1's term sum (KF656). Unlike the checker — which must list them, or read them as
-     * undeclared fields — the interpreter refuses them loudly at evaluation, so leaving them out of the
-     * vocabulary costs nothing.
+     * The operator the interpreter does not evaluate, the one rulekit defers because it depends on dynamically
+     * enumerated columns. Unlike the checker — which must list it, or read it as an undeclared field — the
+     * interpreter refuses it loudly at evaluation, so leaving it out of the vocabulary costs nothing.
      */
-    private static final Set<String> DEFERRED_OPERATOR =
-            Set.of("ValueNotConsistent", "WertNichtKonsistent", "SumOfTerms", "SummeVonTermen");
+    private static final Set<String> DEFERRED_OPERATOR = Set.of("ValueNotConsistent", "WertNichtKonsistent");
 
     /**
      * H-model constructs — multi-form (Vordruck/USB) and bounded row iteration — classified {@code legacy} in
@@ -212,8 +210,8 @@ class InterpreterKeywordProjectionTest {
         actual.put("DE terminals in the kernel bundle", kernelTerminals("DE").size());
 
         Map<String, Integer> expected = new LinkedHashMap<>();
-        // 97 since 2026-10-20: the `@UnterdrueckeWarnung` preamble keyword joined the table (KERNEL-FINDINGS KF75).
-        expected.put("hand-written German→canonical rows", 97);
+        // 98 since 2026-11-03: `SummeVonTermen` joined the table when the interpreter learned SumOfTerms (KF670).
+        expected.put("hand-written German→canonical rows", 98);
         expected.put("EN terminals in the kernel bundle", 113);
         expected.put("DE terminals in the kernel bundle", 126);
         assertEquals(expected, actual,

@@ -38,9 +38,7 @@ public final class DslRenderer {
             "KeinVordruckAngegeben", "ValueNotConsistent", "WertNichtKonsistent",
             "AktuelleVordruckNummer", "AnzahlAngegebeneUsb", "AnzahlAngegebenerVordrucke",
             "MaximalAngegebenerZeilenindex", "UsbNichtFortlaufend", "VordruckNichtFortlaufend",
-            "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend",
-            // Kernel 31.1.1's term sum is a lexer terminal before the catalog carries it (KERNEL-FINDINGS KF656).
-            "SumOfTerms", "SummeVonTermen");
+            "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend");
 
     private final Set<String> reservedNames;
 
@@ -579,6 +577,9 @@ public final class DslRenderer {
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";
+            case SumOfTerms s -> keyword(s.operatorId()) + "(" + groupScope(s.iteration())
+                    + s.filter().map(filter -> " " + keyword("Having") + " " + render(filter)).orElse("")
+                    + ", " + render(s.term()) + ")";
             case DateConstruction dc -> keyword(dc.operatorId()) + "(" + dc.components().stream()
                     .map(this::renderDateParam).collect(Collectors.joining(", ")) + ")";
             case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + tc.components().stream()

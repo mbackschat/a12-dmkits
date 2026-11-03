@@ -30,6 +30,7 @@ internal fun Expr.lowerArithmetic(): Expr = when (this) {
     is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const,
     is Expr.SemanticIndex, is Expr.EnumCategory -> this
     is Expr.Star -> copy(having = having?.lowerArithmetic())
+    is Expr.TermSum -> copy(iteration = iteration.copy(having = iteration.having?.lowerArithmetic()), term = term.lowerArithmetic())
     is Expr.EntitySpec -> copy(source = when (val entity = source) {
         is Expr.Field -> entity
         is Expr.Star -> entity.copy(having = entity.having?.lowerArithmetic())
