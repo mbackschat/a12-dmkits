@@ -630,7 +630,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -693,7 +693,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -756,7 +756,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -17851,7 +17851,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -19173,7 +19173,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -19241,7 +19241,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -19316,7 +19316,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -19391,7 +19391,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -19527,7 +19527,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -19595,7 +19595,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -19651,7 +19651,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -19796,7 +19796,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -19936,7 +19936,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -19999,7 +19999,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -20149,7 +20149,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -20224,7 +20224,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -20299,7 +20299,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -20367,7 +20367,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -20713,7 +20713,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
           "evidence": {}
         }
       }
@@ -21330,7 +21330,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -21587,7 +21587,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -21650,7 +21650,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -21713,7 +21713,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -21863,7 +21863,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -22013,7 +22013,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -22081,7 +22081,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -22149,7 +22149,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter names this finding or a lock it cites (checked 2026-11-03).",
+          "basis": "Reported in Letter A's MVK code inventory (2026-11-02): this finding's only 31.1.1 change is a code rename.",
           "evidence": {}
         }
       }
@@ -22441,7 +22441,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: Letter A carried only the A12 Tools observation that ext1 mounts write no modelAlias, not this measurement.",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
@@ -23412,7 +23412,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over: no migration letter carries it.",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; no receipt yet.",
           "evidence": {}
         }
       }
