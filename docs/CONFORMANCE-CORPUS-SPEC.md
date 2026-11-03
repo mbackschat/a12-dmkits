@@ -36,7 +36,7 @@ corpus/
 | Key | Required | Contract |
 |---|---|---|
 | `meta.id` | yes | Unique case id, equals the file stem. |
-| `meta.kernelVersion` | yes | The kernel version the expectations were captured against (e.g. `"30.8.1"`). |
+| `meta.kernelVersion` | yes | The kernel version the expectations were captured against (e.g. `"31.1.1"`). |
 | `meta.source` | yes | `fuzz-seed` \| `curated` \| `facet-generated`. |
 | `meta.sections` | yes | The kernel-semantics taxonomy sections this case exercises (e.g. `["§9"]` — the numbering [KERNEL-FINDINGS](KERNEL-FINDINGS.md) mirrors); the join key for the [semantics navigation map](SEMANTICS-MAP.md), whose resolve-guard cross-checks it. |
 | `meta.tags` | no | Free labels (`partial`, `clock`, `phantom-row`, …). Cases with a `validatePart` op MUST carry `partial`. |
@@ -56,7 +56,7 @@ Illustrative example (shape-normative; the values are not a captured expectation
 {
   "meta": {
     "id": "aggregate-min-low-claim-001",
-    "kernelVersion": "30.8.1",
+    "kernelVersion": "31.1.1",
     "source": "curated",
     "sections": ["§9"],
     "tags": ["aggregates"],

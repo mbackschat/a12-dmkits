@@ -1,7 +1,7 @@
 {
     "meta": {
         "id": "compute-cascade-seed",
-        "kernelVersion": "30.8.1",
+        "kernelVersion": "31.1.1",
         "source": "fuzz-seed",
         "sections": [
             "§11"

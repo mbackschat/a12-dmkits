@@ -36,7 +36,7 @@ object CorpusEngines {
     const val INTERPRETER = "interpreter"
 
     /** The kernel version the corpus is captured against — bump on a KERNEL-UPGRADE (drives `meta.kernelVersion`). */
-    const val KERNEL_VERSION = "30.8.1"
+    const val KERNEL_VERSION = "31.1.1"
 
     // The static-JAVA engine is an in-memory javac compile per model (~hundreds of ms). RuntimeLaws owns the
     // shared bounded exact-model cache, so corpus replay and fuzzing neither recompile nor retain engines twice.
