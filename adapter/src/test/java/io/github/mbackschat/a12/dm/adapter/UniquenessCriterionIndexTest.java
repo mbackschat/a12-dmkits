@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.criterion;
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.withCriteria;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.criterion;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.withCriteria;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
@@ -64,13 +64,15 @@ class UniquenessCriterionIndexTest {
     /** A12's expansion keeps only the entry model's criteria (KF671), and so does the index. */
     @Test
     void anIncludedModelsOwnCriteriaAreNotIndexed() {
-        String branch = withCriteria(DocumentModelDraft.named("branch").locale("en_US")
+        String branch = DocumentModelDraft.named("branch").locale("en_US")
                 .rootGroup("Branch", b -> b.stringField("Code", f -> f.required()))
-                .build().toJson(), criterion("BranchKey", "Taken", "/Branch/Code"));
-        String entry = withCriteria(DocumentModelDraft.named("policy").locale("en_US")
+                .uniquenessCriterion(criterion("BranchKey", "Taken", "/Branch/Code"))
+                .build().toJson();
+        String entry = DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p.stringField("PolicyNo", f -> f.required())
                         .mount("Office", "branch", MountOptions.single()))
-                .build().toJson(), criterion("OfficeKey", "Taken", "/Policy/Office/Code"));
+                .uniquenessCriterion(criterion("OfficeKey", "Taken", "/Policy/Office/Code"))
+                .build().toJson();
 
         assertEquals(Map.of("/Policy/Office/Code", Set.of("OfficeKey")),
                 KernelAdapter.ofJson(entry, asked -> "branch".equals(asked) ? branch : null).uniquenessCriteria().byField());

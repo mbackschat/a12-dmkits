@@ -32,6 +32,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
   public io.github.mbackschat.a12.dm.edit.EditSession addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public io.github.mbackschat.a12.dm.edit.EditSession addTypedefField(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.edit.EditSession addUniquenessCriterion(io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion)
   public io.github.mbackschat.a12.dm.edit.EditSession clearBaseYear()
   public io.github.mbackschat.a12.dm.edit.EditSession clearIndexField(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession clearModelComment()
@@ -75,6 +76,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession removeModelAnnotation(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession removeRule(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession removeTypeDefinition(java.lang.String)
+  public io.github.mbackschat.a12.dm.edit.EditSession removeUniquenessCriterion(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameGroup(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession renameRule(java.lang.String, java.lang.String)
@@ -108,6 +110,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession setTypeDefinitionType(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public java.lang.String toJson()
   public io.github.mbackschat.a12.dm.edit.TypeDefEditor typeDef(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion> uniquenessCriteria()
   public io.github.mbackschat.a12.dm.edit.EditSession validate()
   public void writeTo(java.nio.file.Path)
 

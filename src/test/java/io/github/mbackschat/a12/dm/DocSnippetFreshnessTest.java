@@ -79,6 +79,8 @@ class DocSnippetFreshnessTest {
             new Lock("nary", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("create-model", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("edit-session", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("uniqueness-criterion", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/modelkit/UniquenessCriterionAuthoringTest.java"),
             new Lock("catalog", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("navigation", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("navigation-annotations", "docs/API-GUIDE.md", STUDY_SNIPPETS),

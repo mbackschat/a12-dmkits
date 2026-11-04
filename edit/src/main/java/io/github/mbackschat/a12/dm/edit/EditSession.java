@@ -23,6 +23,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
+import io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -344,6 +345,21 @@ public final class EditSession {
     /** Remove the model base year — the inverse of {@link #setBaseYear}. */
     public EditSession clearBaseYear() {
         return editStructure(ModelDocument::clearBaseYear);
+    }
+
+    /** Append a document uniqueness criterion; see {@link ModelDocument#addUniquenessCriterion}. {@link #validate()} decides admission. */
+    public EditSession addUniquenessCriterion(UniquenessCriterion criterion) {
+        return editStructure(d -> d.addUniquenessCriterion(criterion));
+    }
+
+    /** Remove the document uniqueness criterion named {@code name}; fails fast if the model has none of that name. */
+    public EditSession removeUniquenessCriterion(String name) {
+        return editStructure(d -> d.removeUniquenessCriterion(name));
+    }
+
+    /** Read the model's document uniqueness criteria — the read peer of {@link #addUniquenessCriterion}. */
+    public List<UniquenessCriterion> uniquenessCriteria() {
+        return ModelDocument.read(json).uniquenessCriteria();
     }
 
     /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted. */

@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.criterion;
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.withCriteria;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.criterion;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
@@ -22,12 +21,13 @@ class UniquenessCriterionDiffTest {
 
     @Test
     void removingAFieldACriterionNamedIsHighImpactAndAnUnnamedOneIsNot() {
-        String base = withCriteria(DocumentModelDraft.named("policy").locale("en_US")
+        String base = DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p
                         .stringField("PolicyNo", f -> f.required())
                         .stringField("Holder", f -> f.required())
                         .field("Product", FieldKind.STRING))
-                .build().toJson(), criterion("PolicyKey", "Taken", "/Policy/PolicyNo"));
+                .uniquenessCriterion(criterion("PolicyKey", "Taken", "/Policy/PolicyNo"))
+                .build().toJson();
         String head = DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p.field("Product", FieldKind.STRING))
                 .build().toJson();

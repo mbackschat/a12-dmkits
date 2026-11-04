@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.criterion;
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.withCriteria;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.criterion;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,11 +48,11 @@ class UniquenessCriterionVerbsTest {
                         .errorField(m.str("/Policy/Holder")).when(m.str("/Policy/Holder").notFilled())
                         .code("HOLDER_MISSING").severity(Severity.ERROR)
                         .message(en("The holder is missing.")).build())
+                .addUniquenessCriterion(criterion("PolicyKey", "Policy $/Policy/PolicyNo$ exists", "/Policy/PolicyNo"))
+                .addUniquenessCriterion(criterion("OfficeKey", "Office $/Policy/Office/Code$ exists", "/Policy/Office/Code"))
                 .toJson();
         Path model = dir.resolve("policy.dm.json");
-        Files.writeString(model, withCriteria(ruled,
-                criterion("PolicyKey", "Policy $/Policy/PolicyNo$ exists", "/Policy/PolicyNo"),
-                criterion("OfficeKey", "Office $/Policy/Office/Code$ exists", "/Policy/Office/Code")));
+        Files.writeString(model, ruled);
         return model;
     }
 

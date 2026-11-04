@@ -361,7 +361,7 @@ public final class ModelDocument {
         if (fieldType == null || fieldType.isMissingNode()) {
             return Optional.empty();
         }
-        ObjectNode cfg = DocumentModelDraft.readTypeConfig(fieldType);
+        ObjectNode cfg = TypeConfigReader.read(fieldType);
         return cfg.isEmpty() ? Optional.empty() : Optional.of(cfg);
     }
 
@@ -520,7 +520,7 @@ public final class ModelDocument {
         if (fieldType.isMissingNode()) {
             return Optional.empty();
         }
-        ObjectNode cfg = DocumentModelDraft.readTypeConfig(fieldType);
+        ObjectNode cfg = TypeConfigReader.read(fieldType);
         return cfg.isEmpty() ? Optional.empty() : Optional.of(cfg);
     }
 
@@ -1377,6 +1377,28 @@ public final class ModelDocument {
         return (ObjectNode) info;
     }
 
+    // --- document uniqueness criteria (content.documentUniquenessCriteria) -----------------------
+
+    /** The model's document uniqueness criteria in model order; empty when it declares none. */
+    public List<UniquenessCriterion> uniquenessCriteria() {
+        return UniquenessCriteriaMember.read(root.path(DmKeys.CONTENT));
+    }
+
+    /**
+     * Append a document uniqueness criterion. Fails fast on a name the model already uses; whether A12 admits the
+     * criterion over its fields and texts is {@link #validate()}'s to decide (see {@link UniquenessCriterion}).
+     */
+    public ModelDocument addUniquenessCriterion(UniquenessCriterion criterion) {
+        UniquenessCriteriaMember.add((ObjectNode) root.path(DmKeys.CONTENT), criterion);
+        return this;
+    }
+
+    /** Remove the document uniqueness criterion named {@code name}. Fails fast if the model has none of that name. */
+    public ModelDocument removeUniquenessCriterion(String name) {
+        UniquenessCriteriaMember.remove((ObjectNode) root.path(DmKeys.CONTENT), name);
+        return this;
+    }
+
     // --- type definitions (content.typeDefinitions) ---------------------------------------------
 
     /** Declare a reusable type definition {@code id} over an easy {@code underlying} kind. */
@@ -1453,7 +1475,7 @@ public final class ModelDocument {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
         ((ObjectNode) group).put(DmKeys.NAME, newName);
-        reprefixIds(group, groupPath, renamePath(groupPath, newName));
+        SubtreeReprefix.ids(group, groupPath, renamePath(groupPath, newName));
         return this;
     }
 
@@ -1517,54 +1539,12 @@ public final class ModelDocument {
         String newPath = newParentPath.isEmpty() ? "/" + name : newParentPath + "/" + name;
         ArrayNode destination = newParentPath.isEmpty() ? rootGroups() : containerElements(newParentPath);
         removeElement(path, type);
-        reprefixIds(node, path, newPath);
+        SubtreeReprefix.ids(node, path, newPath);
         destination.add(node);
     }
 
     private static String renamePath(String path, String newName) {
         return path.substring(0, path.lastIndexOf('/') + 1) + newName;
-    }
-
-    /** Re-prefix the id of {@code element} and every descendant from {@code oldPrefix} to {@code newPrefix}. */
-    private static void reprefixIds(JsonNode element, String oldPrefix, String newPrefix) {
-        if (!(element instanceof ObjectNode obj)) {
-            return;
-        }
-        String id = obj.path(DmKeys.ID).asText(null);
-        if (id != null && EntityPaths.isInside(id, oldPrefix)) {
-            obj.put(DmKeys.ID, newPrefix + id.substring(oldPrefix.length()));
-        }
-        if (DmNodes.is(ElementType.GROUP, obj)) {
-            for (JsonNode child : obj.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                reprefixIds(child, oldPrefix, newPrefix);
-            }
-        } else if (DmNodes.is(ElementType.RULE, obj) && obj.path(ElementType.RULE.wireName()) instanceof ObjectNode rule) {
-            // a carried rule's ABSOLUTE condition operands must re-base to the new root too (probe 01-de
-            // Finding 6) — else the sub-model references the old foreign root (MVK_INVALID_ROOT_GROUP). The
-            // errorEntityRelPath is relative ('../X') so it rides along unchanged.
-            reprefixText(rule, "errorCondition", oldPrefix, newPrefix);
-        } else if (DmNodes.is(ElementType.COMPUTATION, obj) && obj.path(ElementType.COMPUTATION.wireName()) instanceof ObjectNode comp) {
-            reprefixText(comp, "commonPrecondition", oldPrefix, newPrefix);
-            for (JsonNode alt : comp.path("computationAlternatives")) {
-                if (alt instanceof ObjectNode altObj) {
-                    reprefixText(altObj, "precondition", oldPrefix, newPrefix);
-                    reprefixText(altObj, "operation", oldPrefix, newPrefix);
-                }
-            }
-        }
-    }
-
-    /** Re-prefix every ABSOLUTE path operand in {@code holder.field} from {@code oldPrefix} to {@code newPrefix},
-     *  only at a path-segment boundary (so {@code /Order/ShippingExtra} is never matched by {@code /Order/Shipping}). */
-    private static void reprefixText(ObjectNode holder, String field, String oldPrefix, String newPrefix) {
-        String text = holder.path(field).asText(null);
-        if (text == null || !text.contains(oldPrefix)) {
-            return;
-        }
-        String rebased = text.replaceAll(
-                java.util.regex.Pattern.quote(oldPrefix) + "(?=[/)\\],\\s]|$)",
-                java.util.regex.Matcher.quoteReplacement(newPrefix));
-        holder.put(field, rebased);
     }
 
     /** Find any element (field/group/rule/computation) by its full-name id; {@code null} if absent. */
@@ -1891,7 +1871,7 @@ public final class ModelDocument {
         }
         ObjectNode subGroup = group.deepCopy();
         subGroup.put(DmKeys.NAME, subRoot);   // the sub-model root's own name (= the group's, unless rootName overrides)
-        reprefixIds(subGroup, groupPath, "/" + subRoot);
+        SubtreeReprefix.ids(subGroup, groupPath, "/" + subRoot);
         ((ObjectNode) sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT)).putArray(DmKeys.ROOT_GROUPS).add(subGroup);
         String subModelJson;
         try {
@@ -1942,7 +1922,7 @@ public final class ModelDocument {
                 ArrayNode destination = body.putArray(DmKeys.ELEMENTS);
                 for (JsonNode child : includedElements) {
                     JsonNode copy = child.deepCopy();
-                    reprefixIds(copy, includedRootId, mountPath);
+                    SubtreeReprefix.ids(copy, includedRootId, mountPath);
                     destination.add(copy);
                 }
                 folded[0] = true;

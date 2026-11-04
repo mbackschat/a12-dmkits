@@ -81,6 +81,7 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder rootGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder supportedCharacters(java.lang.String[])
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder typeDef(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder uniquenessCriterion(io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion)
 
 public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder booleanField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>)
@@ -523,6 +524,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypedefField(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addUniquenessCriterion(io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion)
   public java.util.Map<java.lang.String, java.lang.String> annotations(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument applyModification(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldModification)
   public java.util.Map<io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose, java.util.List<java.lang.String>> authoredReferences()
@@ -588,6 +590,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeLocale(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeModelAnnotation(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeTypeDefinition(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeUniquenessCriterion(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameField(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameGroup(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameRule(java.lang.String, java.lang.String)
@@ -636,6 +639,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public java.util.Optional<java.lang.String> typeDefinitionPattern(java.lang.String)
   public java.util.Optional<java.lang.String> typeDefinitionType(java.lang.String)
   public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.TypeDefinitionState> typeDefinitions()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion> uniquenessCriteria()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate(io.github.mbackschat.a12.dm.core.ModelResolver)
 
@@ -876,6 +880,15 @@ public final class io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder extends
   public TimeFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder format(java.lang.String)
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public record io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion
+  public UniquenessCriterion(java.lang.String, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.lang.String>)
+  public final boolean equals(java.lang.Object)
+  public java.util.Map<java.lang.String, java.lang.String> errorMessage()
+  public java.util.List<java.lang.String> fieldFullNames()
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.modelkit.UsersFile
   public UsersFile(java.util.List<io.github.mbackschat.a12.dm.modelkit.UsersFile.User>)

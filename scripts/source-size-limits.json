@@ -34,8 +34,8 @@
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 910,
     "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1084,
     "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 932,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 1102,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1448,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 979,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1425,
     "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1423,
     "schemakit/src/main/java/io/github/mbackschat/a12/dm/schemakit/JsonSchemaImporter.java": 1417
   }

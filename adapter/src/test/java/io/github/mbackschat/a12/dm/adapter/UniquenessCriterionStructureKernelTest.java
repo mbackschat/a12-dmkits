@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.criterion;
-import static io.github.mbackschat.a12.dm.adapter.UniquenessCriteriaJson.withCriteria;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.criterion;
+import static io.github.mbackschat.a12.dm.adapter.UniquenessCriterionFixtures.withCriteria;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
+import io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion;
 
 /**
  * What kernel 31.1.1 does with a document uniqueness criterion when the structure around it changes: a field or
@@ -86,9 +87,9 @@ class UniquenessCriterionStructureKernelTest {
 
     @Test
     void aCriterionFollowsTheStructureItNames() {
-        String policyKey = criterion("PolicyKey", "Policy $/Policy/PolicyNo$ exists", "/Policy/PolicyNo");
-        String officeKey = criterion("OfficeKey", "Office $/Policy/Office/Code$ exists", "/Policy/Office/Code");
-        String branchKey = criterion("BranchKey", "Branch $/Branch/Code$ exists", "/Branch/Code");
+        UniquenessCriterion policyKey = criterion("PolicyKey", "Policy $/Policy/PolicyNo$ exists", "/Policy/PolicyNo");
+        UniquenessCriterion officeKey = criterion("OfficeKey", "Office $/Policy/Office/Code$ exists", "/Policy/Office/Code");
+        UniquenessCriterion branchKey = criterion("BranchKey", "Branch $/Branch/Code$ exists", "/Branch/Code");
         ModelResolver none = asked -> null;
 
         Map<String, String> actual = new LinkedHashMap<>();

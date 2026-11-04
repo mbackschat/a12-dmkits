@@ -1535,6 +1535,21 @@ DocumentModelDraft draft = DocumentModelDraft.named("policy").locale("en_US").ba
 
 A **group** carries a display label too — it is the kernel's `ILabeled` via `IEntity`, exactly like a field. The from-scratch builder authors it (`GroupBuilder.label("en_US", "Order lines").label("de_DE", "Bestellzeilen")`), the edit path sets it on an existing group (`setLabel(groupPath, …)`, CLI `meta <groupPath> --label`), and neither owes any locale coverage — the kernel accepts a label answering one of two declared locales, and one written solely for an undeclared locale ([KF406](KERNEL-FINDINGS.md#kf406)); the draft demanded full coverage until 2026-09-14, by analogy with the enum-VALUE law that really does require it ([AF149](API-FINDINGS.md#af149)). *Locked by `modelkit.GroupLabelTest` (kernel read-back) and `modelkit.ElementLabelLocaleTest`.*
 
+A **document uniqueness criterion** names fields whose values no two stored documents may share, with an error text per locale. `UniquenessCriterion` is A12's own shape (`name`, `fieldFullNames`, `errorMessage`); the draft takes it through `DocumentModelDraft.Builder.uniquenessCriterion(…)`, and `ModelDocument`/`EditSession` add, remove and read it.
+
+<!-- snippet: uniqueness-criterion -->
+```java
+// No two stored policies may share a number and a product. A12 admits the criterion only over required,
+// persisted, non-repeatable fields named by full path, with an error text for the model's locale (KF671).
+UniquenessCriterion policyKey = new UniquenessCriterion("PolicyKey",
+        List.of("/Policy/PolicyNo", "/Policy/Product"),
+        Map.of("en_US", "Policy $/Policy/PolicyNo$ already exists"));
+String json = EditSession.read(policyJson).addUniquenessCriterion(policyKey).validate().toJson();
+List<UniquenessCriterion> criteria = EditSession.read(json).uniquenessCriteria();   // [policyKey]
+```
+
+`ModelDocument` and `EditSession` refuse only a second criterion of one name on add and an unknown name on remove. Every other admission class (an optional, transient or repeatable field, a missing locale text, a text parameter naming another field; [KF671](KERNEL-FINDINGS.md#kf671) measures each) is written as given and reported by `validate()` in A12's own sentence, and a stored criterion A12 would refuse still reads. The fields are full-path strings, as in A12's `fieldFullNames`. *Locked by `modelkit.UniquenessCriterionAuthoringTest`.*
+
 ### Rules *along with* structure — one session
 
 `EditSession` threads one DM-JSON through both kits, and the **preferred idiom is the editor** (the L2c `GroupEditor`/`FieldEditor`/… — §5c): hold an editor on a group, edits chain, and a ref to a just-created field comes from relative navigation. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.

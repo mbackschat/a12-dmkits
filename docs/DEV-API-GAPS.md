@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG176 — the kits cannot author or read a document uniqueness criterion** (found 2026-11-03, kernel-31 W3b). `DocumentModelDraft`, `EditSession` and `ModelDocument` have no criteria surface, and the CLI reads criteria only from A12's expanded model (`KernelAdapter.uniquenessCriteria()`). So every test that needs one inserts the DM-JSON textually, through the `:adapter` test fixture `UniquenessCriteriaJson`. Settle with a typed criterion on the draft and the session (name, field refs, per-locale error text), held to A12's admission classes ([KF671](KERNEL-FINDINGS.md#kf671)).
+_None open._
 
 ## 3. Adjacent but out of scope
 
