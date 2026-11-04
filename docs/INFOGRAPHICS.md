@@ -719,8 +719,8 @@ Exact content:
 - Column header: "JAVA"
 - Column header: "KOTLIN"
 - Row label: "SIZE"
-- Java size: "53.7 kLOC"
-- Kotlin size: "42.0 kLOC"
+- Java size: "53.9 kLOC"
+- Kotlin size: "42.2 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
@@ -762,7 +762,7 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 53.7 kLOC and 42.0 kLOC in the largest type within the table.
+- Align equivalent cells exactly. Put 53.9 kLOC and 42.2 kLOC in the largest type within the table.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
 - Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
@@ -1387,3 +1387,25 @@ The runtime AVIF was synchronized to the Interpreter release source; the technol
 |---|---|---|
 | a12-interpreter-runtime | `8744a6a00a6708fa771181f06d1ae7999a8a3c4e0b661833ce34ae81b9318de4` | `fd6ff74937f1c5ed9102ccc91aa1f00554b9766253ed62e02015e743706af5ef` |
 | kotlin-graalvm-kernel-roles | `f091e21fd967eaf561c77f681b447d84ae8e4814b14bb78d87c319ca788e7317` | `ad24787c40c640993b7b295099e9bace8d238d29facc843d06a194d206bd5e77` |
+
+## Source-statistics refresh — 2026-11-04, second
+
+The technology poster now reports 53.9 kLOC Java and 42.2 kLOC Kotlin: 53,878 and 42,187 Production code lines from `scripts/update-code-statistics.sh --artifact all`, under the unchanged [locmetry policy](../.locmetryrc), re-measured after the document uniqueness criterion work changed production sources the same day. The four generated README statistics tables were refreshed together, and the footer date stays.
+
+Candidates came from built-in ImageGen, run through `codex exec` in an isolated scratch directory holding only a copy of the accepted master, with this prompt:
+
+```text
+Edit this existing technical infographic. Change only two text values in the KOTLIN vs JAVA table: replace Java "53.7 kLOC" with "53.9 kLOC"; replace Kotlin "42.0 kLOC" with "42.2 kLOC". These are re-measured counts under the unchanged repository .locmetryrc policy; the "measured 2026-11-04" footer stays. Preserve the complete 1024 × 1536 canvas, every other word, every technology role, platform, module name, both explicit compilation paths, icons, colors, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims. Preserve Java and Kotlin values in their correct columns.
+```
+
+Seven complete candidates each failed the default export's DSSIM gate, between 0.00614 and 0.00659: a full re-render adds canvas-wide texture to a master that already sat at 0.00594. Only the first was inspected label by label against the master; it was correct, the others were not inspected. No encoder setting, byte ceiling, quality threshold or dimension was changed. Instead, the accepted master is the previous master (archived at `assets/infographics/archive/kotlin-graalvm-kernel-roles-before-2026-11-04a.png`) with only the interiors of the two SIZE value cells, `348×47+264+897` and `375×47+622+897`, taken from the first candidate. An ImageMagick difference against the previous master trims to the single `733×47+264+897` box, so no pixel outside those cells changed. The composite was inspected at full size, at 130% across the cell seams, and at 50%; it is fully opaque at unchanged dimensions. Acceptance was visual; no OCR was used.
+
+| Accepted AVIF | Dimensions | Bytes | DSSIM | Encoder |
+|---|---|---:|---:|---|
+| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 102,481 | 0.00594348 | Default helper |
+
+The AVIF was synchronized to the dmtool plugin and Interpreter release sources, as declared in the asset registry. [Accepted infographic evidence](infographic-evidence.json) binds the reviewed prompts, AVIF hashes and re-measured production source fingerprint.
+
+| Refreshed image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
+|---|---|---|
+| kotlin-graalvm-kernel-roles | `eabd2eb8f0e84ae7d97203b1b7754af1ac00c453970c56379092d7a98960ca77` | `128b2365632d20bea54b3a700df54acadf918ef3d4ab3bb6e7db77b55e275427` |
