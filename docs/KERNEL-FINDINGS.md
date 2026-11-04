@@ -16622,6 +16622,19 @@ DM 28.6 added `content.documentUniquenessCriteria`: a named list of fields whose
 
 Only the `absoluteOrRelativeToNextRepAncestor` requiredness counts as required. A parameter may name its field with or without `.value`.
 
+**Reach** (measured 2026-11-04 on a model declaring `en_US` and `de_DE`, each row one member away from an admitted control):
+
+| row | A12's verdict |
+|---|---|
+| no text, or an empty one, for either declared locale | `… No error text was specified for locale '<that locale>'.` — every declared locale is asked, not only the first |
+| a blank text (`" "`) | admitted |
+| a field in a subgroup of a repeatable group | `… is repeatable.` — any repeatable ancestor counts |
+| an optional transient field | both sentences, `… is not set as required.` then `… is transient.` |
+| that field named twice | the same two sentences once: the fields are a set |
+| a field named `/Policy/PolicyNo.value` | `… does not exist in the Document Model.` — the suffix belongs only to text parameters |
+| a text with a line break, or with a control character | `… Invalid error text for locale 'en_US'. The error text contains a line break which is not valid. [INVALID_LINEBREAK]`, and `… invalid characters. … [INVALID_CHARACTERS]` |
+| an included model's criterion over a missing field | admitted: an included model's criteria are judged nowhere |
+
 **Move support** (`MoveSupportDM.changePathReferencesForMove`, which `ReferenceRewriter` runs before every field or group rename and move) rewrites a criterion's field list and every `$path$` parameter of its text: a renamed field, a field moved into a group, and a renamed root all come back consistent.
 
 **Structure changes** (measured, each verdict on the changed model):
@@ -16638,4 +16651,4 @@ So expansion keeps only the entry model's criteria, and a criterion copied into 
 
 **Who reads a criterion** (source-read at `eec9134`). `git grep -il documentUniquenessCriteri` over the kernel's main sources, excluding `build/` and `delombok/`, gives 29 files: the model and its API, the walker and visitors, the consistency rule `DocumentUniquenessCriteriaRule`, the serializer, move support, the model joiners, the combination coordinates and a downgrade migration step. None is in the runtime or the codegen, so no rule, computation or document validation evaluates a criterion; the kernel checks only its declaration.
 
-*Locked by:* `validate.laws.DocumentUniquenessCriterionLawsTest` (admission), `adapter.UniquenessCriterionRewriteTest` (move support) and `adapter.UniquenessCriterionStructureKernelTest` (structure changes).
+*Locked by:* `validate.laws.DocumentUniquenessCriterionLawsTest` (admission), `validate.laws.DocumentUniquenessCriterionReachLawsTest` (reach), `adapter.UniquenessCriterionRewriteTest` (move support) and `adapter.UniquenessCriterionStructureKernelTest` (structure changes).

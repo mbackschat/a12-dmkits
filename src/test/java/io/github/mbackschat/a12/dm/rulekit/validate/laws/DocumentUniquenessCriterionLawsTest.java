@@ -17,8 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * member: a named set of fields whose values no two stored documents may share, with an error text per locale.
  *
  * <p>Every refusal row differs from the admitted control in one member of one criterion, on one fixture. The
- * criteria are written into the stored model as text because the kits do not author them: the subject of every
- * row is the stored shape A12 reads. Own domain (insurance policies).
+ * criteria are written into the stored model as text, so the subject of every row is the stored shape A12 reads. Own domain (insurance policies).
  */
 class DocumentUniquenessCriterionLawsTest {
 

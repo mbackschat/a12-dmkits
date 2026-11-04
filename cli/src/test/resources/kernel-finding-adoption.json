@@ -23933,7 +23933,7 @@
       }
     },
     "kf671": {
-      "sha256": "03e1745630400e256cefe21111d4d318701e23f37c801a0a304c152adcd8e948",
+      "sha256": "3bd409b6feca1531d1f3c5705aec95f9895aa29bf59d451083fc9c572f49c628",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -23941,15 +23941,21 @@
           "structure changes"
         ],
         "dmkits": [
-          "admission"
+          "admission",
+          "reach",
+          "authoring"
         ],
         "interpreter": [],
         "checker": [],
         "dmtool-cli": [
           "referrers"
         ],
-        "json-schema-import": [],
-        "json-schema-export": [],
+        "json-schema-import": [
+          "carriage"
+        ],
+        "json-schema-export": [
+          "carriage"
+        ],
         "a12-kernel-lean": [
           "uniqueness criterion admission and rewrite"
         ]
@@ -23971,11 +23977,19 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "The loader delegates criterion admission to A12 and reports its sentences unchanged (KF671).",
+          "basis": "The loader delegates criterion admission to A12 and reports its sentences unchanged, and the typed criterion writes every shape as given, refusing only what remove-by-name needs (KF671).",
           "evidence": {
             "admission": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DocumentUniquenessCriterionLawsTest.java#whatACriterionAsksOfItsNameFieldsAndText",
               "witness": "Every refusal class against two admitted controls, one member changed per row."
+            },
+            "reach": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DocumentUniquenessCriterionReachLawsTest.java#whereEachCriterionClassReaches",
+              "witness": "Both declared locales, an empty and a blank text, a nested repeatable field, two demands at once, a repeated field, the line-break and character gates and an included model, against the admitted control."
+            },
+            "authoring": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/modelkit/UniquenessCriterionAuthoringTest.java#anInadmissibleCriterionIsWrittenAndA12RefusesItInItsOwnSentence",
+              "witness": "A criterion over an optional field is written and refused in A12's sentence, beside the admitted draft and edit-path controls."
             }
           }
         },
@@ -24000,14 +24014,24 @@
           }
         },
         "json-schema-import": {
-          "state": "NOT_APPLICABLE",
-          "basis": "Import writes no criterion: a JSON Schema constrains one document, and a criterion constrains values across documents.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Import restores the carried criteria after rule synthesis and leaves their admission to the consistency check (KF671).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/UniquenessCriterionCarriageTest.java#exportCarriesEachCriterionAndImportRestoresThemInBothWireForms",
+              "witness": "Two criteria through bare JSON Schema and wrapped OpenAPI 3.1, kernel-admitted after the round trip, against the no-criteria control."
+            }
+          }
         },
         "json-schema-export": {
-          "state": "OPEN",
-          "basis": "Export drops a model's criteria and reports none omitted (SCHEMAKIT-GAPS DG178).",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Export carries A12's stored criteria verbatim in x-a12-document-uniqueness-criteria, one CARRIED disposition each, since no keyword states a constraint across documents (KF671).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/UniquenessCriterionCarriageTest.java#exportCarriesEachCriterionAndImportRestoresThemInBothWireForms",
+              "witness": "Two criteria through bare JSON Schema and wrapped OpenAPI 3.1, kernel-admitted after the round trip, against the no-criteria control."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "APPLIED",
