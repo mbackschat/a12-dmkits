@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -32,6 +33,39 @@ class IncludeAliasRetirementTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING))
                         .build().toJson());
         return model;
+    }
+
+    /**
+     * The read-path counterpart of the refusals below: A12 31.1.1 ignores an {@code alias} left on the header
+     * include entry (KF651, measured in {@code adapter.laws.IncludeConfigShapeLawsTest}), so a model still carrying
+     * one checks exactly as its canonical form does. This row is also the only {@code :cli} path that binds that
+     * header field, which keeps it in the traced native reachability metadata.
+     */
+    @Test
+    void aStaleHeaderAliasChecksAsTheCanonicalModelDoes(@TempDir Path dir) throws Exception {
+        String canonical = resource("/models/multifile/app/storefront.dm.json");
+        String aliased = canonical.replace("\"purpose\": \"include\",", "\"alias\": \"catalog\", \"purpose\": \"include\",");
+        assertNotEquals(canonical, aliased, "the fixture's header include entry moved; the alias was never planted");
+
+        var expected = checkIn(dir.resolve("canonical"), canonical);
+        var actual = checkIn(dir.resolve("aliased"), aliased);
+        assertEquals(0, actual.code(), actual.out() + actual.err());
+        assertEquals(expected.out(), actual.out());
+    }
+
+    private static CliTestSupport.Result checkIn(Path workspace, String storefront) throws Exception {
+        Files.createDirectories(workspace);
+        Path model = workspace.resolve("storefront.dm.json");
+        Files.writeString(model, storefront);
+        Files.writeString(workspace.resolve("catalog.dm.json"), resource("/models/multifile/lib/catalog.dm.json"));
+        return CliTestSupport.run("-m", model.toString(), "-w", workspace.toString(), "model", "check");
+    }
+
+    private static String resource(String classpathPath) throws Exception {
+        try (var in = IncludeAliasRetirementTest.class.getResourceAsStream(classpathPath)) {
+            assertTrue(in != null, () -> "missing " + classpathPath);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
     @Test
