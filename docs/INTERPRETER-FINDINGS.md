@@ -5216,7 +5216,9 @@ Kernel 31.1.1 replaced the hybrid Julian/Gregorian `GregorianCalendar` with `Zon
 
 [IF339](#if339) gated the count on the instances with any relevant content. Kernel 31.1.1 asks the fully relevant instances ([KF667](KERNEL-FINDINGS.md#kf667)). `PartialRelevance.fullyRelevantIdentifiers` builds that set bottom-up and memoizes it per group: each child's identifiers truncated to the group's depth, a repeatable sub-group contributing only through its own-level wildcard, intersected, encompassed tuples dropped, and concrete own-level rows that cover every declared slot folded into the wildcard. The gate reads that set where it read the group's own identifiers.
 
-*Locked:* `adapter.laws.PartialGroupCountRelevanceDiffTest` and `PartialDeclaredListExtentDiffTest`.
+**Corrected 2026-11-04:** the children are the DECLARED sub-groups, not the groups some field path passes through. An empty fixed sub-group therefore contributes no identifier, and its parent is never wholly relevant, as A12 measures ([KF667](KERNEL-FINDINGS.md#kf667)); deriving the children from field paths had made that parent covered and decided its count.
+
+*Locked:* `adapter.laws.PartialGroupCountRelevanceDiffTest`, `PartialDeclaredListExtentDiffTest` and `PartialWhollyRelevantBoundaryDiffTest`.
 
 ### IF460: `testIDNummer` is an ordinary custom rejection (kernel 31.1.1 differential, 2026-11-03) <a id="if460"></a>
 

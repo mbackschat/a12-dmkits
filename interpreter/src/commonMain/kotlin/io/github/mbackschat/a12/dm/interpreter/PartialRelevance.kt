@@ -135,12 +135,22 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
 
         private val fullyByGroup = HashMap<String, Set<List<Int>>>()
 
+        /**
+         * [groupPath]'s direct sub-groups as DECLARED, a field-less one included: A12 asks every contained element
+         * to be covered, so an empty sub-group, which nothing can cover, keeps its parent from ever being wholly
+         * relevant (KERNEL-FINDINGS KF667, `adapter.laws.PartialWhollyRelevantBoundaryDiffTest`). Field prefixes
+         * stand in where a hand-built model leaves [ModelDef.groupPaths] empty.
+         */
         private fun groupsBelow(groupPath: String): Set<String> {
             val depth = pathParts(groupPath).size
-            return model.fields.mapNotNullTo(HashSet()) { field ->
+            val viaFields = model.fields.mapNotNullTo(HashSet()) { field ->
                 val parts = pathParts(field.path)
                 if (parts.size > depth + 1 && parts.take(depth) == pathParts(groupPath))
                     "/" + parts.take(depth + 1).joinToString("/") else null
+            }
+            val prefix = "$groupPath/"
+            return (model.groupPaths + model.repeatable).filterTo(viaFields) {
+                it.startsWith(prefix) && '/' !in it.substring(prefix.length)
             }
         }
 

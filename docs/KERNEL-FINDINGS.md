@@ -16501,7 +16501,17 @@ The discriminating rows, on the `Item`/`Batches`(capacity)/`Seal` fixture of [KF
 
 The second row separates the fold from "only a written wildcard counts", the third separates whole coverage from "any relevant content".
 
-*Locked by:* `adapter.laws.PartialGroupCountRelevanceDiffTest` and `PartialDeclaredListExtentDiffTest`.
+**Extended 2026-11-04 (differential, kernel 31.1.1; asked by a12-kernel-lean's SPEC-2026-11-04-01 from a source reading):** the two boundaries of that extent, each against a control one builder call away, with every field wildcarded:
+
+| change | `NumberOfFilledGroups(Batches*)` | `NumberOfFilledGroups(Label, Stamp)` | `GroupFilled(Label)` |
+|---|---|---|---|
+| none: the control | decided | decided | decided |
+| an empty fixed `Note` group in each batch | not decided | decided | decided |
+| an empty fixed `Note` group in `Label` | decided | not decided | decided |
+
+So a declared sub-group with no field below it is a member nothing can cover, and its parent is never wholly relevant, on the starred level and on a fixed group alike; group presence does not ask that extent. A capacity-one repeatable level cannot be counted at all: a star over a group stored at `repeatability` 1 draws `MVK_INVALID_WILDCARD` ("… is not repeatable …"), so the only level with one slot is a fixed group, whose concrete rows never fold (the first table's `Seal` row).
+
+*Locked by:* `adapter.laws.PartialGroupCountRelevanceDiffTest`, `PartialDeclaredListExtentDiffTest` and `PartialWhollyRelevantBoundaryDiffTest`.
 
 ## §13 supplement — kernel 31.1.1 renders a message value read through a key that selects no row as the empty text, and the rule reports on every row it fires on (Runtime, differential + source-read, kernel 31.1.1, 2026-11-03) <a id="kf668"></a>
 

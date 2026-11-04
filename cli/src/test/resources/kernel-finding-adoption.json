@@ -23575,17 +23575,19 @@
       }
     },
     "kf667": {
-      "sha256": "1a4f80abae24b12692d5ba9127055ce3d2b300e016249c6a3d869c2cd12fc4a9",
+      "sha256": "33155ec0f97db4bde42b8175c807574e2c411bd84830fa4081f046a0b36757cc",
       "task": "K31",
       "scope": {
         "adapter": [
           "partial group count relevance",
-          "partial declared list extent"
+          "partial declared list extent",
+          "wholly relevant boundaries"
         ],
         "dmkits": [],
         "interpreter": [
           "partial group count relevance",
-          "partial declared list extent"
+          "partial declared list extent",
+          "wholly relevant boundaries"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -23605,6 +23607,10 @@
             "partial declared list extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredListExtentDiffTest.kt#completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates",
               "witness": "PartialDeclaredListExtentDiffTest locks this finding's rows; completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates is one of them."
+            },
+            "wholly relevant boundaries": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialWhollyRelevantBoundaryDiffTest.kt#anEmptySubGroupInTheCountedLevel",
+              "witness": "An empty fixed sub-group in the counted level and in a counted fixed group, with GroupFilled as the presence control, against the control model without it; the starred repeatability-1 refusal beside them."
             }
           }
         },
@@ -23624,6 +23630,10 @@
             "partial declared list extent": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialDeclaredListExtentDiffTest.kt#completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates",
               "witness": "PartialDeclaredListExtentDiffTest locks this finding's rows; completeDeclaredSlotsEstablishListExtentWithoutChangingAggregateGates is one of them."
+            },
+            "wholly relevant boundaries": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PartialWhollyRelevantBoundaryDiffTest.kt#anEmptySubGroupInTheCountedLevel",
+              "witness": "An empty fixed sub-group in the counted level and in a counted fixed group, with GroupFilled as the presence control, against the control model without it; the starred repeatability-1 refusal beside them."
             }
           }
         },
