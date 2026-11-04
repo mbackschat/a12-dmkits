@@ -23933,7 +23933,7 @@
       }
     },
     "kf671": {
-      "sha256": "3bd409b6feca1531d1f3c5705aec95f9895aa29bf59d451083fc9c572f49c628",
+      "sha256": "e1c6103797e98efb968807b71a8c251d277cc1b58562e5a0721f61ed31a9d8a0",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -23946,7 +23946,9 @@
           "authoring"
         ],
         "interpreter": [],
-        "checker": [],
+        "checker": [
+          "criterion family"
+        ],
         "dmtool-cli": [
           "referrers"
         ],
@@ -23999,9 +24001,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The checker has no criterion family, so A12's criterion refusals pass it silently (CONSISTENCY-GAPS DG177).",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "The UNIQUENESS_CRITERIA family states every criterion sentence A12's rule states over the entry model, in A12's order, and judges an included model's criteria nowhere, as expansion drops them (KF671).",
+          "evidence": {
+            "criterion family": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUniquenessCriterionAgreementTest.kt#theCheckerStatesEveryCriterionSentenceAsA12Does",
+              "witness": "Every class alone and combined, shared names against HashMap order and an included model's criteria, compared as class and criterion name in A12's order against the sound-criterion control."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "APPLIED",

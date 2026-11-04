@@ -340,6 +340,12 @@ internal class TrackedFactBase private constructor(
             return model.supportedCharacters
         }
 
+    val uniquenessCriteria: JsonArray?
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.UNIQUENESS_CRITERIA))
+            return model.uniquenessCriteria
+        }
+
     val frameValues: FrameValues
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.FRAME_VALUES))

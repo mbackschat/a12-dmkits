@@ -3103,6 +3103,15 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTED_FIELD_NOT_FOUND
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTED_FIELD_NOT_SPECIFIED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CONTRADICTORY_PRESENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_ERROR_TEXT_MISSING
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_ERROR_TEXT_PARAMETER
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_FIELDS_EMPTY
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_FIELD_NOT_FOUND
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_FIELD_NOT_REQUIRED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_FIELD_REPEATABLE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_FIELD_TRANSIENT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_NAME_EMPTY
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CRITERION_NAME_NOT_UNIQUE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_FORMAT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_FORMAT_INVALID
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode DATE_RANGE_SEPARATOR_INVALID

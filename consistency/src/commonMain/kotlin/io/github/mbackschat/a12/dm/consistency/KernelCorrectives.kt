@@ -141,6 +141,42 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         fix = "name the field the computation writes.",
         meaning = "A12's sentence \"The computed field was not specified.\": a computation's `computedFieldRelPath` is empty. A12's converter states it and checks the model without the computation, beside the basic sentence `RK_COMPUTED_FIELD_EMPTY` (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
     ),
+    "RK_CRITERION_ERROR_TEXT_MISSING" to Corrective(
+        fix = "add an error text for that locale.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': No error text was specified for locale 'l'.\": a document uniqueness criterion has no text, or an empty one, for a locale the model declares; a blank text is a text (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_ERROR_TEXT_PARAMETER" to Corrective(
+        fix = "name only the criterion's own fields in its text, by full path.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Invalid error text parameter for locale 'l'. Only fields referenced in the Criterion are allowed.\": a criterion text names, between dollars, something other than one of the criterion's own fields by its full path, with or without `.value`; each such parameter draws the sentence (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_FIELDS_EMPTY" to Corrective(
+        fix = "name at least one field of the model by its full path, such as `/Policy/PolicyNo`.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Must specify at least one field.\": a document uniqueness criterion names no field (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_FIELD_NOT_FOUND" to Corrective(
+        fix = "name an existing field by its full path, without `.value`.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' does not exist in the Document Model.\": a criterion field names no field of the model: a group, a relative path and a `.value` suffix name none, and nothing else is asked of that entry (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_FIELD_NOT_REQUIRED" to Corrective(
+        fix = "make the field always required, or name another field.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is not set as required.\": a criterion field is not always required; required only when its parent is present does not count (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_FIELD_REPEATABLE" to Corrective(
+        fix = "name a field outside every repeatable group.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is repeatable.\": a criterion field lies below a repeatable group, at any depth (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_FIELD_TRANSIENT" to Corrective(
+        fix = "name a persisted field, or persist this one.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is transient.\": a criterion field is not persisted (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_NAME_EMPTY" to Corrective(
+        fix = "give the criterion a name.",
+        meaning = "A12's sentence \"A Document Uniqueness Criterion must have a name.\": a document uniqueness criterion has an empty name; its fields and texts are still judged (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
+    "RK_CRITERION_NAME_NOT_UNIQUE" to Corrective(
+        fix = "give each criterion its own name.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Name is not unique in the Document Model.\": two document uniqueness criteria of the model share a name, and each of them draws the sentence, before anything else about any criterion is stated (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+    ),
     "RK_DATE_FORMAT_INVALID" to Corrective(
         fix = "declare a format A12 admits, for example `yyyy-MM-dd` for a date or `HH:mm:ss` for a time; TEMPORAL-FORMAT-VOCABULARY lists them.",
         meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field or through the type definition it uses (KERNEL-FINDINGS KF648). The checker names only the formats measured refused in TEMPORAL-FORMAT-VOCABULARY, where the portable checker names the sentence by this code.",

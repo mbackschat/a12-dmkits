@@ -151,6 +151,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field TEMPORAL_CONFIG Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field TEMPORAL_EXTRACTOR_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field UNDECLARED_LOCALE_MESSAGE_PARAMETERS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field UNIQUENESS_CRITERIA Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALIDITY_CONDITION_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_AS_DATE_OPERAND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field VALUE_IN_FIELDS_CONSTANT_KIND Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
@@ -668,26 +669,27 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparationKt {
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
-	public fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)V
-	public synthetic fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lkotlinx/serialization/json/JsonArray;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)V
+	public synthetic fun <init> (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lkotlinx/serialization/json/JsonArray;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
-	public final fun component10 ()Ljava/util/List;
+	public final fun component10 ()Ljava/lang/String;
 	public final fun component11 ()Ljava/util/List;
-	public final fun component12 ()Ljava/util/Set;
-	public final fun component13 ()Ljava/util/Map;
-	public final fun component14 ()Ljava/util/List;
+	public final fun component12 ()Ljava/util/List;
+	public final fun component13 ()Ljava/util/Set;
+	public final fun component14 ()Ljava/util/Map;
 	public final fun component15 ()Ljava/util/List;
-	public final fun component16 ()Lio/github/mbackschat/a12/dm/consistency/FrameValues;
+	public final fun component16 ()Ljava/util/List;
+	public final fun component17 ()Lio/github/mbackschat/a12/dm/consistency/FrameValues;
 	public final fun component2 ()Z
 	public final fun component3 ()Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;
 	public final fun component4 ()Ljava/lang/String;
 	public final fun component5 ()Ljava/util/List;
 	public final fun component6 ()Ljava/util/List;
 	public final fun component7 ()Ljava/util/List;
-	public final fun component8 ()Z
-	public final fun component9 ()Ljava/lang/String;
-	public final fun copy (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
+	public final fun component8 ()Lkotlinx/serialization/json/JsonArray;
+	public final fun component9 ()Z
+	public final fun copy (Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lkotlinx/serialization/json/JsonArray;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;Ljava/util/List;ZLio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lkotlinx/serialization/json/JsonArray;ZLjava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/consistency/FrameValues;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/consistency/PreparedModel;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getConditionLanguage ()Lio/github/mbackschat/a12/dm/consistency/syntax/ConditionLanguage;
 	public final fun getDeclaredLocales ()Ljava/util/List;
@@ -703,6 +705,7 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun getUnbindableBaseYear ()Ljava/lang/String;
 	public final fun getUnbindableBooleans ()Ljava/util/List;
 	public final fun getUnexpandedMounts ()Ljava/util/List;
+	public final fun getUniquenessCriteria ()Lkotlinx/serialization/json/JsonArray;
 	public final fun getUnreadableLocaleCodes ()Ljava/util/List;
 	public final fun getUnsupportedConditionLanguage ()Ljava/lang/String;
 	public fun hashCode ()I

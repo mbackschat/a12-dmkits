@@ -89,6 +89,9 @@ internal enum class ModelFact {
      * would key every element's cell on its parent's whole body, which a sibling's edit moves.
      */
     NON_POSITIVE_COUNT_GROUPS,
+
+    /** The entry model's document uniqueness criteria, a content member outside the element walk ([KF671]). */
+    UNIQUENESS_CRITERIA,
 }
 
 /**

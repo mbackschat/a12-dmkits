@@ -477,10 +477,29 @@ class CheckFamilyWiringTest {
         CheckFamily.ELEMENT_ID_UNIQUENESS to (RK_ELEMENT_ID_NOT_UNIQUE to "/Shop/Sku"),
     )
 
+    /** A uniqueness criterion over an optional field: A12 names the criterion, not an element, so the row has no path (KF671). */
+    private val criterionSource = ModelSource(
+        """
+        {"header":{"modelVersion":"29.4.0","id":"wiring-criterion","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},
+          "documentUniquenessCriteria":[{"name":"SkuKey","fields":[{"fullName":"/Shop/Sku"}],
+            "errorMessage":[{"locale":"en_US","text":"Taken"}]}],
+          "modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gc0","name":"Shop","Group":{"elements":[
+            {"type":"Field","id":"fc0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    private val criterionEvidence = mapOf(
+        CheckFamily.UNIQUENESS_CRITERIA to (RK_CRITERION_FIELD_NOT_REQUIRED to null),
+    )
+
     /** The models beside [source], each carrying the families only it can reach, with what each proves. */
     private val sideModels = listOf(germanSource to germanEvidence, cycleSource to cycleEvidence,
         orderingSource to orderingEvidence, undeclaredLocaleSource to undeclaredLocaleEvidence,
-        sharedIdSource to sharedIdEvidence)
+        sharedIdSource to sharedIdEvidence, criterionSource to criterionEvidence)
 
     @Test
     fun theFieldReadProducerOwnsTheFilterRead() {

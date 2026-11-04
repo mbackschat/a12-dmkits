@@ -872,6 +872,14 @@ enum class CheckFamily {
      * `CheckDateTimeKonstruktImpl` is a checker of its own, asking the Date operand before the Time one ([KF627]).
      */
     DATE_TIME_CONSTRUCTION_OPERANDS,
+
+    /**
+     * What A12's `DocumentUniquenessCriteriaRule` asks of each criterion of the entry model: a unique, non-empty name,
+     * at least one field, every field an existing, always-required, non-repeating, persisted one named by full path,
+     * a text for every declared locale, and texts that pass the error-text grammar and name only the criterion's own
+     * fields ([KF671]). An included model's own criteria are judged nowhere, as expansion drops them.
+     */
+    UNIQUENESS_CRITERIA,
 }
 
 /**

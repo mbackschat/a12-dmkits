@@ -375,6 +375,8 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         { it.undeclaredLocaleMessageFindings() }),
     CheckProducer.ModelWide(setOf(CheckFamily.ELEMENT_ID_UNIQUENESS), ModelStage.IDENTITY, { it.elementIdFindings() }),
     CheckProducer.ModelWide(setOf(CheckFamily.BASIC_SENTENCES), ModelStage.BASIC, { it.basicSentenceFindings() }),
+    CheckProducer.ModelWide(setOf(CheckFamily.UNIQUENESS_CRITERIA), ModelStage.UNIQUENESS_CRITERIA,
+        { it.uniquenessCriterionFindings() }, { it.uniquenessCriterionGaps() }),
     CheckProducer.Declaration(setOf(CheckFamily.COMPUTATION_SELF_READ)) { base, at -> base.computationSelfReadContributions(at) },
     condition(CheckFamily.REPETITION_KEY_LIST) { base, at -> base.repetitionKeyListContributions(at) },
     condition(CheckFamily.REPETITION_KEY_PLACEMENT) { base, at -> base.repetitionKeyPlacementContributions(at) },

@@ -228,6 +228,8 @@ data class PreparedModel(
     val declaredLocales: List<String> = emptyList(),
     val unreadableLocaleCodes: List<String> = emptyList(),
     val supportedCharacters: List<String?> = emptyList(),
+    /** The ENTRY model's `content.documentUniquenessCriteria` as written, or null when it declares none as a list. */
+    val uniquenessCriteria: JsonArray? = null,
     val hasBaseYear: Boolean = false,
     val unbindableBaseYear: String? = null,
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
@@ -471,6 +473,7 @@ fun prepare(
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = characters,
+        uniquenessCriteria = content?.get("documentUniquenessCriteria") as? JsonArray,
         hasBaseYear = baseYear?.let { it !is JsonPrimitive || it.bindJavaInt() != JavaIntBinding.NoValue } == true,
         unbindableBaseYear = content.unbindableBaseYear()?.toString(),
         unbindableBooleans = content.unbindableModelBooleans() + definitions.unbindableBooleans,

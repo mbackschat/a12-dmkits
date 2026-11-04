@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **DG177 — the checker passes a document uniqueness criterion A12 refuses (opened 2026-11-03).** Measured 2026-11-03 on one policy model against `checkConsistency`: a criterion over an optional field, over a missing field, and over no field draws A12's sentence (`… is not set as required.`, `… does not exist in the Document Model.`, `Must specify at least one field.`), and `:consistency` reports nothing on any of the three; a criterion over a required field is clean on both. No `:consistency` source reads the member (`grep -rli uniquenesscriteri consistency/src`, no match). The direction is under-reporting. Settle with a criterion family over [KF671](KERNEL-FINDINGS.md#kf671)'s admission classes, locked by an agreement test.
+_None open._
 
 ## 2. Out of scope
 

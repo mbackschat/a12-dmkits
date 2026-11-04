@@ -53,7 +53,7 @@ private val KEYED_SUFFIX = Regex("\\[(\\w+)]$")
  * These sentences have names. The charset sentence is the checker's `RK_UNSUPPORTED_CHARACTER`
  * ([KF489](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf489)), the five a metamodel member outside its range draws are the
  * `RK_MEMBER_*` classes ([KF556](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf556), [KF559](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf559)), and a `sortFields` entry beyond the list's capacity is
- * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a refused temporal format's is `RK_DATE_FORMAT_INVALID` ([KF648](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf648)), and A12's ten basic sentences are the checker's `RK_ID_EMPTY` to `RK_INDEX_FIELD_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)), and a model version's two are `RK_MODEL_VERSION_PATTERN` and `RK_MODEL_VERSION_INCOMPATIBLE` ([KF650](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf650)), and a shared element id's is `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf661)). A member class names the sentence, not the member,
+ * `RK_SORT_LIST_ABOVE_CAPACITY` ([KF345](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf345)), and the two a Number bound's printed form fails are the `RK_BOUND_*` classes ([KF569](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf569)), and an executable's name and error-code alphabets are `RK_RULE_NAME_ALPHABET` and `RK_ERROR_CODE_ALPHABET` ([KF578](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf578)), and a rule's absent or empty code is `RK_ERROR_CODE_EMPTY` ([KF579](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf579)), and the four an element path's names draw are `RK_GROUP_PATH_INVALID`, `RK_ROOT_GROUP_NAME_ALPHABET`, `RK_FIELD_NAME_ALPHABET` and `RK_MEMBER_ABOVE_60_CHARACTERS` ([KF580](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf580)), and a date range's two are `RK_DATE_RANGE_FORMAT_INVALID` and `RK_DATE_RANGE_SEPARATOR_INVALID` ([KF581](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf581)), and a refused temporal format's is `RK_DATE_FORMAT_INVALID` ([KF648](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf648)), and A12's ten basic sentences are the checker's `RK_ID_EMPTY` to `RK_INDEX_FIELD_EMPTY` ([KF626](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf626)), and a model version's two are `RK_MODEL_VERSION_PATTERN` and `RK_MODEL_VERSION_INCOMPATIBLE` ([KF650](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf650)), and a shared element id's is `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf661)), and a document uniqueness criterion's codeless sentences are the `RK_CRITERION_*` classes ([KF671](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf671)). A member class names the sentence, not the member,
  * because A12 answers several members with the same words and names only the field, while each maximum is a sentence of
  * its own. That keys the two digit maxima faithfully, because among the numeric members A12's collector writes only the
  * integer places can draw the 15 sentence and only the fractional pair the 14 one: group repetitions, the other
@@ -73,6 +73,7 @@ internal fun codelessClass(message: String): String = when {
     ELEMENT_ID_NOT_UNIQUE.containsMatchIn(message) -> "RK_ELEMENT_ID_NOT_UNIQUE"
     else -> (MEMBER_RANGE_SENTENCES + BOUND_SENTENCES + DECLARATION_ALPHABET_SENTENCES + PATH_NAME_SENTENCES +
         TEMPORAL_FORMAT_SENTENCES + BASIC_SENTENCES + CONVERTER_SENTENCES).entries.firstOrNull { message.trim().endsWith(it.key) }?.value
+        ?: CRITERION_SENTENCES.entries.firstOrNull { it.key.containsMatchIn(message.trim()) }?.value
         ?: UNKEYED_A12_CLASS
 }
 
@@ -120,6 +121,22 @@ private val BASIC_SENTENCES = mapOf(
     "The id of the referenced type definition is not set properly." to "RK_TYPE_REFERENCE_EMPTY",
     "The name of the index field is not set properly." to "RK_INDEX_FIELD_EMPTY",
 )
+
+/** A12's criterion sentences name the criterion, and most the field, so they are matched as patterns. */
+private val CRITERION_SENTENCES = "Document Uniqueness Criterion '.*': ".let { criterion ->
+    mapOf(
+        Regex("""^A Document Uniqueness Criterion must have a name\.$""") to "RK_CRITERION_NAME_EMPTY",
+        Regex("""^${criterion}Name is not unique in the Document Model\.$""") to "RK_CRITERION_NAME_NOT_UNIQUE",
+        Regex("""^${criterion}Must specify at least one field\.$""") to "RK_CRITERION_FIELDS_EMPTY",
+        Regex("""^${criterion}The field '.*' does not exist in the Document Model\.$""") to "RK_CRITERION_FIELD_NOT_FOUND",
+        Regex("""^${criterion}The field '.*' is not set as required\.$""") to "RK_CRITERION_FIELD_NOT_REQUIRED",
+        Regex("""^${criterion}The field '.*' is repeatable\.$""") to "RK_CRITERION_FIELD_REPEATABLE",
+        Regex("""^${criterion}The field '.*' is transient\.$""") to "RK_CRITERION_FIELD_TRANSIENT",
+        Regex("""^${criterion}No error text was specified for locale '[^']*'\.$""") to "RK_CRITERION_ERROR_TEXT_MISSING",
+        Regex("""^${criterion}Invalid error text parameter for locale '[^']*'\. Only fields referenced in the Criterion are allowed\.$""")
+            to "RK_CRITERION_ERROR_TEXT_PARAMETER",
+    )
+}
 
 /**
  * The sentences A12's validation-model converter reports where 30.8.1 threw ([KF652](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf652)):

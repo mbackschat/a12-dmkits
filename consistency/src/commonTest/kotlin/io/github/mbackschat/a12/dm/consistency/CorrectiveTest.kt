@@ -294,6 +294,39 @@ class CorrectiveTest {
             "content":{"modelInfo":{"name":"model"},"modelConfig":{"timeZone":"x"},"modelRoot":{"rootGroups":[]}}}""",
     )
 
+    /**
+     * The criterion codes, one criterion per class: `Twice` is named twice, and each other criterion breaks one
+     * demand on a field that meets every other (KERNEL-FINDINGS KF671).
+     */
+    private val criterionReachability = ModelSource(
+        """
+        {"header":{"modelVersion":"29.4.0","id":"criteria","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"documentUniquenessCriteria":[
+           {"name":"Twice","fields":[{"fullName":"/Shop/Sku"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"Twice","fields":[{"fullName":"/Shop/Sku"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"","fields":[{"fullName":"/Shop/Sku"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"NoField","fields":[],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"Missing","fields":[{"fullName":"/Shop/Nowhere"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"Optional","fields":[{"fullName":"/Shop/Note"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"Repeating","fields":[{"fullName":"/Shop/Lines/Item"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"Transient","fields":[{"fullName":"/Shop/Draft"}],"errorMessage":[{"locale":"en_US","text":"x"}]},
+           {"name":"NoText","fields":[{"fullName":"/Shop/Sku"}],"errorMessage":[]},
+           {"name":"Parameter","fields":[{"fullName":"/Shop/Sku"}],"errorMessage":[{"locale":"en_US","text":"${'$'}/Shop/Draft${'$'}"}]}],
+          "modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gq0","name":"Shop","Group":{"elements":[
+            {"type":"Field","id":"fq0","name":"Sku","Field":{"fieldType":{"type":"StringType"},
+              "requirednessConfig":{"mode":"absoluteOrRelativeToNextRepAncestor"}}},
+            {"type":"Field","id":"fq1","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"fq2","name":"Draft","Field":{"fieldType":{"type":"StringType"},"transient":true,
+              "requirednessConfig":{"mode":"absoluteOrRelativeToNextRepAncestor"}}},
+            {"type":"Group","id":"gq1","name":"Lines","Group":{"repeatability":3,"elements":[
+              {"type":"Field","id":"fq3","name":"Item","Field":{"fieldType":{"type":"StringType"},
+                "requirednessConfig":{"mode":"absoluteOrRelativeToNextRepAncestor"}}}]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
     @Test
     fun aFindingWhoseCodeItsOwnerExplainsCarriesTheGuidance() {
         val finding = checkRead(reachability).findings.first { it.code == "MVK_INVALID_ENTITY" }
@@ -325,7 +358,8 @@ class CorrectiveTest {
     /** The complete projected vocabulary must be reachable; deleting the phase table removed its inert member. */
     @Test
     fun everyProjectedEntryIsReachable() {
-        val reported = (checkRead(reachability).findings + checkRead(frameReachability).findings).map { it.code }.toSet()
+        val reported = listOf(reachability, frameReachability, criterionReachability)
+            .flatMap { checkRead(it).findings }.map { it.code }.toSet()
         assertEquals(
             emptySet(),
             KERNEL_CORRECTIVES.keys - reported,

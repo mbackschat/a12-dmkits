@@ -27,13 +27,14 @@ class CheckCellKeyTest {
         modelConfig: String = "",
         modelInfo: String = """"modelInfo":{"name":"keys"},""",
         typeDefinitions: String = "",
+        criteria: String = "",
         codeType: String = "StringType",
         second: String = "",
     ): PreparedModel {
         val source = ModelSource(
             """
             {"header":{"modelVersion":"29.4.0","id":"keys","locales":$locales},
-             "content":{$modelConfig$modelInfo$typeDefinitions
+             "content":{$modelConfig$modelInfo$criteria$typeDefinitions
               "modelRoot":{"rootGroups":[
                {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                  {"type":"Field","id":"f0","name":"Code","Field":{
@@ -78,6 +79,10 @@ class CheckCellKeyTest {
         ModelFact.REPEATABLE_GROUP_SET to prepared(second = repeatableGroup()),
         // A group counted 0 repeats at most once, so the repeatable set stays put while this fact moves.
         ModelFact.NON_POSITIVE_COUNT_GROUPS to prepared(second = repeatableGroup(count = 0)),
+        ModelFact.UNIQUENESS_CRITERIA to prepared(
+            criteria = """"documentUniquenessCriteria":[{"name":"CodeKey","fields":[{"fullName":"/Order/Code"}],
+                "errorMessage":[{"locale":"en_US","text":"Taken"}]}],""",
+        ),
     )
 
     /** A group appended after `Code`, repeating [count] times and carrying one field so it is worth declaring. */

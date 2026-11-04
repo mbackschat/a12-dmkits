@@ -66,7 +66,12 @@ class CheckerMessageFamilyGuardTest {
             "judges a field type's own message, which A12's element walk checks in a pass of its own: a field has "
                     + "no condition, and a refused condition or a broken error target on a rule of the same model "
                     + "leaves the field's class standing (validate.laws.FieldTypeMessageTextLawsTest"
-                    + ".aRulesRefusalElsewhereWithholdsNothing)");
+                    + ".aRulesRefusalElsewhereWithholdsNothing)",
+            "UNIQUENESS_CRITERIA",
+            "judges a document uniqueness criterion's own text, which A12's criterion rule asks before code generation: "
+                    + "a criterion has no condition, and a refused rule condition in the same model leaves its "
+                    + "error-text class standing (adapter.laws.CheckerUniquenessCriterionAgreementTest, row "
+                    + "'a refused rule beside an unterminated parameter')");
 
     private static final Pattern FAMILY = Pattern.compile("CheckFamily\\.([A-Z_]+)");
 

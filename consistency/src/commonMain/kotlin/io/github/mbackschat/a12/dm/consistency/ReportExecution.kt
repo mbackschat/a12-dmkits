@@ -27,6 +27,12 @@ internal enum class ModelStage(val readsTheModelAsWritten: Boolean = false) {
      */
     IDENTITY(readsTheModelAsWritten = true),
 
+    /**
+     * A12's document uniqueness criterion sentences: its rule list asks them after the id sentences and before code
+     * generation, over the model as read, and they withhold nothing (source-read at `eec9134`; [KERNEL-FINDINGS KF671]).
+     */
+    UNIQUENESS_CRITERIA(readsTheModelAsWritten = true),
+
     DECLARATION, METAMODEL, GENERATION,
 
     /**
@@ -155,5 +161,6 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     // A12's converter states its sentences and checks on, so they withhold nothing later (KERNEL-FINDINGS KF652).
     val judged = if (selected.any { it.justifiesRejection && it.code !in CONVERTER_SENTENCE_CODES }) selected
     else selected + staged(ModelStage.GENERATION)
-    return staged(ModelStage.VERSION) + staged(ModelStage.IDENTITY) + judged + staged(ModelStage.BASIC)
+    return staged(ModelStage.VERSION) + staged(ModelStage.IDENTITY) + staged(ModelStage.UNIQUENESS_CRITERIA) + judged +
+        staged(ModelStage.BASIC)
 }
