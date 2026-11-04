@@ -58,6 +58,13 @@ jobs:
             21.0.12
             25.0.4
 
+      # The 2026.06-ext1 kernel bootstrap refuses to build below Node 24, and the hosted image's PATH carries
+      # Node 22 (run 41818557495, 2026-11-04). Same reviewed patch as main CI; NodeRuntimePinGuardTest.
+      - name: Set up Node for the kernel bootstrap
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v6
 

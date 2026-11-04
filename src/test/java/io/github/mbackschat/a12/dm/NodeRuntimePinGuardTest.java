@@ -33,6 +33,7 @@ class NodeRuntimePinGuardTest {
     private static final String EXPECTED_NODE_VERSION = "24.20.0";
     private static final Set<String> EXPECTED_CONSUMERS = Set.of(
             ".github/workflows/ci.yml#build",
+            ".github/workflows/nightly-performance.yml#performance",
             ".github/interpreter-mirror-workflows/build-release.yml#build-release",
             ".github/mirror-workflows/build-native.yml#build-native");
 
@@ -52,8 +53,9 @@ class NodeRuntimePinGuardTest {
         Set<String> versions = setups.stream().map(Setup::version).collect(Collectors.toSet());
         assertAll(
                 () -> assertEquals(EXPECTED_CONSUMERS, consumers,
-                        "Node is load-bearing in the main TypeScript/demo lane, interpreter mirror build, and Linux "
-                                + "native demo gate; each owning job needs an explicit setup-node step"),
+                        "Node is load-bearing in the main TypeScript/demo lane, the A12 kernel bootstrap the nightly "
+                                + "performance job runs, the interpreter mirror build, and the Linux native demo gate; each "
+                                + "owning job needs an explicit setup-node step"),
                 () -> assertEquals(List.of(), unpinned,
                         "every setup-node declaration must name major.minor.patch; a major or minor follows the latest "
                                 + "provider release instead of a reviewed repository edit"),
