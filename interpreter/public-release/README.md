@@ -226,9 +226,9 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 1 | 886 | 749 | 3 | 134 |
 | HTML | 1 | 333 | 321 | 0 | 12 |
-| Kotlin | 145 | 35592 | 22498 | 10071 | 3023 |
+| Kotlin | 146 | 35773 | 22591 | 10145 | 3037 |
 | TypeScript | 17 | 3789 | 3222 | 286 | 281 |
-| **Total** | **164** | **40600** | **26790** | **10360** | **3450** |
+| **Total** | **165** | **40781** | **26883** | **10434** | **3464** |
 
 ### Verification
 
@@ -238,9 +238,9 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 |---|---:|---:|---:|---:|---:|
 | Java | 2 | 166 | 145 | 2 | 19 |
 | JavaScript | 2 | 154 | 137 | 0 | 17 |
-| Kotlin | 346 | 38084 | 29895 | 4078 | 4111 |
-| TypeScript | 15 | 3384 | 3164 | 75 | 145 |
-| **Total** | **365** | **41788** | **33341** | **4155** | **4292** |
+| Kotlin | 348 | 38213 | 29987 | 4098 | 4128 |
+| TypeScript | 16 | 3412 | 3187 | 77 | 148 |
+| **Total** | **368** | **41945** | **33456** | **4177** | **4312** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->

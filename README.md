@@ -1020,11 +1020,11 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 2 | 887 | 750 | 3 | 134 |
 | HTML | 2 | 347 | 335 | 0 | 12 |
-| Java | 525 | 79760 | 53452 | 18324 | 7984 |
+| Java | 530 | 80138 | 53686 | 18421 | 8031 |
 | JavaScript | 2 | 283 | 144 | 122 | 17 |
-| Kotlin | 346 | 69863 | 41802 | 22592 | 5469 |
+| Kotlin | 348 | 70283 | 42049 | 22738 | 5496 |
 | TypeScript | 18 | 3862 | 3294 | 286 | 282 |
-| **Total** | **895** | **155002** | **99777** | **41327** | **13898** |
+| **Total** | **902** | **155800** | **100258** | **41570** | **13972** |
 
 ### Verification
 
@@ -1033,12 +1033,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1277 | 198069 | 137137 | 38437 | 22495 |
+| Java | 1289 | 199488 | 138206 | 38610 | 22672 |
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
-| Kotlin | 1541 | 221914 | 165273 | 36019 | 20622 |
+| Kotlin | 1549 | 223095 | 166235 | 36147 | 20713 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 50 | 7482 | 6399 | 597 | 486 |
-| **Total** | **2896** | **431106** | **311456** | **75716** | **43934** |
+| TypeScript | 51 | 7510 | 6422 | 599 | 489 |
+| **Total** | **2917** | **433734** | **313510** | **76019** | **44205** |
 
 ### Tooling
 
@@ -1048,7 +1048,7 @@ Build, verification, release, deployment, and maintainer tooling.
 |---|---:|---:|---:|---:|---:|
 | BASH | 2 | 360 | 223 | 123 | 14 |
 | CSS | 1 | 1 | 1 | 0 | 0 |
-| Groovy | 19 | 11341 | 8495 | 2429 | 417 |
+| Groovy | 19 | 11338 | 8493 | 2428 | 417 |
 | HTML | 6 | 167 | 156 | 0 | 11 |
 | Java | 1 | 70 | 52 | 10 | 8 |
 | JavaScript | 5 | 1796 | 1512 | 157 | 127 |
@@ -1056,7 +1056,7 @@ Build, verification, release, deployment, and maintainer tooling.
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
 | TypeScript | 27 | 3814 | 3243 | 306 | 265 |
-| **Total** | **130** | **24328** | **18600** | **4353** | **1375** |
+| **Total** | **130** | **24325** | **18598** | **4352** | **1375** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->

@@ -432,7 +432,7 @@ Avoid:
 - compute -> returns -> ComputationReport.
 - ComputationReport.applyTo -> creates -> new immutable Document snapshot.
 - PreparedModel + Interpreter -> are retained across -> successive snapshots.
-- Differential verification -> compares with -> A12 Kernel 30.8.1.
+- Differential verification -> compares with -> A12 Kernel 31.1.1.
 - One common engine -> runs on -> JVM + Node.js + browser + native dmtool.
 
 ### Generation prompt
@@ -450,7 +450,7 @@ MIDDLE BAND, heading "ONE DOCUMENT SNAPSHOT": Draw "A12 Document JSON" -> "Immut
 
 LOWER BAND, heading "DISTINCT RESULT LANES": The upper lane is "VALIDATE": "validateFull / validatePart" -> "ValidationReport", with the arrow labeled "return". The lower lane is "COMPUTE": "compute" -> "ComputationReport" -> "New immutable snapshot". Label compute-to-report "return" and report-to-new-snapshot "applyTo". Draw the middle band's input snapshot branching into the validateFull / validatePart node and the compute node only. Both operation nodes are called on the retained Interpreter, which is clear from a small label above these two nodes: "Interpreter operations". No arrow may connect validatePart to ComputationReport. No direct compute-to-new-snapshot arrow. No arrows between the validation and computation lanes. The applyTo arrow starts at ComputationReport only. Add two compact footer pills beneath the lanes: "No errors ≠ fully supported" and "Input snapshots stay immutable".
 
-BOTTOM CONTEXT RAIL: heading "VERIFICATION", followed by "A12 Kernel 30.8.1", "Differential tests • fuzzing • portable corpus", "Generated Java co-evidence", and the conclusion "Kernel-matched on the exercised surface". No directed flow through these evidence labels. A separate small feature row contains "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation".
+BOTTOM CONTEXT RAIL: heading "VERIFICATION", followed by "A12 Kernel 31.1.1", "Differential tests • fuzzing • portable corpus", "Generated Java co-evidence", and the conclusion "Kernel-matched on the exercised surface". No directed flow through these evidence labels. A separate small feature row contains "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation".
 
 Keep the main mechanism at least 70% of the composition. The verification rail and runtime targets are subordinate context. All labels must be legible. Do not imply universal Kernel equivalence, a mutable input Document, a per-request-only Interpreter, an Interpreter.apply method, or that validation returns a computation report. Do not draw decorative or unrequested connectors.
 ```
@@ -719,8 +719,8 @@ Exact content:
 - Column header: "JAVA"
 - Column header: "KOTLIN"
 - Row label: "SIZE"
-- Java size: "53.5 kLOC"
-- Kotlin size: "41.8 kLOC"
+- Java size: "53.7 kLOC"
+- Kotlin size: "42.0 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
@@ -733,7 +733,7 @@ Exact content:
 - Row label: "RUNTIME"
 - Java runtime: "JVM • native dmtool"
 - Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
-- Bottom scope note: "Production code • locmetry • measured 2026-11-01"
+- Bottom scope note: "Production code • locmetry • measured 2026-11-04"
 - Bottom band title: "WHY THIS SPLIT SCALES"
 - Benefits heading: "PORTABILITY"
 - Benefits line: "Shared source per engine"
@@ -762,7 +762,7 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 53.5 kLOC and 41.8 kLOC in the largest type within the table.
+- Align equivalent cells exactly. Put 53.7 kLOC and 42.0 kLOC in the largest type within the table.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
 - Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
@@ -1348,3 +1348,42 @@ Edit this existing technical infographic. Change only two text values in the KOT
 ```
 
 The `web-compact` export retained 1024 × 1536 pixels: 98,586 bytes, DSSIM 0.00573905. The decoded AVIF was checked at the README's 720-pixel width; the canonical image and both release copies are identical. The local PNG master remains ignored by Git.
+
+## Kernel and source-statistics refresh — 2026-11-04
+
+The runtime verification rail now names A12 Kernel 31.1.1, matching the migrated `kernelVersion` in [the build](../build.gradle). The technology poster now reports 53.7 kLOC Java and 42.0 kLOC Kotlin, measured on 2026-11-04: 53,686 and 42,049 Production code lines from `scripts/update-code-statistics.sh --artifact all`, under the unchanged [locmetry policy](../.locmetryrc). The four generated README statistics tables were refreshed together. The freshness check reported the expected prompt lines `- Java size: "53.7 kLOC"` and then `- Kotlin size: "42.0 kLOC"`. The preceding live prompt said 53.5 kLOC Java, but both its local PNG and tracked AVIF actually showed 53.3; the edit prompt below names the observed pixels.
+
+Both posters were edited with built-in ImageGen from their local PNG masters. The exact references are retained at `assets/infographics/archive/a12-interpreter-runtime-before-2026-11-04.png` and `assets/infographics/archive/kotlin-graalvm-kernel-roles-before-2026-11-04.png`. The accepted masters are `assets/infographics/a12-interpreter-runtime.png` and `assets/infographics/kotlin-graalvm-kernel-roles.png`. These paths are repository-relative; PNGs remain local, ignored and uncommitted.
+
+### Runtime kernel-label edit
+
+```text
+Edit this existing technical infographic. Change only one text value in the bottom VERIFICATION rail: replace "A12 Kernel 30.8.1" with "A12 Kernel 31.1.1". The verification oracle moved to the newer kernel release; nothing else changed. Preserve the complete canvas, every other word, the preparation stage, the reusable evaluator, the distinct result lanes, all icons, colors, arrows and their endpoints, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims.
+```
+
+### Technology statistics edit
+
+```text
+Edit this existing technical infographic. Change only three text values in the KOTLIN vs JAVA table: replace Java "53.3 kLOC" with "53.7 kLOC"; replace Kotlin "41.8 kLOC" with "42.0 kLOC"; replace "Production code • locmetry • measured 2026-11-01" with "Production code • locmetry • measured 2026-11-04". These are re-measured counts under the unchanged repository .locmetryrc policy. Preserve the complete 1024 × 1536 canvas, every other word, every technology role, platform, module name, both explicit compilation paths, icons, colors, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims. Preserve Java and Kotlin values in their correct columns.
+```
+
+Acceptance was visual-only; no OCR was used (the local OCR executable was unavailable). Each complete candidate was compared with its predecessor at full resolution, including every unchanged label, number, qualifier, icon, column, connector and endpoint. The runtime retains preparation and evaluator reuse, separate validation/computation result lanes, report-owned `applyTo`, and its unconnected verification context. The technology poster retains all three role cards, module and platform labels, both compilation paths, Java/Kotlin column ownership, and benefit panels. Both were checked at 50% size and their decoded AVIFs at the README's 720-pixel width. ImageMagick confirmed fully opaque canvases and unchanged dimensions. Existing card shading remains; the runtime's replacement kernel label is slightly bolder and italicized, without changing its wording or ownership.
+
+The first two technology candidates failed the default export's DSSIM gate at 0.0061174 and 0.00602791. Each retry used the same technology prompt and original PNG reference; the third candidate passed. No encoder setting, byte ceiling, quality threshold or dimensions were changed. Export commands used the installed skill's unmodified default `web-compact` helper:
+
+```sh
+"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" --force assets/infographics/a12-interpreter-runtime.png
+"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" --force assets/infographics/kotlin-graalvm-kernel-roles.png
+```
+
+| Accepted AVIF | Dimensions | Bytes | DSSIM | Encoder |
+|---|---|---:|---:|---|
+| [a12-interpreter-runtime](../assets/infographics/a12-interpreter-runtime.avif) | 1536 × 1024 | 73,632 | 0.00467841 | Default helper |
+| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 102,338 | 0.00593673 | Default helper |
+
+The runtime AVIF was synchronized to the Interpreter release source; the technology AVIF was synchronized to both dmtool and Interpreter release sources, as declared in the asset registry. [Accepted infographic evidence](infographic-evidence.json) binds the reviewed prompts, AVIF hashes and re-measured production source fingerprint.
+
+| Refreshed image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
+|---|---|---|
+| a12-interpreter-runtime | `8744a6a00a6708fa771181f06d1ae7999a8a3c4e0b661833ce34ae81b9318de4` | `fd6ff74937f1c5ed9102ccc91aa1f00554b9766253ed62e02015e743706af5ef` |
+| kotlin-graalvm-kernel-roles | `f091e21fd967eaf561c77f681b447d84ae8e4814b14bb78d87c319ca788e7317` | `ad24787c40c640993b7b295099e9bace8d238d29facc843d06a194d206bd5e77` |

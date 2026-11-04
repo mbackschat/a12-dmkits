@@ -100,9 +100,9 @@ Product implementation and examples.
 | CSS | 1 | 1 | 1 | 0 | 0 |
 | HTML | 1 | 14 | 14 | 0 | 0 |
 | JavaScript | 1 | 176 | 72 | 97 | 7 |
-| Kotlin | 187 | 31790 | 17955 | 11579 | 2256 |
+| Kotlin | 188 | 32011 | 18097 | 11646 | 2268 |
 | TypeScript | 1 | 73 | 72 | 0 | 1 |
-| **Total** | **191** | **32054** | **18114** | **11676** | **2264** |
+| **Total** | **192** | **32275** | **18256** | **11743** | **2276** |
 
 ### Verification
 
@@ -113,9 +113,9 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | HTML | 4 | 101 | 56 | 45 | 0 |
 | Java | 1 | 25 | 24 | 0 | 1 |
 | JavaScript | 10 | 878 | 529 | 262 | 87 |
-| Kotlin | 244 | 34970 | 25816 | 6351 | 2803 |
+| Kotlin | 245 | 35211 | 26027 | 6366 | 2818 |
 | TypeScript | 14 | 1861 | 1246 | 468 | 147 |
-| **Total** | **273** | **37835** | **27671** | **7126** | **3038** |
+| **Total** | **274** | **38076** | **27882** | **7141** | **3053** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:checker-release:end -->
