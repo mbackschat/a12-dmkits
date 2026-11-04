@@ -80,16 +80,21 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
 
         fun gate(presence: (String, List<Int>) -> GroupPresenceState): GroupCountGate {
             val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
-            return GroupCountGate { groupPath, bindDepth, rowReps, present ->
-                val scope = starScope(groupPath, bindDepth, rowReps)
-                decided.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
-                    wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) {
-                        RowAddressIndex(fullyRelevantIdentifiers(groupPath).map { RelevantEntity(groupPath, it) })
-                    }, scope) &&
-                        presence(groupPath, firstInstance(groupPath, scope))
-                            .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
-                        coversAbsent(groupPath, bindDepth, rowReps, present, presence)
+            return object : GroupCountGate {
+                override fun admits(groupPath: String, bindDepth: Int, rowReps: List<Int>, present: Set<List<Int>>): Boolean {
+                    val scope = starScope(groupPath, bindDepth, rowReps)
+                    return decided.getOrPut(Triple(groupPath, bindDepth, scope.bound)) {
+                        wildcardsEveryStarredLevel(reducedByPath.getOrPut(groupPath) {
+                            RowAddressIndex(fullyRelevantIdentifiers(groupPath).map { RelevantEntity(groupPath, it) })
+                        }, scope) &&
+                            presence(groupPath, firstInstance(groupPath, scope))
+                                .let { it.relevance == GroupRelevance.FULL && !it.erroneous } &&
+                            coversAbsent(groupPath, bindDepth, rowReps, present, presence)
+                    }
                 }
+
+                override fun decidingPrefix(groupPath: String, bindDepth: Int, rowReps: List<Int>): List<Int> =
+                    starScope(groupPath, bindDepth, rowReps).bound
             }
         }
 

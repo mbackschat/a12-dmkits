@@ -21,6 +21,20 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-11-04-row-invariant-term-sum"></a>
+### Checkpoint 2026-11-04 — SumOfTerms and the gated group count re-folded their group once per row
+
+Single-lane runs of the routine gate, each started at a 1-minute load below 4, comparing N=1000 with N=4000 rows. A per-row rule reads a reader over its own unbound group, nothing fires except where named, and each figure is the lane's median growth over three re-measurements:
+
+| lane | before | after |
+|---|---|---|
+| `RowInvariantStarReaderPerfTest` `SUM_OF_TERMS` (full validation) | 107 → 1694 ms, 16.0× | 0.6 → 2.7 ms, 4.23× |
+| `RowInvariantStarReaderPerfTest` `SUM_OF_TERMS_FIRING` (every line fires) | — | 1.5 → 6.0 ms, 3.80× |
+| `PartialRowInvariantGroupCountPerfTest` `NUMBER_OF_FILLED_GROUPS` (partial, wildcard relevance) | 110 → 1709 ms, 15.5× | 2.5 → 9.3 ms, 3.59× |
+| `PartialRowInvariantGroupCountPerfTest` `SUM_OF_TERMS` (partial, wildcard relevance) | 208 → 3344 ms, 16.1× | 1.8 → 6.3 ms, 3.80× |
+
+**The discriminator for the fill memo.** Removing only the term sum's fill memo, with the value memo kept, left `SUM_OF_TERMS` at 4.14× and sent `SUM_OF_TERMS_FIRING` to 15.9× (103 → 1645 ms), so the firing variant is the lane that guards it. The mechanism and the key's construction are in [IF411](INTERPRETER-FINDINGS.md#if411). These single-lane records were left uncommitted.
+
 <a id="checkpoint-2026-11-03-kf667-gate"></a>
 ### Checkpoint 2026-11-03 — the kernel-31 migration made the group-count gate quadratic, and the growth lane caught it
 

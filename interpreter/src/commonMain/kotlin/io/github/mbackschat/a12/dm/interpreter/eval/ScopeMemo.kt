@@ -23,19 +23,24 @@ internal data class AggregateMemoKey(
 
 /**
  * The memo key of a starred reader whose value depends on its [stars]' scopes alone, or null where it may not be
- * shared across the rows of one scope: in a computation, whose overlay changes between reads; under a filter or a
- * `$` star, which may read the evaluating row; and, for a reader that [asksGroupCountGate], under partial
- * validation, where the gate decides inside the fold by its own bound prefix, which is not assumed to be the key's.
- * `NumberOfFilledGroups` and `SumOfTerms` are the readers that ask it.
+ * shared across the rows of one scope: in a computation, whose overlay changes between reads, and under a filter or
+ * a `$` star, which may read the evaluating row. A reader that [asksGroupCountGate] under partial validation also
+ * depends on the gate's verdict, which the gate decides by its own prefix of the row, so the key carries that prefix
+ * beside the scope's rather than assuming the two coincide. `NumberOfFilledGroups` and `SumOfTerms` ask the gate; a
+ * per-row rule otherwise re-folds the whole group once per row (`PartialRowInvariantGroupCountPerfTest`).
  */
 internal fun Interpreter.scopeInvariantMemoKey(
     expression: Expr,
     stars: List<Expr.Star>,
     asksGroupCountGate: Boolean,
 ): AggregateMemoKey? {
-    if (computeMode || asksGroupCountGate && groupCountGate != null) return null
+    if (computeMode) return null
     if (stars.any { it.having != null || it.outer }) return null
-    return AggregateMemoKey(expression, stars.map { star -> starScopePrefix(ctxOf(star), star) })
+    val gate = groupCountGate.takeIf { asksGroupCountGate }
+    return AggregateMemoKey(expression, stars.flatMap { star ->
+        val c = ctxOf(star)
+        listOfNotNull(starScopePrefix(c, star), gate?.decidingPrefix(star.path, star.bindDepth, c.repsOf(star.path)))
+    })
 }
 
 /** A validation-call cache key for an unfiltered starred fill-quantifier operand and the scope it ranges over. */
