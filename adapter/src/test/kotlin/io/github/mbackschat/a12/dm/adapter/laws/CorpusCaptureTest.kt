@@ -33,7 +33,9 @@ class CorpusCaptureTest {
         val meta = CaseMeta("qty-low-full", "pending", CaseSource.CURATED, listOf("§7"), tags = listOf("comparison"))
         val case = CorpusCapture.capture(meta, "order-qty-low", model, placements, Op.ValidateFull)
 
-        assertEquals("30.8.1", case.meta.kernelVersion, "capture stamps the pinned kernel version")
+        // The input stamp is "pending", so equality with the pin shows the overwrite; a literal here went stale
+        // on the 31.1.1 bump while every capture was already stamped correctly.
+        assertEquals(CorpusEngines.KERNEL_VERSION, case.meta.kernelVersion, "capture stamps the pinned kernel version")
         assertEquals("models/order-qty-low.json", case.modelRef, "capture references the standalone model file")
         assertEquals(listOf("QTY_LOW|VALUE_ERROR|/Order[1]/Quantity"), case.expected)
         assertEquals(emptyList<Any>(), case.divergences)
