@@ -31,8 +31,11 @@ So a code/doc comment citing **`FEATURE-GAPS §N`** / **`Gn`** (including legacy
 
 ## 3. Open
 
-_None open._
+### G81 — dmtool verbs to add and remove a document uniqueness criterion <a id="g81"></a>
 
+`EditSession.addUniquenessCriterion` and `removeUniquenessCriterion` (DG176) have no `dmtool` verb or apply op: no CLI main source calls either, and `CliCoverageParityTest` lists them as the only unclassified-for-coverage mutators. The cost is concrete, because the CLI already guards criteria without letting anyone edit one: `field remove` and `group remove` refuse with `RK_REFERENCED` on a field a criterion names, `--cascade` included (`cli.UniquenessCriterionVerbsTest`), so removing such a field through `dmtool` needs a hand edit of the model JSON first.
+
+*Blocks: removing a criterion-named field, or declaring a criterion, through the CLI alone. Closes when a verb pair ships with its schema, `CommandContracts` profile and CLI-SPEC entry, and `CliCoverageParityTest` maps both mutators to it.*
 
 ---
 

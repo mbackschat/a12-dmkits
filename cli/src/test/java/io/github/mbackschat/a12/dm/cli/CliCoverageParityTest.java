@@ -117,6 +117,9 @@ class CliCoverageParityTest {
             Map.entry("mount", "include add"),
             Map.entry("inlineInclude", "include inline"),
             Map.entry("setIncludeReference", "include set-reference"),
+            // ── document uniqueness criteria ──
+            Map.entry("addUniquenessCriterion", "OPEN: G81 (FEATURE-GAPS)"),
+            Map.entry("removeUniquenessCriterion", "OPEN: G81 (FEATURE-GAPS)"),
             // ── terminal (not a CLI-authored mutation) ──
             Map.entry("validate", "EXCLUDED: terminal validate-and-bind, not an authoring op"));
 
