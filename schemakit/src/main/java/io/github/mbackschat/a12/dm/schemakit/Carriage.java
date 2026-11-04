@@ -13,9 +13,9 @@ import java.util.Map;
 
 /**
  * Tier-B / Tier-C <em>carriage</em> (SCHEMAKIT-SPEC §4; JSON-SCHEMA-PROPOSAL §6): a rule or computation
- * that has no native JSON-Schema home is carried losslessly in {@code x-a12-rule} / {@code x-a12-computation}
- * so an a12 → JSON Schema → a12 round-trip preserves it exactly (a foreign reader ignores the unknown
- * {@code x-*}).
+ * that has no native JSON-Schema home is carried losslessly in {@code x-a12-rule} / {@code x-a12-computation},
+ * and the model's document uniqueness criteria in {@code x-a12-document-uniqueness-criteria}, so an a12 → JSON
+ * Schema → a12 round-trip preserves them exactly (a foreign reader ignores the unknown {@code x-*}).
  *
  * <p>Carriage works at the DM-JSON <em>tree</em> level — it lifts a {@code Rule}/{@code Computation} element
  * verbatim, keyed by its owning group's id, and restores it. That is deliberate, not a dogfood shortcut:
@@ -33,6 +33,9 @@ final class Carriage {
     static final String X_INDEX_FIELD_NAME = "x-a12-index-field-name";
     static final String X_RULE = "x-a12-rule";
     static final String X_COMPUTATION = "x-a12-computation";
+    /** A12's stored {@code content.documentUniquenessCriteria}, verbatim: a cross-document constraint one
+     *  document's JSON Schema cannot state (KERNEL-FINDINGS KF671). */
+    static final String X_CRITERIA = "x-a12-document-uniqueness-criteria";
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -90,6 +93,21 @@ final class Carriage {
         if (!computations.isEmpty()) {
             schema.set(X_COMPUTATION, computations);
         }
+        JsonNode criteria = dmTree.path(DmKeys.CONTENT).path(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA);
+        if (criteria.isArray() && !criteria.isEmpty()) {
+            schema.set(X_CRITERIA, criteria.deepCopy());
+            criteria.forEach(c -> report.mapped(criterionSource(c), X_CRITERIA, TranscodeReport.Tier.CARRIED));
+        }
+    }
+
+    /** A criterion has no path, only its name (KF671), so its disposition names it under the member. */
+    private static String criterionSource(JsonNode criterion) {
+        return DmKeys.DOCUMENT_UNIQUENESS_CRITERIA + "/" + criterion.path(DmKeys.NAME).asText();
+    }
+
+    /** Whether {@code schema} carries anything {@link #inject} restores after the rule-synthesis gate. */
+    static boolean carriesElements(JsonNode schema) {
+        return schema.has(X_RULE) || schema.has(X_COMPUTATION) || schema.has(X_CRITERIA);
     }
 
     private static ObjectNode entry(String groupId, JsonNode element) {
@@ -103,6 +121,21 @@ final class Carriage {
     static void inject(ObjectNode dmTree, JsonNode schema, TranscodeReport.Builder report) {
         restore(dmTree, schema.path(X_RULE), report);
         restore(dmTree, schema.path(X_COMPUTATION), report);
+        restoreCriteria(dmTree, schema.path(X_CRITERIA), report);
+    }
+
+    /** Restores the carried criteria member verbatim; admission stays with the consistency check, as for rules. */
+    private static void restoreCriteria(ObjectNode dmTree, JsonNode carried, TranscodeReport.Builder report) {
+        if (carried.isMissingNode()) {
+            return;
+        }
+        if (!carried.isArray()) {
+            report.omit("/" + X_CRITERIA, X_CRITERIA + " must be an array of A12 criteria — omitted; add the "
+                    + "model's document uniqueness criteria by hand");
+            return;
+        }
+        ((ObjectNode) dmTree.path(DmKeys.CONTENT)).set(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA, carried.deepCopy());
+        carried.forEach(c -> report.mapped(criterionSource(c), "restored into content", TranscodeReport.Tier.CARRIED));
     }
 
     private static void restore(ObjectNode dmTree, JsonNode carried, TranscodeReport.Builder report) {

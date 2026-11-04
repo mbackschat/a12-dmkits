@@ -338,8 +338,8 @@ public final class JsonSchemaImporter {
         RuleSynthesis.Applied synthesized = RuleSynthesis.applied(s.dmJson(), needs, report, ruleResolver); // Tier A+
         String dmJson = synthesized.dmJson();
         var gate = synthesized.consistencyGate();
-        if (rootSchema.has(Carriage.X_RULE) || rootSchema.has(Carriage.X_COMPUTATION)) {
-            ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
+        if (Carriage.carriesElements(rootSchema)) {
+            ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations/criteria (Tier B/C)
             Carriage.inject(tree, rootSchema, report);
             dmJson = tree.toString();
             // Carriage rewrote the tree AFTER the gate, so the receipt no longer describes what we return.

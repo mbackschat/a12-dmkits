@@ -22,8 +22,8 @@ import picocli.CommandLine.Option;
  * {@code dmtool model export-jsonschema} — render the {@code -m} model as a JSON Schema. Export is
  * <b>best-effort</b> (the asymmetry SCHEMAKIT-SPEC §4d documents): structure + field config + enums + a
  * typeDefinition map to native JSON Schema, a Tier-A rule projects to a native keyword (e.g. {@code pattern}),
- * and everything else rides {@code x-a12-rule}/{@code x-a12-computation} carriage so an a12↔a12 round-trip is
- * lossless; temporal/custom field kinds fall back to {@code string}. The transcoding report (stderr) states
+ * and everything else rides {@code x-a12-rule}/{@code x-a12-computation}/{@code x-a12-document-uniqueness-criteria}
+ * carriage so an a12↔a12 round-trip is lossless; temporal/custom field kinds fall back to {@code string}. The transcoding report (stderr) states
  * every disposition.
  *
  * <p>To stdout (no {@code -o}) it emits the JSON Schema <em>artifact</em>, so it is classified in
