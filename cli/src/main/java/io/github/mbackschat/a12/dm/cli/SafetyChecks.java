@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
@@ -55,7 +56,7 @@ public final class SafetyChecks {
     public static SafetyCheck attachmentLocaleSupported(ModelDocument doc) {
         return () -> {
             List<String> unsupported = doc.locales().stream()
-                    .filter(locale -> !ATTACHMENT_LOCALES.contains(locale)).toList();
+                    .filter(locale -> !A12Locales.declares(ATTACHMENT_LOCALES, locale)).toList();
             if (unsupported.isEmpty()) {
                 return Optional.empty();
             }

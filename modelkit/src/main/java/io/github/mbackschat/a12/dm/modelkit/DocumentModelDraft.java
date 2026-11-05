@@ -519,14 +519,15 @@ public final class DocumentModelDraft {
                 // The builder refuses only once a value answers a DECLARED locale. On kernel 31.1.1 a label
                 // for an undeclared locale labels the value too (KERNEL-FINDINGS KF655), and A12 refuses that
                 // model; leaving it to A12 under-reports, where widening the trigger needs its own measurement.
+                // A locale is matched as A12 reads it, so a label for en_US answers a declared en-US (KF290).
                 boolean labelled = e.values().stream()
-                        .anyMatch(v -> locales.stream().anyMatch(v.labels()::containsKey));
+                        .anyMatch(v -> locales.stream().anyMatch(loc -> A12Locales.declares(v.labels().keySet(), loc)));
                 if (labelled) {
                     // Once armed it is all-or-nothing: every value needs a label for every declared locale,
                     // else MVK_COUNT_OF_VALUES_INVALID. Fail fast with a clear message.
                     for (FieldTypeSpec.EnumValue v : e.values()) {
                         for (String loc : locales) {
-                            if (!v.labels().containsKey(loc)) {
+                            if (!A12Locales.declares(v.labels().keySet(), loc)) {
                                 // a SPEC error (incomplete enum labels), not an internal invariant — see the
                                 // field-label note above (02-crash): IllegalArgumentException so the CLI
                                 // field-write paths report a clean "invalid field spec", never RK_INTERNAL_ERROR.
@@ -726,7 +727,7 @@ public final class DocumentModelDraft {
             // author the attachment conditions in the model's CONDITION language (English by default), NOT the
             // display locale — they must match the conditionLanguage the config declares (DEFAULT_CONDITION_LANGUAGE)
             // or the kernel rejects the mandated rule strings as the wrong keyword language.
-            rootGroups.add(b.toGroup(name, List.copyOf(locales), DEFAULT_CONDITION_LANGUAGE));
+            rootGroups.add(b.toGroup(name, locales.stream().map(A12Locales::key).toList(), DEFAULT_CONDITION_LANGUAGE));
             return this;
         }
 
@@ -1229,7 +1230,7 @@ public final class DocumentModelDraft {
 
         /** Override a mandated rule's message for one locale (otherwise a canonical default is used). */
         public AttachmentBuilder message(AttachmentRule rule, String locale, String text) {
-            messageOverrides.computeIfAbsent(rule, r -> new LinkedHashMap<>()).put(locale, text);
+            messageOverrides.computeIfAbsent(rule, r -> new LinkedHashMap<>()).put(A12Locales.key(locale), text);
             return this;
         }
 
@@ -1239,6 +1240,8 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** {@code locales} arrive in A12's spelling ({@link A12Locales#key}), so {@code en-US} is served as
+         *  {@code en_US} (KERNEL-FINDINGS KF290); both callers map them so. */
         ElementDraft.Group toGroup(String groupName, List<String> locales, String conditionLanguage) {
             for (String locale : locales) {
                 if (!SUPPORTED_LOCALES.contains(locale)) {

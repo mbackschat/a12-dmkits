@@ -1069,7 +1069,7 @@ public final class ModelDocument {
             Consumer<DocumentModelDraft.AttachmentBuilder> body) {
         DocumentModelDraft.AttachmentBuilder b = new DocumentModelDraft.AttachmentBuilder();
         body.accept(b);
-        ElementDraft.Group group = b.toGroup(name, locales(), config().conditionLanguage());
+        ElementDraft.Group group = b.toGroup(name, locales().stream().map(A12Locales::key).toList(), config().conditionLanguage());
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
         container.add(DocumentModelDraft.groupNode(group, parentPath, locales()));
         return this;

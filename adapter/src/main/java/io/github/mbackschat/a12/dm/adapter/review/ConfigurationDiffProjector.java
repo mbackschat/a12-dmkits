@@ -10,6 +10,7 @@ import java.util.Set;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /** Projects the authored model header/configuration into one stable, deterministic diff element. */
@@ -85,7 +86,8 @@ final class ConfigurationDiffProjector {
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("id", document.id());
         aspects.put("modelVersion", document.modelVersion());
-        aspects.put("locales", canonical(document.locales()));
+        // A locale is compared as A12 reads it, so en-US respelled en_US is no change (KERNEL-FINDINGS KF290).
+        aspects.put("locales", canonical(document.locales().stream().map(A12Locales::key).toList()));
         ModelDocument.DocConfig config = document.config();
         aspects.put("decimalSeparator", config.decimalSeparator());
         aspects.put("timeZone", config.timeZone());

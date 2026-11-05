@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli.config;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.RolesMerge;
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -182,12 +182,16 @@ public record ConfigModification(
                 Optional.of(code.meaning())));
     }
 
-    /** Add/remove display locales idempotently — only actually-changed codes are applied and reported (as arrays). */
+    /**
+     * Add/remove display locales idempotently — only actually-changed codes are applied and reported (as arrays). A
+     * code is matched as A12 reads it, so {@code en_US} meets a declared {@code en-US} (KERNEL-FINDINGS KF290).
+     */
     private void applyLocales(EditSession session, ObjectNode changed) {
-        Set<String> current = new LinkedHashSet<>(session.locales());
+        List<String> current = new ArrayList<>(session.locales());
         ArrayNode added = null;
         for (String code : addLocales) {
-            if (current.add(code)) {
+            if (!A12Locales.declares(current, code)) {
+                current.add(code);
                 session.addLocale(code);
                 if (added == null) {
                     added = changed.putArray("addedLocales");
@@ -197,7 +201,7 @@ public record ConfigModification(
         }
         ArrayNode removed = null;
         for (String code : removeLocales) {
-            if (current.remove(code)) {
+            if (current.removeIf(declared -> A12Locales.same(declared, code))) {
                 session.removeLocale(code);
                 if (removed == null) {
                     removed = changed.putArray("removedLocales");
