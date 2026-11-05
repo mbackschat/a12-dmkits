@@ -11,7 +11,7 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
 - **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 290 kB gzip
-- **the portable checker** (`a12-consistency`) — kernel-free *consistency* checking: would A12 reject this model? One Kotlin Multiplatform implementation for the JVM, Node and the browser, answering `INVALID` or `INCONCLUSIVE` — and, deliberately, never `VALID`
+- **the portable checker** (`a12-consistency`) — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-consistency-releases)** — kernel-free *consistency* checking: would A12 reject this model? One Kotlin Multiplatform implementation for the JVM, Node and the browser, answering `INVALID` or `INCONCLUSIVE` — and, deliberately, never `VALID`
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
 <p align="center">
