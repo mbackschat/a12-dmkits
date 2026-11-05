@@ -86,7 +86,7 @@ private fun TrackedFactBase.messageParameterReason(code: String, parameter: Mess
     "INVALID_GROUP" -> "does not name a group available to the declaration's condition"
     "RULEGROUP_IMMEDIATELY_BELOW_ROOT" -> "uses the rule-group shorthand at a root group — name the root explicitly"
     "PARAM_INVALID_IN_NEW_WORLD" -> "uses a retired message terminal"
-    "INVALID_USE_OF_SEMANTIC_INDEX" -> "requires positive presence of the same keyed field or group: FieldFilled/GroupFilled or an all-filled quantifier, in one AND arm or every OR arm"
+    "INVALID_USE_OF_SEMANTIC_INDEX" -> "requires positive presence of the same keyed field or group: FieldFilled/GroupFilled or an all-filled quantifier, or AtLeastOne/MoreThanOne with every operand under the key, in one AND arm or every OR arm"
     "INVALID_USE_OF_ITERATION_PARAM" -> "names a level the condition iterates in parallel, so it can fire with no row there — " +
         "prove the row with FieldFilled/GroupFilled or a quantifier over that level's fields, in one AND arm or every OR arm"
     "ITER_PARAM_WITH_STARREFERENCE", "PARAM_VALUE_WITH_STARREFERENCE" -> "requires an unstarred condition read of this entity"

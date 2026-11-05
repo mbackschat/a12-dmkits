@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageKey
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.provesPresence
 
 /** A key binds the condition's field/key pair and its index field, not every sibling (KF412). */
@@ -42,21 +43,32 @@ internal fun TrackedFactBase.keyedMessageGroupDefect(
         (pair.valuePath == named || pair.valuePath.startsWith("$named/"))
     val pairs = uses.map { boundPair(it, group, element) ?: return MessageCompletion.Declined }
     if (pairs.none(::matches)) return MessageCompletion.Refused("INVALID_GROUP")
-    val positive =
-        setOf(OperatorId.FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.ALL_FIELDS_FILLED, OperatorId.ALL_GROUPS_FILLED)
-        .mapNotNull { OPERATOR_SPELLINGS[conditionLanguage]?.get(it) }.toSet()
+    // One keyed operand proves the row for these; the list quantifiers prove it only when EVERY operand lies under
+    // the key, as for the unkeyed row token (KERNEL-FINDINGS KF546, KF675).
+    val anyOperand = spellings(OperatorId.FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.ALL_FIELDS_FILLED,
+        OperatorId.ALL_GROUPS_FILLED)
+    val everyOperand = spellings(OperatorId.AT_LEAST_ONE_FIELD_FILLED, OperatorId.MORE_THAN_ONE_FIELD_FILLED,
+        OperatorId.AT_LEAST_ONE_GROUP_FILLED)
     val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
         ?: return MessageCompletion.Declined
     val proven = provesPresence(tree) { call ->
-        call.operator in positive && call.operands.any { tokens ->
+        fun keyed(tokens: List<Token>): Boolean {
             val operand = call.source.substring(tokens.first().start, tokens.last().end)
-            semanticIndexUsesIn(operand, conditionLanguage, keyword).any { use ->
+            return semanticIndexUsesIn(operand, conditionLanguage, keyword).any { use ->
                 boundPair(use, group, element)?.let(::matches) == true
             }
+        }
+        when (call.operator) {
+            in anyOperand -> call.operands.any(::keyed)
+            in everyOperand -> call.operands.isNotEmpty() && call.operands.all(::keyed)
+            else -> false
         }
     }
     return if (proven) MessageCompletion.Accepted else MessageCompletion.Refused("INVALID_USE_OF_SEMANTIC_INDEX")
 }
+
+private fun TrackedFactBase.spellings(vararg operators: OperatorId): Set<String> =
+    operators.mapNotNull { OPERATOR_SPELLINGS[conditionLanguage]?.get(it) }.toSet()
 
 /**
  * The SPEC a message key asks `tryGetFor` for: a literal quoted, an entity by its resolved path, and `RuleGroup` as the

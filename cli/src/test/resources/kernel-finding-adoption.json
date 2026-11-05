@@ -12407,7 +12407,7 @@
       }
     },
     "kf546": {
-      "sha256": "4c0813a764dff1cf871b6f2d18b1b21942c2afe3fb7bb102af4edb4948de0c50",
+      "sha256": "2347cbd7fb651c4f0bb33a1818272404b9241f0c77f84efef012299e010a5e84",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -12422,7 +12422,8 @@
           "portable message rendering"
         ],
         "checker": [
-          "admission replay"
+          "admission replay",
+          "keyed list proof"
         ],
         "dmtool-cli": [
           "packaged rendering"
@@ -12474,11 +12475,15 @@
         },
         "checker": {
           "state": "APPLIED",
-          "basis": "Shared recognition carries positive-presence proof; parameter checks distinguish reference availability and owner iteration.",
+          "basis": "Shared recognition carries positive-presence proof; parameter checks distinguish reference availability and owner iteration. A list quantifier proves a keyed row only through every operand (corrected 2026-11-05).",
           "evidence": {
             "admission replay": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/MessageParameterDecoderTest.kt#messageParametersReplayTheirKernelClassesAndExplicitDeclines",
               "witness": "Twenty added retained typed models replay complete kernel verdicts on JVM and Node alongside prior controls."
+            },
+            "keyed list proof": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#aKeyedTokensListProofNeedsEveryOperandUnderTheKey",
+              "witness": "SelectedMessageReferenceDiffTest compares A12 and the portable checker on the three list quantifiers with every operand under the key and with one outside it."
             }
           }
         },
@@ -12502,7 +12507,16 @@
           "basis": "Message strings retain their existing owner-content carriage; no JSON Schema keyword, model shape or conversion changes.",
           "evidence": {}
         },
-        "a12-kernel-lean": {"state": "APPLIED", "basis": "SPEC-2026-10-11-01 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them.", "evidence": {"SPEC11-01": {"reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-11-01", "witness": "Accepted against SelectedMessageReferenceDiffTest, with RuleMessageParameterRenderingDiffTest and ParallelValidationDispatchDiffTest."}}}
+        "a12-kernel-lean": {
+          "state": "APPLIED",
+          "basis": "SPEC-2026-10-11-01 was accepted at cfffb2f1 after a source reading of our locks at c0a564ad3; the peer did not rerun them. Its keyed guard already states the 2026-11-05 correction: the peer declined the confounded reading at 26cf91763 and reports measuring the corrected rows as SPEC-2026-11-05-04.",
+          "evidence": {
+            "SPEC11-01": {
+              "reference": "a12-kernel-lean@cfffb2f1109796e0358e9f953e3fa6ee625797c1:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-11-01",
+              "witness": "Accepted against SelectedMessageReferenceDiffTest, with RuleMessageParameterRenderingDiffTest and ParallelValidationDispatchDiffTest."
+            }
+          }
+        }
       }
     },
     "kf280": {
@@ -24330,7 +24344,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter F (a12-kernel-lean-spec-corrections-2026-11-05.md), sent 2026-11-05; not yet received. Its unmatched-side name, index-field and Enumeration rows sent in Letter H (a12-kernel-lean-spec-corrections-2026-11-05c.md) on 2026-11-05, answering SPEC-2026-11-05-03; awaiting the peer's reconciliation.",
+          "basis": "Reported in Letter F (a12-kernel-lean-spec-corrections-2026-11-05.md), sent 2026-11-05; not yet received. Its unmatched-side name, index-field and Enumeration rows sent in Letter H (a12-kernel-lean-spec-corrections-2026-11-05c.md) on 2026-11-05 were accepted as SPEC-2026-11-05-03 at 26cf91763; Letter F's own rows are not yet reviewed there.",
           "evidence": {}
         }
       }
@@ -24575,7 +24589,7 @@
       }
     },
     "kf675": {
-      "sha256": "b701911beb787ce84a0376d3e3c006e276fee16d242df40f3e77803a18cb47d3",
+      "sha256": "abb5f8c9b7798db61c159fd3df2377f523f71fd1f2bc47642b1d60b823175b30",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -24591,7 +24605,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "SPEC-2026-11-05-03"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -24648,9 +24664,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Sent in Letter H (a12-kernel-lean-spec-corrections-2026-11-05c.md) on 2026-11-05, answering SPEC-2026-11-05-03; awaiting the peer's reconciliation.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Reconciled at 26cf91763: spec/11's joined-row proof and membership bullet adopt this finding's rows. Its keyed-token sentence, which rested on KF546's confounded rows, was declined there and is corrected here on 2026-11-05.",
+          "evidence": {
+            "SPEC-2026-11-05-03": {
+              "reference": "a12-kernel-lean@26cf9176324364e88023957586787b172049efb4:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05c",
+              "witness": "The peer's Letter H review adopts the membership and joined-row-proof rows into spec/11 (ParallelJoinMessageLocks.lean)."
+            }
+          }
         }
       }
     },

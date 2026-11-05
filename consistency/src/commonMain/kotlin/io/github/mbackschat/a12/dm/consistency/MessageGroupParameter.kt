@@ -30,8 +30,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
  * in name positions. MessageGroupEventAgreementTest distinguishes each reading on both languages,
  * including a real group whose name collides with the root keyword (KF214).
  *
- * Keyed parameters require a matching field/group presence proof: one AND arm, every OR arm, or an
- * all-filled quantifier. The owned SPEC11-01 grid separates this from mere reference membership.
+ * Keyed parameters require a matching field/group presence proof in one AND arm or every OR arm: a presence call or
+ * all-filled quantifier on one keyed operand, or a list quantifier whose every operand is keyed (KERNEL-FINDINGS KF546).
+ * The owned SPEC11-01 grid separates this from mere reference membership.
  * An unkeyed token over a level the condition iterates in parallel meets the same kind of proof last
  * ([parallelRowTokenDefect], KERNEL-FINDINGS KF675).
  *
