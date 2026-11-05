@@ -18,7 +18,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageSuffix
  * keeps its key's class first, which is unmeasured with a category suffix.
  */
 internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Field, element: TrackedDeclaration): MessageCompletion {
-    if (parameter.entity.ruleGroup) return MessageCompletion.Refused("INVALID_PARAMETER")
+    // The terminal names the rule's group, so with the form-line suffix it is refused as any group is there; alone
+    // it is refused as the shorthand (kernel 31.1.1, `adapter.laws.CheckerRuleGroupFormLineAgreementTest`).
+    if (parameter.entity.ruleGroup) {
+        return MessageCompletion.Refused(
+            if (parameter.suffix == MessageSuffix.FORM_LINE) "INVALID_FIELD_IN_PARAMETER" else "INVALID_PARAMETER")
+    }
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val path = (resolveMessageEntity(group, parameter.entity.written.replace("'", ""), element.origin)
         as? Reference.Resolved)?.path ?: return MessageCompletion.Declined

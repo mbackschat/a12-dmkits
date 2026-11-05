@@ -16714,6 +16714,76 @@
         }
       }
     },
+    "kf331": {
+      "sha256": "8051f650071fd84186ba974b3757dd9de8612a4819635256b56bcbce1f272a07",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "condition-side index lookup"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "unresolved parallel index"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names, requalified on kernel 31.1.1.",
+          "evidence": {
+            "condition-side index lookup": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/GroupIndexAndSortReferenceLawsTest.java#whetherTheConditionSideIndexLookupIsReachable",
+              "witness": "GroupIndexAndSortReferenceLawsTest locks this finding's semantic-index rows; whetherTheConditionSideIndexLookupIsReachable is that method."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: the checker reports the class on the parallel-join route and deliberately not on the semantic-index route.",
+          "evidence": {
+            "unresolved parallel index": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerUnresolvedParallelIndexAgreementTest.kt#aJoinOverAnUnresolvedIndexDrawsTheIndexNameClassFromEitherSide",
+              "witness": "CheckerUnresolvedParallelIndexAgreementTest compares A12 and the portable checker on every join row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "To be reported in the next letter to a12-kernel-lean; not yet sent.",
+          "evidence": {}
+        }
+      }
+    },
     "kf333": {
       "sha256": "cb938f3b1b5d5471c3ce26cbefd8491b78bbb2bdc40f779d428a26a748e8ea62",
       "task": "SS31",
@@ -22515,7 +22585,7 @@
       }
     },
     "kf653": {
-      "sha256": "fc0a9960c81c068240ae58095f864e74d12b45bc8f853860db835a81ba63113c",
+      "sha256": "230117080d70b388f7fce474315e2cf25076cbb970d75b98fbcddbccf2301574",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -22875,7 +22945,7 @@
       }
     },
     "kf657": {
-      "sha256": "4e3f066ef144823da03faab850c42b56d2c305f1aecba6b2210f83ea94172819",
+      "sha256": "611dc8b43b3382912738a22b25ab2b7c0e5fd3f52d5020533aa986fe294b283b",
       "task": "K31",
       "scope": {
         "adapter": [

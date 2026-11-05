@@ -219,10 +219,11 @@ class GroupIndexAndSortReferenceLawsTest {
     /**
      * Whether {@code MVK_INDEX_FIELD_INVALID} is reachable, and from where.
      *
-     * <p>[MVK-LEDGER] described it as "a group's declared index field must exist in that group" — but the
-     * grid above measures that shape NOT BUILDABLE with no code at all, so the description names a locus the
-     * code cannot have. Its firing site is {@code CheckEntityUtils.getIndexField}, reached from a CONDITION
-     * that uses a semantic index, with the message "For '%s' the used index field '%s' does not exist".
+     * <p>Its firing site is {@code CheckEntityUtils.getIndexField}, reached from a CONDITION that uses a
+     * semantic index, with the message "For '%s' the used index field '%s' does not exist". On kernel 31.1.1
+     * an index field naming nothing in its group also builds, and a parallel join then reaches the same class
+     * (KERNEL-FINDINGS KF653, {@code adapter.laws.CheckerUnresolvedParallelIndexAgreementTest}); this row
+     * keeps the semantic-index route.
      *
      * <p>That gives one discriminating shape: an {@code indexFieldName} that RESOLVES but lands outside its
      * own group builds and draws a verdict rather than stopping the build, so a semantic index over that

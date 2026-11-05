@@ -30,7 +30,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * | is the target's group or an ancestor of it | admitted — the target's coordinates address it |
  * | is PARALLEL and declares no index field | `MVK_NO_WILDCARD` |
  * | is PARALLEL, and two groups on its own chain declare one | `MVK_MULTIPLE_INDEX_FIELDS` |
+ * | is PARALLEL, and its own index field names nothing it declares | `MVK_INDEX_FIELD_INVALID` |
  * | is PARALLEL, and nothing on the TARGET's chain declares one | `MVK_ERROR_FIELD_NO_INDEX` |
+ * | is PARALLEL, and the target's index field names nothing its group declares | `MVK_INDEX_FIELD_INVALID` |
  * | is PARALLEL, and the two index fields differ in NAME | `MVK_ERROR_FIELD_INVALID_INDEX` |
  * | is PARALLEL, same name, different base TYPE | `MVK_ERROR_FIELD_INVALID_INDEX_TYPE` |
  * | is PARALLEL, same name and type | admitted — a legal parallel iteration |
@@ -308,6 +310,8 @@ private const val NO_WILDCARD = "MVK_NO_WILDCARD"
 
 private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"
 
+private const val INDEX_FIELD_INVALID = "MVK_INDEX_FIELD_INVALID"
+
 /** The parallel-level classes measured on a GROUP operand; [levelClassOf] withholds the others there. */
 private val GROUP_PARALLEL_CLASSES = setOf(
     NO_WILDCARD,
@@ -354,10 +358,11 @@ internal fun TrackedFactBase.parallelVerdictOf(
     if (operandChain.size > 1) {
         return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }
-    // A declared index field that names nothing in its own group is A12's `MVK_INDEX_FIELD_INVALID`, and
-    // that model shape is measured NOT BUILDABLE with no code at all (KF295) — so it cannot arrive here,
-    // and silence is what a reader of a model that somehow carries it should get.
-    val operandIndex = indexFieldAt(level.path, operandIndexName) ?: return ParallelVerdict.Unjudged
+    // Kernel 31.1.1 builds a group whose index field names nothing it declares (KF653), and A12 resolves each
+    // end's index field before it compares the two names, so an unresolved end answers with the index-name
+    // class on either side (KF653, `adapter.laws.CheckerUnresolvedParallelIndexAgreementTest`).
+    val operandIndex = indexFieldAt(level.path, operandIndexName)
+        ?: return ParallelVerdict.Refused(INDEX_FIELD_INVALID)
     val targetChain = keyedGroupsAtOrAbove(anchor.indexChainFrom)
     if (targetChain.size > 1) {
         return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
@@ -365,11 +370,11 @@ internal fun TrackedFactBase.parallelVerdictOf(
     val keyedForTheTarget = targetChain.firstOrNull()
         ?: return ParallelVerdict.Refused("MVK_ERROR_FIELD_NO_INDEX")
     val targetIndexName = indexFieldNameOf(keyedForTheTarget) ?: return ParallelVerdict.Unjudged
+    val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
+        ?: return ParallelVerdict.Refused(INDEX_FIELD_INVALID)
     if (targetIndexName != operandIndexName) {
         return ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX")
     }
-    val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
-        ?: return ParallelVerdict.Unjudged
     val operandClass = indexBaseTypeClassOf(operandIndex) ?: return ParallelVerdict.Unjudged
     val targetClass = indexBaseTypeClassOf(targetIndex) ?: return ParallelVerdict.Unjudged
     return if (operandClass == targetClass) {
@@ -417,6 +422,8 @@ private val REMEDIES = mapOf(
     NO_WILDCARD to "star the level to read the whole list at once, or report on a field inside it",
     MULTIPLE_INDEX_FIELDS to "A12 resolves ONE index field per path and two groups on this one declare " +
         "theirs, so it cannot say which repetitions are matched",
+    INDEX_FIELD_INVALID to "one of the two groups names an index field it does not declare, so A12 has no key " +
+        "to match the repetitions by; name a field of that group as its index",
     "MVK_ERROR_FIELD_NO_INDEX" to "the two branches can only iterate together on a shared index field, " +
         "and no group above the target declares one",
     "MVK_ERROR_FIELD_INVALID_INDEX" to "the two branches iterate together only on an index field of the " +

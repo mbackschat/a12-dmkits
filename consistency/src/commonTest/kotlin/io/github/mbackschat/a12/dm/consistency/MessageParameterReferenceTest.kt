@@ -187,6 +187,8 @@ class MessageParameterReferenceTest {
         actual["the Vordruckname suffix on a GROUP"] = ruleSaying("see \$Claims.Vordruckname\$")
         actual["the same suffix on a name that resolves to nothing"] =
             ruleSaying("see \$NoSuchField.Vordruckzeile\$")
+        actual["the Vordruckzeile suffix on the rule-group terminal"] = ruleSaying("see \$RuleGroup.Vordruckzeile\$")
+        actual["the rule-group terminal alone"] = ruleSaying("see \$RuleGroup\$")
 
         val refused = listOf("INVALID_FIELD_IN_PARAMETER")
         val expected = mutableMapOf<String, List<String>>()
@@ -198,6 +200,9 @@ class MessageParameterReferenceTest {
         expected["the Vordruckname suffix on a GROUP"] = listOf("INVALID_ENTITY")
         // MessageNamePositionAgreementTest measures the lookup before form-position completion.
         expected["the same suffix on a name that resolves to nothing"] = listOf("INVALID_ENTITY")
+        // The terminal names the rule's group, so the suffix refuses it as a group (CheckerRuleGroupFormLineAgreementTest).
+        expected["the Vordruckzeile suffix on the rule-group terminal"] = refused
+        expected["the rule-group terminal alone"] = listOf("INVALID_PARAMETER")
         assertEquals(expected, actual, "the form-line suffixes skip membership and still address a field")
     }
 

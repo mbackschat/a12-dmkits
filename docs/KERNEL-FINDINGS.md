@@ -7129,9 +7129,11 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 
 **The pair of controls is what makes the attribution, and each moves one variable.** The same condition over a usable index is admitted, so the class is not the semantic index's; the same unusable index without a semantic index draws only the declaration's own class, so the second class is not the declaration's. Both rows are the same model differing in one builder input.
 
+*Corrected 2026-11-05 (kernel 31.1.1):* an index field naming nothing in its group now builds ([KF653](#kf653)), so the "NOT BUILDABLE" premise above is the 30.8.1 record, and a second route reaches this class: a parallel join with that group, from either side. The portable checker reports it on that route, because the join's gate chain must stop there or it answers the wrong, later name-mismatch class. The semantic-index route below stays unreported.
+
 **Not reported by the portable checker, deliberately.** It already names this defect through `MVK_INVALID_INDEX_FIELD` on the declaration itself (`CheckFamily.GROUP_ORDERING_REFERENCES`), so a consumer of the checker already learns the model is refused and why. Emitting the second class would add a code without adding reach, and would require the checker to recognise semantic-index usage in condition text — a capability it has no other use for today.
 
-*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whetherTheConditionSideIndexLookupIsReachable`.
+*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whetherTheConditionSideIndexLookupIsReachable`; the parallel-join route by `adapter.laws.CheckerUnresolvedParallelIndexAgreementTest`, A12 and the portable checker.
 
 ## §10 supplement — the two MULTIPLE-index codes are CONDITION-side, one is reachable and the other has no stored spelling (source + measured, 2026-09-13) <a id="kf332"></a>
 
@@ -16123,15 +16125,17 @@ Carrier: an order whose repeatable `/Order/Items` holds `Sku` and `Count`, each 
 | a `noValueValidation` flag on a `NumberType` | admitted: the reader passes over the member | unreadable |
 | the flag `null` on a `StringType` | unreadable: Jackson 3 refuses `null` for the primitive | admitted |
 | an `EnumerationType` with `tableName` and no values, as the key or ordering nothing | no model: "The model is invalid. It contains Enumerations without any values." | unreadable |
+| `Missing` as `/Order/Returns`' index, and a rule joining it with `/Order/Shipments` (keyed `Ref`): a presence read, a value read, or the target on `Returns` (measured 2026-11-05) | `MVK_INVALID_INDEX_FIELD` and `MVK_INDEX_FIELD_INVALID`, never the name-mismatch `MVK_ERROR_FIELD_INVALID_INDEX`; the same join with the index resolved is admitted, and a rule reading `Shipments` alone draws only the nomination | no model |
 
 A rival account, "31.1.1 judges where the spelling lands", is refuted by `../../Sku` and `Items/Sku`: both land on nothing and are admitted. "Blank is trim-empty" is refuted by the em-space rows, which A12 reads as unfilled.
 
 **Mechanisms (source-read at `a12-kernel` `eec9134`; hypotheses beyond the rows that discriminate them).**
 
 - The reader's `EntityReferenceResolverVisitor` binds each reference through a map of fields and groups, binds null where nothing is found, and reports that as an `MVKCoreError` that does not reach the notification list. A group found there is cast to `Field` later, which fails. The rule-landing row discriminates the "any declaration" reading.
+- `CheckEntityUtils.checkParallelIteration` resolves each end's index field through `getIndexField` before it compares the two names, which is why the join row draws the index-name class even with the target on the unresolved side. The target-side row discriminates it from a name-first order, which would answer `MVK_ERROR_FIELD_INVALID_INDEX`.
 - `ValidationModelConverter.createGroupFromGroupType` keeps `ElementPathUtils.getName(absPath(groupPath, relPath))` for the index and `createSortInfo` the same for each sort entry, so the short name is all the later gates see. An empty index is joined to the group's own path.
 
-*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest`, `GroupOrderingFieldTypeLawsTest` and `GroupOrderingMultipleDefectLawsTest` for A12's column; `adapter.laws.CheckerOrderingNameSentenceAgreementTest` compares the portable checker row by row with multiplicity and attachment; the checker's half is replayed on both runtimes by `consistency.GroupOrderingReferenceTest` and `consistency.GroupOrderingFieldTypeTest`.
+*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest`, `GroupOrderingFieldTypeLawsTest` and `GroupOrderingMultipleDefectLawsTest` for A12's column; `adapter.laws.CheckerUnresolvedParallelIndexAgreementTest` for the join row, A12 and the portable checker; `adapter.laws.CheckerOrderingNameSentenceAgreementTest` compares the portable checker row by row with multiplicity and attachment; the checker's half is replayed on both runtimes by `consistency.GroupOrderingReferenceTest` and `consistency.GroupOrderingFieldTypeTest`.
 
 ## §10 supplement — kernel 31.1.1's reader passes over a member it does not know, builds a missing type body from its defaults, and no longer reads `UnspecifiedType`; an absent `errorCode`, error target or header `id` leaves no model (Kernel gate, kernel 31.1.1, 2026-11-02) <a id="kf654"></a>
 
@@ -16275,10 +16279,12 @@ Beside a surrogate the codeless charset sentence stands and the line-feed codele
 | entity: `$Adjuster.Vordruckname$`, on a field or a group, with or without a literal or unknown tail | `INVALID_ENTITY` | field: admitted, membership skipped ([KF279](#kf279)); group: `INVALID_FIELD_IN_PARAMETER` |
 | entity, followed by a word | `MVK_UNEXPECTED_TOKEN` | the same |
 | group argument: `$#Loans.Vordruckname$` | `INVALID_GROUP` | `MVK_UNEXPECTED_TOKEN` |
+| the rule-group terminal: `$RuleGroup.Vordruckname$`, from a root-group rule and from one two levels down (measured 2026-11-05) | `MVK_UNEXPECTED_TOKEN`, as for `$RuleGroup/Slot$` | not measured |
+| the rule-group terminal with the kept suffix: `$RuleGroup.Vordruckzeile$`, the same two carriers (measured 2026-11-05) | `INVALID_FIELD_IN_PARAMETER`, the class the suffix on any group draws; `$RuleGroup$` alone stays `INVALID_PARAMETER` | not measured here |
 
 `Vordruckzeile` keeps its suffix, its membership bypass and its runtime fault: `Index 1 out of bounds for length 1` reproduces on both kernel strategies with `Vordruckzeile` alone.
 
-*Locked by:* `rulekit.validate.laws.ErrorTextCharacterGateLawsTest`, `ModelTextRepertoireLawsTest`, `FieldTypeMessageTextLawsTest` and `RuleMessageAdmissionGateLawsTest` for A12's column; `adapter.laws.MessageFormAlternativeAgreementTest`, `MessageGroupDottedBoundaryAgreementTest`, `MessageGroupWalkAgreementTest`, `MessageNamePositionAgreementTest` and `RuleMessageFormLineParameterDiffTest` against the checker and the runtime; the checker's half by `consistency.MessageTextCharactersTest`, `FieldTypeMessageTextTest` and `MessageParameterReferenceTest`.
+*Locked by:* `rulekit.validate.laws.ErrorTextCharacterGateLawsTest`, `ModelTextRepertoireLawsTest`, `FieldTypeMessageTextLawsTest` and `RuleMessageAdmissionGateLawsTest` for A12's column; `adapter.laws.MessageFormAlternativeAgreementTest`, `MessageGroupDottedBoundaryAgreementTest`, `MessageGroupWalkAgreementTest`, `MessageNamePositionAgreementTest`, `CheckerRuleGroupFormLineAgreementTest` and `RuleMessageFormLineParameterDiffTest` against the checker and the runtime; the checker's half by `consistency.MessageTextCharactersTest`, `FieldTypeMessageTextTest` and `MessageParameterReferenceTest`.
 
 ## §10 supplement — kernel 31.1.1's expand copy reads an EMPTY declaration member as an absent one, so an empty date format or range separator is its default (Kernel gate, kernel 31.1.1, 2026-11-03) <a id="kf658"></a>
 

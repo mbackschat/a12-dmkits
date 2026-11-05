@@ -124,6 +124,12 @@ class CheckerBasicSentenceAgreementTest {
             "an empty DateFragment format" to { m ->
                 m.field("Month").apply { withObject("/fieldType/DateFragmentType").put("formatOfFragment", "") }
             },
+            "a DateFragment body without its format" to { m ->
+                m.field("Month").apply { withObject("/fieldType/DateFragmentType").remove("formatOfFragment") }
+            },
+            "a DateFragment type with no body" to { m ->
+                m.field("Month").apply { (path("fieldType") as ObjectNode).remove("DateFragmentType") }
+            },
             "a field with an empty name" to { m -> m.element("Code").put("name", "") },
             "a field with a space for a name" to { m -> m.element("Code").put("name", " ") },
             "a field with an empty id" to { m -> m.element("Code").put("id", "") },
@@ -208,6 +214,9 @@ class CheckerBasicSentenceAgreementTest {
                 "MVK_INTERNAL_VALUES_DUPLICATE", "RK_ENUM_VALUE_DUPLICATE"),
             "two hint-list entries for one locale" to setOf(UNBUILT),
             "an empty DateFragment format" to setOf(UNBUILT),
+            // SPEC-2026-11-04-03 (`tb-frag-nobody`): an absent format leaves no model as the empty one does.
+            "a DateFragment body without its format" to setOf(UNBUILT),
+            "a DateFragment type with no body" to setOf(UNBUILT),
             "a field with an empty name" to setOf("RK_ELEMENT_NAME_MISSING", "RK_NAME_EMPTY"),
             "a field with a space for a name" to setOf("RK_ELEMENT_NAME_MISSING"),
             "a field with an empty id" to setOf("RK_ID_EMPTY"),
