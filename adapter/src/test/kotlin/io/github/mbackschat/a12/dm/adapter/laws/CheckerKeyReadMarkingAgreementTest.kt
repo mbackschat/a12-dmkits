@@ -39,6 +39,7 @@ class CheckerKeyReadMarkingAgreementTest {
             "keyed, the picks' index field" to (rule(keyed, picksKey) to emptyList()),
             "keyed, the picks row" to (rule(keyed, picksRow) to listOf("INVALID_USE_OF_ITERATION_PARAM")),
             "plain, the lines' index field" to (rule(plain, linesKey) to emptyList()),
+            "plain, the picks' index field" to (rule(plain, picksKey) to emptyList()),
             "plain, the picks row" to (rule(plain, picksRow) to emptyList()),
         )
         assertEquals(rows.mapValues { (_, row) -> row.second to row.second },
