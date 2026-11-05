@@ -16729,7 +16729,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "unresolved parallel index"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -16778,9 +16780,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Letter G received at 32bca586b: SPEC-2026-11-05-02 accepted, and spec/07 §2.2 already agreed with the join rows, the two shared-undeclared-name rows included.",
+          "evidence": {
+            "unresolved parallel index": {
+              "reference": "a12-kernel-lean@32bca586b20403e9dd62eed893977a92770e5c26:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05b",
+              "witness": "SPEC-2026-11-05-02 accepted at a12-dmkits 3f7f68878; spec/07 §2.2 already agreed."
+            }
+          }
         }
       }
     },
@@ -20740,7 +20747,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "string slot containers"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -20789,9 +20798,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its errorCode rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Letter G received at 32bca586b and adopted into spec/01 §1.1: Lean's reader now leaves no model for a container in the six string slots.",
+          "evidence": {
+            "string slot containers": {
+              "reference": "a12-kernel-lean@32bca586b20403e9dd62eed893977a92770e5c26:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05b",
+              "witness": "spec/01 §1.1 adopts the six container slots, errorCode included (StringSlotContainerLocks.lean)."
+            }
+          }
         }
       }
     },
@@ -22666,7 +22680,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its parallel-join rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its parallel-join rows reported in Letter G, received at 32bca586b, where spec/07 §2.2 already agreed.",
           "evidence": {}
         }
       }
@@ -22970,7 +22984,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "rule-group terminal"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -23032,9 +23048,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its rule-group terminal rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Letter G received at 32bca586b: SPEC-2026-11-04-03, which states the rule-group terminal rows, accepted at a12-dmkits 3f7f68878.",
+          "evidence": {
+            "rule-group terminal": {
+              "reference": "a12-kernel-lean@32bca586b20403e9dd62eed893977a92770e5c26:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05b",
+              "witness": "SPEC-2026-11-04-03 accepted; its delta carries the Vordruckzeile and Vordruckname rows."
+            }
+          }
         }
       }
     },
@@ -24388,7 +24409,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "clock shift"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -24441,9 +24464,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "Letter G received at 32bca586b: SPEC-2026-11-05-01, which states the Now rows, accepted at a12-dmkits 35a09951f.",
+          "evidence": {
+            "clock shift": {
+              "reference": "a12-kernel-lean@32bca586b20403e9dd62eed893977a92770e5c26:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05b",
+              "witness": "SPEC-2026-11-05-01 accepted; its delta carries AddMonths and AddYears over Now."
+            }
+          }
         }
       }
     },
@@ -24462,7 +24490,9 @@
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "a12-kernel-lean": []
+        "a12-kernel-lean": [
+          "executable as reference"
+        ]
       },
       "consumers": {
         "adapter": {
@@ -24511,9 +24541,14 @@
           "evidence": {}
         },
         "a12-kernel-lean": {
-          "state": "OPEN",
-          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Letter G received at 32bca586b and adopted into spec/01 §3.1, scoped to the slots measured; Lean already agreed in every slot but the error target, whose refusal stays its SG9 gap.",
+          "evidence": {
+            "executable as reference": {
+              "reference": "a12-kernel-lean@32bca586b20403e9dd62eed893977a92770e5c26:docs/sources/inbound-handbacks.md#src-inbound-2026-11-05b",
+              "witness": "spec/01 §3.1 adopts KF674 (ExecutableReferenceLocks.lean); the error-target row stays SG9."
+            }
+          }
         }
       }
     }
