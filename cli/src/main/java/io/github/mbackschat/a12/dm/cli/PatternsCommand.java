@@ -174,6 +174,11 @@ final class PatternsCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
 
+        List<String> declared = new RuleValidator().declaredLocales(modelJson);
+        List<String> undeclared = messages.keySet().stream().filter(locale -> !declared.contains(locale)).toList();
+        if (!undeclared.isEmpty()) {
+            return refuseUndeclaredMessageLocales(ResultIdentity.PATTERNS_SCAFFOLD, modelJson, undeclared);
+        }
         PatternEntry.Instantiation inst;
         BoundModel bound = BoundModel.ofJson(modelJson, resolver);
         try {

@@ -169,7 +169,7 @@ final class RuleCheckCommand extends BaseCommand {
             DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
             List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
             if (!undeclared.isEmpty()) {
-                return refuseUndeclaredLocales(json, undeclared);
+                return refuseUndeclaredMessageLocales(resultIdentity(), json, undeclared);
             }
             ValidationResult result = new RuleValidator().check(json, draft, resolver);
             evidence = ConsistencyEvidence.of(result);
@@ -227,7 +227,7 @@ final class RuleCheckCommand extends BaseCommand {
         DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
         List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
         if (!undeclared.isEmpty()) {
-            return refuseUndeclaredLocales(json, undeclared);
+            return refuseUndeclaredMessageLocales(resultIdentity(), json, undeclared);
         }
 
         PortableCheck check = PortableCheck.ofEdit(json, new RuleValidator().inject(json, draft), model);
@@ -288,24 +288,6 @@ final class RuleCheckCommand extends BaseCommand {
                 .messages(messages.entrySet().stream()
                         .map(e -> new LocalizedText(e.getKey(), e.getValue())).toList())
                 .build();
-    }
-
-    /**
-     * Refuse a {@code --message} locale the model does not declare, rather than checking a candidate whose
-     * message the kernel will not look at. Measured basis in
-     * {@link RuleValidator#undeclaredMessageLocales}: the same invalid parameter is rejected in a declared
-     * locale and accepted in an undeclared one, so passing it through would report {@code valid:true} about an
-     * unexamined text.
-     */
-    private Integer refuseUndeclaredLocales(String json, List<String> undeclared) {
-        List<String> declared = new RuleValidator().declaredLocales(json);
-        Diagnostic d = Diagnostic.precheck(Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.code()),
-                "the model does not declare " + String.join(", ", undeclared)
-                        + "; it declares " + String.join(", ", declared),
-                Diagnostic.Where.arg(null, "--message"),
-                Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.fix()), Optional.empty());
-        return print(ResultEnvelope.refused(resultIdentity(),
-                "the candidate names an undeclared message locale", List.of(d)));
     }
 
     /**

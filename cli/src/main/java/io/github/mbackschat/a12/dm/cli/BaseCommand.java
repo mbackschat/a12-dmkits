@@ -32,6 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
@@ -470,6 +471,23 @@ public abstract class BaseCommand implements Callable<Integer> {
         return rejectSpecParse(identity, Diagnostic.precheck(RkCode.INVALID_VALUE,
                 "invalid " + label + ": " + refused.getMessage(),
                 Diagnostic.Where.arg(source, "<spec.json>")));
+    }
+
+    /**
+     * Refuse a {@code --message} locale the model does not declare, rather than checking or scaffolding a message
+     * the kernel will not look at. Measured basis in {@link RuleValidator#undeclaredMessageLocales}: the same
+     * invalid parameter is rejected in a declared locale and accepted in an undeclared one, so a verdict over it
+     * would report {@code valid:true} about an unexamined text, and a scaffold that writes only the declared
+     * locales would drop it unreported.
+     */
+    protected int refuseUndeclaredMessageLocales(ResultIdentity identity, String json, List<String> undeclared) {
+        List<String> declared = new RuleValidator().declaredLocales(json);
+        Diagnostic d = Diagnostic.precheck(Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.code()),
+                "the model does not declare " + String.join(", ", undeclared)
+                        + "; it declares " + String.join(", ", declared),
+                Diagnostic.Where.arg(null, "--message"),
+                Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.fix()), Optional.empty());
+        return print(ResultEnvelope.refused(identity, "the request names an undeclared message locale", List.of(d)));
     }
 
     /**
