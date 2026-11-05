@@ -66,6 +66,7 @@ public final class ModelDocument {
 
     private final ObjectNode root;
     private final ModelIncludes includes;
+    private final ModelTypeDefinitions typeDefinitions;
 
     /** The exact DM-JSON {@link #validate(ModelResolver)} last gated, and what it decided — see {@link #consistencyGate()}. */
     private String gatedJson;
@@ -78,6 +79,7 @@ public final class ModelDocument {
         this.root = root;
         this.source = source;
         this.includes = new ModelIncludes(this, root);
+        this.typeDefinitions = new ModelTypeDefinitions(this, root);
     }
 
     /** The authored tree this document edits in place, for the collaborators that edit one aspect of it. */
@@ -281,33 +283,17 @@ public final class ModelDocument {
 
     /** The ids of the reusable type definitions declared on the model, in document order. */
     public List<String> typeDefinitionIds() {
-        List<String> out = new ArrayList<>();
-        for (JsonNode t : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
-            out.add(t.path(DmKeys.ID).asText());
-        }
-        return out;
+        return typeDefinitions.ids();
     }
 
     /** Every reusable type definition as complete typed authored state, keyed by id in document order. */
     public Map<String, TypeDefinitionState> typeDefinitions() {
-        Map<String, TypeDefinitionState> definitions = new LinkedHashMap<>();
-        for (JsonNode definition : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
-            String id = definition.path(DmKeys.ID).asText();
-            definitions.put(id, new TypeDefinitionState(id,
-                    FieldTypeSpecReader.read(definition.path(DmKeys.FIELD_TYPE)),
-                    AuthoredStateReader.descriptive(definition)));
-        }
-        return Collections.unmodifiableMap(definitions);
+        return typeDefinitions.all();
     }
 
     /** The field-type discriminator of the type definition {@code id} (e.g. {@code NumberType}), if declared. */
     public Optional<String> typeDefinitionType(String id) {
-        for (JsonNode t : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
-            if (id.equals(t.path(DmKeys.ID).asText())) {
-                return Optional.ofNullable(t.path(DmKeys.FIELD_TYPE).path(DmKeys.TYPE).asText(null));
-            }
-        }
-        return Optional.empty();
+        return typeDefinitions.type(id);
     }
 
     /**
@@ -327,18 +313,7 @@ public final class ModelDocument {
      * alone. Empty when the def carries no surfaceable config (a bare NUMBER) or there is no such def.
      */
     public Optional<String> typeDefinitionConfigJson(String id) {
-        return typeDefinitionConfig(id).map(ObjectNode::toString);
-    }
-
-    /** {@link #typeDefinitionConfigJson} as the internal node (the typed read-back peers route here; Set W —
-     *  a Jackson type may not cross the published surface). */
-    private Optional<ObjectNode> typeDefinitionConfig(String id) {
-        JsonNode fieldType = typeDefinitionFieldType(id);
-        if (fieldType == null || fieldType.isMissingNode()) {
-            return Optional.empty();
-        }
-        ObjectNode cfg = TypeConfigReader.read(fieldType);
-        return cfg.isEmpty() ? Optional.empty() : Optional.of(cfg);
+        return typeDefinitions.config(id).map(ObjectNode::toString);
     }
 
     // --- the element tree (name-path addressed) -------------------------------------------------
@@ -556,32 +531,32 @@ public final class ModelDocument {
     /** The declared {@code pattern} of a leaf typeDefinition {@code id}, if any — the typedef peer of {@link
      *  #fieldPattern} (a typedef-typed field's own {@link #fieldConfig} is empty; its constraints live here). */
     public Optional<String> typeDefinitionPattern(String id) {
-        return blockText(typeDefinitionConfig(id), "string", "pattern");
+        return blockText(typeDefinitions.config(id), "string", "pattern");
     }
 
     /** The declared {@code minLength} of a leaf typeDefinition {@code id}, if any. */
     public OptionalInt typeDefinitionMinLength(String id) {
-        return blockInt(typeDefinitionConfig(id), "string", "minLength");
+        return blockInt(typeDefinitions.config(id), "string", "minLength");
     }
 
     /** The declared {@code maxLength} of a leaf typeDefinition {@code id}, if any. */
     public OptionalInt typeDefinitionMaxLength(String id) {
-        return blockInt(typeDefinitionConfig(id), "string", "maxLength");
+        return blockInt(typeDefinitions.config(id), "string", "maxLength");
     }
 
     /** The declared minimum value of a leaf number typeDefinition {@code id}, if any. */
     public Optional<BigDecimal> typeDefinitionMinValue(String id) {
-        return blockDecimal(typeDefinitionConfig(id), "number", "min");
+        return blockDecimal(typeDefinitions.config(id), "number", "min");
     }
 
     /** The declared maximum value of a leaf number typeDefinition {@code id}, if any. */
     public Optional<BigDecimal> typeDefinitionMaxValue(String id) {
-        return blockDecimal(typeDefinitionConfig(id), "number", "max");
+        return blockDecimal(typeDefinitions.config(id), "number", "max");
     }
 
     /** The declared decimal scale of a leaf number typeDefinition {@code id}, if any. */
     public OptionalInt typeDefinitionMaxFractionalDigits(String id) {
-        return blockInt(typeDefinitionConfig(id), "number", "maxFractionalDigits");
+        return blockInt(typeDefinitions.config(id), "number", "maxFractionalDigits");
     }
 
     /** Read a textual leaf from a schema-block config ({@code <block>.<key>}); the read-back peers route here. */
@@ -1351,13 +1326,7 @@ public final class ModelDocument {
 
     /** Declare a reusable type definition {@code id} over a fully-configured {@code type} (scale, pattern, enum, …). */
     public ModelDocument addTypeDefinition(String id, FieldTypeSpec type) {
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        ArrayNode array = tds.isArray() ? (ArrayNode) tds
-                : ((ObjectNode) root.path(DmKeys.CONTENT)).putArray(DmKeys.TYPE_DEFINITIONS);
-        ObjectNode node = array.addObject();
-        node.put(DmKeys.ID, id);
-        node.put(DmKeys.NAME, id);
-        DocumentModelDraft.writeFieldType(node.putObject(DmKeys.FIELD_TYPE), type, locales());
+        typeDefinitions.add(id, type);
         return this;
     }
 
@@ -1368,16 +1337,8 @@ public final class ModelDocument {
 
     /** Re-configure the underlying type of the type definition {@code id}; fails fast if absent. */
     public ModelDocument setTypeDefinitionType(String id, FieldTypeSpec type) {
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        if (tds.isArray()) {
-            for (JsonNode td : tds) {
-                if (id.equals(td.path(DmKeys.ID).asText())) {
-                    DocumentModelDraft.writeFieldType(((ObjectNode) td).putObject(DmKeys.FIELD_TYPE), type, locales());
-                    return this;
-                }
-            }
-        }
-        throw new IllegalArgumentException("no type definition with id: " + id);
+        typeDefinitions.setType(id, type);
+        return this;
     }
 
     /**
@@ -1385,14 +1346,7 @@ public final class ModelDocument {
      * document order — the structural <em>find</em> leg a typedef refactor rewrites against (task #2).
      */
     public List<String> fieldsUsingTypeDefinition(String id) {
-        List<String> out = new ArrayList<>();
-        walk((path, node, isGroup) -> {
-            if (!isGroup && id.equals(node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE)
-                    .path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
-                out.add(path);
-            }
-        });
-        return out;
+        return typeDefinitions.fieldsUsing(id);
     }
 
     // --- rename refactors (CLI-SPEC §6 — structural; the CLI safety gate refuses if the element is referenced) ---
@@ -1517,29 +1471,7 @@ public final class ModelDocument {
      * collision with an existing id is the caller's gate to refuse, with {@link #validate()} as backstop.
      */
     public ModelDocument renameTypeDefinition(String oldId, String newId) {
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        boolean renamed = false;
-        if (tds.isArray()) {
-            for (JsonNode td : tds) {
-                if (oldId.equals(td.path(DmKeys.ID).asText())) {
-                    ObjectNode node = (ObjectNode) td;
-                    node.put(DmKeys.ID, newId);
-                    if (oldId.equals(node.path(DmKeys.NAME).asText())) {
-                        node.put(DmKeys.NAME, newId);   // a default name (== id) tracks the rename; a custom one stays
-                    }
-                    renamed = true;
-                }
-            }
-        }
-        if (!renamed) {
-            throw new IllegalArgumentException("no type definition with id: " + oldId);
-        }
-        walk((path, node, isGroup) -> {
-            JsonNode ref = node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE).path("TypeDefType");
-            if (!isGroup && oldId.equals(ref.path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
-                ((ObjectNode) ref).put(DmKeys.TYPE_DEFINITION_ID, newId);
-            }
-        });
+        typeDefinitions.rename(oldId, newId);
         return this;
     }
 
@@ -1550,17 +1482,7 @@ public final class ModelDocument {
      * share a single concrete type; {@link #validate()} is the kernel backstop.
      */
     public ModelDocument extractTypeDefinition(String newId, List<String> fieldPaths) {
-        JsonNode shared = sharedConcreteFieldType(fieldPaths);
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        ArrayNode array = tds.isArray() ? (ArrayNode) tds
-                : ((ObjectNode) root.path(DmKeys.CONTENT)).putArray(DmKeys.TYPE_DEFINITIONS);
-        ObjectNode td = array.addObject();
-        td.put(DmKeys.ID, newId);
-        td.put(DmKeys.NAME, newId);
-        td.set(DmKeys.FIELD_TYPE, shared.deepCopy());
-        for (String fieldPath : fieldPaths) {
-            setFieldType(fieldPath, new FieldTypeSpec.TypeDefRef(newId));
-        }
+        typeDefinitions.extract(newId, fieldPaths);
         return this;
     }
 
@@ -1570,35 +1492,7 @@ public final class ModelDocument {
      * mutating (see {@code SafetyChecks}); {@link #extractTypeDefinition} relies on the same answer.
      */
     public boolean fieldsShareConcreteType(List<String> fieldPaths) {
-        try {
-            sharedConcreteFieldType(fieldPaths);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private JsonNode sharedConcreteFieldType(List<String> fieldPaths) {
-        if (fieldPaths.isEmpty()) {
-            throw new IllegalArgumentException("no fields to extract");
-        }
-        JsonNode shared = null;
-        for (String fieldPath : fieldPaths) {
-            JsonNode field = locate(fieldPath, false);
-            if (field == null) {
-                throw new IllegalArgumentException("no field at: " + fieldPath);
-            }
-            JsonNode fieldType = field.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
-            if ("TypeDefType".equals(fieldType.path(DmKeys.TYPE).asText())) {
-                throw new IllegalArgumentException(fieldPath + " is already typed by a definition");
-            }
-            if (shared == null) {
-                shared = fieldType;
-            } else if (!shared.equals(fieldType)) {
-                throw new IllegalArgumentException("fields do not share an identical type: " + fieldPath);
-            }
-        }
-        return shared;
+        return typeDefinitions.fieldsShareConcreteType(fieldPaths);
     }
 
     /**
@@ -1607,30 +1501,8 @@ public final class ModelDocument {
      * Fails fast if {@code id} is absent.
      */
     public ModelDocument inlineTypeDefinition(String id) {
-        JsonNode underlying = typeDefinitionFieldType(id);
-        if (underlying == null) {
-            throw new IllegalArgumentException("no type definition with id: " + id);
-        }
-        walk((path, node, isGroup) -> {
-            JsonNode fieldType = node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
-            if (!isGroup && id.equals(fieldType.path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
-                ((ObjectNode) node.path(ElementType.FIELD.wireName())).set(DmKeys.FIELD_TYPE, underlying.deepCopy());
-            }
-        });
-        removeTypeDefinition(id);
+        typeDefinitions.inline(id);
         return this;
-    }
-
-    private JsonNode typeDefinitionFieldType(String id) {
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        if (tds.isArray()) {
-            for (JsonNode td : tds) {
-                if (id.equals(td.path(DmKeys.ID).asText())) {
-                    return td.path(DmKeys.FIELD_TYPE);
-                }
-            }
-        }
-        return null;
     }
 
     /** Add a field at {@code groupPath} typed by the type definition {@code typeDefId}. */
@@ -1741,17 +1613,8 @@ public final class ModelDocument {
 
     /** Remove the type definition {@code id}. Fails fast if absent; {@link #validate()} catches a field still using it. */
     public ModelDocument removeTypeDefinition(String id) {
-        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
-        if (tds.isArray()) {
-            ArrayNode array = (ArrayNode) tds;
-            for (int i = 0; i < array.size(); i++) {
-                if (id.equals(array.get(i).path(DmKeys.ID).asText())) {
-                    array.remove(i);
-                    return this;
-                }
-            }
-        }
-        throw new IllegalArgumentException("no type definition with id: " + id);
+        typeDefinitions.remove(id);
+        return this;
     }
 
     /**

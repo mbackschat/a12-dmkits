@@ -233,6 +233,7 @@ The structural peer of rulekit: build a model from scratch, and read/round-trip/
 |---|---|
 | `DocumentModelDraft` | the from-scratch fluent builder (`Builder`/`GroupBuilder`/`TypeDefBuilder`/… nested; the field-kind builders extracted to their own files — `StringFieldBuilder`, `NumberFieldBuilder`, `EnumFieldBuilder`, `Date*FieldBuilder`, `CustomFieldBuilder`, …) |
 | `ModelDocument` | read an existing model's structure + tree-surgery edits (add/modify/remove/rename/move fields & groups, type-defs, doc config; id rebasing through `SubtreeReprefix`) |
+| `ModelTypeDefinitions` | the type-definition half of `ModelDocument`'s edits: `content.typeDefinitions` read and edited together with the fields typed by them — add, retype, rename, extract, inline, remove |
 | `ModelIncludes` | the include half of `ModelDocument`'s edits: header `modelReferences` (includes, type-def imports) kept in step with the mount groups an include places — mount, extract, inline, repoint, remove |
 | `FieldKind`, `FieldModification`, `FieldTypeSpec`, `MountOptions`, `AttachmentRule`, `IncludeLevel`, `DatePrecision` | the structural value types |
 
