@@ -22,6 +22,6 @@ Routine timing evidence remains in its native JSONL files:
 - [Complete routine after the admission repair](../../darwin-aarch64/2026-10-12T122828Z.jsonl), clean `7f6608e62`: 57/58 tests pass; the same CPU/1500 limit still fails at 39.73/39.25/39.39 ms. This full-context failure prevents treating the earlier focused pass as closure.
 - [Sparse-filter cost verification](../../darwin-aarch64/2026-10-12T123809Z.jsonl), dirty `7f6608e62` with the `ExprEval.filteredRows` coordinate shortcuts: CPU 31.441/127.916 ms at 1500/6000; both kernel comparisons pass. The whole-suite context is checked separately.
 - [Final complete routine](../../darwin-aarch64/2026-10-12T124213Z.jsonl), clean `2293025d6`: 58 tests, no failures or skips, all twelve result XMLs fresh; CPU/1500 is 37.056 ms and CPU/6000 is 148.119 ms, both accepted in the complete-suite context.
-- [October 9 comparand](../../darwin-aarch64/2026-10-09T192141Z.jsonl), `59b94e1e5`: historical observation, not a replacement standing anchor. Exact keys include workload fingerprint, scale and clock.
+- October 9 comparand `darwin-aarch64/2026-10-09T192141Z` (since retired from the record), `59b94e1e5`: historical observation, not a replacement standing anchor. Exact keys include workload fingerprint, scale and clock.
 
 The final routine, memory and deterministic-work guards pass unchanged. Historical timing differences remain observations: the documented clock instrument cannot certify a strict 5% non-regression bound, and neither a green gate nor these records establish that every difference is noise.
