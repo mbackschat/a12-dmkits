@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,9 +41,9 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 class DiagnosticConformanceFuzzTest {
 
     private static final ObjectMapper M = new ObjectMapper();
-    private static final Set<String> ENTITY_REF = Set.of(
-            "FIELD_PATH", "GROUP_PATH", "RULE_PATH", "COMPUTATION_PATH", "TYPEDEF_ID", "INCLUDE_REFERENCE",
-            "CRITERION_NAME", "ELEMENT_REF");
+    /** The manifest's spelling of every entity-reference kind, from the kinds themselves. */
+    private static final Set<String> ENTITY_REF = Stream.of(ParamKind.Kind.values())
+            .filter(ParamKind.Kind::entityRef).map(Enum::name).collect(Collectors.toUnmodifiableSet());
     /** Read-PROJECTION ops whose sole positional is always a model-entity locator — probed regardless of
      *  {@code @ParamKind}, so a future read verb that forgets to tag its locator still can't bare-fail (F5). */
     private static final Set<String> READ_PROJECTION_OPS = Set.of("read", "explain", "format", "deps");
@@ -129,7 +131,8 @@ class DiagnosticConformanceFuzzTest {
                 continue;   // omit optional, non-tested params
             }
             String kind = p.path("kind").asText("");
-            String value = tested ? bogus(kind) : ENTITY_REF.contains(kind) ? validFromFixture(kind) : benign(kind);
+            String value = tested ? bogus(kind) : ENTITY_REF.contains(kind) ? validFromFixture(kind)
+                    : kindNamed(kind).map(ParamKind.Kind::benignDefault).orElse(null);
             if (value == null) {
                 return Optional.empty();   // FILE, or an entity-ref kind the fixture has no value for
             }
@@ -174,14 +177,16 @@ class DiagnosticConformanceFuzzTest {
         }
     }
 
+    /**
+     * The kind's own absent value. An untagged read locator (F5) carries no kind, so it gets the
+     * any-element reference's, which is what a read-projection locator names.
+     */
     private static String bogus(String kind) {
-        return switch (kind) {
-            case "GROUP_PATH" -> "/__rk_absent_group__";
-            case "TYPEDEF_ID" -> "__rk_absent_typedef__";
-            case "INCLUDE_REFERENCE" -> "__rk_absent_include__";
-            case "CRITERION_NAME" -> "__rk_absent_criterion__";
-            default -> "/__rk_absent__/__x__";   // FIELD_PATH / RULE_PATH / COMPUTATION_PATH
-        };
+        return kindNamed(kind).filter(ParamKind.Kind::entityRef).orElse(ParamKind.Kind.ELEMENT_REF).bogusValue();
+    }
+
+    private static Optional<ParamKind.Kind> kindNamed(String kind) {
+        return Stream.of(ParamKind.Kind.values()).filter(k -> k.name().equals(kind)).findFirst();
     }
 
     /** A value that exists in the fixture, for filling a non-tested entity-ref; null if the fixture has none. */
@@ -190,16 +195,6 @@ class DiagnosticConformanceFuzzTest {
             case "FIELD_PATH", "ELEMENT_REF" -> "/Order/Note";
             case "GROUP_PATH" -> "/Order";
             default -> null;   // no rule/computation/typedef/include in the fixture — those verbs are single-ref
-        };
-    }
-
-    private static String benign(String kind) {
-        return switch (kind) {
-            case "NEW_NAME" -> "RkProbe";
-            case "FIELD_KIND" -> "NUMBER";
-            case "SCALAR" -> "2";
-            case "FREEFORM" -> "x";
-            default -> null;   // FILE etc. — not fillable
         };
     }
 }
