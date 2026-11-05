@@ -134,6 +134,15 @@ class EnumValueAndLabelLawsTest {
         rows.put("every label text blank",
                 "{\"values\":[{\"value\":\"BASIC\"," + label("en_US", "") + "},"
                         + "{\"value\":\"PLUS\"," + label("en_US", "") + "}]}");
+        // An EMPTY value token is admitted only while the enumeration is unlabelled (theValueTokensThemselves);
+        // labelled, it is refused, and labelled with its own empty text A12 cannot build the model at all. A
+        // label derived from the token (schemakit's DERIVE) produces exactly that last row.
+        rows.put("an EMPTY value token, labelled",
+                "{\"values\":[{\"value\":\"\"," + label("en_US", "None") + "},"
+                        + "{\"value\":\"PLUS\"," + label("en_US", "Plus") + "}]}");
+        rows.put("an EMPTY value token labelled with an EMPTY text",
+                "{\"values\":[{\"value\":\"\"," + label("en_US", "") + "},"
+                        + "{\"value\":\"PLUS\"," + label("en_US", "Plus") + "}]}");
 
         Map<String, String> actual = new LinkedHashMap<>();
         rows.forEach((row, json) -> actual.put(row, KernelLaws.verdictOf(storedModelWith(json))));
@@ -147,6 +156,8 @@ class EnumValueAndLabelLawsTest {
         expected.put("TWO labels for the same locale on one value", KernelLaws.ADMITTED);
         expected.put("an EMPTY label ARRAY on one value", COUNT_INVALID);
         expected.put("every label text blank", DISPLAY_SHORT);
+        expected.put("an EMPTY value token, labelled", "MVK_INTERNAL_VALUE_MISSING," + DISPLAY_SHORT);
+        expected.put("an EMPTY value token labelled with an EMPTY text", "NOT BUILDABLE");
         assertEquals(expected, actual, "a declared enumeration's per-locale labels");
     }
 

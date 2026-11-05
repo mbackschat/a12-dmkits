@@ -21,9 +21,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * A text field compared with a labelled enumeration, admitted since kernel 31.0 (A12K-3969, KERNEL-FINDINGS KF655),
  * is a cross-field comparison no JSON Schema keyword states, so both operand orders ride `x-a12-rule` and an a12 →
  * JSON Schema → a12 round trip restores both rules exactly, in both wire forms. The kernel's consistency check is the
- * admission oracle after the round trip. The comparison is the subject here, so only the rules are compared: the
- * enumeration's labels do not survive the round trip, a defect of the bridge's label carriage that SCHEMAKIT-GAPS SG1
- * owns. Authored through the typed surface; own domain (a subscription request).
+ * admission oracle after the round trip, and the enumeration's labels ride `x-a12-enum-labels`
+ * (`EnumLabelCarriageTest`). Authored through the typed surface; own domain (a subscription request).
  */
 class TextEnumComparisonCarriageTest {
 
@@ -60,7 +59,7 @@ class TextEnumComparisonCarriageTest {
         for (boolean wrapped : new boolean[] {false, true}) {
             String label = wrapped ? "wrapped OpenAPI 3.1" : "bare JSON Schema";
             var exported = new JsonSchemaExporter().export(source, Dialect.OPENAPI_31, wrapped);
-            assertEquals(List.of("/Subscription/PlanMatch", "/Subscription/PlanMismatch"),
+            assertEquals(List.of("/Subscription/Plan", "/Subscription/PlanMatch", "/Subscription/PlanMismatch"),
                     exported.report().dispositions().stream()
                             .filter(d -> d.tier() == TranscodeReport.Tier.CARRIED && d.source().startsWith("/Subscription/"))
                             .map(TranscodeReport.Disposition::source).sorted().toList(), label);

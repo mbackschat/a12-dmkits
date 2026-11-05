@@ -42,7 +42,11 @@ public record MappingProfile(
     /** Three-state vs checkbox for a JSON {@code boolean}. */
     public enum BooleanKind { BOOLEAN, CONFIRM }
 
-    /** Where an enum value's label comes from (JSON Schema enums carry no labels). */
+    /**
+     * Where a foreign enum value's label comes from, JSON Schema having no label keyword: the value itself, the
+     * {@code x-enumNames} display-name array beside {@code enum}, or none. An a12 export's
+     * {@code x-a12-enum-labels} carriage wins over every strategy.
+     */
     public enum EnumLabels { DERIVE, X_ENUM_NAMES, BLANK }
 
     /** Best-effort defaults — maximize coverage, flag every guess in the report (SCHEMAKIT-SPEC §4b). */
@@ -101,6 +105,11 @@ public record MappingProfile(
     public MappingProfile withFormat(FormatStrategy strategy) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
                 strategy, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
+    }
+
+    public MappingProfile withEnumLabels(EnumLabels strategy) {
+        return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
+                format, booleanKind, strategy, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withRecursionDepth(int depth) {

@@ -21151,7 +21151,7 @@
       }
     },
     "kf321": {
-      "sha256": "4d05f5a335f801aaeeb084e73c8128626b730293ecf11e65cad22a3ffa01aa31",
+      "sha256": "a1305e3729a5fb38906bfa5e5d6fc5c86f110086e157829c860b005099eeaa96",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -21163,7 +21163,9 @@
           "enum value label"
         ],
         "dmtool-cli": [],
-        "json-schema-import": [],
+        "json-schema-import": [
+          "enum label derivation"
+        ],
         "json-schema-export": [],
         "a12-kernel-lean": []
       },
@@ -21189,8 +21191,8 @@
           "evidence": {}
         },
         "checker": {
-          "state": "APPLIED",
-          "basis": "Locked by the test this finding names, requalified on kernel 31.1.1.",
+          "state": "OPEN",
+          "basis": "The 2026-11-05 rows (an empty token in a labelled enumeration) are not mirrored: the checker treats only an absent token as missing. The earlier rows stay locked by EnumValueLabelTest.",
           "evidence": {
             "enum value label": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EnumValueLabelTest.kt#theLabelTextsMustBeDistinctWithinOneLanguage",
@@ -21204,9 +21206,14 @@
           "evidence": {}
         },
         "json-schema-import": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "A label strategy never writes a label set this finding's rows refuse; it leaves the enumeration unlabelled and reports it.",
+          "evidence": {
+            "enum label derivation": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/EnumLabelCarriageTest.java#labelsA12WouldRefuseLeaveTheEnumerationUnlabelledAndAreReported",
+              "witness": "EnumLabelCarriageTest imports an empty token, a repeated name and a blank name under DERIVE and X_ENUM_NAMES, and the kernel accepts every result."
+            }
+          }
         },
         "json-schema-export": {
           "state": "OPEN",

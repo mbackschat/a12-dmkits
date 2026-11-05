@@ -1113,14 +1113,12 @@ public final class DocumentModelDraft {
 
         /** The single selectable field: an enumeration of {@code values} (at least two for a real choice). */
         public MultiSelectBuilder enumField(String name, String... values) {
-            List<FieldTypeSpec.EnumValue> enumValues = new ArrayList<>();
-            for (String value : values) {
-                enumValues.add(new FieldTypeSpec.EnumValue(value, Map.of()));
-            }
-            this.fieldName = name;
-            this.fieldType = new FieldTypeSpec.EnumSpec(enumValues, List.of());
-            this.fieldMeta = FieldMeta.none();
-            return this;
+            return enumField(name, e -> List.of(values).forEach(e::value));
+        }
+
+        /** Configure the enumeration as a group's, its values' labels included; the template defaults to required. */
+        public MultiSelectBuilder enumField(String name, Consumer<EnumFieldBuilder> body) {
+            return selectable(name, new EnumFieldBuilder(), body);
         }
 
         /** The single selectable field: a free-text string. */
@@ -1130,7 +1128,11 @@ public final class DocumentModelDraft {
 
         /** Configure the String field without discarding its constraints or metadata; the template defaults to required. */
         public MultiSelectBuilder stringField(String name, Consumer<StringFieldBuilder> body) {
-            StringFieldBuilder builder = new StringFieldBuilder();
+            return selectable(name, new StringFieldBuilder(), body);
+        }
+
+        /** The selectable field, configured over the template's requiredness. */
+        private <B extends FieldAttrs<B>> MultiSelectBuilder selectable(String name, B builder, Consumer<B> body) {
             builder.requiredness = requiredness;
             body.accept(builder);
             ElementDraft.Field field = builder.toField(name);

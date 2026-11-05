@@ -34,6 +34,8 @@ final class Carriage {
     static final String X_INDEX_FIELD_NAME = "x-a12-index-field-name";
     static final String X_RULE = "x-a12-rule";
     static final String X_COMPUTATION = "x-a12-computation";
+    /** An enumeration field's labels by value, each in A12's {@code [{locale, text}]} shape ({@link EnumLabelMapping}). */
+    static final String X_ENUM_LABELS = "x-a12-enum-labels";
     /** A12's stored {@code content.documentUniquenessCriteria}, verbatim: a cross-document constraint one
      *  document's JSON Schema cannot state (KERNEL-FINDINGS KF671). */
     static final String X_CRITERIA = "x-a12-document-uniqueness-criteria";

@@ -10,8 +10,9 @@ import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A JSON Schema {@code enum} imports to an a12 ENUMERATION and round-trips (SCHEMAKIT-SPEC §4). Labels have
- * no JSON-Schema source, so the default is none (the label strategy is a MappingProfile knob).
+ * A JSON Schema {@code enum} imports to an a12 ENUMERATION and round-trips (SCHEMAKIT-SPEC §4). The default import
+ * labels each value with itself, and export leaves those labels out, so the round trip gains nothing
+ * ({@code EnumLabelCarriageTest}).
  */
 class EnumShapeTest {
 

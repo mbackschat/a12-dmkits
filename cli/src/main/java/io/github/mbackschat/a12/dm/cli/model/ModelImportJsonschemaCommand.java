@@ -117,7 +117,8 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--enum-labels", paramLabel = "<strategy>",
             description = "where enum labels come from (JSON enums carry none) → DERIVE (default; label = value) | "
-                    + "X_ENUM_NAMES (read x-enumNames) | BLANK (no labels).")
+                    + "X_ENUM_NAMES (read x-enumNames) | BLANK (no labels). "
+                    + "An exported model's x-a12-enum-labels is restored as is.")
     MappingProfile.EnumLabels enumLabels;
 
     @ParamKind(ParamKind.Kind.FREEFORM)

@@ -60,6 +60,7 @@ public record io.github.mbackschat.a12.dm.schemakit.MappingProfile
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withArrayOfScalar(io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar)
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withBooleanKind(io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind)
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withDefaultRepeatCap(int)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withEnumLabels(io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels)
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withFormat(io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy)
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withMapStrategy(io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy)
   public io.github.mbackschat.a12.dm.schemakit.MappingProfile withNumberScale(io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale, int)

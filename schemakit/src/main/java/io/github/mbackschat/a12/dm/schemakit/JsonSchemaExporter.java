@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
@@ -41,8 +42,9 @@ public final class JsonSchemaExporter {
 
     /** Per-export state: the document, the field→typeDef map, the typeDefs actually referenced, the report, and
      *  the {@code $ref} prefix (dialect/wrap-dependent: {@code #/$defs/} bare vs {@code #/components/schemas/} wrapped). */
-    private record Ctx(ModelDocument doc, Map<String, String> fieldToTypedef,
-                       TreeSet<String> usedDefs, TranscodeReport.Builder report, String refPrefix) {}
+    private record Ctx(ModelDocument doc, Map<String, ModelDocument.FieldState> fields,
+                       Map<String, String> fieldToTypedef, TreeSet<String> usedDefs, TranscodeReport.Builder report,
+                       String refPrefix) {}
 
     public ExportResult export(String dmJson) {
         return export(dmJson, Dialect.JSON_SCHEMA, false);
@@ -61,7 +63,8 @@ public final class JsonSchemaExporter {
             throw new IllegalArgumentException("model has no group to export");
         }
         String refPrefix = wrapOpenApi ? "#/components/schemas/" : "#/$defs/";
-        Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder(), refPrefix);
+        Ctx ctx = new Ctx(doc, doc.authoredState().fields(), fieldTypedefMap(doc), new TreeSet<>(),
+                TranscodeReport.builder(), refPrefix);
         List<String> roots = groupPaths.stream().filter(p -> p.lastIndexOf('/') == 0).toList();
         ObjectNode schema;
         if (roots.size() == 1) {
@@ -182,6 +185,8 @@ public final class JsonSchemaExporter {
             prop.put("type", "string");
             ArrayNode en = prop.putArray("enum");
             ctx.doc().enumValues(fieldPath).forEach(en::add);   // typed read-back (modelkit), no raw-tree dig
+            EnumLabelMapping.export((FieldTypeSpec.EnumSpec) ctx.fields().get(fieldPath).type(), prop, fieldPath,
+                    ctx.report());
             ctx.report().structure(fieldPath, "properties/" + name + " (enum)");
             return;
         }

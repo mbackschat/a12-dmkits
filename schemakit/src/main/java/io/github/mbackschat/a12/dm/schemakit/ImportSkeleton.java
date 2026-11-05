@@ -11,7 +11,8 @@ final class ImportSkeleton {
 
     /** The model id when the schema names none, or names one that is not a safe id. */
     static final String DEFAULT_MODEL_ID = "ImportedModel";
-    private static final String LOCALE = "en_US";
+    /** The one locale an import declares before carriage restores the model's own. */
+    static final String LOCALE = "en_US";
 
     private ImportSkeleton() {}
 

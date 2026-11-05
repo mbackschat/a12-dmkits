@@ -113,6 +113,7 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
   public MultiSelectBuilder()
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder annotation(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder enumField(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder enumField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder maxRows(int)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder required()
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder requiredIfParentPresent()

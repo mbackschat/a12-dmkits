@@ -1016,7 +1016,7 @@ public final class JsonSchemaImporter {
         String type = items.path("type").asText("");
         if (!"string".equals(type) && !(type.isEmpty() && hasEnum(items))) return EmptyStringAdmission.EXCLUDED;
         if (saturatedInt(items.path("minLength")) >= 1
-                || (hasEnum(items) && java.util.Arrays.stream(enumArrayValues(items)).noneMatch(String::isEmpty))
+                || (hasEnum(items) && enumArrayValues(items).stream().noneMatch(String::isEmpty))
                 || (items.has("const") && !items.path("const").asText().isEmpty())) return EmptyStringAdmission.EXCLUDED;
         if ((items.has("pattern") && !items.path("pattern").asText().isEmpty()) || items.has("format")) {
             return EmptyStringAdmission.UNRESOLVED;
@@ -1036,8 +1036,8 @@ public final class JsonSchemaImporter {
             ctx.report().omit(path, "MULTI_SELECT cannot preserve or establish empty string item admission with its required value field — choose REPEATABLE_SINGLE for explicit empty-admitting items or retain source-schema validation");
             return;
         }
-        String[] values = enumArrayValues(items);
-        g.multiSelectGroup(name, m -> m.enumField(ROW_FIELD, values).maxRows(max));
+        g.multiSelectGroup(name, m -> m.enumField(ROW_FIELD, e -> EnumLabelMapping.addValues(e, enumArrayValues(items),
+                items, name, ctx.profile().enumLabels(), ctx.report())).maxRows(max));
         ctx.report().structure(path, "multi-select group (enum, max " + max + ")");
     }
 
@@ -1112,12 +1112,9 @@ public final class JsonSchemaImporter {
         return items.has("enum") && items.get("enum").isArray() && !items.get("enum").isEmpty();
     }
 
-    private static String[] enumArrayValues(JsonNode items) {
-        JsonNode en = items.get("enum");
-        String[] values = new String[en.size()];
-        for (int i = 0; i < en.size(); i++) {
-            values[i] = en.get(i).asText();
-        }
+    private static List<String> enumArrayValues(JsonNode items) {
+        List<String> values = new ArrayList<>();
+        items.get("enum").forEach(value -> values.add(value.asText()));
         return values;
     }
 
@@ -1322,7 +1319,8 @@ public final class JsonSchemaImporter {
         Set<String> seen = new LinkedHashSet<>();
         discriminator.ifPresent(disc -> {
             seen.add(disc);
-            target.enumField(disc, e -> discriminatorValues(variants, disc).forEach(e::value));
+            target.enumField(disc, e -> EnumLabelMapping.addValues(e, discriminatorValues(variants, disc), MissingNode.getInstance(),
+                    disc, ctx.profile().enumLabels(), ctx.report()));
             ctx.report().structure(path + "/" + disc, "discriminator ENUMERATION");
         });
         for (JsonNode variant : variants) {
@@ -1424,7 +1422,7 @@ public final class JsonSchemaImporter {
         Requiredness req = isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL;
         collectNot(name, schema, path, ctx);   // a 'not' const/enum → a forbidding rule (the synthesis resolves the kind)
         if (schema.has("enum") && schema.get("enum").isArray() && !schema.get("enum").isEmpty()) {
-            addEnumField(g, name, schema, isRequired);
+            addEnumField(g, name, schema, isRequired, ctx);
             ctx.report().structure(path, "ENUMERATION");
             return;
         }
@@ -1461,14 +1459,11 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** A JSON Schema {@code enum} → an a12 ENUMERATION. Labels have no JSON-Schema source → none (the
-     *  label strategy is a MappingProfile knob); values import in order. */
+    /** A JSON Schema {@code enum} → an a12 ENUMERATION, values in order, labelled by {@link EnumLabelMapping}. */
     private static void addEnumField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
-                                     boolean isRequired) {
+                                     boolean isRequired, Ctx ctx) {
         g.enumField(name, e -> {
-            for (JsonNode value : schema.get("enum")) {
-                e.value(value.asText());
-            }
+            EnumLabelMapping.addValues(e, enumArrayValues(schema), schema, name, ctx.profile().enumLabels(), ctx.report());
             if (isRequired) {
                 e.required();
             }

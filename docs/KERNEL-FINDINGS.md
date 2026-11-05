@@ -6763,7 +6763,7 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | two ordinary values — the control | ADMITTED |
 | the same token twice | `MVK_INTERNAL_VALUES_DUPLICATE` |
 | a single value | ADMITTED |
-| an EMPTY token | ADMITTED |
+| an EMPTY token, the enumeration unlabelled | ADMITTED |
 | a token containing a space | ADMITTED |
 | a 300-character token | ADMITTED |
 
@@ -6784,6 +6784,10 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | (bilingual) both locales answered | ADMITTED |
 | (bilingual) only one locale answered | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
 | (bilingual) one value bilingual, the other English only | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| an EMPTY token, labelled `None` | `MVK_INTERNAL_VALUE_MISSING`, `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| an EMPTY token labelled with an EMPTY text | not buildable |
+
+*Extended 2026-11-05 (kernel 31.1.1):* the last two rows. The empty token the first table admits is admitted only while the enumeration is unlabelled; labelled, A12 refuses it as a missing token, and the label an importer would derive from it (its own empty text) leaves A12 unable to build the model at all. So schemakit's `DERIVE` and `X_ENUM_NAMES` leave such an enumeration unlabelled and report it.
 
 **The two bolded rows are what pin the law, and neither follows from the other.** Labels written only for an undeclared locale are ADMITTED although no declared locale is answered — so a checker asking "is this locale answered" gets that row wrong. Labels present for the declared locale with every text blank are REFUSED although, again, no locale is answered — so a checker asking "is any label present" gets that one wrong. The entries' presence for a declared locale is what arms the law; the texts are what satisfy it. No mechanism is claimed for the split: both halves are stated as observed.
 
@@ -6791,7 +6795,7 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 
 **modelkit's client-side refusal of a partially-labelled enumeration is CLEARED by this grid** rather than corrected: `DocumentModelDraft` throws when any value is labelled and any value lacks a label for a declared locale, which is exactly the pair of laws above, and it had only a comment for a basis.
 
-*Locked by:* `rulekit.validate.laws.EnumValueAndLabelLawsTest` (three grids, 20 rows); the portable checker's mirror is `consistency.EnumValueLabelTest`.
+*Locked by:* `rulekit.validate.laws.EnumValueAndLabelLawsTest` (four grids, 22 rows); the portable checker's mirror is `consistency.EnumValueLabelTest`.
 
 ## §13 supplement — a declared name's shape law is the CARRIER's, three ways: the code's spelling, whether a name code fires at all, and whether the name is judged (measured, 2026-09-13) <a id="kf322"></a>
 
