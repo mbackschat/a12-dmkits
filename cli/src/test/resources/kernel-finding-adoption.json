@@ -24589,13 +24589,14 @@
       }
     },
     "kf675": {
-      "sha256": "b911c932c71d46ae1fb86459d003b311df79a1c740d0bb05e7960f1d6af0066f",
+      "sha256": "00bab2236c0698d540671031fae39d9d5117fc5481de55c52c0f23a63223ff17",
       "task": "K31",
       "scope": {
         "adapter": [
           "index field as member",
           "parallel row token",
-          "joined-row proof residuals"
+          "joined-row proof residuals",
+          "key-read marking"
         ],
         "dmkits": [],
         "interpreter": [
@@ -24604,7 +24605,8 @@
         "checker": [
           "index field as member",
           "parallel row token",
-          "joined-row proof residuals"
+          "joined-row proof residuals",
+          "key-read marking"
         ],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -24629,6 +24631,10 @@
             "joined-row proof residuals": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerJoinedRowProofResidualAgreementTest.kt#aJoinedRowIsProvedOnlyByConditionsThatNeedBothRowsPresent",
               "witness": "CheckerJoinedRowProofResidualAgreementTest pins A12's class on every further carrier, the spellings and NoFieldFilled included."
+            },
+            "key-read marking": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyReadMarkingAgreementTest.kt#aKeyReadMarksItsLevelForTheMessage",
+              "witness": "CheckerKeyReadMarkingAgreementTest pins A12's class on a join made only by a field key, beside the unkeyed control."
             }
           }
         },
@@ -24662,6 +24668,10 @@
             "joined-row proof residuals": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerJoinedRowProofResidualAgreementTest.kt#aJoinedRowIsProvedOnlyByConditionsThatNeedBothRowsPresent",
               "witness": "CheckerJoinedRowProofResidualAgreementTest compares A12 and the portable checker on every further carrier, the spellings and NoFieldFilled included."
+            },
+            "key-read marking": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerKeyReadMarkingAgreementTest.kt#aKeyReadMarksItsLevelForTheMessage",
+              "witness": "CheckerKeyReadMarkingAgreementTest compares A12 and the portable checker on a join made only by a field key, beside the unkeyed control."
             }
           }
         },

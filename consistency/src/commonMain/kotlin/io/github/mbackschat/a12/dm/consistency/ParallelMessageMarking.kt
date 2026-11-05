@@ -19,7 +19,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.textOf
  * index field is a member although the condition names it nowhere, and a marked level's row token needs the
  * condition to prove that row.
  *
- * Keyed, filtered-body and `SumOfTerms`-term reads are passed over, since A12 marks only an iterated read. Null
+ * Keyed, filtered-body and `SumOfTerms`-term reads are passed over, since A12 marks only an iterated read; a field
+ * KEY is one, iterating its own level, so it marks as `IterationGuard` reads it (KF675's key rows). Null
  * where this reader has no verdict: an outer marker, a condition that does not parse, or a target it cannot
  * anchor. A read whose scope chain A12 refuses during the parse contributes no level.
  */
@@ -33,7 +34,7 @@ internal fun TrackedFactBase.parallelMarkingOf(element: TrackedDeclaration): Set
         if (syntax.failure != null) return null
         syntax.entities.mapNotNull { entity ->
             if (entity.outerMarked) return null
-            if (entity.inFilter || entity.indexed || entity.indexKey || entity.inTerm) return@mapNotNull null
+            if (entity.inFilter || entity.indexed || entity.inTerm) return@mapNotNull null
             val written = entity.writtenPath.let { if (isRuleContext(it, conditionLanguage)) group else it }
             markedLevelsOf(written, group, anchor, element)
         }
@@ -63,13 +64,21 @@ internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: Trac
     val marked = parallelMarkingOf(element) ?: return MessageCompletion.Declined
     if (named !in marked) return MessageCompletion.Accepted
     val text = element.body?.string("errorCondition") ?: return MessageCompletion.Declined
-    val modifiers = setOfNotNull(OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.HAVING),
-        OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX))
+    val keyWord = OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX)
+    val modifiers = setOfNotNull(OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.HAVING), keyWord)
     val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
         ?: return MessageCompletion.Declined
     val ruleGroup = element.path.substringBeforeLast('/')
     val proof = provesRow(tree, conditionLanguage) { call, operand ->
         val written = call.textOf(operand)
+        val key = operand.indexOfFirst { it.text == keyWord }
+        if (key > 0) {
+            // A keyed selection outside the named level reads none of its rows, so it proves nothing there (KF675's
+            // key rows); one at or below the level is KF546's question and stays undecided here.
+            val selected = referencesIn(call.textOf(operand.subList(0, key)), conditionLanguage).singleOrNull()
+            val path = selected?.takeIf { '*' !in it }?.let { resolvedPathOf(it, ruleGroup, element) }
+            if (path != null && path != named && !path.startsWith("$named/")) return@provesRow false
+        }
         if (operand.any { it.text in modifiers }) return@provesRow null
         val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return@provesRow null
         if ('*' in reference) {

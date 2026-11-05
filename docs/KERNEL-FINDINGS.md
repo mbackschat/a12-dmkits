@@ -16811,7 +16811,17 @@ So `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled` and `AtLeastOneGroupFilled`
 
 **The portable checker over-reported the membership rows (`INVALID_FIELD`) and was silent on every refused token.** It now reads the marking the filtered-entity family already models and agrees on every row. It declines a token where the proof would rest on `AtLeastOneGroupFilled`, or on a starred, keyed or filtered operand. a12-kernel-lean's SPEC-2026-11-05-03 measured the `FieldsNotCollectivelyFilled` rows on its own carrier.
 
-*Locked by:* `adapter.laws.CheckerParallelJoinMessageAgreementTest`, A12 and the portable checker; the rendering of these parameters is [KF672](#kf672)'s.
+**A field KEY's read marks its level as an unkeyed read does** (`checkConsistency`, 2026-11-05). An order's `Lines` and `Picks` are both keyed by `LineNo`; the rule at `/Order` targets `Lines/Sku`. In `FieldFilled(Lines/Sku) And FieldFilled(Gifts/Note For Picks/LineNo)` the only read of the picks is the key `Picks/LineNo`, and the control replaces that operand with an unkeyed `FieldFilled(Picks/Ref)`:
+
+| message names | keyed join | control |
+|---|---|---|
+| `$/Order/Lines/LineNo.value$` | admitted | admitted |
+| `$/Order/Picks/LineNo.value$` | admitted | admitted |
+| `$#/Order/Picks$` | `INVALID_USE_OF_ITERATION_PARAM` | admitted |
+
+The first row discriminates: a reading in which a key read marks nothing finds no joint iteration, so the lines' index field is no member and the parameter draws `INVALID_FIELD`, and A12 admits it. The third shows the key marks without proving: a keyed selection of `Gifts`, outside the picks, reads no pick row. Whether a keyed selection AT the level proves its row is [KF546](#kf546)'s question and stays outside these rows. The portable checker skipped key reads here although `IterationGuard` already counted them, refusing the first row and admitting the third; it now marks them, and refuses a token whose only presence call selects outside the level.
+
+*Locked by:* `adapter.laws.CheckerParallelJoinMessageAgreementTest` and `adapter.laws.CheckerKeyReadMarkingAgreementTest`, A12 and the portable checker; the rendering of these parameters is [KF672](#kf672)'s.
 
 ## §13 supplement — kernel 31.1.1 writes every locale it read as the parsed locale's `toString`, in every member that carries one (model serializer, measured, kernel 31.1.1, 2026-11-05) <a id="kf676"></a>
 
