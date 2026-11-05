@@ -6,12 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
-## [Unreleased] — kernel 31.1.1 (A12 Tools 2026.06-ext1)
+## [0.15.0] — kernel 31.1.1 (A12 Tools 2026.06-ext1)
+
+### Added
+
+- **Author, read back and evaluate `SumOfTerms`,** kernel 31's sum over a set of terms. It has a typed builder and a catalog entry, `model eval` evaluates it, and the portable checker reports its admission classes.
+- **Edit document uniqueness criteria.** `criterion add`, `criterion read` and `criterion remove`, plus their batch operations, speak A12's stored entry shape in both directions. `where-used`, the delete gates, `rename`, `move` and `extract` treat a criterion as a referrer of the fields it names. JSON Schema export and import carry criteria, and the portable checker states A12's criterion sentences.
+- **Enumeration labels survive JSON Schema.** Export carries each value's labels; on import, `--enum-labels` chooses where a foreign schema's labels come from (`DERIVE`, `X_ENUM_NAMES` or `BLANK`), and never writes a label set A12 refuses.
+- **Compare a text field with an enumeration in either order,** as kernel 31 admits. Kernel 31's tool-managed `modelInfo.packet` is read, kept through every edit, and compared by `model diff`.
 
 ### Changed
 
 - **BREAKING:** targets A12 Kernel `31.1.1` / A12 Tools `2026.06-ext1` and the DM `29.4.0` model format. An include resolves by its `includeConfig.reference` alone, so `include rename` is gone, and models written for kernel 30.8.1 need A12's own migration first.
 - Evaluation follows kernel 31.1.1's date runtime: the proleptic calendar, Europe/Berlin's historical offsets, a daylight-saving gap moved forward and an overlap at its earlier offset, and `DifferenceInDays` counted on wall clocks.
+- Locales are written and matched the way A12 parses them, so `en-US` and `en_US` name one locale in every check, and the kits write A12's canonical spelling.
+
+### Fixed
+
+- The portable checker matches kernel 31.1.1 on join indexes, executable paths, `Now` shifts, message parameters beside a parallel join, empty enumeration tokens and keyed row tokens.
+- An edit that A12's model reader refuses is reported against the edit rather than against the `-m` model, and `patterns --message` refuses a locale the model does not declare instead of dropping it.
+- JSON Schema round trips keep the model id and model-level metadata.
+
+### Performance
+
+- Partial validation shares gated group counts across a scope, and a row-invariant `SumOfTerms` is folded once per scope rather than once per row.
+
+### Compatibility and artifacts
+
+- Targets A12 Kernel `31.1.1` / A12 Tools `2026.06-ext1`. This release does not claim compatibility with kernel `30.8.1`; stay on `0.14.0` for that line.
+- Native binaries for macOS arm64, Linux x64/arm64 and Windows x64, with `SHA256SUMS`, plus the Claude Code and Codex plugins. The standalone interpreter and the portable checker publish separately at the same `0.15.0` version.
 
 ## [0.14.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

@@ -6,9 +6,23 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Changed
+
+- **BREAKING: evaluates as A12 Kernel `31.1.1` does, on the DM `29.4.0` model format.** A mount is written as `includeConfig` and identified by its `reference` alone. A group still carrying a DM 28 mount member such as `modelAlias` is refused, because A12 would read it as a plain group and lose the mount silently. A mount's local elements are replaced by the included content, as A12 prepares them.
+- **Dates follow kernel 31.1.1's runtime:** the proleptic calendar, Europe/Berlin's historical offsets, a daylight-saving gap moved forward and an overlap read at its earlier offset, and `DifferenceInDays` counted on wall clocks.
+
+### Added
+
+- **`SumOfTerms` evaluates,** including counts and aggregates inside a term, read as A12 reads them.
+
+### Fixed
+
+- **A partial `NumberOfFilledGroups` over a group with an empty fixed sub-group stays undecided,** as on kernel 31.1.1, which asks every declared sub-group to be covered.
+
 ### Performance
 
-- **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+- **Partial validation shares gated group counts across a scope,** and a row-invariant `SumOfTerms` is folded once per scope.
+- **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel `30.8.1` generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ## [0.14.0]
 
