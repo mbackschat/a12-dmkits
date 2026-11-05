@@ -23995,7 +23995,9 @@
           "reach",
           "authoring"
         ],
-        "interpreter": [],
+        "interpreter": [
+          "load and ignore"
+        ],
         "checker": [
           "criterion family"
         ],
@@ -24046,9 +24048,14 @@
           }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter reads a criterion as model data and evaluates nothing of it, which is what A12 does: no validation path reads a criterion (KF671).",
+          "evidence": {
+            "load and ignore": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UniquenessCriterionRuntimeDiffTest.kt#aCriterionChangesNoMessageOnAnyEngine",
+              "witness": "The same model with and without its criterion, one builder call apart, on a filled and an empty policy number, equal on dynamic Groovy, generated Java and the interpreter, against the required-field control that fires."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
