@@ -136,7 +136,7 @@ final class RuleModifyCommand extends BaseCommand {
 
         BoundModel rebound;
         try {
-            rebound = BoundModel.ofJson(modifiedJson, resolver);
+            rebound = BoundModel.ofEdit(modifiedJson, modelJson, resolver);
         } catch (ModelConsistencyException e) {
             // The gate reached a verdict, so the kernel's OWN notifications are the diagnostics — one per
             // problem, each carrying the class it named. This used to publish a single hand-rolled PRECHECK

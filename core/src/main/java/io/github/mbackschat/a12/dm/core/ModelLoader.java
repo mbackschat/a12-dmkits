@@ -63,6 +63,38 @@ public final class ModelLoader {
     }
 
     /**
+     * The gate over an <b>edited</b> model: {@link #loadAndCheck}, except that a reader refusal the source does not
+     * draw is the gate rejecting the edit, raised as {@link ModelConsistencyException#editUnreadable}. A refusal the
+     * source draws too stays the input's {@link ModelInputException}, so blame follows whichever text first
+     * carried the unreadable value (CLI-CONFORMANCE-SPEC, `EditInducedReaderRefusalTest`). The source is re-read
+     * only on that failure path.
+     *
+     * @param source the text the edit started from; {@code null} when there is none, which keeps the plain gate
+     */
+    public static Verification checkEdit(String edited, String source, ModelResolver resolver) {
+        try {
+            return loadAndCheck(edited, resolver);
+        } catch (ModelInputException unreadable) {
+            if (source == null || source.equals(edited) || !reads(source, resolver)) {
+                throw unreadable;
+            }
+            throw ModelConsistencyException.editUnreadable(unreadable);
+        }
+    }
+
+    /** Whether the reader binds {@code json}; a model it binds but the gate then rejects still reads. */
+    private static boolean reads(String json, ModelResolver resolver) {
+        try {
+            loadAndCheck(json, resolver);
+            return true;
+        } catch (ModelInputException unreadable) {
+            return false;
+        } catch (RuntimeException readButRejected) {
+            return true;
+        }
+    }
+
+    /**
      * The oracle's verdict, with a backend that could not BUILD the model folded into the same channel.
      *
      * <p>A whole model has nothing injected, so a build failure is the backend's verdict on the bytes it was

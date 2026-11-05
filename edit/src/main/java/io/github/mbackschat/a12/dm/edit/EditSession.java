@@ -58,8 +58,12 @@ public final class EditSession {
     private String gatedJson;
     private Verification gatedBy;
 
+    /** The text the session was read from, so the gate can tell an edit's unreadable value from the input's. */
+    private final String source;
+
     private EditSession(String json, ModelResolver resolver) {
         this.json = json;
+        this.source = json;
         this.resolver = resolver;
     }
 
@@ -584,7 +588,7 @@ public final class EditSession {
 
     /** The kernel gate: re-bind the whole model (deserialize → expand → checkConsistency), once. */
     public EditSession validate() {
-        Verification gate = ModelLoader.loadAndCheck(json, resolver);
+        Verification gate = ModelLoader.checkEdit(json, source, resolver);
         gatedJson = json;
         gatedBy = gate;
         return this;

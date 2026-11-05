@@ -13,6 +13,11 @@ final class SubtreeReprefix {
     private SubtreeReprefix() {
     }
 
+    /** The path a rename in place gives {@code path}: its last segment replaced by {@code newName}. */
+    static String renamed(String path, String newName) {
+        return path.substring(0, path.lastIndexOf('/') + 1) + newName;
+    }
+
     /** Re-prefix the id of {@code element} and every descendant from {@code oldPrefix} to {@code newPrefix}. */
     static void ids(JsonNode element, String oldPrefix, String newPrefix) {
         if (!(element instanceof ObjectNode obj)) {

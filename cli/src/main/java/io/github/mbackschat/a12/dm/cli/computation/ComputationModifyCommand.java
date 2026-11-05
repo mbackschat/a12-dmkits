@@ -109,7 +109,7 @@ final class ComputationModifyCommand extends BaseCommand {
         }
         BoundModel rebound;
         try {
-            rebound = BoundModel.ofJson(modifiedJson, resolver);
+            rebound = BoundModel.ofEdit(modifiedJson, modelJson, resolver);
         } catch (ModelConsistencyException e) {
             // See RuleModifyCommand: the gate's verdict publishes the kernel's own notifications, not a
             // hand-rolled PRECHECK summary of them.

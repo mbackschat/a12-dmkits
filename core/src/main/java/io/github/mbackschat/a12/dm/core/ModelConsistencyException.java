@@ -43,6 +43,16 @@ public class ModelConsistencyException extends RuntimeException {
                 cause);
     }
 
+    /**
+     * The model reader refused a model only an edit made unreadable, so the edit wrote a value the reader cannot
+     * parse: the gate's rejection of that edit, not malformed input ({@link ModelLoader#checkEdit}). A model built
+     * from nothing but the edit's own values is the degenerate case.
+     */
+    public static ModelConsistencyException editUnreadable(ModelInputException unreadable) {
+        return new ModelConsistencyException("the model reader refuses a value this edit wrote: "
+                + unreadable.getMessage(), unreadable);
+    }
+
     /** The kernel notifications (ERROR severity) that caused this failure. */
     public List<Notification> notifications() {
         return notifications;

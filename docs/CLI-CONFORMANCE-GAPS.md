@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-- **CG27 — A spec value that A12's model reader refuses is blamed on the `-m` model.** <a id="cg27"></a> An edit verb's spec can carry a value that A12's model reader cannot parse, such as a message locale `en_us`, which `LocaleUtils` refuses. A12's gate then raises a `ModelInputException` when it reads the edited model. The `Cli` seam answers every `ModelInputException` with `refused RK_MODEL_INPUT_INVALID`, `where.arg` = the `-m` path and "repair the model JSON", though the model as read was fine and the defect is in `<spec.json>`. Inside `apply`, the same failure leaves an aggregate with no `data`, `results[]` or `failedAt`. Measured 2026-11-05 on `criterion add`, its `apply` op and `rule add`. To settle: treat a reader failure that only the edited model shows as the kernel rejecting the edit, attributed to the spec, at the one place the gate runs, and lock it across the spec-carrying verbs and `apply`.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

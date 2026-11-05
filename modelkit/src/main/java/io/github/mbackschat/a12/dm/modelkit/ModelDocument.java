@@ -78,8 +78,12 @@ public final class ModelDocument {
     private String gatedJson;
     private Verification gatedBy;
 
-    private ModelDocument(ObjectNode root) {
+    /** The text the document was read from, so the gate can tell an edit's unreadable value from the input's. */
+    private final String source;
+
+    private ModelDocument(ObjectNode root, String source) {
         this.root = root;
+        this.source = source;
     }
 
     /** Read a model from DM-JSON, retaining its authored source tree. */
@@ -89,7 +93,7 @@ public final class ModelDocument {
             if (!(node instanceof ObjectNode obj)) {
                 throw new ModelInputException("not a DM-JSON object");
             }
-            return new ModelDocument(obj);
+            return new ModelDocument(obj, dmJson);
         } catch (JsonProcessingException e) {
             throw new ModelInputException("invalid DM-JSON: " + e.getMessage(), e);
         }
@@ -1469,7 +1473,7 @@ public final class ModelDocument {
         if (field == null) {
             throw new IllegalArgumentException("no field at: " + fieldPath);
         }
-        ((ObjectNode) field).put(DmKeys.NAME, newName).put(DmKeys.ID, renamePath(fieldPath, newName));
+        ((ObjectNode) field).put(DmKeys.NAME, newName).put(DmKeys.ID, SubtreeReprefix.renamed(fieldPath, newName));
         return this;
     }
 
@@ -1484,7 +1488,7 @@ public final class ModelDocument {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
         ((ObjectNode) group).put(DmKeys.NAME, newName);
-        SubtreeReprefix.ids(group, groupPath, renamePath(groupPath, newName));
+        SubtreeReprefix.ids(group, groupPath, SubtreeReprefix.renamed(groupPath, newName));
         return this;
     }
 
@@ -1494,7 +1498,7 @@ public final class ModelDocument {
         if (rule == null || !DmNodes.is(ElementType.RULE, rule)) {
             throw new IllegalArgumentException("no rule at: " + ruleFullName);
         }
-        rule.put(DmKeys.NAME, newName).put(DmKeys.ID, renamePath(ruleFullName, newName));
+        rule.put(DmKeys.NAME, newName).put(DmKeys.ID, SubtreeReprefix.renamed(ruleFullName, newName));
         return this;
     }
 
@@ -1550,10 +1554,6 @@ public final class ModelDocument {
         removeElement(path, type);
         SubtreeReprefix.ids(node, path, newPath);
         destination.add(node);
-    }
-
-    private static String renamePath(String path, String newName) {
-        return path.substring(0, path.lastIndexOf('/') + 1) + newName;
     }
 
     /** Find any element (field/group/rule/computation) by its full-name id; {@code null} if absent. */
@@ -2041,7 +2041,7 @@ public final class ModelDocument {
      *  {@link ModelResolver} ({@code id → DM-JSON}). */
     public ModelDocument validate(ModelResolver resolver) {
         String json = toJson();
-        Verification gate = ModelLoader.loadAndCheck(json, resolver);
+        Verification gate = ModelLoader.checkEdit(json, source, resolver);
         gatedJson = json;
         gatedBy = gate;
         return this;

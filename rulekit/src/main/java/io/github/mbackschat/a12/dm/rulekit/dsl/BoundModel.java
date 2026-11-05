@@ -77,8 +77,17 @@ public final class BoundModel {
         // index/read surface is kernel-free either way (decoupling Stage 2).
         // The receipt comes from the gate that just ran, not from a second ambient read of Backends — the two
         // agree today, but only the former is still true if this path ever stops gating.
-        Verification gate = ModelLoader.loadAndCheck(modelJson, resolver);
-        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, gate);
+        return ofEdit(modelJson, null, resolver);   // no source: the plain gate
+    }
+
+    /**
+     * Bind an <b>edited</b> model through the edit gate ({@link ModelLoader#checkEdit}): as
+     * {@link #ofJson(String, ModelResolver)}, except that a reader refusal {@code source} does not draw is the
+     * gate rejecting the edit rather than malformed input.
+     */
+    public static BoundModel ofEdit(String edited, String source, ModelResolver resolver) {
+        Verification gate = ModelLoader.checkEdit(edited, source, resolver);
+        return new BoundModel(ModelIndex.of(edited, resolver), edited, resolver, gate);
     }
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
@@ -112,8 +121,7 @@ public final class BoundModel {
      * {@code checkConsistency}), so a write that would break the model fails loudly here.
      */
     public BoundModel add(Rule rule) {
-        // re-bind with the SAME resolver, so a model with includes re-expands correctly
-        return ofJson(ModelWriter.addRule(requireWritable(), rule), resolver);
+        return rebound(ModelWriter.addRule(requireWritable(), rule));
     }
 
     /**
@@ -122,8 +130,8 @@ public final class BoundModel {
      * breaks the model fails loudly here), the computation twin of {@link #add(Rule)}.
      */
     public BoundModel add(Computation computation) {
-        return ofJson(ModelWriter.addComputation(requireWritable(),
-                computation), resolver);
+        return rebound(ModelWriter.addComputation(requireWritable(),
+                computation));
     }
 
     /**
@@ -135,10 +143,9 @@ public final class BoundModel {
      * parse/pretty-print work.
      */
     public BoundModel addAll(List<Rule> rules, List<Computation> computations) {
-        return ofJson(
+        return rebound(
                 ModelWriter.addAll(
-                        requireWritable(), rules, computations),
-                resolver);
+                        requireWritable(), rules, computations));
     }
 
     /**
@@ -146,8 +153,8 @@ public final class BoundModel {
      * Re-validated on re-bind. Throws if no rule exists at that path.
      */
     public BoundModel removeRule(String ruleFullName) {
-        return ofJson(ModelWriter.removeRule(requireWritable(),
-                ruleFullName), resolver);
+        return rebound(ModelWriter.removeRule(requireWritable(),
+                ruleFullName));
     }
 
     /**
@@ -155,8 +162,8 @@ public final class BoundModel {
      * is unchanged). Re-validated on re-bind. The computation twin of {@link #removeRule(String)}.
      */
     public BoundModel removeComputation(String computationFullName) {
-        return ofJson(ModelWriter.removeComputation(requireWritable(),
-                computationFullName), resolver);
+        return rebound(ModelWriter.removeComputation(requireWritable(),
+                computationFullName));
     }
 
     /**
@@ -166,8 +173,8 @@ public final class BoundModel {
      * computation fails loudly here. The computation twin of {@link #replaceCondition(String, Condition)}.
      */
     public BoundModel replaceComputation(String computationFullName, Computation computation) {
-        return ofJson(ModelWriter.replaceComputation(
-                requireWritable(), computationFullName, computation), resolver);
+        return rebound(ModelWriter.replaceComputation(
+                requireWritable(), computationFullName, computation));
     }
 
     /**
@@ -178,8 +185,8 @@ public final class BoundModel {
      * breaks the rule fails loudly here.
      */
     public BoundModel replaceCondition(String ruleFullName, Condition newCondition) {
-        return ofJson(ModelWriter.replaceCondition(
-                requireWritable(), ruleFullName, newCondition), resolver);
+        return rebound(ModelWriter.replaceCondition(
+                requireWritable(), ruleFullName, newCondition));
     }
 
     /** The model as DM-JSON text (the retained source, with any writes applied). */
@@ -194,6 +201,11 @@ public final class BoundModel {
         } catch (IOException e) {
             throw new UncheckedIOException("failed to write model to " + path, e);
         }
+    }
+
+    /** A write's new binding: the same resolver, so includes re-expand, gated as an edit of this source. */
+    private BoundModel rebound(String edited) {
+        return ofEdit(edited, sourceJson, resolver);
     }
 
     private String requireWritable() {

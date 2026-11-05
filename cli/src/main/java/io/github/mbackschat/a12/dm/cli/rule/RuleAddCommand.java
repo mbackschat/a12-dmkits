@@ -168,7 +168,7 @@ final class RuleAddCommand extends BaseCommand {
         persisted = applyMetadata(persisted, ruleFullName, spec, resolver);
         BoundModel reModel;
         try {
-            reModel = BoundModel.ofJson(persisted, resolver);
+            reModel = BoundModel.ofEdit(persisted, modelJson, resolver);
         } catch (ModelConsistencyException e) {
             // The kernel's SECOND checker — RuleErrortextChecker over each localized message — reports here, and
             // its verdict is this verb's result exactly as a rejected condition's is. It used to leave through

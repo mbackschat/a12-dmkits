@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
@@ -73,6 +75,12 @@ final class ModelNewCommand extends BaseCommand {
             json = DocumentModelDraft.named(id).locale(locale).rootGroup(rootName, g -> { }).build().toJson();
             // kernel-check the skeleton — a bad id/locale fails here, not at the agent's next edit
             skeleton = BoundModel.ofJson(json);
+        } catch (ModelConsistencyException rejected) {
+            return emitKernelRejection("the new model is rejected by the kernel", rejected);
+        } catch (ModelInputException unreadable) {
+            // Built from the flags alone, so a value the reader refuses is the kernel's verdict on a flag.
+            return emitKernelRejection("the new model is rejected by the kernel",
+                    ModelConsistencyException.editUnreadable(unreadable));
         } catch (RuntimeException e) {
             return fail("cannot create a valid model from --id '" + id + "' --locale '" + locale + "': " + e.getMessage());
         }

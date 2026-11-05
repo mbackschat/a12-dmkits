@@ -480,6 +480,7 @@ public static enum io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejectio
 public class io.github.mbackschat.a12.dm.core.ModelConsistencyException extends java.lang.RuntimeException
   public ModelConsistencyException(java.lang.String, java.lang.Throwable)
   public ModelConsistencyException(java.util.List<io.github.mbackschat.a12.dm.core.Notification>)
+  public static io.github.mbackschat.a12.dm.core.ModelConsistencyException editUnreadable(io.github.mbackschat.a12.dm.core.ModelInputException)
   public static io.github.mbackschat.a12.dm.core.ModelConsistencyException notKernelValid(java.lang.Throwable)
   public java.util.List<io.github.mbackschat.a12.dm.core.Notification> notifications()
 
@@ -530,6 +531,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelInputException extends 
   public ModelInputException(java.lang.String, java.lang.Throwable)
 
 public final class io.github.mbackschat.a12.dm.core.ModelLoader
+  public static io.github.mbackschat.a12.dm.core.Verification checkEdit(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.core.Verification loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.core.Verification loadSelfContained(java.lang.String)
 

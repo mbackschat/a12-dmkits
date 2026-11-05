@@ -102,7 +102,7 @@ final class ComputationAddCommand extends BaseCommand {
         String persisted = ModelWriter.addComputation(modelJson, parsed.draft(), parsed.messages());
         BoundModel rebound;
         try {
-            rebound = BoundModel.ofJson(persisted, resolver);
+            rebound = BoundModel.ofEdit(persisted, modelJson, resolver);
         } catch (ModelConsistencyException e) {
             // The error-text twin of RuleAddCommand's gate: a computation's message runs through the same
             // RuleErrortextChecker, so its rejection is this verb's verdict and rides the envelope.

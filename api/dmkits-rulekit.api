@@ -667,6 +667,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledRootGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel of(io.github.mbackschat.a12.dm.core.ModelIndex)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofEdit(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJsonLenient(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
