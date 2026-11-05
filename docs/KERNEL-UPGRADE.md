@@ -70,7 +70,7 @@ You cannot conjure a future kernel, but the **negative-control rehearsals** prov
 
 When a *second* kernel version actually publishes, add the CI version matrix (build/test against floor + latest) — the standing detector that runs every guardian against both, recorded as the F11 carry-forward.
 
-## A major-release migration — the playbook
+## A major-release migration — the playbook <a id="major-release-playbook"></a>
 
 A patch bump is the procedure above. A major release (a new A12 distribution with a DM format change, renamed modules, new operators) also changes shapes the guardians assume, so it runs as a planned migration. The 31.1.1 migration's record is [its proposal](KERNEL-31-UPGRADE-PROPOSAL.md).
 
@@ -90,3 +90,12 @@ A patch bump is the procedure above. A major release (a new A12 distribution wit
 7. **Send one verdict-delta letter per batch** ([A12-KERNEL-LEAN-HANDBACK](A12-KERNEL-LEAN-HANDBACK.md)). Before calling the series complete, sweep every finding added or amended since the tag against the sent letters, by id and by the finding a correction cites, and send what is uncarried. Record per finding in `kernel-finding-adoption.json` the letter that carries it. A bulk "reported" basis is a claim nobody can point at: on 2026-11-03, 28 of 75 records the migration commit had marked reported appeared in no letter.
 8. **Re-capture what is captured, not merely re-run it.** That means the conformance corpus (`meta.kernelVersion` moves with it), the native reflection metadata before any native rebuild ([NATIVE-IMAGE-GRAALVM](NATIVE-IMAGE-GRAALVM.md) §5.1), the perf anchors on an idle machine, and the catalog's `verifiedAgainst`.
 9. **Run one simplification pass and one cold review over the whole migration range before the release.** A migration accretes duplicated construction, stale comments and dead overloads behind green tests. Its reviews were per slice, so nothing else looks across the range.
+10. **Measure what the migration added to the repository, against the tag, and record it in the migration's record.** The previous migration's figures are the baseline to compare against: [31.1.1's](KERNEL-31-UPGRADE-PROPOSAL.md#repository-growth). Run it once `git count-objects -v` reports few loose objects, since only a packed object's disk size reflects git's delta compression.
+
+   ```sh
+   git rev-list --objects kernel-<old>-final..HEAD \
+     | git cat-file --batch-check='%(objecttype) %(objectsize) %(objectsize:disk) %(rest)' \
+     | awk '$1 == "blob" { raw += $2; packed += $3 } END { printf "%.1f MB raw, %.1f MB packed\n", raw / 1e6, packed / 1e6 }'
+   ```
+
+   Packed size is the growth; raw size counts every committed version of a file in full. Two kinds of file dominate the raw figure, and both stay cheap packed. A findings doc is written one paragraph per line, so each correction stores a new version of a file of several megabytes; batching corrections by topic, as the claim-oracle rules already require, is what bounds it. `kernel-finding-adoption.json` is re-pinned with every amended finding (step 6), and each version compresses to a small delta. Bulk fixture migration and corpus re-capture are small diffs against the previous version and cost little.

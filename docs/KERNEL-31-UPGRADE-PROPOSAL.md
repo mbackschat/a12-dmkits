@@ -401,3 +401,19 @@ Every entry of the [kernel release log](KERNEL-UPGRADE.md#release-log) after 30.
 | A12K-3856 | backward migrator; `getFirstSupportedSourceVersion` | not applicable: D1 sets one version floor and nothing migrates backward |
 
 **Not applicable — surfaces the project does not consume.** A12K-3720, A12K-4214 (service configuration options; `considerNotInD` is ExtMP-only). A12K-3592, A12K-3825, A12K-3919, A12K-4343, A12K-4367/A12K-4361 (typed accessors, mapping codegen). A12K-3734, A12K-3960 (metamodel typings, no `mmtypings` dependency). A12K-4025, A12K-4056 (mapping API). A12K-4108, A12K-4120, A12K-4180 (Java methods we never call). A12K-4212 (no `kernel-bom` dependency). A12K-3898 (tax-number verifier factory). A12K-3912 (`RegExpLengthTester`, whose one caller at `eec9134` is the ExtMP utility `ExtmpToolUtils`). A12K-4083, A12K-4335 (Groovy compilation fixes; the dynamic-strategy lanes compile on 31.1.1). A12K-3970 (Java 25 build; JDK stays 21). A12K-4563, A12K-4590 (date-parse performance; values unchanged, and our interpreter has its own perf lane). A12K-4271, A12K-3244, A12K-4435, A12K-4436 (test utility, library updates, rewrite script and TypeScript codemod). A12K-3223, A12K-3987, A12K-4005, A12K-4059, A12K-4162 (kernel TypeScript runtime, a follow-up under D5). 30.8.4 and 30.8.5 (Jackson 2.22, Base 29.3.1 on the 30.8 line).
+
+## 13 · Repository growth (measured 2026-11-05) <a id="repository-growth"></a>
+
+Measured with [the runbook's command](KERNEL-UPGRADE.md#major-release-playbook) (step 10) over `kernel-30.8.1-final..0fe0408d2`: 93 commits and 1,818 new file versions, with 46 of 164,580 objects loose. The range also carries features built on 31.1.1 (`SumOfTerms`, uniqueness criteria, enumeration labels in JSON Schema) and documentation work, so its total is an upper bound on the migration's own cost, and the migration commit `fe4d26e14` alone is the lower bound.
+
+| Kind | Versions | Raw | Packed |
+|---|---|---|---|
+| Docs (`.md`) | 256 | 112.4 MB | 6.36 MB |
+| Source (Java, Kotlin, TypeScript, Gradle, shell) | 1,184 | 18.3 MB | 3.27 MB |
+| JSON | 323 | 61.1 MB | 1.08 MB |
+| Images (posters) | 7 | 0.6 MB | 0.64 MB |
+| ABI dumps, perf JSONL, TSV, YAML, other | 48 | 5.3 MB | 0.28 MB |
+| **Range total** | 1,818 | 197.6 MB | **11.6 MB** |
+| Migration commit `fe4d26e14` (1,025 files) | 1,014 | 24.4 MB | **4.5 MB** |
+
+The pack was 104.7 MiB after the range, so the line cost about 11 % of the repository. `KERNEL-FINDINGS.md` alone is 2.90 MB packed (27 versions) and `INTERPRETER-FINDINGS.md` 0.97 MB (10). `cli/src/test/resources/kernel-finding-adoption.json` is half the JSON: 41 versions, 53.2 MB raw and 0.56 MB packed. The migration commit's 203 data files, mostly fixtures moved to DM 29.4.0, cost 0.51 MB packed.
