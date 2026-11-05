@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
+import static io.github.mbackschat.a12.dm.schemakit.ImportSkeleton.identifier;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,9 +58,7 @@ public final class JsonSchemaImporter {
             // declared scale intact, rather than becoming a DoubleNode before the importer sees it.
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
             .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false);   // OpenAPI specs are often YAML
-    private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";
-    private static final String LOCALE = "en_US";
     private static final String ROW_FIELD = "value";   // the single value field in a scalar-array / map row group
     private static final String MAP_KEY_FIELD = "key";   // the entry-key field in a map's {key, value} row group
     private static final Set<String> ANNOTATION_KEYWORDS = Set.of(
@@ -283,7 +283,7 @@ public final class JsonSchemaImporter {
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
                 bundle, modelId, breakEdges, new LinkedHashMap<>(), new LinkedHashSet<>());
-        DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
+        DocumentModelDraft.Builder b = ImportSkeleton.draft(modelId);
         declareLeafTypedefs(b, ctx);
         if (roots.isEmpty()) {
             ctx.rootPaths().add("/" + ROOT_GROUP);
@@ -1744,15 +1744,6 @@ public final class JsonSchemaImporter {
         Set<String> names = new LinkedHashSet<>();
         req.forEach(n -> names.add(n.asText()));
         return names;
-    }
-
-    /** A JSON Schema title is free text; fall back to a stable default when it is absent or not a safe id. */
-    private static String identifier(String title) {
-        if (title == null || title.isBlank()) {
-            return DEFAULT_MODEL_ID;
-        }
-        String trimmed = title.trim();
-        return trimmed.matches("[A-Za-z0-9_.-]+") ? trimmed : DEFAULT_MODEL_ID;
     }
 
     /** Parse the input as JSON first (exact behavior for JSON documents), then YAML (a JSON superset) so

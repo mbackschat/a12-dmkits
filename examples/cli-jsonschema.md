@@ -267,7 +267,7 @@ dmtool -m examples/models/order-ruled.dm.json model export-jsonschema 2>&1 1>/de
 ```
 
 ```output
-transcoding report: 23 mapped, 0 omitted, 4 note(s)
+transcoding report: 24 mapped, 0 omitted, 4 note(s)
   - kind 'CONFIRM' at '/Order/TermsConfirmed' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/OrderDate' is not mapped yet — string placeholder
   - kind 'DATE' at '/Order/DeliveryDate' is not mapped yet — string placeholder

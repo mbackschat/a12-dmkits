@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
@@ -69,6 +70,12 @@ public final class JsonSchemaExporter {
             schema = JSON.createObjectNode().put("type", "object");
             ObjectNode properties = schema.putObject("properties");
             roots.forEach(path -> properties.set(lastSegment(path), exportRoot(path, ctx)));
+        }
+        // The model id's native home: import reads the title as the model's identity, and falls back to its
+        // default id without one, so that id needs no title.
+        if (!doc.id().equals(ImportSkeleton.DEFAULT_MODEL_ID)) {
+            schema.put("title", doc.id());
+            ctx.report().mapped(DmKeys.HEADER + "/" + DmKeys.ID, "title", TranscodeReport.Tier.STRUCTURE);
         }
         Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
         TierAProjection.project(dmJson, schema, ctx.report());                    // recognized rules → native keywords (Tier A)

@@ -14,8 +14,9 @@ import java.util.Map;
 /**
  * Tier-B / Tier-C <em>carriage</em> (SCHEMAKIT-SPEC §4; JSON-SCHEMA-PROPOSAL §6): a rule or computation
  * that has no native JSON-Schema home is carried losslessly in {@code x-a12-rule} / {@code x-a12-computation},
- * and the model's document uniqueness criteria in {@code x-a12-document-uniqueness-criteria}, so an a12 → JSON
- * Schema → a12 round-trip preserves them exactly (a foreign reader ignores the unknown {@code x-*}).
+ * the model's document uniqueness criteria in {@code x-a12-document-uniqueness-criteria}, and the model's own
+ * metadata in {@code x-a12-model}, so an a12 → JSON Schema → a12 round-trip preserves them exactly (a foreign
+ * reader ignores the unknown {@code x-*}).
  *
  * <p>Carriage works at the DM-JSON <em>tree</em> level — it lifts a {@code Rule}/{@code Computation} element
  * verbatim, keyed by its owning group's id, and restores it. That is deliberate, not a dogfood shortcut:
@@ -36,6 +37,17 @@ final class Carriage {
     /** A12's stored {@code content.documentUniquenessCriteria}, verbatim: a cross-document constraint one
      *  document's JSON Schema cannot state (KERNEL-FINDINGS KF671). */
     static final String X_CRITERIA = "x-a12-document-uniqueness-criteria";
+    /**
+     * A12's model-level members a schema has no keyword for, each under its own A12 name and verbatim: the
+     * header's locales, labels and annotations and the content's {@code modelInfo} and {@code modelConfig}. They
+     * carry meaning, not decoration: the time zone decides date arithmetic, the base year decides {@code BaseYear},
+     * and a carried rule's message needs the locale it was written for. The model id rides the native
+     * {@code title}, which import already reads as the identity; the header's model references are rebuilt from
+     * the includes, and its type and format version are the importer's own.
+     */
+    static final String X_MODEL = "x-a12-model";
+    private static final List<String> HEADER_MEMBERS = List.of(DmKeys.LOCALES, DmKeys.LABELS, DmKeys.ANNOTATIONS);
+    private static final List<String> CONTENT_MEMBERS = List.of(DmKeys.MODEL_INFO, DmKeys.MODEL_CONFIG);
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -93,10 +105,36 @@ final class Carriage {
         if (!computations.isEmpty()) {
             schema.set(X_COMPUTATION, computations);
         }
+        collectModel(dmTree, schema, report);
         JsonNode criteria = dmTree.path(DmKeys.CONTENT).path(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA);
         if (criteria.isArray() && !criteria.isEmpty()) {
             schema.set(X_CRITERIA, criteria.deepCopy());
             criteria.forEach(c -> report.mapped(criterionSource(c), X_CRITERIA, TranscodeReport.Tier.CARRIED));
+        }
+    }
+
+    /**
+     * Lifts each model-level member import would not rebuild: an empty one, or one equal to the importer's default,
+     * comes back unchanged without a carrier, so a foreign schema's import → export adds nothing to it.
+     */
+    private static void collectModel(JsonNode dmTree, ObjectNode schema, TranscodeReport.Builder report) {
+        ObjectNode model = JSON.createObjectNode();
+        JsonNode defaults = ImportSkeleton.tree(dmTree.path(DmKeys.HEADER).path(DmKeys.ID).asText());
+        liftMembers(dmTree, defaults, DmKeys.HEADER, HEADER_MEMBERS, model, report);
+        liftMembers(dmTree, defaults, DmKeys.CONTENT, CONTENT_MEMBERS, model, report);
+        if (!model.isEmpty()) {
+            schema.set(X_MODEL, model);
+        }
+    }
+
+    private static void liftMembers(JsonNode dmTree, JsonNode defaults, String ownerName, List<String> members,
+                                    ObjectNode model, TranscodeReport.Builder report) {
+        for (String member : members) {
+            JsonNode value = dmTree.path(ownerName).path(member);
+            if (value.isContainerNode() && !value.isEmpty() && !value.equals(defaults.path(ownerName).path(member))) {
+                model.set(member, value.deepCopy());
+                report.mapped(ownerName + "/" + member, X_MODEL, TranscodeReport.Tier.CARRIED);
+            }
         }
     }
 
@@ -107,7 +145,7 @@ final class Carriage {
 
     /** Whether {@code schema} carries anything {@link #inject} restores after the rule-synthesis gate. */
     static boolean carriesElements(JsonNode schema) {
-        return schema.has(X_RULE) || schema.has(X_COMPUTATION) || schema.has(X_CRITERIA);
+        return schema.has(X_RULE) || schema.has(X_COMPUTATION) || schema.has(X_CRITERIA) || schema.has(X_MODEL);
     }
 
     private static ObjectNode entry(String groupId, JsonNode element) {
@@ -122,6 +160,43 @@ final class Carriage {
         restore(dmTree, schema.path(X_RULE), report);
         restore(dmTree, schema.path(X_COMPUTATION), report);
         restoreCriteria(dmTree, schema.path(X_CRITERIA), report);
+        restoreModel(dmTree, schema.path(X_MODEL), report);
+    }
+
+    /**
+     * Puts each carried model-level member back where A12 keeps it, replacing the importer's default. A member of
+     * the wrong JSON kind is omitted on its own, so one bad member never costs the others.
+     */
+    private static void restoreModel(ObjectNode dmTree, JsonNode carried, TranscodeReport.Builder report) {
+        if (carried.isMissingNode()) {
+            return;
+        }
+        if (!carried.isObject()) {
+            report.omit("/" + X_MODEL, X_MODEL + " must be an object of A12 model members — omitted; the model "
+                    + "keeps the importer's locale and configuration");
+            return;
+        }
+        restoreMembers((ObjectNode) dmTree.path(DmKeys.HEADER), DmKeys.HEADER, HEADER_MEMBERS, true, carried, report);
+        restoreMembers((ObjectNode) dmTree.path(DmKeys.CONTENT), DmKeys.CONTENT, CONTENT_MEMBERS, false, carried,
+                report);
+    }
+
+    private static void restoreMembers(ObjectNode owner, String ownerName, List<String> members, boolean arrays,
+                                       JsonNode carried, TranscodeReport.Builder report) {
+        for (String member : members) {
+            JsonNode value = carried.path(member);
+            if (value.isMissingNode()) {
+                continue;
+            }
+            if (arrays ? !value.isArray() : !value.isObject()) {
+                report.omit("/" + X_MODEL + "/" + member, X_MODEL + "." + member + " must be "
+                        + (arrays ? "an array" : "an object") + " as A12 stores it — omitted; set it on the imported "
+                        + "model by hand");
+                continue;
+            }
+            owner.set(member, value.deepCopy());
+            report.mapped(ownerName + "/" + member, "restored into " + ownerName, TranscodeReport.Tier.CARRIED);
+        }
     }
 
     /** Restores the carried criteria member verbatim; admission stays with the consistency check, as for rules. */
