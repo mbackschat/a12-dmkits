@@ -338,7 +338,7 @@ class CommandContractsTest {
         Set<String> optional = Set.of("rule check", "workspace check");
         Set<String> none = Set.of(
                 "model info", "profile compare", "field read", "group read", "typedef read", "include read",
-                "config read", "workspace roles");
+                "criterion read", "config read", "workspace roles");
         required.forEach(name -> assertEquals("REQUIRED",
                 verb(manifest, name).path("operationalProfiles").get(0).path("provenance").path("consistency").asText(), name));
         optional.forEach(name -> assertEquals("OPTIONAL",

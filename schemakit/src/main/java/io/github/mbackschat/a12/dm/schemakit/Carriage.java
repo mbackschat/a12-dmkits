@@ -130,8 +130,8 @@ final class Carriage {
             return;
         }
         if (!carried.isArray()) {
-            report.omit("/" + X_CRITERIA, X_CRITERIA + " must be an array of A12 criteria — omitted; add the "
-                    + "model's document uniqueness criteria by hand");
+            report.omit("/" + X_CRITERIA, X_CRITERIA + " must be an array of A12 criteria — omitted; declare the "
+                    + "model's document uniqueness criteria with `dmtool criterion add`");
             return;
         }
         ((ObjectNode) dmTree.path(DmKeys.CONTENT)).set(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA, carried.deepCopy());

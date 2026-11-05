@@ -128,8 +128,12 @@ class UniquenessCriterionVerbsTest {
         for (String[] attempt : attempts) {
             var result = run(model, attempt);
             actual.add(String.join(" ", attempt) + " → " + verdict(result));
-            assertTrue(envelope(result).path("diagnostics").path(0).path("fix").asText()
-                    .startsWith("first `criterion remove` the document uniqueness criteria"), result.out());
+            String target = attempt[2];
+            String criterion = target.equals("/Policy/Office") ? "OfficeKey" : "PolicyKey";
+            assertEquals("first `criterion remove` the document uniqueness criterion " + criterion + ", which names a "
+                            + "field at or below " + target + " (re-declare it over other fields with `criterion add`); "
+                            + "--cascade removes only rules and computations, never a criterion",
+                    envelope(result).path("diagnostics").path(0).path("fix").asText(), result.out());
         }
 
         assertEquals(List.of(

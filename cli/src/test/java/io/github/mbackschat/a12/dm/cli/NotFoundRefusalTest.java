@@ -61,6 +61,7 @@ class NotFoundRefusalTest {
                 arguments(List.of("typedef", "inline", "NoSuchTd"), "RK_NO_SUCH_TYPEDEF"),
                 arguments(List.of("include", "inline", "nosuchalias"), "RK_NO_SUCH_INCLUDE"),
                 arguments(List.of("include", "remove", "nosuchalias"), "RK_NO_SUCH_INCLUDE"),
+                arguments(List.of("criterion", "remove", "NoSuchKey"), "RK_NO_SUCH_UNIQUENESS_CRITERION"),
                 arguments(List.of("rule", "remove", "/Order/Nope"), "RK_NO_SUCH_RULE"),
                 arguments(List.of("rule", "modify", "/Order/Nope", "--condition", "FieldFilled(Note)"), "RK_NO_SUCH_RULE"),
                 arguments(List.of("computation", "remove", "/Order/Nope"), "RK_NO_SUCH_COMPUTATION"),

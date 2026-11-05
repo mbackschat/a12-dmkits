@@ -1051,7 +1051,7 @@ dmtool -m /tmp/struct2-crit.json field remove /Customer/Number | jq -c '{outcome
 
 ```output
 RK_REFERENCED
-first `criterion remove` the document uniqueness criteria UniqueCustomerNumber, which name a field at or below /Customer/Number (re-declare one over other fields with `criterion add`); --cascade removes only rules and computations, never a criterion
+first `criterion remove` the document uniqueness criterion UniqueCustomerNumber, which names a field at or below /Customer/Number (re-declare it over other fields with `criterion add`); --cascade removes only rules and computations, never a criterion
 {"outcome":"applied","removed":"UniqueCustomerNumber"}
 {"outcome":"applied","removed":"/Customer/Number"}
 ```

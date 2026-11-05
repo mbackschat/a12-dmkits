@@ -474,10 +474,13 @@ public final class SafetyChecks {
         referrers.computations().forEach(computationArray::add);
         ArrayNode criterionArray = referencedBy.putArray("documentUniquenessCriteria");
         referrers.criteria().forEach(criterionArray::add);
+        boolean one = referrers.criteria().size() == 1;
         String effectiveFix = referrers.criteria().isEmpty() ? fix
-                : "first `criterion remove` the document uniqueness criteria " + String.join(", ", referrers.criteria())
-                        + ", which name a field at or below " + target + " (re-declare one over other fields with "
-                        + "`criterion add`); --cascade removes only rules and computations, never a criterion";
+                : "first `criterion remove` the document uniqueness " + (one ? "criterion " : "criteria ")
+                        + String.join(", ", referrers.criteria()) + (one ? ", which names" : ", which name")
+                        + " a field at or below " + target + " (re-declare " + (one ? "it" : "them")
+                        + " over other fields with `criterion add`); --cascade removes only rules and computations, "
+                        + "never a criterion";
         int count = referrers.rules().size() + referrers.computations().size() + referrers.criteria().size();
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_REFERENCED"),
                 target + " is referenced by " + count + " element(s); removing it would dangle them",

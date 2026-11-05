@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG179 — The kits keep a locale as spelled, where A12 writes its canonical form.** <a id="dg179"></a> A12 parses every message, label and criterion-text locale into a `Locale` and writes `Locale.toString()`, so a model carrying `en-US` comes back from an A12 read and write as `en_US`, and both spellings name one locale ([KERNEL-FINDINGS KF662](KERNEL-FINDINGS.md#kf662), `MessageSlotRawShapeLawsTest`). Every kit writer stores the code as given, so the kits' read → write differs from A12's for every locale-carrying member (measured 2026-11-05 on a criterion text through `criterion add`). To settle: decide whether the kits adopt A12's canonical spelling on write, which changes an author's bytes on edit exactly as A12 does, and apply it at the shared writers rather than per member.
 
 ## 3. Adjacent but out of scope
 

@@ -53,7 +53,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
  */
 public final class ModelDocument {
 
-    private static final ObjectMapper MAPPER = JsonMapper.builder()
+    static final ObjectMapper MAPPER = JsonMapper.builder()
             // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`):
             // a number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
             // DoubleNode, so `0.50` is already `0.5` before anything reads it — and because this surface writes the

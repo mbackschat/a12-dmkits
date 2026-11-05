@@ -14,9 +14,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion;
 
 /**
  * The {@code criterion} verbs (FEATURE-GAPS G81 closure): a criterion is declared, read back in A12's stored shape,
@@ -125,10 +128,97 @@ class CriterionVerbTest {
         JsonNode read = applied.path("data").path("results").path(1).path("data");
         assertEquals(JSON.valueToTree(List.of(NUMBER_KEY)), read.path("documentUniquenessCriteria"), applied::toString);
 
-        Path duplicate = write(dir, "dup.json", List.of(add, add));
+    }
+
+    /**
+     * Each apply refusal names its op and its code. The model is fresh and the duplicate's field stays in it, so only
+     * the name gate can refuse the second add, and a refused op rolls the whole sequence back.
+     */
+    @Test
+    void applyRefusesATakenNameAMissingOneAndANamelessSpec(@TempDir Path dir) throws Exception {
+        Path model = customer(dir);
+        Map<String, Object> add = new java.util.LinkedHashMap<>(Map.of("target", "criterion", "op", "add"));
+        add.putAll(NUMBER_KEY);
+        Map<String, Object> nameless = new java.util.LinkedHashMap<>(add);
+        nameless.remove("name");
         String before = Files.readString(model);
-        JsonNode refused = run(model, "apply", duplicate.toString());
-        assertEquals(false, refused.path("data").path("committed").asBoolean(), refused::toString);
-        assertEquals(before, Files.readString(model), "a refused op rolls the whole sequence back");
+        Map<String, String> verdicts = new java.util.LinkedHashMap<>();
+        Map<String, List<?>> sequences = Map.of(
+                "taken", List.of(add, add),
+                "missing", List.of(Map.of("target", "criterion", "op", "remove", "name", "NoSuchKey")),
+                "nameless", List.of(nameless));
+        for (String label : List.of("taken", "missing", "nameless")) {
+            JsonNode applied = run(model, "apply", write(dir, label + ".json", sequences.get(label)).toString());
+            JsonNode data = applied.path("data");
+            JsonNode failed = data.path("results").path(data.path("failedAt").asInt());
+            verdicts.put(label, data.path("committed").asBoolean() + " " + data.path("failedAt").asInt() + " "
+                    + failed.path("diagnostics").path(0).path("code").asText());
+        }
+        assertEquals(Map.of(
+                "taken", "false 1 RK_NAME_EXISTS",
+                "missing", "false 0 RK_NO_SUCH_UNIQUENESS_CRITERION",
+                "nameless", "false 0 RK_APPLY_OP_FAILED"), verdicts);
+        assertEquals(before, Files.readString(model), "no refused sequence writes");
+    }
+
+    /** An op that takes no args still names the corrective for a stray one, rather than an empty list. */
+    @Test
+    void anArgOnTheArglessReadOpGetsACorrective(@TempDir Path dir) throws Exception {
+        Path model = customer(dir);
+        JsonNode applied = run(model, "apply", write(dir, "read.json",
+                List.of(Map.of("target", "criterion", "op", "read", "name", "UniqueCustomerNumber"))).toString());
+        JsonNode diagnostic = applied.path("data").path("results").path(0).path("diagnostics").path(0);
+        assertEquals(List.of("RK_UNKNOWN_ARG", "op 'criterion read' takes no args beyond target and op; remove 'name'"),
+                List.of(diagnostic.path("code").asText(), diagnostic.path("fix").asText()), applied::toString);
+    }
+
+    @Test
+    void criteriaReadBackInModelOrder(@TempDir Path dir) throws Exception {
+        Path model = customer(dir);
+        Map<String, Object> second = new java.util.LinkedHashMap<>(NUMBER_KEY);
+        second.put("name", "AnotherNumberKey");
+        run(model, "criterion", "add", write(dir, "first.json", NUMBER_KEY).toString());
+        run(model, "criterion", "add", write(dir, "second.json", second).toString());
+        List<String> names = new ArrayList<>();
+        run(model, "criterion", "read").path("data").path("documentUniquenessCriteria")
+                .forEach(entry -> names.add(entry.path("name").asText()));
+        assertEquals(List.of("UniqueCustomerNumber", "AnotherNumberKey"), names);
+        assertTrue(run(model, "field", "remove", "/Customer/Number").path("diagnostics").path(0).path("fix").asText()
+                .startsWith("first `criterion remove` the document uniqueness criteria AnotherNumberKey, "
+                        + "UniqueCustomerNumber, which name a field at or below /Customer/Number (re-declare them"),
+                "two criteria take the plural, listed by name");
+    }
+
+    /**
+     * A stored entry reads as A12 reads it: its fields are a set, and an item without {@code fullName} names none
+     * (A12's {@code JsonToFieldFullNamesConverter}, kernel 31.1.1). The kernel admits the stored model, so the read
+     * shows what A12 holds rather than what the file spells.
+     */
+    @Test
+    void aStoredEntryReadsAsA12ReadsIt(@TempDir Path dir) throws Exception {
+        Path model = customer(dir);
+        run(model, "criterion", "add", write(dir, "key.json", NUMBER_KEY).toString());
+        ObjectNode stored = (ObjectNode) JSON.readTree(Files.readString(model));
+        ArrayNode fields = (ArrayNode) stored.path("content").path("documentUniquenessCriteria").path(0).path("fields");
+        fields.addObject().put("fullName", "/Customer/Number");
+        fields.addObject();
+        Files.writeString(model, JSON.writeValueAsString(stored));
+        assertTrue(run(model, "model", "check").path("valid").asBoolean(), "A12 admits the stored entry");
+        assertEquals(JSON.valueToTree(NUMBER_KEY), run(model, "criterion", "read", "UniqueCustomerNumber").path("data"));
+    }
+
+    /** The envelope's entry and the stored one come from two writers; they agree, empty members left out by both. */
+    @Test
+    void theReadEntryIsTheStoredEntry() throws Exception {
+        for (UniquenessCriterion criterion : List.of(
+                new UniquenessCriterion("Full", List.of("/Customer/Number"), Map.of("en_US", "Taken.")),
+                new UniquenessCriterion("Textless", List.of("/Customer/Number"), Map.of()),
+                new UniquenessCriterion("", List.of(), Map.of()))) {
+            JsonNode stored = JSON.readTree(DocumentModelDraft.named("customer").locale("en_US")
+                    .rootGroup("Customer", c -> c.stringField("Number", f -> f.required()))
+                    .uniquenessCriterion(criterion).build().toJson())
+                    .path("content").path("documentUniquenessCriteria").path(0);
+            assertEquals(stored, CriterionSpec.toJson(criterion), criterion::toString);
+        }
     }
 }

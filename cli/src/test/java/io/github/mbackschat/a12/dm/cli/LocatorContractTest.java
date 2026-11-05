@@ -57,6 +57,11 @@ class LocatorContractTest {
     }
 
     @Test
+    void criterionReadAcceptsTheCriterionFlag(@TempDir Path dir) throws Exception {
+        sameAsPositional(CliTestSupport.customerRegister(dir), "criterion", "read", "UniqueCustomerNumber", "--criterion");
+    }
+
+    @Test
     void whereUsedAcceptsTheNounFlags(@TempDir Path dir) throws Exception {
         // where-used is a root verb (no target token): dmtool -m <model> where-used <entity>
         Path m = CliTestSupport.orderRuled(dir);

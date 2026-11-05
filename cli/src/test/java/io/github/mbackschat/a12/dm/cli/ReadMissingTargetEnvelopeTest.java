@@ -42,6 +42,7 @@ class ReadMissingTargetEnvelopeTest {
                 new Case("computation", "explain", "/Order/Nope", "RK_NO_SUCH_COMPUTATION"),
                 new Case("computation", "format", "/Order/Nope", "RK_NO_SUCH_COMPUTATION"),
                 new Case("include", "read", "nope", "RK_NO_SUCH_INCLUDE"),
+                new Case("criterion", "read", "NoSuchKey", "RK_NO_SUCH_UNIQUENESS_CRITERION"),
         };
         for (Case c : cases) {
             var res = CliTestSupport.run("-m", model.toString(), c.target(), c.op(), c.arg());

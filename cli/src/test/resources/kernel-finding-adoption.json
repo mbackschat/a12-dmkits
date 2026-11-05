@@ -24004,7 +24004,7 @@
       }
     },
     "kf671": {
-      "sha256": "e1c6103797e98efb968807b71a8c251d277cc1b58562e5a0721f61ed31a9d8a0",
+      "sha256": "6e4c3267bd8812c4998b98bea8f016e6fdd20ae32a3ba036a51e585c323fa01c",
       "task": "K31",
       "scope": {
         "adapter": [
@@ -24099,7 +24099,7 @@
             },
             "authoring": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/criterion/CriterionVerbTest.java#theVerbsRefuseATakenOrMissingNameAndTheKernelRejectsAnInadmissibleCriterion",
-              "witness": "A criterion over a required field added, read back byte-equal to its spec and removed, against a taken name, a missing name and a criterion over an optional field that the kernel rejects; apply runs the same ops in one sequence."
+              "witness": "A taken name and a missing name are refused, and a criterion over an optional field is rejected in A12's sentence, each leaving the model unwritten; the add, read and remove round trip and the apply sequence are separate methods of the same class."
             }
           }
         },

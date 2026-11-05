@@ -261,6 +261,13 @@ public final class CliTestSupport {
         return file;
     }
 
+    /** Write the {@code customer-register} fixture (one document uniqueness criterion, {@code UniqueCustomerNumber}). */
+    public static Path customerRegister(Path dir) throws IOException {
+        Path file = dir.resolve("customer-register.dm.json");
+        Files.writeString(file, resource("models/customer-register.dm.json"));
+        return file;
+    }
+
     private static String resource(String classpathPath) {
         try (InputStream in = CliTestSupport.class.getClassLoader().getResourceAsStream(classpathPath)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

@@ -10,6 +10,9 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.MountOptions
 import io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -44,6 +47,13 @@ class CheckerUniquenessCriterionAgreementTest {
     private fun with(vararg criteria: UniquenessCriterion): String =
         criteria.fold(policy()) { model, criterion -> model.uniquenessCriterion(criterion) }.build().toJson()
 
+    /** [json] with its first stored criterion entry edited by [edit]: the shapes the kits never write but A12 reads. */
+    private fun stored(json: String, edit: (ObjectNode) -> Unit): String {
+        val model = JSON.readTree(json) as ObjectNode
+        edit(model.path("content").path("documentUniquenessCriteria").path(0) as ObjectNode)
+        return JSON.writeValueAsString(model)
+    }
+
     @Test
     fun theCheckerStatesEveryCriterionSentenceAsA12Does() {
         val rows = linkedMapOf(
@@ -58,7 +68,17 @@ class CheckerUniquenessCriterionAgreementTest {
             "a field named with .value" to with(key("PolicyKey", "/Policy/PolicyNo.value")),
             "a missing field before an optional one" to with(key("PolicyKey", "/Policy/Missing", "/Policy/Holder")),
             "an optional transient field" to with(key("PolicyKey", "/Policy/Holder")),
-            "an optional transient field named twice" to with(key("PolicyKey", "/Policy/Holder", "/Policy/Holder")),
+            "an optional transient field named twice" to stored(with(key("PolicyKey", "/Policy/Holder"))) {
+                (it.path("fields") as ArrayNode).addObject().put("fullName", "/Policy/Holder")
+            },
+            // A12 parses a text's locale before comparing it with the model's, so `en-US` covers `en_US`
+            "a text spelled en-US for the en_US locale" to stored(with(key("PolicyKey", "/Policy/PolicyNo"))) {
+                (it.path("errorMessage").path(0) as ObjectNode).put("locale", "en-US")
+            },
+            // A12's converter skips a field item without `fullName`, so the other field still decides the criterion
+            "a field item without fullName beside a field" to stored(with(key("PolicyKey", "/Policy/PolicyNo"))) {
+                (it.path("fields") as ArrayNode).addObject()
+            },
             "a field required only with its parent" to with(key("PolicyKey", "/Policy/Office/Branch")),
             "a field below a repeatable group's subgroup" to with(key("PolicyKey", "/Policy/Claims/Detail/Note")),
             "no text for the second locale" to with(key("PolicyKey", "/Policy/PolicyNo", de = null)),
@@ -100,6 +120,9 @@ class CheckerUniquenessCriterionAgreementTest {
             "a criterion has no DSL beside it, so a refused rule condition withholds none of its error-text classes")
         assertEquals(listOf("WRONG_ENCODING@PolicyKey"), observed.getValue("a text with a lone surrogate").first,
             "the encoding gate is asked of a criterion text, not only of a rule message")
+        assertEquals(emptyList<String>(), observed.getValue("a text spelled en-US for the en_US locale").first +
+            observed.getValue("a field item without fullName beside a field").first,
+            "A12 admits both stored shapes, so the checker's agreement there is silence, not a shared refusal")
     }
 
     /**
@@ -144,6 +167,7 @@ class CheckerUniquenessCriterionAgreementTest {
     private fun named(match: MatchResult?): String = match?.groupValues?.get(1)?.ifEmpty { null } ?: "(unnamed)"
 
     private companion object {
+        val JSON = ObjectMapper()
         const val NOT_FOUND = "RK_CRITERION_FIELD_NOT_FOUND"
         const val NOT_REQUIRED = "RK_CRITERION_FIELD_NOT_REQUIRED"
         const val TRANSIENT = "RK_CRITERION_FIELD_TRANSIENT"

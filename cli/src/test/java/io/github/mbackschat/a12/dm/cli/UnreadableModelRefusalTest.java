@@ -84,7 +84,8 @@ class UnreadableModelRefusalTest {
      */
     private static final Set<String> READERS = Set.of(
             "computation add", "computation explain", "computation format", "computation modify",
-            "computation read", "computation remove", "config read", "export",
+            "computation read", "computation remove", "config read", "criterion add",
+            "criterion read", "criterion remove", "export",
             "field modify", "field move", "field read", "field remove",
             "field rename", "group add", "group attachment", "group extract",
             "group modify", "group move", "group read", "group remove",

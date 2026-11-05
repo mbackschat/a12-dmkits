@@ -63,6 +63,8 @@ final class ApplyOpValidation {
                     Diagnostic.Where.arg(null, f),
                     relocation.isPresent() ? relocation
                             : Optional.of(near != null ? "did you mean '" + near + "'?"
+                                    : valid.isEmpty() ? "op '" + label + "' takes no args beyond target and op; remove '"
+                                            + f + "'"
                                     : "valid args: " + String.join(", ", new TreeSet<>(valid))),
                     Optional.empty()));
         }

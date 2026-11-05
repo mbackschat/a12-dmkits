@@ -319,7 +319,7 @@ A root **hub** package plus nine **verb-family** sub-packages:
    │  Mcp{Command,Dispatcher,ToolRegistry,Invoker,Frames,Protocol}   the MCP server (§5f)
    │  Mcp{Stdio,Http}Binding · McpHttpConfig    its two transports over that one seam
    │
-   ├── cli.model/ rule/ computation/ field/ group/ typedef/ include/ config/ workspace/
+   ├── cli.model/ rule/ computation/ field/ group/ typedef/ include/ criterion/ config/ workspace/
    │     each family = a parent command + its op subcommands + that family's spec
    │     (FieldSpec, ComputationSpec). Subcommands stay package-private; only the
    │     family roots + shared infra are public.

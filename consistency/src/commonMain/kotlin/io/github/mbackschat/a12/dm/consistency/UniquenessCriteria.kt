@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParametersAreUnterminated
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -61,13 +62,20 @@ internal val UNIQUENESS_CRITERION_CODES = setOf(
 
 private class Criterion(val name: String, val fields: List<String>, val texts: Map<String, String>)
 
-/** Each criterion as A12 binds it, or null when one member is not a shape this checker reads. */
+/**
+ * Each criterion as A12 binds it, or null when one member is not a shape this checker reads. A field item without
+ * `fullName` names no field, as A12's converter skips it, and a text is keyed by the locale A12 parses its code to,
+ * so `en-US` covers `en_US` ([KERNEL-FINDINGS KF662]); a code it cannot parse is compared as written.
+ */
 private fun JsonArray.readCriteria(): List<Criterion>? = map { entry ->
     val criterion = entry as? JsonObject ?: return null
     val name = criterion.text("name") ?: return null
-    val fields = criterion.objects("fields")?.map { it.text("fullName") ?: return null } ?: return null
+    val fields = criterion.objects("fields")?.mapNotNull { item ->
+        if (item["fullName"] == null || item["fullName"] is JsonNull) null else item.text("fullName") ?: return null
+    } ?: return null
     val texts = criterion.objects("errorMessage")?.associate { message ->
-        (message.text("locale") ?: return null) to (message.text("text") ?: return null)
+        val locale = message.text("locale") ?: return null
+        (localeKeyOrNull(locale) ?: locale) to (message.text("text") ?: return null)
     } ?: return null
     Criterion(name, fields.distinct(), texts)
 }

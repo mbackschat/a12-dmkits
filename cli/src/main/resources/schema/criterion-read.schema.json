@@ -2,17 +2,115 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/criterion-read.schema.json",
   "title": "CriterionRead",
-  "description": "Output of `criterion read`, in the shape A12 stores criteria in. With a `<name>` argument: that one criterion entry, the same shape `criterion add` accepts (`schema criterion add`). With NO argument: the model's whole `documentUniquenessCriteria` member, empty when it declares none.",
+  "description": "Output of `criterion read`, in the shape A12 stores criteria in, read as A12 reads them: a field named twice appears once, and a stored field item without `fullName` does not appear. An empty member is left out, as A12 writes it. With a `<name>` argument: that one criterion entry, the same shape `criterion add` accepts (`schema criterion add`). With NO argument: the model's whole `documentUniquenessCriteria` member, empty when it declares none.",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
-    { "title": "one criterion (a name argument)", "required": ["name"] },
-    { "title": "every criterion (no argument)", "required": ["documentUniquenessCriteria"] }
+    {
+      "title": "one criterion (a name argument)",
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "title": "every criterion (no argument)",
+      "required": [
+        "documentUniquenessCriteria"
+      ]
+    }
   ],
   "properties": {
-    "name": { "type": "string", "description": "(one) the criterion's name" },
-    "fields": { "type": "array", "items": { "type": "object" }, "description": "(one) the criterion's fields as `{fullName}` entries, in order" },
-    "errorMessage": { "type": "array", "items": { "type": "object" }, "description": "(one) the error text as `{locale, text}` entries" },
-    "documentUniquenessCriteria": { "type": "array", "items": { "type": "object" }, "description": "(every) each stored entry in model order; pass an entry's `name` back as `criterion read <name>`, or the entry itself to `criterion add` on another model" }
+    "name": {
+      "type": "string",
+      "description": "(one) the criterion's name"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fullName"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "(one) the criterion's fields as `{fullName}` entries, in order"
+    },
+    "errorMessage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "locale",
+          "text"
+        ],
+        "properties": {
+          "locale": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "(one) the error text as `{locale, text}` entries"
+    },
+    "documentUniquenessCriteria": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      },
+      "description": "(every) each stored entry in model order; pass an entry's `name` back as `criterion read <name>`, or the entry itself to `criterion add` on another model"
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fullName"
+            ],
+            "properties": {
+              "fullName": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "errorMessage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "locale",
+              "text"
+            ],
+            "properties": {
+              "locale": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
