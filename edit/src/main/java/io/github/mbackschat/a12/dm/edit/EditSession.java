@@ -490,10 +490,11 @@ public final class EditSession {
      *  Memoized per unchanged JSON (M6): a {@link BoundModel} is an immutable snapshot, so navigations
      *  between writes reuse one kernel bind (measured ~28 ms each on a 200-field model). Every edit
      *  reassigns {@code json} to a fresh string, so reference identity detects the change and rebinds —
-     *  snapshot semantics are unchanged. */
+     *  snapshot semantics are unchanged. It binds through the edit gate, as {@link #validate()} does, so a reader
+     *  refusal an earlier edit drew is that edit's rejection rather than the input's (CG27). */
     BoundModel boundModel() {
         if (cachedBoundModel == null || json != cachedForJson) {
-            cachedBoundModel = BoundModel.ofJson(json, resolver);
+            cachedBoundModel = BoundModel.ofEdit(json, source, resolver);
             cachedForJson = json;
         }
         return cachedBoundModel;

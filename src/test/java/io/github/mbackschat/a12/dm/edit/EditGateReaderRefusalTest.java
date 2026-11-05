@@ -31,6 +31,13 @@ class EditGateReaderRefusalTest {
         assertTrue(rejected.getMessage().contains("en_us"), rejected::getMessage);
     }
 
+    /** Navigating after the edit binds the edited model too, before the terminal gate ever runs. */
+    @Test
+    void navigatingAfterAnEditTheReaderRefusesIsTheGatesRejection() {
+        EditSession session = EditSession.read(POLICY).setModelLabel("en_us", "Policy");
+        assertThrows(ModelConsistencyException.class, () -> session.group("/Policy"));
+    }
+
     @Test
     void aModelDocumentEditTheReaderRefusesIsTheGatesRejection() {
         assertThrows(ModelConsistencyException.class,
