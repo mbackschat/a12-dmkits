@@ -106,7 +106,7 @@ class InfographicAssetGuardTest {
                 .matcher(report);
         assertTrue(comparison.find(), "missing current JVM comparison ratios in public performance report");
 
-        var evidence = Pattern.compile("<sub>Measured ([^·]+) · ([^·]+) · ([^·]+) · ([^·]+) ·")
+        var evidence = Pattern.compile("<sub>Measured ([^·]+) · ([^·]+) · ([^·]+) · ([^·]+) · ([^·]+) ·")
                 .matcher(report);
         assertTrue(evidence.find(), "missing dated measurement evidence in public performance report");
 
@@ -131,7 +131,8 @@ class InfographicAssetGuardTest {
                         .replace(" median", "") + " first answer\"",
                 "- Browser value: \"" + plain(tableRow(report, "200 rows — representative")[4]) + " warm\"",
                 "- Bottom evidence: \"Measured " + evidence.group(1).trim() + " • " + evidence.group(2).trim()
-                        + " • " + evidence.group(4).trim() + " • " + evidence.group(3).trim() + "\"");
+                        + " • " + evidence.group(3).trim() + " • " + evidence.group(5).trim()
+                        + " • " + evidence.group(4).trim() + "\"");
 
         for (var expectedPromptLine : expectedPromptLines) {
             assertTrue(specification.contains(expectedPromptLine),
@@ -139,28 +140,9 @@ class InfographicAssetGuardTest {
         }
     }
 
-    @Test
-    void languageSizePromptTracksTheGeneratedRootProductionStatistics() throws IOException {
-        var readme = Files.readString(ROOT.resolve("README.md"));
-        var specification = Files.readString(SPECIFICATION);
-        var statistics = section(readme, "<!-- source-statistics:root:start -->", "### Verification");
-
-        var javaCode = Long.parseLong(plain(tableRow(statistics, "Java")[4]));
-        var kotlinCode = Long.parseLong(plain(tableRow(statistics, "Kotlin")[4]));
-        var expectedPromptLines = List.of(
-                "- Java size: \"" + kloc(javaCode) + "\"",
-                "- Kotlin size: \"" + kloc(kotlinCode) + "\"");
-
-        for (var expectedPromptLine : expectedPromptLines) {
-            assertTrue(specification.contains(expectedPromptLine),
-                    () -> "language-comparison infographic prompt has drifted from generated source statistics: "
-                            + expectedPromptLine);
-        }
-    }
-
     /**
-     * <b>The cell beside those counts enumerates modules, and it is exactly as volatile with no binding at
-     * all.</b> Measured 2026-09-20: while the kLOC row above was guarded and merely stale, the Kotlin
+     * <b>The STRUCTURE cell enumerates modules, and nothing else can see it drift.</b> Measured 2026-09-20:
+     * while the poster's since-removed kLOC row was guarded and merely stale, the Kotlin
      * {@code STRUCTURE} cell read {@code "interpreter • adapter laws (tests)"} — it named one of five Kotlin
      * production modules and then named <em>tests</em>, contradicting both the poster's own production-only
      * caption and the prompt's explicit "do not imply that adapter laws are production Kotlin" constraint
@@ -294,18 +276,6 @@ class InfographicAssetGuardTest {
 
     private static String plain(String cell) {
         return cell.trim().replace("**", "");
-    }
-
-    private static String section(String document, String startMarker, String endMarker) {
-        var start = document.indexOf(startMarker);
-        var end = document.indexOf(endMarker, start + startMarker.length());
-        assertTrue(start >= 0 && end > start,
-                () -> "missing bounded document section: " + startMarker + " -> " + endMarker);
-        return document.substring(start, end);
-    }
-
-    private static String kloc(long codeLines) {
-        return String.format(java.util.Locale.ROOT, "%.1f kLOC", codeLines / 1000.0);
     }
 
     private record Placement(String fileName, Path document, String relativePath, int previewWidth) {

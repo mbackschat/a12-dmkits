@@ -89,4 +89,4 @@ The Kernel's own expanded Document Model is comparable in size to a prepared mod
 
 For sizing a model cache, a resident prepared model costs about **1.4 kB per field plus 1.55 kB per rule plus 2.3 kB per group**, within 4% across all six.
 
-<sub>Measured 2026-08-17 · Apple M1 · Chrome 151 · JDK 21 · no discarded samples · sizing fit from an earlier sweep · [method, timing boundaries and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md)</sub>
+<sub>Measured 2026-08-17 · A12 Kernel 30.8.1 · Apple M1 · Chrome 151 · JDK 21 · no discarded samples · sizing fit from an earlier sweep · [method, timing boundaries and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md)</sub>

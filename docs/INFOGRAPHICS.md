@@ -65,6 +65,7 @@ The table above is the single source for placement and copy checks. Both `check-
 - Connectors: solid arrows mean direct flow; dashed arrows mean verification, evidence, or an indirect relationship. Every arrow has a clear source, target, and action.
 - Branding: product names such as `a12-dmkits`, `dmtool`, `modelkit`, `rulekit`, and `A12 Interpreter` are text labels, not logos. Do not add the ByteByteGo logo, mgm branding, an A12 logo, a watermark, or an invented project mark.
 - Text fidelity: use only the exact content listed for each infographic. Do not add claims, product names, steps, statistics, or decorative pseudo-text.
+- Durability: a poster carries no counts, version pins or dates, because each one goes stale on an ordinary commit or upgrade while the raster can only be refreshed by regeneration. The one exception is a dated-evidence poster, which must name its complete measurement context (date, Kernel, machine, runtimes) so it stays true as history. Exact sizes and versions belong in the generated README tables and `--version`.
 - Quality threshold: the takeaway, title, main path, and output must remain clear at README preview width. All exact labels and measurements must be readable at full size.
 
 ## Factual sources and freshness triggers
@@ -93,7 +94,7 @@ Each poster owns one question; repeated components provide context rather than r
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
 | Consistency checker inputs, operations, reports, reuse, and availability | [CONSISTENCY-API.md](CONSISTENCY-API.md), [checker README](../consistency/README.md), and [RELEASE-SPEC.md](RELEASE-SPEC.md) §12 | checking scope, an operation's result contract, reuse boundaries, verdict semantics, runtime targets, or public-release status changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
-| Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), [RELEASE-SPEC.md](RELEASE-SPEC.md), and the generated root [Source statistics](../README.md#source-statistics) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, native-delivery decision, or Java/Kotlin production count changes |
+| Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), and [RELEASE-SPEC.md](RELEASE-SPEC.md) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, or native-delivery decision changes |
 | Performance and resident memory | public [PERFORMANCE.md](../interpreter/public-release/PERFORMANCE.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-PERFORMANCE-RESULTS.md](INTERPRETER-PERFORMANCE-RESULTS.md) | a qualifying benchmark rerun changes any displayed number, machine/runtime identity, timing boundary, or eligibility rule |
 
 The performance poster is dated evidence. Its current figures were measured on 2026-08-17 on Apple M1, JDK 21, and Chrome 151. Re-run the owning benchmark protocols before replacing a number. Do not infer a new ratio from unrelated results or turn a bounded scenario into a universal claim.
@@ -104,7 +105,7 @@ The public Interpreter [`PERFORMANCE.md`](../interpreter/public-release/PERFORMA
 
 GitHub CI checks out rulekit, sets up the repository-pinned Node runtime, and then runs that stable shell command before it checks out the Kernel bootstrap kit or installs Java and Gradle. Stale claims, broken previews, missing assets, or drifted public copies therefore stop the workflow before the expensive work begins. Keeping the check in the existing build job avoids paying for a second runner startup and duplicate repository checkout on every successful run. The committed [pre-push hook](../.githooks/pre-push) runs the same check locally and then runs `actionlint`, so any Git client gets the same pre-push verdict after `core.hooksPath` is configured. `InfographicAssetGuardTest` repeats the source-to-prompt and asset checks in the ordinary documentation suite, while `GateTierWiringTest` locks both this published ordering and the workflow itself and prevents a separate preflight job from being introduced silently.
 
-The raster is intentionally not treated as machine-readable data. CI can prove that the owning reports and the exact generation prompts agree, but reliable raster-text verification would require brittle OCR. The public performance report owns the mutable benchmark figures. The generated root Source Statistics table owns the Java/Kotlin production counts; both guards derive the displayed one-decimal kLOC values from its `Code` column, while `update-code-statistics.sh --check` keeps that table measured before publication. When either guard fails after an owning-source refresh, update the content map and prompt, regenerate or focus-edit the image with built-in ImageGen, inspect it at full resolution, export and verify its AVIF sibling, synchronize every public AVIF copy, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
+The raster is intentionally not treated as machine-readable data. CI can prove that the owning reports and the exact generation prompts agree, but reliable raster-text verification would require brittle OCR. The public performance report owns the mutable benchmark figures, including the Kernel named in its evidence line; no other poster prints a count, version or date (the durability rule above). When the guard fails after an owning-source refresh, update the content map and prompt, regenerate or focus-edit the image with built-in ImageGen, inspect it at full resolution, export and verify its AVIF sibling, synchronize every public AVIF copy, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
 
 ## Infographic 1: A12 dmkits toolchain
 
@@ -432,7 +433,7 @@ Avoid:
 - compute -> returns -> ComputationReport.
 - ComputationReport.applyTo -> creates -> new immutable Document snapshot.
 - PreparedModel + Interpreter -> are retained across -> successive snapshots.
-- Differential verification -> compares with -> A12 Kernel 31.1.1.
+- Differential verification -> compares with -> the pinned A12 Kernel.
 - One common engine -> runs on -> JVM + Node.js + browser + native dmtool.
 
 ### Generation prompt
@@ -450,7 +451,7 @@ MIDDLE BAND, heading "ONE DOCUMENT SNAPSHOT": Draw "A12 Document JSON" -> "Immut
 
 LOWER BAND, heading "DISTINCT RESULT LANES": The upper lane is "VALIDATE": "validateFull / validatePart" -> "ValidationReport", with the arrow labeled "return". The lower lane is "COMPUTE": "compute" -> "ComputationReport" -> "New immutable snapshot". Label compute-to-report "return" and report-to-new-snapshot "applyTo". Draw the middle band's input snapshot branching into the validateFull / validatePart node and the compute node only. Both operation nodes are called on the retained Interpreter, which is clear from a small label above these two nodes: "Interpreter operations". No arrow may connect validatePart to ComputationReport. No direct compute-to-new-snapshot arrow. No arrows between the validation and computation lanes. The applyTo arrow starts at ComputationReport only. Add two compact footer pills beneath the lanes: "No errors ≠ fully supported" and "Input snapshots stay immutable".
 
-BOTTOM CONTEXT RAIL: heading "VERIFICATION", followed by "A12 Kernel 31.1.1", "Differential tests • fuzzing • portable corpus", "Generated Java co-evidence", and the conclusion "Kernel-matched on the exercised surface". No directed flow through these evidence labels. A separate small feature row contains "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation".
+BOTTOM CONTEXT RAIL: heading "VERIFICATION", followed by "A12 Kernel", "Differential tests • fuzzing • portable corpus", "Generated Java co-evidence", and the conclusion "Kernel-matched on the exercised surface". No directed flow through these evidence labels. A separate small feature row contains "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation".
 
 Keep the main mechanism at least 70% of the composition. The verification rail and runtime targets are subordinate context. All labels must be legible. Do not imply universal Kernel equivalence, a mutable input Document, a per-request-only Interpreter, an Interpreter.apply method, or that validation returns a computation report. Do not draw decorative or unrequested connectors.
 ```
@@ -553,7 +554,7 @@ Exact content:
 - Browser value: "1.1 ms warm"
 - Browser scope: "Context only • separate runtime"
 - Bottom boundary: "Prepared engines • validation only • Kernel codegen outside the clock"
-- Bottom evidence: "Measured 2026-08-17 • Apple M1 • JDK 21 • Chrome 151"
+- Bottom evidence: "Measured 2026-08-17 • A12 Kernel 30.8.1 • Apple M1 • JDK 21 • Chrome 151"
 - Bottom qualifier: "Bounded same-machine measurements, not universal promises"
 
 Semantic mapping:
@@ -658,7 +659,7 @@ Primary information structure:
 - Primary reading direction: scan the three equal technology cards from left to right, read the compact KOTLIN vs JAVA table from top to bottom, then scan WHY THIS SPLIT SCALES from left to right.
 - Put three equal-height rounded cards across the upper two-thirds: KOTLIN MULTIPLATFORM, GRAALVM NATIVE IMAGE, and A12 KERNEL.
 - Give every card the same row structure: role tag, components, environment or targets, use case, why, payoff, and one boundary or guardrail where required.
-- Use a compact wide lower table to compare Java and Kotlin by size, structure, function, technology derivation, and target runtime.
+- Use a compact wide lower table to compare Java and Kotlin by structure, function, technology derivation, and target runtime.
 - Use the remaining bottom space for a three-column benefits band that synthesizes architectural rationale and potential without introducing a process diagram.
 - Final output: the language table and benefits band complete the technology-role cards without repeating the toolchain, dmtool workflow, Interpreter internals, or performance topics of the other infographics.
 
@@ -718,9 +719,6 @@ Exact content:
 - Bottom table title: "KOTLIN vs JAVA"
 - Column header: "JAVA"
 - Column header: "KOTLIN"
-- Row label: "SIZE"
-- Java size: "54.7 kLOC"
-- Kotlin size: "42.3 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
@@ -733,7 +731,6 @@ Exact content:
 - Row label: "RUNTIME"
 - Java runtime: "JVM • native dmtool"
 - Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
-- Bottom scope note: "Production code • locmetry • measured 2026-11-04"
 - Bottom band title: "WHY THIS SPLIT SCALES"
 - Benefits heading: "PORTABILITY"
 - Benefits line: "Shared source per engine"
@@ -762,9 +759,8 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 54.7 kLOC and 42.3 kLOC in the largest type within the table.
+- Align equivalent cells exactly.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
-- Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
 - Keep this final band about architectural rationale and future leverage. Do not depict a toolchain lifecycle, dmtool workflow, Interpreter internals, or performance comparison.
 
@@ -779,7 +775,7 @@ Avoid:
 - No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, Kotlin logo, GraalVM logo, or copied poster composition.
 - No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
 - Do not imply that GraalVM provides model semantics, that portable consistency can certify VALID, that the Kernel is the dmtool runtime evaluator, or that either standalone JavaScript engine embeds the Kernel. The JVM façades in the lower Kotlin table are not Kotlin/JS artifacts.
-- Do not imply that adapter laws are production Kotlin or that the kLOC values include tests, generated code, fixtures, build output, or dependencies.
+- Do not imply that adapter laws are production Kotlin.
 - Do not make native dmtool a third Kotlin compilation target: show JVM + JavaScript on the first text path and GraalVM delivery on the second.
 - Do not turn WHY THIS SPLIT SCALES into a workflow, runtime architecture, or benchmark panel.
 - No invented components, targets, platforms, performance numbers, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
@@ -1312,6 +1308,9 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-09-21 | Schema exchange and semantic diff | Clarified semantic boundaries; background-only corrections | Keep strict import's omission behavior and stock-validator carriage limit explicit. Diff evidence is structural, and impact is review priority. Reject translucent dark headers before export. |
 | 2026-09-21 | Toolchain and Interpreter runtime | Terminal review corrections | Make TOOLCHAIN OUTPUTS an unconnected summary, preserving the separate accepted-model input to the Interpreter. Label ModelWorkspace as finite collected sources: collection finishes before the immutable workspace exists. Re-exported both corrected masters through the same default quality gates. |
 | 2026-09-21 | A12 Consistency Checker | New consumer-facing architecture poster, built-in ImageGen generation and default-profile AVIF export | Show supplied sources, operations, operation-specific reports, separate snapshot-update/draft paths, and the scoped-pass versus full-acceptance boundary. Root and checker README previews use one canonical AVIF. Keep public-release status visible until the owning release record changes. |
+| 2026-11-05 | A12 Interpreter runtime | Focused label edit under the durability rule | Accepted at 1536 × 1024. The verification rail reads "A12 Kernel" with no release number; the pinned release lives in the build, not on a poster. |
+| 2026-11-05 | Interpreter vs A12 Kernel | Focused evidence-line edit; the study was not rerun | Accepted at 1122 × 1402. The evidence line names the Kernel the 2026-08-17 study measured (30.8.1), so the dated figures cannot be read against the currently pinned Kernel. |
+| 2026-11-05 | Kotlin, GraalVM, and A12 Kernel roles | Removed the SIZE row and the locmetry footer, then let the table and band breathe | Accepted at 1024 × 1536. The poster prints no source counts; code size is a README statistic and never a poster fact. |
 
 
 ## Presentation refresh — 2026-11-01
@@ -1431,3 +1430,37 @@ The AVIF was synchronized to the dmtool plugin and Interpreter release sources, 
 | Refreshed image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
 |---|---|---|
 | kotlin-graalvm-kernel-roles | `1f4b1fe6f7f5ae4088c13fbed181c0e09f61c536829247df55cd7b310ee77fbc` | `6dba7da740a57a5636986aae6078eac6029b0ba7f9ce55677f4b983863418d0a` |
+
+## Durability edits — 2026-11-05
+
+Three posters lost the facts that went stale without any visible change: the technology poster's kLOC row and its measurement footer, the runtime poster's pinned Kernel release, and the performance poster's unnamed Kernel. The rule these edits apply is the Durability bullet under the shared visual system. The performance figures are unchanged; the 2026-08-17 study stays dated evidence until it is rerun against the currently pinned Kernel.
+
+Each candidate came from built-in ImageGen, run through `codex exec` in an isolated scratch directory holding only a copy of the accepted master (archived as `assets/infographics/archive/<name>-before-2026-11-05b.png`). The edit prompts were:
+
+```text
+Edit this existing technical infographic. Change only one text value in the bottom VERIFICATION rail: replace "A12 Kernel 31.1.1" with "A12 Kernel". The poster no longer pins a release number. Preserve the complete canvas, every other word, the preparation stage, the reusable evaluator, the distinct result lanes, all icons, colors, arrows and their endpoints, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims.
+```
+
+```text
+Edit this existing technical infographic. Change only the bottom evidence line: replace "Measured 2026-08-17 • Apple M1 • JDK 21 • Chrome 151" with "Measured 2026-08-17 • A12 Kernel 30.8.1 • Apple M1 • JDK 21 • Chrome 151". This names the Kernel release the dated study measured; every number stays. Keep the line on one row in the same style and position. Preserve the complete canvas, every other word and number, all bars, cards, icons, colors, spacing, and the fully opaque warm off-white background. Do not add or remove any labels, arrows, cards, logos or claims.
+```
+
+```text
+Edit this existing technical infographic. In the KOTLIN vs JAVA table, remove the entire SIZE row (its "SIZE" label and both kLOC values) and remove the small footer line "Production code • locmetry • measured 2026-11-04" inside the table. Close up the table so the remaining rows STRUCTURE, FUNCTION, TECHNOLOGY and RUNTIME follow directly below the JAVA / KOTLIN column headers, then use the freed height to give the table rows and the WHY THIS SPLIT SCALES band slightly more breathing room. Keep the canvas exactly 1024 × 1536. Preserve every other word exactly, the three technology cards unchanged, both explicit compilation paths, column ownership (Java values in the JAVA column, Kotlin values in the KOTLIN column), icons, colors, and the fully opaque warm off-white background. Do not add any numbers, dates, labels, arrows, cards, logos or claims.
+```
+
+Every candidate redrew the whole canvas with small drift, so each accepted master is the previous master with only the changed region taken from its candidate, verified by an AE diff whose bounding box equals that region: the label cell `276x48+268+864` (runtime), the evidence line `618x26+466+1281` (performance), and everything below the unchanged role cards, `988x640+17+835` (technology; the seam rows at y = 828–836 are identical in master and candidate).
+
+| Accepted AVIF | Dimensions | Bytes | DSSIM | Encoder |
+|---|---|---:|---:|---|
+| [a12-interpreter-runtime](../assets/infographics/a12-interpreter-runtime.avif) | 1536 × 1024 | 73,403 | 0.00465885 | Default helper |
+| [interpreter-vs-kernel](../assets/infographics/interpreter-vs-kernel.avif) | 1122 × 1402 | 85,266 | 0.00582344 | Default helper |
+| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 98,288 | 0.00599414 | Default helper |
+
+The AVIFs were synchronized to the dmtool plugin and Interpreter release sources, as declared in the asset registry. [Accepted infographic evidence](infographic-evidence.json) now binds only each poster's pixels to its exact prompt (schema 2).
+
+| Refreshed image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
+|---|---|---|
+| a12-interpreter-runtime | `0944f0e84dc621a8682ec3a52af5869503a71c5de5a3b361bbbba19be47cc6e5` | `d8763423c8fb837d9da4f4edd04eaf75a8c877af34786a480e561264d553329c` |
+| interpreter-vs-kernel | `2b247fcacd70deb3f92dd244457d506eaec2dc40abdf3f6f637aeeb94caf4254` | `5712f1a623c941458a673421cb48b1699a6e69b4134ab00b39000f4f758541a0` |
+| kotlin-graalvm-kernel-roles | `36b0fbbf2663fe0a6e766343995b1f38c5c31067d07cb8247a55aeb1f4b8ad09` | `733dbfb2475cb69f22ee6b7659e16ea1afdbb5813a3954b3a24c1c96d388f7f9` |

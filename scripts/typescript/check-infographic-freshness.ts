@@ -10,7 +10,6 @@ type RegistryRow = {
 
 const ROOT = path.resolve(__dirname, "../..");
 const REPORT = path.join(ROOT, "interpreter/public-release/PERFORMANCE.md");
-const ROOT_README = path.join(ROOT, "README.md");
 const SPECIFICATION = path.join(ROOT, "docs/INFOGRAPHICS.md");
 const SPECIFICATION_DIR = path.dirname(SPECIFICATION);
 const CI_WORKFLOW = path.join(ROOT, ".github/workflows/ci.yml");
@@ -25,7 +24,6 @@ function read(file: string): string {
 }
 
 const report = read(REPORT);
-const rootReadme = read(ROOT_README);
 const specification = read(SPECIFICATION);
 const ciWorkflow = read(CI_WORKFLOW);
 
@@ -35,25 +33,6 @@ function tableCell(label: string, column: number): string {
     return (line.split("|")[column - 1] ?? "").trim().replaceAll("**", "");
   }
   return fail(`missing performance-report table row: ${label}`);
-}
-
-function productionCodeLines(language: string): number {
-  let inStatistics = false;
-  for (const line of rootReadme.split(/\r?\n/)) {
-    if (line.includes("<!-- source-statistics:root:start -->")) {
-      inStatistics = true;
-      continue;
-    }
-    if (inStatistics && line === "### Verification") break;
-    if (!inStatistics) continue;
-    const cells = line.split("|");
-    if ((cells[1] ?? "").trim() === language) return Number((cells[4] ?? "").trim());
-  }
-  return fail(`missing ${language} production code count in root Source statistics`);
-}
-
-function asKloc(codeLines: number): string {
-  return `${(codeLines / 1000).toFixed(1)} kLOC`;
 }
 
 function requirePromptLine(line: string): void {
@@ -111,8 +90,6 @@ const dynamicGroovyMemory = tableCell("A12 Kernel, dynamic Groovy", 3);
 const dynamicGroovyMemoryRatio = tableCell("A12 Kernel, dynamic Groovy", 4);
 const browserFirst = tableCell("200 rows — representative", 4).replace(/ median$/, "");
 const browserWarm = tableCell("200 rows — representative", 5);
-const javaKloc = asKloc(productionCodeLines("Java"));
-const kotlinKloc = asKloc(productionCodeLines("Kotlin"));
 
 const comparisonLine = report.split(/\r?\n/).find(line => line.includes("the interpreter is about **"))
   ?? fail("missing current JVM comparison line");
@@ -124,9 +101,10 @@ const evidenceLine = report.split(/\r?\n/).filter(line => line.includes("<sub>Me
   ?? fail("missing performance evidence footer");
 const evidence = evidenceLine.replace(/^<sub>Measured /, "").split(/\s*·\s*/);
 const measurementDate = (evidence[0] ?? "").trim();
-const machine = (evidence[1] ?? "").trim();
-const browser = (evidence[2] ?? "").trim();
-const jdk = (evidence[3] ?? "").trim();
+const kernel = (evidence[1] ?? "").trim();
+const machine = (evidence[2] ?? "").trim();
+const browser = (evidence[3] ?? "").trim();
+const jdk = (evidence[4] ?? "").trim();
 
 const promptLines = [
   `- Section title: "WARM VALIDATION • ${stressRows} • ${stressFindings} findings"`,
@@ -146,9 +124,7 @@ const promptLines = [
   `- Memory callout: "${dynamicGroovyMemoryRatio}"`,
   `- Browser value: "${browserFirst} first answer"`,
   `- Browser value: "${browserWarm} warm"`,
-  `- Bottom evidence: "Measured ${measurementDate} • ${machine} • ${jdk} • ${browser}"`,
-  `- Java size: "${javaKloc}"`,
-  `- Kotlin size: "${kotlinKloc}"`,
+  `- Bottom evidence: "Measured ${measurementDate} • ${kernel} • ${machine} • ${jdk} • ${browser}"`,
 ];
 for (const promptLine of promptLines) requirePromptLine(promptLine);
 

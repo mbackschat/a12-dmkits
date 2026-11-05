@@ -1,6 +1,5 @@
 {
-  "schema": 1,
-  "productionSourcesSha256": "f47cac6f24bc1c3e93e16a310277a6fb94da6df5775a543c85f22128e15474c8",
+  "schema": 2,
   "artwork": [
     {
       "file": "assets/infographics/a12-dmkits-toolchain.avif",
@@ -14,18 +13,18 @@
     },
     {
       "file": "assets/infographics/a12-interpreter-runtime.avif",
-      "sha256": "fd6ff74937f1c5ed9102ccc91aa1f00554b9766253ed62e02015e743706af5ef",
-      "promptSha256": "c51b862089e77a58b9948d407e28b2f50b750ddd928fd26052d0268695ebba67"
+      "sha256": "d8763423c8fb837d9da4f4edd04eaf75a8c877af34786a480e561264d553329c",
+      "promptSha256": "1e54837dcc388b2f6d4c7b524448f844328d65e4ac58d6b1365752a5c075f985"
     },
     {
       "file": "assets/infographics/interpreter-vs-kernel.avif",
-      "sha256": "e88e562617585c940aa1a0d1570b35e78f268b60edf77746d15042cea7f45a60",
-      "promptSha256": "41247772f380beb8ea8603d488e47430547a7037e9b5377dbd66f8581dcc56d7"
+      "sha256": "5712f1a623c941458a673421cb48b1699a6e69b4134ab00b39000f4f758541a0",
+      "promptSha256": "98e61dc727e9a14c1699abc29788f0aba6bf5fa2272495c44ca1bf63fe04164d"
     },
     {
       "file": "assets/infographics/kotlin-graalvm-kernel-roles.avif",
-      "sha256": "6dba7da740a57a5636986aae6078eac6029b0ba7f9ce55677f4b983863418d0a",
-      "promptSha256": "9fe23efbccefda3d33c94cf82079088068fe8805cc38862d04647d07b71e3750"
+      "sha256": "733dbfb2475cb69f22ee6b7659e16ea1afdbb5813a3954b3a24c1c96d388f7f9",
+      "promptSha256": "4e1422f0b36bc9b28ca5b867927e50b8a1f795c8b479acca4c67a4be00641296"
     },
     {
       "file": "assets/infographics/json-schema-document-model.avif",

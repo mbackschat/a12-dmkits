@@ -21,8 +21,8 @@ import org.junit.jupiter.api.io.TempDir;
  * {@code LANG=de_DE.UTF-8} machine: its former shell implementation derived the production Java size through
  * {@code awk}'s locale-sensitive {@code printf "%.1f"}, so it computed {@code 47,7 kLOC} and compared it against
  * the committed {@code 47.7 kLOC}. CI runners were C/UTF-8, so the failure was invisible there and there was no
- * drift to fix. The typed implementation now uses locale-independent {@code Number.toFixed} and Unicode-string
- * splitting rather than asking shell tools to parse stateful text.
+ * drift to fix. The typed implementation splits the evidence footer as a Unicode string rather than asking shell
+ * tools to parse stateful text; the kLOC binding itself was removed with the posters' counts on 2026-11-05.
  *
  * <p><b>Why the public command and runtime refusal are part of the property.</b> Comparing two direct
  * implementation runs let a no-op shell launcher pass while CI executed that launcher. An always-on arm now
@@ -54,7 +54,6 @@ class InfographicFreshnessLocaleTest {
             "de_DE.UTF-8", "de_DE.utf8", "fr_FR.UTF-8", "fr_FR.utf8", "nl_NL.UTF-8", "pt_BR.UTF-8");
 
     private static final String GUARD = "scripts/check-infographic-freshness.sh";
-    private static final String IMPLEMENTATION = "scripts/typescript/check-infographic-freshness.ts";
 
     @Test
     void thePublicLauncherAlwaysCrossesTheRuntimeGateAndRunsTheTypedGuard(@TempDir Path temporary) throws Exception {
@@ -100,17 +99,14 @@ class InfographicFreshnessLocaleTest {
      * The always-on structural half. A machine without a comma-decimal locale cannot run the arm above, so CI
      * would notice a return to default-locale formatting. This source-text arm is deliberately narrow: the
      * behavioural property above owns the verdict, while this one keeps the public shell path connected to the
-     * typed source and preserves the locale-independent numeric primitive.
+     * typed source.
      */
     @Test
-    void theGuardUsesLocaleIndependentTypeScriptFormattingBehindItsStableLauncher() throws Exception {
+    void theGuardRunsItsTypeScriptImplementationBehindItsStableLauncher() throws Exception {
         String launcher = Files.readString(CHECKOUT.resolve(GUARD), StandardCharsets.UTF_8);
-        String implementation = Files.readString(CHECKOUT.resolve(IMPLEMENTATION), StandardCharsets.UTF_8);
         assertTrue(launcher.contains("run-typescript.sh") && launcher.contains("check-infographic-freshness.ts"),
                 "the public script path must delegate to the TypeScript implementation through the shared "
                         + "Node-version gate");
-        assertTrue(implementation.contains(".toFixed(1)"),
-                "kLOC formatting must use JavaScript's locale-independent fixed decimal form");
     }
 
     private record Run(int exitCode, String output) {
