@@ -16779,7 +16779,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "To be reported in the next letter to a12-kernel-lean; not yet sent.",
+          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
@@ -20790,7 +20790,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its errorCode rows to be reported in Letter G, not yet sent.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its errorCode rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
@@ -22666,7 +22666,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its parallel-join rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
@@ -23033,7 +23033,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its rule-group terminal rows reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
@@ -24442,7 +24442,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "To be reported in Letter G to a12-kernel-lean; not yet sent.",
+          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
@@ -24512,7 +24512,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "To be reported in Letter G to a12-kernel-lean; not yet sent.",
+          "basis": "Reported in Letter G (a12-kernel-lean-spec-corrections-2026-11-05b.md), sent 2026-11-05; not yet received.",
           "evidence": {}
         }
       }
