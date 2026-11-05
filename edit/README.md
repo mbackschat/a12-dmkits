@@ -25,6 +25,52 @@ It is the only module depending on both [`:modelkit`](../modelkit) and [`:ruleki
 
 `dmtool apply` is this session behind a CLI verb — read, ordered surgery, one gate, one write, rollback on failure. If you reach for `batch` instead, note that it is the opposite trade: independent dispatch, continuing past a child failure, and no rollback of an earlier successful write.
 
+## In practice
+
+The north-star flow: read a model, make a series of structure *and* rule edits (a rule may reference a field added earlier in the same session), validate **once**, write back. Intermediate invalid states are fine; only the final result must satisfy the kernel.
+
+The idiom is the **editor**: you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
+
+```java
+EditSession s = EditSession.read(dmJson);
+GroupEditor order = s.group("/Order");                       // a session-bound editor on /Order
+order.addField("Discount", FieldKind.NUMBER);                // structure edit (modelkit) — chains
+NumberRef discount = order.num("Discount");                  // a typed ref to the field just added
+order.addRule(r -> r                                         // a TYPED rule (rulekit), pre-scoped to /Order
+        .name("DiscountNotNegative").errorField(discount)
+        .when(discount.filled().and(discount.lt(0)))         // the violation: a discount below zero
+        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
+        .message(en("Discount must not be negative.")).build());
+String updated = s.validate().toJson();                      // one kernel gate
+```
+
+**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first, and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`). Either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect.
+
+What the editors carry:
+
+- `GroupEditor` nests (`addGroup(name, sub -> …)`) and has the same per-type field builders as the from-scratch builder (`order.numberField("Surcharge", n -> n.fractionDigits(2))`, `enumField`, `dateField`, …). A *configured* field added mid-edit is byte-identical to one built from scratch.
+- `FieldEditor` re-types, labels and annotates a field.
+- `RuleEditor` / `ComputationEditor` modify or remove by held reference: a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…"))`).
+- `EditSession` carries the **reference-preserving refactors**. `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer.
+
+Design and rationale: [API guide §5c](../docs/API-GUIDE.md).
+
+**Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
+
+```java
+GroupEditor billing = s.group("/Subscription/Billing");
+billing.addField("Surcharge", FieldKind.NUMBER);                       // NEW field — via the editor
+NumberRef surcharge = billing.num("Surcharge");                        // editor relative ref
+s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surcharge)
+        .when(surcharge.filled().and(surcharge.gt(m.num("/Subscription/Billing/BaseFee"))))  // ← path lookup, existing field
+        .code("SURCHARGE_OVER_BASE").severity(Severity.ERROR)
+        .message(en("Surcharge must not exceed the base fee.")).build());
+```
+
+The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
+
+More library idioms and the design rationale live in the [API guide](../docs/API-GUIDE.md); every doc is indexed in [`docs/`](../docs/README.md).
+
 ## Reference
 
 Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-edit` (MIT). Package `io.github.mbackschat.a12.dm.edit`. Depends on [`:core`](../core), [`:modelkit`](../modelkit) and [`:rulekit`](../rulekit). Kernel-free, guarded over both compiled classes and resolved POM. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.

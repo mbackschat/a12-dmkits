@@ -83,7 +83,7 @@ fi
 # --- path-classifiable rows of CLAUDE.md's trigger table -------------------------------------------------
 matches '^cli/src/main/' && say \
   "a CLI verb's surface may have changed" \
-  "update: docs/CLI-SPEC.md + docs/CLI-CONFORMANCE-SPEC.md + the README verb tour" \
+  "update: docs/CLI-SPEC.md + docs/CLI-CONFORMANCE-SPEC.md + docs/DMTOOL-GUIDE.md (+ the README tour-table row when a verb family changes)" \
   "re-verify: ./scripts/verify-demos.sh  (gated on output shape/behaviour/diagnostics changing)" \
   "guard: ManifestVerbTest / CliConformanceMatrixTest / CommandReferencesResolveTest"
 

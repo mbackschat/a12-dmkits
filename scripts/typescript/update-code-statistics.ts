@@ -11,7 +11,7 @@ type Artifact = { id: string; target: string; description: string; modules?: str
 
 // These are artifact boundaries; .locmetryrc alone decides a file's purpose and category within them.
 const ARTIFACTS: Record<string, Artifact> = {
-  root: { id: "root", target: "README.md", description: "this repository", sections: ["Production", "Verification", "Tooling"] },
+  root: { id: "root", target: "docs/SOURCE-STATISTICS.md", description: "this repository", sections: ["Production", "Verification", "Tooling"] },
   dmtool: {
     id: "dmtool", target: "plugin/README.md", description: "the dmtool modules and their verification sources",
     modules: ["src", "core", "rulekit", "modelkit", "edit", "schemakit", "adapter", "cli", "interpreter", "consistency", "predicates", "interpreter-bridge", "consistency-gate", "shared-regex"],
@@ -79,7 +79,7 @@ function selectSources(report: Report, selected: string, section: Section): Sour
 
 function render(report: Report, selected: string): string {
   const artifact = ARTIFACTS[selected];
-  const policy = selected === "root" ? ".locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : selected === "checker" ? "a12-consistency-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
+  const policy = selected === "root" ? "../.locmetryrc" : `https://github.com/mbackschat/${selected === "dmtool" ? "a12-dmtool-releases" : selected === "checker" ? "a12-consistency-releases" : "a12-interpreter-releases"}/blob/main/.locmetryrc`;
   const output = [
     `<!-- source-statistics:${artifact.id}:start -->`, "## Source statistics", "",
     `Measured with [locmetry](https://github.com/mbackschat/locmetry) from ${artifact.description}, using [\`.locmetryrc\`](${policy}). Only tracked source files are counted; generated code, data fixtures, documentation, third-party wrappers, and build output are excluded. Code excludes comments and blank lines.`,
@@ -115,7 +115,7 @@ function main(args: string[]): number {
       case "--check": check = true; break;
       case "--artifact": selected = args[++index]; break;
       case "-h": case "--help":
-        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter|checker]\n\nUpdate public README tables or compare them with fresh locmetry measurements. Use the latest locmetry; .locmetryrc defines classification.");
+        console.log("Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter|checker]\n\nUpdate the source-statistics tables (docs/SOURCE-STATISTICS.md and the public release READMEs) or compare them with fresh locmetry measurements. Use the latest locmetry; .locmetryrc defines classification.");
         return 0;
       default: throw new UsageError(`unknown argument: ${args[index]}`);
     }

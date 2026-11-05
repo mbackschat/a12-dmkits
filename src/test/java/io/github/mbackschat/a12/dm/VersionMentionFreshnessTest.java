@@ -28,6 +28,7 @@ class VersionMentionFreshnessTest {
     /** Files that state the targeted versions in hand-written text and must track the build pins. */
     private static final List<String> VERSION_MENTIONING_FILES = List.of(
             "README.md",
+            "docs/DMTOOL-GUIDE.md",
             "plugin/README.md",
             "plugin/CHANGELOG.md",
             "plugin/.claude-plugin/plugin.json",

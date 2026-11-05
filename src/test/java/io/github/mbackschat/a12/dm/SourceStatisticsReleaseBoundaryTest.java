@@ -52,6 +52,7 @@ class SourceStatisticsReleaseBoundaryTest {
         assertFalse(updater.contains("| Lean |"));
         for (String readme : List.of(
                 "README.md",
+                "docs/SOURCE-STATISTICS.md",
                 "plugin/README.md",
                 "interpreter/README.md",
                 "interpreter/public-release/README.md")) {

@@ -35,7 +35,7 @@ function fixture(t: { after(callback: () => void): void }): string {
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
     fs.writeFileSync(path.join(root, relative), contents);
   }
-  for (const [relative, id] of [["README.md", "root"], ["plugin/README.md", "dmtool"], ["interpreter/public-release/README.md", "interpreter-release"], ["consistency/public-release/README.md", "checker-release"]]) {
+  for (const [relative, id] of [["docs/SOURCE-STATISTICS.md", "root"], ["plugin/README.md", "dmtool"], ["interpreter/public-release/README.md", "interpreter-release"], ["consistency/public-release/README.md", "checker-release"]]) {
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
     fs.writeFileSync(path.join(root, relative), `before\n<!-- source-statistics:${id}:start -->\nstale\n<!-- source-statistics:${id}:end -->\nafter\n`);
   }
@@ -50,8 +50,8 @@ test("the public updater uses policy classifications, counts code separately, an
   const run = (...args: string[]) => spawnSync("dash", [path.join(root, "scripts/update-code-statistics.sh"), ...args], { encoding: "utf8", timeout: 10_000 });
   const updated = run();
   assert.equal(updated.status, 0, updated.stderr);
-  const output = fs.readFileSync(path.join(root, "README.md"), "utf8");
-  for (const relative of ["README.md", "plugin/README.md", "interpreter/public-release/README.md", "consistency/public-release/README.md"]) {
+  const output = fs.readFileSync(path.join(root, "docs/SOURCE-STATISTICS.md"), "utf8");
+  for (const relative of ["docs/SOURCE-STATISTICS.md", "plugin/README.md", "interpreter/public-release/README.md", "consistency/public-release/README.md"]) {
     assert.match(fs.readFileSync(path.join(root, relative), "utf8"), /Measured with \[locmetry\]\(https:\/\/github\.com\/mbackschat\/locmetry\) from /, relative);
     for (const section of fs.readFileSync(path.join(root, relative), "utf8").split("### ").slice(1)) {
       const rows = section.split("\n").filter(line => line.startsWith("| ")).slice(1)
@@ -61,7 +61,7 @@ test("the public updater uses policy classifications, counts code separately, an
       assert.deepEqual(total.slice(1).map(Number), [1, 2, 3, 4, 5].map(column => rows.reduce((sum, row) => sum + Number(row[column]), 0)), relative);
     }
   }
-  assert.match(output, /\[`.locmetryrc`\]\(\.locmetryrc\)/);
+  assert.match(output, /\[`.locmetryrc`\]\(\.\.\/\.locmetryrc\)/);
   assert.doesNotMatch(output, /Counted from|Tokei/);
   assert.match(output, /\| \*\*Total\*\* \| \*\*5\*\* \| \*\*7\*\* \| \*\*5\*\* \| \*\*1\*\* \| \*\*1\*\* \|/);
   assert.match(output, /\| Java \| 1 \| 3 \| 1 \| 1 \| 1 \|/);
@@ -72,10 +72,10 @@ test("the public updater uses policy classifications, counts code separately, an
   assert.doesNotMatch(interpreter, /### Tooling/);
   assert.match(output, /^before\n/); assert.match(output, /\nafter\n$/);
   assert.equal(run("--check").status, 0);
-  fs.writeFileSync(path.join(root, "README.md"), output.replace("| Java | 1 |", "| Java | 999 |"));
-  const stale = fs.readFileSync(path.join(root, "README.md"));
+  fs.writeFileSync(path.join(root, "docs/SOURCE-STATISTICS.md"), output.replace("| Java | 1 |", "| Java | 999 |"));
+  const stale = fs.readFileSync(path.join(root, "docs/SOURCE-STATISTICS.md"));
   assert.equal(run("--check").status, 1);
-  assert.deepEqual(fs.readFileSync(path.join(root, "README.md")), stale);
+  assert.deepEqual(fs.readFileSync(path.join(root, "docs/SOURCE-STATISTICS.md")), stale);
   const report = measureRepository(root);
   assert.deepEqual(selectSources(report, "interpreter", "Production").map((f: { path: string }) => f.path).sort(), ["interpreter/consumer-tests/browser/src/showcase.ts", "interpreter/src/commonMain/kotlin/Product.kt", "shared-regex/src/Shared.kt"]);
   assert.equal(selectSources(report, "dmtool", "Production").length, 4);

@@ -324,11 +324,11 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1313 | 201789 | 139952 | 38842 | 22995 |
+| Java | 1313 | 201760 | 139927 | 38843 | 22990 |
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
 | Kotlin | 1567 | 224968 | 167664 | 36426 | 20878 |
 | TypeScript | 30 | 5273 | 4433 | 545 | 295 |
-| **Total** | **2926** | **433163** | **312771** | **76120** | **44272** |
+| **Total** | **2926** | **433134** | **312746** | **76121** | **44267** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

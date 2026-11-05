@@ -683,8 +683,8 @@ tasks.register('deliveryGuardTest', Test) {
                     'scripts/verify-demos.sh',
                     'scripts/native-gate.sh',
                     'cli/src/main/java/io/github/mbackschat/a12/dm/cli/interp/CustomJsWorker.java'),
-            'infographic live documents': files(
-                    'README.md',
+            'infographic and statistics documents': files(
+                    'README.md', 'docs/DMTOOL-GUIDE.md', 'docs/SOURCE-STATISTICS.md', 'interpreter/README.md',
                     'docs/INFOGRAPHICS.md',
                     'interpreter/public-release/PERFORMANCE.md',
                     'plugin/README.md',

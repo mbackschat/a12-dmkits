@@ -72,6 +72,8 @@ class CommandReferencesResolveTest {
      *  the copy-equality gate — so only these canonical files need command-resolution scanning here. */
     private static final List<Path> MD_FILES = List.of(
             Path.of("../README.md"),
+            // The dmtool guide carries the full verb tour, so it is scanned in full like the README.
+            Path.of("../docs/DMTOOL-GUIDE.md"),
             Path.of("../plugin/README.md"),
             Path.of("../skill/SKILL.md"),
             Path.of("../plugin-codex/AGENTS.md"),

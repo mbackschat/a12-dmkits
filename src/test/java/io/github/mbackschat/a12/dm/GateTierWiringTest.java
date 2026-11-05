@@ -314,6 +314,8 @@ class GateTierWiringTest {
         String delivery = gradleTask(Files.readString(locate("build.gradle")), "deliveryGuardTest");
         for (String input : List.of(
                 ".locmetryrc", "README.md",
+                "docs/DMTOOL-GUIDE.md",
+                "docs/SOURCE-STATISTICS.md",
                 "docs/INFOGRAPHICS.md",
                 "interpreter/public-release/PERFORMANCE.md",
                 "plugin/README.md",

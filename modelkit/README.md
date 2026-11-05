@@ -22,6 +22,87 @@ The kernel still has the final say: every result re-binds through `checkConsiste
 
 This builds a model. To change one that already exists — add and remove fields, declare type definitions, alter config — use [`:edit`](../edit)'s `EditSession`, which puts structure *and* rule changes behind one kernel gate and one write.
 
+## In practice
+
+### Build a model from scratch
+
+```java
+DocumentModelDraft order = DocumentModelDraft.named("order")
+    .locale("en_US")
+    .rootGroup("Order", g -> g
+        .field("OrderDate", FieldKind.DATE, Requiredness.REQUIRED)
+        .numberField("Quantity", n -> n.fractionDigits(0).min("1"))   // a whole number ≥ 1
+        .enumField("Priority", e -> e.value("LOW").value("HIGH"))
+        .group("Items", items -> items
+            .repeatable(99)                                           // a repeating line-item group
+            .field("Sku", FieldKind.STRING)
+            .numberField("Amount", n -> n.fractionDigits(2))))        // a money amount, scale 2
+    .build();
+
+String dmJson = order.toJson();   // DM-JSON the kernel accepts
+```
+
+### Field kinds, fully configured
+
+Each kind carries its full configuration — string length/line-breaks, number scale/min/max/unit, dates with a format, enums, and a **custom** field type:
+
+```java
+DocumentModelDraft policy = DocumentModelDraft.named("policy").locale("en_US")
+    .rootGroup("Policy", g -> g
+        .stringField("Reference", s -> s.minLength(3).maxLength(12))                       // bounded text
+        .stringField("Notes",     s -> s.lineBreaks().maxLength(500))                      // multi-line
+        .numberField("Premium",   n -> n.unit(NumberTrait.AMOUNT).fractionDigits(2).min("0"))  // money ≥ 0
+        .numberField("Discount",  n -> n.unit(NumberTrait.PERCENT).fractionDigits(1))      // a percentage
+        .dateField("EffectiveOn", d -> d.format("dd.MM.yyyy"))
+        .dateRangeField("CoverageYears", d -> d.format("yyyy").separator("/"))             // a from–to range
+        .enumField("Tier", "BRONZE", "SILVER", "GOLD")                                     // enum (varargs shorthand)
+        .customField("Iban", c -> c.type("IbanType").minLength(15).maxLength(34)))         // a custom field type
+    .build();
+```
+
+### Group templates — multi-select & attachment
+
+Two ready-made compositions: a repeatable selection list, and the kernel's canonical file-attachment group (generated whole):
+
+```java
+DocumentModelDraft claim = DocumentModelDraft.named("claim").locale("en_US")
+    .rootGroup("Claim", g -> g
+        .multiSelectGroup("Conditions", ms -> ms.enumField("Condition", "NEW", "USED").maxRows(2)))  // pick up to 2
+    .attachmentGroup("Evidence", a -> a.repeatable(10))   // canonical file-attachment group, generated whole
+    .build();
+```
+
+### Type definitions & includes
+
+Declare a reusable **type** once and reference it by name; **include** another model's tree under a group, or **import** a type-def-only model's types (merged by id, not mounted):
+
+```java
+DocumentModelDraft catalog = DocumentModelDraft.named("catalog").locale("en_US")
+    .typeDef("Money", t -> t.number(n -> n.unit(NumberTrait.AMOUNT).fractionDigits(2)))  // a reusable type, declared once
+    .typeDef("Sku",   t -> t.string(s -> s.maxLength(12)))
+    .rootGroup("Catalog", g -> g
+        .typedefField("ListPrice", "Money")      // …then a field OF that type, referenced by id
+        .typedefField("Code",      "Sku"))
+    .include("supplier", "SupplierModel")        // mount another model's tree under a group named "supplier"
+    .importTypeDefs("SharedTypes")               // merge a type-def-only model's types (by id), no mount
+    .build();
+```
+
+### Document config & metadata
+
+Locale, base year, a runtime-enforced character set — plus per-locale labels, a model comment, and name/value annotations on any element:
+
+```java
+DocumentModelDraft m = DocumentModelDraft.named("order").locale("en_US")
+    .baseYear(2026)                                       // anchors relative-date comparisons
+    .supportedCharacters("A-Z", "a-z", "0-9", " ", "-")   // runtime-enforced character set
+    .comment("the customer order model")                 // a model-level note
+    .label("en_US", "Order").label("de_DE", "Bestellung")// per-locale display labels
+    .annotation("owner", "orders-team")                  // a name/value annotation
+    .rootGroup("Order", g -> g.field("Reference", FieldKind.STRING))
+    .build();
+```
+
 ## Reference
 
 Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-modelkit` (MIT). Package `io.github.mbackschat.a12.dm.modelkit`. Depends on [`:core`](../core) and Jackson (`implementation`-scoped, so it never appears on a consumer's compile classpath). Kernel-free, guarded over both compiled classes and resolved POM. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
