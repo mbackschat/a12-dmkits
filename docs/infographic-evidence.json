@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "productionSourcesSha256": "6d11058195f830a8c6ced65163cb598e1f4759f941db6496709d61118326c049",
+  "productionSourcesSha256": "82c18448ffc745b583772fa2397af4d8199759be3e76eab23e0286ee5272e245",
   "artwork": [
     {
       "file": "assets/infographics/a12-dmkits-toolchain.avif",
@@ -24,8 +24,8 @@
     },
     {
       "file": "assets/infographics/kotlin-graalvm-kernel-roles.avif",
-      "sha256": "128b2365632d20bea54b3a700df54acadf918ef3d4ab3bb6e7db77b55e275427",
-      "promptSha256": "ef823b96bfad11f8596ce2cf53a4f8473b01d9b2c7e53c1acba15379e2cb5eba"
+      "sha256": "6dba7da740a57a5636986aae6078eac6029b0ba7f9ce55677f4b983863418d0a",
+      "promptSha256": "9fe23efbccefda3d33c94cf82079088068fe8805cc38862d04647d07b71e3750"
     },
     {
       "file": "assets/infographics/json-schema-document-model.avif",

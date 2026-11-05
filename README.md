@@ -1024,11 +1024,11 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 2 | 887 | 750 | 3 | 134 |
 | HTML | 2 | 347 | 335 | 0 | 12 |
-| Java | 534 | 80416 | 53878 | 18468 | 8070 |
+| Java | 550 | 81622 | 54672 | 18706 | 8244 |
 | JavaScript | 2 | 283 | 144 | 122 | 17 |
-| Kotlin | 349 | 70480 | 42187 | 22781 | 5512 |
+| Kotlin | 350 | 70673 | 42307 | 22844 | 5522 |
 | TypeScript | 18 | 3862 | 3294 | 286 | 282 |
-| **Total** | **907** | **156275** | **100588** | **41660** | **14027** |
+| **Total** | **924** | **157674** | **101502** | **41961** | **14211** |
 
 ### Verification
 
@@ -1037,12 +1037,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1292 | 199865 | 138499 | 38637 | 22729 |
+| Java | 1312 | 201740 | 139916 | 38836 | 22988 |
 | JavaScript | 12 | 1032 | 666 | 262 | 104 |
-| Kotlin | 1551 | 223449 | 166515 | 36192 | 20742 |
+| Kotlin | 1567 | 224968 | 167664 | 36426 | 20878 |
 | Shell | 12 | 2508 | 1925 | 356 | 227 |
-| TypeScript | 51 | 7510 | 6422 | 599 | 489 |
-| **Total** | **2922** | **434465** | **314083** | **76091** | **44291** |
+| TypeScript | 52 | 7571 | 6475 | 600 | 496 |
+| **Total** | **2959** | **437920** | **316702** | **76525** | **44693** |
 
 ### Tooling
 
@@ -1059,8 +1059,8 @@ Build, verification, release, deployment, and maintainer tooling.
 | Kotlin | 6 | 134 | 123 | 0 | 11 |
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
-| TypeScript | 27 | 3814 | 3243 | 306 | 265 |
-| **Total** | **130** | **24325** | **18598** | **4352** | **1375** |
+| TypeScript | 28 | 3990 | 3391 | 320 | 279 |
+| **Total** | **131** | **24501** | **18746** | **4366** | **1389** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
