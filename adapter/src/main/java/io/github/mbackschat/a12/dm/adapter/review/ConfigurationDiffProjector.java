@@ -95,6 +95,7 @@ final class ConfigurationDiffProjector {
         document.baseYear().ifPresent(value -> aspects.put("baseYear", Integer.toString(value)));
         putSorted(aspects, "label.", document.modelLabels());
         document.modelComment().ifPresent(value -> aspects.put("comment", value));
+        document.modelPacket().ifPresent(value -> aspects.put("packet", value));
         Map<String, String> annotations = new LinkedHashMap<>(document.modelAnnotations());
         String roles = annotations.remove("roles");
         if (roles != null) {

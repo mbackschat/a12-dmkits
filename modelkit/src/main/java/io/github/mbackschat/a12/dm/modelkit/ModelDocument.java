@@ -818,27 +818,13 @@ public final class ModelDocument {
 
     /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}). */
     public ModelDocument setModelLabel(String locale, String text) {
-        ArrayNode labels = headerArray(DmKeys.LABELS);
-        for (JsonNode l : labels) {
-            if (locale.equals(l.path(DmKeys.LOCALE).asText())) {
-                ((ObjectNode) l).put(DmKeys.TEXT, text);
-                return this;
-            }
-        }
-        labels.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, text);
+        upsertHeaderEntry(DmKeys.LABELS, DmKeys.LOCALE, locale, DmKeys.TEXT, text);
         return this;
     }
 
     /** Upsert a model-level header <b>annotation</b> (replacing any existing entry with the same name). */
     public ModelDocument setModelAnnotation(String name, String value) {
-        ArrayNode annotations = headerArray(DmKeys.ANNOTATIONS);
-        for (JsonNode a : annotations) {
-            if (name.equals(a.path(DmKeys.NAME).asText())) {
-                ((ObjectNode) a).put(DmKeys.VALUE, value);
-                return this;
-            }
-        }
-        annotations.addObject().put(DmKeys.NAME, name).put(DmKeys.VALUE, value);
+        upsertHeaderEntry(DmKeys.ANNOTATIONS, DmKeys.NAME, name, DmKeys.VALUE, value);
         return this;
     }
 
@@ -869,22 +855,45 @@ public final class ModelDocument {
         return comment.isTextual() ? Optional.of(comment.asText()) : Optional.empty();
     }
 
+    /**
+     * The model's {@code modelInfo.packet} (kernel 31.0, A12K-4118), if set. Read-only by design: A12 sets it when it
+     * generates a model from an ExtMP packet specification ({@code IDocumentModelInfo#getPacket}), so the kits keep
+     * it through every edit and never author it.
+     */
+    public Optional<String> modelPacket() {
+        JsonNode packet = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.PACKET);
+        return packet.isTextual() ? Optional.of(packet.asText()) : Optional.empty();
+    }
+
     /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
     public Map<String, String> modelAnnotations() {
-        Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode a : root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS)) {
-            out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
-        }
-        return out;
+        return headerMap(DmKeys.ANNOTATIONS, DmKeys.NAME, DmKeys.VALUE);
     }
 
     /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
     public Map<String, String> modelLabels() {
+        return headerMap(DmKeys.LABELS, DmKeys.LOCALE, DmKeys.TEXT);
+    }
+
+    /** The header's {@code array} entries as a {@code keyField}→{@code valueField} map, in entry order. */
+    private Map<String, String> headerMap(String array, String keyField, String valueField) {
         Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode l : root.path(DmKeys.HEADER).path(DmKeys.LABELS)) {
-            out.put(l.path(DmKeys.LOCALE).asText(), l.path(DmKeys.TEXT).asText());
+        for (JsonNode entry : root.path(DmKeys.HEADER).path(array)) {
+            out.put(entry.path(keyField).asText(), entry.path(valueField).asText());
         }
         return out;
+    }
+
+    /** Set {@code valueField} on the header {@code array} entry whose {@code keyField} is {@code key}, or append one. */
+    private void upsertHeaderEntry(String array, String keyField, String key, String valueField, String value) {
+        ArrayNode entries = headerArray(array);
+        for (JsonNode entry : entries) {
+            if (key.equals(entry.path(keyField).asText())) {
+                ((ObjectNode) entry).put(valueField, value);
+                return;
+            }
+        }
+        entries.addObject().put(keyField, key).put(valueField, value);
     }
 
     /** The header's {@code key} array, created if absent. */

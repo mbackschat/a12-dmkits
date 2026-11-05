@@ -54,7 +54,7 @@
               "properties": {
                 "aspect": {
                   "type": "string",
-                  "description": "the aspect name (rule: condition/errorEntity/severity/code/message.<locale>/descriptions/annotations; field: declaredType/kind/typed config/requiredness/enum state/metadata/flags; computation: target/roundingMode/commonPrecondition/ordered alternative operation+precondition+tolerance/errorCodesToSuppress/message.<locale>/opaque; group: repeatability/index/sort/mount/metadata; typedef: declaredType/kind/typed config/metadata; include/import: purpose (the purposes the model is referenced for, comma-joined); config: id/modelVersion/locales/decimalSeparator/timeZone/conditionLanguage/fieldRefByShortNameAllowed/supportedCharacters/baseYear/label.<locale>/comment/annotation.<name>/roles; a reorder: position; a rename/move: path)"
+                  "description": "the aspect name (rule: condition/errorEntity/severity/code/message.<locale>/descriptions/annotations; field: declaredType/kind/typed config/requiredness/enum state/metadata/flags; computation: target/roundingMode/commonPrecondition/ordered alternative operation+precondition+tolerance/errorCodesToSuppress/message.<locale>/opaque; group: repeatability/index/sort/mount/metadata; typedef: declaredType/kind/typed config/metadata; include/import: purpose (the purposes the model is referenced for, comma-joined); config: id/modelVersion/locales/decimalSeparator/timeZone/conditionLanguage/fieldRefByShortNameAllowed/supportedCharacters/baseYear/label.<locale>/comment/packet/annotation.<name>/roles; a reorder: position; a rename/move: path)"
                 },
                 "before": {
                   "type": "string",

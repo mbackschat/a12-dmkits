@@ -22693,9 +22693,15 @@
           "checker reader binding",
           "checker declaration admission"
         ],
-        "dmtool-cli": [],
-        "json-schema-import": [],
-        "json-schema-export": [],
+        "dmtool-cli": [
+          "authoring and evaluation"
+        ],
+        "json-schema-import": [
+          "carriage"
+        ],
+        "json-schema-export": [
+          "carriage"
+        ],
         "a12-kernel-lean": []
       },
       "consumers": {
@@ -22752,19 +22758,34 @@
           }
         },
         "dmtool-cli": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "rule add persists a text-to-enumeration comparison in both operand orders past the kernel gate, and model eval compares by the stored value through the interpreter (KF655).",
+          "evidence": {
+            "authoring and evaluation": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/TextEnumComparisonVerbTest.java#bothOperandOrdersAreAuthoredAndEvaluatedByTheStoredValue",
+              "witness": "The stored value matches, while the value's label and another value both mismatch, over a labelled enumeration."
+            }
+          }
         },
         "json-schema-import": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "No JSON Schema keyword states a cross-field comparison, so both operand orders ride x-a12-rule verbatim and import restores them (KF655).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/TextEnumComparisonCarriageTest.java#bothOperandOrdersSurviveTheRoundTripInBothWireForms",
+              "witness": "Both rules over a labelled enumeration survive bare JSON Schema and wrapped OpenAPI 3.1 unchanged and kernel-admitted."
+            }
+          }
         },
         "json-schema-export": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "No JSON Schema keyword states a cross-field comparison, so both operand orders ride x-a12-rule verbatim and import restores them (KF655).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/TextEnumComparisonCarriageTest.java#bothOperandOrdersSurviveTheRoundTripInBothWireForms",
+              "witness": "Both rules over a labelled enumeration survive bare JSON Schema and wrapped OpenAPI 3.1 unchanged and kernel-admitted."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "OPEN",

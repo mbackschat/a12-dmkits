@@ -80,6 +80,7 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String MODEL_TYPE
   public static final java.lang.String NAME
   public static final java.lang.String ORDER
+  public static final java.lang.String PACKET
   public static final java.lang.String PURPOSE
   public static final java.lang.String REFERENCE
   public static final java.lang.String REPEATABILITY

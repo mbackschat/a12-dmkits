@@ -63,6 +63,7 @@ public final class DmKeys {
     public static final String INTERNAL_DESCRIPTION = "internalDescription";
     public static final String EXTERNAL_DESCRIPTION = "externalDescription";
     public static final String COMMENT = "comment";
+    public static final String PACKET = "packet";
     public static final String ERROR_MESSAGE = "errorMessage";
     public static final String LABEL = "label";
     public static final String LABELS = "labels";

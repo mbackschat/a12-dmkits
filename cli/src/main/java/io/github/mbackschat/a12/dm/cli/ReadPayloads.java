@@ -117,6 +117,7 @@ public final class ReadPayloads {
             modelLabels.forEach(label::put);
         }
         doc.modelComment().ifPresent(comment -> data.put("comment", comment));
+        doc.modelPacket().ifPresent(packet -> data.put(DmKeys.PACKET, packet));
         doc.baseYear().ifPresent(year -> data.put("baseYear", year));
         // the model-level header annotations (incl. the access-control `roles`, G26) so a roles edit round-trips
         Map<String, String> modelAnnotations = doc.modelAnnotations();

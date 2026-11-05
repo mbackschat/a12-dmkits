@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** Like its siblings: a shipped gap is **deleted**, never kept as a "shipped" list — git is the *what/when*, and the gap's home is the SCHEMAKIT-SPEC §4 "built" row (its *why*). The `else` branch and `not {pattern}`/`{minimum}`/`{maximum}` shipped this way and so are **not** here.
 >
-> **Current state.** §1 is drained. The queue is empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
+> **Current state.** §1 holds one defect, the enumeration-label carriage found 2026-11-05. The synthesis queue is empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 >
 > **The dispositions, by feasibility × intent** — an item sits in exactly one:
 >
@@ -20,7 +20,7 @@
 
 ## 1. Open
 
-_None open._
+- **SG1 — Enumeration labels do not survive the bridge, and `--enum-labels` is parsed but never consumed.** <a id="sg1"></a> `model import-jsonschema` builds `MappingProfile.enumLabels` from the flag, yet no importer code reads it, so every strategy, the documented `DERIVE` (label = value) included, imports unlabelled values. Export writes `enum` with no label carriage, so an a12 → JSON Schema → a12 round trip drops every enumeration label without a report entry (measured 2026-11-05 by the first run of `TextEnumComparisonCarriageTest`). To settle: find A12's own counterpart for label carriage first, then carry the per-locale labels on export, honour the strategy on import, and lock both directions with a round-trip test. It blocks label fidelity of the bridge.
 
 ---
 

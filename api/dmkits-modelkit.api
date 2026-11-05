@@ -570,6 +570,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public java.util.Map<java.lang.String, java.lang.String> modelAnnotations()
   public java.util.Optional<java.lang.String> modelComment()
   public java.util.Map<java.lang.String, java.lang.String> modelLabels()
+  public java.util.Optional<java.lang.String> modelPacket()
   public java.lang.String modelType()
   public java.lang.String modelVersion()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String)
