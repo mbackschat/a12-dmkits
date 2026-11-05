@@ -165,12 +165,14 @@ final class RuleCheckCommand extends BaseCommand {
         // kernel verdict was ever reached — the previous shape derived the marker from ValidationResult.of(findings),
         // i.e. from the ambient backend, so it published KERNEL_CONFIRMED on exactly that path too.
         ConsistencyEvidence evidence = ConsistencyEvidence.none();
+        // Outside the candidate's try: the pre-check reads the -m model itself, so its refusal of an unreadable
+        // model is the input's (RK_MODEL_INPUT_INVALID), never a finding about the candidate.
+        DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
+        List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
+        if (!undeclared.isEmpty()) {
+            return refuseUndeclaredMessageLocales(resultIdentity(), json, undeclared);
+        }
         try {
-            DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
-            List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
-            if (!undeclared.isEmpty()) {
-                return refuseUndeclaredMessageLocales(resultIdentity(), json, undeclared);
-            }
             ValidationResult result = new RuleValidator().check(json, draft, resolver);
             evidence = ConsistencyEvidence.of(result);
             // G30: upgrade a rejected text candidate's union fix to the operand-matched corrective (the typed

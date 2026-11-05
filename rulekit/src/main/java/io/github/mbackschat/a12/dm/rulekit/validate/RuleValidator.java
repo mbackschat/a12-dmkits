@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -23,6 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.core.Backends;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -354,12 +354,18 @@ public final class RuleValidator {
                 .filter(locale -> !A12Locales.declares(declared, locale)).toList();
     }
 
-    /** The locales the model's header declares — the set an error text is actually checked for. */
+    /**
+     * The locales the model's header declares — the set an error text is actually checked for.
+     *
+     * <p>Callers ask this before the model loader runs (the CLI's undeclared {@code --message} pre-check), so an
+     * unparseable model is classified here exactly as the loader classifies it, a {@link ModelInputException},
+     * and keeps its input identity instead of surfacing as an internal error.
+     */
     public List<String> declaredLocales(String modelJson) {
         try {
             return localeCodes(mapper.readTree(modelJson));
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new ModelInputException("not valid DM-JSON: " + e.getMessage(), e);
         }
     }
 }
