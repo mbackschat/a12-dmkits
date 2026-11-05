@@ -12407,7 +12407,7 @@
       }
     },
     "kf546": {
-      "sha256": "2347cbd7fb651c4f0bb33a1818272404b9241f0c77f84efef012299e010a5e84",
+      "sha256": "556f6793822ff479240fa97c696fc9f7a3a61e2e401e086bb9bd81f4934e7511",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -12482,8 +12482,8 @@
               "witness": "Twenty added retained typed models replay complete kernel verdicts on JVM and Node alongside prior controls."
             },
             "keyed list proof": {
-              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/SelectedMessageReferenceDiffTest.kt#aKeyedTokensListProofNeedsEveryOperandUnderTheKey",
-              "witness": "SelectedMessageReferenceDiffTest compares A12 and the portable checker on the three list quantifiers with every operand under the key and with one outside it."
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/KeyedRowTokenListProofDiffTest.kt#aKeyedTokensListProofNeedsEveryOperandUnderTheKey",
+              "witness": "KeyedRowTokenListProofDiffTest compares A12 and the portable checker on the three list quantifiers with every operand under the key and with one outside it."
             }
           }
         },

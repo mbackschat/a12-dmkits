@@ -41,7 +41,7 @@ Facet placement follows the dimension's *question*: `emptyOperand` + `aggregateI
 | §6 cross DATE/DATE_TIME ordering | — | `NowDateOrderingDiffTest`, `MixedDateTimeOrderingDiffTest` | — |
 | §6 temporal label runtime failure | — | `TemporalValueFailureDiffTest` | — |
 | §3 formal-message referenced fields | — | `FormalMessageReferenceDiffTest` | — |
-| §12 message referenced and fill-to-fix scope | — | `MessageReferenceScopeDiffTest`, `ComputationImplicitFillToFixDiffTest`, `SelectedMessageReferenceDiffTest`, `RowBoundSelectedReferenceDiffTest`, `SingleInstanceKeyOperandDiffTest`, `KeyedLowerRowDiffTest`, `SelectedErrorReanchorEligibilityDiffTest`, `SelectedAuthoredScopeDiffTest`, `SemanticKeyAddressAgreementTest`, `SelectedParallelUniquenessAgreementTest`, `SelectedContainmentAgreementTest` | — |
+| §12 message referenced and fill-to-fix scope | — | `MessageReferenceScopeDiffTest`, `ComputationImplicitFillToFixDiffTest`, `SelectedMessageReferenceDiffTest`, `KeyedRowTokenListProofDiffTest`, `RowBoundSelectedReferenceDiffTest`, `SingleInstanceKeyOperandDiffTest`, `KeyedLowerRowDiffTest`, `SelectedErrorReanchorEligibilityDiffTest`, `SelectedAuthoredScopeDiffTest`, `SemanticKeyAddressAgreementTest`, `SelectedParallelUniquenessAgreementTest`, `SelectedContainmentAgreementTest` | — |
 | §6 calendar target completion | — | `CalendarTargetCompletionDiffTest` | `YearlessTargetReCompletionTest` |
 | §6 temporal construction provenance | — | `ConstructionProvenanceDiffTest` | — |
 | §6 constructed-Date component relevance | — | `DateComponentRelevanceDiffTest` | — |
