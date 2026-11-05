@@ -80,8 +80,13 @@ final class Carriage {
         return roots;
     }
 
-    /** Lift every {@code Rule}/{@code Computation} element from the model's groups onto the schema as {@code x-a12-*}. */
-    static void collect(JsonNode dmTree, List<String> groupPaths, ObjectNode schema, TranscodeReport.Builder report) {
+    /**
+     * Lift every {@code Rule}/{@code Computation} element from the model's groups onto the schema as
+     * {@code x-a12-*}, with the criteria and the model-level members. {@code importDefaults} is what an import of
+     * the model's id builds anyway ({@link ImportSkeleton#json}), so a model-level member equal to it is left out.
+     */
+    static void collect(JsonNode dmTree, JsonNode importDefaults, List<String> groupPaths, ObjectNode schema,
+                        TranscodeReport.Builder report) {
         ArrayNode rules = JSON.createArrayNode();
         ArrayNode computations = JSON.createArrayNode();
         for (String groupPath : groupPaths) {
@@ -105,7 +110,7 @@ final class Carriage {
         if (!computations.isEmpty()) {
             schema.set(X_COMPUTATION, computations);
         }
-        collectModel(dmTree, schema, report);
+        collectModel(dmTree, importDefaults, schema, report);
         JsonNode criteria = dmTree.path(DmKeys.CONTENT).path(DmKeys.DOCUMENT_UNIQUENESS_CRITERIA);
         if (criteria.isArray() && !criteria.isEmpty()) {
             schema.set(X_CRITERIA, criteria.deepCopy());
@@ -117,9 +122,9 @@ final class Carriage {
      * Lifts each model-level member import would not rebuild: an empty one, or one equal to the importer's default,
      * comes back unchanged without a carrier, so a foreign schema's import → export adds nothing to it.
      */
-    private static void collectModel(JsonNode dmTree, ObjectNode schema, TranscodeReport.Builder report) {
+    private static void collectModel(JsonNode dmTree, JsonNode defaults, ObjectNode schema,
+                                     TranscodeReport.Builder report) {
         ObjectNode model = JSON.createObjectNode();
-        JsonNode defaults = ImportSkeleton.tree(dmTree.path(DmKeys.HEADER).path(DmKeys.ID).asText());
         liftMembers(dmTree, defaults, DmKeys.HEADER, HEADER_MEMBERS, model, report);
         liftMembers(dmTree, defaults, DmKeys.CONTENT, CONTENT_MEMBERS, model, report);
         if (!model.isEmpty()) {

@@ -77,7 +77,9 @@ public final class JsonSchemaExporter {
             schema.put("title", doc.id());
             ctx.report().mapped(DmKeys.HEADER + "/" + DmKeys.ID, "title", TranscodeReport.Tier.STRUCTURE);
         }
-        Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
+        // rules/computations/criteria/model metadata → x-a12-* (Tier B/C)
+        Carriage.collect(parse(dmJson), parse(ImportSkeleton.json(doc.id())), doc.groupPaths(), schema,
+                ctx.report());
         TierAProjection.project(dmJson, schema, ctx.report());                    // recognized rules → native keywords (Tier A)
         if (wrapOpenApi) {
             return new ExportResult(toJson(wrapOpenApi(schema, dialect, ctx)), ctx.report().build());

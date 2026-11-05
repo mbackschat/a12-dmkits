@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
@@ -14,7 +12,6 @@ final class ImportSkeleton {
     /** The model id when the schema names none, or names one that is not a safe id. */
     static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String LOCALE = "en_US";
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     private ImportSkeleton() {}
 
@@ -23,15 +20,11 @@ final class ImportSkeleton {
     }
 
     /**
-     * The tree an import of {@code modelId} builds before carriage restores anything. It is per id because
-     * {@code modelInfo} names the model.
+     * The model an import of {@code modelId} builds before carriage restores anything, as DM-JSON. It is per id
+     * because {@code modelInfo} names the model.
      */
-    static JsonNode tree(String modelId) {
-        try {
-            return JSON.readTree(draft(modelId).rootGroup("Root", g -> { }).build().toJson());
-        } catch (Exception e) {
-            throw new IllegalStateException("the import skeleton must parse", e);
-        }
+    static String json(String modelId) {
+        return draft(modelId).rootGroup("Root", g -> { }).build().toJson();
     }
 
     /** A JSON Schema title is free text; fall back to a stable default when it is absent or not a safe id. */
