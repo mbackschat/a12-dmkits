@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * F4 — {@link DocumentModelDraft#readTypeConfig} (the inverse of {@code writeTypeConfig}, surfaced by {@code
+ * F4 — {@link TypeConfigReader#read} (the inverse of {@code writeTypeConfig}, surfaced by {@code
  * field read}/{@code typedef read} via {@link ModelDocument#fieldConfigJson}) must report every slot it wrote,
  * so a config an agent SET round-trips on read. Found 2026-07-10 (six-component review): three written slots
  * were dropped — string {@code noValueValidation}, enum {@code categories}, and the enum invalid-value {@code
