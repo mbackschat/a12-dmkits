@@ -24318,7 +24318,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter F (a12-kernel-lean-spec-corrections-2026-11-05.md), sent 2026-11-05; not yet received.",
+          "basis": "Reported in Letter F (a12-kernel-lean-spec-corrections-2026-11-05.md), sent 2026-11-05; not yet received. Its unmatched-side name, index-field and Enumeration rows sent in Letter H (a12-kernel-lean-spec-corrections-2026-11-05c.md) on 2026-11-05, answering SPEC-2026-11-05-03; awaiting the peer's reconciliation.",
           "evidence": {}
         }
       }
@@ -24637,7 +24637,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "basis": "Sent in Letter H (a12-kernel-lean-spec-corrections-2026-11-05c.md) on 2026-11-05, answering SPEC-2026-11-05-03; awaiting the peer's reconciliation.",
           "evidence": {}
         }
       }
