@@ -195,6 +195,18 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
     }
 
     /**
+     * {@code [this] == [text]} — the text field against this enumeration's stored value, never its label. A12 admits
+     * it whether or not the enumeration carries display labels (KERNEL-FINDINGS KF655, kernel 31.0's A12K-3969).
+     */
+    public Condition eq(StringRef text) {
+        return new ComparisonCondition(value(), CompareOp.EQ, text.value());
+    }
+
+    public Condition ne(StringRef text) {
+        return new ComparisonCondition(value(), CompareOp.NE, text.value());
+    }
+
+    /**
      * The single-comparison carrier cites a DIFFERENT code from the value-list one, measured rather than
      * assumed: the kernel reports {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON} here and
      * {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION} for {@code in}/{@code notIn}

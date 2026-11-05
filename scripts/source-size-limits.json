@@ -11,7 +11,7 @@
   },
   "legacyCeilings": {
     "adapter/build.gradle": 1246,
-    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2530,
+    "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2513,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 1318,

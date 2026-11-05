@@ -29,7 +29,7 @@ public record StringRef(FieldRef field, boolean correlated) {
         return new StringRef(field, true);
     }
 
-    private FieldValue value() {
+    FieldValue value() {   // package-private: EnumRef compares an enumeration against a text field's value
         return new FieldValue(field, correlated);
     }
 
@@ -80,6 +80,18 @@ public record StringRef(FieldRef field, boolean correlated) {
 
     public Condition ne(StringRef other) {
         return new ComparisonCondition(value(), CompareOp.NE, other.value());
+    }
+
+    /**
+     * {@code [this] == [enumeration]} — compares the text with the enumeration's stored value. A12 admits it whether
+     * or not the enumeration carries display labels (KERNEL-FINDINGS KF655, kernel 31.0's A12K-3969).
+     */
+    public Condition eq(EnumRef enumeration) {
+        return new ComparisonCondition(value(), CompareOp.EQ, enumeration.value());
+    }
+
+    public Condition ne(EnumRef enumeration) {
+        return new ComparisonCondition(value(), CompareOp.NE, enumeration.value());
     }
 
     /**

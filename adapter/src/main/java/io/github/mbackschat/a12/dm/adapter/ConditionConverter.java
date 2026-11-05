@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 
 import com.mgmtp.a12.kernel.core.parser.internal.parsebaum.impl.bedingung.ConditionImpl;
@@ -2056,51 +2057,49 @@ final class ConditionConverter {
         }
         Optional<StringExpr> cell = indexedCell(right, origin).map(StringExpr::new);
         if (cell.isPresent()) {
-            return switch (op) {
-                case EQ -> left.eq(cell.get());
-                case NE -> left.ne(cell.get());
-                default -> throw unsupported("string field comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.eq(cell.get()), () -> left.ne(cell.get()), "string field", origin);
+        }
+        // [text] == / != [enumeration] — A12 compares the stored value, labelled or not, since 31.0 (KF655)
+        Optional<EnumRef> enumeration = enumerationOperand(right);
+        if (enumeration.isPresent()) {
+            return eqOrNe(op, () -> left.eq(enumeration.get()), () -> left.ne(enumeration.get()), "string-enum", origin);
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
-            StringRef other = model.str(rf.getField().getFullName());
-            if (rf.getField().isOuter()) {
-                other = other.outer();   // $ correlation on the right operand (D13)
-            }
-            return switch (op) {
-                case EQ -> left.eq(other);
-                case NE -> left.ne(other);
-                default -> throw unsupported("string field comparison operator " + op, origin);
-            };
+            StringRef other = textOperand(rf.getField());
+            return eqOrNe(op, () -> left.eq(other), () -> left.ne(other), "string field", origin);
         }
         // [field] == / != FieldValueAsString(other) / RangeAsString(other, …) — a string coercion on the right
         if (isStringCoercion(right)) {
             StringExpr coerced = stringCoercion((IFieldIdOperation) right);
-            return switch (op) {
-                case EQ -> left.eq(coerced);
-                case NE -> left.ne(coerced);
-                default -> throw unsupported("string coercion comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.eq(coerced), () -> left.ne(coerced), "string coercion", origin);
         }
         // [field] == / != FirstFilledValue(/Group*/StringField) — a string-valued aggregate on the right
         if (right instanceof IEntityListOperation aggregate) {
             StringExpr agg = stringAggregate(aggregate, left.field().kind());
-            return switch (op) {
-                case EQ -> left.eq(agg);
-                case NE -> left.ne(agg);
-                default -> throw unsupported("string aggregate comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.eq(agg), () -> left.ne(agg), "string aggregate", origin);
         }
         // [field] == / != ([a] + " " + [b]) — string concatenation on the right (a string-typed composite)
         if (right instanceof ICompositeOperation comp && comp.getType() == OperationType.STRING) {
             StringExpr concat = convertConcatenation(comp);
-            return switch (op) {
-                case EQ -> left.eq(concat);
-                case NE -> left.ne(concat);
-                default -> throw unsupported("string concatenation comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.eq(concat), () -> left.ne(concat), "string concatenation", origin);
         }
         throw unsupported("string comparison against a non-field, non-constant operand", origin);
+    }
+
+    /** {@code ==} or {@code !=}, the two operators a text or enumeration comparison reads back; any other is refused. */
+    private Condition eqOrNe(ComparisonOperation op, Supplier<Condition> eq, Supplier<Condition> ne, String kind,
+            ICondition origin) {
+        return switch (op) {
+            case EQ -> eq.get();
+            case NE -> ne.get();
+            default -> throw unsupported(kind + " comparison operator " + op, origin);
+        };
+    }
+
+    /** A text field read as a comparison operand, keeping a {@code $} correlation (D13). */
+    private StringRef textOperand(IEntityId field) {
+        StringRef text = model.str(field.getFullName());
+        return field.isOuter() ? text.outer() : text;
     }
 
     /** {@code [a] + " " + [b]} — the kernel's string-typed {@code +} composite, flattened into a concatenation. */
@@ -2360,32 +2359,22 @@ final class ConditionConverter {
         }
         Optional<EnumExpr> cell = indexedCell(right, origin).map(EnumExpr::new);
         if (cell.isPresent()) {
-            return switch (op) {
-                case EQ -> left.is(cell.get());
-                case NE -> left.isNot(cell.get());
-                default -> throw unsupported("enum field comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.is(cell.get()), () -> left.isNot(cell.get()), "enum field", origin);
         }
+        Optional<EnumRef> enumeration = enumerationOperand(right);
+        if (enumeration.isPresent()) {
+            return eqOrNe(op, () -> left.is(enumeration.get()), () -> left.isNot(enumeration.get()), "enum field", origin);
+        }
+        // [enumeration] == / != [text] — A12 compares the stored value, labelled or not, since 31.0 (KF655)
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
-            EnumRef other = model.enumOf(rf.getField().getFullName());
-            if (rf.getField().isOuter()) {
-                other = other.outer();   // $ correlation on the right operand (D13)
-            }
-            return switch (op) {
-                case EQ -> left.is(other);
-                case NE -> left.isNot(other);
-                default -> throw unsupported("enum field comparison operator " + op, origin);
-            };
+            StringRef text = textOperand(rf.getField());
+            return eqOrNe(op, () -> left.eq(text), () -> left.ne(text), "enum-string", origin);
         }
         // an enum-valued FirstFilledValue over an enum repetition list ([enum] != FirstFilledValue(items*/Cat))
         if (right instanceof IEntityListOperation aggregate
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
             EnumExpr other = new EnumExpr(convertFirstFilledValue(aggregate));
-            return switch (op) {
-                case EQ -> left.is(other);
-                case NE -> left.isNot(other);
-                default -> throw unsupported("enum aggregate comparison operator " + op, origin);
-            };
+            return eqOrNe(op, () -> left.is(other), () -> left.isNot(other), "enum aggregate", origin);
         }
         throw unsupported("enum comparison against a non-constant operand, operator " + op, origin);
     }

@@ -172,6 +172,18 @@ Each erased mistake corresponds to a **kernel-verified** rejection code (see `KE
 
 **Equality-verb naming (the one convention worth stating).** `eq`/`ne` are the *consistent* equality verbs — every value ref (`NumberRef`, `StringRef`, the date/time refs, and now `EnumRef`/`CategoryRef` and their expressions) accepts them, so cross-type generic code reads one way. On enums `is`/`isNot` stay as the **domain-natural** reading (`tier.is("PRO")`), so both forms render identically — pick whichever reads best. `BoolRef` (`isTrue`/`isFalse`) and `ConfirmRef` (`confirmed`/`notConfirmed`) are the **deliberate exception**: they compare only to a *fixed constant*, not an arbitrary value, so they carry no `eq`/`ne` — a generic `== value` would re-open the kernel-illegal `confirm == False` (`MVK_INVALID_COMPARE_TO_YES`) the type erases.
 
+**A text field and an enumeration compare with each other** through `eq`/`ne` in either order. A12 compares the enumeration's stored value, never its label, and admits the comparison whether or not the enumeration carries labels ([KF655](KERNEL-FINDINGS.md#kf655); runtime in `TextEnumComparisonDiffTest`). An empty enumeration decides neither `==` nor `!=` against a filled text.
+
+<!-- snippet: text-enum-comparison -->
+```java
+// A text field and an enumeration compare by the enumeration's stored value, never its label, in
+// either operand order, whether or not the enumeration carries display labels.
+StringRef requested = m.str("/Subscription/RequestedPlan");
+EnumRef plan = m.enumOf("/Subscription/Plan");
+Condition mismatch = requested.filled().and(plan.ne(requested));
+Condition match = requested.eq(plan);
+```
+
 **Numeric equality carries the parser's scale summary.** The gate is not “fields must match; literals are exempt.” Each expression carries a known signed scale or unknown plus an independent multiplicative-constant capability; only a capable operand on the smaller-scale side may be padded. Thus a scale-2 field may equal literal `0` in either operand order, but a scale-0 field cannot equal literal `0.00`; ordering remains scale-free. Arithmetic composes the summary (`+`/`−` maximum, `×` sum, `/` unknown, explicit rounding known), so the typed builder rejects known-illegal equality early and leaves generic loaded expressions with unavailable model metadata to the live kernel. `NumberExpr` retains `new NumberExpr(Calculation)`, `expression()`, value equality/hash/text, and all builder method descriptors, but it is now a final value class rather than a Java record; source using record patterns/deconstruction or reflection/serialization that requires `Class.isRecord()` must migrate to `expression()`.
 
 **Arithmetic rendering preserves both fold order and authoring regions.** Every arithmetic node rounds independently, so a right same-precedence child is grouped even for `+`/`*`. The renderer also inserts the curly-brace reset needed to keep nested division/power trees kernel-legal: an AST for `(8/4)/2` renders `{ 8 / 4 } / 2`, and a right division under multiplication renders `8 * { 4 / 2 }`. These braces preserve the typed fold and the parser's structural legality; they intentionally do not suppress the kernel/interpreter's later one-pass division lowering.

@@ -22675,15 +22675,20 @@
       }
     },
     "kf655": {
-      "sha256": "93302cace591a96af59a2b1b4e98497b05f0b1f919ec9588e0add8bcaf67732b",
+      "sha256": "b51e6736b9faf315992da64e1d5e72f185b007e4949ec385b1f9977c6e25aae5",
       "task": "K31",
       "scope": {
         "adapter": [
           "enum comparability",
           "enum display comparability"
         ],
-        "dmkits": [],
-        "interpreter": [],
+        "dmkits": [
+          "the typed text comparison",
+          "the typed read-back"
+        ],
+        "interpreter": [
+          "the runtime comparison"
+        ],
         "checker": [
           "checker reader binding",
           "checker declaration admission"
@@ -22709,14 +22714,28 @@
           }
         },
         "dmkits": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "EnumRef.eq(StringRef) and StringRef.eq(EnumRef) author the comparison A12 admits since 31.0, and the adapter reads both operand orders back into it (KF655).",
+          "evidence": {
+            "the typed text comparison": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/docsnippets/TextEnumComparisonSnippetsTest.java#textEnumComparisonSnippet",
+              "witness": "Both operand orders over a labelled and a textless enumeration render as A12 spells them and the kernel admits each."
+            },
+            "the typed read-back": {
+              "reference": "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/TextEnumComparisonReadBackTest.java#everyOperandOrderReadsBackAsAuthored",
+              "witness": "Each stored comparison reads back to the condition it was authored as."
+            }
+          }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter compared a text with the stored value as both kernel strategies do before the differential existed (KF655).",
+          "evidence": {
+            "the runtime comparison": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TextEnumComparisonDiffTest.kt#aTextComparesWithTheStoredValueNeverTheLabel",
+              "witness": "Stored value, label, another value, no value and a textless enumeration, the interpreter equal to both strategies."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
