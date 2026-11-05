@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -264,7 +265,7 @@ public final class RuleValidator {
         Map<String, String> supplied = new LinkedHashMap<>();
         authored.forEach(m -> supplied.put(m.locale(), m.text()));
         return declaredLocales(modelJson).stream()
-                .map(code -> new LocalizedText(code, supplied.getOrDefault(code, fallback)))
+                .map(code -> new LocalizedText(code, supplied.getOrDefault(A12Locales.key(code), fallback)))
                 .toList();
     }
 
@@ -350,7 +351,7 @@ public final class RuleValidator {
         }
         List<String> declared = declaredLocales(modelJson);
         return rule.messages().stream().map(LocalizedText::locale).distinct()
-                .filter(locale -> !declared.contains(locale)).toList();
+                .filter(locale -> declared.stream().noneMatch(code -> A12Locales.same(code, locale))).toList();
     }
 
     /** The locales the model's header declares — the set an error text is actually checked for. */

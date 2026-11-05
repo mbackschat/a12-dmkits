@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -175,7 +176,8 @@ final class PatternsCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
 
         List<String> declared = new RuleValidator().declaredLocales(modelJson);
-        List<String> undeclared = messages.keySet().stream().filter(locale -> !declared.contains(locale)).toList();
+        List<String> undeclared = messages.keySet().stream()
+                .filter(locale -> declared.stream().noneMatch(code -> A12Locales.same(code, locale))).toList();
         if (!undeclared.isEmpty()) {
             return refuseUndeclaredMessageLocales(ResultIdentity.PATTERNS_SCAFFOLD, modelJson, undeclared);
         }
@@ -412,7 +414,9 @@ final class PatternsCommand extends BaseCommand {
         }
         List<LocalizedText> out = new ArrayList<>();
         for (String locale : locales) {
-            out.add(new LocalizedText(locale, messages.getOrDefault(locale, placeholder)));
+            out.add(new LocalizedText(locale, messages.entrySet().stream()
+                    .filter(given -> A12Locales.same(given.getKey(), locale))
+                    .map(Map.Entry::getValue).findFirst().orElse(placeholder)));
         }
         return out;
     }

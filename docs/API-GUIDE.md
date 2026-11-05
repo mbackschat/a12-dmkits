@@ -1403,6 +1403,8 @@ doc.toJson();                          // content-equal to the source, idempoten
 ```
 *Locked by `modelkit.ModelDocumentTest`.*
 
+**A locale is written and matched as A12 writes it.** A12 reads `en-US` as the locale `en_US` names and writes it back `en_US` ([KF676](KERNEL-FINDINGS.md#kf676), [KF290](KERNEL-FINDINGS.md#kf290)). So every kit writer stores that spelling, `A12Locales.key(code)`, and finds an existing entry by it: `setInternalDescription(path, "en_US", …)` replaces the text a model stored under `en-US`, and an `en-US` rule message covers a declared `en_US`. A spelling A12's parser refuses (`en_us`) is kept as given, so the gate refuses it rather than a writer silently repairing it. `A12Locales.same(a, b)` asks whether two spellings name one locale. `LocaleKeyWriteTest` locks this.
+
 ### Edit fields & groups
 
 <!-- teaser -->

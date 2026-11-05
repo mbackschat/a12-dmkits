@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
+
 /**
  * One localized error-message text, keyed by the DM-JSON locale code (e.g. {@code en_US}). A model
  * may declare <em>any</em> locales — build via {@link Dsl#text(String, String)}, with
@@ -10,6 +12,15 @@ import java.util.List;
  * " exceeds the cap.")} renders the kernel's {@code $<path>.value$} placeholder.
  */
 public record LocalizedText(String locale, String text) {
+
+    /**
+     * The locale is held as A12 holds it, its {@link A12Locales#key}: A12 reads {@code en-US} as the locale
+     * {@code en_US} names and writes it back so (KERNEL-FINDINGS KF676, KF290), so the two spellings are one message
+     * locale here too, for coverage, duplicates and the text the kits write.
+     */
+    public LocalizedText {
+        locale = locale == null ? null : A12Locales.key(locale);
+    }
 
     /**
      * The locale law (kernel-verified): messages must cover <em>every</em> declared locale
@@ -30,15 +41,16 @@ public record LocalizedText(String locale, String text) {
                         + " — keep exactly one text per locale");
             }
         }
+        List<String> declaredKeys = declaredLocales.stream().map(A12Locales::key).toList();
         for (String declared : declaredLocales) {
-            if (!used.contains(declared)) {
+            if (!used.contains(A12Locales.key(declared))) {
                 throw new IllegalStateException("the " + what + " is missing an error message for"
                         + " declared locale '" + declared + "' (the kernel rejects this with"
                         + " MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) — add message(text(\"" + declared + "\", …))");
             }
         }
         for (String locale : used) {
-            if (!declaredLocales.contains(locale)) {
+            if (!declaredKeys.contains(locale)) {
                 throw new IllegalStateException("the " + what + " has an error message for locale '"
                         + locale + "', which the model does not declare (declared: " + declaredLocales
                         + ") — the kernel would silently ignore it; declare the locale or drop the text");

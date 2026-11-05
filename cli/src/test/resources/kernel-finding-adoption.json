@@ -24641,6 +24641,88 @@
           "evidence": {}
         }
       }
+    },
+    "kf676": {
+      "sha256": "b0d9a0fe334cf78f144b87945666bdd323b0b42e50fa5346ae8ebaf46f17844a",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "write spelling"
+        ],
+        "dmkits": [
+          "write spelling",
+          "match by key"
+        ],
+        "interpreter": [],
+        "checker": [],
+        "dmtool-cli": [
+          "message locale"
+        ],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names, measured on kernel 31.1.1.",
+          "evidence": {
+            "write spelling": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/LocaleWriteSpellingLawsTest.kt#a12WritesEveryLocaleItReadAsItsKey",
+              "witness": "LocaleWriteSpellingLawsTest pins A12's written spelling for every row across all twelve locale places, with a control that every carrier is present."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "APPLIED",
+          "basis": "Every kit writer stores the parsed locale's key and matches an entry by it.",
+          "evidence": {
+            "write spelling": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/edit/LocaleKeyWriteTest.java#everyCarrierIsWrittenAsTheLocalesKey",
+              "witness": "LocaleKeyWriteTest authors every carrier as en-US and reads back en_US in all twelve places."
+            },
+            "match by key": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/edit/LocaleKeyWriteTest.java#anEditMatchesAStoredSpellingByItsKey",
+              "witness": "LocaleKeyWriteTest replaces and removes a stored en-US entry through an edit naming the other spelling."
+            }
+          }
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "APPLIED",
+          "basis": "rule check and patterns match a --message locale by its key.",
+          "evidence": {
+            "message locale": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/MessageLocaleSpellingTest.java#ruleCheckAcceptsTheDeclaredLocaleInItsOtherSpelling",
+              "witness": "MessageLocaleSpellingTest checks an en-US message on an en_US model without RK_UNDECLARED_MESSAGE_LOCALE, and patterns stores it as en_US."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

@@ -16784,3 +16784,28 @@ So `AtLeastOneFieldFilled` and `MoreThanOneFieldFilled` prove a level only when 
 **The portable checker over-reported the membership rows (`INVALID_FIELD`) and was silent on every refused token.** It now reads the marking the filtered-entity family already models and agrees on every row. It declines a token where the proof would rest on `AtLeastOneGroupFilled`, or on a starred, keyed or filtered operand. a12-kernel-lean's SPEC-2026-11-05-03 measured the `FieldsNotCollectivelyFilled` rows on its own carrier.
 
 *Locked by:* `adapter.laws.CheckerParallelJoinMessageAgreementTest`, A12 and the portable checker; the rendering of these parameters is [KF672](#kf672)'s.
+
+## §13 supplement — kernel 31.1.1 writes every locale it read as the parsed locale's `toString`, in every member that carries one (model serializer, measured, kernel 31.1.1, 2026-11-05) <a id="kf676"></a>
+
+> Fold: pending — new to §13.
+
+Carrier: an insurance policy model in which every locale-carrying member is given the same spelling: the header's declared code, the model's and a field's label, a string field's suggestions, an enumeration value's label and its invalid-value text, a required-field text, helper text, both descriptions, a rule's error text and a uniqueness criterion's text, eleven members beside the header. A12's model serializer reads the model and writes it back, with no consistency check in between, so a spelling the build would refuse still shows what the writer does. Each cell is the set of spellings A12 wrote across all twelve places.
+
+| given everywhere | A12 writes |
+|---|---|
+| `en_US` | `en_US` |
+| `en-US` | `en_US` |
+| `de-CH` | `de_CH` |
+| `en` | `en` |
+| `eng` | `eng` |
+| `iw` | `he` |
+| `US` | `_US` |
+| `XX_123` | `xx_123` |
+| `en_US_POSIX` | `en_US_POSIX` |
+| `en__POSIX` | `en__POSIX` |
+
+No member wrote differently from the others; each row is a single value. A spelling the parser refuses (`en_us`) is unreadable, so it is never rewritten ([KF290](#kf290)). Together with KF290's comparison of parsed locales, this means `en-US` and `en_US` are one locale to A12 both when it checks a model and when it writes one.
+
+**The kits now write and match a locale the same way.** Every kit writer stores the parsed locale's spelling (`A12Locales.key`, computed by the shared `a12LocaleKey`), matches an existing entry by that spelling, and keeps a refused spelling as given so the gate still refuses it. A rule's or computation's message locale is held in that form too. Before this, the kits stored the code as given, so their read → write differed from A12's on every locale-carrying member, and `rule check` refused an `en-US` message on an `en_US` model as undeclared, although A12 accepts it.
+
+*Locked by:* `adapter.laws.LocaleWriteSpellingLawsTest` (A12's writer, with a control that all eleven members are present); `edit.LocaleKeyWriteTest` and `cli.MessageLocaleSpellingTest` (the kits and `dmtool`).

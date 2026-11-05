@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 
@@ -138,9 +139,8 @@ public final class DocumentModelDraft {
         header.put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT);
         header.put("modelVersion", MODEL_VERSION);
         ArrayNode locs = header.putArray(DmKeys.LOCALES);
-        locales.forEach(code -> locs.addObject().put(DmKeys.CODE, code));
-        ArrayNode labelArr = header.putArray(DmKeys.LABELS);
-        labels.forEach((loc, text) -> labelArr.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        locales.forEach(code -> locs.addObject().put(DmKeys.CODE, A12Locales.key(code)));
+        LocalizedEntries.appendAll(header.putArray(DmKeys.LABELS), labels);
         ArrayNode annoArr = header.putArray(DmKeys.ANNOTATIONS);
         annotations.forEach(a -> annoArr.addObject().put(DmKeys.NAME, a.name()).put(DmKeys.VALUE, a.value()));
         ArrayNode refs = header.putArray(DmKeys.MODEL_REFERENCES);
@@ -267,7 +267,7 @@ public final class DocumentModelDraft {
         body.put("errorCondition", rule.errorCondition());
         body.put("severity", rule.severity());
         ArrayNode messages = body.putArray(DmKeys.ERROR_MESSAGE);
-        rule.messages().forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        LocalizedEntries.appendAll(messages, rule.messages());
         return node;
     }
 
@@ -343,14 +343,7 @@ public final class DocumentModelDraft {
         if (labels.isEmpty()) {
             return;
         }
-        ArrayNode label = body.putArray(DmKeys.LABEL);
-        locales.stream().filter(labels::containsKey)
-                .forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, labels.get(loc)));
-        labels.forEach((loc, text) -> {
-            if (!locales.contains(loc)) {
-                label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text);
-            }
-        });
+        LocalizedEntries.appendDeclaredFirst(body.putArray(DmKeys.LABEL), locales, labels);
     }
 
     /** Emit an optional per-locale text slot as {@code key: [{locale, text}]} (omitted when empty). */
@@ -358,8 +351,7 @@ public final class DocumentModelDraft {
         if (textByLocale.isEmpty()) {
             return;
         }
-        ArrayNode array = target.putArray(key);
-        textByLocale.forEach((loc, text) -> array.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        LocalizedEntries.appendAll(target.putArray(key), textByLocale);
     }
 
     /** Emit element-level {@code annotations: [{name, value}]} (omitted when none). */
@@ -437,7 +429,7 @@ public final class DocumentModelDraft {
                         ArrayNode hintList = inner.putArray("hintList");
                         s.suggestions().forEach((loc, vals) -> {
                             ObjectNode entry = hintList.addObject();
-                            entry.put(DmKeys.LOCALE, loc);
+                            entry.put(DmKeys.LOCALE, A12Locales.key(loc));
                             ArrayNode values = entry.putArray(DmKeys.VALUES);
                             vals.forEach(values::add);
                         });
@@ -574,11 +566,11 @@ public final class DocumentModelDraft {
                     // G23: per-locale invalid-value text — written verbatim (the kernel requires every declared
                     // locale to be covered, like the enum value labels)
                     ArrayNode messages = enumeration.putArray(DmKeys.ERROR_MESSAGE);
-                    e.invalidValueMessages().forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+                    LocalizedEntries.appendAll(messages, e.invalidValueMessages());
                 } else if (e.invalidValueMessage() != null) {
                     // the single-text shorthand, expanded across every declared locale (the kernel's localized map)
                     ArrayNode messages = enumeration.putArray(DmKeys.ERROR_MESSAGE);
-                    locales.forEach(loc -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, e.invalidValueMessage()));
+                    locales.forEach(loc -> LocalizedEntries.append(messages, loc, e.invalidValueMessage()));
                 }
             }
             case FieldTypeSpec.CustomSpec cf -> {

@@ -86,7 +86,7 @@ public record UniquenessCriterion(String name, List<String> fieldFullNames, Map<
         }
         if (!errorMessage.isEmpty()) {
             ArrayNode text = entry.putArray(DmKeys.ERROR_MESSAGE);
-            errorMessage.forEach((locale, message) -> text.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, message));
+            LocalizedEntries.appendAll(text, errorMessage);
         }
     }
 }

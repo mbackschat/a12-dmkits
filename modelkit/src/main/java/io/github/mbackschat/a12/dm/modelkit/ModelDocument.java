@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.A12Locales;
 import io.github.mbackschat.a12.dm.core.ConfigFlag;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
@@ -166,8 +167,8 @@ public final class ModelDocument {
         ArrayNode locales = header.path(DmKeys.LOCALES).isArray()
                 ? (ArrayNode) header.get(DmKeys.LOCALES)
                 : header.putArray(DmKeys.LOCALES);
-        if (!locales().contains(code)) {
-            locales.addObject().put(DmKeys.CODE, code);
+        if (locales().stream().noneMatch(declared -> A12Locales.same(declared, code))) {
+            locales.addObject().put(DmKeys.CODE, A12Locales.key(code));
         }
         return this;
     }
@@ -180,12 +181,12 @@ public final class ModelDocument {
      */
     public ModelDocument removeLocale(String code) {
         List<String> declared = locales();
-        if (declared.contains(code) && declared.stream().allMatch(code::equals)) {
+        if (!declared.isEmpty() && declared.stream().allMatch(c -> A12Locales.same(c, code))) {
             throw new IllegalArgumentException("cannot remove the last locale '" + code
                     + "' — a model needs at least one declared locale");
         }
         if (root.path(DmKeys.HEADER) instanceof ObjectNode header) {
-            filterArray(header, DmKeys.LOCALES, ModelDocument::headerLocaleCode, code);
+            filterArray(header, DmKeys.LOCALES, e -> A12Locales.key(headerLocaleCode(e)), A12Locales.key(code));
         }
         return this;
     }
@@ -726,15 +727,7 @@ public final class ModelDocument {
             payload.remove(DmKeys.LABEL);
             return this;
         }
-        ArrayNode label = payload.putArray(DmKeys.LABEL);
-        List<String> declared = locales();
-        declared.stream().filter(localeToText::containsKey)
-                .forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, localeToText.get(loc)));
-        localeToText.forEach((loc, text) -> {
-            if (!declared.contains(loc)) {
-                label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text);
-            }
-        });
+        LocalizedEntries.appendDeclaredFirst(payload.putArray(DmKeys.LABEL), locales(), localeToText);
         return this;
     }
 
@@ -767,38 +760,26 @@ public final class ModelDocument {
      * text for an existing locale.
      */
     public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
-        upsertLocalized(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, locale, text);
+        LocalizedEntries.upsert(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, locale, text);
         return this;
     }
 
     /** Upsert one per-locale {@code externalDescription} entry on the element at {@code elementPath} (end-user text). */
     public ModelDocument setExternalDescription(String elementPath, String locale, String text) {
-        upsertLocalized(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, locale, text);
+        LocalizedEntries.upsert(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, locale, text);
         return this;
     }
 
     /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeInternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, e -> e.path(DmKeys.LOCALE).asText(), locale);
+        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
         return this;
     }
 
     /** Remove the {@code externalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeExternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, e -> e.path(DmKeys.LOCALE).asText(), locale);
+        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
         return this;
-    }
-
-    /** Upsert a {@code [{locale, text}]} entry under {@code key} on {@code element}. */
-    private static void upsertLocalized(ObjectNode element, String key, String locale, String text) {
-        ArrayNode array = element.has(key) ? (ArrayNode) element.get(key) : element.putArray(key);
-        for (JsonNode e : array) {
-            if (locale.equals(e.path(DmKeys.LOCALE).asText())) {
-                ((ObjectNode) e).put(DmKeys.TEXT, text);
-                return;
-            }
-        }
-        array.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, text);
     }
 
     /** Drop every entry of {@code element[key]} whose {@code field} reads {@code matchValue}; remove the array if it empties. */
@@ -822,7 +803,7 @@ public final class ModelDocument {
 
     /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}). */
     public ModelDocument setModelLabel(String locale, String text) {
-        upsertHeaderEntry(DmKeys.LABELS, DmKeys.LOCALE, locale, DmKeys.TEXT, text);
+        LocalizedEntries.upsert((ObjectNode) root.path(DmKeys.HEADER), DmKeys.LABELS, locale, text);
         return this;
     }
 
@@ -946,7 +927,7 @@ public final class ModelDocument {
                     + " to be required first (set required:true or \"ifParentPresent\")");
         }
         ArrayNode messages = ((ObjectNode) rc).putArray(DmKeys.ERROR_MESSAGE);
-        localeToText.forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        LocalizedEntries.appendAll(messages, localeToText);
         return this;
     }
 
@@ -954,7 +935,7 @@ public final class ModelDocument {
     public ModelDocument setHelperText(String fieldPath, Map<String, String> localeToText) {
         ObjectNode body = fieldBody(fieldPath);
         ArrayNode helper = body.putArray("helperText");
-        localeToText.forEach((loc, text) -> helper.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        LocalizedEntries.appendAll(helper, localeToText);
         return this;
     }
 
