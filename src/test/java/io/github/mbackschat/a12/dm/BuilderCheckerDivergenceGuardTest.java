@@ -98,6 +98,12 @@ class BuilderCheckerDivergenceGuardTest {
             // `isReservedElementName`, reached by Rule.Builder, Computation.Builder and the checker.
             Map.entry("MVK_RULE_NAME_INVALID", Disposition.SHARED_LEAF),
 
+            // Both apply A12's trimmed value identity (KF418), over carriers that cannot share a reader:
+            // schemakit's `EnumLabelMapping` keeps the first of the schema's `enum` strings that trim alike, so
+            // an import never writes the duplicate, while `EnumValueLabels` refuses one in stored DM-JSON.
+            // Neither refuses anything A12 admits; the importer refuses nothing at all (measured 2026-11-05).
+            Map.entry("MVK_INTERNAL_VALUES_DUPLICATE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // Both sides read the raw-type `Length` SHAPE, over carriers that cannot share a reader:
             // `RawLengthDiagnostic` matches a regex against the authored condition string to decide whether
             // to attach the integer-domain corrective, while the checker matches a token stream to decide

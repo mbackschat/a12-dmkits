@@ -46,15 +46,38 @@ final class EnumLabelMapping {
     /**
      * Add {@code values} to {@code e}, each with its labels: the carriage on {@code schema} when there is one, else
      * the strategy's. {@code schema} is where the values were read, so {@code x-enumNames} sits beside them.
+     *
+     * <p>A12 identifies values as {@link String#trim} leaves them and refuses two that trim alike
+     * ({@code MVK_INTERNAL_VALUES_DUPLICATE}, KERNEL-FINDINGS KF418), while a schema may declare both
+     * spellings, so only the first of each is added and the rest are reported.
      */
     static void addValues(EnumFieldBuilder e, List<String> values, JsonNode schema, String name,
                           MappingProfile.EnumLabels strategy, TranscodeReport.Builder report) {
-        Map<String, Map<String, String>> labels = labels(values, schema, name, strategy, report);
-        values.forEach(value -> e.value(value, l -> labels.getOrDefault(value, Map.of()).forEach(l::label)));
+        List<Integer> kept = keptPositions(values, name, report);
+        Map<String, Map<String, String>> labels = labels(values, kept, schema, name, strategy, report);
+        kept.forEach(i -> e.value(values.get(i), l -> labels.getOrDefault(values.get(i), Map.of()).forEach(l::label)));
     }
 
-    private static Map<String, Map<String, String>> labels(List<String> values, JsonNode schema, String name,
-            MappingProfile.EnumLabels strategy, TranscodeReport.Builder report) {
+    /** The position of the first value of each spelling A12 reads as one, in declared order. */
+    private static List<Integer> keptPositions(List<String> values, String name, TranscodeReport.Builder report) {
+        Map<String, String> firstByTrimmed = new LinkedHashMap<>();
+        List<Integer> kept = new ArrayList<>();
+        for (int i = 0; i < values.size(); i++) {
+            String value = values.get(i);
+            String first = firstByTrimmed.putIfAbsent(value.trim(), value);
+            if (first == null) {
+                kept.add(i);
+            } else {
+                report.diagnostic("enum '" + name + "' declares '" + value + "' beside '" + first
+                        + "', which A12 reads as one value — dropped '" + value + "'");
+            }
+        }
+        return kept;
+    }
+
+    private static Map<String, Map<String, String>> labels(List<String> declared, List<Integer> kept, JsonNode schema,
+            String name, MappingProfile.EnumLabels strategy, TranscodeReport.Builder report) {
+        List<String> values = kept.stream().map(declared::get).toList();
         Map<String, Map<String, String>> out = new LinkedHashMap<>();
         JsonNode carried = schema.path(Carriage.X_ENUM_LABELS);
         if (carried.isObject()) {
@@ -69,15 +92,13 @@ final class EnumLabelMapping {
             case DERIVE -> values;
             case X_ENUM_NAMES -> {
                 JsonNode names = schema.path("x-enumNames");
-                if (!names.isArray() || names.size() != values.size()) {
-                    report.diagnostic("enum '" + name + "' has no x-enumNames array of " + values.size()
+                if (!names.isArray() || names.size() != declared.size()) {
+                    report.diagnostic("enum '" + name + "' has no x-enumNames array of " + declared.size()
                             + " names beside its values — imported unlabelled (--enum-labels X_ENUM_NAMES); "
                             + "label the values by hand or choose DERIVE");
                     yield List.of();
                 }
-                List<String> read = new ArrayList<>();
-                names.forEach(n -> read.add(n.asText()));
-                yield read;
+                yield kept.stream().map(i -> names.get(i).asText()).toList();
             }
             case BLANK -> List.of();
         };
@@ -100,6 +121,8 @@ final class EnumLabelMapping {
      * Why A12 would refuse these labels, or {@code null}. A labelled enumeration admits no empty token, no blank
      * text and no text twice in one language (KERNEL-FINDINGS KF321); an empty token labelled with itself is not
      * even buildable. Labelled or not is all-or-nothing, so one refused value leaves the whole field unlabelled.
+     * Texts are compared as {@link String#trim} leaves them, because A12 identifies labels that way: {@code Tier} and
+     * {@code Tier } are one text to it (KF418).
      */
     private static String refusal(List<String> values, List<String> texts) {
         if (values.contains("")) {
@@ -108,7 +131,7 @@ final class EnumLabelMapping {
         if (texts.stream().anyMatch(String::isBlank)) {
             return "a label text is blank";
         }
-        if (texts.stream().distinct().count() < texts.size()) {
+        if (texts.stream().map(String::trim).distinct().count() < texts.size()) {
             return "two values would share one label text";
         }
         return null;
