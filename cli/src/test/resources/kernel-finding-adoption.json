@@ -24589,18 +24589,22 @@
       }
     },
     "kf675": {
-      "sha256": "abb5f8c9b7798db61c159fd3df2377f523f71fd1f2bc47642b1d60b823175b30",
+      "sha256": "b911c932c71d46ae1fb86459d003b311df79a1c740d0bb05e7960f1d6af0066f",
       "task": "K31",
       "scope": {
         "adapter": [
           "index field as member",
-          "parallel row token"
+          "parallel row token",
+          "joined-row proof residuals"
         ],
         "dmkits": [],
-        "interpreter": [],
+        "interpreter": [
+          "joined-row list quantifiers"
+        ],
         "checker": [
           "index field as member",
-          "parallel row token"
+          "parallel row token",
+          "joined-row proof residuals"
         ],
         "dmtool-cli": [],
         "json-schema-import": [],
@@ -24621,6 +24625,10 @@
             "parallel row token": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#aJoinedLevelsRowTokenNeedsTheConditionToProveTheRow",
               "witness": "CheckerParallelJoinMessageAgreementTest pins A12's class on every condition carrier of the row token."
+            },
+            "joined-row proof residuals": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerJoinedRowProofResidualAgreementTest.kt#aJoinedRowIsProvedOnlyByConditionsThatNeedBothRowsPresent",
+              "witness": "CheckerJoinedRowProofResidualAgreementTest pins A12's class on every further carrier, the spellings and NoFieldFilled included."
             }
           }
         },
@@ -24630,9 +24638,14 @@
           "evidence": {}
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: both strategies and the interpreter agree on the joined-row list quantifiers.",
+          "evidence": {
+            "joined-row list quantifiers": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowListQuantifierDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "JoinedRowListQuantifierDiffTest runs the three-operand quantifiers and both group lists over matched, one-sided and over-capacity lines on all three engines."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",
@@ -24645,6 +24658,10 @@
             "parallel row token": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#aJoinedLevelsRowTokenNeedsTheConditionToProveTheRow",
               "witness": "CheckerParallelJoinMessageAgreementTest compares A12 and the portable checker on every condition carrier of the row token."
+            },
+            "joined-row proof residuals": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerJoinedRowProofResidualAgreementTest.kt#aJoinedRowIsProvedOnlyByConditionsThatNeedBothRowsPresent",
+              "witness": "CheckerJoinedRowProofResidualAgreementTest compares A12 and the portable checker on every further carrier, the spellings and NoFieldFilled included."
             }
           }
         },

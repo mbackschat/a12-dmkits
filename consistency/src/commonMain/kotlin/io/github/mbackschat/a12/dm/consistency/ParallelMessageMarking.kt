@@ -56,10 +56,11 @@ internal fun TrackedFactBase.parallelIndexFields(element: TrackedDeclaration): L
  * that level has a row, one AND arm or every OR arm carrying the proof, else `INVALID_USE_OF_ITERATION_PARAM`.
  *
  * A proof is a presence call whose operands are marked reads at or below the level: every operand of
- * `FieldFilled`, `GroupFilled`, `AtLeastOneFieldFilled` and `MoreThanOneFieldFilled`, any one of `AllFieldsFilled`
- * and `AllGroupsFilled`. A comparison, a negative presence and `FieldsNotCollectivelyFilled` prove nothing, and an
- * every-operand call mixing the two sides proves neither (KF675). Declined where the answer would rest on a call this reading
- * has not measured, `AtLeastOneGroupFilled`, or on a starred, keyed or filtered operand.
+ * `FieldFilled`, `GroupFilled`, `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled` and `AtLeastOneGroupFilled`, any
+ * one of `AllFieldsFilled` and `AllGroupsFilled`. A comparison, a negative presence and `FieldsNotCollectivelyFilled`
+ * prove nothing, an every-operand call mixing the two sides proves neither, and a read starred at the level itself
+ * spans its every row and so proves none (KF675). Declined where the answer would rest on a keyed or filtered
+ * operand, or on one starred at another level.
  */
 internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: TrackedDeclaration): MessageCompletion {
     if (element.kind != "Rule") return MessageCompletion.Accepted
@@ -69,9 +70,8 @@ internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: Trac
     val spellings = OPERATOR_SPELLINGS[conditionLanguage] ?: return MessageCompletion.Declined
     fun spelled(vararg ids: OperatorId) = ids.mapNotNull { spellings[it] }.toSet()
     val everyOperand = spelled(OperatorId.FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.AT_LEAST_ONE_FIELD_FILLED,
-        OperatorId.MORE_THAN_ONE_FIELD_FILLED)
+        OperatorId.MORE_THAN_ONE_FIELD_FILLED, OperatorId.AT_LEAST_ONE_GROUP_FILLED)
     val anyOperand = spelled(OperatorId.ALL_FIELDS_FILLED, OperatorId.ALL_GROUPS_FILLED)
-    val unmeasured = spelled(OperatorId.AT_LEAST_ONE_GROUP_FILLED)
     val modifiers = spelled(OperatorId.HAVING, OperatorId.SEMANTIC_INDEX)
     val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
         ?: return MessageCompletion.Declined
@@ -79,8 +79,11 @@ internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: Trac
     var undecided = false
     fun inLevel(call: CallShape, operand: List<Token>): Boolean? {
         val written = call.textOf(operand)
-        if ('*' in written || operand.any { it.text in modifiers }) return null
+        if (operand.any { it.text in modifiers }) return null
         val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return null
+        if ('*' in reference) {
+            return if (resolvedPathOf(reference.substringBefore('*'), ruleGroup, element) == named) false else null
+        }
         val path = resolvedPathOf(reference, ruleGroup, element) ?: return null
         return path == named || path.startsWith("$named/")
     }
@@ -91,7 +94,6 @@ internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: Trac
                 if (null in verdicts) { undecided = true; false }
                 else if (call.operator in everyOperand) verdicts.all { it == true } else verdicts.any { it == true }
             }
-            in unmeasured -> { undecided = true; false }
             else -> false
         }
     }

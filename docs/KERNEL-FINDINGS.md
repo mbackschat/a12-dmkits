@@ -16783,7 +16783,27 @@ Carrier: a shop whose `Ordered` and `Received` lines are both keyed by their Str
 | the join, the rule declared in `Ordered` | refused | refused |
 | `FieldFilled(OQ)`, nothing joined (control) | admitted | — |
 
-So `AtLeastOneFieldFilled` and `MoreThanOneFieldFilled` prove a level only when every operand lies in it, while one operand suffices for the all-filled pair. A keyed token follows the same law ([KF546](#kf546), *corrected 2026-11-05*: this line said a keyed token was stricter, which rested on rows whose operands did not all lie under the key). `AtLeastOneGroupFilled` is unmeasured here; under a key it proves only when every operand does.
+**Further carriers** (requested by a12-kernel-lean as SPEC-2026-11-05-04; `Ordered` here also holds two nonrepeatable groups, `Packing` with a `Label` and `Wrapping` with a `Paper`):
+
+| condition | `$#…/Ordered$` | `$#…/Received$` |
+|---|---|---|
+| `MoreThanOneFieldFilled(OQ, RQ)` | refused | refused |
+| `MoreThanOneFieldFilled(OQ, Ordered/Note, RQ)` | refused | refused |
+| `AllFieldsFilled(OQ, Ordered/Note, RQ)` | admitted | admitted |
+| `AtLeastOneFieldFilled(OQ, Ordered/Note, Ordered/Gap) And FieldFilled(RQ)` | admitted | admitted |
+| `OQ > 0 And RQ > 0` | refused | refused |
+| `GroupNotFilled(Ordered) And FieldFilled(RQ)` | refused | admitted |
+| `(FieldFilled(OQ) And FieldFilled(RQ)) Or AllFieldsFilled(OQ, RQ)` | admitted | admitted |
+| `FieldNotFilled(OQ) And FieldFilled(Ordered/Packing/Label) And FieldFilled(RQ)` | admitted | admitted |
+| `FieldNotFilled(OQ) And AtLeastOneFieldFilled(Ordered*/Note) And FieldFilled(RQ)` | refused | admitted |
+| `AtLeastOneGroupFilled(Ordered, Received)` | refused | refused |
+| `FieldNotFilled(OQ) And AtLeastOneGroupFilled(Ordered/Packing, Ordered/Wrapping) And FieldFilled(RQ)` | admitted | admitted |
+
+The relative `$#Ordered$` and `$#Received$` follow the absolute spelling: refused beside `FieldsNotCollectivelyFilled`, admitted beside `FieldFilled(OQ) And FieldFilled(RQ)`. From a rule declared in `Ordered`, `$#RuleGroup$` and both absolute tokens are refused beside the former and admitted beside the latter. `NoFieldFilled` over two or three operands across the join draws `MVK_PARALLEL_ITERATION_INVALID` whatever the message holds.
+
+So `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled` and `AtLeastOneGroupFilled` prove a level only when every operand lies in it, at any operand count, while one operand suffices for the all-filled pair. A field of a nonrepeatable group below the level lies in it; a read starred at the level spans every row and proves none. A keyed token follows the same law ([KF546](#kf546), *corrected 2026-11-05*: this line said a keyed token was stricter, which rested on rows whose operands did not all lie under the key). Locks: `adapter.laws.CheckerJoinedRowProofResidualAgreementTest`, A12 and the portable checker on every row above.
+
+**At runtime** the three-operand quantifiers and both group lists fire once per joined key, an unmatched row reading its missing side as empty, and a line beyond either group's capacity draws only the index-overflow codes (`adapter.laws.JoinedRowListQuantifierDiffTest`, both strategies and the interpreter agreeing).
 
 *Mechanism, a hypothesis from a source read at `a12-kernel` `eec9134`, not measured beyond the rows above:* `ReferencedIdsUtil.getIndexFieldIfParallelIteration` adds the index field of every parallel-marked reference to the set a message parameter is looked up in, and `RuleErrorTextIterationParamVisitor` walks the condition for a presence call over the token's level. The rule-declared-in-`Ordered` rows show the second marking pass ([KF376](#kf376)) reaching the rule's own group.
 
