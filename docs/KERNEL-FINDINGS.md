@@ -16664,3 +16664,35 @@ So expansion keeps only the entry model's criteria, and a criterion copied into 
 **Who reads a criterion** (source-read at `eec9134`). `git grep -il documentUniquenessCriteri` over the kernel's main sources, excluding `build/` and `delombok/`, gives 29 files: the model and its API, the walker and visitors, the consistency rule `DocumentUniquenessCriteriaRule`, the serializer, move support, the model joiners, the combination coordinates and a downgrade migration step. None is in the runtime or the codegen, so no rule, computation or document validation evaluates a criterion; the kernel checks only its declaration.
 
 *Locked by:* `validate.laws.DocumentUniquenessCriterionLawsTest` (admission), `validate.laws.DocumentUniquenessCriterionReachLawsTest` (reach), `adapter.laws.CheckerUniquenessCriterionAgreementTest` (order, and the portable checker's `UNIQUENESS_CRITERIA` family against A12), `adapter.UniquenessCriterionRewriteTest` (move support) and `adapter.UniquenessCriterionStructureKernelTest` (structure changes).
+
+## §13 supplement — kernel 31.1.1 renders `$Field.value$` of an unmatched parallel-iteration side as that field's unfilled rendering, and of a custom-typed field as the stored text, accepted or rejected (differential, both strategies, kernel 31.1.1, 2026-11-05) <a id="kf672"></a>
+
+> Fold: pending — new to §13; two message-rendering rows the A12 changelog names as fixes (A12K-3990 in 31.0.0, A12K-4331 in 31.1.1).
+
+The changelog says an unmatched parallel side "could have" thrown and now shows "the empty value", and that a custom-typed `$<field>.value$` "could lead to an exception". Both strategies and the interpreter render the same text on every row:
+
+| input | rendered | lock |
+|---|---|---|
+| `FieldsNotCollectivelyFilled` over Demand and Supply headcounts (scale 0) joined on Department; Eng has no Supply row, Ops no Demand row; text `d=[$/…/Demand/Headcount.value$] s=[$/…/Supply/Headcount.value$]` | `d=[3] s=[0]` and `d=[0] s=[2]` | `adapter.laws.UnmatchedParallelValueMessageDiffTest` |
+| `$/Order/Code.value$` of a custom-typed field, the code accepted (`AB-12`), rejected by the validator (`bad`), absent | `code=[AB-12]`, `code=[bad]`, `code=[]` | `adapter.laws.CustomFieldValueParameterDiffTest` |
+
+So "the empty value" is the unfilled rendering of the field's type, `0` for a scale-zero Number ([IF121](INTERPRETER-FINDINGS.md#if121)), not an empty string; and a validator's rejection does not withhold the stored text from a message. A12 admits these parameters only for a field the condition reads (`INVALID_FIELD` otherwise), which is why the custom row's condition is `FieldFilled(Note) Or FieldFilled(Code)`.
+
+*Locked by:* `adapter.laws.UnmatchedParallelValueMessageDiffTest`, `adapter.laws.CustomFieldValueParameterDiffTest`.
+
+## §9 supplement — kernel 31.1.1 reads `BaseYear` as the model's base year inside a `Having` filter of `Sum` and of `SumOfTerms`, and inside a `SumOfTerms` term (differential, both strategies, kernel 31.1.1, 2026-11-05) <a id="kf673"></a>
+
+> Fold: pending — new to §9; the Java-side counterpart of the changelog's A12K-4204, which fixed these placements in the TypeScript runtime.
+
+Base year 2020, a claims group of capacity 4. Claims from 2020, 2019, 2020 with amounts 80, 60, 40, against all three from 2018:
+
+| expression | 2020/2019/2020 | all 2018 |
+|---|---|---|
+| `Sum(Claims*/Amount Having ([Claims/Year] == BaseYear)) > 100` | fires (120) | silent |
+| `SumOfTerms(Claims* Having [Claims/Year] == BaseYear, [Claims/Amount]) > 100` | fires (120) | silent |
+| `SumOfTerms(Claims*, BaseYear - [Claims/Year]) == 1` | fires (0 + 1 + 0) | silent (6) |
+| the computation `Total = SumOfTerms(Claims* Having [Claims/Year] == BaseYear, [Claims/Amount])` | `120` | `0` |
+
+A `BaseYear` read as empty, zero or another year cannot produce that split. Each rule fires as an omission, because the fourth declared row is unfilled ([KF670](KERNEL-FINDINGS.md#kf670)). Dynamic Groovy, generated Java and the interpreter agree on every row.
+
+*Locked by:* `adapter.laws.BaseYearInSetExpressionDiffTest`.

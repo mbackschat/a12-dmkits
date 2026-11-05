@@ -24061,6 +24061,166 @@
           }
         }
       }
+    },
+    "kf672": {
+      "sha256": "f0f10bf80f7eb46f8f178bbcf0e4c6302cf566c1646c49216d36c678a95b5419",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "the unmatched side",
+          "the custom-typed value"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "the unmatched side",
+          "the custom-typed value"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies render each message row and are asserted equal before the expected texts are compared (KF672).",
+          "evidence": {
+            "the unmatched side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedParallelValueMessageDiffTest.kt#anUnmatchedSideRendersAsAnUnfilledField",
+              "witness": "An unmatched Demand and an unmatched Supply side, each beside a matched value, render 0 on both strategies."
+            },
+            "the custom-typed value": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomFieldValueParameterDiffTest.kt#aCustomTypedValueRendersInARuleMessage",
+              "witness": "An accepted, a rejected and an absent custom-typed code render as stored on both strategies."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Message rendering is a runtime outcome; the kits author the text and A12 admits it.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter rendered every row as both strategies do before the differential existed (KF672).",
+          "evidence": {
+            "the unmatched side": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedParallelValueMessageDiffTest.kt#anUnmatchedSideRendersAsAnUnfilledField",
+              "witness": "The interpreter's texts equal both strategies' on the two unmatched rows."
+            },
+            "the custom-typed value": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomFieldValueParameterDiffTest.kt#aCustomTypedValueRendersInARuleMessage",
+              "witness": "The interpreter's texts equal both strategies' on the accepted, rejected and absent rows."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime rendering is not the checker's; admission of the parameter is unchanged.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "dmtool evaluates through the interpreter, which this finding locks; no CLI lock reads these rows.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No schema keyword carries a rule message's rendering.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No schema keyword carries a rule message's rendering.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "To be reported in the next letter to a12-kernel-lean; not yet sent.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf673": {
+      "sha256": "426d3643d8562beef171bde50b30a7b567369e2cafa904dc2dfb124bd5551be2",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "the filtered and term rows",
+          "the computed filter"
+        ],
+        "dmkits": [],
+        "interpreter": [
+          "the filtered and term rows",
+          "the computed filter"
+        ],
+        "checker": [],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Both kernel strategies read every row and are asserted equal before the expected readings are compared (KF673).",
+          "evidence": {
+            "the filtered and term rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearInSetExpressionDiffTest.kt#baseYearIsReadInsideFiltersAndTerms",
+              "witness": "Sum and SumOfTerms filters and a SumOfTerms term over BaseYear split the 2020 and 2018 documents on both strategies."
+            },
+            "the computed filter": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearInSetExpressionDiffTest.kt#baseYearIsReadInsideAComputedFilter",
+              "witness": "The computed filtered term sum is 120 and 0 on both strategies."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "BaseYear inside a filter or term is authored as any other operand; the finding is about evaluation.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "ALREADY_CONFORMS",
+          "basis": "The interpreter read BaseYear in every placement as both strategies do before the differential existed (KF673).",
+          "evidence": {
+            "the filtered and term rows": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearInSetExpressionDiffTest.kt#baseYearIsReadInsideFiltersAndTerms",
+              "witness": "The interpreter's signatures equal both strategies' on both documents."
+            },
+            "the computed filter": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BaseYearInSetExpressionDiffTest.kt#baseYearIsReadInsideAComputedFilter",
+              "witness": "The interpreter computes 120 and 0 as both strategies do."
+            }
+          }
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Runtime evaluation is not the checker's; the admission of BaseYear in a term is KF670's.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "dmtool evaluates through the interpreter, which this finding locks; no CLI lock reads these rows.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No schema keyword carries a rule's evaluation.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "No schema keyword carries a rule's evaluation.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "To be reported in the next letter to a12-kernel-lean; not yet sent.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
