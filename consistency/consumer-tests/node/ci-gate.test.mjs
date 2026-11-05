@@ -40,15 +40,19 @@ const garbagePath = write('not-a-model.dm.json', 'not json at all');
 const missingPath = join(scratch, 'never-written.dm.json');
 
 /**
- * One extra declaration stripped of the `name` the kernel's reader requires, beside an otherwise sound
- * model. This is the discriminator between the two classifications the gate could have keyed on: the report
- * carries a diagnostic AND ran its families (103 of them, measured 2026-09-16), so "any diagnostic means the
- * tool failed" and "no family ran means the tool failed" disagree here and nowhere else in this file.
+ * One extra declaration with no `type`, beside an otherwise sound model. This is the discriminator between the
+ * two classifications the gate could have keyed on: the report carries a diagnostic AND ran its families, so
+ * "any diagnostic means the tool failed" and "no family ran means the tool failed" disagree here and nowhere
+ * else in this file.
+ *
+ * The row is about the gate's reading of such a report, not about A12's verdict on the model. Kernel 31.1.1's
+ * reader refuses this shape outright, and the checker skips the declaration without stating a rejection, which
+ * is an under-report it discloses through the diagnostic (CONSISTENCY-GAPS DG180). That is exactly why the gate
+ * must not call it a pass. The earlier `"name": null` shape stopped being a partial read on 31.1.1, where A12
+ * states "Element must have a name." and the checker rejects with it (KERNEL-FINDINGS KF652).
  */
-// A `null` name, not an absent one: A12 loads the first and its reader refuses the second (KERNEL-FINDINGS KF644),
-// which would make this a model A12 never builds rather than one the checker reads in part.
 const partiallyReadablePath = write('storefront-malformed-declaration.dm.json',
-  soundModel.replace('"elements": [', '"elements": [{ "type": "Field", "id": "/Storefront/Nameless", "name": null },'));
+  soundModel.replace('"elements": [', '"elements": [{ "id": "/Storefront/Nameless" },'));
 
 test('a sound model passes every check, and is still not A12-validated', () => {
   const result = runGate([soundPath]);
