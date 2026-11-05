@@ -271,7 +271,7 @@ data class PreparedModel(
     internal val resolvableByPath: Map<String, DeclaredElement> by lazy {
         val byPath = LinkedHashMap<String, DeclaredElement>(elements.size)
         keptByPath.forEach { (path, element) ->
-            if (element.kind == DeclaredKind.FIELD.wire || element.kind == DeclaredKind.GROUP.wire) byPath[path] = element
+            if (element.declaredKind == DeclaredKind.FIELD || element.declaredKind == DeclaredKind.GROUP) byPath[path] = element
         }
         byPath
     }

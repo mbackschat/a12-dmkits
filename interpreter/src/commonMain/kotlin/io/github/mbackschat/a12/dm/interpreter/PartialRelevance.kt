@@ -148,10 +148,8 @@ internal class PartialRelevance(private val model: ModelDef, private val paths: 
                 if (parts.size > depth + 1 && parts.take(depth) == pathParts(groupPath))
                     "/" + parts.take(depth + 1).joinToString("/") else null
             }
-            val prefix = "$groupPath/"
-            return (model.groupPaths + model.repeatable).filterTo(viaFields) {
-                it.startsWith(prefix) && '/' !in it.substring(prefix.length)
-            }
+            model.groupPaths.filterTo(viaFields) { parentOf(it) == groupPath }
+            return model.repeatable.filterTo(viaFields) { parentOf(it) == groupPath }
         }
 
         private fun parentOf(path: String): String = path.substringBeforeLast('/')

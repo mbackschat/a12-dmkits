@@ -44,3 +44,44 @@ internal fun provesPresence(node: ConditionNode, proves: (CallShape) -> Boolean)
         }
     }
 }
+
+/**
+ * How a presence call proves a row from its operands: EVERY operand must lie in the row for the list quantifiers,
+ * ANY one suffices for the all-filled pair. One law for an unkeyed row token over a joined level and a keyed row
+ * token over a key (KERNEL-FINDINGS KF675, KF546), so it is stated once. `FieldFilled` and `GroupFilled` take one
+ * operand, where the two readings agree.
+ */
+private enum class OperandProof { ANY, EVERY }
+
+private val PRESENCE_PROOF_BY_SPELLING: Map<ConditionLanguage, Map<String, OperandProof>> =
+    OPERATOR_SPELLINGS.mapValues { (_, spellings) ->
+        mapOf(
+            OperatorId.FIELD_FILLED to OperandProof.EVERY,
+            OperatorId.GROUP_FILLED to OperandProof.EVERY,
+            OperatorId.AT_LEAST_ONE_FIELD_FILLED to OperandProof.EVERY,
+            OperatorId.MORE_THAN_ONE_FIELD_FILLED to OperandProof.EVERY,
+            OperatorId.AT_LEAST_ONE_GROUP_FILLED to OperandProof.EVERY,
+            OperatorId.ALL_FIELDS_FILLED to OperandProof.ANY,
+            OperatorId.ALL_GROUPS_FILLED to OperandProof.ANY,
+        ).mapNotNull { (id, proof) -> spellings[id]?.let { it to proof } }.toMap()
+    }
+
+/**
+ * Whether [node]'s presence calls prove a row, [inRow] judging one operand: `true` in the row, `false` outside it,
+ * `null` where it cannot tell. Returns `true` when proved, `null` when not proved but some call went undecided, and
+ * `false` otherwise. A call with no operand is undecided, since the arity family answers it.
+ */
+internal fun provesRow(node: ConditionNode, language: ConditionLanguage, inRow: (CallShape, List<Token>) -> Boolean?): Boolean? {
+    val proofs = PRESENCE_PROOF_BY_SPELLING[language].orEmpty()
+    var undecided = false
+    val proven = provesPresence(node) { call ->
+        val proof = proofs[call.operator] ?: return@provesPresence false
+        val verdicts = call.operands.map { inRow(call, it) }
+        when {
+            verdicts.isEmpty() || null in verdicts -> { undecided = true; false }
+            proof == OperandProof.EVERY -> verdicts.all { it == true }
+            else -> verdicts.any { it == true }
+        }
+    }
+    return if (proven) true else if (undecided) null else false
+}

@@ -1,14 +1,12 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionRecognizer
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
 import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
 import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
-import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
-import io.github.mbackschat.a12.dm.consistency.syntax.provesPresence
+import io.github.mbackschat.a12.dm.consistency.syntax.provesRow
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.textOf
 
@@ -55,11 +53,9 @@ internal fun TrackedFactBase.parallelIndexFields(element: TrackedDeclaration): L
  * A row token `$#group$` over a level the condition iterates in parallel: admitted only where the condition proves
  * that level has a row, one AND arm or every OR arm carrying the proof, else `INVALID_USE_OF_ITERATION_PARAM`.
  *
- * A proof is a presence call whose operands are marked reads at or below the level: every operand of
- * `FieldFilled`, `GroupFilled`, `AtLeastOneFieldFilled`, `MoreThanOneFieldFilled` and `AtLeastOneGroupFilled`, any
- * one of `AllFieldsFilled` and `AllGroupsFilled`. A comparison, a negative presence and `FieldsNotCollectivelyFilled`
- * prove nothing, an every-operand call mixing the two sides proves neither, and a read starred at the level itself
- * spans its every row and so proves none (KF675). Declined where the answer would rest on a keyed or filtered
+ * A proof is a presence call whose operands are marked reads at or below the level, by [provesRow]'s law, so a
+ * comparison, a negative presence and `FieldsNotCollectivelyFilled` prove nothing and an every-operand call mixing
+ * the two sides proves neither; a read starred at the level itself spans its every row and so proves none (KF675). Declined where the answer would rest on a keyed or filtered
  * operand, or on one starred at another level.
  */
 internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: TrackedDeclaration): MessageCompletion {
@@ -67,39 +63,24 @@ internal fun TrackedFactBase.parallelRowTokenDefect(named: String, element: Trac
     val marked = parallelMarkingOf(element) ?: return MessageCompletion.Declined
     if (named !in marked) return MessageCompletion.Accepted
     val text = element.body?.string("errorCondition") ?: return MessageCompletion.Declined
-    val spellings = OPERATOR_SPELLINGS[conditionLanguage] ?: return MessageCompletion.Declined
-    fun spelled(vararg ids: OperatorId) = ids.mapNotNull { spellings[it] }.toSet()
-    val everyOperand = spelled(OperatorId.FIELD_FILLED, OperatorId.GROUP_FILLED, OperatorId.AT_LEAST_ONE_FIELD_FILLED,
-        OperatorId.MORE_THAN_ONE_FIELD_FILLED, OperatorId.AT_LEAST_ONE_GROUP_FILLED)
-    val anyOperand = spelled(OperatorId.ALL_FIELDS_FILLED, OperatorId.ALL_GROUPS_FILLED)
-    val modifiers = spelled(OperatorId.HAVING, OperatorId.SEMANTIC_INDEX)
+    val modifiers = setOfNotNull(OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.HAVING),
+        OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.SEMANTIC_INDEX))
     val tree = ConditionRecognizer(text, conditionLanguage).recognize(SyntaxEntry.CONDITION).tree
         ?: return MessageCompletion.Declined
     val ruleGroup = element.path.substringBeforeLast('/')
-    var undecided = false
-    fun inLevel(call: CallShape, operand: List<Token>): Boolean? {
+    val proof = provesRow(tree, conditionLanguage) { call, operand ->
         val written = call.textOf(operand)
-        if (operand.any { it.text in modifiers }) return null
-        val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return null
+        if (operand.any { it.text in modifiers }) return@provesRow null
+        val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return@provesRow null
         if ('*' in reference) {
-            return if (resolvedPathOf(reference.substringBefore('*'), ruleGroup, element) == named) false else null
+            return@provesRow if (resolvedPathOf(reference.substringBefore('*'), ruleGroup, element) == named) false else null
         }
-        val path = resolvedPathOf(reference, ruleGroup, element) ?: return null
-        return path == named || path.startsWith("$named/")
+        val path = resolvedPathOf(reference, ruleGroup, element) ?: return@provesRow null
+        path == named || path.startsWith("$named/")
     }
-    val proven = provesPresence(tree) { call ->
-        when (call.operator) {
-            in everyOperand, in anyOperand -> {
-                val verdicts = call.operands.map { inLevel(call, it) }
-                if (null in verdicts) { undecided = true; false }
-                else if (call.operator in everyOperand) verdicts.all { it == true } else verdicts.any { it == true }
-            }
-            else -> false
-        }
-    }
-    return when {
-        proven -> MessageCompletion.Accepted
-        undecided -> MessageCompletion.Declined
-        else -> MessageCompletion.Refused("INVALID_USE_OF_ITERATION_PARAM")
+    return when (proof) {
+        true -> MessageCompletion.Accepted
+        null -> MessageCompletion.Declined
+        false -> MessageCompletion.Refused("INVALID_USE_OF_ITERATION_PARAM")
     }
 }

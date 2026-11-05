@@ -60,8 +60,6 @@ final class CriterionReadCommand extends BaseCommand {
     }
 
     private int emit(ObjectNode data, String summary) {
-        ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data, ConsistencyEvidence.none());
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return print(ResultEnvelope.queryResult(resultIdentity(), summary, data, ConsistencyEvidence.none()));
     }
 }

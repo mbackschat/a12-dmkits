@@ -161,4 +161,5 @@ final class TypeConfigReader {
             entry.path(DmKeys.VALUES).forEach(v -> values.add(v.asText()));
         }
         return Optional.of(map);
-    }}
+    }
+}

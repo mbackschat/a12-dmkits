@@ -177,7 +177,7 @@ final class PatternsCommand extends BaseCommand {
 
         List<String> declared = new RuleValidator().declaredLocales(modelJson);
         List<String> undeclared = messages.keySet().stream()
-                .filter(locale -> declared.stream().noneMatch(code -> A12Locales.same(code, locale))).toList();
+                .filter(locale -> !A12Locales.declares(declared, locale)).toList();
         if (!undeclared.isEmpty()) {
             return refuseUndeclaredMessageLocales(ResultIdentity.PATTERNS_SCAFFOLD, modelJson, undeclared);
         }

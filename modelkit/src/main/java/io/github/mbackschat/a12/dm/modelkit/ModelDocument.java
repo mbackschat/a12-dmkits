@@ -167,7 +167,7 @@ public final class ModelDocument {
         ArrayNode locales = header.path(DmKeys.LOCALES).isArray()
                 ? (ArrayNode) header.get(DmKeys.LOCALES)
                 : header.putArray(DmKeys.LOCALES);
-        if (locales().stream().noneMatch(declared -> A12Locales.same(declared, code))) {
+        if (!A12Locales.declares(locales(), code)) {
             locales.addObject().put(DmKeys.CODE, A12Locales.key(code));
         }
         return this;
@@ -733,18 +733,22 @@ public final class ModelDocument {
 
     /** Set a name/value annotation on any describable element or type definition (replacing a same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
-        ObjectNode element = metaElement(elementPath);
-        ArrayNode annotations = element.has(DmKeys.ANNOTATIONS)
-                ? (ArrayNode) element.get(DmKeys.ANNOTATIONS)
-                : element.putArray(DmKeys.ANNOTATIONS);
+        upsertAnnotation(metaElement(elementPath), name, value);
+        return this;
+    }
+
+    /** Set the value of {@code owner}'s annotation named {@code name}, or append one. */
+    private static void upsertAnnotation(ObjectNode owner, String name, String value) {
+        ArrayNode annotations = owner.has(DmKeys.ANNOTATIONS)
+                ? (ArrayNode) owner.get(DmKeys.ANNOTATIONS)
+                : owner.putArray(DmKeys.ANNOTATIONS);
         for (JsonNode a : annotations) {
             if (name.equals(a.path(DmKeys.NAME).asText())) {
                 ((ObjectNode) a).put(DmKeys.VALUE, value);
-                return this;
+                return;
             }
         }
         annotations.addObject().put(DmKeys.NAME, name).put(DmKeys.VALUE, value);
-        return this;
     }
 
     /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
@@ -809,7 +813,7 @@ public final class ModelDocument {
 
     /** Upsert a model-level header <b>annotation</b> (replacing any existing entry with the same name). */
     public ModelDocument setModelAnnotation(String name, String value) {
-        upsertHeaderEntry(DmKeys.ANNOTATIONS, DmKeys.NAME, name, DmKeys.VALUE, value);
+        upsertAnnotation((ObjectNode) root.path(DmKeys.HEADER), name, value);
         return this;
     }
 
@@ -852,39 +856,12 @@ public final class ModelDocument {
 
     /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
     public Map<String, String> modelAnnotations() {
-        return headerMap(DmKeys.ANNOTATIONS, DmKeys.NAME, DmKeys.VALUE);
+        return entryMap(root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
     }
 
     /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
     public Map<String, String> modelLabels() {
-        return headerMap(DmKeys.LABELS, DmKeys.LOCALE, DmKeys.TEXT);
-    }
-
-    /** The header's {@code array} entries as a {@code keyField}→{@code valueField} map, in entry order. */
-    private Map<String, String> headerMap(String array, String keyField, String valueField) {
-        Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode entry : root.path(DmKeys.HEADER).path(array)) {
-            out.put(entry.path(keyField).asText(), entry.path(valueField).asText());
-        }
-        return out;
-    }
-
-    /** Set {@code valueField} on the header {@code array} entry whose {@code keyField} is {@code key}, or append one. */
-    private void upsertHeaderEntry(String array, String keyField, String key, String valueField, String value) {
-        ArrayNode entries = headerArray(array);
-        for (JsonNode entry : entries) {
-            if (key.equals(entry.path(keyField).asText())) {
-                ((ObjectNode) entry).put(valueField, value);
-                return;
-            }
-        }
-        entries.addObject().put(keyField, key).put(valueField, value);
-    }
-
-    /** The header's {@code key} array, created if absent. */
-    private ArrayNode headerArray(String key) {
-        ObjectNode header = (ObjectNode) root.path(DmKeys.HEADER);
-        return header.has(key) ? (ArrayNode) header.get(key) : header.putArray(key);
+        return entryMap(root.path(DmKeys.HEADER).path(DmKeys.LABELS), DmKeys.LOCALE, DmKeys.TEXT);
     }
 
     /** The {@code Field} body object at {@code fieldPath}; fails fast if there is no field there. */
@@ -1069,17 +1046,18 @@ public final class ModelDocument {
 
     /** Read an element's annotations as a name→value map. */
     public Map<String, String> annotations(String pathOrTypeDefId) {
-        Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode a : metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS)) {
-            out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
-        }
-        return out;
+        return entryMap(metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
     }
 
     private static Map<String, String> localizedOf(ObjectNode element, String key) {
+        return entryMap(element.path(key), DmKeys.LOCALE, DmKeys.TEXT);
+    }
+
+    /** A {@code [{keyField, valueField}]} array as a map, in entry order. */
+    private static Map<String, String> entryMap(JsonNode entries, String keyField, String valueField) {
         Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode e : element.path(key)) {
-            out.put(e.path(DmKeys.LOCALE).asText(), e.path(DmKeys.TEXT).asText());
+        for (JsonNode entry : entries) {
+            out.put(entry.path(keyField).asText(), entry.path(valueField).asText());
         }
         return out;
     }

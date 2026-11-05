@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.core;
 
+import java.util.Collection;
+
 import io.github.mbackschat.a12.dm.predicates.LocalePredicatesKt;
 
 /**
@@ -27,5 +29,11 @@ public final class A12Locales {
     /** Whether A12 reads {@code a} and {@code b} as one locale. */
     public static boolean same(String a, String b) {
         return key(a).equals(key(b));
+    }
+
+    /** Whether {@code declared} holds {@code code} as A12 reads both, for a membership test over raw spellings. */
+    public static boolean declares(Collection<String> declared, String code) {
+        String key = key(code);
+        return declared.stream().anyMatch(each -> key(each).equals(key));
     }
 }

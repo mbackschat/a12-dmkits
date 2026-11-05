@@ -162,6 +162,7 @@ public final class ReadPayloads {
                 .orElseThrow(() -> new IllegalArgumentException("the model has no uniqueness criterion named '" + name + "'"));
     }
 
+    /** Every included model, by the reference that is its identity (KF651), on standalone and embedded reads. */
     public static ObjectNode includeList(ModelDocument doc) {
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode includes = data.putArray("includes");

@@ -136,7 +136,7 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     val withheldPaths = withheld.mapTo(HashSet()) { it.path }
     val local = cells.values.flatMap { it.contributions }
         .filterNot { it is OwnedFinding && it.owner in withheld }
-        .filterNot { it is ModelFinding && !it.stage.readsTheModelAsWritten &&it.finding.code !in CONVERTER_SENTENCE_CODES &&
+        .filterNot { it is ModelFinding && !it.stage.readsTheModelAsWritten && it.finding.code !in CONVERTER_SENTENCE_CODES &&
             it.finding.at in withheldPaths }
     val targets = facts.declarations().flatMap { element ->
         val reference = element.declaredReference() ?: return@flatMap emptyList()

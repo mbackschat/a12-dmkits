@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParametersAreUnterminated
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -81,11 +80,7 @@ private fun JsonArray.readCriteria(): List<Criterion>? = map { entry ->
 }
 
 /** A member as A12's reader binds a `String`: absent is A12's empty default, a JSON string is its text. */
-private fun JsonObject.text(member: String): String? = when (val value: JsonElement? = this[member]) {
-    null -> ""
-    is JsonPrimitive -> value.takeIf { it.isString }?.content
-    else -> null
-}
+private fun JsonObject.text(member: String): String? = if (member in this) string(member) else ""
 
 /** A list member of objects; absent is A12's empty default. */
 private fun JsonObject.objects(member: String): List<JsonObject>? = when (val value = this[member]) {

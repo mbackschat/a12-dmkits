@@ -351,7 +351,7 @@ public final class RuleValidator {
         }
         List<String> declared = declaredLocales(modelJson);
         return rule.messages().stream().map(LocalizedText::locale).distinct()
-                .filter(locale -> declared.stream().noneMatch(code -> A12Locales.same(code, locale))).toList();
+                .filter(locale -> !A12Locales.declares(declared, locale)).toList();
     }
 
     /** The locales the model's header declares — the set an error text is actually checked for. */

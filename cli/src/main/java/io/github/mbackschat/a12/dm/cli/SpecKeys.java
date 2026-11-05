@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +48,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 public final class SpecKeys {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    /** One validator per schema name: a bundled schema never changes, and an {@code apply} batch asks once per op. */
+    private static final Map<String, SpecKeys> BY_NAME = new ConcurrentHashMap<>();
     private final Node root;
 
     private SpecKeys(Node root) {
@@ -58,6 +61,10 @@ public final class SpecKeys {
      * subschema with a JSON Pointer after {@code #} (for example {@code apply#/$defs/metaModify}).
      */
     public static SpecKeys forSchema(String name) {
+        return BY_NAME.computeIfAbsent(name, SpecKeys::load);
+    }
+
+    private static SpecKeys load(String name) {
         int hash = name.indexOf('#');
         String resourceName = hash < 0 ? name : name.substring(0, hash);
         String pointer = hash < 0 ? "" : name.substring(hash + 1);

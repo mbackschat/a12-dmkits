@@ -39,7 +39,7 @@ final class LocalizedEntries {
             }
         }));
         textByLocale.forEach((locale, text) -> {
-            if (declared.stream().noneMatch(code -> A12Locales.same(locale, code))) {
+            if (!A12Locales.declares(declared, locale)) {
                 append(array, locale, text);
             }
         });
@@ -48,16 +48,17 @@ final class LocalizedEntries {
     /** Replace the text of {@code element[key]}'s entry for {@code locale}, or append one. */
     static void upsert(ObjectNode element, String key, String locale, String text) {
         ArrayNode array = element.has(key) ? (ArrayNode) element.get(key) : element.putArray(key);
+        String written = A12Locales.key(locale);
         for (JsonNode entry : array) {
-            if (A12Locales.same(locale, entry.path(DmKeys.LOCALE).asText())) {
-                ((ObjectNode) entry).put(DmKeys.LOCALE, A12Locales.key(locale)).put(DmKeys.TEXT, text);
+            if (written.equals(keyOf(entry))) {
+                ((ObjectNode) entry).put(DmKeys.LOCALE, written).put(DmKeys.TEXT, text);
                 return;
             }
         }
         append(array, locale, text);
     }
 
-    /** The key of an entry's locale, for matching a removal by locale. */
+    /** The key of an entry's locale, for matching an entry by locale. */
     static String keyOf(JsonNode entry) {
         return A12Locales.key(entry.path(DmKeys.LOCALE).asText());
     }

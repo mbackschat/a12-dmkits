@@ -3,6 +3,7 @@ public final class io.github.mbackschat.a12.dm.core.A12Ints
   public static java.util.Optional<java.lang.Integer> value(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.core.A12Locales
+  public static boolean declares(java.util.Collection<java.lang.String>, java.lang.String)
   public static java.lang.String key(java.lang.String)
   public static boolean same(java.lang.String, java.lang.String)
 
