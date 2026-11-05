@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test
  * name once wherever it stands, its duplicate class reads only the three entries it holds, and every entry beyond
  * those draws a codeless capacity sentence. `The error code is empty.`, which an absent or zero-length code draws
  * beside `MVK_ERROR_CODE_MISSING`, is published as `RK_ERROR_CODE_EMPTY` (KF579), and an unbuildable model only has to be reported so.
+ * A names-only target such as `Reference` names a child of the rule element, so it names nothing, and beside a
+ * condition that does not parse it still reports only its pair (a12-kernel-lean SPEC-2026-11-05-05).
  * The -11 rows add a model with no declared locale, a group as the error target, two texts for one locale in either
  * order, and a five-entry sort list, which draws the capacity sentence twice.
  *
@@ -53,6 +55,9 @@ class CheckerDeclarationWithholdingAgreementTest {
         "target, tab" to RuleRow(target = "../NoSuchField", texts = mapOf("en_US" to tab)),
         "target, second locale missing" to RuleRow(target = "../NoSuchField", bilingual = true),
         "target, broken condition" to RuleRow(target = "../NoSuchField", condition = "FieldFilled(NoSuchField)"),
+        "names-only target" to RuleRow(target = "Reference"),
+        "names-only target, unparseable condition" to RuleRow(target = "Reference", condition = "FieldFilled(Reference"),
+        "twin unparseable condition" to RuleRow(condition = "FieldFilled(Reference"),
         "condition" to RuleRow(condition = "FieldFilled(NoSuchField)"),
         "condition, reserved name" to RuleRow(condition = "FieldFilled(NoSuchField)", name = "vk_vkProbe"),
         "condition, no code" to RuleRow(condition = "FieldFilled(NoSuchField)", code = null),
@@ -146,6 +151,8 @@ class CheckerDeclarationWithholdingAgreementTest {
         assertEquals(listOf("MVK_ERROR_MESSAGE_MISSING", "RULE_HAS_NO_ERRORTEXT"), a12("twin no message"))
         assertEquals(listOf("MVK_INVALID_ENTITY"), a12("condition, tab"))
         assertEquals(listOf("INVALID_CHARACTERS"), a12("twin tab"))
+        assertEquals(listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD), a12("names-only target, unparseable condition"))
+        assertEquals(listOf("MVK_EXPECTED_TOKEN_NOT_FOUND"), a12("twin unparseable condition"))
         assertEquals(listOf(SORT_TYPE, SORT_TYPE), a12("sort two opaque"))
         assertEquals(listOf(DUPLICATE, SORT_TYPE), a12("sort opaque thrice"))
         assertEquals(listOf(DUPLICATE, "RK_SORT_LIST_ABOVE_CAPACITY"), a12("sort two names twice"))

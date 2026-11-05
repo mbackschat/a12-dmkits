@@ -36,7 +36,9 @@ import java.nio.file.Path
  * reversed, they draw `CLOSED`, `PENDING`, `OPEN` if the map decides, `OPEN, CLOSED, PENDING` if declaration does,
  * and `PENDING, CLOSED, OPEN` if the second occurrence does. `Frequency` and `Line` separate `computeIfAbsent`'s
  * fill from `put`'s: `QUARTERLY` and `ONCE` share a bucket, where the newer key goes first, and `Line`'s thirteen
- * values cross the resize threshold, which `computeIfAbsent` acts on only at its next call.
+ * values cross the resize threshold, which `computeIfAbsent` acts on only at its next call. `Plan`'s eight values
+ * share one of the sixteen buckets, so its eighth key resizes the table where a ninth key would treeify a larger
+ * one; the bucket's keys split by their fifth hash bit, which a map that did not resize would leave interleaved.
  *
  * Both columns are ordered lists: A12's sentences as `ModelConsistencyException` carries them, and the checker's
  * findings as `check` returns them, each restricted to the basic sentences.
@@ -51,7 +53,8 @@ class CheckerBasicSentenceOrderAgreementTest {
         .rootGroup("Policy") { p -> p.stringField("Ref") { }.stringField("Code") { }
             .enumField("Status") { it.value("OPEN").value("CLOSED").value("PENDING") }
             .enumField("Frequency") { e -> FREQUENCIES.forEach { e.value(it) } }
-            .enumField("Line") { e -> LINES.forEach { e.value(it) } } }
+            .enumField("Line") { e -> LINES.forEach { e.value(it) } }
+            .enumField("Plan") { e -> PLANS.forEach { e.value(it) } } }
         .build().toJson()
 
     @Test
@@ -160,6 +163,16 @@ class CheckerBasicSentenceOrderAgreementTest {
         assertEquals(LINE_THIRD_ORDER, ourRepeated(json), "the checker's repeated values, in order")
     }
 
+    /** Seven keys in one bucket leave the table at 16; the eighth doubles it (a12-kernel-lean SPEC-2026-11-05-05). */
+    @Test
+    fun anEighthKeyInOneBucketResizesTheMap() {
+        for ((count, expected) in listOf(7 to PLAN_SEVEN_ORDER, 8 to PLAN_EIGHT_ORDER)) {
+            val json = repeating("Plan") { values -> values.toList().take(count).forEach { values.add(it.deepCopy<ObjectNode>()) } }
+            assertEquals(expected, a12Repeated(json), "A12's repeated values of $count plans, in order")
+            assertEquals(expected, ourRepeated(json), "the checker's repeated values of $count plans, in order")
+        }
+    }
+
     private fun repeating(field: String, edit: (ArrayNode) -> Unit): String {
         val root = mapper.readTree(base) as ObjectNode
         edit(elements(root).single { it.path("name").asText() == field }
@@ -235,6 +248,16 @@ class CheckerBasicSentenceOrderAgreementTest {
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val LINE_ORDER = listOf("CYBER", "FLOOD", "AUTO", "TRAVEL", "FARM", "LEGAL", "DENTAL", "HEALTH", "HOME", "PET", "THEFT", "LIFE", "BOAT")
+
+        /** Every one in bucket 14 of 16; `R1`, `S2`, `T3` and `U4` have the fifth spread hash bit clear, the others set. */
+        val PLANS = listOf("PLAN_R1", "PLAN_A0", "PLAN_S2", "PLAN_B1", "PLAN_T3", "PLAN_C2", "PLAN_U4", "PLAN_D3")
+
+        /** Measured through `BoundModel`, kernel 31.1.1, 2026-11-05: newest first, one bucket. */
+        val PLAN_SEVEN_ORDER = listOf("PLAN_U4", "PLAN_C2", "PLAN_T3", "PLAN_B1", "PLAN_S2", "PLAN_A0", "PLAN_R1")
+
+        /** Measured through `BoundModel`, kernel 31.1.1, 2026-11-05: split into bucket 14 and then 30. Without the
+         *  resize the bucket would read `D3`, `U4`, `C2`, `T3`, `B1`, `S2`, `A0`, `R1`. */
+        val PLAN_EIGHT_ORDER = listOf("PLAN_U4", "PLAN_T3", "PLAN_S2", "PLAN_R1", "PLAN_D3", "PLAN_C2", "PLAN_B1", "PLAN_A0")
 
         /** Measured through `BoundModel`, kernel 30.8.1, 2026-10-29. */
         val LINE_THIRD_ORDER = listOf("CYBER", "FLOOD", "TRAVEL", "DENTAL", "AUTO", "FARM", "LEGAL", "HEALTH", "HOME", "PET", "THEFT", "LIFE", "BOAT")

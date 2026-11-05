@@ -7432,6 +7432,8 @@ Reported by the portable checker as a WITHHOLDING at report assembly: every `MES
 | **BOTH name nothing** | **`MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD`** |
 | the target names nothing, a control character in the text | the same pair |
 | the target names nothing, a parameter the condition does not read | the same pair |
+| the target names nothing by a bare name (`Reference`, a child of the rule element), the condition unparseable | the same pair |
+| a SOUND target, the same unparseable condition — the twin | **`MVK_EXPECTED_TOKEN_NOT_FOUND`** |
 | a SOUND target, the same control character — the twin | **`INVALID_CHARACTERS`** |
 | a SOUND target, the same parameter — the twin | **`INVALID_FIELD`** |
 
@@ -7447,7 +7449,7 @@ Reported by the portable checker as a WITHHOLDING at report assembly: every `MES
 
 Reported by the portable checker as a WITHHOLDING applied where the report is assembled, not inside any family: it is A12 declining to examine the declaration, and a family-local version would have to be repeated into every family added later.
 
-*Locked by:* `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`.
+*Locked by:* `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`; the bare-name and unparseable-condition rows by `adapter.laws.CheckerDeclarationWithholdingAgreementTest`, A12 and the portable checker agreeing (2026-11-05, kernel 31.1.1).
 
 ## §13 supplement — inside a condition, a name that does not resolve withholds the syntax classes beside it (measured, 2026-09-13) <a id="kf340"></a>
 
@@ -15953,7 +15955,7 @@ The checker reported nothing on these refusals except the `errorMessage` shapes 
 | two type definitions sharing the id `""` or `Beta` | no model: `IllegalArgumentException` "The type definition id '…' already exists." |
 
 - **Definitions come before elements, one sentence per defect, in id order.** Declaration order would put a name sentence first, and `HashMap` order would state `Gamma` before `Beta`; only id order gives the first row. The expansion rewrites the definitions sorted by id (`TypeDefCache.getOrderedTypeDefs`, `Comparator.comparing(FieldTypeDefinition::getId)`, source-read) before `BasicConsistencyCheck` walks them, so ids compare by UTF-16 code unit: uppercase before lowercase, and `Ü` after both, where a case-blind or collating order would put `deductible` second.
-- **Repeated values follow the map.** `Java8Utils.findDuplicates` collects them into a `HashMap` by calling `computeIfAbsent` at every occurrence after a value's first (source-read). First-occurrence order would give `OPEN, CLOSED, PENDING`, and second-occurrence order `PENDING, CLOSED, OPEN`; the row gives neither. `computeIfAbsent` fills the map differently from `put`, and the next three rows each turn on one difference: it puts a new key at the head of its bucket, so `QUARTERLY`, met after `ONCE` in their shared bucket, is stated first; it resizes before a call once the map holds more than twelve keys rather than after the insertion that crossed the line, so thirteen values stay in sixteen buckets; and a third occurrence is such a call, so it resizes them into thirty-two.
+- **Repeated values follow the map.** `Java8Utils.findDuplicates` collects them into a `HashMap` by calling `computeIfAbsent` at every occurrence after a value's first (source-read). First-occurrence order would give `OPEN, CLOSED, PENDING`, and second-occurrence order `PENDING, CLOSED, OPEN`; the row gives neither. `computeIfAbsent` fills the map differently from `put`, and the next three rows each turn on one difference: it puts a new key at the head of its bucket, so `QUARTERLY`, met after `ONCE` in their shared bucket, is stated first; it resizes before a call once the map holds more than twelve keys rather than after the insertion that crossed the line, so thirteen values stay in sixteen buckets; and a third occurrence is such a call, so it resizes them into thirty-two. An eighth key joining a bucket of seven also resizes a table of sixteen (kernel 31.1.1, 2026-11-05, requested by a12-kernel-lean as SPEC-2026-11-05-05): eight values sharing bucket 14, four with the fifth spread hash bit clear and four with it set, are stated as the two halves of the split, where seven of them read newest first from one bucket (`CheckerBasicSentenceOrderAgreementTest.anEighthKeyInOneBucketResizesTheMap`).
 - **A repeated id never reaches the check.** The expansion throws before the model exists, the empty id included, so one empty-id sentence per definition is all A12 can state.
 
 The checker stated the definitions' sentences in declaration order, after the elements', and the repeated values in declaration order, and read a repeated id as a model. It now orders both as A12 does, emulating the map's iteration with Java's `String.hashCode`, and reports a repeated id as `CK_MODEL_NOT_BUILDABLE`. *Corrected 2026-10-29:* the emulation first modelled a map filled by `put` at each second occurrence and was checked against exactly that, so it agreed with A12 only where no two repeated values shared a bucket and no resize was due; a12-kernel-lean's rows (SPEC-2026-10-29-01) disagreed with it on all four of their Enumerations. It now models `computeIfAbsent` at every repeat occurrence and is checked against the real map filled as `findDuplicates` fills it.
