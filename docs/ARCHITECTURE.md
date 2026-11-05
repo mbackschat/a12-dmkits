@@ -225,17 +225,18 @@ The typed condition/computation language: author, render (EN/DE), read back, val
 
 **Why `dsl` is one flat package of ~105 files (and stays flat).** Its spine is **sealed** — `Condition` and `Calculation` are `sealed interface`s with dozens of permitted subtypes each, plus a sealed operand hierarchy. The project has **no `module-info.java`**, so everything compiles into the *unnamed module*, and the JLS requires every permitted subtype of a sealed type to share the **same package** as its parent there. Sub-packaging (e.g. `dsl.conditions`) therefore wouldn't compile; the only escapes are adding a `module-info` (a heavy, risky change against the kernel/Groovy/native interplay for no navigability win) or dropping `sealed` (which forfeits the exhaustive-`switch` the renderer/visitors rely on — PROJECT-DESIGN §18.5). The package is one-class-per-file and nodes are named after the operators they model, so navigate by filename.
 
-### 3.3 `dm.modelkit` — structure authoring & editing (28 files)
+### 3.3 `dm.modelkit` — structure authoring & editing
 
 The structural peer of rulekit: build a model from scratch, and read/round-trip/edit its structure (fields, groups, type-defs, includes, doc config). Jackson tree surgery over its own package-private node helpers (`DmNodes`), re-bound to the kernel gate.
 
 | Class | Role |
 |---|---|
 | `DocumentModelDraft` | the from-scratch fluent builder (`Builder`/`GroupBuilder`/`TypeDefBuilder`/… nested; the field-kind builders extracted to their own files — `StringFieldBuilder`, `NumberFieldBuilder`, `EnumFieldBuilder`, `Date*FieldBuilder`, `CustomFieldBuilder`, …) |
-| `ModelDocument` | read an existing model's structure + tree-surgery edits (add/modify/remove fields & groups, includes, `reprefixIds`, mount detection) |
+| `ModelDocument` | read an existing model's structure + tree-surgery edits (add/modify/remove/rename/move fields & groups, type-defs, doc config; id rebasing through `SubtreeReprefix`) |
+| `ModelIncludes` | the include half of `ModelDocument`'s edits: header `modelReferences` (includes, type-def imports) kept in step with the mount groups an include places — mount, extract, inline, repoint, remove |
 | `FieldKind`, `FieldModification`, `FieldTypeSpec`, `MountOptions`, `AttachmentRule`, `IncludeLevel`, `DatePrecision` | the structural value types |
 
-### 3.4 `dm.edit` — orchestration over both kits (8 files)
+### 3.4 `dm.edit` — orchestration over both kits
 
 The **only** layer that imports both kits. `EditSession` threads one DM-JSON document through a sequence of structure + rule edits and validates **once** at the end (the read → ordered surgery → one terminal gate → write pattern the CLI `apply` verb exposes). It owns the `*Editor` family — `GroupEditor`, `FieldEditor`, `RuleEditor`, `ComputationEditor`, `ConfigEditor`, `IncludeEditor`, `TypeDefEditor` — the session-bound editor ergonomics (PROJECT-DESIGN D7 / API-GUIDE [§5c](API-GUIDE.md#refs-and-editors)).
 
