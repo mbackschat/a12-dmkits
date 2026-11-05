@@ -23862,9 +23862,15 @@
         "checker": [
           "the admission grid"
         ],
-        "dmtool-cli": [],
-        "json-schema-import": [],
-        "json-schema-export": [],
+        "dmtool-cli": [
+          "authoring and evaluation"
+        ],
+        "json-schema-import": [
+          "carriage"
+        ],
+        "json-schema-export": [
+          "carriage"
+        ],
         "a12-kernel-lean": [
           "sumofterms admission and evaluation"
         ]
@@ -23935,19 +23941,34 @@
           }
         },
         "dmtool-cli": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "operators serves SumOfTerms, rule add and computation add persist it past the kernel gate, and model eval and model compute evaluate it through the interpreter (KF670).",
+          "evidence": {
+            "authoring and evaluation": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/SumOfTermsVerbTest.java#aTermSumIsAuthoredCheckedAndEvaluatedThroughTheCli",
+              "witness": "A term-sum rule fires on the heavy order and not on the light one, and the computed total is 1150 and 75."
+            }
+          }
         },
         "json-schema-import": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "No JSON Schema keyword states a term sum, so its rules and computation ride x-a12-rule and x-a12-computation verbatim and import restores them (KF670).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/SumOfTermsCarriageTest.java#aTermSumRuleAndComputationSurviveTheRoundTripInBothWireForms",
+              "witness": "Two term-sum rules and a computation survive bare JSON Schema and wrapped OpenAPI 3.1 unchanged and kernel-admitted."
+            }
+          }
         },
         "json-schema-export": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "No JSON Schema keyword states a term sum, so its rules and computation ride x-a12-rule and x-a12-computation verbatim and import restores them (KF670).",
+          "evidence": {
+            "carriage": {
+              "reference": "schemakit/src/test/java/io/github/mbackschat/a12/dm/schemakit/SumOfTermsCarriageTest.java#aTermSumRuleAndComputationSurviveTheRoundTripInBothWireForms",
+              "witness": "Two term-sum rules and a computation survive bare JSON Schema and wrapped OpenAPI 3.1 unchanged and kernel-admitted."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "APPLIED",
