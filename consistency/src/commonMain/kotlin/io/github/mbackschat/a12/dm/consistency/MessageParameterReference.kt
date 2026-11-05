@@ -51,7 +51,8 @@ internal fun TrackedFactBase.completedFieldDefect(parameter: MessageParameter.Fi
 }
 
 /**
- * Message membership includes fields reached through group reads and the computation's own target.
+ * Message membership includes fields reached through group reads, the computation's own target, and the index field
+ * of each level the condition iterates in parallel, which no condition need name (KERNEL-FINDINGS KF675).
  *
  * A keyed read is no member of an unkeyed parameter, a keyed group read none of its fields: each keyed occurrence is
  * taken out once, so the same path read plainly elsewhere still counts (KERNEL-FINDINGS KF562). The star gate reads
@@ -65,7 +66,7 @@ internal fun TrackedFactBase.entitiesReadBy(element: TrackedDeclaration): Member
     keyedReadPaths(element, group).forEach { read.remove(it) }
     val paths = read.flatMap { messageReferenceFootprint(it) }.toSet() +
         listOfNotNull(element.declaredReference()?.takeIf { it.role == ReferenceRole.COMPUTED_TARGET }
-            ?.target?.let { (it as? Reference.Resolved)?.path })
+            ?.target?.let { (it as? Reference.Resolved)?.path }) + parallelIndexFields(element)
     return Membership(paths, if (element.kind == "Rule") "errorCondition" else "computation's own members")
 }
 

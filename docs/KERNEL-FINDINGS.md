@@ -16691,6 +16691,17 @@ The changelog says an unmatched parallel side "could have" thrown and now shows 
 
 So "the empty value" is the unfilled rendering of the field's type, `0` for a scale-zero Number ([IF121](INTERPRETER-FINDINGS.md#if121)), not an empty string; and a validator's rejection does not withhold the stored text from a message. A12 admits these parameters only for a field the condition reads (`INVALID_FIELD` otherwise), which is why the custom row's condition is `FieldFilled(Note) Or FieldFilled(Code)`.
 
+**Extended 2026-11-05 — names, index fields and Enumerations on the unmatched side.** On the same join with an Enumeration `Grade` (category `Band`: `A`→`Hi`, `B`→`Lo`) added to both sides, Eng's demand graded `B` and Ops' supply `A`:
+
+| parameter | Eng (Supply unmatched) | Ops (Demand unmatched) |
+|---|---|---|
+| `$/…/Demand/Headcount$`, `$/…/Supply/Headcount$` (names) | `Headcount`, `Headcount` | `Headcount`, `Headcount` |
+| `$/…/Demand/Department.value$`, `$/…/Supply/Department.value$` (the index fields) | `Eng`, empty | empty, `Ops` |
+| `$/…/Grade.value$`, Demand then Supply | `B`, empty | empty, `A` |
+| `$/…/Grade->Band$`, Demand then Supply | `Lo`, empty | empty, `Hi` |
+
+A name is the declared name whichever side is unmatched; an index field, an Enumeration's stored token and its category render empty there. A reading that took the unmatched level's first row would have rendered `Sales` and its grade. The index-field parameters are admitted although the condition names neither ([KF675](#kf675)). a12-kernel-lean's SPEC-2026-11-05-03 measured these rows on its own carrier.
+
 *Locked by:* `adapter.laws.UnmatchedParallelValueMessageDiffTest`, `adapter.laws.CustomFieldValueParameterDiffTest`.
 
 ## §9 supplement — kernel 31.1.1 reads `BaseYear` as the model's base year inside a `Having` filter of `Sum` and of `SumOfTerms`, and inside a `SumOfTerms` term (differential, both strategies, kernel 31.1.1, 2026-11-05) <a id="kf673"></a>
@@ -16728,3 +16739,48 @@ The message row draws the unresolved-entity class, not `INVALID_FIELD`, which a 
 **The checker had resolved such a path.** It reported nothing on the computed-field and condition rows, `MVK_ERROR_FIELD_NOT_REFERENCED` on the error-target rows and `INVALID_FIELD` on the message row. It now resolves a reference to a field or group only, so every row agrees.
 
 *Locked by:* `adapter.laws.CheckerExecutableAsReferenceAgreementTest`, A12 and the portable checker.
+
+## §13 supplement — kernel 31.1.1 counts the index field of each level a condition iterates in parallel as read by it, and admits that level's row token only beside a condition that proves the row (Kernel gate, measured, kernel 31.1.1, 2026-11-05) <a id="kf675"></a>
+
+> Fold: pending — new to §13.
+
+Carrier: a shop whose `Ordered` and `Received` lines are both keyed by their String `Sku`. Each rule reports on `Ordered/Qty`, and reading a `Received` field unstarred joins the two groups row by row. Each row is one model with one message parameter.
+
+**Membership.** A join's index fields are members of the message although the condition names neither:
+
+| condition | parameter | A12 |
+|---|---|---|
+| `FieldsNotCollectivelyFilled(Ordered/Qty, Received/Qty)` | `$/Shop/Ordered/Sku.value$`, `$/Shop/Received/Sku.value$`, `$/Shop/Ordered/Sku$` | admitted |
+| `FieldFilled(Ordered/Qty) And FieldFilled(Received/Qty)` | `$/Shop/Ordered/Sku.value$` | admitted |
+| the join, the rule declared in `Ordered` | `$/Shop/Received/Sku.value$` | admitted |
+| a computation of `Ordered/Gap` from both quantities | `$/Shop/Received/Sku.value$` | admitted |
+| `FieldFilled(Ordered/Qty)`, nothing joined (control) | `$/Shop/Ordered/Sku.value$` | `INVALID_FIELD` |
+| a computation from `Ordered/Qty` alone (control) | `$/Shop/Ordered/Sku.value$` | `INVALID_FIELD` |
+| `Received*/Qty` starred beside `FieldFilled(Ordered/Qty)` | `$/Shop/Received/Sku.value$` | `INVALID_FIELD` |
+| the join (control) | `$/Shop/Received/Note.value$`, a payload field nobody reads | `INVALID_FIELD` |
+
+**The row token.** `$#/Shop/Ordered$` and `$#/Shop/Received$` name a level the condition iterates in parallel. Each is admitted only where the condition proves that level has a row: one AND arm suffices, and every OR arm must prove it. Otherwise it draws `INVALID_USE_OF_ITERATION_PARAM`:
+
+| condition | `$#…/Ordered$` | `$#…/Received$` |
+|---|---|---|
+| `FieldsNotCollectivelyFilled` over both quantities | refused | refused |
+| `FieldFilled(OQ) And FieldFilled(RQ)` | admitted | admitted |
+| `FieldFilled(OQ) Or FieldFilled(RQ)` | refused | refused |
+| `AllFieldsFilled(OQ, RQ)` | admitted | admitted |
+| `AtLeastOneFieldFilled(OQ, RQ)`, both sides in one call | refused | refused |
+| `AtLeastOneFieldFilled(OQ, Ordered/Note) And FieldFilled(RQ)` | admitted | admitted |
+| `MoreThanOneFieldFilled(OQ, Ordered/Note) And FieldFilled(RQ)` | admitted | admitted |
+| `GroupFilled(Ordered) And FieldFilled(RQ)` | admitted | admitted |
+| `AllGroupsFilled(Ordered, Received)` | admitted | admitted |
+| `OQ > RQ` | refused | refused |
+| `FieldNotFilled(OQ) And FieldFilled(RQ)` | refused | admitted |
+| the join, the rule declared in `Ordered` | refused | refused |
+| `FieldFilled(OQ)`, nothing joined (control) | admitted | — |
+
+So `AtLeastOneFieldFilled` and `MoreThanOneFieldFilled` prove a level only when every operand lies in it, while one operand suffices for the all-filled pair. A keyed token is stricter: neither of the first two proves it there ([KF546](#kf546)). `AtLeastOneGroupFilled` is unmeasured.
+
+*Mechanism, a hypothesis from a source read at `a12-kernel` `eec9134`, not measured beyond the rows above:* `ReferencedIdsUtil.getIndexFieldIfParallelIteration` adds the index field of every parallel-marked reference to the set a message parameter is looked up in, and `RuleErrorTextIterationParamVisitor` walks the condition for a presence call over the token's level. The rule-declared-in-`Ordered` rows show the second marking pass ([KF376](#kf376)) reaching the rule's own group.
+
+**The portable checker over-reported the membership rows (`INVALID_FIELD`) and was silent on every refused token.** It now reads the marking the filtered-entity family already models and agrees on every row. It declines a token where the proof would rest on `AtLeastOneGroupFilled`, or on a starred, keyed or filtered operand. a12-kernel-lean's SPEC-2026-11-05-03 measured the `FieldsNotCollectivelyFilled` rows on its own carrier.
+
+*Locked by:* `adapter.laws.CheckerParallelJoinMessageAgreementTest`, A12 and the portable checker; the rendering of these parameters is [KF672](#kf672)'s.

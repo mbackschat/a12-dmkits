@@ -32,7 +32,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
  *
  * Keyed parameters require a matching field/group presence proof: one AND arm, every OR arm, or an
  * all-filled quantifier. The owned SPEC11-01 grid separates this from mere reference membership.
- * The parallel-iteration presence visitor remains outside this measured subset.
+ * An unkeyed token over a level the condition iterates in parallel meets the same kind of proof last
+ * ([parallelRowTokenDefect], KERNEL-FINDINGS KF675).
  *
  * **`RootGroup` is chain-relative**, naming the root of the rule's OWN ancestor chain rather than the model's
  * first declared root — measured from a rule under a second root, where the first root's name is refused.
@@ -87,8 +88,8 @@ internal fun TrackedFactBase.completedGroupDefect(
 
     val available = ruleGroup == named || ruleGroup.startsWith("$named/") || paths.flatMap { messageReferenceFootprint(it) }.any { it == named || it.startsWith("$named/") }
     if (!available) return MessageCompletion.Refused(GROUP)
-    return if (conditionRidesUnstarred(named, ruleGroup, element, references)) MessageCompletion.Accepted
-        else MessageCompletion.Refused(STARRED_ITERATION)
+    if (!conditionRidesUnstarred(named, ruleGroup, element, references)) return MessageCompletion.Refused(STARRED_ITERATION)
+    return parallelRowTokenDefect(named, element)
 }
 
 /** Index/group metadata follows authored unkeyed paths, not fields expanded from a group (SPEC11-01). */

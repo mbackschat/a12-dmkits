@@ -24234,17 +24234,19 @@
       }
     },
     "kf672": {
-      "sha256": "f0f10bf80f7eb46f8f178bbcf0e4c6302cf566c1646c49216d36c678a95b5419",
+      "sha256": "3e7b471f69f2fb9ef2de742fd9a9e62479acde8758dd8bdd60115817798625d7",
       "task": "K31",
       "scope": {
         "adapter": [
           "the unmatched side",
-          "the custom-typed value"
+          "the custom-typed value",
+          "the unmatched name, index and enumeration"
         ],
         "dmkits": [],
         "interpreter": [
           "the unmatched side",
-          "the custom-typed value"
+          "the custom-typed value",
+          "the unmatched name, index and enumeration"
         ],
         "checker": [],
         "dmtool-cli": [],
@@ -24264,6 +24266,10 @@
             "the custom-typed value": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomFieldValueParameterDiffTest.kt#aCustomTypedValueRendersInARuleMessage",
               "witness": "An accepted, a rejected and an absent custom-typed code render as stored on both strategies."
+            },
+            "the unmatched name, index and enumeration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedParallelValueMessageDiffTest.kt#anUnmatchedSideRendersNamesAsNamesAndTheRestEmpty",
+              "witness": "Names render as names, and an unmatched index field, Enumeration token and category render empty, on both strategies."
             }
           }
         },
@@ -24283,6 +24289,10 @@
             "the custom-typed value": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CustomFieldValueParameterDiffTest.kt#aCustomTypedValueRendersInARuleMessage",
               "witness": "The interpreter's texts equal both strategies' on the accepted, rejected and absent rows."
+            },
+            "the unmatched name, index and enumeration": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnmatchedParallelValueMessageDiffTest.kt#anUnmatchedSideRendersNamesAsNamesAndTheRestEmpty",
+              "witness": "The interpreter's texts equal both strategies' on the names, index fields, Enumeration tokens and categories of both unmatched rows."
             }
           }
         },
@@ -24549,6 +24559,86 @@
               "witness": "spec/01 §3.1 adopts KF674 (ExecutableReferenceLocks.lean); the error-target row stays SG9."
             }
           }
+        }
+      }
+    },
+    "kf675": {
+      "sha256": "b701911beb787ce84a0376d3e3c006e276fee16d242df40f3e77803a18cb47d3",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "index field as member",
+          "parallel row token"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "index field as member",
+          "parallel row token"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names, measured on kernel 31.1.1.",
+          "evidence": {
+            "index field as member": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#theJoinsIndexFieldsAreMembersOfTheMessage",
+              "witness": "CheckerParallelJoinMessageAgreementTest pins A12's class on every membership row, a computation and the controls included."
+            },
+            "parallel row token": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#aJoinedLevelsRowTokenNeedsTheConditionToProveTheRow",
+              "witness": "CheckerParallelJoinMessageAgreementTest pins A12's class on every condition carrier of the row token."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: A12 and the portable checker agree on every row.",
+          "evidence": {
+            "index field as member": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#theJoinsIndexFieldsAreMembersOfTheMessage",
+              "witness": "CheckerParallelJoinMessageAgreementTest compares A12 and the portable checker on every membership row, a computation and the controls included."
+            },
+            "parallel row token": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerParallelJoinMessageAgreementTest.kt#aJoinedLevelsRowTokenNeedsTheConditionToProveTheRow",
+              "witness": "CheckerParallelJoinMessageAgreementTest compares A12 and the portable checker on every condition carrier of the row token."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
         }
       }
     }
