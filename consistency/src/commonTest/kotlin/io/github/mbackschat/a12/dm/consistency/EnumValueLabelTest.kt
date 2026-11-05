@@ -106,6 +106,10 @@ class EnumValueLabelTest {
             codes("""[{"value":"BASIC","label":[]},{"value":"PLUS",${label("en_US", "Plus")}}]""")
         actual["every label text blank"] =
             codes("""[{"value":"BASIC",${label("en_US", "")}},{"value":"PLUS",${label("en_US", "")}}]""")
+        actual["an EMPTY value token, labelled"] =
+            codes("""[{"value":"",${label("en_US", "None")}},{"value":"PLUS",${label("en_US", "Plus")}}]""")
+        actual["an EMPTY value token labelled with an EMPTY text"] =
+            codes("""[{"value":"",${label("en_US", "")}},{"value":"PLUS",${label("en_US", "Plus")}}]""")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["no labels at all — the control"] = emptyList()
@@ -116,6 +120,8 @@ class EnumValueLabelTest {
         expected["TWO labels for the same locale on one value"] = emptyList()
         expected["an EMPTY label ARRAY on one value"] = listOf(countInvalid)
         expected["every label text blank"] = listOf(displayShort)
+        expected["an EMPTY value token, labelled"] = listOf(displayShort, "MVK_INTERNAL_VALUE_MISSING")
+        expected["an EMPTY value token labelled with an EMPTY text"] = listOf("CK_MODEL_NOT_BUILDABLE")
         assertEquals(expected, actual, "a declared enumeration's per-locale labels")
     }
 

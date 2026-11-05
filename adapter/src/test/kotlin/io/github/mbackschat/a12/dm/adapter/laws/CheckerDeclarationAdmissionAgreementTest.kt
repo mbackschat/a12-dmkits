@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.NullNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
+import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.core.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -36,6 +37,14 @@ class CheckerDeclarationAdmissionAgreementTest {
         "a repeated label" to enumRow(repeatedLabel) to setOf("MVK_DISPLAY_VALUES_DUPLICATE"),
         "a repeated token" to enumRow(listOf(value("BASIC"), value("BASIC"))) to
             setOf("MVK_INTERNAL_VALUES_DUPLICATE", "RK_ENUM_VALUE_DUPLICATE"),
+        // An empty token is a token while the enumeration is unlabelled, and no token once it is labelled; labelled
+        // with its own empty text, A12 cannot build the model (KERNEL-FINDINGS KF321). A checker that reads only an
+        // absent `value` as tokenless passes the second row silently.
+        "an empty token, unlabelled — the control" to enumRow(listOf(value(""), value("PLUS"))) to admitted,
+        "an empty token, labelled" to enumRow(listOf(value("", "en_US" to "None"), value("PLUS", "en_US" to "Plus"))) to
+            setOf("MVK_INTERNAL_VALUE_MISSING", INCOMPLETE),
+        "an empty token labelled with an empty text" to
+            enumRow(listOf(value("", "en_US" to ""), value("PLUS", "en_US" to "Plus"))) to setOf(NOT_BUILDABLE),
     ))
 
     @Test
@@ -335,8 +344,18 @@ class CheckerDeclarationAdmissionAgreementTest {
     private fun assertAgreement(rows: Map<String, Set<String>>, build: (String) -> String) =
         assertAgreement(rows.entries.associate { (id, expected) -> (id to build(id)) to expected })
 
-    /** A12's classes, a codeless sentence named as the checker names it and an unnamed one left out. */
-    private fun kernel(json: String): Set<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
+    /**
+     * A12's classes, a codeless sentence named as the checker names it and an unnamed one left out; a model A12 reads
+     * and then cannot build is the checker's [NOT_BUILDABLE].
+     */
+    private fun kernel(json: String): Set<String> = try {
+        notifications(json)
+    } catch (unbuilt: ConsistencyCheckFailedException) {
+        check(unbuilt.message.orEmpty().startsWith("the kernel could not build this model")) { unbuilt }
+        setOf(NOT_BUILDABLE)
+    }
+
+    private fun notifications(json: String): Set<String> = oracle.checkConsistency(json, ReferenceResolvers.selfContained())
         .filter { it.severity() == Severity.ERROR }
         .map { Regex("\\[(\\w+)]$").find(it.message().trim())?.groupValues?.get(1) ?: codelessClass(it.message()) }
         .filter { it != UNKEYED_A12_CLASS }.toSet()

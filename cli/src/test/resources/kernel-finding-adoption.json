@@ -21160,6 +21160,7 @@
         "dmkits": [],
         "interpreter": [],
         "checker": [
+          "empty token",
           "enum value label"
         ],
         "dmtool-cli": [],
@@ -21191,9 +21192,13 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "The 2026-11-05 rows (an empty token in a labelled enumeration) are not mirrored: the checker treats only an absent token as missing. The earlier rows stay locked by EnumValueLabelTest.",
+          "state": "APPLIED",
+          "basis": "The checker mirrors every row: EnumValueLabelTest locks its verdicts, and an adapter differential compares it with A12 on the 2026-11-05 empty-token rows.",
           "evidence": {
+            "empty token": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAdmissionAgreementTest.kt#theLabelFamilyJudgesEachEnumeration",
+              "witness": "CheckerDeclarationAdmissionAgreementTest pins A12 and the checker on an empty token unlabelled, labelled, and labelled with an empty text."
+            },
             "enum value label": {
               "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/EnumValueLabelTest.kt#theLabelTextsMustBeDistinctWithinOneLanguage",
               "witness": "EnumValueLabelTest locks this finding's rows; theLabelTextsMustBeDistinctWithinOneLanguage is one of them."

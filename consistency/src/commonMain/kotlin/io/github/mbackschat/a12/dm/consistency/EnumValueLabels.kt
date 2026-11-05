@@ -24,6 +24,10 @@ import kotlinx.serialization.json.JsonObject
  *   `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` for that locale;
  * - a labelled value with no token draws `MVK_INTERNAL_VALUE_MISSING`.
  *
+ * An EMPTY token is a token while the enumeration is unlabelled and none once it is labelled, and labelled with its own
+ * empty text A12 cannot build the model at all (KERNEL-FINDINGS KF321). Only the empty string is measured; a token of
+ * spaces is left to the classes above.
+ *
  * The rows that separate this from kernel 30.8.1's law ("a label is carried only for a declared locale", KF569)
  * are the undeclared ones: a value labelled only for an undeclared locale beside an unlabelled value now draws both
  * the count and the locale class, where 30.8.1 admitted it.
@@ -66,6 +70,13 @@ private fun TrackedFactBase.labelFindings(
             // A later entry for one locale replaces an earlier one, as everywhere else A12 collects texts.
             .toMap()
     }
+    if (labelled.indices.any { index ->
+            labelled[index].string("value") == "" && declaredLocales.any { texts[index][it]?.string("text") == "" }
+        }) {
+        return listOf(finding(field, CK_MODEL_NOT_BUILDABLE,
+            "a labelled value of this enumeration has an empty token and an empty text, so A12 reads the model and " +
+                "then fails to build it — no consistency verdict about it exists"))
+    }
     val findings = mutableListOf<Finding>()
     if (values.isNotEmpty() && tokenless.size == values.size) {
         findings += finding(field, "MVK_INTERNAL_VALUES_MISSING",
@@ -79,7 +90,7 @@ private fun TrackedFactBase.labelFindings(
     val unanswered = declaredLocales.filter { locale ->
         labelled.indices.any { index ->
             val answered = texts[index][locale]?.string("text")?.isA12Blank() == false
-            if ("value" in labelled[index]) !answered else answered
+            if (labelled[index].carriesToken()) !answered else answered
         }
     }
     findings += unanswered.map { locale ->
@@ -87,12 +98,15 @@ private fun TrackedFactBase.labelFindings(
             "a labelled value of this enumeration lacks either its token or a text for `$locale`; A12 gives a " +
                 "labelled value a text for every declared locale and asks both to be filled, and a blank text is no text")
     }
-    if (labelled.any { "value" !in it }) {
+    if (labelled.any { !it.carriesToken() }) {
         findings += finding(field, "MVK_INTERNAL_VALUE_MISSING",
             "a labelled value of this enumeration carries no `value` token, which A12 refuses")
     }
     return findings.ifEmpty { repeatedLabelFindings(field, texts) }
 }
+
+/** Whether a labelled value carries a token: an empty one is none ([labelFindings]). */
+private fun JsonObject.carriesToken(): Boolean = "value" in this && string("value") != ""
 
 /**
  * The texts A12 asks to be distinct, and the scope of that law is ONE LANGUAGE.
