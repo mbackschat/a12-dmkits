@@ -91,3 +91,6 @@ include 'predicates'
 // for two source files. Re-split it if that wave ships and the over-declared dependency starts reaching a
 // real consumer; the rationale for splitting is recorded in RELEASE-SPEC §11's seventh artifact.
 include 'consistency-gate'
+
+// A failed guard must not hide the suites that depend on it under --continue, which CI runs with.
+apply from: 'gradle/continue-reports-every-failure.gradle'

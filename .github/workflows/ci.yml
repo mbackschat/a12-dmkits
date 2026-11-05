@@ -193,7 +193,10 @@ jobs:
         # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:verifyInterpreterDependencies :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :verifyPublishedPomsResolveInRepoCoordinates :noBackendTest :consistency:verifyCheckerMavenPublication -PrunFuzz
+        # `--continue` makes one red run report every failing lane rather than the first. Gradle still skips a task
+        # whose dependency failed, so gradle/continue-reports-every-failure.gradle turns each test task's
+        # guard-driving `dependsOn` into `finalizedBy` under it: one red guard no longer hides the suite it drives.
+        run: ./gradlew --no-daemon --continue test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:verifyInterpreterDependencies :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :verifyPublishedPomsResolveInRepoCoordinates :noBackendTest :consistency:verifyCheckerMavenPublication -PrunFuzz
 
       - name: Set up pnpm for the checker showcase
         uses: pnpm/action-setup@v4

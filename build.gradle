@@ -29,8 +29,10 @@ subprojects {
 // disagreement), goes only to an HTML report. On CI that report is not uploaded, so a red run was a diagnosis
 // dead end: the 2026-08-22 `deliveryGuardTest` failure could not be read at all, and it fails only on Linux, so
 // re-running locally reveals nothing. Cheap, and it turns every future CI red into something readable.
+// `AbstractTestTask`, not `Test`: a Kotlin/JS test task is not a `Test`, and under the narrower type its failure
+// logged only "AssertionError at <file>:<line>", the message reaching nobody but the XML (measured 2026-11-05).
 allprojects {
-    tasks.withType(Test).configureEach {
+    tasks.withType(AbstractTestTask).configureEach {
         testLogging {
             exceptionFormat = 'full'
             showStackTraces = true

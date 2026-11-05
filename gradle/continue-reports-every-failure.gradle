@@ -1,0 +1,43 @@
+// Under --continue, a test task must not lose its own failures to a failed guard it merely drives.
+//
+// The broad test tasks `dependsOn` their guard tasks (`:test` on the root and cli guards, `:cli:test` on the cli
+// guards, `:adapter:test` on the fixture guards, `:interpreter:jvmTest` on its doc guard) so that one plain run
+// always executes them; none of those edges carries data. Gradle never runs a task whose dependency failed, even
+// under --continue, so one red guard silently skipped the whole suite behind it: measured 2026-11-05 with a planted
+// failure in `:cli:staleGapGuardTest`, root `:docGuardTest` never ran and its own planted failure reached no log.
+// A finalizer runs whenever its task runs, failed or not, so moving those edges to `finalizedBy` keeps every guard
+// in the graph and lets every suite report. Only under --continue: without it the build stops at the first failure
+// anyway, and the guards keep running first, where a cheap red is the fastest answer.
+gradle.projectsEvaluated { evaluated ->
+    if (!evaluated.startParameter.continueOnFailure) return
+    def resolve = { project, dependency ->
+        if (dependency instanceof Task) return dependency
+        if (dependency instanceof TaskProvider) return dependency.get()
+        if (dependency instanceof CharSequence) return project.tasks.findByPath(dependency.toString())
+        null
+    }
+    // A verification task by type, by this build's `verify*` naming, or Kotlin's ABI check. `checkLegacyAbi` is the
+    // deprecated alias of `checkKotlinAbi` (its one action logs the deprecation, measured 2026-11-05), and the ABI
+    // golden-depth guards reach the check through it. Ordinary prerequisites (classes, jars, packing) stay real
+    // dependencies.
+    def verification = { task ->
+        task instanceof AbstractTestTask || task.name.startsWith('verify') || task.name in ['checkKotlinAbi', 'checkLegacyAbi']
+    }
+    evaluated.rootProject.allprojects { project ->
+        project.tasks.withType(AbstractTestTask).configureEach { testTask ->
+            def guards = []
+            def kept = testTask.dependsOn.findAll { dependency ->
+                def task = resolve(project, dependency)
+                if (task != null && verification(task)) {
+                    guards << task
+                    return false
+                }
+                true
+            }
+            if (!guards.isEmpty()) {
+                testTask.setDependsOn(kept)
+                testTask.finalizedBy(guards)
+            }
+        }
+    }
+}
