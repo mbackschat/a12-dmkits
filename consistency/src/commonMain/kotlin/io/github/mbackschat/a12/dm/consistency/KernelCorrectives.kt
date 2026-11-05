@@ -135,7 +135,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_COMPUTED_FIELD_NOT_FOUND" to Corrective(
         fix = "point `computedFieldRelPath` at a field the model declares, relative to the computation.",
-        meaning = "A12's sentence \"The computed field \"…\" was not found.\": a computation's `computedFieldRelPath` resolves to no declaration. A12's converter states it with the resolved path and checks the model without the computation (KERNEL-FINDINGS KF652). A path that climbs past the root or starts with `/` is refused by the reader instead, and one naming a field the converter itself leaves out leaves no model. The portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The computed field \"…\" was not found.\": a computation's `computedFieldRelPath` resolves to no field or group, a rule's or a computation's path included (KERNEL-FINDINGS KF674). A12's converter states it with the resolved path and checks the model without the computation (KERNEL-FINDINGS KF652). A path that climbs past the root or starts with `/` is refused by the reader instead, and one naming a field the converter itself leaves out leaves no model. The portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_NOT_SPECIFIED" to Corrective(
         fix = "name the field the computation writes.",

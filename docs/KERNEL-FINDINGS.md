@@ -6351,13 +6351,13 @@ The portable checker's completeness family now asks its shape parser where it st
 
 **Corrected 2026-11-02 (kernel 31.1.1):** the rows here that carry a `variantFilter` are 30.8.1 measurements. 31.1.1 reads past the member ([KF299](#kf299)), so such a declaration is judged like its unfiltered twin, and those rows were retired from the locks named below.
 
-**An object or an array where A12 declares a string refuses A12's reader outright — `UNREADABLE`, never a diagnostic.** Measured on all three carriers that own such a member: a rule's `errorCondition` and `errorEntityRelPath`, a computation alternative's `operation` and `precondition`, and a group's `indexFieldName`. Four container shapes each — `{}`, an object with content, `[]`, an array holding a string — and the answer is the same twenty times over. The mirror shape settles the array-typed member the same way: a group's `sortFields` holding an object, a string or a number is equally unreadable, so the binding is strict in both directions rather than merely intolerant of containers.
+**An object or an array where A12 declares a string refuses A12's reader outright — `UNREADABLE`, never a diagnostic.** Measured on all three carriers that own such a member: a rule's `errorCondition`, `errorEntityRelPath` and `errorCode`, a computation alternative's `operation` and `precondition`, and a group's `indexFieldName`. Four container shapes each — `{}`, an object with content, `[]`, an array holding a string — and the answer is the same twenty-four times over. *(Extended 2026-11-05 on kernel 31.1.1: the rule's `errorCode` was missing from the grid until a12-kernel-lean's SPEC-2026-11-05-01 row `mc-code-bind` exposed the checker's silence on it.)* The mirror shape settles the array-typed member the same way: a group's `sortFields` holding an object, a string or a number is equally unreadable, so the binding is strict in both directions rather than merely intolerant of containers.
 
 **Why measuring it mattered even though the answer is uniform.** The portable checker had carried a standing coverage gap on this whole class — "each is unmeasured, and under-reporting is the only safe direction" — and uniformity was not the safe guess: the sibling presentation members ([KF303](#kf303)) show one element's two adjacent maps landing in *different* tiers on the identical shape, and `variantErrorMessages` coerces a bare scalar into a slot typed for an array while refusing an object into that same slot. A checker generalising from either of those would have been wrong here. The result is that this class needs no per-member reading at all: one shape test serves every string-bound member, and the finding it produces is `CK_MODEL_NOT_BUILDABLE` rather than any `MVK_*`, because A12 never reaches the tier that issues codes.
 
 **One control was dead on the first run, and it is the reason the grid keeps one per carrier.** The computation grid's control used a bare field name as the `operation`, which A12 answers with `MVK_UNEXPECTED_TOKEN` — so that carrier's rows were briefly verdicts about a model already broken before the substitution. A literal (`42.00`) restores it. The rule and group grids predicted correctly on the first run; only the carrier whose control was dead looked like a finding.
 
-*Locked by:* `rulekit.validate.laws.StringSlotContainerLawsTest` (three grids, one per carrier, each with a live control).
+*Locked by:* `rulekit.validate.laws.StringSlotContainerLawsTest` (three grids, one per carrier, each with a live control); the portable checker's half by `consistency.StringSlotBindingTest`.
 
 ## §13 supplement — a FIELD's `ONLY` variant filter DELETES the field, where a rule's merely suppresses the rule (measured, 2026-09-13) <a id="kf305"></a>
 
@@ -8502,13 +8502,15 @@ Reported by the portable checker (`CheckFamily.ROUNDING_OPERANDS`), with two dis
 
 **Gate 4 is not a component question**, which is what its own row is for: `AddMonths` and `AddYears` refuse a `DateTimeType` whose format spells exactly what they add, the kernel source citing `A12K-620` — the behaviour over a stamp was never settled. `AddDays` and the three clock operators accept the same field, and that pair is the discriminator against reading the refusal as a missing component.
 
+**The clock constant `Now` is a stamp to gate 4 (kernel 31.1.1, measured 2026-11-05).** `AddMonths(Now, 1)` and `AddYears(Now, 1)` draw `MVK_WRONG_DATE_FORMAT_FOR_OP`, as a `DateTimeType` field does, while `AddDays(Now, 1)` and `AddMonths` over a `DateType` field are admitted. With no instant-based month or year shift to witness, the millisecond and leap-day reset such a shift would apply cannot be observed.
+
 **A model-level BASE YEAR disables gate 2 for `AddYears` alone**, the same supplementation the aggregates' component comparison applies ([KF193](#kf193)).
 
 **The amount is typed LAST**, so a model with both operands wrong reports the date one — the control that fixes gate 5's position rather than only its class.
 
 Reported by the portable checker (`CheckFamily.DATE_ARITHMETIC_OPERANDS`), which judges the amount only where it is a bare field reference: A12 types it as a whole OPERATION, so a computed amount is left alone.
 
-*Locked by:* `rulekit.validate.laws.DateArithmeticOperandLawsTest`, mirrored by `consistency.DateArithmeticOperandsTest`.
+*Locked by:* `rulekit.validate.laws.DateArithmeticOperandLawsTest`, mirrored by `consistency.DateArithmeticOperandsTest`; the `Now` rows by `adapter.laws.CheckerClockShiftAgreementTest`, A12 and the portable checker.
 
 ## §9 supplement — the field-LIST operations share one list and one arity gate, then each asks a different KIND question (source-verified + measured, 2026-09-14) <a id="kf391"></a>
 
@@ -16085,7 +16087,7 @@ Where 30.8.1 threw while building the validation model, 31.1.1's `ValidationMode
 | several later children of one name | one sentence per kind among them: three rules of one name draw one, a group and a rule after a field of that name draw two |
 | several blank names in one group, of any kinds | one sentence; a blank name in each of two groups draws two |
 | a computation whose `computedFieldRelPath` is empty | "The computed field was not specified." (`RK_COMPUTED_FIELD_NOT_SPECIFIED`) beside the basic `RK_COMPUTED_FIELD_EMPTY` |
-| …that resolves to no declaration | `The computed field "<path>" was not found.` (`RK_COMPUTED_FIELD_NOT_FOUND`) |
+| …that resolves to no field or group, a rule's or a computation's path included ([KF674](#kf674)) | `The computed field "<path>" was not found.` (`RK_COMPUTED_FIELD_NOT_FOUND`) |
 | …that names a field named blank, or one inside a group named blank | no model (`CalculationService` dereferences a null computed field) |
 | …that names the later of two fields of one name | the duplicate sentence only |
 | a rule whose error field is named blank | "Element must have a name." with `MVK_ERROR_FIELD_MISSING` and `MVK_MISSING_ERROR_FIELD` |
@@ -16707,3 +16709,22 @@ Base year 2020, a claims group of capacity 4. Claims from 2020, 2019, 2020 with 
 A `BaseYear` read as empty, zero or another year cannot produce that split. Each rule fires as an omission, because the fourth declared row is unfilled ([KF670](KERNEL-FINDINGS.md#kf670)). Dynamic Groovy, generated Java and the interpreter agree on every row.
 
 *Locked by:* `adapter.laws.BaseYearInSetExpressionDiffTest`.
+
+## §13 supplement — kernel 31.1.1 answers a reference that names a rule or a computation as one that names nothing, in every role measured (Kernel gate, kernel 31.1.1, 2026-11-05) <a id="kf674"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13's reference resolution, which speaks of fields and groups without saying an executable's path is not one.
+
+One policy model with the fields `Holder`, `Premium` and `Note`, a rule `HolderRequired` and a computation `Fee`. Each row points one slot at an executable's path; its control points the same slot at the field `Note`, and every control is admitted.
+
+| slot | names a rule | names a computation | the same class as a path naming nothing |
+|---|---|---|---|
+| a computation's `computedFieldRelPath` | "The computed field … was not found." | the same | yes ([KF652](#kf652)) |
+| a rule's `errorEntityRelPath` | `MVK_ERROR_FIELD_MISSING` + `MVK_MISSING_ERROR_FIELD` | the same | yes |
+| a condition operand, relative or absolute | `MVK_INVALID_ENTITY` | `MVK_INVALID_ENTITY` (relative only) | yes |
+| a message parameter `$…$` | `INVALID_ENTITY` | not measured | yes |
+
+The message row draws the unresolved-entity class, not `INVALID_FIELD`, which a parameter naming a declared field the rule does not read draws. a12-kernel-lean's SPEC-2026-11-05-01 row `mc-ct-rule` measured the first cell on its own carrier; the rest are its siblings.
+
+**The checker had resolved such a path.** It reported nothing on the computed-field and condition rows, `MVK_ERROR_FIELD_NOT_REFERENCED` on the error-target rows and `INVALID_FIELD` on the message row. It now resolves a reference to a field or group only, so every row agrees.
+
+*Locked by:* `adapter.laws.CheckerExecutableAsReferenceAgreementTest`, A12 and the portable checker.

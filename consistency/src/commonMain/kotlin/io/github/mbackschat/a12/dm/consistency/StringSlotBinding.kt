@@ -9,9 +9,9 @@ import kotlinx.serialization.json.JsonObject
  *
  * A member holding a JSON container where A12 declares a string refuses A12's own reader outright: no
  * diagnostic, no code, the source simply does not load. Measured across every such member on every carrier
- * that owns one — a rule's `errorCondition` and `errorEntityRelPath`, a computation alternative's `operation`
- * and `precondition`, a group's `indexFieldName` — with four container shapes each, and the answer is the
- * same twenty times over ([KERNEL-FINDINGS KF304], `rulekit.validate.laws.StringSlotContainerLawsTest`).
+ * that owns one — a rule's `errorCondition`, `errorEntityRelPath` and `errorCode`, a computation alternative's
+ * `operation` and `precondition`, a group's `indexFieldName` — with four container shapes each, and the answer
+ * is the same twenty-four times over ([KERNEL-FINDINGS KF304], `rulekit.validate.laws.StringSlotContainerLawsTest`).
  *
  * **Uniformity is the reason this is one family rather than a branch in each owning family, and it was not
  * the safe guess.** The adjacent presentation member is the standing warning: `guiPatterns` coerces a bare
@@ -40,7 +40,7 @@ internal fun TrackedFactBase.stringSlotFindings(element: TrackedDeclaration): Li
     }
 }
 
-private val RULE_TEXT_MEMBERS = listOf("errorCondition", "errorEntityRelPath")
+private val RULE_TEXT_MEMBERS = listOf("errorCondition", "errorEntityRelPath", "errorCode")
 
 private val ALTERNATIVE_TEXT_MEMBERS = listOf("operation", "precondition")
 

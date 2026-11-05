@@ -43,7 +43,8 @@ class CheckerModelFrameAgreementTest {
                 else -> v.first
             }
         }, observed, "as (A12, ours)")
-        assertEquals(emptyList<String>(), UNADMITTED.filter { observed[it]?.first.isNullOrEmpty() }, "every row set aside is one A12 refuses")
+        assertEquals(emptyList<String>(), (UNADMITTED + UNIDENTIFIED).filter { observed[it]?.first.isNullOrEmpty() },
+            "every row set aside is one A12 refuses")
     }
 
     @Test
@@ -134,8 +135,9 @@ class CheckerModelFrameAgreementTest {
         const val NOT_ADMITTED = "not admitted"
 
         /**
-         * A model with no `header.id` text A12 builds, and the checker cannot identify, so it reports no verdict and
-         * says why (`DiagnosticCode.SOURCE_HAS_NO_IDENTITY`): a workspace names each model by that id.
+         * A model with no `header.id` text. Kernel 31.1.1 builds none (KERNEL-FINDINGS KF654), and the checker declines
+         * it for a reason of its own, saying why (`DiagnosticCode.SOURCE_HAS_NO_IDENTITY`): a workspace names each model
+         * by that id. That is a deliberate under-report, never a pass.
          */
         val UNIDENTIFIED = setOf("/header/id absent", "/header/id null")
 

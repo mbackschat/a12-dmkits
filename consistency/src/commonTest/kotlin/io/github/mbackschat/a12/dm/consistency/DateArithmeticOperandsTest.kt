@@ -60,6 +60,8 @@ class DateArithmeticOperandsTest {
         actual["a stamp shifted by hours"] = subject("[ClearedAt] > AddHours(LoggedAt, 1)")
         actual["a stamp shifted by months"] = subject("[ClearedAt] > AddMonths(LoggedAt, 1)")
         actual["a stamp shifted by days"] = subject("[ClearedAt] > AddDays(LoggedAt, 1)")
+        actual["the clock shifted by years"] = subject("[ClearedAt] > AddYears(Now, 1)")
+        actual["the clock shifted by days"] = subject("[ClearedAt] > AddDays(Now, 1)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a plain date shifted by days"] = emptyList()
@@ -71,6 +73,9 @@ class DateArithmeticOperandsTest {
         // `A12K-620`: the format spells the month, and A12 refuses it anyway.
         expected["a stamp shifted by months"] = listOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
         expected["a stamp shifted by days"] = emptyList()
+        // `Now` is a stamp too (CheckerClockShiftAgreementTest).
+        expected["the clock shifted by years"] = listOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
+        expected["the clock shifted by days"] = emptyList()
         assertEquals(expected, actual, "the operator's component decides first; the stamp rule is separate")
     }
 

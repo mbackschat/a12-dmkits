@@ -261,10 +261,23 @@ data class PreparedModel(
      * later one out ([KERNEL-FINDINGS KF652]), so a reference resolves to the first; a declaration beneath a dropped
      * one is not there to resolve to.
      *
+     * **Fields and groups only.** A12 answers a reference that names a rule or a computation as one naming nothing,
+     * in every role measured: computed field, error target, condition operand and message parameter
+     * ([KERNEL-FINDINGS KF674], `adapter.laws.CheckerExecutableAsReferenceAgreementTest`).
+     *
      * Lazy because a model that never resolves a reference should not pay for the map, and because the whole
      * point is that it is built once per [PreparedModel] rather than per reference.
      */
     internal val resolvableByPath: Map<String, DeclaredElement> by lazy {
+        val byPath = LinkedHashMap<String, DeclaredElement>(elements.size)
+        keptByPath.forEach { (path, element) ->
+            if (element.kind == DeclaredKind.FIELD.wire || element.kind == DeclaredKind.GROUP.wire) byPath[path] = element
+        }
+        byPath
+    }
+
+    /** The declaration the converter keeps at each path, of any kind; FIRST occurrence wins ([KERNEL-FINDINGS KF652]). */
+    private val keptByPath: Map<String, DeclaredElement> by lazy {
         val byPath = LinkedHashMap<String, DeclaredElement>(elements.size)
         declarationsByKey.forEach { (key, element) ->
             if (key !in conversionDrops.dropped) byPath.getOrPut(element.path) { element }
@@ -275,7 +288,7 @@ data class PreparedModel(
     /** Every path the model as read declares and A12's converter leaves out, held by no kept declaration. */
     internal val leftOutPaths: Set<String> by lazy {
         conversionDrops.dropped.mapNotNullTo(HashSet()) { key ->
-            declarationsByKey.getValue(key).path.takeUnless { it in resolvableByPath }
+            declarationsByKey.getValue(key).path.takeUnless { it in keptByPath }
         }
     }
 

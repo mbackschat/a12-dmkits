@@ -32,7 +32,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
  * **A model-level BASE YEAR disables gate 2 for `AddYears` alone**, exactly as it does for the aggregates'
  * component comparison, so a year-less format is shifted by years without complaint.
  *
- * **Silent on an operand this reader cannot reduce to one declared field** — a date constant, a nested
+ * **The clock constant `Now` is a stamp too**, so gate 4 refuses it under `AddMonths` and `AddYears`.
+ *
+ * **Silent on any other operand this reader cannot reduce to one declared field** — a date constant, a nested
  * operation, an extract op — and on a declaration carrying no temporal format, which is "nothing to read"
  * rather than "not a date": a `DateTimeType` may declare none and take its default.
  *
@@ -110,6 +112,20 @@ private fun TrackedFactBase.shiftDefect(
     element: TrackedDeclaration,
 ): ShiftDefect? {
     val date = call.operands.firstOrNull() ?: return null
+    val written = date.text.javaTrimmed()
+    if (written == OPERATOR_SPELLINGS[conditionLanguage]?.get(OperatorId.NOW)) {
+        // The clock is a stamp, so the stamp gate refuses it; it passes the three format gates, and the amount
+        // gate behind them is left unjudged for it (kernel 31.1.1, `adapter.laws.CheckerClockShiftAgreementTest`).
+        return if (unit in REFUSE_A_STAMP) {
+            ShiftDefect(
+                "MVK_WRONG_DATE_FORMAT_FOR_OP", written,
+                "is the current timestamp, and A12 refuses a stamp under this operator (`A12K-620`) — shift " +
+                    "`Today` or a date-only declaration instead",
+            )
+        } else {
+            null
+        }
+    }
     val field = bareReferenceField(date.text, declaringGroup, element, call.inAFilterBody) ?: return null
     if (hasAPartialPrecision(field)) {
         return ShiftDefect(

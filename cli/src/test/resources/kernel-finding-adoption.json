@@ -20726,7 +20726,7 @@
       }
     },
     "kf304": {
-      "sha256": "8853db1863e5aa4e175b147f02315771b895df6bb36c73d4e169ba5f03cade0c",
+      "sha256": "c3b9292b188bc034ab1b3ad77a16ad9584d2145fb52fc42c4fff65007cb2fa7f",
       "task": "F-USE-BACKLOG",
       "scope": {
         "adapter": [
@@ -20734,7 +20734,9 @@
         ],
         "dmkits": [],
         "interpreter": [],
-        "checker": [],
+        "checker": [
+          "string slot binding"
+        ],
         "dmtool-cli": [],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -20762,9 +20764,14 @@
           "evidence": {}
         },
         "checker": {
-          "state": "OPEN",
-          "basis": "Not assessed: no lock this finding names exercises this consumer.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: A12 and the portable checker agree on every row.",
+          "evidence": {
+            "string slot binding": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/StringSlotBindingTest.kt#aRulesTextMembersAreCheckedForBINDINGAndNothingElse",
+              "witness": "StringSlotBindingTest replays the rule grid on the checker, errorCode included."
+            }
+          }
         },
         "dmtool-cli": {
           "state": "OPEN",
@@ -20783,7 +20790,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md, through the finding its 31.1.1 correction cites; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its errorCode rows to be reported in Letter G, not yet sent.",
           "evidence": {}
         }
       }
@@ -22517,7 +22524,7 @@
       }
     },
     "kf652": {
-      "sha256": "4e1a6f21613aab30748576bc5d400ac56581040db7de98c8f2287f476ce683fe",
+      "sha256": "89367258de4e5405cc9fa9f84c3eb1c3a88887bd758dc6a3341fb5e05febe0fc",
       "task": "K31",
       "scope": {
         "adapter": [],
@@ -24361,6 +24368,151 @@
         "a12-kernel-lean": {
           "state": "OPEN",
           "basis": "Reported in Letter F (a12-kernel-lean-spec-corrections-2026-11-05.md), sent 2026-11-05; not yet received.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf392": {
+      "sha256": "4f82d608c3c074d341c46bb0103e883b872dbc6dea49cd212c3a7a44a6c9bc64",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "date arithmetic operand"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "clock shift",
+          "date arithmetic operands"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names, measured on kernel 31.1.1.",
+          "evidence": {
+            "date arithmetic operand": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DateArithmeticOperandLawsTest.java#eachDateOperatorDemandsItsOwnComponentAndTheStampSplitsThem",
+              "witness": "DateArithmeticOperandLawsTest locks the four gates; this method holds the stamp split."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: A12 and the portable checker agree on every row.",
+          "evidence": {
+            "clock shift": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerClockShiftAgreementTest.kt#monthAndYearShiftsRefuseTheClockAsTheyRefuseAStamp",
+              "witness": "CheckerClockShiftAgreementTest compares A12 and the portable checker on the Now rows."
+            },
+            "date arithmetic operands": {
+              "reference": "consistency/src/commonTest/kotlin/io/github/mbackschat/a12/dm/consistency/DateArithmeticOperandsTest.kt#theComponentGateAnswersAheadOfTheTimeOneAndTheStampIsItsOwnRefusal",
+              "witness": "DateArithmeticOperandsTest replays the gates on the checker, the clock rows included."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "To be reported in Letter G to a12-kernel-lean; not yet sent.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf674": {
+      "sha256": "b2127bcac36c41a96eab5a2f176da59a81e08d2dba1a2106f8cb6426794171a8",
+      "task": "K31",
+      "scope": {
+        "adapter": [
+          "executable as reference"
+        ],
+        "dmkits": [],
+        "interpreter": [],
+        "checker": [
+          "executable as reference"
+        ],
+        "dmtool-cli": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "adapter": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names, measured on kernel 31.1.1.",
+          "evidence": {
+            "executable as reference": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerExecutableAsReferenceAgreementTest.kt#anExecutablesPathResolvesAsAPathThatNamesNothing",
+              "witness": "CheckerExecutableAsReferenceAgreementTest pins A12's class on every row."
+            }
+          }
+        },
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "Locked by the test this finding names: A12 and the portable checker agree on every row.",
+          "evidence": {
+            "executable as reference": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerExecutableAsReferenceAgreementTest.kt#anExecutablesPathResolvesAsAPathThatNamesNothing",
+              "witness": "CheckerExecutableAsReferenceAgreementTest compares A12 and the portable checker on every row."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "OPEN",
+          "basis": "Not assessed: no lock this finding names exercises this consumer.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "To be reported in Letter G to a12-kernel-lean; not yet sent.",
           "evidence": {}
         }
       }

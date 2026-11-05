@@ -171,7 +171,7 @@ A12's validation-model converter states six more codeless sentences, each publis
 | `RK_ROOT_GROUP_NAME_MISSING`, `RK_ELEMENT_NAME_MISSING` | a root group's, or any other declaration's, name that is blank, absent or `null`; the declaration and its subtree are left out, and a group's blank names are stated once |
 | `RK_CHILD_NAME_DUPLICATE` | the later of two children of one group sharing a name, of any kinds; it and its subtree are left out, and the later children are stated once per kind |
 | `RK_COMPUTED_FIELD_NOT_SPECIFIED` | a computation's empty `computedFieldRelPath`, beside `RK_COMPUTED_FIELD_EMPTY` |
-| `RK_COMPUTED_FIELD_NOT_FOUND` | a computation's `computedFieldRelPath` that resolves to no declaration; the computation is left out |
+| `RK_COMPUTED_FIELD_NOT_FOUND` | a computation's `computedFieldRelPath` that resolves to no field or group, a rule's or a computation's path included; the computation is left out |
 | `RK_TYPE_DEFINITION_NOT_FOUND` | a `TypeDefType` field whose `typeDefinitionId` names no type definition, or is absent or empty; the field is checked as a String |
 
 One more codeless sentence comes from the rule A12 asks right after the version sentences: `RK_ELEMENT_ID_NOT_UNIQUE`, stated once for each element written in the model whose `id` another such element shares, the empty id included, at that element's own path. Nothing is left out and nothing later is withheld; an element that arrived through a mount never shares ([KF661](KERNEL-FINDINGS.md#kf661)).

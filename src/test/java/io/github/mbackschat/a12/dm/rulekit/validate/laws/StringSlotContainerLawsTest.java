@@ -71,11 +71,14 @@ class StringSlotContainerLawsTest {
         // verdict about a model that was broken before the substitution.
         actual.put("errorCondition — the control", KernelLaws.verdictOf(rule("errorCondition", null)));
         actual.put("errorEntityRelPath — the control", KernelLaws.verdictOf(rule("errorEntityRelPath", null)));
+        actual.put("errorCode — the control", KernelLaws.verdictOf(rule("errorCode", null)));
         for (var container : CONTAINERS.entrySet()) {
             actual.put("errorCondition — " + container.getKey(),
                     KernelLaws.verdictOf(rule("errorCondition", container.getValue())));
             actual.put("errorEntityRelPath — " + container.getKey(),
                     KernelLaws.verdictOf(rule("errorEntityRelPath", container.getValue())));
+            actual.put("errorCode — " + container.getKey(),
+                    KernelLaws.verdictOf(rule("errorCode", container.getValue())));
         }
         assertEquals(expectedForRule(), actual, "what A12 does with a container in a rule's string slots");
     }
@@ -117,9 +120,11 @@ class StringSlotContainerLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("errorCondition — the control", KernelLaws.ADMITTED);
         expected.put("errorEntityRelPath — the control", KernelLaws.ADMITTED);
+        expected.put("errorCode — the control", KernelLaws.ADMITTED);
         for (String container : CONTAINERS.keySet()) {
             expected.put("errorCondition — " + container, KernelLaws.UNREADABLE);
             expected.put("errorEntityRelPath — " + container, KernelLaws.UNREADABLE);
+            expected.put("errorCode — " + container, KernelLaws.UNREADABLE);
         }
         return expected;
     }

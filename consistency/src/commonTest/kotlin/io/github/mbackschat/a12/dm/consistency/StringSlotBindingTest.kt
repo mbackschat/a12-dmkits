@@ -80,6 +80,7 @@ class StringSlotBindingTest {
         for ((name, json) in containers) {
             actual["errorCondition — $name"] = codesFor(ruleSource(""","errorCondition":$json"""))
             actual["errorEntityRelPath — $name"] = codesFor(ruleSource(""","errorEntityRelPath":$json"""))
+            actual["errorCode — $name"] = codesFor(ruleSource(""","errorCode":$json"""))
         }
         // Not this family's business: a scalar binds, and blank/absent belong to the owning family.
         actual["errorCondition — a number, which A12 coerces"] = codesFor(ruleSource(""","errorCondition":7"""))
@@ -90,6 +91,7 @@ class StringSlotBindingTest {
         for ((name, _) in containers) {
             expected["errorCondition — $name"] = listOf(CK_MODEL_NOT_BUILDABLE)
             expected["errorEntityRelPath — $name"] = listOf(CK_MODEL_NOT_BUILDABLE)
+            expected["errorCode — $name"] = listOf(CK_MODEL_NOT_BUILDABLE)
         }
         expected["errorCondition — a number, which A12 coerces"] = emptyList()
         expected["errorCondition — blank"] = emptyList()
@@ -111,12 +113,15 @@ class StringSlotBindingTest {
             checkRead(ruleSource(""","errorCondition":{"value":"x"}""")).findings.count { it.at == "/Catalog/PriceRule" }
         actual["errorEntityRelPath as a list"] =
             checkRead(ruleSource(""","errorEntityRelPath":["../Price"]""")).findings.count { it.at == "/Catalog/PriceRule" }
+        actual["errorCode as an object"] =
+            checkRead(ruleSource(""","errorCode":{"value":"x"}""")).findings.count { it.at == "/Catalog/PriceRule" }
         actual["the control — nothing wrong"] =
             checkRead(ruleSource("")).findings.count { it.at == "/Catalog/PriceRule" }
 
         val expected = mapOf(
             "errorCondition as an object" to 1,
             "errorEntityRelPath as a list" to 1,
+            "errorCode as an object" to 1,
             "the control — nothing wrong" to 0,
         )
         assertEquals(expected, actual, "findings at the rule's path, counted across every family")
