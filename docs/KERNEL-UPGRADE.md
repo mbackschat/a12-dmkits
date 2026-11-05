@@ -2,6 +2,22 @@
 
 rulekit pins one kernel (`ext.kernelVersion` in the root `build.gradle`, the single pin every module reads) and never reimplements its truth — the kernel is the oracle (N3). Every place rulekit encodes a kernel assumption is guarded by a CI test against the pinned kernel, so a kernel change surfaces as a **precise, actionable test failure** rather than silent drift. This is the deliberate split behind F11: **quiet tolerance at runtime, loud detection at build time.** A user running against a newer kernel sees at most a gentle advisory (never a false "corrupt"); the *maintainer* gets a hard failure the moment an encoded assumption diverges. This doc is the procedure for realigning when that happens.
 
+## The release log — read it before the bump <a id="release-log"></a>
+
+A12 publishes the kernel changelog at <https://geta12.com/#/releases/releases-overview/kernel>. It is the upgrade's change inventory, so every upgrade reads the entries between the old pin and the new one, and only those: entries above the new pin belong to the next upgrade. The site is a single-page app, so the log is not served as a page; [`kernel-changelog.ts`](../scripts/typescript/kernel-changelog.ts) extracts it from the site's bundle as markdown:
+
+```bash
+scripts/run-typescript.sh "kernel changelog" scripts/typescript/kernel-changelog.ts --from 30.8.1 --to 31.1.1
+```
+
+`--from` is exclusive and `--to` inclusive, by version number, so the maintenance releases of the old line that carry a higher number than the old pin are in the range too. Where Node cannot reach the site but `curl` can, save the bundle that `https://geta12.com/` names and pass it with `--bundle <file>`.
+
+The log is a source to check, not an oracle: it names the change, while its effect on us is settled by the measurement its claim kind needs ([the oracle table](../CLAUDE.md#kernel-claim-oracles)). Every entry gets a disposition in the upgrade's proposal, as one of: supported, with the component evidence; not applicable, with the reason (a Java API or TypeScript runtime we do not consume, a security fix in a dependency we do not ship); or deferred to the next upgrade.
+
+## Every component supports every new or changed feature <a id="all-components"></a>
+
+A new or changed document-model or rule feature is supported in **all** components, not only where it is first met: rulekit and modelkit (the typed authoring surface, renderer and read-back), `dm.edit`, `dm.core`/`ModelIndex`, schemakit import and export, the portable consistency checker, the interpreter (clean-room, locked by a differential on both kernel strategies), the adapter, and dmtool (verbs, `apply` ops, schemas, manifest, MCP tools and demos). A component the feature cannot reach records why, rather than staying silent. The per-finding consumer matrix in `cli/src/test/resources/kernel-finding-adoption.json` is where each component's state and evidence lives, and an `OPEN` consumer there is unfinished upgrade work. The 31.1.1 migration applied this to SumOfTerms (KF670), the text-and-enumeration comparison (KF655) and document uniqueness criteria (KF671).
+
 ## The procedure
 
 1. **Bump the pin.** Update `ext.kernelVersion` and, in lockstep, `ext.a12Distribution` in the root `build.gradle`; `adapter/build.gradle` reads the former. Republish via the sibling `a12-kernel-bootstrap` if the new version is not in `mavenLocal`. The version is whatever the sibling `../a12-kernel` checkout carries, never one found elsewhere on the machine (CLAUDE.md, "Test & sample document models").
@@ -59,7 +75,7 @@ When a *second* kernel version actually publishes, add the CI version matrix (bu
 A patch bump is the procedure above. A major release (a new A12 distribution with a DM format change, renamed modules, new operators) also changes shapes the guardians assume, so it runs as a planned migration. The 31.1.1 migration's record is [its proposal](KERNEL-31-UPGRADE-PROPOSAL.md).
 
 1. **Tag the last verified revision first** (`kernel-<old>-final`). Every later "what changed since the old kernel" question (findings, adoption records, peer letters) is a diff against that tag. Without it, the base is a guess.
-2. **Write the change analysis as a proposal whose work-item table carries the state.** Partition by mechanism, and order the partitions so each one unblocks the next:
+2. **Write the change analysis as a proposal whose work-item table carries the state.** Seed it from [the release log](#release-log), one disposition per entry. Partition by mechanism, and order the partitions so each one unblocks the next:
    - build wiring plus the probe tooling (a12-kernel-lean measures through `kernelProbe`/`probeDifferential`, so they get their oracle back first);
    - model format and includes;
    - guardian realignment;

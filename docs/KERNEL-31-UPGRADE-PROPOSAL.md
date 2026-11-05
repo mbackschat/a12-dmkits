@@ -353,3 +353,51 @@ On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, n
 - **Expansion port (D2):** prove that `CombinationModelService` reproduces the include/type-def contract, including failure atomicity, on the existing parity fixtures.
 - **`includeLevel` default:** no A12-written ext1 file carries it. Measure absent vs explicit.
 - **Runtime drift:** whether the `java.time` rewrite, the number formal-error refactor, the codegen restructure, the ext1 conversion change or Jackson 3 produce observable differences.
+
+## 12 · Release-log dispositions (30.8.1 → 31.1.1) <a id="release-log-dispositions"></a>
+
+Every entry of the [kernel release log](KERNEL-UPGRADE.md#release-log) after 30.8.1 up to and including 31.1.1, extracted 2026-11-05 with `scripts/typescript/kernel-changelog.ts --from 30.8.1 --to 31.1.1`. The range includes the 30.8.3–30.8.7 maintenance line, which version order places inside it. Entries after 31.1.1 belong to the next upgrade. A new or changed model or rule feature is covered in every component, dmtool included ([KERNEL-UPGRADE](KERNEL-UPGRADE.md#all-components)); the per-component states are the rows of `cli/src/test/resources/kernel-finding-adoption.json`.
+
+**Model and rule features — covered in every component.**
+
+| entry | change | coverage |
+|---|---|---|
+| A12K-3756 | `SumOfTerms` | W6, [KF670](KERNEL-FINDINGS.md#kf670): every consumer `APPLIED` |
+| A12K-3995 | document uniqueness criteria; `checkConsistency` reports type definitions | W3b, G81, [KF671](KERNEL-FINDINGS.md#kf671): every consumer `APPLIED` or `ALREADY_CONFORMS` (the interpreter loads and ignores them; `UniquenessCriterionRuntimeDiffTest`); type-definition reports in W4 |
+| A12K-3969 | a text compared with a labelled enumeration | W4-enum, [KF655](KERNEL-FINDINGS.md#kf655): kits, adapter, checker, interpreter, dmtool (`TextEnumComparisonVerbTest`) and JSON Schema carriage (`TextEnumComparisonCarriageTest`) |
+| A12K-4118 | `modelInfo.packet` | kits read it (`ModelDocument.modelPacket`) and keep it through every edit; dmtool shows it in `config read` and diffs it in `model diff`; the checker reads it as text (`ModelFrame`); the interpreter has no use for it; the JSON Schema bridge carries no `modelInfo` member. Lock: `ModelInfoPacketPreservationTest` |
+| A12K-4102 | include restructure (`includeConfig`) | W3a, [KF651](KERNEL-FINDINGS.md#kf651) |
+| A12K-3986 | variants removed (DM 29.1.0) | W4-variant |
+| A12K-4165 | `minValue`/`maxValue` no longer judged against the field type | W4-limit, [KF593](KERNEL-FINDINGS.md#kf593) |
+| A12K-3981 | `UnspecifiedType` removed | W4-reader, [KF654](KERNEL-FINDINGS.md#kf654) |
+| A12K-4250 | `IFieldType` annotations removed | not applicable: our writers put annotations on elements, type definitions and the header only, never inside a field type body (every `DmKeys.ANNOTATIONS` writer enumerated 2026-11-05), and A12 keeps annotations on `IFieldTypeDefinition` |
+
+**Behaviour changes and fixes — measured on both kernel strategies and matched.**
+
+| entry | change | disposition |
+|---|---|---|
+| A12K-3850 | consistency problems reported instead of thrown | W4-build, [KF652](KERNEL-FINDINGS.md#kf652) |
+| A12K-3761 | stricter locale parsing (`LocaleUtils`) | W4-locale, [KF662](KERNEL-FINDINGS.md#kf662) |
+| A12K-3638 | a malformed document node aborts deserialization | [KF664](KERNEL-FINDINGS.md#kf664) |
+| A12K-3956 | dates before 1893 parsed consistently | W5-cal, W5-tz, [KF665](KERNEL-FINDINGS.md#kf665) |
+| A12K-3990 | an unmatched parallel-iteration value renders empty | [KF672](KERNEL-FINDINGS.md#kf672) |
+| A12K-4331 | a custom-typed `$field.value$` in a message | [KF672](KERNEL-FINDINGS.md#kf672) |
+| A12K-4204 | `BaseYear` in filter conditions and `SumOfTerms` | [KF673](KERNEL-FINDINGS.md#kf673) |
+| A12K-4106 | `testIDNummer` no longer emitted | [KF669](KERNEL-FINDINGS.md#kf669) |
+| A12K-4354 | criteria with `relativeToParent` requiredness reported | [KF671](KERNEL-FINDINGS.md#kf671), `CheckerUniquenessCriterionAgreementTest` |
+| A12K-3967, A12K-4142 | Jackson 3 | W2; the read-binding deltas in [KF564](KERNEL-FINDINGS.md#kf564) and [KF593](KERNEL-FINDINGS.md#kf593) |
+
+**Java API changes — taken up in W2, where our code consumes them.**
+
+| entry | change | disposition |
+|---|---|---|
+| A12K-3684 | Document V1 removed | W2: V2 materializer |
+| A12K-4106, A12K-4079 | custom-extension API replaced by `DocumentProcessingConfig` | W2 |
+| A12K-4021, A12K-4296, A12K-4211 | `expand`, `BatchDocumentModelExpander`, `extractImportedTypeDefinitions` removed | D2: `CombinationModelService` behind one adapter port |
+| A12K-3657 | modules renamed to `kernel-internal-*` | W2, §1 module map |
+| A12K-4284 | migrator CLI moved into `kernel-md-facade` | W3a used `kernel-md-facade-31.1.1-migrator-cli.jar` |
+| A12K-3621 | generated sources restructured | W2/W5: the static-Java strategy |
+| A12K-4177 | `DocumentModelVisitor#enter`/`leave` removed | W2: `KernelModelInput` compiles on the replacements |
+| A12K-3856 | backward migrator; `getFirstSupportedSourceVersion` | not applicable: D1 sets one version floor and nothing migrates backward |
+
+**Not applicable — surfaces the project does not consume.** A12K-3720, A12K-4214 (service configuration options; `considerNotInD` is ExtMP-only). A12K-3592, A12K-3825, A12K-3919, A12K-4343, A12K-4367/A12K-4361 (typed accessors, mapping codegen). A12K-3734, A12K-3960 (metamodel typings, no `mmtypings` dependency). A12K-4025, A12K-4056 (mapping API). A12K-4108, A12K-4120, A12K-4180 (Java methods we never call). A12K-4212 (no `kernel-bom` dependency). A12K-3898 (tax-number verifier factory). A12K-3912 (`RegExpLengthTester`, whose one caller at `eec9134` is the ExtMP utility `ExtmpToolUtils`). A12K-4083, A12K-4335 (Groovy compilation fixes; the dynamic-strategy lanes compile on 31.1.1). A12K-3970 (Java 25 build; JDK stays 21). A12K-4563, A12K-4590 (date-parse performance; values unchanged, and our interpreter has its own perf lane). A12K-4271, A12K-3244, A12K-4435, A12K-4436 (test utility, library updates, rewrite script and TypeScript codemod). A12K-3223, A12K-3987, A12K-4005, A12K-4059, A12K-4162 (kernel TypeScript runtime, a follow-up under D5). 30.8.4 and 30.8.5 (Jackson 2.22, Base 29.3.1 on the 30.8 line).

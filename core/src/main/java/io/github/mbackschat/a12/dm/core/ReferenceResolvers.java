@@ -44,10 +44,9 @@ public final class ReferenceResolvers {
     /**
      * A resolver that loads referenced models from one or more directory trees (F-RES) — what a
      * multi-file application needs: its rules {@code include} other document models and import
-     * type-definitions ({@code _TDM}) by reference. The kernel's {@code expand} and
-     * {@code extractImportedTypeDefinitions} both resolve the target's <em>model id</em> (through the
-     * backend's resolver bridge), so this indexes every <b>document model</b> in the trees by
-     * {@code header.id} and serves its DM-JSON on demand.
+     * type-definitions ({@code _TDM}) by reference. Both references name the target's <em>model id</em>
+     * (an include by {@code includeConfig.reference}, KERNEL-FINDINGS KF651), so this indexes every
+     * <b>document model</b> in the trees by {@code header.id} and serves its DM-JSON on demand.
      *
      * <p><b>Document-model detection is by {@code header.modelType == "document"}</b>, not a filename
      * convention — the trees also hold {@code form}/{@code overview}/{@code tree}/… models that are not
