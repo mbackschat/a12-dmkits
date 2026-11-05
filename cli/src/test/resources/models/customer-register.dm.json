@@ -1,0 +1,71 @@
+{
+  "header" : {
+    "id" : "customer-register",
+    "modelType" : "document",
+    "modelVersion" : "29.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "customer-register",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "documentUniquenessCriteria" : [ {
+      "name" : "UniqueCustomerNumber",
+      "fields" : [ {
+        "fullName" : "/Customer/Number"
+      } ],
+      "errorMessage" : [ {
+        "locale" : "en_US",
+        "text" : "Customer number $/Customer/Number.value$ is already taken."
+      } ]
+    } ],
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Customer",
+        "name" : "Customer",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Customer/Number",
+            "name" : "Number",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              },
+              "requirednessConfig" : {
+                "mode" : "absoluteOrRelativeToNextRepAncestor"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Customer/Name",
+            "name" : "Name",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

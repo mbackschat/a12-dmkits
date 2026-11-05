@@ -69,9 +69,9 @@ class CommandContractsTest {
                 }
             }
         }
-        assertEquals(48, writes,
-                "35 shared editors + 3 custom editors + 8 artifact writers + two batch dispatch modes");
-        assertEquals(38, previews, "every live --dry-run editing leaf has one active-preview profile");
+        assertEquals(50, writes,
+                "37 shared editors + 3 custom editors + 8 artifact writers + two batch dispatch modes");
+        assertEquals(40, previews, "every live --dry-run editing leaf has one active-preview profile");
     }
 
     @Test
@@ -145,10 +145,10 @@ class CommandContractsTest {
                         () -> name + " writes nothing, so a persistence scope there is noise");
             }
         }
-        assertEquals(46, writing, "every leaf with at least one writing profile carries the scope");
+        assertEquals(48, writing, "every leaf with at least one writing profile carries the scope");
         // 35 since `mcp` landed: it serves editing verbs but accepts no destination, so no bytes survive a
         // call and a persistence scope there would describe a write that cannot happen (MCP-SPEC §5).
-        assertEquals(35, readOnly, "the always-read-only leaves stay free of it");
+        assertEquals(36, readOnly, "the always-read-only leaves stay free of it");
     }
 
     @Test

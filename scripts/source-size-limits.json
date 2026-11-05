@@ -20,7 +20,6 @@
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfCatalog.kt": 1095,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt": 1099,
     "build.gradle": 1041,
-    "cli/src/main/java/io/github/mbackschat/a12/dm/cli/ApplyCommand.java": 844,
     "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 863,
     "consistency/build.gradle": 936,
     "eval/benchmark.workflow.js": 1034,

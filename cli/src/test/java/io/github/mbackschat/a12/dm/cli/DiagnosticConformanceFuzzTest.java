@@ -41,7 +41,7 @@ class DiagnosticConformanceFuzzTest {
     private static final ObjectMapper M = new ObjectMapper();
     private static final Set<String> ENTITY_REF = Set.of(
             "FIELD_PATH", "GROUP_PATH", "RULE_PATH", "COMPUTATION_PATH", "TYPEDEF_ID", "INCLUDE_REFERENCE",
-            "ELEMENT_REF");
+            "CRITERION_NAME", "ELEMENT_REF");
     /** Read-PROJECTION ops whose sole positional is always a model-entity locator — probed regardless of
      *  {@code @ParamKind}, so a future read verb that forgets to tag its locator still can't bare-fail (F5). */
     private static final Set<String> READ_PROJECTION_OPS = Set.of("read", "explain", "format", "deps");
@@ -179,6 +179,7 @@ class DiagnosticConformanceFuzzTest {
             case "GROUP_PATH" -> "/__rk_absent_group__";
             case "TYPEDEF_ID" -> "__rk_absent_typedef__";
             case "INCLUDE_REFERENCE" -> "__rk_absent_include__";
+            case "CRITERION_NAME" -> "__rk_absent_criterion__";
             default -> "/__rk_absent__/__x__";   // FIELD_PATH / RULE_PATH / COMPUTATION_PATH
         };
     }

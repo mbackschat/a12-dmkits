@@ -1012,6 +1012,52 @@ dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
 
 → `changed.removed = catalog`: the reference and the `/Subscription/Catalog` mount are both gone. (A rule still using the include would block the removal, the same reference-gate pattern as the field/group removes.)
 
+## criterion — document uniqueness criteria
+
+A **document uniqueness criterion** names fields whose values no two stored documents may share — a customer number, say. It is model data: no rule or validation run evaluates it. `criterion add` takes one entry in exactly the shape A12 stores it, so what `criterion read` returns can be added elsewhere as is. A12 admits a criterion only over **required** fields, so the field comes first:
+
+```bash
+dmtool model new --id customer-register --locale en_US --root Customer -o /tmp/struct2-crit.json | jq -c '{outcome}'
+echo '{"group":"/Customer","name":"Number","kind":"STRING","required":true}' > /tmp/struct2-number.json
+dmtool -m /tmp/struct2-crit.json field add /tmp/struct2-number.json | jq -c '{outcome, added: .changed.added}'
+echo '{"name":"UniqueCustomerNumber","fields":[{"fullName":"/Customer/Number"}],
+       "errorMessage":[{"locale":"en_US","text":"Customer number $/Customer/Number.value$ is already taken."}]}' > /tmp/struct2-key.json
+dmtool -m /tmp/struct2-crit.json criterion add /tmp/struct2-key.json | jq -c '{outcome, added: .changed.added}'
+```
+
+```output
+{"outcome":"applied"}
+{"outcome":"applied","added":"/Customer/Number"}
+{"outcome":"applied","added":"UniqueCustomerNumber"}
+```
+
+`criterion read <name>` returns the stored entry (no argument returns the whole `documentUniquenessCriteria` member):
+
+```bash
+dmtool -m /tmp/struct2-crit.json criterion read UniqueCustomerNumber | jq -c .data
+```
+
+```output
+{"name":"UniqueCustomerNumber","fields":[{"fullName":"/Customer/Number"}],"errorMessage":[{"locale":"en_US","text":"Customer number $/Customer/Number.value$ is already taken."}]}
+```
+
+A field a criterion names is in use, so `field remove` refuses it — `--cascade` too, since that removes only rules and computations — and the fix names the verb that frees it:
+
+```bash
+dmtool -m /tmp/struct2-crit.json field remove /Customer/Number | jq -r '.diagnostics[0].code, .diagnostics[0].fix'
+dmtool -m /tmp/struct2-crit.json criterion remove UniqueCustomerNumber | jq -c '{outcome, removed: .changed.removed}'
+dmtool -m /tmp/struct2-crit.json field remove /Customer/Number | jq -c '{outcome, removed: .changed.removed}'
+```
+
+```output
+RK_REFERENCED
+first `criterion remove` the document uniqueness criteria UniqueCustomerNumber, which name a field at or below /Customer/Number (re-declare one over other fields with `criterion add`); --cascade removes only rules and computations, never a criterion
+{"outcome":"applied","removed":"UniqueCustomerNumber"}
+{"outcome":"applied","removed":"/Customer/Number"}
+```
+
+→ A taken name is refused (`RK_NAME_EXISTS`) and an unknown one too (`RK_NO_SUCH_UNIQUENESS_CRITERION`); whether A12 admits a criterion's fields and texts is the kernel gate's call, reported in its own sentence.
+
 ## config — read and modify the document settings
 
 `config read` reports the document-level settings (decimal separator, time zone, condition language) under `.data`; `config modify` changes them in place. We use a fresh copy so the comma-edit doesn't bleed into the other sections.

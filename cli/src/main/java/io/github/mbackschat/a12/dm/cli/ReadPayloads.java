@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.cli.criterion.CriterionSpec;
 import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -141,7 +143,24 @@ public final class ReadPayloads {
         return data;
     }
 
-    /** Every included model, by the reference that is its identity (KF651), on standalone and embedded reads. */
+    /** The {@code data} key of the {@code criterion read} list: A12's own member name. */
+    public static final String CRITERIA = DmKeys.DOCUMENT_UNIQUENESS_CRITERIA;
+
+    /** The no-arg {@code criterion read}: every criterion as a stored entry, in model order; empty when none. */
+    public static ObjectNode criterionList(ModelDocument doc) {
+        ObjectNode data = MAPPER.createObjectNode();
+        ArrayNode criteria = data.putArray(CRITERIA);
+        doc.uniquenessCriteria().forEach(criterion -> criteria.add(CriterionSpec.toJson(criterion)));
+        return data;
+    }
+
+    /** One criterion by name as a stored entry, the first of that name; the caller has checked it exists. */
+    public static ObjectNode criterion(ModelDocument doc, String name) {
+        return doc.uniquenessCriteria().stream().filter(criterion -> criterion.name().equals(name)).findFirst()
+                .map(CriterionSpec::toJson)
+                .orElseThrow(() -> new IllegalArgumentException("the model has no uniqueness criterion named '" + name + "'"));
+    }
+
     public static ObjectNode includeList(ModelDocument doc) {
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode includes = data.putArray("includes");

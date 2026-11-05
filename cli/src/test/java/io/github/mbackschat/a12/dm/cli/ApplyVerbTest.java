@@ -802,7 +802,7 @@ class ApplyVerbTest {
             ObjectNode rec = M.createObjectNode();
             rec.put("target", target);
             rec.put("op", op);
-            settable.forEach(k -> rec.put(k, "x"));   // values are irrelevant — validateArgs only checks KEYS
+            settable.forEach(k -> rec.put(k, "x"));   // values are irrelevant — ApplyOpValidation only checks KEYS
             Files.writeString(ops, "[" + rec + "]");
             var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
             // the op may fail for OTHER reasons (a bad value, a missing element) — but NEVER because a

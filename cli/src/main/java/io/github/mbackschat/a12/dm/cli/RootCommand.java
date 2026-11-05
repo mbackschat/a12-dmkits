@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.cli.include.IncludeCommand;
 import io.github.mbackschat.a12.dm.cli.model.ModelCommand;
 import io.github.mbackschat.a12.dm.cli.profile.ProfileCommand;
 import io.github.mbackschat.a12.dm.cli.rule.RuleCommand;
+import io.github.mbackschat.a12.dm.cli.criterion.CriterionCommand;
 import io.github.mbackschat.a12.dm.cli.typedef.TypedefCommand;
 import io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCommand;
 
@@ -53,6 +54,7 @@ import picocli.CommandLine.Spec;
             GroupCommand.class,
             TypedefCommand.class,
             IncludeCommand.class,
+            CriterionCommand.class,
             ConfigCommand.class,
             WorkspaceCommand.class,
             ExportCommand.class,

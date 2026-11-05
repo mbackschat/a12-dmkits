@@ -15,6 +15,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -54,6 +55,26 @@ class SchemaExamplesGuardTest {
                         () -> "the " + target + " example previews cleanly");
                 assertPreviewStatesItsGate(target + " add", res);
             }
+        }
+    }
+
+    /** The criterion spec example names {@code /Customer/Number}, so it runs on a model that declares it required. */
+    @Test
+    void criterionSpecExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("customer.dm.json");
+        Files.writeString(model, DocumentModelDraft.named("customer").locale("en_US")
+                .rootGroup("Customer", c -> c.stringField("Number", f -> f.required())).build().toJson());
+        JsonNode examples = schema("criterion-add").path("examples");
+        assertTrue(examples.isArray() && !examples.isEmpty(), "criterion-add.schema declares examples");
+        int i = 0;
+        for (JsonNode ex : examples) {
+            Path spec = dir.resolve("criterion-spec-" + i++ + ".json");
+            Files.writeString(spec, ex.toString());
+            CliTestSupport.Result res = CliTestSupport.run(
+                    "-m", model.toString(), "criterion", "add", spec.toString(), "--dry-run");
+            assertEquals(0, res.code(), () -> "criterion add rejected the schema example: " + res.err() + res.out());
+            assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(), res::out);
+            assertPreviewStatesItsGate("criterion add", res);
         }
     }
 

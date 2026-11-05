@@ -79,7 +79,7 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 | read-only, raw | `.emit` | hands back a document or rendering; changes nothing |
 | writes, raw | `.generate` | produces a document |
 
-**30 tools over 81 ops — the whole live tree but the server's own leaf — 14 truthfully read-only, 24 declaring `outputSchema`.** The `outputSchema` is the **served** `schema result` document, whose referents are embedded under `$defs`, so a client resolves it with no second call; publishing the resource file instead would hand over a `$ref` it cannot resolve.
+**32 tools over 84 ops — the whole live tree but the server's own leaf — 15 truthfully read-only, 26 declaring `outputSchema`.** The `outputSchema` is the **served** `schema result` document, whose referents are embedded under `$defs`, so a client resolves it with no second call; publishing the resource file instead would hand over a `$ref` it cannot resolve.
 
 `readOnlyHint` is what makes categorical approval safe: granting `dm.rule.read` cannot reach `rule remove`, which is the whole reason the effect axis is never collapsed. `openWorldHint` is `false` everywhere — not because nothing external is touched (`model eval` spawns `node`, `model diff --since` spawns `git`) but because there is no open world of external entities; both are local subprocesses under the caller's own account.
 

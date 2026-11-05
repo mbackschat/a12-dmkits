@@ -33,7 +33,7 @@ class DmtoolMutationSafetyTest {
     private record PreviewCase(String verb, String modelResource, List<String> args) {}
 
     @Test
-    void all38DryRunProfilesAreByteIdenticalAndTheirRealWriteIsThePositiveControl(@TempDir Path dir)
+    void all40DryRunProfilesAreByteIdenticalAndTheirRealWriteIsThePositiveControl(@TempDir Path dir)
             throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Set<String> exercised = new HashSet<>();
@@ -53,7 +53,7 @@ class DmtoolMutationSafetyTest {
         assertEquals(declared, exercised,
                 () -> "dry-run cases and live registry differ; missing=" + difference(declared, exercised)
                         + ", stale=" + difference(exercised, declared));
-        assertEquals(38, exercised.size());
+        assertEquals(40, exercised.size());
     }
 
     @Test
@@ -184,6 +184,8 @@ class DmtoolMutationSafetyTest {
         exercised.add("typedef add");
         unknownTypedef(dmtool, dir, true);
         exercised.add("typedef modify");
+        unknownEditor(dmtool, dir, "criterion-add", "customer-register.dm.json", "criterion", "add", null, null);
+        exercised.add("criterion add");
 
         Path applyModel = resource(dir.resolve("unknown-apply"), "subscription.dm.json");
         Path apply = dir.resolve("unknown-apply.json");
@@ -494,7 +496,14 @@ class DmtoolMutationSafetyTest {
         Path fieldAdd = writeSchemaExample(dir, "field-add", 0, "field-add.json");
         Path fieldModify = writeSchemaExample(dir, "field-modify", 0, "field-modify.json");
         Path apply = writeSchemaExample(dir, "apply", 0, "apply.json");
+        // the fixture already declares the example's name, so the preview adds a second criterion over that field
+        ObjectNode criterionSpec = (ObjectNode) schemaExample("criterion-add", 0).deepCopy();
+        criterionSpec.put("name", "SecondCustomerKey");
+        Path criterion = dir.resolve("criterion.json");
+        Files.writeString(criterion, criterionSpec.toPrettyString());
         return List.of(
+                new PreviewCase("criterion add", "customer-register.dm.json",
+                        List.of("-m", "<model>", "criterion", "add", criterion.toString(), "--dry-run")),
                 new PreviewCase("rule add", "subscription.dm.json",
                         List.of("-m", "<model>", "rule", "add", rule.toString(), "--dry-run")),
                 new PreviewCase("computation add", "subscription.dm.json",

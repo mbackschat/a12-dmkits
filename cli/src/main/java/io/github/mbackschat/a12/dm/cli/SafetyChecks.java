@@ -298,6 +298,24 @@ public final class SafetyChecks {
                 : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", reference));
     }
 
+    /** Refuse a criterion op naming no declared document uniqueness criterion (RK_NO_SUCH_UNIQUENESS_CRITERION). */
+    public static SafetyCheck criterionExists(ModelDocument doc, String name) {
+        return () -> doc.uniquenessCriteria().stream().anyMatch(c -> c.name().equals(name))
+                ? Optional.empty()
+                : Optional.of(notFound(RkCode.NO_SUCH_UNIQUENESS_CRITERION, "uniqueness criterion", name));
+    }
+
+    /**
+     * Refuse adding a criterion whose name the model already uses (RK_NAME_EXISTS). A12 refuses two criteria of one
+     * name (KERNEL-FINDINGS KF671), and remove and read address a criterion by that name alone.
+     */
+    public static SafetyCheck criterionNameFree(ModelDocument doc, String name) {
+        return () -> doc.uniquenessCriteria().stream().anyMatch(c -> c.name().equals(name))
+                ? Optional.of(nameExists(name, "uniqueness criterion",
+                        "choose another name, or `criterion remove` the existing one first"))
+                : Optional.empty();
+    }
+
     /** Refuse a computation op whose target computation does not exist (RK_NO_SUCH_COMPUTATION). */
     public static SafetyCheck computationExists(KernelAdapter adapter, String computationFullName) {
         return () -> adapter.computationFullNames().contains(computationFullName)
@@ -457,9 +475,9 @@ public final class SafetyChecks {
         ArrayNode criterionArray = referencedBy.putArray("documentUniquenessCriteria");
         referrers.criteria().forEach(criterionArray::add);
         String effectiveFix = referrers.criteria().isEmpty() ? fix
-                : "first remove from the document uniqueness criteria " + String.join(", ", referrers.criteria())
-                        + " every field they name at or below " + target
-                        + "; --cascade removes only rules and computations, never a criterion";
+                : "first `criterion remove` the document uniqueness criteria " + String.join(", ", referrers.criteria())
+                        + ", which name a field at or below " + target + " (re-declare one over other fields with "
+                        + "`criterion add`); --cascade removes only rules and computations, never a criterion";
         int count = referrers.rules().size() + referrers.computations().size() + referrers.criteria().size();
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_REFERENCED"),
                 target + " is referenced by " + count + " element(s); removing it would dangle them",

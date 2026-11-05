@@ -24002,7 +24002,8 @@
           "criterion family"
         ],
         "dmtool-cli": [
-          "referrers"
+          "referrers",
+          "authoring"
         ],
         "json-schema-import": [
           "carriage"
@@ -24069,11 +24070,15 @@
         },
         "dmtool-cli": {
           "state": "APPLIED",
-          "basis": "where-used, model usage, model report and model diff count a criterion as a referrer of the fields it names, and field and group removal refuse on one even under --cascade, because A12 refuses a criterion over a missing field (KF671).",
+          "basis": "where-used, model usage, model report and model diff count a criterion as a referrer of the fields it names, and field and group removal refuse on one even under --cascade, because A12 refuses a criterion over a missing field; the criterion verbs and apply ops add, read and remove one in A12's stored shape, leaving admission to the kernel gate (KF671).",
           "evidence": {
             "referrers": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/UniquenessCriterionVerbsTest.java#removingAFieldOrGroupACriterionNamesIsRefusedEvenWithCascade",
               "witness": "Field and group removal with and without --cascade, against the controls in whatNoCriterionNamesIsStillRemoved."
+            },
+            "authoring": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/criterion/CriterionVerbTest.java#theVerbsRefuseATakenOrMissingNameAndTheKernelRejectsAnInadmissibleCriterion",
+              "witness": "A criterion over a required field added, read back byte-equal to its spec and removed, against a taken name, a missing name and a criterion over an optional field that the kernel rejects; apply runs the same ops in one sequence."
             }
           }
         },

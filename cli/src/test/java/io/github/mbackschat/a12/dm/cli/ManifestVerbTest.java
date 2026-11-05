@@ -43,6 +43,7 @@ class ManifestVerbTest {
             "typedef add", "typedef modify", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
             "typedef import", "typedef unimport",
             "include add", "include read", "include set-reference", "include remove", "include inline",
+            "criterion add", "criterion read", "criterion remove",
             "config read", "config modify",
             "workspace list", "workspace graph", "workspace check", "workspace roles",
             "where-used", "meta", "export", "batch", "apply", "schema", "operators", "patterns", "diagnostics", "manifest",

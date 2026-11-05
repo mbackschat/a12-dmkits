@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/criterion-add.schema.json",
+  "title": "criterion-add-spec",
+  "description": "INPUT of `dmtool -m <model> criterion add <spec.json>` and of the `criterion add` apply op — ONE document uniqueness criterion in the exact shape A12 stores it in `content.documentUniquenessCriteria`, so an entry returned by `criterion read` is a valid spec. A criterion names fields whose values no two stored documents may share; it is model data only, and no rule, computation or document validation evaluates it. Only `name` is demanded here: `criterion read`/`remove` address a criterion by it, and a name the model already uses is refused (RK_NAME_EXISTS). Everything else is A12's consistency check to admit, in its own sentence: each field must be required, persisted and outside any repeatable group, named by its full path, and each model locale needs a text whose `$path$` parameters name only the criterion's fields.",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "description": "the criterion's name, unique within the model; `criterion read <name>` and `criterion remove <name>` address it by this" },
+    "fields": {
+      "type": "array",
+      "description": "the fields whose combined values must be unique across stored documents, in order",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["fullName"],
+        "properties": { "fullName": { "type": "string", "description": "the field's full path, e.g. /Customer/Number" } }
+      }
+    },
+    "errorMessage": {
+      "type": "array",
+      "description": "the error text per locale, one entry for every locale the model declares",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["locale", "text"],
+        "properties": {
+          "locale": { "type": "string", "description": "a locale code the model declares, e.g. en_US" },
+          "text": { "type": "string", "description": "the message; a `$/Full/Path.value$` parameter may name only one of the criterion's own fields" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "name": "UniqueCustomerNumber",
+      "fields": [ { "fullName": "/Customer/Number" } ],
+      "errorMessage": [ { "locale": "en_US", "text": "Customer number $/Customer/Number.value$ is already taken." } ]
+    }
+  ]
+}

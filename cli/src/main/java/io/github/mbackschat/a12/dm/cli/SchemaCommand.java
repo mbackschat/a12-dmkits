@@ -65,17 +65,18 @@ final class SchemaCommand extends BaseCommand {
             "batch", new EmbeddedSchema("observationArtifact", "batch-observations"));
 
     /** Ops that consume a rich JSON input file → the input schema resource that documents it. */
-    static final Map<String, String> INPUT_OPS = Map.of(
-            "rule add", "rule-add",
-            "computation add", "computation-add",
-            "computation modify", "computation-add",
-            "field add", "field-add",
-            "field modify", "field-modify",
-            "typedef add", "typedef-add",
-            "typedef modify", "typedef-add",
-            "profile synthesize", "profile",
-            "apply", "apply",
-            "batch", "batch");
+    static final Map<String, String> INPUT_OPS = Map.ofEntries(
+            Map.entry("rule add", "rule-add"),
+            Map.entry("computation add", "computation-add"),
+            Map.entry("computation modify", "computation-add"),
+            Map.entry("field add", "field-add"),
+            Map.entry("field modify", "field-modify"),
+            Map.entry("typedef add", "typedef-add"),
+            Map.entry("typedef modify", "typedef-add"),
+            Map.entry("criterion add", "criterion-add"),
+            Map.entry("profile synthesize", "profile"),
+            Map.entry("apply", "apply"),
+            Map.entry("batch", "batch"));
 
     /** One artifact route: its kind, optional output schema, and optional file-writing receipt branch. */
     record ArtifactContract(String kind, String schema, String outputOption) {
@@ -125,6 +126,7 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("field read", "field-read"),
             Map.entry("group read", "group-read"),
             Map.entry("typedef read", "typedef-read"),
+            Map.entry("criterion read", "criterion-read"),
             Map.entry("rule read", "read"),
             Map.entry("rule explain", "explain"),
             Map.entry("model eval", "eval-doc"),

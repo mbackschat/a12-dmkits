@@ -23,8 +23,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 /**
  * A field a document uniqueness criterion names is in use, though no rule reads it (KERNEL-FINDINGS KF671): the
  * read verbs show the criterion by name, and the delete gates refuse what A12 would refuse after the edit, a model
- * whose criterion names a missing field. {@code --cascade} refuses too, since it removes rules and computations and
- * no verb edits a criterion. Own domain (insurance policies and their branch offices).
+ * whose criterion names a missing field. {@code --cascade} refuses too, since it removes rules and computations
+ * only; the refusal points at {@code criterion remove}. Own domain (insurance policies and their branch offices).
  */
 class UniquenessCriterionVerbsTest {
 
@@ -129,7 +129,7 @@ class UniquenessCriterionVerbsTest {
             var result = run(model, attempt);
             actual.add(String.join(" ", attempt) + " → " + verdict(result));
             assertTrue(envelope(result).path("diagnostics").path(0).path("fix").asText()
-                    .startsWith("first remove from the document uniqueness criteria"), result.out());
+                    .startsWith("first `criterion remove` the document uniqueness criteria"), result.out());
         }
 
         assertEquals(List.of(

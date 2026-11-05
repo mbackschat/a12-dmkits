@@ -187,8 +187,8 @@ class DmtoolPublicContractTest {
             }
         }
         assertEquals(ManifestVerbTest.EXPECTED_VERBS.size(), leaves);
-        assertEquals(48, writes);
-        assertEquals(38, previews);
+        assertEquals(50, writes);
+        assertEquals(40, previews);
         assertEquals(RUNTIME, runtime, "only the three interpreter runtime routes may claim runtime execution");
     }
 

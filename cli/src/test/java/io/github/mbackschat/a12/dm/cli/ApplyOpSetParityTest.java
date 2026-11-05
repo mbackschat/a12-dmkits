@@ -36,7 +36,7 @@ class ApplyOpSetParityTest {
 
     /** The element families {@code apply} transacts over — §7's "Local class". Cross-cutting verbs have no target here. */
     private static final Set<String> LOCAL_TARGETS =
-            Set.of("field", "group", "rule", "computation", "typedef", "include", "config", "meta");
+            Set.of("field", "group", "rule", "computation", "typedef", "include", "criterion", "config", "meta");
 
     /**
      * Live Local-class verbs that deliberately have NO apply op, each with the reason. A reason is required

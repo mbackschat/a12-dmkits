@@ -45,11 +45,12 @@ jq -nc '{jsonrpc:"2.0", id:2, method:"tools/list",
 
 ```output
 {
-  "tools": 30,
+  "tools": 32,
   "readOnly": [
     "dm.catalog",
     "dm.computation.read",
     "dm.config.read",
+    "dm.criterion.read",
     "dm.field.read",
     "dm.group.read",
     "dm.include.read",

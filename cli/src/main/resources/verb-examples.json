@@ -67,6 +67,9 @@
   "include remove":    { "intent": "preview removing a model include", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "remove", "catalog", "--dry-run"], "expect": "preview" },
   "include inline":    { "intent": "preview inlining an included sub-model in place", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "inline", "catalog", "--dry-run"], "expect": "preview" },
 
+  "criterion read":    { "intent": "read the document uniqueness criteria into data, as A12 stores them", "model": "customer-register.dm.json", "command": ["-m", "<model.json>", "criterion", "read"], "expect": "read" },
+  "criterion remove":  { "intent": "preview removing a document uniqueness criterion by name", "model": "customer-register.dm.json", "command": ["-m", "<model.json>", "criterion", "remove", "UniqueCustomerNumber", "--dry-run"], "expect": "preview" },
+
   "config read":       { "intent": "read the model config (locale, decimals, comment)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "config", "read"], "expect": "read" },
   "config modify":     { "intent": "preview setting the model comment", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "config", "modify", "--comment", "Order intake model", "--dry-run"], "expect": "preview" },
 

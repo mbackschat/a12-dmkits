@@ -3171,6 +3171,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_INCLUDE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_RULE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_TYPEDEF
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_UNIQUENESS_CRITERION
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode OUTPUT_UNWRITABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode OUTWARD_REFERENCE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode PRESENCE_NOT_COMPLEMENTARY

@@ -78,6 +78,9 @@ include read
 include set-reference
 include remove
 include inline
+criterion add
+criterion read
+criterion remove
 config read
 config modify
 workspace list
@@ -255,7 +258,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
 
 ```output
 {
-  "count": 99,
+  "count": 100,
   "severities": [
     "ERROR",
     "INFO",

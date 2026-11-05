@@ -536,6 +536,10 @@ dmtool -m order.dm.json include add \
   --reference pricelist \
   --parent /Order --name Prices --exclude-rules -w ./models
 
+# declare a document uniqueness criterion: one entry in A12's stored shape, which `criterion read` returns
+dmtool -m order.dm.json criterion add order-number-key.json
+dmtool -m order.dm.json criterion remove UniqueOrderNumber   # frees its fields for `field remove`
+
 # import another model's type-defs (merged by id, not mounted)
 dmtool -m order.dm.json typedef import --reference catalogtypes -w ./models
 

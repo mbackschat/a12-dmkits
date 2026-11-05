@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.modelkit.UniquenessCriterion;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -94,6 +96,14 @@ class DataSchemaConformanceTest {
         CliTestSupport.run("model", "new", "--id", "td", "--locale", "en_US", "--root", "R", "-o", td.toString());
         CliTestSupport.run("-m", td.toString(), "typedef", "add", "--id", "Money", "--kind", "NUMBER");
 
+        // a model carrying a document uniqueness criterion, so `criterion read <name>` / `criterion read` both run
+        Path crit = dir.resolve("crit.dm.json");
+        Files.writeString(crit, DocumentModelDraft.named("crit").locale("en_US")
+                .rootGroup("Customer", c -> c.stringField("Number", f -> f.required()))
+                .uniquenessCriterion(new UniquenessCriterion("UniqueNumber", List.of("/Customer/Number"),
+                        Map.of("en_US", "Number taken.")))
+                .build().toJson());
+
         // a renamed copy of order-ruled, so `model diff` produces the refactor overlay (RENAMED + a rewritten
         // referrer folded into `data.refactors[]`, and the referrer carries `partOfRefactor`) — MR4's shape
         Path renamed = dir.resolve("order-renamed.dm.json");
@@ -140,6 +150,8 @@ class DataSchemaConformanceTest {
                 new Run("group-read", new String[]{"-m", order.toString(), "group", "read"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read", "Money"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
+                new Run("criterion-read", new String[]{"-m", crit.toString(), "criterion", "read", "UniqueNumber"}),
+                new Run("criterion-read", new String[]{"-m", crit.toString(), "criterion", "read"}),
                 new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--instance", doc.toString()}),
                 new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--instance", doc.toString()}),
                 new Run("rule-eval", new String[]{"-m", order.toString(), "rule", "eval",
@@ -268,7 +280,7 @@ class DataSchemaConformanceTest {
         // this test fires loudly the moment the two disagree — which is how `patterns` was caught on the way in.
         // If it ever needs to be silent-safe, derive it from the run list instead of widening this set.
         Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile",
-                "profile-comparison", "read", "explain", "where-used", "meta-read", "field-read", "group-read", "typedef-read",
+                "profile-comparison", "read", "explain", "where-used", "meta-read", "field-read", "group-read", "typedef-read", "criterion-read",
                 "eval-doc", "compute-doc", "rule-eval", "workspace-list", "patterns");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
