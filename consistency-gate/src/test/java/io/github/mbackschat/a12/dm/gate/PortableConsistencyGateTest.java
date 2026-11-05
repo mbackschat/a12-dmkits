@@ -76,7 +76,9 @@ class PortableConsistencyGateTest {
                 new ModelSource(importingTypes(), "orders.dm.json"), resolver(Map.of()));
 
         assertTrue(supplied.validation().ok(), "`Money` is declared in the imported model: " + codes(supplied));
-        assertTrue(codes(missing).contains("CK_MODEL_NOT_BUILDABLE"),
+        // Kernel 31.1.1 states an unresolved type definition as its converter's sentence and goes on checking,
+        // where 30.8.1 left no model (KERNEL-FINDINGS KF652); the checker's code for that sentence is this one.
+        assertTrue(codes(missing).contains("RK_TYPE_DEFINITION_NOT_FOUND"),
                 "and the positive control shows the import was load-bearing: " + codes(missing));
     }
 
