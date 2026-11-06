@@ -52,8 +52,7 @@ jobs:
           # kit can't retroactively alter how it rebuilds; source determinism inside the kit is guaranteed by
           # the SHA pins in its bootstrap.sh. Move it with every kernel bump (KERNEL-UPGRADE step 1): the
           # 31.1.1 release first dispatched against the 2025.06 kit and found no 31.1.1 kernel in ~/.m2.
-          # This commit is the kit main that private CI bootstrapped 31.1.1 with on hosted runners; the kit's
-          # release/2026.06 branch predates its ~/.m2 install and hosted-runner pnpm fixes.
+          # This commit is the kit main that private CI bootstrapped 31.1.1 with on hosted runners.
           ref: 44383ec0dc3a14d912a581c7deed1f4b0776c688
           path: a12-kernel-bootstrap
 
