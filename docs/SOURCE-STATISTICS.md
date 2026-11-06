@@ -28,12 +28,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1313 | 201763 | 139928 | 38845 | 22990 |
+| Java | 1313 | 201796 | 139954 | 38850 | 22992 |
 | JavaScript | 12 | 1036 | 666 | 266 | 104 |
 | Kotlin | 1567 | 224968 | 167664 | 36426 | 20878 |
 | Shell | 12 | 2522 | 1935 | 359 | 228 |
-| TypeScript | 52 | 7551 | 6455 | 600 | 496 |
-| **Total** | **2960** | **437941** | **316704** | **76541** | **44696** |
+| TypeScript | 52 | 7554 | 6457 | 601 | 496 |
+| **Total** | **2960** | **437977** | **316732** | **76547** | **44698** |
 
 ### Tooling
 
