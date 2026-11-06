@@ -81,9 +81,9 @@ class DocRelativeLinkGuardTest {
      * <p>Such a target is therefore excluded from the existence check and <b>named here</b>. A new one fails by
      * name rather than joining a silent skip.
      */
-    private static final Set<String> UNVERIFIABLE_OUTSIDE_THE_REPO = Set.of(
-            // KERNEL-31-UPGRADE-PROPOSAL names the sibling kit that publishes the kernel to mavenLocal.
-            "../../a12-kernel-bootstrap");
+    private static final Set<String> UNVERIFIABLE_OUTSIDE_THE_REPO = Set.of();
+    // KERNEL-31-UPGRADE-PROPOSAL's link to the sibling `../../a12-kernel-bootstrap` kit was listed here until
+    // 2026-11-06, when that proposal was archived, for the same reason as the citations below.
     // PORTABLE-CONSISTENCY-PROPOSAL's two consult-only `../../a12-kernel/...` citations were listed here until
     // 2026-09-19, when that proposal was archived. They are not re-spelled one level deeper: `docs/archived/` is
     // outside this guard's scan set by the scope rule above, so those targets are no longer parsed at all, and a

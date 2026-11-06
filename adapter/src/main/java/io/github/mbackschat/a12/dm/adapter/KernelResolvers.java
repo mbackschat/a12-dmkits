@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
  * <p>Kernel 31 removed {@code IDocumentModelService#expand} (A12K-4021). Its 30.8.1 implementation was itself
  * deprecated in favour of {@code CombinationModelService#expand} ({@code cb66e51:…/DocumentModelService.java}
  * line 137), and the facade keeps that a12internal static entry point at 31.1.1, so this is the owner-chosen
- * replacement (KERNEL-31-UPGRADE-PROPOSAL D2). It returns a NEW model rather than expanding in place, and reports
+ * replacement (decision D2, docs/archived/KERNEL-31-UPGRADE-PROPOSAL.md). It returns a NEW model rather than expanding in place, and reports
  * problems as notifications instead of throwing; {@link #expand} folds an ERROR back into the kernel's own
  * {@link DocumentModelExpansionException}, the type the 30.8.1 entry point threw for the same event, so callers
  * keep one verdict channel.

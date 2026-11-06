@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 /**
  * The kernel-expansion oracle for tests: the same {@link KernelResolvers#expand} port production uses, so every
  * test that asks "what does the KERNEL expand this to?" exercises the one route the backend ships
- * (KERNEL-31-UPGRADE-PROPOSAL D2), instead of each test wiring its own call into the kernel.
+ * (decision D2, docs/archived/KERNEL-31-UPGRADE-PROPOSAL.md), instead of each test wiring its own call into the kernel.
  *
  * <p>It lives in test fixtures, not on the adapter's public surface, because its signatures carry kernel types
  * and the main module keeps those off every public signature (N8).

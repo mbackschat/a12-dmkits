@@ -311,11 +311,11 @@ Product implementation.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 550 | 81630 | 54672 | 18714 | 8244 |
+| Java | 550 | 81631 | 54672 | 18715 | 8244 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 | Kotlin | 350 | 70673 | 42307 | 22844 | 5522 |
 | TypeScript | 11 | 1808 | 1398 | 240 | 170 |
-| **Total** | **912** | **154218** | **98449** | **41823** | **13946** |
+| **Total** | **912** | **154219** | **98449** | **41824** | **13946** |
 
 ### Verification
 
@@ -324,11 +324,11 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1313 | 201796 | 139954 | 38850 | 22992 |
+| Java | 1313 | 201796 | 139953 | 38851 | 22992 |
 | JavaScript | 12 | 1036 | 666 | 266 | 104 |
-| Kotlin | 1567 | 224968 | 167664 | 36426 | 20878 |
+| Kotlin | 1567 | 224969 | 167664 | 36427 | 20878 |
 | TypeScript | 30 | 5273 | 4433 | 545 | 295 |
-| **Total** | **2926** | **433174** | **312773** | **76132** | **44269** |
+| **Total** | **2926** | **433175** | **312772** | **76134** | **44269** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

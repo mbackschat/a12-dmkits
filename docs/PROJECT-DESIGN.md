@@ -491,7 +491,7 @@ Semantics captured at three tiers: **(A)** per-operator (catalog), **(B)** langu
 | **EUPL boundary** (web catalogs, `a12-kernel-mm`) | low | compare/reference only, never copy; opt-in tests read sibling clones; policy recorded in `CLAUDE.md` + survey §13 |
 | Type lattice must be hand-encoded (no kernel type tag) | med | encode as catalog data; invalid examples (largely type violations) CI-verified against the engine |
 | Over-abstracting for polyglot too early | med | Java first with a clean contract seam; TS is a parallel impl, not a refactor |
-| TS validation depends on unbuilt TS kernel runtime | med | TS twin scoped to build+render; validation is a later milestone |
+| TS validation depends on the TS kernel runtime | med | TS twin scoped to build+render; the runtime is buildable since the 2026.06-ext1 bootstrap, and no harness consumes it yet ([IG186](INTERPRETER-GAP-DISPOSITIONS.md#ig186)) |
 | Scope creep | high | strict phasing (§16); corpus-driven coverage order; exploratory items explicitly parked |
 
 **Overall:** the core (build + render + validate, Java) was already clearly feasible; the survey upgraded the ambitious part — **bidirectional modify is feasible mostly by delegation**, with rulekit's own work concentrated where it adds unique value (the typed AST, the catalog, the model index, the converter).
@@ -571,7 +571,7 @@ The twelve v1 design forks, all decided (owner review 2026-06-02; #1 amended 202
 
 - **`a12-kernel`** — the engine, grammar, BA guide; the validate + adapter dependency; the parity-test sources. Pinned at `30.8.1` (2025.06-ext5); the catalog records `sinceKernel` per operator.
 - **`a12-kernel-demo`** — runnable feature showcases (the Phase-1 coverage floor), `KERNEL-SEMANTICS.md` (prose basis of the semantics layer), the typed-accessor codegen precedent (for the since-dropped L2b — D7), and the only kernel repo whose models may be copied/adapted.
-- **`a12-kernel-bootstrap`** — publishes the kernel + deps to `mavenLocal` from public sources (Java only — the concrete reason TS validation is later). Run `./bootstrap.sh` once.
+- **`a12-kernel-bootstrap`** — publishes the kernel + deps to `mavenLocal` from public sources (Java artifacts, plus the kernel TypeScript packages as local tarballs since 2026.06-ext1). Run `./bootstrap.sh` once.
 - **`a12-antlr4-code-editor` + `kernel-core-parser-web`** — surveyed; no dependency. The editor is a grammar-agnostic string editor (no AST); the web package contributes the content-catalog drift oracle and, hypothetically, TS parsing machinery rulekit doesn't plan to use.
 - **Corpora** ([`WORKSPACE-CORPUS-ANALYSIS.md`](./WORKSPACE-CORPUS-ANALYSIS.md)): *A12 Tools* workspaces (proprietary) — read-only pattern/frequency oracle, transformed into original fixtures; **`a12-kernel-mm`** (EUPL) — referenced via sibling clone for opt-in integration tests, never committed. Committed fixtures are always our own originals (project `CLAUDE.md`).
 - **Build:** Java 21 toolchain, Gradle 9, `mavenLocal` + Maven Central only, isolated `GRADLE_USER_HOME` (machine-global config may inject a private registry — see README and [`BUILD-ENVIRONMENT.md`](./BUILD-ENVIRONMENT.md)). Core depends on `kernel-md-facade` + public model API + serializer; **must not** depend on `kernel-md-model`/`kernel-md-a12internal` (those are adapter/test-tier only per N8/D15).

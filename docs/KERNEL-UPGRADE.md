@@ -72,7 +72,7 @@ When a *second* kernel version actually publishes, add the CI version matrix (bu
 
 ## A major-release migration — the playbook <a id="major-release-playbook"></a>
 
-A patch bump is the procedure above. A major release (a new A12 distribution with a DM format change, renamed modules, new operators) also changes shapes the guardians assume, so it runs as a planned migration. The 31.1.1 migration's record is [its proposal](KERNEL-31-UPGRADE-PROPOSAL.md).
+A patch bump is the procedure above. A major release (a new A12 distribution with a DM format change, renamed modules, new operators) also changes shapes the guardians assume, so it runs as a planned migration. The 31.1.1 migration's record is [its archived proposal](archived/KERNEL-31-UPGRADE-PROPOSAL.md).
 
 1. **Tag the last verified revision first** (`kernel-<old>-final`). Every later "what changed since the old kernel" question (findings, adoption records, peer letters) is a diff against that tag. Without it, the base is a guess.
 2. **Write the change analysis as a proposal whose work-item table carries the state.** Seed it from [the release log](#release-log), one disposition per entry. Partition by mechanism, and order the partitions so each one unblocks the next:
@@ -90,7 +90,7 @@ A patch bump is the procedure above. A major release (a new A12 distribution wit
 7. **Send one verdict-delta letter per batch** ([A12-KERNEL-LEAN-HANDBACK](A12-KERNEL-LEAN-HANDBACK.md)). Before calling the series complete, sweep every finding added or amended since the tag against the sent letters, by id and by the finding a correction cites, and send what is uncarried. Record per finding in `kernel-finding-adoption.json` the letter that carries it. A bulk "reported" basis is a claim nobody can point at: on 2026-11-03, 28 of 75 records the migration commit had marked reported appeared in no letter.
 8. **Re-capture what is captured, not merely re-run it.** That means the conformance corpus (`meta.kernelVersion` moves with it), the native reflection metadata before any native rebuild ([NATIVE-IMAGE-GRAALVM](NATIVE-IMAGE-GRAALVM.md) §5.1), the perf anchors on an idle machine, and the catalog's `verifiedAgainst`.
 9. **Run one simplification pass and one cold review over the whole migration range before the release.** A migration accretes duplicated construction, stale comments and dead overloads behind green tests. Its reviews were per slice, so nothing else looks across the range.
-10. **Measure what the migration added to the repository, against the tag, and record it in the migration's record.** The previous migration's figures are the baseline to compare against: [31.1.1's](KERNEL-31-UPGRADE-PROPOSAL.md#repository-growth). Run it once `git count-objects -v` reports few loose objects, since only a packed object's disk size reflects git's delta compression.
+10. **Measure what the migration added to the repository, against the tag, and record it in the migration's record.** The previous migration's figures are the baseline to compare against: [31.1.1's](archived/KERNEL-31-UPGRADE-PROPOSAL.md#repository-growth). Run it once `git count-objects -v` reports few loose objects, since only a packed object's disk size reflects git's delta compression.
 
    ```sh
    git rev-list --objects kernel-<old>-final..HEAD \

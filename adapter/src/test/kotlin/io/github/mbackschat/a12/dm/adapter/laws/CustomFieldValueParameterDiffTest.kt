@@ -20,8 +20,9 @@ import org.junit.jupiter.api.Test
 /**
  * A rule message that interpolates a custom-typed field's value, `$/Order/Code.value$` — the changelog's A12K-4331,
  * fixed in kernel 31.1.1 (and 30.8.6), where it "could lead to an exception during validation". Kernel 31.1.1's
- * value conversion receives the configured custom-field-type factory (KERNEL-31-UPGRADE-PROPOSAL, "The ext0 → ext1
- * delta"); these rows read what that conversion renders, on both kernel strategies and the interpreter.
+ * value conversion receives the configured custom-field-type factory (docs/archived/KERNEL-31-UPGRADE-PROPOSAL.md,
+ * "The ext0 → ext1 delta"); these rows read what that conversion renders, on both kernel strategies and the
+ * interpreter.
  *
  * A12 admits a message parameter only for a field its rule's condition reads, so the condition is
  * `FieldFilled(Note) Or FieldFilled(Code)` with the error on `Note`, which every row fills. The three rows vary only

@@ -1,6 +1,6 @@
-# Kernel 31.1.1 upgrade (2026.06-ext1) — change analysis & plan (PROPOSAL, executing)
+# Kernel 31.1.1 upgrade (2026.06-ext1) — change analysis & plan (archived 2026-11-06)
 
-**Status:** PROPOSAL, **executing since 2026-11-02** on the owner's directive. This is the concrete instance of the [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.1` bump. The source audit was written 2026-07-17 against 31.1.0 (2026.06-ext0), with a disposition of DEFER. It was retargeted 2026-11-02 to **31.1.1 (2026.06-ext1)**, the release the sibling `a12-kernel` checkout now carries, which per the project rule makes it this project's version. **§0's work-item table is the state carrier**: each landing updates its row in the same commit. Once every row is done, the durable contracts graduate to their owning specs and this doc is archived.
+**Status:** ARCHIVED 2026-11-06, complete: v0.15.0 shipped on kernel 31.1.1 that day. It executed from 2026-11-02 on the owner's directive. This is the concrete instance of the [KERNEL-UPGRADE.md](../KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.1` bump. The source audit was written 2026-07-17 against 31.1.0 (2026.06-ext0), with a disposition of DEFER. It was retargeted 2026-11-02 to **31.1.1 (2026.06-ext1)**, the release the sibling `a12-kernel` checkout now carries, which per the project rule makes it this project's version. §0's work-item table carried the migration's state. Where each durable contract now lives is listed in [the archive index](README.md).
 
 Primary sources:
 - The upstream kernel migration instructions: `a12-kernel` `eec9134:documentation/dev/index.adoc`, section "2026.06".
@@ -51,10 +51,10 @@ JDK stays **21**. The work is multi-session. The OSS bootstrap prerequisite is d
 | W3a | Format floor: `ModelFormat.VERSION` 29.4.0, authoring emits the 29.x include shape, the D3 reference-only include redesign, every committed fixture migrated. | done 2026-11-03 |
 | W3b | Uniqueness-criteria read/preserve/rewrite. Migration of a12-kernel-lean's 645 probe requests (`evidence/kernel-30.8.1/captures/**/request*.json` at their `f54b66b2`). | W3b-1, W3b-2a and W3b-2b done, see the W3b batches below; Letter D sent 2026-11-03 with the probe-request migration offer, awaiting their answer. |
 | W4 | Guardian hardening (two-way inventories) + realignment: MVK renames, enum-law flips, categories, slots, metamodel counts. `:consistency` re-measured. | done 2026-11-03 — see the W4 batches below; Letter B sent 2026-11-03 |
-| W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | in progress — every batch below is done except W5-perf; Letter B, sent 2026-11-03, carries the runtime deltas |
-| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | done: kernel laws, typed surface, adapter read-back, interpreter and portable checker ([KF670](KERNEL-FINDINGS.md#kf670)); Letter C sent 2026-11-03 |
-| W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | in progress — version surfaces (the CI and native workflows included) and docs done 2026-11-03; the native re-capture and gate run with W8 |
-| W8 | Gated release (D6) | open |
+| W5 | Runtime requalification: the `java.time` date rewrite, code-generation restructure, the ext1 custom-field-type conversion change, Jackson 3 Document JSON number stages. Corpus regenerated. | done 2026-11-06 (W5-perf last); Letter B, sent 2026-11-03, carries the runtime deltas |
+| W6 | `SumOfTerms` typed vertical slice + interpreter, both kernel strategies | done: kernel laws, typed surface, adapter read-back, interpreter and portable checker ([KF670](../KERNEL-FINDINGS.md#kf670)); Letter C sent 2026-11-03 |
+| W7 | Version surfaces, docs, CLAUDE.md (D7), native re-capture + gate | done — version surfaces (the CI and native workflows included) and docs 2026-11-03; native re-capture (`7399fa1ac`) and the native gate 2026-11-06 |
+| W8 | Gated release (D6) | done 2026-11-06: v0.15.0 published with all four native binaries |
 
 Each of W3–W6 ends with a verdict-delta letter to a12-kernel-lean (D4). Their row requirements (reply of 2026-11-02): every measured row names the kernel version, our revision, the launcher identity (dmtool version, source revision and clean state, built and runtime kernel) and the strategy, and an MVK code's meaning is given **by its raising gate**, never by name alone. They depend on the 30.8.1 artifacts in `~/.m2` for their own measurement checkout; never remove them.
 
@@ -70,17 +70,17 @@ Each of W3–W6 ends with a verdict-delta letter to a12-kernel-lean (D4). Their 
 
 | batch | mechanism | owning classes | state |
 |---|---|---|---|
-| W4-build | the converter states a blank or shared name, an unfound computed field and an unfound type definition codelessly, and checks on ([KF652](KERNEL-FINDINGS.md#kf652)) | `DeclaredNameShape`, `ElementNameUniqueness`, `ModelWideNameUniqueness`, `ComputedFieldTargetKind`, the `TypeDefType` rows of `FieldTypeBinding`, `RuleSlot` | done ([KF652](KERNEL-FINDINGS.md#kf652)) |
-| W4-mvk | `*_IN_FILTER_CONDITION` → `*_IN_SET_EXPRESSION`; `FILTERED_ENTITY` → `PATH_WITH_ASTERISKS`; `WILDCARD_AT_LOWEST_LEVEL` → `…_REPEATABLE_LEVEL`; `NO_GROUPS_ALLOWED` split; `NEG_CONDITION_IN_ITERATION` on marked negated presence operators | `AggregateSlot`, `FilterBodyComparison`, `FilteredOperandGateOrder`, `HavingFilter*`, `ParallelIterationGate`, `SemanticIndexInFilter`, `SumOfProducts*`, `ConditionClassWithholding`, `FirstFilledOperandShape`, `GroupOperandRepetitionScope`, `IterationBinding`, `MvkLedgerTest`, `CatalogKernelClaimEvidenceTest`, `GrammarProductionLedgerTest`, `KeywordReverseParityTest` | done ([KF656](KERNEL-FINDINGS.md#kf656)); `SumOfTerms` cataloguing and its grammar/keyword guards stay with the version-surface step |
-| W4-enum | a labelled enumeration draws `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES`; labelled-enum comparisons and concatenation are admitted | `EnumDisplayComparability`, `EnumValueAndLabel`, `EnumComparability`, `EnumComputationSource`, `EnumIntoText`, `KeyedOperandFamily`, `StringEnumComparisonAgreement`, `ArithmeticOperandKind`, `KeyedEnumerationConcatenation` | done ([KF655](KERNEL-FINDINGS.md#kf655)); the value entry without `value` closed with it, and the blank category token it exposed is [KF660](KERNEL-FINDINGS.md#kf660) |
-| W4-order | index and sort reference laws: a `NUMBER` flag admitted, a `null` flag unreadable, a table enum unbuilt | `GroupIndexAndSortReference`, `GroupOrderingMultipleDefect`, `GroupOrderingFieldType`, `CheckerOrderingNameSentenceAgreementTest` | done ([KF653](KERNEL-FINDINGS.md#kf653)) |
-| W4-reader | the reader ignores unknown members, binds a body-less field type, refuses `UnspecifiedType`; an absent `errorCode` or `errorEntityRelPath` and a header without id leave no model | `FieldTypeBinding`, `EnumCategoryWireShape`, `EnumDeclarationShape`, `TemporalConfigWireShape`, `RuleCodeAndSeverity`, `RuleConditionAndTargetSlot`, `ModelHeaderSlot` | done ([KF654](KERNEL-FINDINGS.md#kf654)); the value entry without `value` closed in W4-enum ([KF655](KERNEL-FINDINGS.md#kf655)) |
-| W4-decl | field-declaration admission: an explicit empty range separator, field-type message pairs, a lone surrogate's `WRONG_ENCODING`, a foreign error-text locale, a blank temporal format, the write-gate categories | `DateRangePair`, `FieldTypeMessageText`, `ErrorTextCharacterGate`, `ModelTextRepertoire`, `ErrorTextLocaleScope`, `RuleMessageAdmissionGate`, `TemporalDeclarationWithoutFormat`, `SerializerTierParity` | done ([KF657](KERNEL-FINDINGS.md#kf657) message gates and `Vordruckname`, [KF658](KERNEL-FINDINGS.md#kf658) the expand copy's empty members, [KF659](KERNEL-FINDINGS.md#kf659) undeclared-locale parameters at code generation) |
-| W4-empty | the expand copy's empty-as-absent reading ([KF658](KERNEL-FINDINGS.md#kf658)) at every other site that judges an empty member: the checker, the kits' readers and the interpreter | `ExpandCopyEmptyMemberLawsTest`; `CheckerEmptyMemberAgreementTest` (forty members, the category names, the kits' `ModelIndex` and `EditSession`); `EmptyDeclarationMemberDiffTest` and `EmptyTimeZoneDiffTest` (runtime, kernel and interpreter); the 30.8.1 empty-separator locks requalified ([IF306](INTERPRETER-FINDINGS.md#if306), [KF633](KERNEL-FINDINGS.md#kf633)) | done |
-| W4-locale | `ja_JP_JP` and `th_TH_TH` leave no model on 31.1.1 ([KF662](KERNEL-FINDINGS.md#kf662)) | `CheckerLocaleSpellingAgreementTest` | done |
-| W4-msgparam | the message-parameter decoder's internal errors became classes (`INVALID_GROUP`, `MVK_INDEX_FOR_ERROR_TEXT_INVALID`, [KF663](KERNEL-FINDINGS.md#kf663)) | `MessageParameterDecoderAgreementTest` | done |
-| W4-probe | the probe's raise capture listened on the 30.8.1 runtime package; it now matches the release segment by pattern and refuses when no class carries the name ([KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md)) | `KernelProbeCustomConditionTest` | done |
-| W4-limit | `NumberFieldValueLimitRule` was deleted in 31.1, so the bound-magnitude family retires | `CheckerNumberBoundMagnitudeAgreementTest` and its rulekit counterpart | done ([KF582](KERNEL-FINDINGS.md#kf582) retired; the bound scale rule in [KF593](KERNEL-FINDINGS.md#kf593)) |
+| W4-build | the converter states a blank or shared name, an unfound computed field and an unfound type definition codelessly, and checks on ([KF652](../KERNEL-FINDINGS.md#kf652)) | `DeclaredNameShape`, `ElementNameUniqueness`, `ModelWideNameUniqueness`, `ComputedFieldTargetKind`, the `TypeDefType` rows of `FieldTypeBinding`, `RuleSlot` | done ([KF652](../KERNEL-FINDINGS.md#kf652)) |
+| W4-mvk | `*_IN_FILTER_CONDITION` → `*_IN_SET_EXPRESSION`; `FILTERED_ENTITY` → `PATH_WITH_ASTERISKS`; `WILDCARD_AT_LOWEST_LEVEL` → `…_REPEATABLE_LEVEL`; `NO_GROUPS_ALLOWED` split; `NEG_CONDITION_IN_ITERATION` on marked negated presence operators | `AggregateSlot`, `FilterBodyComparison`, `FilteredOperandGateOrder`, `HavingFilter*`, `ParallelIterationGate`, `SemanticIndexInFilter`, `SumOfProducts*`, `ConditionClassWithholding`, `FirstFilledOperandShape`, `GroupOperandRepetitionScope`, `IterationBinding`, `MvkLedgerTest`, `CatalogKernelClaimEvidenceTest`, `GrammarProductionLedgerTest`, `KeywordReverseParityTest` | done ([KF656](../KERNEL-FINDINGS.md#kf656)); `SumOfTerms` cataloguing and its grammar/keyword guards stay with the version-surface step |
+| W4-enum | a labelled enumeration draws `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES`; labelled-enum comparisons and concatenation are admitted | `EnumDisplayComparability`, `EnumValueAndLabel`, `EnumComparability`, `EnumComputationSource`, `EnumIntoText`, `KeyedOperandFamily`, `StringEnumComparisonAgreement`, `ArithmeticOperandKind`, `KeyedEnumerationConcatenation` | done ([KF655](../KERNEL-FINDINGS.md#kf655)); the value entry without `value` closed with it, and the blank category token it exposed is [KF660](../KERNEL-FINDINGS.md#kf660) |
+| W4-order | index and sort reference laws: a `NUMBER` flag admitted, a `null` flag unreadable, a table enum unbuilt | `GroupIndexAndSortReference`, `GroupOrderingMultipleDefect`, `GroupOrderingFieldType`, `CheckerOrderingNameSentenceAgreementTest` | done ([KF653](../KERNEL-FINDINGS.md#kf653)) |
+| W4-reader | the reader ignores unknown members, binds a body-less field type, refuses `UnspecifiedType`; an absent `errorCode` or `errorEntityRelPath` and a header without id leave no model | `FieldTypeBinding`, `EnumCategoryWireShape`, `EnumDeclarationShape`, `TemporalConfigWireShape`, `RuleCodeAndSeverity`, `RuleConditionAndTargetSlot`, `ModelHeaderSlot` | done ([KF654](../KERNEL-FINDINGS.md#kf654)); the value entry without `value` closed in W4-enum ([KF655](../KERNEL-FINDINGS.md#kf655)) |
+| W4-decl | field-declaration admission: an explicit empty range separator, field-type message pairs, a lone surrogate's `WRONG_ENCODING`, a foreign error-text locale, a blank temporal format, the write-gate categories | `DateRangePair`, `FieldTypeMessageText`, `ErrorTextCharacterGate`, `ModelTextRepertoire`, `ErrorTextLocaleScope`, `RuleMessageAdmissionGate`, `TemporalDeclarationWithoutFormat`, `SerializerTierParity` | done ([KF657](../KERNEL-FINDINGS.md#kf657) message gates and `Vordruckname`, [KF658](../KERNEL-FINDINGS.md#kf658) the expand copy's empty members, [KF659](../KERNEL-FINDINGS.md#kf659) undeclared-locale parameters at code generation) |
+| W4-empty | the expand copy's empty-as-absent reading ([KF658](../KERNEL-FINDINGS.md#kf658)) at every other site that judges an empty member: the checker, the kits' readers and the interpreter | `ExpandCopyEmptyMemberLawsTest`; `CheckerEmptyMemberAgreementTest` (forty members, the category names, the kits' `ModelIndex` and `EditSession`); `EmptyDeclarationMemberDiffTest` and `EmptyTimeZoneDiffTest` (runtime, kernel and interpreter); the 30.8.1 empty-separator locks requalified ([IF306](../INTERPRETER-FINDINGS.md#if306), [KF633](../KERNEL-FINDINGS.md#kf633)) | done |
+| W4-locale | `ja_JP_JP` and `th_TH_TH` leave no model on 31.1.1 ([KF662](../KERNEL-FINDINGS.md#kf662)) | `CheckerLocaleSpellingAgreementTest` | done |
+| W4-msgparam | the message-parameter decoder's internal errors became classes (`INVALID_GROUP`, `MVK_INDEX_FOR_ERROR_TEXT_INVALID`, [KF663](../KERNEL-FINDINGS.md#kf663)) | `MessageParameterDecoderAgreementTest` | done |
+| W4-probe | the probe's raise capture listened on the 30.8.1 runtime package; it now matches the release segment by pattern and refuses when no class carries the name ([KERNEL-PROBE-SPEC](../KERNEL-PROBE-SPEC.md)) | `KernelProbeCustomConditionTest` | done |
+| W4-limit | `NumberFieldValueLimitRule` was deleted in 31.1, so the bound-magnitude family retires | `CheckerNumberBoundMagnitudeAgreementTest` and its rulekit counterpart | done ([KF582](../KERNEL-FINDINGS.md#kf582) retired; the bound scale rule in [KF593](../KERNEL-FINDINGS.md#kf593)) |
 
 **W5 batches.** The full adapter lane on 31.1.1 failed 109 of 4292 tests in 56 classes (2026-11-03). A mechanism marked *hypothesis* is the batch's starting account, not a finding; the batch's discriminating rows settle it.
 
@@ -92,20 +92,20 @@ Each of W3–W6 ends with a verdict-delta letter to a12-kernel-lean (D4). Their 
 | W5-phase | temporal operand failure phases; re-triaged after W5-cal and W5-tz, since most rows may be their fallout | `ConstructionArgumentPhase`, `ShiftAmountPhase`, `DifferenceOperandFailureOrder`, `ConstructionProvenance`, `TemporalValueFailure`, `FilterTemporalLiteralFailure`, `CalendarTargetCompletion`, `ClockDeclaredDateGate` | done 2026-11-03 |
 | W5-sparse | hypothesis: repetition traversal changed with the runtime service's data path (`DocumentIDataWrapper` and `EntityInstanceConverter` were deleted) | `SparseFilteredAggregate`, `SparseFilteredFill`, `SparseMembershipTraversal`, `SparseOverlapPolicy`, `FilterCacheScope`, `FilterMissingSlot`, `DenseUniquenessPrefix`, `ComputeTargetSubgroupScope`, `PartialGroupCountRelevance`, `PartialDeclaredListExtent`, `ClassificationEnablementGrid` | done 2026-11-03 |
 | W5-msg | message rendering and field-owned error texts | `MessageParameterRow`, `FieldConstraintFormal`, `CustomTestRange`, `ComputationDiagnosticAssembly` | done 2026-11-03 |
-| W5-perf | performance scenario fingerprints drifted with the fixture migration | `ScenarioInventory` | open — the anchors are refreshed on an idle machine before the release |
+| W5-perf | performance scenario fingerprints drifted with the fixture migration | `ScenarioInventory` | done 2026-11-06: both runner classes re-anchored on 31.1.1 (`7cbb1edb8`) |
 
 
 **W3b batches.** A12 names a criterion only by `IDocumentUniquenessCriterion.getName()` and lists its fields with `getFieldFullNames()`. It has no path, so criteria get their own field-keyed index, read from the expanded `IDocumentModel` the adapter already holds, beside the rule and computation referrers. Mixing names into those path-keyed sets would invent an address A12 does not have.
 
 | batch | mechanism | acceptance (oracle) | state |
 |---|---|---|---|
-| W3b-1 | admission classes and move-support rewrite | `DocumentUniquenessCriterionLawsTest`, `UniquenessCriterionRewriteTest` ([KF671](KERNEL-FINDINGS.md#kf671)) | done 2026-11-03 |
-| W3b-2a | three kernel measurements before the design: `field remove` on a criterion field today; whether expansion carries an included model's criteria and rebases them, and whether an entry criterion may name a mounted field; whether the sub-model of `group extract` is refused for the copied parent criteria | `UniquenessCriterionStructureKernelTest` ([KF671](KERNEL-FINDINGS.md#kf671)) | done 2026-11-03: a removal leaving a criterion's field missing is refused; expansion keeps only the entry's criteria; the extracted sub-model alone is refused for its copies, the parent admitted |
+| W3b-1 | admission classes and move-support rewrite | `DocumentUniquenessCriterionLawsTest`, `UniquenessCriterionRewriteTest` ([KF671](../KERNEL-FINDINGS.md#kf671)) | done 2026-11-03 |
+| W3b-2a | three kernel measurements before the design: `field remove` on a criterion field today; whether expansion carries an included model's criteria and rebases them, and whether an entry criterion may name a mounted field; whether the sub-model of `group extract` is refused for the copied parent criteria | `UniquenessCriterionStructureKernelTest` ([KF671](../KERNEL-FINDINGS.md#kf671)) | done 2026-11-03: a removal leaving a criterion's field missing is refused; expansion keeps only the entry's criteria; the extracted sub-model alone is refused for its copies, the parent admitted |
 | W3b-2b | criteria as referrers. `where-used` lists them under `documentUniquenessCriteria`; `field remove` and `group remove` refuse with `RK_REFERENCED` naming them, `--cascade` included, since no verb edits a criterion; the `model report` dead-field set, `model usage` and the `model diff` read-by flag count them; `group extract` copies no parent criterion into the sub-model and leaves the parent's in place, since A12 admits a criterion naming a mounted field and drops an included model's own | `cli.UniquenessCriterionVerbsTest` (the refusals with and without `--cascade` and their control, the read verbs, extraction, and `field modify` refused in A12's sentence, so it needs no pre-gate), `adapter.UniquenessCriterionIndexTest`, `adapter.review.UniquenessCriterionDiffTest`; one cold review before landing | done 2026-11-03 |
 
-Excluded and recorded: authoring criteria through the kits (DG176, settled 2026-11-04 by `UniquenessCriterion` on the draft, `ModelDocument` and `EditSession`), the portable checker's silence on the criterion classes (DG177, settled 2026-11-04 by the `UNIQUENESS_CRITERIA` family), the JSON Schema export dropping criteria unreported (DG178, settled 2026-11-04 by `x-a12-document-uniqueness-criteria` carriage), rename and move not listing the criteria they rewrote ([CG26](CLI-CONFORMANCE-GAPS.md#cg26)), and a criterion kind in `model diff` and `model info` ([MODEL-REVIEW-GAPS](MODEL-REVIEW-GAPS.md) §2).
+Excluded and recorded: authoring criteria through the kits (DG176, settled 2026-11-04 by `UniquenessCriterion` on the draft, `ModelDocument` and `EditSession`), the portable checker's silence on the criterion classes (DG177, settled 2026-11-04 by the `UNIQUENESS_CRITERIA` family), the JSON Schema export dropping criteria unreported (DG178, settled 2026-11-04 by `x-a12-document-uniqueness-criteria` carriage), rename and move not listing the criteria they rewrote ([CG26](../CLI-CONFORMANCE-GAPS.md#cg26)), and a criterion kind in `model diff` and `model info` ([MODEL-REVIEW-GAPS](../MODEL-REVIEW-GAPS.md) §2).
 
-Outside the batches: 31.1.1 states a duplicate element id codelessly ("The id [..] of element on path .. is not unique: Used by [..]"); the checker reports it as `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](KERNEL-FINDINGS.md#kf661)).
+Outside the batches: 31.1.1 states a duplicate element id codelessly ("The id [..] of element on path .. is not unique: Used by [..]"); the checker reports it as `RK_ELEMENT_ID_NOT_UNIQUE` ([KF661](../KERNEL-FINDINGS.md#kf661)).
 
 ---
 
@@ -156,7 +156,7 @@ The kernel renamed most Gradle projects `kernel-*` → `kernel-internal-*`, and 
 A new **set operation** (parse tree `ISetOpOperation`, enum `SetOpOperationName`, lexer terminal `SUMME_VON_TERMEN`; EN `SumOfTerms`, DE `SummeVonTermen`, re-verified at `eec9134`).
 
 - **Syntax / arity:** `SumOfTerms(<iterationGroup*>, <term>)`. Argument 1 is a starred repeatable group path; argument 2 is a numeric term evaluated per iteration. It is usable wherever a number-valued operation is, and **returns NUMBER**.
-- **Checker constraints** (July source read of `CheckSetOperOpImpl` + `CheckSetExpressionUtil`; the measured classes are [KF670](KERNEL-FINDINGS.md#kf670)):
+- **Checker constraints** (July source read of `CheckSetOperOpImpl` + `CheckSetExpressionUtil`; the measured classes are [KF670](../KERNEL-FINDINGS.md#kf670)):
   - The iteration entity must be a group, repeatable and wildcarded on its lowest level, with no semantic index.
   - The term must be numeric and may not contain application conditions, `RepetitionNotUnique`, a `Mit` filter or a nested `SumOfTerms`.
   - The lowest wildcard level must be iterated.
@@ -229,7 +229,7 @@ The root fix for items 1–2 is **one shared, model-aware V2 document materializ
 - **Behaviour-preserving refactor churn:** immutability, German→English renames, switch modernization. The number formal-error classification rewrite needs an equivalence spot-check.
 - **`kernel-md-runtime-service`:** `DocumentModelCodeGenerator` was removed and the dynamic Groovy path restructured (`DocumentDynamicRtService` now goes through `getGeneratedCodeAccessFactory(id).getCalculator()`). Flag this for the codegen-strategy parity check.
 - **ext1:** custom-field-type factory in value conversion (§1).
-- **Jackson 3** inside the kernel may change the Document JSON number stages (parse configuration, read stringification, write emission; [KF1](KERNEL-FINDINGS.md#kf1)). They were measured on Jackson 2 and must be re-measured.
+- **Jackson 3** inside the kernel may change the Document JSON number stages (parse configuration, read stringification, write emission; [KF1](../KERNEL-FINDINGS.md#kf1)). They were measured on Jackson 2 and must be re-measured.
 
 ---
 
@@ -265,7 +265,7 @@ The same 15 logical metamodel directories remain. JSON artifacts grow **59 → 7
   The July audit counted 65 models.
 - **The migration chain** (CL): 28.4→28.5 `packet`; 28.5→28.6 uniqueness criteria; 28.6→29.0 include restructure; 29.0→29.1 strips `variantFilter`/`variantErrorMessages`; 29.1→29.2 `Unspecified` → `String`; 29.2→29.3 CDM query-root references; 29.3→29.4 removes field-type annotations.
 - **Don't rely on implicit migration at our serializer boundary.** The public `IDocumentModelSerializer.deserialize` maps JSON directly and does not invoke `IDocumentModelMigrator` (July source read). Direct-deserialization paths must migrate explicitly or require 29.4.0. A golden test proves migrated JSON keeps every include, reference and exclusion.
-- **Variant data in fixtures:** two committed files carry `variantFilter` (`cli/src/test/resources/models/order-variant.dm.json`, `adapter/src/test/resources/checker-near-miss/harvested-report-checks.json`). Retire or reframe `VariantFilterPreservationTest`, the interpreter's null-variant filtering and `InterpreterRealModelDiffTest.variantFilterOnlyRuleIsDroppedLikeKernel`. *Done 2026-11-02:* 31.1.1 reads past both members on every carrier ([KF299](KERNEL-FINDINGS.md#kf299), `RetiredVariantMembersLawsTest`). The preservation lock is `UnknownMemberPreservationTest`, the interpreter's drop and the checker's `VARIANT_FILTER` family are gone, and the differential is `aRetiredVariantFilterIsReadPastLikeTheKernel`.
+- **Variant data in fixtures:** two committed files carry `variantFilter` (`cli/src/test/resources/models/order-variant.dm.json`, `adapter/src/test/resources/checker-near-miss/harvested-report-checks.json`). Retire or reframe `VariantFilterPreservationTest`, the interpreter's null-variant filtering and `InterpreterRealModelDiffTest.variantFilterOnlyRuleIsDroppedLikeKernel`. *Done 2026-11-02:* 31.1.1 reads past both members on every carrier ([KF299](../KERNEL-FINDINGS.md#kf299), `RetiredVariantMembersLawsTest`). The preservation lock is `UnknownMemberPreservationTest`, the interpreter's drop and the checker's `VARIANT_FILTER` family are gone, and the differential is `aRetiredVariantFilterIsReadPastLikeTheKernel`.
 - **Jackson 2 → 3.** We keep our own Jackson 2 in `core`/`cli` and exchange only strings with the kernel. The distinct root packages coexist. The real cost is native-image reflection metadata.
 - **Corpus provenance:** `CorpusEngines.KERNEL_VERSION` and every committed case say 30.8.1. Regenerate through `CorpusGenerator`, never by hand.
 - **CI cache keys are part of the pin** (§1).
@@ -277,7 +277,7 @@ The same 15 logical metamodel directories remain. JSON artifacts grow **59 → 7
 | **`:consistency`** (the Kotlin Multiplatform portable checker; its JS package is published) | Its `CheckFamily` verdicts are measured 30.8.1 verdicts. The enum relaxations and the filter→set-expression codes move them. The checker-silence guards (`checkerSilenceGuardTest`) are the detector; re-measure each affected `validate.laws` grid and then its mirror (W4). |
 | **Interpreter compatibility claim** (`interpreter/public-release/README.md` "Semantics target… 30.8.1") | Re-earned only by re-running the drop-in certificate on 31.1.1 (W8). |
 | **a12-kernel-lean** (its stated primary goal was 30.8.1 conformance; it measures through our `kernelProbe`/`probeDifferential`) | Handled by D4. Probe tooling moves first in W2. |
-| **Kernel TypeScript runtime** (`kernel-core-runtime-ts` and the other four kernel packages, 31.1.1, built as npm tarballs by the bootstrap) | Lifts the blocker named in [BUILD-ENVIRONMENT](BUILD-ENVIRONMENT.md) "Offline and bootstrap limits" and [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Why code-generator JS/TS is not yet measured". The kernel-JS evidence strategy is a follow-up (D5); W7 corrects those two docs. |
+| **Kernel TypeScript runtime** (`kernel-core-runtime-ts` and the other four kernel packages, 31.1.1, built as npm tarballs by the bootstrap) | Lifts the blocker named in [BUILD-ENVIRONMENT](../BUILD-ENVIRONMENT.md) "Offline and bootstrap limits" and [INTERPRETER-PERFORMANCE](../INTERPRETER-PERFORMANCE.md) "Why code-generator JS/TS is not yet measured". The kernel-JS evidence strategy is a follow-up (D5); W7 corrects those two docs. |
 | **A12 Tools 2026.06-ext1 workspaces** (machine-local path; `-Da12.corpus1.dir=…/workspaces`) | 121 document models at 29.4.0 replace the ext5 corpus of 107 for the opt-in real-corpus sweeps. They are the W3 shape reference (§6). |
 
 ---
@@ -292,7 +292,7 @@ Several guardians detect additions but not stale removals, or scan a hardcoded s
 | V1 document + removed extension APIs | compilation; the Java `-Xlint:removal` ratchet misses Kotlin | compile every source set; add a removed-API source guard across Java **and** Kotlin; one V2 materializer |
 | new `SumOfTerms` construct | `KernelConstructParityTest` discovers every enum of the `types` package, `SetOpOperationName` included | done in W6 |
 | enum-comparison / `+` relaxations | `EnumComparabilityLawsTest` and N7 invalid examples assert the old errors | flip to accepted laws after measuring; update the contradicted finding and catalog gotcha |
-| filter → set-expression codes | N7 examples plus source strings | rename across catalog, [MVK-LEDGER.md](MVK-LEDGER.md), `FieldListRef`, `CustomConditionRef`, diagnostics, tests |
+| filter → set-expression codes | N7 examples plus source strings | rename across catalog, [MVK-LEDGER.md](../MVK-LEDGER.md), `FieldListRef`, `CustomConditionRef`, diagnostics, tests |
 | removed / renamed / re-meant MVK codes | `MvkLedgerTest` is one-way | exact two-way equality, then realign entries **and meanings** (§3 trap) |
 | consistency categories | `SerializerTierParityTest` scans only the Basic enum | add an exact `DocumentModelCategory` ledger/guardian |
 | removed variant/accessor slots | `SlotParityTest` is one-way | make it two-way; keep `modelInfo.variant` |
@@ -324,15 +324,15 @@ Add uniqueness criteria to read/preserve/reference indexing. Then offer the same
 
 **W4 — guardians + contract realignment.** Make construct, MVK, slot, Basic and DocumentModel category inventories exact in both directions **before** updating their expected data. Then follow the failures through §8. Every flipped law is a verdict-delta row for a12-kernel-lean.
 
-**W5 — runtime requalification.** Run the focused date suites (`DateDifferenceDiffTest`, `DateArithmeticDiffTest`, `DateArithmeticLawsTest`, `DateFunctionsOverDateTimeDiffTest`, `OmittedYearDateDiffTest`), the Java-static baselines and the tri-engine fuzz lane. Re-audit every interpreter customization point (locale, clock/date/timezone, custom conditions, custom field types, charset, the new dynamic-config defaults) and every finding with a re-open-on-upgrade trigger (`mandatoryGroup`, multi-select `uniqueValue`, custom-ref error entities, computation rounding, the SumOfProducts acceptance edge). A changed fact lands in [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) first. Regenerate the corpus.
+**W5 — runtime requalification.** Run the focused date suites (`DateDifferenceDiffTest`, `DateArithmeticDiffTest`, `DateArithmeticLawsTest`, `DateFunctionsOverDateTimeDiffTest`, `OmittedYearDateDiffTest`), the Java-static baselines and the tri-engine fuzz lane. Re-audit every interpreter customization point (locale, clock/date/timezone, custom conditions, custom field types, charset, the new dynamic-config defaults) and every finding with a re-open-on-upgrade trigger (`mandatoryGroup`, multi-select `uniqueValue`, custom-ref error entities, computation rounding, the SumOfProducts acceptance edge). A changed fact lands in [KERNEL-FINDINGS.md](../KERNEL-FINDINGS.md) first. Regenerate the corpus.
 
-**W6 — `SumOfTerms`.** Land the §2 slice. Read [interpreter/CLAUDE.md](../interpreter/CLAUDE.md) first and keep the clean-room boundary. Probe both kernel strategies before fixing empty/no-row behaviour.
+**W6 — `SumOfTerms`.** Land the §2 slice. Read [interpreter/CLAUDE.md](../../interpreter/CLAUDE.md) first and keep the clean-room boundary. Probe both kernel strategies before fixing empty/no-row behaviour.
 
 **W7 — surfaces + native.** Version surfaces (README, CLAUDE.md per D7, plugin, `--version`), docs index, the two "TS runtime blocked" docs, the KERNEL-UPGRADE runbook. Re-capture native config, rebuild, run the native gate.
 
 **W8 — gated release (D6).** The full gate, the drop-in certificate on 31.1.1, a cold review of the release step, the a12-kernel-lean letter, release-repository assembly for the 31.1.1 EUPL notices, then the owner's confirmation before `--go-live`.
 
-The prerequisite in the sibling [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap) is done (W0). Nothing here changes it.
+The prerequisite in the sibling [`a12-kernel-bootstrap`](../../../a12-kernel-bootstrap) is done (W0). Nothing here changes it.
 
 ### Completion gates
 
@@ -345,7 +345,7 @@ The prerequisite in the sibling [`a12-kernel-bootstrap`](../../a12-kernel-bootst
 
 ## 10 · Disposition history
 
-On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, nothing was blocked on 30.8.1, and folding the V1→V2 rewrite into [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md)'s Stage 5 would do it once. That disposition was superseded on **2026-11-02** by the owner's directive to migrate to the release the sibling checkout now carries. Decoupling Stage 5 is still unbuilt, so the V1→V2 rewrite lands directly in `:adapter` under W2.
+On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, nothing was blocked on 30.8.1, and folding the V1→V2 rewrite into [KERNEL-DECOUPLING-PROPOSAL.md](../KERNEL-DECOUPLING-PROPOSAL.md)'s Stage 5 would do it once. That disposition was superseded on **2026-11-02** by the owner's directive to migrate to the release the sibling checkout now carries. Decoupling Stage 5 is still unbuilt, so the V1→V2 rewrite lands directly in `:adapter` under W2.
 
 ## 11 · Open build-time confirmations
 
@@ -356,36 +356,36 @@ On 2026-07-17 the recommendation was **DEFER**. There was no forcing function, n
 
 ## 12 · Release-log dispositions (30.8.1 → 31.1.1) <a id="release-log-dispositions"></a>
 
-Every entry of the [kernel release log](KERNEL-UPGRADE.md#release-log) after 30.8.1 up to and including 31.1.1, extracted 2026-11-05 with `scripts/typescript/kernel-changelog.ts --from 30.8.1 --to 31.1.1`. The range includes the 30.8.3–30.8.7 maintenance line, which version order places inside it. Entries after 31.1.1 belong to the next upgrade. A new or changed model or rule feature is covered in every component, dmtool included ([KERNEL-UPGRADE](KERNEL-UPGRADE.md#all-components)); the per-component states are the rows of `cli/src/test/resources/kernel-finding-adoption.json`.
+Every entry of the [kernel release log](../KERNEL-UPGRADE.md#release-log) after 30.8.1 up to and including 31.1.1, extracted 2026-11-05 with `scripts/typescript/kernel-changelog.ts --from 30.8.1 --to 31.1.1`. The range includes the 30.8.3–30.8.7 maintenance line, which version order places inside it. Entries after 31.1.1 belong to the next upgrade. A new or changed model or rule feature is covered in every component, dmtool included ([KERNEL-UPGRADE](../KERNEL-UPGRADE.md#all-components)); the per-component states are the rows of `cli/src/test/resources/kernel-finding-adoption.json`.
 
 **Model and rule features — covered in every component.**
 
 | entry | change | coverage |
 |---|---|---|
-| A12K-3756 | `SumOfTerms` | W6, [KF670](KERNEL-FINDINGS.md#kf670): every consumer `APPLIED` |
-| A12K-3995 | document uniqueness criteria; `checkConsistency` reports type definitions | W3b, G81, [KF671](KERNEL-FINDINGS.md#kf671): every consumer `APPLIED` or `ALREADY_CONFORMS` (the interpreter loads and ignores them; `UniquenessCriterionRuntimeDiffTest`); type-definition reports in W4 |
-| A12K-3969 | a text compared with a labelled enumeration | W4-enum, [KF655](KERNEL-FINDINGS.md#kf655): kits, adapter, checker, interpreter, dmtool (`TextEnumComparisonVerbTest`) and JSON Schema carriage (`TextEnumComparisonCarriageTest`) |
+| A12K-3756 | `SumOfTerms` | W6, [KF670](../KERNEL-FINDINGS.md#kf670): every consumer `APPLIED` |
+| A12K-3995 | document uniqueness criteria; `checkConsistency` reports type definitions | W3b, G81, [KF671](../KERNEL-FINDINGS.md#kf671): every consumer `APPLIED` or `ALREADY_CONFORMS` (the interpreter loads and ignores them; `UniquenessCriterionRuntimeDiffTest`); type-definition reports in W4 |
+| A12K-3969 | a text compared with a labelled enumeration | W4-enum, [KF655](../KERNEL-FINDINGS.md#kf655): kits, adapter, checker, interpreter, dmtool (`TextEnumComparisonVerbTest`) and JSON Schema carriage (`TextEnumComparisonCarriageTest`) |
 | A12K-4118 | `modelInfo.packet` | kits read it (`ModelDocument.modelPacket`) and keep it through every edit; dmtool shows it in `config read` and diffs it in `model diff`; the checker reads it as text (`ModelFrame`); the interpreter has no use for it; the JSON Schema bridge carries no `modelInfo` member. Lock: `ModelInfoPacketPreservationTest` |
-| A12K-4102 | include restructure (`includeConfig`) | W3a, [KF651](KERNEL-FINDINGS.md#kf651) |
+| A12K-4102 | include restructure (`includeConfig`) | W3a, [KF651](../KERNEL-FINDINGS.md#kf651) |
 | A12K-3986 | variants removed (DM 29.1.0) | W4-variant |
-| A12K-4165 | `minValue`/`maxValue` no longer judged against the field type | W4-limit, [KF593](KERNEL-FINDINGS.md#kf593) |
-| A12K-3981 | `UnspecifiedType` removed | W4-reader, [KF654](KERNEL-FINDINGS.md#kf654) |
+| A12K-4165 | `minValue`/`maxValue` no longer judged against the field type | W4-limit, [KF593](../KERNEL-FINDINGS.md#kf593) |
+| A12K-3981 | `UnspecifiedType` removed | W4-reader, [KF654](../KERNEL-FINDINGS.md#kf654) |
 | A12K-4250 | `IFieldType` annotations removed | not applicable: our writers put annotations on elements, type definitions and the header only, never inside a field type body (every `DmKeys.ANNOTATIONS` writer enumerated 2026-11-05), and A12 keeps annotations on `IFieldTypeDefinition` |
 
 **Behaviour changes and fixes — measured on both kernel strategies and matched.**
 
 | entry | change | disposition |
 |---|---|---|
-| A12K-3850 | consistency problems reported instead of thrown | W4-build, [KF652](KERNEL-FINDINGS.md#kf652) |
-| A12K-3761 | stricter locale parsing (`LocaleUtils`) | W4-locale, [KF662](KERNEL-FINDINGS.md#kf662) |
-| A12K-3638 | a malformed document node aborts deserialization | [KF664](KERNEL-FINDINGS.md#kf664) |
-| A12K-3956 | dates before 1893 parsed consistently | W5-cal, W5-tz, [KF665](KERNEL-FINDINGS.md#kf665) |
-| A12K-3990 | an unmatched parallel-iteration value renders empty | [KF672](KERNEL-FINDINGS.md#kf672) |
-| A12K-4331 | a custom-typed `$field.value$` in a message | [KF672](KERNEL-FINDINGS.md#kf672) |
-| A12K-4204 | `BaseYear` in filter conditions and `SumOfTerms` | [KF673](KERNEL-FINDINGS.md#kf673) |
-| A12K-4106 | `testIDNummer` no longer emitted | [KF669](KERNEL-FINDINGS.md#kf669) |
-| A12K-4354 | criteria with `relativeToParent` requiredness reported | [KF671](KERNEL-FINDINGS.md#kf671), `CheckerUniquenessCriterionAgreementTest` |
-| A12K-3967, A12K-4142 | Jackson 3 | W2; the read-binding deltas in [KF564](KERNEL-FINDINGS.md#kf564) and [KF593](KERNEL-FINDINGS.md#kf593) |
+| A12K-3850 | consistency problems reported instead of thrown | W4-build, [KF652](../KERNEL-FINDINGS.md#kf652) |
+| A12K-3761 | stricter locale parsing (`LocaleUtils`) | W4-locale, [KF662](../KERNEL-FINDINGS.md#kf662) |
+| A12K-3638 | a malformed document node aborts deserialization | [KF664](../KERNEL-FINDINGS.md#kf664) |
+| A12K-3956 | dates before 1893 parsed consistently | W5-cal, W5-tz, [KF665](../KERNEL-FINDINGS.md#kf665) |
+| A12K-3990 | an unmatched parallel-iteration value renders empty | [KF672](../KERNEL-FINDINGS.md#kf672) |
+| A12K-4331 | a custom-typed `$field.value$` in a message | [KF672](../KERNEL-FINDINGS.md#kf672) |
+| A12K-4204 | `BaseYear` in filter conditions and `SumOfTerms` | [KF673](../KERNEL-FINDINGS.md#kf673) |
+| A12K-4106 | `testIDNummer` no longer emitted | [KF669](../KERNEL-FINDINGS.md#kf669) |
+| A12K-4354 | criteria with `relativeToParent` requiredness reported | [KF671](../KERNEL-FINDINGS.md#kf671), `CheckerUniquenessCriterionAgreementTest` |
+| A12K-3967, A12K-4142 | Jackson 3 | W2; the read-binding deltas in [KF564](../KERNEL-FINDINGS.md#kf564) and [KF593](../KERNEL-FINDINGS.md#kf593) |
 
 **Java API changes — taken up in W2, where our code consumes them.**
 
@@ -404,7 +404,7 @@ Every entry of the [kernel release log](KERNEL-UPGRADE.md#release-log) after 30.
 
 ## 13 · Repository growth (measured 2026-11-05) <a id="repository-growth"></a>
 
-Measured with [the runbook's command](KERNEL-UPGRADE.md#major-release-playbook) (step 10) over `kernel-30.8.1-final..0fe0408d2`: 93 commits and 1,818 new file versions, with 46 of 164,580 objects loose. The range also carries features built on 31.1.1 (`SumOfTerms`, uniqueness criteria, enumeration labels in JSON Schema) and documentation work, so its total is an upper bound on the migration's own cost, and the migration commit `fe4d26e14` alone is the lower bound.
+Measured with [the runbook's command](../KERNEL-UPGRADE.md#major-release-playbook) (step 10) over `kernel-30.8.1-final..0fe0408d2`: 93 commits and 1,818 new file versions, with 46 of 164,580 objects loose. The range also carries features built on 31.1.1 (`SumOfTerms`, uniqueness criteria, enumeration labels in JSON Schema) and documentation work, so its total is an upper bound on the migration's own cost, and the migration commit `fe4d26e14` alone is the lower bound.
 
 | Kind | Versions | Raw | Packed |
 |---|---|---|---|

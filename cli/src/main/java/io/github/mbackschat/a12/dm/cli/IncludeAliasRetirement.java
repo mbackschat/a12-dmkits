@@ -6,7 +6,8 @@ import java.util.Optional;
  * The correctives for the include alias, which DM 29.4 removed (A12K-4102, KERNEL-FINDINGS KF651): a mount names
  * the included model itself in {@code includeConfig.reference}, so the referenced model id is the include's only
  * identity and there is no alias to pass or to rename. A caller still using the DM 28 vocabulary gets told the
- * replacement instead of a bare unknown-option or unknown-op error (owner decision D3, KERNEL-31-UPGRADE-PROPOSAL).
+ * replacement instead of a bare unknown-option or unknown-op error (owner decision D3,
+ * docs/archived/KERNEL-31-UPGRADE-PROPOSAL.md).
  */
 final class IncludeAliasRetirement {
 

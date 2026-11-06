@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * (KERNEL-FINDINGS KF651). Every row runs the real expansion and the real consistency check on one
  * entry that varies only the mount body or the header references, so each row moves one variable against
  * {@link #canonical}. The rows are the measured basis for the kits' reference-only include model (owner
- * decision D3, KERNEL-31-UPGRADE-PROPOSAL) and for the one deliberate over-strictness the kits keep: a stale
+ * decision D3, docs/archived/KERNEL-31-UPGRADE-PROPOSAL.md) and for the one deliberate over-strictness the kits keep: a stale
  * {@code modelAlias}, which A12 drops without a word.
  */
 class IncludeConfigShapeLawsTest {
