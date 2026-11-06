@@ -42,6 +42,9 @@ test("a complete passing run is reusable across documentation, measurement and n
     const before = performanceInputs(f.root);
     f.write("docs/RELEASE-SPEC.md", "updated documentation\n");
     f.write("adapter/README.md", "updated module documentation\n");
+    // Every source-statistics surface the release regenerates before publishing must leave the evidence reusable.
+    f.write("interpreter/public-release/README.md", "refreshed interpreter statistics\n");
+    f.write("consistency/public-release/README.md", "refreshed checker statistics\n");
     f.write("perf-results/local/new.jsonl", "measurement history\n");
     f.write("cli/native-capture-stamp.txt", "new stamp\n");
     f.write("scripts/verify-graalvm-native.sh", "native builder qualification only\n");
