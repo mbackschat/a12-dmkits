@@ -16,8 +16,8 @@ The Node B2 timing pair uses five fresh processes per arm, warmup 12, repetition
 
 Routine timing evidence remains in its native JSONL files:
 
-- [Initial complete routine](../../darwin-aarch64/2026-10-12T115512Z.jsonl), clean `bcdfbef86`: 57/58 tests pass; compute-overlay CPU/1500 fails its 39.18 ms limit on all three attempts (41.31/41.19/41.05 ms).
-- [JFR diagnostic](../../darwin-aarch64/2026-10-12T120252Z.jsonl), `bcdfbef86` with flight recording enabled: profiling evidence, not final acceptance.
+- Initial complete routine `darwin-aarch64/2026-10-12T115512Z` (since retired from the record), clean `bcdfbef86`: 57/58 tests pass; compute-overlay CPU/1500 fails its 39.18 ms limit on all three attempts (41.31/41.19/41.05 ms).
+- JFR diagnostic `darwin-aarch64/2026-10-12T120252Z` (since retired from the record), `bcdfbef86` with flight recording enabled: profiling evidence, not final acceptance.
 - [Affected-method verification](../../darwin-aarch64/2026-10-12T121457Z.jsonl), dirty `bcdfbef86` with the three production-file changes above: all eleven affected methods pass, including compute-overlay CPU 36.192/145.411 ms at 1500/6000.
 - [Complete routine after the admission repair](../../darwin-aarch64/2026-10-12T122828Z.jsonl), clean `7f6608e62`: 57/58 tests pass; the same CPU/1500 limit still fails at 39.73/39.25/39.39 ms. This full-context failure prevents treating the earlier focused pass as closure.
 - [Sparse-filter cost verification](../../darwin-aarch64/2026-10-12T123809Z.jsonl), dirty `7f6608e62` with the `ExprEval.filteredRows` coordinate shortcuts: CPU 31.441/127.916 ms at 1500/6000; both kernel comparisons pass. The whole-suite context is checked separately.
