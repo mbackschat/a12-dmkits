@@ -50,6 +50,10 @@ test("a complete passing run is reusable across documentation, measurement and n
     f.write("scripts/verify-graalvm-native.sh", "native builder qualification only\n");
     f.write("scripts/selftest-jdk-pin.sh", "builder qualification fixtures only\n");
     f.write("cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json", "{}\n");
+    // Copied into a public mirror and run only there; v0.15.0 forced two fresh gates for mirror workflow edits.
+    for (const mirror of ["mirror-workflows", "interpreter-mirror-workflows", "consistency-mirror-workflows"]) {
+      f.write(`.github/${mirror}/release.yml`, "runs in the public mirror only\n");
+    }
     assert.equal(performanceInputs(f.root), before);
     assert.equal(verifyReleasePerformance(f.root, f.evidence).tests, 1);
     assert.equal(verifyReleasePerformance(f.root, f.evidence).tests, 1);

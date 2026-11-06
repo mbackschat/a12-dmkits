@@ -19,6 +19,7 @@ const PERFORMANCE_REPORTERS = new Set([
 function performanceInput(name: string): boolean {
   return !PERFORMANCE_REPORTERS.has(name) && !/^(perf-results|docs|src\/test)\//.test(name)
     && !/^cli\/src\/main\/resources\/META-INF\/native-image\//.test(name)
+    && !/^\.github\/(?:[^/]+-)?mirror-workflows\//.test(name)
     && !/^(?:[^/]+|[^/]+\/[^/]+|(?:interpreter|consistency)\/public-release\/[^/]+)\.md$/.test(name);
 }
 function gitOutput(root: string, ...args: string[]): string {
