@@ -24,7 +24,7 @@
 <a id="checkpoint-2026-11-06-first-answer-regression"></a>
 ### Checkpoint 2026-11-06 — the browser first answer regressed against 0.13.0 through per-document work, not the browser
 
-The kernel-31 study measured the packed browser first answer at 15.3 ms (200 rows) and 190 ms (10,000 rows) on Chrome 157, against 11.55 ms and 166 ms on 2026-08-17. Attributing the 10,000-row part to the Chrome upgrade rested on one loaded run of the old package and is withdrawn. The method that settled it works under background load: the same timed region as `consumer-tests/browser/src/performance.ts` (`createInterpreter().validateFull(snapshot)`, model preparation and document reading outside the clock) in fresh Node processes, alternating the 0.13.0 package (`690a3b9c`) and the current one pair by pair, reporting the median paired wall ratio. V8 flags separate executed work (`--jitless`) from optimizing-tier effects, and interleaved CPU profiles attribute the difference.
+[The kernel-31 study](#checkpoint-2026-11-06-kernel-31-study) measured the packed browser first answer at 15.3 ms (200 rows) and 190 ms (10,000 rows) on Chrome 157, against 11.55 ms and 166 ms on 2026-08-17. Attributing the 10,000-row part to the Chrome upgrade rested on one loaded run of the old package and is withdrawn. The method that settled it works under background load: the same timed region as `consumer-tests/browser/src/performance.ts` (`createInterpreter().validateFull(snapshot)`, model preparation and document reading outside the clock) in fresh Node processes, alternating the 0.13.0 package (`690a3b9c`) and the current one pair by pair, reporting the median paired wall ratio. V8 flags separate executed work (`--jitless`) from optimizing-tier effects, and interleaved CPU profiles attribute the difference.
 
 | paired ratio, current ÷ 0.13.0 | 200 rows | 10,000 rows |
 |---|---|---|
@@ -44,6 +44,44 @@ After the first round the 200-row remainder appeared only with an optimizing tie
 - `--trace-deopt` over the timed window showed six deoptimizations against 0.13.0's three. The three new ones were shared stdlib list functions meeting a second receiver shape: the content trie's `ArrayDeque` and `addAll` of a map's value view, and the sparse row domain's `toIntArray` over a `Set`, whose bailout alone took 2.5 ms. The trie now walks an `ArrayList` stack and the row domain fills its array by hand, which leaves the same three deoptimizations 0.13.0 has.
 
 What remains is optimizing-tier work over a larger body of code, not executed work. Jitless the current package is 0.93 of 0.13.0, and with Maglev and TurboFan off it is 1.00. Validation itself is within 3 % in the single-threaded profile; the rest is the first interpreter's preparation. b1 has two rules, yet plan building costs 2.4 ms jitless against 1.2 ms in 0.13.0. That is the first execution of the later classification, reach and omission analyses, so it does not scale with rules or rows. The default-mode ratios above were taken at load averages of 6–30 on a shared machine, and their spread tracks that load: against `2cff7be98` the second round is 0.94 at 200 rows and 0.98 at 10,000.
+
+<a id="checkpoint-2026-11-06-kernel-31-study"></a>
+### Checkpoint 2026-11-06 — the published-claim study re-run on kernel 31.1.1: every JVM ratio widened, and the browser first-answer regression it exposed is fixed
+
+This repeats [the 2026-08-17 sweep](#checkpoint-2026-08-17-published-claim-refresh) lane for lane on clean `cbd53e542` (browser run 2 on clean `eee0c5d90`, run 3 on clean `1a43a56af`), each lane alone on the local `darwin-aarch64` machine (Apple M1, JDK 21.0.13, Chrome 157.0.8103.38), against A12 Kernel 31.1.1. At this checkpoint the public surfaces still carry the 08-17 figures, dated and naming Kernel 30.8.1. They move together with the performance poster, because `docs/infographic-evidence.json` binds the poster's prompt to those tables.
+
+**Machine state.** One-minute load at each lane's start: browser 2.81, 2.49 and 2.42, bench 6.62 (its own test JVM at 258 % plus Spotlight indexing at 132 %), crossover 3.33, huge 2.79, memory 2.30 and 6.01. The cross-engine figures are ratios measured inside one JVM per row; the two memory runs below agree per model within 4 %.
+
+**Browser** — `measureExternalInterpreterBrowserFirstAnswer`, one fresh Chrome process per sample, 10 samples, zero discarded, every run.
+
+| Scenario | 08-17 (Chrome 151) | Runs 1 / 2 | Run 3, after the fix | Warm, validation only (08-17 → runs 1 / 2 / 3) |
+|---|---|---|---|---|
+| 200 rows, 0 findings | 11.55 ms | 15.3 / 15.9 ms | **13.1 ms** | 1.1 → 1.1 / 1.2 / 0.9 ms |
+| 10,000 rows, 4,900 findings | 166.1 ms | 190.5 / 187.8 ms | **177.5 ms** | 53.3 → 47.5 / 47.5 / 45.9 ms |
+
+Runs 1 and 2 put the first answer about 35 % and 13 % above 08-17 while warm validation held or improved. [The regression checkpoint above](#checkpoint-2026-11-06-first-answer-regression) traced that cost, outside the browser and paired against the 0.13.0 package, to the interpreter's per-document first-call work, and fixed it in `2cff7be98` and `1a43a56af`. Run 3 reads 13 % and 7 % above 08-17. That comparison spans Chrome 151 → 157, so the controlled figure is the regression checkpoint's paired ratio against the 0.13.0 package (1.09–1.16 and 1.00–1.07), which run 3 falls within. The remainder is optimizing-tier compilation of a larger body of code and is paid once per prepared model and process, so a long-lived host never sees it again. The 250 ms release bar passes on every run.
+
+**Cross-engine on the JVM** (`perf.sh bench` / `crossover` / `huge`; codegen outside the clock; speedups recomputed from the raw millisecond columns):
+
+| Suite | 08-17 (Kernel 30.8.1) | **2026-11-06 (Kernel 31.1.1)** |
+|---|---|---|
+| Default inventory, 15 cases, vs generated Java | 2.8×–17.1× | **5.3×–28.2×** (B8-combined 336.72 / 63.57 ms; B2-star-aggregate 92.92 / 3.30 ms) |
+| Same, vs dynamic Groovy | 4.0×–19.7× | **6.0×–27.1×** |
+| Repeated-document, 2 cases | 12.2×–16.8× | **15.0×–27.6×** |
+| Huge-document edge, N=20 000 | ≈152× | **≈173×** (26.18 ms vs 4 518.95 ms) |
+| Hardest case, 384 concentrated low-firing rules | 1.73× | **2.26×** (129.51 ms vs 292.75 ms) |
+
+All 15 inventory cases and all 14 crossover points are interpreter wins; the narrowest anywhere is the hardest case, 2.26× against generated Java and 3.07× against dynamic Groovy. The validation-only row on the 10,000-row Document: interpreter 10.0 ms, generated Java 685.9 ms, dynamic Groovy 695.2 ms (≈68× and ≈69×). These lanes ran on `cbd53e542`, before the first-answer fix, and were not repeated after it.
+
+**Resident memory** — `EngineFootprintReportTest`, `hold=12`, JDK 21.0.13, `totalB` = heap + Metaspace + Compressed Class Space, every arm gated on an agreed message-code multiset first.
+
+| | 08-17 | **2026-11-06** |
+|---|---|---|
+| Interpreter, prepared model (warm) | 54 kB–325 kB | **48.8 kB–354.9 kB** |
+| Generated Java | 3.8×–9.2× (then 4.2×–8.1×) more | **352.6 kB–1.59 MB, 4.3×–7.4× more** |
+| Dynamic Groovy | 18.5×–37.9× more | **1.05 MB–12.08 MB, 18.6×–34.0× more** |
+
+**The first memory run was wrong, and the instrument is fixed (`eee0c5d90`).** Run through its documented `-PrunKernelProbe` command, the probe reported dynamic Groovy at 25–200 kB with 0–3 classes per engine. The `:adapter:test` task enabled the shared kernel code cache for every opt-in but `-PrunPerf`, so the code the equivalence check compiled before the baseline was reused by every measured engine. Two controls separated sharing from a real drop: `hold=24` left the per-engine figure unchanged, which rules out sharing among the measured engines only, and the cache switched off restored 1.05–12.08 MB and 32–638 classes per engine, matching 30.8.1's 639 classes at 192 rules. The lane now disables the cache under `-PrunKernelProbe`, and both kernel-probe measurements refuse to run while it is on (`KernelModelCodeCacheTest.aMeasurementRefusesTheSharedCacheAndRunsWithoutIt`, red then green; the documented command failed on the refusal before the wiring fix and measured correctly after it). No recorded figure came from that path: the cache landed on 2026-09-22 and no footprint was recorded since.
 
 <a id="checkpoint-2026-11-04-row-invariant-term-sum"></a>
 ### Checkpoint 2026-11-04 — SumOfTerms and the gated group count re-folded their group once per row
@@ -665,6 +703,7 @@ Both are closed. The pin now selects OpenJDK and skips GraalVM, refusing rather 
 
 *Method note for anyone reading a future breach: the first two "clean" re-measurements were 60.6 and 73.1 ms in ISOLATION, which looked like exoneration and was actually a second uncontrolled variable — this lane depends on how much work precedes it in the JVM. The comparison that settled it held the entry point, the observation count, the machine and the day fixed, and varied only the JDK.*
 
+<a id="checkpoint-2026-08-17-published-claim-refresh"></a>
 ### Checkpoint 2026-08-17 — the v0.13.0 published-claim refresh: every public number re-measured in one sweep
 
 The four public surfaces carried figures frozen on 2026-08-03 (latency, kernel ratios) and 2026-08-07 (memory). This re-measures every one of them on `690a3b9c`, each lane run **alone** on the local `darwin-aarch64` machine, so a reader comparing two claims in one paragraph is comparing one sweep.
