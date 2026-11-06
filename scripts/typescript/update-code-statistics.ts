@@ -57,6 +57,11 @@ function measureRepository(root: string): Report {
     // The size guard uses this same isolation: personal Git ignores must not change published counts.
     const report: Report = JSON.parse(execFileSync(process.env.LOCMETRY ?? "locmetry", ["--root", root, "--no-user-config", "--files", "--format", "json"],
       { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 30_000, env: { ...process.env, HOME: home, XDG_CONFIG_HOME: home } }));
+    // The counts describe committed sources, so an uncommitted deletion is refused rather than counted as zero.
+    const absent = execFileSync("git", ["-C", root, "ls-files", "-z", "--deleted"], { encoding: "utf8" }).split("\0").filter(Boolean);
+    if (absent.length) {
+      throw new Error(`tracked files missing from the working tree: ${absent.join(", ")}; restore them (git checkout -- <path>) or commit their deletion`);
+    }
     const tracked = new Set<string>(execFileSync("git", ["-C", root, "ls-files", "-z"], { encoding: "utf8" }).split("\0")
       .filter((relative: string) => relative && relative !== ".locmetryrc" && !fs.lstatSync(path.join(root, relative)).isSymbolicLink()));
     const seen = new Set([...report.files.map(file => file.path), ...report.metadata.coverage.unrecognized]);

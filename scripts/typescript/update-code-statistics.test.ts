@@ -93,6 +93,14 @@ test("tracked sources hidden by ignore policy fail instead of silently lowering 
   assert.throws(() => measureRepository(root), /unaccounted tracked files.*Product.java/s);
 });
 
+// A fresh release perf gate prunes a committed run from perf-results/ before writing its own, which left a tracked
+// file absent and surfaced as a bare lstat ENOENT in the middle of publish-release (v0.15.0, 2026-11-06).
+test("a tracked file missing from the working tree is named with its remedy instead of an lstat failure", t => {
+  const root = fixture(t);
+  fs.rmSync(path.join(root, "core/src/main/java/Product.java"));
+  assert.throws(() => measureRepository(root), /tracked files missing from the working tree: core\/src\/main\/java\/Product\.java; .*git checkout --/);
+});
+
 test("the live policy preserves generated files and separates test implementations from their runners", () => {
   const report = measureRepository(ROOT);
   const expected = [
