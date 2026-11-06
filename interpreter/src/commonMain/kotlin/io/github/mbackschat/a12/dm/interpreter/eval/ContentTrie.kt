@@ -44,12 +44,7 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
 
     fun nodeCount(): Int {
         var count = 0
-        val pending = ArrayDeque(listOf(root))
-        while (pending.isNotEmpty()) {
-            val next = pending.removeLast()
-            count += 1 + (next.branches?.size ?: 0)
-            pending.addAll(next.children.values)
-        }
+        root.forEachNode { count += 1 + (it.branches?.size ?: 0) }
         return count
     }
 
@@ -85,12 +80,20 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
         val here = ArrayList<T>()
         var branches: Map<RepPrefix, String>? = null
 
-        fun forEachInSubtree(action: (T) -> Unit) {
-            val pending = ArrayDeque(listOf(this))
+        fun forEachInSubtree(action: (T) -> Unit) = forEachNode { it.here.forEach(action) }
+
+        /**
+         * Depth-first over this subtree. The stack is an `ArrayList` and children are pushed one by one because an
+         * `ArrayDeque`, or `addAll` of a map's value view, hands the stdlib's optimized list code a second receiver
+         * shape: V8 deoptimized three shared stdlib functions on it inside the browser first answer
+         * (`--trace-deopt`, 2026-11-06).
+         */
+        inline fun forEachNode(action: (Node<T>) -> Unit) {
+            val pending = arrayListOf(this)
             while (pending.isNotEmpty()) {
-                val next = pending.removeLast()
-                next.here.forEach(action)
-                pending.addAll(next.children.values)
+                val next = pending.removeAt(pending.size - 1)
+                action(next)
+                for (child in next.children.values) pending.add(child)
             }
         }
     }

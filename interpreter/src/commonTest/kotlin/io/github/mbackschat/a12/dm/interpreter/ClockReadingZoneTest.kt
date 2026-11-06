@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.CallClock
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
@@ -60,7 +61,7 @@ class ClockReadingZoneTest {
     private fun fires(zone: ModelTimeZone, condition: String): Boolean =
         Interpreter(
             SingleRowDoc(ROOT, mapOf(FIELD to "2026-03-29T03:15:00"), mapOf(FIELD to Kind.DATE_TIME)),
-            EvalConfig(clock = GAP_CLOCK, timeZone = zone),
+            EvalConfig(clock = CallClock.of(GAP_CLOCK), timeZone = zone),
         ).fires(parseCondition(condition, ROOT))
 
     private companion object {

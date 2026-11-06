@@ -15,3 +15,15 @@ internal fun withinDenseLimit(capacities: Sequence<Int>): Boolean {
     }
     return true
 }
+
+/**
+ * [indices] as a sorted array, the occupied child repetitions a sparse walk visits. Filled by hand because the
+ * stdlib's `toIntArray` meets a Set here and Lists everywhere else, and V8 discards its optimized copy on the second
+ * receiver shape: a 2.5 ms bailout inside the browser first answer (`--trace-deopt`, 2026-11-06).
+ */
+internal fun sortedIndices(indices: Set<Int>): IntArray {
+    val sorted = IntArray(indices.size)
+    var at = 0
+    for (index in indices) sorted[at++] = index
+    return sorted.apply { sort() }
+}

@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
+import io.github.mbackschat.a12.dm.interpreter.eval.CallClock
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.RuntimeEvaluationFailure
@@ -65,8 +66,9 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
 class DmInterpreter private constructor(
     private val model: ModelDef,
     /** The clock for one call, asked once per validation or computation call, as A12 samples its current instant
-     *  per call when `currentDateForTest` is unset. A source yields a clock on every call or on none. */
-    private val clock: () -> EvalClock?,
+     *  per call when `currentDateForTest` is unset. A source yields a clock on every call or on none, and the clock
+     *  is read as wall time only when a rule reads it ([CallClock]). */
+    private val clock: () -> CallClock?,
     /** The consumer-supplied predefined-type registry (`Valid`/`Invalid(field, "Name")`) — the kernel's
      *  `IPredefinedType` client SPI. Defaults to the built-in common set ([PredefinedTypeRegistry.DEFAULT]);
      *  a consumer may pass its own (built-ins + project types). An unregistered name → the rule is unsupported. */
@@ -129,7 +131,7 @@ class DmInterpreter private constructor(
         legalCharset: LegalCharset = LegalCharset.BMP,
         messageLabelProvider: MessageLabelProvider? = MessageLabelProvider.MODEL_LABEL_OR_NAME,
     ) : this(
-        model, { clock }, predefinedTypes, customConditions, customFieldTypes, legalCharset, messageLabelProvider,
+        model, fixedClock(clock), predefinedTypes, customConditions, customFieldTypes, legalCharset, messageLabelProvider,
         plans = null,
     )
 
@@ -137,6 +139,12 @@ class DmInterpreter private constructor(
     private val plans: ModelStaticPlans = plans ?: ModelStaticPlans.of(model)
 
     companion object {
+        /** A directly supplied clock, the same for every call. */
+        private fun fixedClock(clock: EvalClock?): () -> CallClock? {
+            val fixed = clock?.let(CallClock::of)
+            return { fixed }
+        }
+
         /**
          * Build an evaluator that SHARES [plans] with every other evaluator over the same model — the sharing
          * boundary the P-SERVICE profile needs, reached through [PreparedModel.createInterpreter] rather than by
@@ -150,7 +158,7 @@ class DmInterpreter private constructor(
         @JvmSynthetic
         internal fun sharing(
             model: ModelDef,
-            clock: () -> EvalClock?,
+            clock: () -> CallClock?,
             predefinedTypes: Map<String, PredefinedType>,
             customConditions: Map<String, CustomCondition>,
             customFieldTypes: Map<String, CustomFieldType>,

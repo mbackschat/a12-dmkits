@@ -813,9 +813,8 @@ class Document(internal val config: DocumentConfig) {
         for (rows in index().rowsByGroup.values) for (reps in rows) for (depth in 2..reps.size) {
             byDepth.getOrPut(depth) { HashMap() }.getOrPut(RepPrefix(reps, depth - 1)) { HashSet() }.add(reps[depth - 1])
         }
-        byDepth.mapValues { (_, parents) ->
-            parents.mapValues { (_, children) -> children.toIntArray().apply { sort() } }
-        }.also { index().occupiedChildren = it }
+        byDepth.mapValues { (_, parents) -> parents.mapValues { (_, children) -> sortedIndices(children) } }
+            .also { index().occupiedChildren = it }
     }
 
     /** One already-selected concrete row context. Index resolution owns selection; this reconstructs the normal

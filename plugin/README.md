@@ -313,9 +313,9 @@ Product implementation.
 |---|---:|---:|---:|---:|---:|
 | Java | 550 | 81631 | 54672 | 18715 | 8244 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
-| Kotlin | 350 | 70671 | 42304 | 22846 | 5521 |
+| Kotlin | 354 | 70787 | 42353 | 22898 | 5536 |
 | TypeScript | 11 | 1808 | 1398 | 240 | 170 |
-| **Total** | **912** | **154217** | **98446** | **41826** | **13945** |
+| **Total** | **916** | **154333** | **98495** | **41878** | **13960** |
 
 ### Verification
 
@@ -326,9 +326,9 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | HTML | 4 | 101 | 56 | 45 | 0 |
 | Java | 1313 | 201814 | 139960 | 38861 | 22993 |
 | JavaScript | 12 | 1036 | 666 | 266 | 104 |
-| Kotlin | 1567 | 224992 | 167678 | 36434 | 20880 |
+| Kotlin | 1569 | 225235 | 167853 | 36478 | 20904 |
 | TypeScript | 30 | 5273 | 4433 | 545 | 295 |
-| **Total** | **2926** | **433216** | **312793** | **76151** | **44272** |
+| **Total** | **2928** | **433459** | **312968** | **76195** | **44296** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

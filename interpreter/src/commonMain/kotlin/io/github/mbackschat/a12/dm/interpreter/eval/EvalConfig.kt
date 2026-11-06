@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
-import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -17,8 +16,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
  * per row. Constructed with named arguments (the fields are largely same-typed and would otherwise be
  * swap-prone). Supplied by `DmInterpreter`; every field defaults to the differential's no-project-config value.
  */
-class EvalConfig(
-    val clock: EvalClock? = null,
+class EvalConfig internal constructor(
+    internal val clock: CallClock? = null,
     /** The model's configured base year (the kernel's `modelInfo.baseYear`), or null when the model declares
      *  none — the value of the `BaseYear` point-in-time constant. Model config (NOT from the clock). */
     val baseYear: Int? = null,

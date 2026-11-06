@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.CallClock
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
@@ -37,7 +38,7 @@ class NowMillisecondIdentityTest {
     private fun fires(value: String, condition: String): Boolean =
         Interpreter(
             SingleRowDoc(ROOT, mapOf(FIELD to value), mapOf(FIELD to Kind.DATE_TIME)),
-            EvalConfig(clock = clock),
+            EvalConfig(clock = CallClock.of(clock)),
         ).fires(parseCondition(condition, ROOT))
 
     private companion object {

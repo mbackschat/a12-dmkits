@@ -2,13 +2,13 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.CallClock
 import io.github.mbackschat.a12.dm.interpreter.eval.ConstantOp
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
-import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -47,7 +47,7 @@ internal data class PreparedRulePlan(
 
 /** Host/customization inputs the value-independent preparation walk must resolve. */
 internal data class PreparationSupport(
-    val clock: EvalClock?,
+    val clock: CallClock?,
     val predefinedTypes: Map<String, PredefinedType>,
     val customConditions: Map<String, CustomCondition>,
     val customFieldTypes: Map<String, CustomFieldType>,
@@ -267,7 +267,7 @@ internal class PreparedEvaluationPlan(
                     throw UnsupportedConstructException(
                         "Today needs an evaluation clock — construct DmInterpreter with an EvalClock")
                 }
-                ConstantOp.NOW -> if (support.clock?.now == null) {
+                ConstantOp.NOW -> if (support.clock?.hasNow != true) {
                     throw UnsupportedConstructException(
                         "Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)")
                 }

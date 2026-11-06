@@ -1,12 +1,12 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome as EngineComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.eval.CallClock
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition as EngineCustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData as EngineCustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType as EngineCustomFieldType
-import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -830,10 +830,10 @@ class Interpreter private constructor(
         try {
             val definition = prepared.definition()
             val zone = definition.timeZone
-            val pinned = configuration.evaluationInstant?.let { EvalClock.at(it, zone) }
+            val pinned = configuration.evaluationInstant?.let { CallClock.at(it, zone) }
             engine = DmInterpreter.sharing(
                 model = definition,
-                clock = if (pinned != null) ({ pinned }) else ({ EvalClock.at(configuration.instantSource(), zone) }),
+                clock = if (pinned != null) ({ pinned }) else ({ CallClock.at(configuration.instantSource(), zone) }),
                 predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                 customConditions = configuration.customConditions.engineMap(::adaptCondition),
                 customFieldTypes = configuration.customFieldTypes.engineMap(),

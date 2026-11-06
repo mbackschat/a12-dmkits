@@ -29,7 +29,8 @@ The kernel-31 study measured the packed browser first answer at 15.3 ms (200 row
 | paired ratio, current ÷ 0.13.0 | 200 rows | 10,000 rows |
 |---|---|---|
 | before | 1.28 (jitless 1.18) | 1.12 |
-| after the fixes below | 1.16–1.19 (jitless 1.03) | 1.00 |
+| after the first round below | 1.16–1.19 (jitless 1.03) | 1.00 |
+| after the second round (lazy clock, deopts) | 1.09–1.16 (jitless 0.93; optimizing tiers off 1.00) | 1.00–1.07 |
 
 Warm validation never regressed, because each cause was per-document work that a repeated call finds cached:
 
@@ -37,7 +38,12 @@ Warm validation never regressed, because each cause was per-document work that a
 - The content-trie attach gate and the full-validation row domain keyed hash maps by repetition `subList`/`take` lists, which Kotlin/JS hashes through an iterator. [`RepPrefix`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/RepPrefix.kt) is hashed once; the trie keys alone gave 4–5 %.
 - The row domain also split every valued cell's path to find its root and built its frontier through sequence chains; both are plain loops now.
 
-The 200-row remainder appears only with an optimizing tier enabled: with Maglev and TurboFan off the ratio is 1.10, with either on it is 1.25, and single-threaded Maglev compile time in the window differs by about 1 ms. Interpreted work is within 3 %. The interleaved single-threaded profile spreads the remainder over first-call costs of later correctness work, each 1–1.5 ms of a 48 ms profiled answer: the rule audit and plan building at `createInterpreter`, the authored-text input gate (KF547), and the clock's zoned conversion. Operator enum initialization moved from `validateFull` into `createInterpreter` and is not growth. The kernel differentials over required-empty, over-repetition, row-domain, joined, first-filled and parallel reads (63 classes) stay green.
+After the first round the 200-row remainder appeared only with an optimizing tier enabled, and the interleaved single-threaded profile spread it over first-call costs of 1–1.5 ms each in a 48 ms profiled answer. Operator enum initialization had moved from `validateFull` into `createInterpreter` and is not growth. The kernel differentials over required-empty, over-repetition, row-domain, joined, first-filled and parallel reads (63 classes) stay green. The second round removed two causes:
+
+- Every call, and the support audit at `createInterpreter`, read the clock as Europe/Berlin wall time, which on Kotlin/JS is emulated Long arithmetic plus lazily built zone tables: 1.1 ms jitless on a model with no clock constant. 0.13.0 passed no clock at all. [`CallClock`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/CallClock.kt) fixes the instant when the call starts and reads it only when a rule reads `Today` or `Now`; the audit asks only whether a date-time is present. `CallClockReadingTest` counts the readings, and both planted mutants (an eager reading, an audit that reads) fail it.
+- `--trace-deopt` over the timed window showed six deoptimizations against 0.13.0's three. The three new ones were shared stdlib list functions meeting a second receiver shape: the content trie's `ArrayDeque` and `addAll` of a map's value view, and the sparse row domain's `toIntArray` over a `Set`, whose bailout alone took 2.5 ms. The trie now walks an `ArrayList` stack and the row domain fills its array by hand, which leaves the same three deoptimizations 0.13.0 has.
+
+What remains is optimizing-tier work over a larger body of code, not executed work. Jitless the current package is 0.93 of 0.13.0, and with Maglev and TurboFan off it is 1.00. Validation itself is within 3 % in the single-threaded profile; the rest is the first interpreter's preparation. b1 has two rules, yet plan building costs 2.4 ms jitless against 1.2 ms in 0.13.0. That is the first execution of the later classification, reach and omission analyses, so it does not scale with rules or rows. The default-mode ratios above were taken at load averages of 6–30 on a shared machine, and their spread tracks that load: against `2cff7be98` the second round is 0.94 at 200 rows and 0.98 at 10,000.
 
 <a id="checkpoint-2026-11-04-row-invariant-term-sum"></a>
 ### Checkpoint 2026-11-04 — SumOfTerms and the gated group count re-folded their group once per row
