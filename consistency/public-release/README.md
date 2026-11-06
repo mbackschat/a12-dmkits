@@ -112,10 +112,10 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
 | Java | 1 | 25 | 24 | 0 | 1 |
-| JavaScript | 10 | 878 | 529 | 262 | 87 |
+| JavaScript | 10 | 882 | 529 | 266 | 87 |
 | Kotlin | 245 | 35290 | 26096 | 6373 | 2821 |
 | TypeScript | 14 | 1861 | 1246 | 468 | 147 |
-| **Total** | **274** | **38155** | **27951** | **7148** | **3056** |
+| **Total** | **274** | **38159** | **27951** | **7152** | **3056** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:checker-release:end -->

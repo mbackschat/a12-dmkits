@@ -28,12 +28,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1313 | 201760 | 139927 | 38843 | 22990 |
-| JavaScript | 12 | 1032 | 666 | 262 | 104 |
+| Java | 1313 | 201763 | 139928 | 38845 | 22990 |
+| JavaScript | 12 | 1036 | 666 | 266 | 104 |
 | Kotlin | 1567 | 224968 | 167664 | 36426 | 20878 |
-| Shell | 12 | 2508 | 1925 | 356 | 227 |
+| Shell | 12 | 2522 | 1935 | 359 | 228 |
 | TypeScript | 52 | 7551 | 6455 | 600 | 496 |
-| **Total** | **2960** | **437920** | **316693** | **76532** | **44695** |
+| **Total** | **2960** | **437941** | **316704** | **76541** | **44696** |
 
 ### Tooling
 
@@ -41,9 +41,9 @@ Build, verification, release, deployment, and maintainer tooling.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| BASH | 2 | 360 | 223 | 123 | 14 |
+| BASH | 2 | 362 | 223 | 125 | 14 |
 | CSS | 1 | 1 | 1 | 0 | 0 |
-| Groovy | 19 | 11338 | 8493 | 2428 | 417 |
+| Groovy | 20 | 11386 | 8523 | 2445 | 418 |
 | HTML | 6 | 167 | 156 | 0 | 11 |
 | Java | 1 | 70 | 52 | 10 | 8 |
 | JavaScript | 5 | 1796 | 1512 | 157 | 127 |
@@ -51,7 +51,7 @@ Build, verification, release, deployment, and maintainer tooling.
 | Python | 1 | 166 | 144 | 1 | 21 |
 | Shell | 62 | 6479 | 4651 | 1327 | 501 |
 | TypeScript | 28 | 3958 | 3357 | 324 | 277 |
-| **Total** | **131** | **24469** | **18712** | **4370** | **1387** |
+| **Total** | **132** | **24519** | **18742** | **4389** | **1388** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
