@@ -21,6 +21,24 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-11-06-first-answer-regression"></a>
+### Checkpoint 2026-11-06 — the browser first answer regressed against 0.13.0 through per-document work, not the browser
+
+The kernel-31 study measured the packed browser first answer at 15.3 ms (200 rows) and 190 ms (10,000 rows) on Chrome 157, against 11.55 ms and 166 ms on 2026-08-17. Attributing the 10,000-row part to the Chrome upgrade rested on one loaded run of the old package and is withdrawn. The method that settled it works under background load: the same timed region as `consumer-tests/browser/src/performance.ts` (`createInterpreter().validateFull(snapshot)`, model preparation and document reading outside the clock) in fresh Node processes, alternating the 0.13.0 package (`690a3b9c`) and the current one pair by pair, reporting the median paired wall ratio. V8 flags separate executed work (`--jitless`) from optimizing-tier effects, and interleaved CPU profiles attribute the difference.
+
+| paired ratio, current ÷ 0.13.0 | 200 rows | 10,000 rows |
+|---|---|---|
+| before | 1.28 (jitless 1.18) | 1.12 |
+| after the fixes below | 1.16–1.19 (jitless 1.03) | 1.00 |
+
+Warm validation never regressed, because each cause was per-document work that a repeated call finds cached:
+
+- Every empty cell a rule read asked the per-call formal-result cache whether it was unavailable (KF552), which keys a memo by path and repetitions before learning that the field cannot fail. `FieldFilled` over a non-required column cost five times its 0.13.0 price in the jitless profile. [`AutoChecks.emptyMayFail`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/AutoChecks.kt) answers per path, and both the cache and the readers' `emptyMayBeUnavailable` ask it first. That predicate had ignored over-repetition, which also fails an empty cell. It now mirrors the formal check's empty branch exactly, so every shortcut equals the unguarded check by construction. `EmptyCellFailurePreconditionTest` locks soundness against `computeFormalResultAt` and both skips by count.
+- The content-trie attach gate and the full-validation row domain keyed hash maps by repetition `subList`/`take` lists, which Kotlin/JS hashes through an iterator. [`RepPrefix`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/RepPrefix.kt) is hashed once; the trie keys alone gave 4–5 %.
+- The row domain also split every valued cell's path to find its root and built its frontier through sequence chains; both are plain loops now.
+
+The 200-row remainder appears only with an optimizing tier enabled: with Maglev and TurboFan off the ratio is 1.10, with either on it is 1.25, and single-threaded Maglev compile time in the window differs by about 1 ms. Interpreted work is within 3 %. The interleaved single-threaded profile spreads the remainder over first-call costs of later correctness work, each 1–1.5 ms of a 48 ms profiled answer: the rule audit and plan building at `createInterpreter`, the authored-text input gate (KF547), and the clock's zoned conversion. Operator enum initialization moved from `validateFull` into `createInterpreter` and is not growth. The kernel differentials over required-empty, over-repetition, row-domain, joined, first-filled and parallel reads (63 classes) stay green.
+
 <a id="checkpoint-2026-11-04-row-invariant-term-sum"></a>
 ### Checkpoint 2026-11-04 — SumOfTerms and the gated group count re-folded their group once per row
 

@@ -29,7 +29,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationEvaluation
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
-import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
@@ -620,7 +619,8 @@ class DmInterpreter private constructor(
                 relevance.isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
             }
             return ValidationPass(call, doc, locale, relevance.isRelevant, dup,
-                validationConfig(relevance, indexIdentityAdmitted, relevance.groupExtents?.gate(presence), presence),
+                validationConfig(relevance, indexIdentityAdmitted, relevance.groupExtents?.gate(presence), presence,
+                    gateNeeded),
                 formalResults, { formallyIncorrect }, relevance.dispatch,
                 { checks.messageIndexDefaults(call, formalResults::admitsIdentityAt) }, groupPaths = model.groupPaths)
         }
@@ -641,7 +641,8 @@ class DmInterpreter private constructor(
     private fun validationConfig(relevance: CallRelevance,
             indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
             groupCountGate: GroupCountGate?,
-            groupPresence: (String, List<Int>) -> GroupPresenceState): EvalConfig =
+            groupPresence: (String, List<Int>) -> GroupPresenceState,
+            overRepetitionGateNeeded: Boolean): EvalConfig =
         EvalConfig(clock(), model.baseYear, model.indexFields, rawStringFields = model.rawStringFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
@@ -650,9 +651,8 @@ class DmInterpreter private constructor(
             starRelevant = relevance.starRelevant, starExtentKnown = relevance.starExtentKnown,
             starFullyEnumerated = relevance.starFullyEnumerated,
             customRelevant = relevance.customRelevant, groupPresence = groupPresence, groupCountGate = groupCountGate,
-            // Outside a partial call an empty cell fails its formal check only when the field is required.
             emptyMayBeUnavailable = if (relevance.isRelevant === ALL_RELEVANT) {
-                { path -> model.requirednessOf(path) != Requiredness.NOT_REQUIRED }
+                { path -> checks.emptyMayFail(path, overRepetitionGateNeeded) }
             } else {
                 { true }
             })

@@ -915,7 +915,7 @@ class Interpreter(
         // An empty cell is a witness only while it is check-relevant: a required-empty field in validation, and an
         // empty index cell the compute path's preliminary check invalidates, are unavailable like a malformed one
         // (KERNEL-FINDINGS KF552, `adapter.laws.RequiredEmptyReadDiffTest`).
-        !c.filled(path) -> if (invalid(c, path)) Tri.UNKNOWN else Tri.FALSE
+        !c.filled(path) -> if (emptyUnavailable(c, path)) Tri.UNKNOWN else Tri.FALSE
         invalid(c, path) -> Tri.UNKNOWN
         else -> Tri.TRUE
     }
@@ -1114,7 +1114,7 @@ class Interpreter(
 
     /** Whether the iterated row is itself one of [unavailableRows]: the cells are its own under a self-exclusion. */
     private fun ownRowUnavailable(star: Expr.Star, plan: CorrelationPlan): Boolean =
-        columnsOf(star, plan).any { emptyMayBeUnavailable(it) && unavailableEmpty(ctx, it) }
+        columnsOf(star, plan).any { unavailableEmpty(ctx, it) }
 
     /** The cells an indexed tally reads in each row: the starred column and the plan's join fields. */
     private fun columnsOf(star: Expr.Star, plan: CorrelationPlan): List<String> = listOf(star.path) + plan.innerFields

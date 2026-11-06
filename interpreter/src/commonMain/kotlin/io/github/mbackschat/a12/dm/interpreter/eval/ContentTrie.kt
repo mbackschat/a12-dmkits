@@ -53,13 +53,13 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
         return count
     }
 
-    private fun branchesOf(node: Node<T>): Map<List<Int>, String> = node.branches ?: HashMap<List<Int>, String>().also { held ->
+    private fun branchesOf(node: Node<T>): Map<RepPrefix, String> = node.branches ?: HashMap<RepPrefix, String>().also { held ->
         record(held, node.depth, SELF) { node.here.forEach(it) }
         for ((name, child) in node.children) record(held, node.depth, name) { child.forEachInSubtree(it) }
         node.branches = held
     }
 
-    private inline fun record(held: HashMap<List<Int>, String>, depth: Int, branch: String, items: ((T) -> Unit) -> Unit) {
+    private inline fun record(held: HashMap<RepPrefix, String>, depth: Int, branch: String, items: ((T) -> Unit) -> Unit) {
         var previous: List<Int>? = null
         items { item ->
             val reps = repsOf(item)
@@ -67,7 +67,7 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
             // same key with the same branch, already recorded.
             if (previous?.let { sharesPrefix(it, reps, depth) } != true) {
                 // A view, not a copy: every placement's indices live as long as the document does.
-                val key = reps.subList(0, depth)
+                val key = RepPrefix(reps, depth)
                 val was = held[key]
                 if (was == null) held[key] = branch else if (was != branch) held[key] = MANY
                 previous = reps
@@ -83,7 +83,7 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
     private class Node<T>(val depth: Int) {
         val children = HashMap<String, Node<T>>()
         val here = ArrayList<T>()
-        var branches: Map<List<Int>, String>? = null
+        var branches: Map<RepPrefix, String>? = null
 
         fun forEachInSubtree(action: (T) -> Unit) {
             val pending = ArrayDeque(listOf(this))
@@ -104,7 +104,7 @@ internal class ContentTrie<T : Any>(private val repsOf: (T) -> List<Int>) {
 
 /** Whether a row of one group is evaluated: some content shares its indices up to where that content leaves the group's path. */
 internal class AttachGate(private val levels: List<Level>) {
-    class Level(val depth: Int, val branches: Map<List<Int>, String>, val continuesInto: String?)
+    class Level(val depth: Int, val branches: Map<RepPrefix, String>, val continuesInto: String?)
 
     fun admits(reps: List<Int>): Boolean = levels.any { level ->
         val held = branches(level, reps) ?: return@any false
@@ -114,5 +114,6 @@ internal class AttachGate(private val levels: List<Level>) {
     }
 
     private fun branches(level: Level, reps: List<Int>): String? =
-        if (reps.size < level.depth) null else level.branches[reps.subList(0, level.depth)]
+        if (reps.size < level.depth) null else level.branches[RepPrefix(reps, level.depth)]
 }
+

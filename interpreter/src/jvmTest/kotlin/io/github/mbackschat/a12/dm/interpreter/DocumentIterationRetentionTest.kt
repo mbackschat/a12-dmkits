@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.FilterWalkRowProvider
 import io.github.mbackschat.a12.dm.interpreter.eval.OccupiedPrefixes
+import io.github.mbackschat.a12.dm.interpreter.eval.RepPrefix
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -55,7 +56,7 @@ class DocumentIterationRetentionTest {
         document.fullValidationContextsFor(CLAIMS) { model.declaredReps[it] ?: 1 }
 
         val occupancy = document.retained("cachedIndex")!!.retained("occupiedChildren") as Map<*, *>
-        val children = (occupancy[2] as Map<*, *>)[listOf(1)]
+        val children = (occupancy[2] as Map<*, *>)[RepPrefix(listOf(1), 1)]
 
         assertContentEquals(intArrayOf(1, 2, 3), assertIs<IntArray>(children))
     }

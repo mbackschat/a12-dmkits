@@ -175,6 +175,9 @@ internal class FormalResultCache(
         // EMPTY branch keeps a memo, because `requiredEmpty` reads the row context rather than a cached value.
         val result = if (raw != null) {
             checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, valueAdmissions, groupFilled)
+        } else if (!checks.emptyMayFail(path, valueAdmissions.overRepetitionGateNeeded)) {
+            // Most empty cells of an ordinary document: answered per path, before the memo key is built and hashed.
+            FormalResult.Valid
         } else {
             results.getOrPut(Key(path, reps)) {
                 checks.computeFormalResultAt(path, reps, null, ctx, duplicates, valueAdmissions, groupFilled)

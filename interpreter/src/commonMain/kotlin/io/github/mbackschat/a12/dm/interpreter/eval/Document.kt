@@ -279,7 +279,7 @@ class Document(internal val config: DocumentConfig) {
         // The same domain under a blank root, every row evaluated, for a GLOBAL rule (IF434).
         val globalValidationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
         // Depth → parent coordinate prefix → the child coordinates some instantiated row of ANY group sets there.
-        var occupiedChildren: Map<Int, Map<List<Int>, IntArray>>? = null
+        var occupiedChildren: Map<Int, Map<RepPrefix, IntArray>>? = null
         // Per counted-group predicate (null = every group): the highest repetition stored at each depth.
         val highestRepetitionsByCount: MutableMap<Set<String>, IntArray> = HashMap()
         val filterPrefixesByCount: MutableMap<Set<String>, OccupiedPrefixes> = HashMap()
@@ -684,24 +684,16 @@ class Document(internal val config: DocumentConfig) {
         val occupied = if (dense) emptyMap() else occupiedChildren()
         for (depth in 2..segs.size) {
             val capacity = capacities[depth - 1]
-            frontier = frontier.flatMap { prefix ->
-                if (dense) (1..capacity).map { prefix + it }
-                else (sequenceOf(1) + (occupied[depth]?.get(prefix)?.asSequence() ?: emptySequence()).filter { it in 2..capacity })
-                    .map { prefix + it }.toList()
+            // Plain loops: the sequence chain this replaced cost the browser first answer more than the walk itself.
+            frontier = buildList {
+                for (prefix in frontier) if (dense) for (child in 1..capacity) add(prefix + child) else {
+                    add(prefix + 1)
+                    occupied[depth]?.get(RepPrefix(prefix, prefix.size))?.forEach { if (it in 2..capacity) add(prefix + it) }
+                }
             }
         }
-        val storedRows = rowsOf(groupPath).associateBy { it }
-        return frontier.map { storedRows[it] ?: it }
-    }
-
-    /** Whether [capacities] multiply to at most [DENSE_PRODUCT_LIMIT], read only until the product passes it. */
-    private fun withinDenseLimit(capacities: Sequence<Int>): Boolean {
-        var product = 1L
-        for (capacity in capacities) {
-            product *= capacity
-            if (product > DENSE_PRODUCT_LIMIT) return false
-        }
-        return true
+        val storedRows = rowsOf(groupPath).associateBy { RepPrefix(it, it.size) }
+        return frontier.map { storedRows[RepPrefix(it, it.size)] ?: it }
     }
 
     /**
@@ -717,7 +709,9 @@ class Document(internal val config: DocumentConfig) {
                 val bucket = instances.getOrPut(rootOf(group)) { HashSet() }
                 rows.forEach { bucket += it[0] }
             }
-            for (cell in idx.valued) instances.getOrPut(rootOf(cell.path)) { HashSet() } += cell.reps[0]
+            // One bucket lookup per distinct path, not a path split per cell: a document has far fewer paths than cells.
+            val bucketByPath = HashMap<String, HashSet<Int>>()
+            for (cell in idx.valued) bucketByPath.getOrPut(cell.path) { instances.getOrPut(rootOf(cell.path)) { HashSet() } } += cell.reps[0]
             instances.mapValues { (_, it) -> it.sorted() }.also { idx.rootInstancesByRoot = it }
         }
         return byRoot[root] ?: emptyList()
@@ -814,10 +808,10 @@ class Document(internal val config: DocumentConfig) {
                 .map { reps -> stored[reps] ?: RowContext(groupPath, reps, evaluated = true) }
         }
 
-    private fun occupiedChildren(): Map<Int, Map<List<Int>, IntArray>> = index().occupiedChildren ?: run {
-        val byDepth = HashMap<Int, HashMap<List<Int>, HashSet<Int>>>()
+    private fun occupiedChildren(): Map<Int, Map<RepPrefix, IntArray>> = index().occupiedChildren ?: run {
+        val byDepth = HashMap<Int, HashMap<RepPrefix, HashSet<Int>>>()
         for (rows in index().rowsByGroup.values) for (reps in rows) for (depth in 2..reps.size) {
-            byDepth.getOrPut(depth) { HashMap() }.getOrPut(reps.take(depth - 1)) { HashSet() }.add(reps[depth - 1])
+            byDepth.getOrPut(depth) { HashMap() }.getOrPut(RepPrefix(reps, depth - 1)) { HashSet() }.add(reps[depth - 1])
         }
         byDepth.mapValues { (_, parents) ->
             parents.mapValues { (_, children) -> children.toIntArray().apply { sort() } }
@@ -1051,7 +1045,7 @@ class Document(internal val config: DocumentConfig) {
                 .map { depth -> capacityOf("/" + segs.take(depth).joinToString("/")) })
             if (dense) (1..capacity).toList()
             else (sequenceOf(1) + occupiedChildren()[segs.size].orEmpty().asSequence()
-                .filter { (parent, _) -> parent.size == joinedDepth && parent.take(joinedDepth - 1) == above }
+                .filter { (parent, _) -> parent.length == joinedDepth && parent.startsWith(above) }
                 .flatMap { (_, held) -> held.asSequence() }.filter { it in 2..capacity })
                 .distinct().sorted().toList()
         }
@@ -2474,9 +2468,6 @@ class Document(internal val config: DocumentConfig) {
     }
 
     private companion object {
-        /** The kernel's dense-iteration threshold on the product of declared capacities (`MAX_PRUEF_KONTEXT`). */
-        const val DENSE_PRODUCT_LIMIT = 5L
-
         fun parts(path: String): List<String> = path.trim('/').split('/')
 
         fun commonPrefixLen(a: List<String>, b: List<String>): Int {

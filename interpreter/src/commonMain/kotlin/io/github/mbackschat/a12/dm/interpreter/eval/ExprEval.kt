@@ -77,14 +77,6 @@ private val DIGITS = Regex("""\d+""")
  * the distinct UNKNOWN state of a compromised lookup. */
 internal fun Interpreter.semanticIndexFilled(e: Expr.SemanticIndex): Boolean = semanticIndexCell(e) != null
 
-/**
- * Whether the cell at [path] is empty but not check-relevant, so a list reader meets it as unavailable rather than
- * empty: a required-empty field in validation, and in a computation the empty index cell the preliminary index
- * check invalidates, for which the gate throws the poison itself (KERNEL-FINDINGS KF552,
- * `adapter.laws.RequiredEmptyReadDiffTest`).
- */
-internal fun Interpreter.unavailableEmpty(c: EvalContext, path: String): Boolean = !c.filled(path) && invalid(c, path)
-
 /** Whether an instantiated row of a starred operand holds an [unavailableEmpty] cell. A12's list loops
  *  (`anzahlAngegebenerFelder`, `combineFeldListe`, `anzahlWertInFeldlisteIntern`) return the not-check-relevant
  *  value on the first such cell, as on a malformed one. [Expr.Star.bindDepth] scopes the rows. */

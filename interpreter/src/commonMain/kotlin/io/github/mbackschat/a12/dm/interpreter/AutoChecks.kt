@@ -383,6 +383,17 @@ internal class AutoChecks(
     }
 
     /**
+     * Whether an EMPTY cell at [path] can fail its formal check in a validation whose document
+     * [overRepetitionGateNeeded] answered [gateNeeded]: the precondition of [computeFormalResultAt]'s empty branch,
+     * which fails a cell only over-limit or required-empty. It holds for a partial call too, whose relevance and
+     * suppressed index defaults are decided before this branch. [FormalResultCache] asks it before keying its memo,
+     * and a validation call's [io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig.emptyMayBeUnavailable] before
+     * reaching the cache at all (KF552's unavailable empty).
+     */
+    fun emptyMayFail(path: String, gateNeeded: Boolean): Boolean =
+        gateNeeded || model.requirednessOf(path) != Requiredness.NOT_REQUIRED
+
+    /**
      * Whether the field at [path] is required-but-empty in [ctx] — the kernel's `mandatoryField` condition
      * AND the trigger that makes the field "unknown" for rule evaluation ([formalErrorAt]). Empty plus the
      * mode's gate: [Requiredness.ABSOLUTE] is unconditional with no repeatable ancestor, else gated by the
