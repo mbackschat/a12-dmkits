@@ -35,6 +35,7 @@ class NodeRuntimePinGuardTest {
             ".github/workflows/ci.yml#build",
             ".github/workflows/nightly-performance.yml#performance",
             ".github/interpreter-mirror-workflows/build-release.yml#build-release",
+            ".github/mirror-workflows/build-native.yml#bootstrap-kernel",
             ".github/mirror-workflows/build-native.yml#build-native");
 
     private record Setup(String consumer, String version) {}
@@ -54,7 +55,7 @@ class NodeRuntimePinGuardTest {
         assertAll(
                 () -> assertEquals(EXPECTED_CONSUMERS, consumers,
                         "Node is load-bearing in the main TypeScript/demo lane, the A12 kernel bootstrap the nightly "
-                                + "performance job runs, the interpreter mirror build, and the Linux native demo gate; each "
+                                + "performance job and the release mirror run, the interpreter mirror build, and the Linux native demo gate; each "
                                 + "owning job needs an explicit setup-node step"),
                 () -> assertEquals(List.of(), unpinned,
                         "every setup-node declaration must name major.minor.patch; a major or minor follows the latest "
@@ -64,6 +65,25 @@ class NodeRuntimePinGuardTest {
                 () -> assertEquals(Set.of(EXPECTED_NODE_VERSION), versions,
                         "owned Node consumers must use the reviewed patch named by BUILD-ENVIRONMENT and "
                                 + "TESTING-SPEC; a version bump travels with both docs: " + versions));
+    }
+
+    /**
+     * Derived, not listed: the 2026.06-ext1 kernel bootstrap refuses to build below Node 24, and the mirror's
+     * bootstrap-kernel job was absent from the consumer list above, so v0.15.0's first release dispatch failed
+     * there (mirror run 42148016416, 2026-11-06) while CI and the nightly, which were listed, stayed green.
+     */
+    @Test
+    void everyJobThatBootstrapsTheKernelSetsUpNode() throws Exception {
+        var bootstrapping = new ArrayList<String>();
+        var withNode = new LinkedHashSet<String>();
+        for (String relative : trackedWorkflows()) {
+            String yaml = Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8);
+            bootstrapping.addAll(bootstrappingJobsIn(relative, yaml));
+            setupsIn(relative, yaml).forEach(setup -> withNode.add(setup.consumer()));
+        }
+        assertFalse(bootstrapping.isEmpty(), "no workflow job runs ./bootstrap.sh; this scan is comparing against nothing");
+        assertEquals(List.of(), bootstrapping.stream().filter(job -> !withNode.contains(job)).toList(),
+                "a job that runs the kernel bootstrap needs an explicit setup-node step");
     }
 
     @Test
@@ -86,6 +106,19 @@ class NodeRuntimePinGuardTest {
                         with:
                           node-version: '%s'
                 """.formatted(version);
+    }
+
+    private static List<String> bootstrappingJobsIn(String file, String yaml) throws IOException {
+        var jobs = new ArrayList<String>();
+        for (Map.Entry<String, JsonNode> job : YAML.readTree(yaml).path("jobs").properties()) {
+            for (JsonNode step : job.getValue().path("steps")) {
+                if (step.path("run").asText().contains("./bootstrap.sh")) {
+                    jobs.add(file + "#" + job.getKey());
+                    break;
+                }
+            }
+        }
+        return jobs;
     }
 
     private static List<Setup> setupsIn(String file, String yaml) throws IOException {

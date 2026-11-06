@@ -65,6 +65,13 @@ jobs:
             21.0.12
             25.0.4
 
+      # The 2026.06-ext1 kernel bootstrap refuses to build below Node 24, and the hosted image's PATH carries
+      # Node 22 (mirror run 42148016416, 2026-11-06). Same pin as main CI and the nightly; NodeRuntimePinGuardTest.
+      - name: Set up Node for the kernel bootstrap
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
       - name: Cache bootstrapped kernel (mavenLocal)
         id: kernel-cache
         uses: actions/cache@v5
