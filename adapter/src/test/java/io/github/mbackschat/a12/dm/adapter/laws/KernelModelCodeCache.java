@@ -46,7 +46,7 @@ import java.util.zip.GZIPOutputStream;
  * a dependency bump — is treated as a miss and the entry is removed, never propagated. A cache that can fail a
  * test is worse than no cache, and this one is allowed to be wrong only in the direction of doing more work.
  */
-final class KernelModelCodeCache implements IModelCodeCache {
+public final class KernelModelCodeCache implements IModelCodeCache {
 
     /**
      * Opt-IN, so a lane that measures codegen cannot inherit the cache by forgetting to opt out.
@@ -87,6 +87,24 @@ final class KernelModelCodeCache implements IModelCodeCache {
 
     static int residentSize() {
         return RESIDENT.size();
+    }
+
+    /**
+     * Refuse to measure while generated code is shared, because the share is invisible in the numbers.
+     *
+     * <p>Any engine built before a measurement's baseline seeds the resident map, so every engine built inside the
+     * measurement reuses its compiled code and the generated-code cost drops out of the per-engine figure. On
+     * 2026-11-06 that turned dynamic Groovy's 1.05–12.08 MB per resident model into 25–200 kB, under the
+     * footprint probe's own documented command. A timing lane is exposed the same way. The lane wiring keeps the
+     * cache off for every measurement opt-in; this is the check at the measurement itself, so a new route into
+     * one fails loudly instead of reporting a smaller number.
+     */
+    public static void requireDisabledFor(String measurement) {
+        if (Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "false"))) {
+            throw new IllegalStateException(measurement + " cannot run with the shared kernel code cache ("
+                    + ENABLED_PROPERTY + "=true): generated code compiled before its baseline would be reused by "
+                    + "every measured engine. Run it through a measurement opt-in (-PrunPerf or -PrunKernelProbe).");
+        }
     }
 
     private final Path directory;

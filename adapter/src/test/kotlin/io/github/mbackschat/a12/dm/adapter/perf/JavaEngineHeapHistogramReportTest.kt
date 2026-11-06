@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.adapter.laws.KernelModelCodeCache
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import java.nio.file.Files
@@ -39,6 +40,7 @@ class JavaEngineHeapHistogramReportTest {
         if (System.getProperty("a12.java.histogram") != "true") {
             return
         }
+        KernelModelCodeCache.requireDisabledFor("JavaEngineHeapHistogramReportTest")
         val hold = System.getProperty("a12.java.histogram.hold")?.toInt() ?: HOLD
         val strategy = System.getProperty("a12.java.histogram.strategy") ?: "java"
         val modelPath = repoRoot().resolve(System.getProperty("a12.java.histogram.model") ?: DEFAULT_MODEL)

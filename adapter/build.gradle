@@ -290,8 +290,10 @@ tasks.named('test') {
     // document live, so this lane stays an oracle; only the ~77% of per-model cost that is code GENERATION is
     // skipped. Opted in here and nowhere else: every perf/measurement lane must generate what it times, and the
     // cache defaults off so a new timing lane cannot inherit it by omission. A perf run through THIS task opts
-    // back out, because -PrunPerf pulls the timing bars into a lane that is otherwise cached.
-    if (!project.hasProperty('runPerf') && !project.hasProperty('allTests')) {
+    // back out, because -PrunPerf pulls the timing bars into a lane that is otherwise cached; so does
+    // -PrunKernelProbe, whose footprint probe read dynamic Groovy at 25–200 kB instead of 1.05–12.08 MB per model
+    // while it was missing here (2026-11-06). KernelModelCodeCache.requireDisabledFor refuses at the measurement.
+    if (!project.hasProperty('runPerf') && !project.hasProperty('allTests') && !project.hasProperty('runKernelProbe')) {
         systemProperty 'rk.kernelCodeCache', 'true'
     }
     useJUnitPlatform {

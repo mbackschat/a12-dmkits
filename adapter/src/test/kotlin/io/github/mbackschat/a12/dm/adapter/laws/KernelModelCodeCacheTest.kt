@@ -93,6 +93,24 @@ class KernelModelCodeCacheTest {
             "…and the unreadable entry is dropped rather than re-read on every later run")
     }
 
+    /**
+     * A measurement must refuse the cache, and must name it. On 2026-11-06 the footprint probe ran under it through
+     * its documented `-PrunKernelProbe` command: the equivalence check compiled each model's Groovy before the
+     * baseline, every measured engine reused it, and dynamic Groovy reported 25–200 kB per model where the
+     * uncached lane measures 1.05–12.08 MB. The disabled arm is the control that keeps the refusal from passing
+     * by refusing everything.
+     */
+    @Test
+    fun aMeasurementRefusesTheSharedCacheAndRunsWithoutIt() {
+        val refusal = runCatching {
+            withCache(enabled = true) { KernelModelCodeCache.requireDisabledFor("the footprint report") }
+        }.exceptionOrNull()
+        assertTrue(refusal is IllegalStateException && refusal.message!!.contains("rk.kernelCodeCache")
+            && refusal.message!!.contains("the footprint report"), "expected a named refusal, got $refusal")
+
+        withCache(enabled = false) { KernelModelCodeCache.requireDisabledFor("the footprint report") }
+    }
+
     /** Disabled is not merely uncached: it is the engine shape every lane had before this cache existed. */
     @Test
     fun theDisabledPathWritesNothingAtAll() {

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
+import io.github.mbackschat.a12.dm.adapter.laws.KernelModelCodeCache
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer
 import io.github.mbackschat.a12.dm.interpreter.CustomCondition
@@ -50,6 +51,7 @@ class EngineFootprintReportTest {
         if (System.getProperty("a12.engine.footprint") != "true") {
             return
         }
+        KernelModelCodeCache.requireDisabledFor("EngineFootprintReportTest")
         val hold = System.getProperty("a12.engine.footprint.hold")?.toInt() ?: DEFAULT_HOLD
         val models = measuredModels()
 
