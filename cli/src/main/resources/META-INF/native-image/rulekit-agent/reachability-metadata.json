@@ -1387,7 +1387,7 @@
       ]
     },
     {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WritePairCopy$4",
+      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WritePairCopy$6",
       "methods": [
         {
           "name": "<init>",
@@ -1402,7 +1402,7 @@
       ]
     },
     {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteQuoteCopy$6",
+      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteQuoteCopy$5",
       "methods": [
         {
           "name": "<init>",
@@ -1417,7 +1417,7 @@
       ]
     },
     {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteRepeatedCopy$5",
+      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteRepeatedCopy$4",
       "methods": [
         {
           "name": "<init>",
@@ -6619,33 +6619,6 @@
       "type": "Script_0a9a9aed62d0dc3081854846f5502489Customizer"
     },
     {
-      "type": "Script_0ba918cb1755bbef97a5cd05e05a20ee",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_0ba918cb1755bbef97a5cd05e05a20eeBeanInfo"
-    },
-    {
-      "type": "Script_0ba918cb1755bbef97a5cd05e05a20eeCustomizer"
-    },
-    {
       "type": "Script_0da88aca4a3b9c4967ab0988b38c8421",
       "methods": [
         {
@@ -6910,33 +6883,6 @@
     },
     {
       "type": "Script_34c1dee8d94b61da854eb12646931db7Customizer"
-    },
-    {
-      "type": "Script_36085b3171afc9de487c38f15907ed5e",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_36085b3171afc9de487c38f15907ed5eBeanInfo"
-    },
-    {
-      "type": "Script_36085b3171afc9de487c38f15907ed5eCustomizer"
     },
     {
       "type": "Script_3646227fcce1fe91a1c480a701b791fe",
@@ -7209,33 +7155,6 @@
       "type": "Script_5a97229fd48805f1f8343c473c010dc9Customizer"
     },
     {
-      "type": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2BeanInfo"
-    },
-    {
-      "type": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2Customizer"
-    },
-    {
       "type": "Script_605b661c5527f799b1e5ff39b1bc1f66",
       "methods": [
         {
@@ -7290,33 +7209,6 @@
       "type": "Script_60848c5784bfe6865777ca79416f9716Customizer"
     },
     {
-      "type": "Script_63d8c2223ed351dfe3af931add0f7eae",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_63d8c2223ed351dfe3af931add0f7eaeBeanInfo"
-    },
-    {
-      "type": "Script_63d8c2223ed351dfe3af931add0f7eaeCustomizer"
-    },
-    {
       "type": "Script_676d401b9096ec419bac62651ff715c0",
       "methods": [
         {
@@ -7342,6 +7234,33 @@
     },
     {
       "type": "Script_676d401b9096ec419bac62651ff715c0Customizer"
+    },
+    {
+      "type": "Script_68afa486983f9d3c0f86c9c8ce0c9099",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_68afa486983f9d3c0f86c9c8ce0c9099BeanInfo"
+    },
+    {
+      "type": "Script_68afa486983f9d3c0f86c9c8ce0c9099Customizer"
     },
     {
       "type": "Script_69d004ce52c1099c916a4c3a2ec91c85",
@@ -7500,6 +7419,60 @@
     },
     {
       "type": "Script_7988163e0839ea0e6dca15737ef1464dCustomizer"
+    },
+    {
+      "type": "Script_83cba3bf024a1888b9f624b11f84d6de",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_83cba3bf024a1888b9f624b11f84d6deBeanInfo"
+    },
+    {
+      "type": "Script_83cba3bf024a1888b9f624b11f84d6deCustomizer"
+    },
+    {
+      "type": "Script_842bdb5fb08e18e2676a45c8511e3ed3",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_842bdb5fb08e18e2676a45c8511e3ed3BeanInfo"
+    },
+    {
+      "type": "Script_842bdb5fb08e18e2676a45c8511e3ed3Customizer"
     },
     {
       "type": "Script_86abd5112b6f12333a52bbf069996153",
@@ -7791,7 +7764,7 @@
       "type": "Script_a67fcbadaef10c1730fe185c38d7260dCustomizer"
     },
     {
-      "type": "Script_aab8a4d4d08f1c1dee8fc83657a230e8",
+      "type": "Script_a75ffd89bde1a0634e04d5271bdba443",
       "methods": [
         {
           "name": "<init>",
@@ -7812,10 +7785,37 @@
       ]
     },
     {
-      "type": "Script_aab8a4d4d08f1c1dee8fc83657a230e8BeanInfo"
+      "type": "Script_a75ffd89bde1a0634e04d5271bdba443BeanInfo"
     },
     {
-      "type": "Script_aab8a4d4d08f1c1dee8fc83657a230e8Customizer"
+      "type": "Script_a75ffd89bde1a0634e04d5271bdba443Customizer"
+    },
+    {
+      "type": "Script_aa096b1a1ccbbe979931137f58c18d9d",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_aa096b1a1ccbbe979931137f58c18d9dBeanInfo"
+    },
+    {
+      "type": "Script_aa096b1a1ccbbe979931137f58c18d9dCustomizer"
     },
     {
       "type": "Script_adc8cbf45d249093855bc4c09371a717",
@@ -8992,6 +8992,23 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenSetOperation",
+      "methods": [
+        {
+          "name": "getOperationCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOperationResultType",
+          "parameterTypes": []
+        },
+        {
+          "name": "getVarName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenTeilValidierung",
       "methods": [
         {
@@ -9632,6 +9649,23 @@
         },
         {
           "name": "isDatum",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.SetOpOperation",
+      "methods": [
+        {
+          "name": "getIterationEntityCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOperationVarName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOperatorNameCode",
           "parameterTypes": []
         }
       ]
@@ -11257,21 +11291,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$feldWertAlsZahl$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$feldWertAlsZahl$10",
       "methods": [
         {
@@ -11452,21 +11471,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$getValidationCache$6",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$getValidationCache$7",
       "methods": [
         {
@@ -11512,7 +11516,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$keinFeldAngegeben$4",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$keinFeldAngegeben$5",
       "methods": [
         {
           "name": "<init>",
@@ -11617,21 +11621,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$logMessung$4",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$logMessung$5",
       "methods": [
         {
@@ -11662,21 +11651,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$logMessung$8",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$logMessung$9",
       "methods": [
         {
@@ -11693,21 +11667,6 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$makeDecimal$11",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$makeDecimal$2",
       "methods": [
         {
           "name": "<init>",
@@ -11783,21 +11742,6 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$makeIdentifier$6",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$makeIdentifier$7",
       "methods": [
         {
           "name": "<init>",
@@ -11903,21 +11847,6 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$vergleiche$12",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_1.internal.core.RuntimeController$vergleiche$3",
       "methods": [
         {
           "name": "<init>",
@@ -13633,6 +13562,12 @@
         },
         {
           "name": "setName",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setPacket",
           "parameterTypes": [
             "java.lang.String"
           ]
@@ -15974,9 +15909,6 @@
       "type": "groovy.runtime.metaclass.Script_0a9a9aed62d0dc3081854846f5502489MetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_0ba918cb1755bbef97a5cd05e05a20eeMetaClass"
-    },
-    {
       "type": "groovy.runtime.metaclass.Script_0da88aca4a3b9c4967ab0988b38c8421MetaClass"
     },
     {
@@ -16005,9 +15937,6 @@
     },
     {
       "type": "groovy.runtime.metaclass.Script_34c1dee8d94b61da854eb12646931db7MetaClass"
-    },
-    {
-      "type": "groovy.runtime.metaclass.Script_36085b3171afc9de487c38f15907ed5eMetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_3646227fcce1fe91a1c480a701b791feMetaClass"
@@ -16040,19 +15969,16 @@
       "type": "groovy.runtime.metaclass.Script_5a97229fd48805f1f8343c473c010dc9MetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_5dc9fd540f1969f44f32b5c9cc8c8ec2MetaClass"
-    },
-    {
       "type": "groovy.runtime.metaclass.Script_605b661c5527f799b1e5ff39b1bc1f66MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_60848c5784bfe6865777ca79416f9716MetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_63d8c2223ed351dfe3af931add0f7eaeMetaClass"
+      "type": "groovy.runtime.metaclass.Script_676d401b9096ec419bac62651ff715c0MetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_676d401b9096ec419bac62651ff715c0MetaClass"
+      "type": "groovy.runtime.metaclass.Script_68afa486983f9d3c0f86c9c8ce0c9099MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_69d004ce52c1099c916a4c3a2ec91c85MetaClass"
@@ -16071,6 +15997,12 @@
     },
     {
       "type": "groovy.runtime.metaclass.Script_7988163e0839ea0e6dca15737ef1464dMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_83cba3bf024a1888b9f624b11f84d6deMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_842bdb5fb08e18e2676a45c8511e3ed3MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_86abd5112b6f12333a52bbf069996153MetaClass"
@@ -16106,7 +16038,10 @@
       "type": "groovy.runtime.metaclass.Script_a67fcbadaef10c1730fe185c38d7260dMetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_aab8a4d4d08f1c1dee8fc83657a230e8MetaClass"
+      "type": "groovy.runtime.metaclass.Script_a75ffd89bde1a0634e04d5271bdba443MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_aa096b1a1ccbbe979931137f58c18d9dMetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_adc8cbf45d249093855bc4c09371a717MetaClass"
@@ -17540,6 +17475,83 @@
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.config.ConfigReadCommand",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.criterion.CriterionAddCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.criterion.CriterionCommand",
+      "fields": [
+        {
+          "name": "spec"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.criterion.CriterionReadCommand",
+      "fields": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "nameFlag"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.criterion.CriterionRemoveCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
       "methods": [
         {
           "name": "<init>",
@@ -23375,6 +23387,9 @@
       "glob": "Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_Felder_importedmodel$MapBuilder.class"
     },
     {
+      "glob": "Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_Felder_importedmodel$MetaFeldUtil.class"
+    },
+    {
       "glob": "Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_Felder_importedmodel$Object.class"
     },
     {
@@ -28046,33 +28061,6 @@
       "glob": "Script_0a9a9aed62d0dc3081854846f5502489Customizer.groovy"
     },
     {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20ee$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20eeBeanInfo.groovy"
-    },
-    {
-      "glob": "Script_0ba918cb1755bbef97a5cd05e05a20eeCustomizer.groovy"
-    },
-    {
       "glob": "Script_0da88aca4a3b9c4967ab0988b38c8421$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
     },
     {
@@ -28341,33 +28329,6 @@
     },
     {
       "glob": "Script_34c1dee8d94b61da854eb12646931db7Customizer.groovy"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5e$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5eBeanInfo.groovy"
-    },
-    {
-      "glob": "Script_36085b3171afc9de487c38f15907ed5eCustomizer.groovy"
     },
     {
       "glob": "Script_3646227fcce1fe91a1c480a701b791fe$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
@@ -28640,33 +28601,6 @@
       "glob": "Script_5a97229fd48805f1f8343c473c010dc9Customizer.groovy"
     },
     {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2BeanInfo.groovy"
-    },
-    {
-      "glob": "Script_5dc9fd540f1969f44f32b5c9cc8c8ec2Customizer.groovy"
-    },
-    {
       "glob": "Script_605b661c5527f799b1e5ff39b1bc1f66$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
     },
     {
@@ -28721,33 +28655,6 @@
       "glob": "Script_60848c5784bfe6865777ca79416f9716Customizer.groovy"
     },
     {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eae$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eaeBeanInfo.groovy"
-    },
-    {
-      "glob": "Script_63d8c2223ed351dfe3af931add0f7eaeCustomizer.groovy"
-    },
-    {
       "glob": "Script_676d401b9096ec419bac62651ff715c0$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
     },
     {
@@ -28773,6 +28680,33 @@
     },
     {
       "glob": "Script_676d401b9096ec419bac62651ff715c0Customizer.groovy"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_68afa486983f9d3c0f86c9c8ce0c9099Customizer.groovy"
     },
     {
       "glob": "Script_69d004ce52c1099c916a4c3a2ec91c85$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
@@ -28935,6 +28869,60 @@
     },
     {
       "glob": "Script_7988163e0839ea0e6dca15737ef1464dCustomizer.groovy"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6de$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6deBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_83cba3bf024a1888b9f624b11f84d6deCustomizer.groovy"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_842bdb5fb08e18e2676a45c8511e3ed3Customizer.groovy"
     },
     {
       "glob": "Script_86abd5112b6f12333a52bbf069996153$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
@@ -29234,31 +29222,58 @@
       "glob": "Script_a67fcbadaef10c1730fe185c38d7260dCustomizer.groovy"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_ERValidator_dispatch_002dliteral_002dcli.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_Meta_dispatch_002dliteral_002dcli.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$Com_mgmtp_a12_kernel_generated_importedmodel_internal_Meta_importedmodel.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443$com$mgmtp$a12$utils$conversion$a12internal$util.class"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8BeanInfo.groovy"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443BeanInfo.groovy"
     },
     {
-      "glob": "Script_aab8a4d4d08f1c1dee8fc83657a230e8Customizer.groovy"
+      "glob": "Script_a75ffd89bde1a0634e04d5271bdba443Customizer.groovy"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_ERValidator_dispatch_002dliteral_002dcli.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_Meta_dispatch_002dliteral_002dcli.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$com$mgmtp$a12$kernel$core$rt$_31_1$internal$core.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$com$mgmtp$a12$kernel$core$rt$_31_1$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$com$mgmtp$a12$kernel$core$rt$_31_1$internal$meta.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$com$mgmtp$a12$kernel$core$rt$_31_1$internal$util.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9d$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9dBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_aa096b1a1ccbbe979931137f58c18d9dCustomizer.groovy"
     },
     {
       "glob": "Script_adc8cbf45d249093855bc4c09371a717$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
@@ -33869,6 +33884,9 @@
       "glob": "internal/templates/validation/groovy/operationsDir/BoolConstantOperation.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/operationsDir/CodeGenSetOperation.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/operationsDir/CompositeOperation.st"
     },
     {
@@ -33909,6 +33927,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/PointInTimeOperation.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/operationsDir/SetOpOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/root.stg"
@@ -34424,6 +34445,9 @@
       "glob": "models/catalogtypes.dm.json"
     },
     {
+      "glob": "models/customer-register.dm.json"
+    },
+    {
       "glob": "models/inheritance/ProductBundle.dm.json"
     },
     {
@@ -34503,6 +34527,12 @@
     },
     {
       "glob": "schema/compute-doc.schema.json"
+    },
+    {
+      "glob": "schema/criterion-add.schema.json"
+    },
+    {
+      "glob": "schema/criterion-read.schema.json"
     },
     {
       "glob": "schema/describe.schema.json"
