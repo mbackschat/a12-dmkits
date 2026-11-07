@@ -268,13 +268,17 @@ final class ModelTreeData {
     }
 
     private static void putDescriptions(ObjectNode node, ModelTreeMetadataIndex.Metadata metadata) {
-        if (metadata.internal().isEmpty() && metadata.external().isEmpty() && metadata.helper().isEmpty()) {
+        if (metadata.internal().isEmpty() && metadata.external().isEmpty() && metadata.helper().isEmpty()
+                && metadata.changeNote() == null) {
             return;
         }
         ObjectNode descriptions = node.putObject("descriptions");
         putMap(descriptions, "internal", metadata.internal());
         putMap(descriptions, "external", metadata.external());
         putMap(descriptions, "helper", metadata.helper());
+        if (metadata.changeNote() != null) {
+            descriptions.put("changeNote", metadata.changeNote());
+        }
     }
 
     private static void putAnnotations(ObjectNode node, Map<String, String> annotations) {
@@ -345,7 +349,19 @@ final class ModelTreeData {
         }
         ArrayNode out = node.putArray("rules");
         for (RuleInfo rule : rules) {
-            out.addObject().put("name", rule.path()).put("dsl", rule.errorCondition());
+            ObjectNode entry = out.addObject().put("name", rule.path()).put("dsl", rule.errorCondition());
+            rule.possibleCauses().ifPresent(filter -> {
+                ObjectNode causes = entry.putObject("possibleCauses");
+                putEntities(causes, "ifFilled", filter.entitiesIfFilled());
+                putEntities(causes, "ifNotFilled", filter.entitiesIfNotFilled());
+            });
+        }
+    }
+
+    private static void putEntities(ObjectNode parent, String key, List<String> entities) {
+        if (!entities.isEmpty()) {
+            ArrayNode out = parent.putArray(key);
+            entities.forEach(out::add);
         }
     }
 

@@ -126,6 +126,7 @@ final class FieldDiffProjector {
                 || aspect.startsWith("annotation.") || aspect.startsWith("enum.label.")
                 || aspect.startsWith("enum.categoryDescription.")
                 || aspect.equals("global") || aspect.equals("transient") || aspect.equals("alphabeticalSorting")
+                || aspect.equals("changeNote")
                 // Read and written by A12 but no longer evaluated since kernel 31.2 (A12K-4073, KF677).
                 || aspect.equals("rejectBefore1900");
     }

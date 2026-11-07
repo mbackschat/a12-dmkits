@@ -71,7 +71,8 @@ final class GroupDiffProjector {
 
     private static boolean isMetadata(String aspect) {
         return aspect.startsWith("label.") || aspect.startsWith("internalDescription.")
-                || aspect.startsWith("externalDescription.") || aspect.startsWith("annotation.");
+                || aspect.startsWith("externalDescription.") || aspect.startsWith("annotation.")
+                || aspect.equals("changeNote");
     }
 
     private static Map<String, String> aspects(ModelDocument.GroupState group) {

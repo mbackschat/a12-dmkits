@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
 import io.github.mbackschat.a12.dm.core.PossibleCauseFilter
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
@@ -109,6 +110,32 @@ class ElementMemberOrderTest {
             .setExternalDescription(id, "en_US", "Shown").setInternalDescription(id, "en_US", "Kept").toJson()
         assertA12Order(ModelWriter.replaceComputation(noted, id, computation, messages), id)
     }
+
+    /** A model built from a draft, not edited: its group, field and type definition carry every described member. */
+    @Test
+    fun aBuiltModelKeepsA12sMemberOrder() {
+        val built = DocumentModelDraft.named("policy").locale("en_US")
+            .typeDef("PolicyNumber") { type ->
+                type.string { it.maxLength(12) }.annotation("owner", "underwriting")
+                    .internalDescription("en_US", "Kept").externalDescription("en_US", "Shown")
+            }
+            .rootGroup("Policy") { policy ->
+                policy.annotation("owner", "underwriting").internalDescription("en_US", "Kept")
+                    .externalDescription("en_US", "Shown")
+                    .stringField("Holder") {
+                        it.annotation("owner", "underwriting").internalDescription("en_US", "Kept")
+                            .externalDescription("en_US", "Shown")
+                    }
+            }
+            .build().toJson()
+        assertA12Order(built, "/Policy")
+        assertA12Order(built, "/Policy/Holder")
+        assertEquals(memberOrder(definition(MAPPER.readTree(kernelReserialized(built)), "PolicyNumber")),
+            memberOrder(definition(MAPPER.readTree(built), "PolicyNumber")))
+    }
+
+    private fun definition(root: JsonNode, id: String): JsonNode =
+        root.path("content").path("typeDefinitions").first { it.path("id").asText() == id }
 
     private fun typeDefinition(root: JsonNode): JsonNode =
         root.path("content").path("typeDefinitions").first { it.path("id").asText() == "FeeCode" }

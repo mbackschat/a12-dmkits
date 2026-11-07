@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
@@ -33,8 +34,19 @@ final class RuleDiffProjector {
         state.adapter().ruleErrorField(name).ifPresent(error -> aspects.put("errorEntity", error));
         state.adapter().ruleMessages(name).stream().sorted(Comparator.comparing(LocalizedText::locale))
                 .forEach(message -> aspects.put("message." + message.locale(), message.text()));
+        // The filter decides which entities a fired message names; its lists are sets, so their order is no change.
+        state.adapter().rulePossibleCauses(name).ifPresent(filter -> {
+            putEntities(aspects, "possibleCauses.ifFilled", filter.entitiesIfFilled());
+            putEntities(aspects, "possibleCauses.ifNotFilled", filter.entitiesIfNotFilled());
+        });
         putMetadata(aspects, state, name);
         return aspects;
+    }
+
+    private static void putEntities(Map<String, String> aspects, String aspect, List<String> entities) {
+        if (!entities.isEmpty()) {
+            aspects.put(aspect, String.join(",", entities.stream().sorted().toList()));
+        }
     }
 
     private static void putMetadata(Map<String, String> aspects, ModelDiffState state, String name) {

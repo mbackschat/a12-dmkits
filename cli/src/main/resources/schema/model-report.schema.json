@@ -216,7 +216,8 @@
             "properties": {
               "internal": { "type": "object", "additionalProperties": { "type": "string" } },
               "external": { "type": "object", "additionalProperties": { "type": "string" } },
-              "helper": { "type": "object", "additionalProperties": { "type": "string" } }
+              "helper": { "type": "object", "additionalProperties": { "type": "string" } },
+              "changeNote": { "type": "string" }
             }
           },
           "annotations": {
@@ -232,7 +233,16 @@
               "required": ["name", "dsl"],
               "properties": {
                 "name": { "type": "string" },
-                "dsl": { "type": "string" }
+                "dsl": { "type": "string" },
+                "possibleCauses": {
+                  "type": "object",
+                  "description": "absent when A12 derives the causes",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ifFilled": { "type": "array", "items": { "type": "string" } },
+                    "ifNotFilled": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
               }
             }
           },

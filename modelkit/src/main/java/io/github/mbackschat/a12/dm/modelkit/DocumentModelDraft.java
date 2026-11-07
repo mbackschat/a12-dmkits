@@ -193,9 +193,10 @@ public final class DocumentModelDraft {
                 ObjectNode node = defs.addObject();
                 node.put(DmKeys.ID, def.id());
                 node.put(DmKeys.NAME, def.id());
-                writeAnnotations(node, def.annotations());
+                // A type definition's descriptions precede its annotations (ElementMemberOrder.TYPE_DEFINITION).
                 writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, def.internalDescription());
                 writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, def.externalDescription());
+                writeAnnotations(node, def.annotations());
                 writeFieldType(node.putObject(DmKeys.FIELD_TYPE), def.type(), locales);
             }
         }
@@ -218,9 +219,9 @@ public final class DocumentModelDraft {
         node.put(DmKeys.ID, path);
         node.put(DmKeys.NAME, group.name());
         writeAnnotations(node, group.annotations());
-        // internal/external description are element-level (alongside annotations), uniform with fields (IDescribed)
-        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, group.meta().internalDescription());
+        // element-level, uniform with fields (IDescribed), in A12's order (ElementMemberOrder.ELEMENT_HEAD)
         writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, group.meta().externalDescription());
+        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, group.meta().internalDescription());
         ObjectNode body = node.putObject(ElementType.GROUP.wireName());
         body.put(DmKeys.REPEATABILITY, group.repeatability());
         // the display label (ILabeled) lives in the Group body, like a field's — verified against real models
@@ -305,9 +306,9 @@ public final class DocumentModelDraft {
         node.put(DmKeys.NAME, field.name());
         FieldMeta meta = field.meta();
         writeAnnotations(node, meta.annotations());
-        // internal/external description are element-level (alongside annotations), per the kernel serializer
-        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, meta.internalDescription());
+        // element-level, in A12's order (ElementMemberOrder.ELEMENT_HEAD)
         writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, meta.externalDescription());
+        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, meta.internalDescription());
         ObjectNode body = node.putObject(ElementType.FIELD.wireName());
         writeFieldType(body.putObject(DmKeys.FIELD_TYPE), field.type(), locales);
         String mode = field.requiredness().mode();

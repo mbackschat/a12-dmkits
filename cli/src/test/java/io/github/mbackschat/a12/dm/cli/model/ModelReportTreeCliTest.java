@@ -19,6 +19,7 @@ import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
@@ -79,6 +80,9 @@ class ModelReportTreeCliTest {
         assertEquals("/Order/EmailRequired", email.path("rules").get(0).path("name").asText());
         assertTrue(email.path("rules").get(0).path("dsl").asText().contains("FieldNotFilled"));
         assertEquals(1, countRule(data, "/Order/EmailRequired"), "a rule is anchored exactly once");
+        assertEquals("Required since the 2026 intake review.",
+                email.path("descriptions").path("changeNote").asText());
+        assertEquals("{\"ifNotFilled\":[\"ContactEmail\"]}", email.path("rules").get(0).path("possibleCauses").toString());
 
         JsonNode total = node(data, "/Order/Total");
         assertEquals("/Order/TotalComputation", total.path("computation").path("name").asText());
@@ -187,9 +191,11 @@ class ModelReportTreeCliTest {
         EditSession session = EditSession.read(base,
                 reference -> "PaymentModule".equals(reference) ? payment : null);
         session.setAnnotation("/Order/ContactEmail", "classification", "pii");
+        session.setChangeNote("/Order/ContactEmail", "Required since the 2026 intake review.");
         session.addRule(m -> m.rule(m.group("/Order"))
                 .name("EmailRequired").errorField(m.str("/Order/ContactEmail"))
                 .when(m.str("/Order/ContactEmail").notFilled())
+                .possibleCauses(PossibleCauses.notFilled(m.str("/Order/ContactEmail").field()))
                 .code("EMAIL_REQUIRED").severity(Severity.ERROR).message(Dsl.en("Email is required.")).build());
         session.addComputation(m -> m.computation(m.num("/Order/Total"))
                 .name("TotalComputation").calc(m.num("/Order/Quantity").value())

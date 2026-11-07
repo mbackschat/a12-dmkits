@@ -40,17 +40,26 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-### DG1003 — model diff and the model report do not show a changed changeNote or a rule's possible causes (opened 2026-11-07) <a id="dg1003"></a>
+_None open._
 
-The review projectors carry an element's annotations and descriptions (`AuthoredStateReader`, `FieldDiffProjector.putDescriptive`) but not its `changeNote`, and `RuleDiffProjector` projects no `filterForPossiblyCausingEntities`. Measured through the launcher on `order-aggregates.dm.json`: `meta /Order/DeliveryNotBeforeOrder --change-note=reviewed` and then `model diff` reports `0 added, 0 removed, 0 modified`, where the same edit as an annotation reports one modification. A reviewer comparing two revisions therefore misses both members, which A12 stores and serializes.
+---
 
-*Blocks: a review that relies on `model diff` to see every authored change. Closes when both members are projected as diff aspects and in the model report, each locked by a diff test.*
+## 3. Adjacent but out of scope
 
-### DG183 — a built model writes its descriptions in another order than A12 (opened 2026-11-07) <a id="dg183"></a>
+The durable decisions about what dmkits deliberately does *not* do (its model-authoring scope — not a runtime form engine, instance-data layer, or UI):
 
-`DocumentModelDraft` writes an element's `internalDescription` before its `externalDescription`, and a type definition's `annotations` before both descriptions; A12's serializer writes the reverse in each case, so a built model re-serializes with different bytes. The edit path already places them as A12 does (`ElementMembers.inA12Order`, `adapter.ElementMemberOrderTest`, which measured both orders). Reading is unaffected. The fix is one call per emitted node, `fieldNode`, `groupNode` and the type-definition node, and it re-baselines every fixture and demo built by the draft.
+- **Document-instance manipulation** (`DocumentV2` read/update/merge/traverse) — the runtime-consumer surface and ~80% of the dev doc. dmkits authors the *model*, not its instances; it runs instances only as a *test oracle* (`evaluate`/`compute`).
+- **Typed-accessor / overlay code generation** over document instances — consumer-app codegen, not model authoring.
+- **Mapping runtime** (model→model data-transfer execution) — the dev doc covers running generated mapping code; mapping *modeling* is a separate modeler concern.
+- **Rendering / UI / data-binding / ResourceBundle locale plumbing** — presentation and runtime, never model content.
+- **Custom-condition / custom-field-type *implementations*.** The model only *references* them (`CustomCondition <Name>` in a condition; a `Custom` field type), and dmkits already represents those references (`CustomConditionRef`; the `custom` field builder). The Java/TS validator impls are runtime — out. The `CustomCondition` operator catalog entry carries the author-facing callback-owned dependency, formal/relevance-pointer, empty-eligibility, and error-condition polarity gotchas; there is no remaining authoring-surface gap.
+- **Model-version migration** — a distinct concern with the kernel's own `MigratorCli` / `IDocumentModelMigrator`; dmkits authors/edits and deliberately never bumps a model's version on write (same call as [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4). dmkits' job is to **detect** skew (`RK_MODEL_VERSION_SKEW` / `RK_MODEL_VERSION_INCOMPATIBLE`) and stay tolerant — not to migrate.
+- **Warm-kernel daemon / caching generated validation code** — a performance concern, the library peer of the BA doc's `dmtool serve`; out of scope for the same reasons (see that non-goal in [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4).
+- **Grouping the `Dsl` factory into sub-facades** *(an API-shape non-goal, not a scope exclusion)* — `Dsl` stays a **flat** factory by design. A coding agent — a first-class consumer of this API — discovers operators by querying the **catalog** and grepping examples, not by browsing IDE autocomplete the way a human does; so sub-facades (`Dsl.dates().…`) would aid a human's autocomplete but be a *net* debt for the agent (an indirection + a "which facade?" wrong-guess surface + a dual API). The discovery investment goes into the catalog + consistent verb-prefix naming instead. Full human-vs-agent reasoning: **API-FINDINGS finding 52** / API-GUIDE [§6](API-GUIDE.md#semantics-as-data). Re-open only if `Dsl` becomes *incohesive* (mixes concerns beyond constructing a DSL node).
 
-*Blocks: byte-stable read→write identity for built models. Settled by: `ElementMemberOrderTest` extended to a draft-built element and type definition.*
+## 4. Deferred — with re-open triggers
+
+Work whose remedy waits on something outside this project; each entry names the event that re-opens it.
 
 ### DG181 — remove the retired pre-1900 check when A12 removes `youngerThan1900Check` (A12K-4439) <a id="dg181"></a>
 
@@ -66,17 +75,4 @@ The removal is a delete-and-follow-the-compiler pass, prepared so that it stays 
 
 One measurement decides the loader half: whether the removing release's reader still refuses an unbindable spelling of the member (`1e0`, locked today by `BooleanMemberUnreadableDiffTest` and `BooleanMemberBindingDiffTest`) or reads past it as an undeclared member ([KF654](KERNEL-FINDINGS.md#kf654)). Only the second lets the interpreter's bind check go.
 
-*Blocks: nothing until the sibling `a12-kernel` checkout carries a release with A12K-4439. Re-open trigger: a [KERNEL-UPGRADE](KERNEL-UPGRADE.md) whose release log names A12K-4439.*
-
-## 3. Adjacent but out of scope
-
-The durable decisions about what dmkits deliberately does *not* do (its model-authoring scope — not a runtime form engine, instance-data layer, or UI):
-
-- **Document-instance manipulation** (`DocumentV2` read/update/merge/traverse) — the runtime-consumer surface and ~80% of the dev doc. dmkits authors the *model*, not its instances; it runs instances only as a *test oracle* (`evaluate`/`compute`).
-- **Typed-accessor / overlay code generation** over document instances — consumer-app codegen, not model authoring.
-- **Mapping runtime** (model→model data-transfer execution) — the dev doc covers running generated mapping code; mapping *modeling* is a separate modeler concern.
-- **Rendering / UI / data-binding / ResourceBundle locale plumbing** — presentation and runtime, never model content.
-- **Custom-condition / custom-field-type *implementations*.** The model only *references* them (`CustomCondition <Name>` in a condition; a `Custom` field type), and dmkits already represents those references (`CustomConditionRef`; the `custom` field builder). The Java/TS validator impls are runtime — out. The `CustomCondition` operator catalog entry carries the author-facing callback-owned dependency, formal/relevance-pointer, empty-eligibility, and error-condition polarity gotchas; there is no remaining authoring-surface gap.
-- **Model-version migration** — a distinct concern with the kernel's own `MigratorCli` / `IDocumentModelMigrator`; dmkits authors/edits and deliberately never bumps a model's version on write (same call as [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4). dmkits' job is to **detect** skew (`RK_MODEL_VERSION_SKEW` / `RK_MODEL_VERSION_INCOMPATIBLE`) and stay tolerant — not to migrate.
-- **Warm-kernel daemon / caching generated validation code** — a performance concern, the library peer of the BA doc's `dmtool serve`; out of scope for the same reasons (see that non-goal in [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4).
-- **Grouping the `Dsl` factory into sub-facades** *(an API-shape non-goal, not a scope exclusion)* — `Dsl` stays a **flat** factory by design. A coding agent — a first-class consumer of this API — discovers operators by querying the **catalog** and grepping examples, not by browsing IDE autocomplete the way a human does; so sub-facades (`Dsl.dates().…`) would aid a human's autocomplete but be a *net* debt for the agent (an indirection + a "which facade?" wrong-guess surface + a dual API). The discovery investment goes into the catalog + consistent verb-prefix naming instead. Full human-vs-agent reasoning: **API-FINDINGS finding 52** / API-GUIDE [§6](API-GUIDE.md#semantics-as-data). Re-open only if `Dsl` becomes *incohesive* (mixes concerns beyond constructing a DSL node).
+*Deferred because the remedy is A12's to ship: removing the member while A12 still reads and writes it would drop a declaration A12 round-trips. It blocks nothing until the sibling `a12-kernel` checkout carries a release with A12K-4439. Re-open trigger: a [KERNEL-UPGRADE](KERNEL-UPGRADE.md) whose release log names A12K-4439.*

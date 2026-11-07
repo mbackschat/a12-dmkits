@@ -88,6 +88,7 @@ final class ModelTreeMetadataIndex {
         private final Map<String, String> external;
         private final Map<String, String> helper;
         private final Map<String, String> annotations;
+        private final String changeNote;
 
         private Metadata(JsonNode element, ElementType type) {
             this.internal = localized(element, DmKeys.INTERNAL_DESCRIPTION);
@@ -96,6 +97,7 @@ final class ModelTreeMetadataIndex {
                     ? localized(element.path(ElementType.FIELD.wireName()), "helperText")
                     : Map.of();
             this.annotations = ModelTreeMetadataIndex.annotations(element);
+            this.changeNote = element.path(DmKeys.CHANGE_NOTE).isTextual() ? element.path(DmKeys.CHANGE_NOTE).asText() : null;
         }
 
         private static Metadata from(JsonNode element, ElementType type) {
@@ -116,6 +118,11 @@ final class ModelTreeMetadataIndex {
 
         Map<String, String> annotations() {
             return annotations;
+        }
+
+        /** A12's one unlocalized note on the element, or {@code null} when it carries none. */
+        String changeNote() {
+            return changeNote;
         }
     }
 }

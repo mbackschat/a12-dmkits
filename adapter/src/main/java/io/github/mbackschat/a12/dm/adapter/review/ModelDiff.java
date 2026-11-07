@@ -171,26 +171,26 @@ public final class ModelDiff {
         KernelAdapter baseRules = baseState.adapter();
         KernelAdapter headRules = headState.adapter();
         List<ElementChange> changes = new ArrayList<>();
-        Map<String, Map<String, String>> baseFields = FieldDiffProjector.project(baseState);
-        Map<String, Map<String, String>> headFields = FieldDiffProjector.project(headState);
+        Map<String, Map<String, String>> baseFields = ChangeNotes.attach(baseState.changeNotes(), FieldDiffProjector.project(baseState));
+        Map<String, Map<String, String>> headFields = ChangeNotes.attach(headState.changeNotes(), FieldDiffProjector.project(headState));
         match(ElementKind.FIELD, baseFields, headFields,
                 (change, id, deltas) -> FieldDiffProjector.reasons(change, id, deltas,
                         baseState.referrers(), headState.referrers(), baseState.adapter().uniquenessCriteria()), changes);
-        Map<String, Map<String, String>> baseGroups = GroupDiffProjector.project(baseState);
-        Map<String, Map<String, String>> headGroups = GroupDiffProjector.project(headState);
+        Map<String, Map<String, String>> baseGroups = ChangeNotes.attach(baseState.changeNotes(), GroupDiffProjector.project(baseState));
+        Map<String, Map<String, String>> headGroups = ChangeNotes.attach(headState.changeNotes(), GroupDiffProjector.project(headState));
         match(ElementKind.GROUP, baseGroups, headGroups,
                 (change, id, deltas) -> GroupDiffProjector.reasons(change, id, deltas, baseState.referrers()),
                 changes);
-        Map<String, Map<String, String>> baseRuleAspects = RuleDiffProjector.project(baseState);
-        Map<String, Map<String, String>> headRuleAspects = RuleDiffProjector.project(headState);
+        Map<String, Map<String, String>> baseRuleAspects = ChangeNotes.attach(baseState.changeNotes(), RuleDiffProjector.project(baseState));
+        Map<String, Map<String, String>> headRuleAspects = ChangeNotes.attach(headState.changeNotes(), RuleDiffProjector.project(headState));
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
-        Map<String, Map<String, String>> baseComputations = ComputationDiffProjector.project(baseState);
-        Map<String, Map<String, String>> headComputations = ComputationDiffProjector.project(headState);
+        Map<String, Map<String, String>> baseComputations = ChangeNotes.attach(baseState.changeNotes(), ComputationDiffProjector.project(baseState));
+        Map<String, Map<String, String>> headComputations = ChangeNotes.attach(headState.changeNotes(), ComputationDiffProjector.project(headState));
         match(ElementKind.COMPUTATION, baseComputations, headComputations,
                 (change, id, deltas) -> ComputationDiffProjector.reasons(change, deltas), changes);
-        Map<String, Map<String, String>> baseTypeDefinitions = TypeDefinitionDiffProjector.project(baseState);
-        Map<String, Map<String, String>> headTypeDefinitions = TypeDefinitionDiffProjector.project(headState);
+        Map<String, Map<String, String>> baseTypeDefinitions = ChangeNotes.attach(baseState.changeNotes(), TypeDefinitionDiffProjector.project(baseState));
+        Map<String, Map<String, String>> headTypeDefinitions = ChangeNotes.attach(headState.changeNotes(), TypeDefinitionDiffProjector.project(headState));
         match(ElementKind.TYPEDEF, baseTypeDefinitions, headTypeDefinitions,
                 (change, id, deltas) -> TypeDefinitionDiffProjector.reasons(change, deltas), changes);
         Map<String, Map<String, String>> baseIncludes = IncludeDiffProjector.project(baseState);
@@ -530,7 +530,7 @@ public final class ModelDiff {
         return switch (d.aspect()) {
             case "severity" -> downgraded(d.before(), d.after()) ? "SEVERITY_DOWNGRADED" : "SEVERITY_CHANGED";
             case "code" -> "CODE_CHANGED";
-            case "errorEntity" -> "REFERENCE_CHANGED";
+            case "errorEntity", "possibleCauses.ifFilled", "possibleCauses.ifNotFilled" -> "REFERENCE_CHANGED";
             default -> d.aspect().startsWith("message.") ? "MESSAGE_CHANGED" : "METADATA_CHANGED";
         };
     }

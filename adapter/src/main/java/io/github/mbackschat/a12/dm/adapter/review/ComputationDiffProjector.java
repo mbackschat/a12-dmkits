@@ -64,6 +64,9 @@ final class ComputationDiffProjector {
     }
 
     static String modifiedReason(ModelDiff.Delta delta) {
+        if (delta.aspect().equals("changeNote")) {
+            return "METADATA_CHANGED";
+        }
         return delta.aspect().startsWith("message.") ? "MESSAGE_CHANGED" : "COMPUTATION_CHANGED";
     }
 
