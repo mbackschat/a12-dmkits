@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.edit;
 
 /**
  * The common mutable metadata surface of an A12 model-tree element. Fields, groups, rules, and
- * computations all carry annotations plus per-locale internal and external descriptions; their held
+ * computations all carry annotations, per-locale internal and external descriptions and a change note; their held
  * editors inherit those operations here so sibling surfaces cannot drift.
  *
  * <p>The other common element properties are not metadata edits: identity is exposed by the concrete
@@ -54,6 +54,18 @@ public abstract sealed class ElementMetadataEditor<E extends ElementMetadataEdit
     /** Remove this element's external description for {@code locale}. Chains. */
     public final E removeExternalDescription(String locale) {
         session.removeExternalDescription(elementPath, locale);
+        return self();
+    }
+
+    /** Set this element's {@code changeNote}, A12's one unlocalized note on it, replacing one it carries. Chains. */
+    public final E setChangeNote(String note) {
+        session.setChangeNote(elementPath, note);
+        return self();
+    }
+
+    /** Remove this element's {@code changeNote}. Chains. */
+    public final E removeChangeNote() {
+        session.removeChangeNote(elementPath);
         return self();
     }
 

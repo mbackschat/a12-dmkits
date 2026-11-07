@@ -78,6 +78,13 @@ final class MetaCommand extends BaseCommand {
     @Option(names = "--remove-annotation", paramLabel = "<name>", description = "remove the named annotation")
     List<String> removeAnnotation = new ArrayList<>();
 
+    @Option(names = "--change-note", paramLabel = "<text>",
+            description = "set A12's unlocalized change note, replacing any")
+    String changeNote;
+
+    @Option(names = "--remove-change-note", description = "remove the change note")
+    boolean removeChangeNote;
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -89,8 +96,10 @@ final class MetaCommand extends BaseCommand {
     WorkspaceOption workspace = new WorkspaceOption();
 
     private MetaModification modification() {
-        return new MetaModification(label, annotate, removeAnnotation, internal, external,
-                removeInternal, removeExternal);
+        return MetaModification.builder().labels(label).annotations(annotate).removeAnnotations(removeAnnotation)
+                .internalDescriptions(internal).externalDescriptions(external)
+                .removeInternalDescriptions(removeInternal).removeExternalDescriptions(removeExternal)
+                .changeNote(changeNote).removeChangeNote(removeChangeNote).build();
     }
 
     @Override
@@ -124,6 +133,7 @@ final class MetaCommand extends BaseCommand {
             putMap(data.putObject("internalDescription"), doc.internalDescription(ref));
             putMap(data.putObject("externalDescription"), doc.externalDescription(ref));
             putMap(data.putObject("annotations"), doc.annotations(ref));
+            doc.changeNote(ref).ifPresent(note -> data.put("changeNote", note));
             // ModelDocument.read parses and indexes; no consistency gate runs on this path, so no verdict and no
             // provenance are claimed (this verb was one of the seven measured reporting a fabricated valid:true).
             ResultEnvelope env = ResultEnvelope.queryResult(ResultIdentity.META_READ, "read metadata of " + ref, data,

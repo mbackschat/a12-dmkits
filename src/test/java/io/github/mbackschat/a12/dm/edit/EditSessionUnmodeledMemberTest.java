@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -37,12 +36,11 @@ class EditSessionUnmodeledMemberTest {
         String ruled = ModelWriter.addRule(base, policy.rule(r -> r.name("PremiumKnown").code("KNOWN")
                 .errorField(premium).when(premium.filled()).possibleCauses(PossibleCauses.notFilled(premium.field()))
                 .message(en("Enter the premium.")).build()));
-        ObjectNode model = (ObjectNode) MAPPER.readTree(ruled);
-        for (String name : List.of("Policy", "Premium", "PremiumKnown")) {
-            ((ObjectNode) element(model, name)).put("changeNote", "reviewed " + name);
-        }
+        EditSession noted = EditSession.read(ruled);
+        List.of("/Policy", "/Policy/Premium", "/Policy/PremiumKnown")
+                .forEach(path -> noted.setChangeNote(path, "reviewed " + path.substring(path.lastIndexOf('/') + 1)));
 
-        String edited = EditSession.read(MAPPER.writeValueAsString(model))
+        String edited = EditSession.read(noted.toJson())
                 .addField("/Policy", "Broker", FieldKind.STRING)
                 .modifyRule("/Policy/PremiumKnown", "FieldFilled(Premium) And [Premium] > 0")
                 .modifyRuleSeverity("/Policy/PremiumKnown", Severity.WARNING)

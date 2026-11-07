@@ -40,6 +40,12 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
+### DG183 — a built model writes its descriptions in another order than A12 (opened 2026-11-07) <a id="dg183"></a>
+
+`DocumentModelDraft` writes an element's `internalDescription` before its `externalDescription`, and a type definition's `annotations` before both descriptions; A12's serializer writes the reverse in each case, so a built model re-serializes with different bytes. The edit path already places them as A12 does (`ElementMembers.inA12Order`, `adapter.ElementMemberOrderTest`, which measured both orders). Reading is unaffected. The fix is one call per emitted node, `fieldNode`, `groupNode` and the type-definition node, and it re-baselines every fixture and demo built by the draft.
+
+*Blocks: byte-stable read→write identity for built models. Settled by: `ElementMemberOrderTest` extended to a draft-built element and type definition.*
+
 ### DG181 — remove the retired pre-1900 check when A12 removes `youngerThan1900Check` (A12K-4439) <a id="dg181"></a>
 
 Kernel 31.2 stopped evaluating `youngerThan1900Check` (A12K-4073, [KF677](KERNEL-FINDINGS.md#kf677)) and still reads and writes it, so every component keeps the declaration round-tripping and nothing more. A12 removes the member with A12K-4439. Until then the kit carries a deprecated surface whose only job is to round-trip the declaration, and every remaining reference is one `git grep -n 'A12K-4439'` away.

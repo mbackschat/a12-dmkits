@@ -2,8 +2,11 @@ package io.github.mbackschat.a12.dm.adapter
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
 import io.github.mbackschat.a12.dm.core.PossibleCauseFilter
+import io.github.mbackschat.a12.dm.modelkit.FieldKind
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
@@ -77,6 +80,28 @@ class ElementMemberOrderTest {
     fun anInjectedRuleKeepsA12sMemberOrder() {
         assertA12Order(RuleValidator().inject(model, rule), "/Subscription/Billing/BaseFeeRule")
     }
+
+    /** The note follows the descriptions and precedes the body, on an element; a type definition is measured too. */
+    @Test
+    fun aChangeNoteSitsWhereA12WritesIt() {
+        val typed = MAPPER.readTree(ModelDocument.read(ModelWriter.addRule(model, rule, messages))
+            .addTypeDefinition("FeeCode", FieldKind.STRING).toJson())
+        // A12 also writes a revision on a type definition, which no kit authors, so it is spliced in to be placed.
+        (typeDefinition(typed) as ObjectNode).put("revision", "3")
+        val noted = ModelDocument.read(MAPPER.writeValueAsString(typed))
+        for (reference in listOf("/Subscription/Billing/BaseFee", "/Subscription/Billing/BaseFeeRule", "FeeCode")) {
+            noted.setChangeNote(reference, "reviewed").setAnnotation(reference, "owner", "billing")
+                .setExternalDescription(reference, "en_US", "Shown").setInternalDescription(reference, "en_US", "Kept")
+        }
+        val written = noted.toJson()
+        assertA12Order(written, "/Subscription/Billing/BaseFee")
+        assertA12Order(written, "/Subscription/Billing/BaseFeeRule")
+        assertEquals(memberOrder(typeDefinition(MAPPER.readTree(kernelReserialized(written)))),
+            memberOrder(typeDefinition(MAPPER.readTree(written))))
+    }
+
+    private fun typeDefinition(root: JsonNode): JsonNode =
+        root.path("content").path("typeDefinitions").first { it.path("id").asText() == "FeeCode" }
 
     private fun assertA12Order(written: String, id: String) {
         val ours = element(MAPPER.readTree(written), id)

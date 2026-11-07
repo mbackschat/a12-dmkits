@@ -16,7 +16,7 @@
     "field-modify.schema.json": 7838,
     "field-read.schema.json": 2643,
     "group-read.schema.json": 1334,
-    "meta-read.schema.json": 496,
+    "meta-read.schema.json": 542,
     "model-diff.schema.json": 6970,
     "model-info.schema.json": 3111,
     "model-report.schema.json": 3478,
@@ -154,7 +154,7 @@
   },
   "surfaces": {
     "manifest": 19549,
-    "manifest --full": 217745,
+    "manifest --full": 218047,
     "skill/SKILL.md": 27633
   }
 }

@@ -77,6 +77,8 @@ class CliCoverageParityTest {
             Map.entry("setExternalDescription", "meta <ref> --external-description + apply META_MODIFY"),
             Map.entry("removeInternalDescription", "meta <ref> --remove-internal-description + apply META_MODIFY"),
             Map.entry("removeExternalDescription", "meta <ref> --remove-external-description + apply META_MODIFY"),
+            Map.entry("setChangeNote", "meta <ref> --change-note + apply META_MODIFY"),
+            Map.entry("removeChangeNote", "meta <ref> --remove-change-note + apply META_MODIFY"),
             // ── groups ──
             Map.entry("addGroup", "group add"),
             Map.entry("addRepeatableGroup", "group add --repeatable"),

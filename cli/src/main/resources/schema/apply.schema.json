@@ -35,7 +35,9 @@
         "internal-description": { "type": "object", "additionalProperties": { "type": "string" } },
         "external-description": { "type": "object", "additionalProperties": { "type": "string" } },
         "remove-internal-description": {},
-        "remove-external-description": {}
+        "remove-external-description": {},
+        "change-note": { "type": "string" },
+        "remove-change-note": { "type": "boolean" }
       }
     }
   },

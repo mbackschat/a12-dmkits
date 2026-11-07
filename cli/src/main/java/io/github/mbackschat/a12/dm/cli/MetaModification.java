@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,13 +26,16 @@ public record MetaModification(
         Map<String, String> internalDescriptions,
         Map<String, String> externalDescriptions,
         List<String> removeInternalDescriptions,
-        List<String> removeExternalDescriptions) {
+        List<String> removeExternalDescriptions,
+        Optional<String> changeNote,
+        boolean removeChangeNote) {
 
     /** The {@code META_MODIFY} directive keys, excluding its polymorphic {@code ref} locator. */
     public static final Set<String> KEYS = Set.of(
             "label", "annotation", "remove-annotation",
             "internal-description", "external-description",
-            "remove-internal-description", "remove-external-description");
+            "remove-internal-description", "remove-external-description",
+            "change-note", "remove-change-note");
 
     public MetaModification {
         labels = copyMap(labels);
@@ -41,25 +45,35 @@ public record MetaModification(
         externalDescriptions = copyMap(externalDescriptions);
         removeInternalDescriptions = copyList(removeInternalDescriptions);
         removeExternalDescriptions = copyList(removeExternalDescriptions);
+        changeNote = changeNote == null ? Optional.empty() : changeNote;
+    }
+
+    /** The public construction path; an unset directive is empty. */
+    public static Builder builder() {
+        return new Builder();
     }
 
     /** Parse the canonical metadata operation-record vocabulary used by {@code apply}. */
     public static MetaModification fromJson(JsonNode op) {
-        return new MetaModification(
-                textMap(op, "label"),
-                textMap(op, "annotation"),
-                stringValues(op, "remove-annotation"),
-                textMap(op, "internal-description"),
-                textMap(op, "external-description"),
-                stringValues(op, "remove-internal-description"),
-                stringValues(op, "remove-external-description"));
+        return builder()
+                .labels(textMap(op, "label"))
+                .annotations(textMap(op, "annotation"))
+                .removeAnnotations(stringValues(op, "remove-annotation"))
+                .internalDescriptions(textMap(op, "internal-description"))
+                .externalDescriptions(textMap(op, "external-description"))
+                .removeInternalDescriptions(stringValues(op, "remove-internal-description"))
+                .removeExternalDescriptions(stringValues(op, "remove-external-description"))
+                .changeNote(op.hasNonNull("change-note") ? op.get("change-note").asText() : null)
+                .removeChangeNote(op.path("remove-change-note").asBoolean(false))
+                .build();
     }
 
     /** True when the operation has no directive and must be refused rather than staged as a no-op. */
     public boolean isEmpty() {
         return labels.isEmpty() && annotations.isEmpty() && removeAnnotations.isEmpty()
                 && internalDescriptions.isEmpty() && externalDescriptions.isEmpty()
-                && removeInternalDescriptions.isEmpty() && removeExternalDescriptions.isEmpty();
+                && removeInternalDescriptions.isEmpty() && removeExternalDescriptions.isEmpty()
+                && changeNote.isEmpty() && !removeChangeNote;
     }
 
     /**
@@ -98,6 +112,46 @@ public record MetaModification(
             session.removeExternalDescription(ref, locale);
             changed.putNull("externalDescription." + locale);
         });
+        if (removeChangeNote) {
+            session.removeChangeNote(ref);
+            changed.putNull("changeNote");
+        }
+        changeNote.ifPresent(note -> {
+            session.setChangeNote(ref, note);
+            changed.put("changeNote", note);
+        });
+    }
+
+    /** Builds a {@link MetaModification}; each setter replaces that directive. */
+    public static final class Builder {
+        private Map<String, String> labels;
+        private Map<String, String> annotations;
+        private List<String> removeAnnotations;
+        private Map<String, String> internalDescriptions;
+        private Map<String, String> externalDescriptions;
+        private List<String> removeInternalDescriptions;
+        private List<String> removeExternalDescriptions;
+        private String changeNote;
+        private boolean removeChangeNote;
+
+        private Builder() {
+        }
+
+        public Builder labels(Map<String, String> v) { labels = v; return this; }
+        public Builder annotations(Map<String, String> v) { annotations = v; return this; }
+        public Builder removeAnnotations(List<String> v) { removeAnnotations = v; return this; }
+        public Builder internalDescriptions(Map<String, String> v) { internalDescriptions = v; return this; }
+        public Builder externalDescriptions(Map<String, String> v) { externalDescriptions = v; return this; }
+        public Builder removeInternalDescriptions(List<String> v) { removeInternalDescriptions = v; return this; }
+        public Builder removeExternalDescriptions(List<String> v) { removeExternalDescriptions = v; return this; }
+        public Builder changeNote(String v) { changeNote = v; return this; }
+        public Builder removeChangeNote(boolean v) { removeChangeNote = v; return this; }
+
+        public MetaModification build() {
+            return new MetaModification(labels, annotations, removeAnnotations, internalDescriptions,
+                    externalDescriptions, removeInternalDescriptions, removeExternalDescriptions,
+                    Optional.ofNullable(changeNote), removeChangeNote);
+        }
     }
 
     private static Map<String, String> copyMap(Map<String, String> values) {

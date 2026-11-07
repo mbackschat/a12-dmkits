@@ -48,6 +48,7 @@ public class io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException ex
 public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ANNOTATIONS
   public static final java.lang.String BASE_YEAR
+  public static final java.lang.String CHANGE_NOTE
   public static final java.lang.String CODE
   public static final java.lang.String COMMENT
   public static final java.lang.String CONDITION_LANGUAGE

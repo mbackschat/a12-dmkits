@@ -66,6 +66,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public static io.github.mbackschat.a12.dm.edit.EditSession read(java.lang.String)
   public static io.github.mbackschat.a12.dm.edit.EditSession read(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public io.github.mbackschat.a12.dm.edit.EditSession removeAnnotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.edit.EditSession removeChangeNote(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession removeComputation(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession removeExternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession removeField(java.lang.String)
@@ -85,6 +86,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.RuleEditor rule(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession setAnnotation(java.lang.String, java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession setBaseYear(int)
+  public io.github.mbackschat.a12.dm.edit.EditSession setChangeNote(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession setConditionLanguage(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession setDecimalSeparator(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession setExternalDescription(java.lang.String, java.lang.String, java.lang.String)
@@ -117,9 +119,11 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
 
 public abstract sealed class io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<E extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<E>>
   public final E removeAnnotation(java.lang.String)
+  public final E removeChangeNote()
   public final E removeExternalDescription(java.lang.String)
   public final E removeInternalDescription(java.lang.String)
   public final E setAnnotation(java.lang.String, java.lang.String)
+  public final E setChangeNote(java.lang.String)
   public final E setExternalDescription(java.lang.String, java.lang.String)
   public final E setInternalDescription(java.lang.String, java.lang.String)
 

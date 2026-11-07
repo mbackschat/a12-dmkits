@@ -1706,7 +1706,7 @@ s.computation("/Permit/CalculateFee")
     .setAnnotation("owner", "permit-pricing");
 ```
 
-The complete fluent set is `setAnnotation` / `removeAnnotation`, `setInternalDescription` / `removeInternalDescription`, and `setExternalDescription` / `removeExternalDescription`. This is the typed peer of A12's common element-metadata contract rather than a special rule/computation feature. (`EditSessionEditorParityTest`, `ElementMetadataEditTest`; DEV-API-GAPS DG29.)
+The complete fluent set is `setAnnotation` / `removeAnnotation`, `setInternalDescription` / `removeInternalDescription`, `setExternalDescription` / `removeExternalDescription`, and `setChangeNote` / `removeChangeNote` for A12's one unlocalized note, which `ModelDocument.changeNote(ref)` reads on any element or type definition (`ModelDocumentChangeNoteTest`). Each write places the member where A12's serializer writes it (`adapter.ElementMemberOrderTest`). This is the typed peer of A12's common element-metadata contract rather than a special rule/computation feature. (`EditSessionEditorParityTest`, `ElementMetadataEditTest`; DEV-API-GAPS DG29.)
 
 The same **per-type field builders** as the from-scratch builder are on the editor too (DG1) — configure scale/bounds/pattern/enum-domain + metadata fluently while editing, instead of dropping to a hand-built `FieldTypeSpec` (a field added this way is byte-identical to one built from scratch — one shared `FieldAttrs.toField` assembly):
 

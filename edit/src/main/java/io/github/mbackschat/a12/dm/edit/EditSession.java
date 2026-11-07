@@ -172,6 +172,16 @@ public final class EditSession {
         return editStructure(d -> d.removeExternalDescription(elementPath, locale));
     }
 
+    /** Set the {@code changeNote} of the element or type definition at {@code elementPath}, replacing one it carries. */
+    public EditSession setChangeNote(String elementPath, String note) {
+        return editStructure(d -> d.setChangeNote(elementPath, note));
+    }
+
+    /** Remove the {@code changeNote} of the element or type definition at {@code elementPath}. */
+    public EditSession removeChangeNote(String elementPath) {
+        return editStructure(d -> d.removeChangeNote(elementPath));
+    }
+
     public EditSession addGroup(String parentPath, String name) {
         return editStructure(d -> d.addGroup(parentPath, name));
     }

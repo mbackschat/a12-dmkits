@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -186,7 +185,7 @@ public final class ModelDocument {
                     + "' — a model needs at least one declared locale");
         }
         if (root.path(DmKeys.HEADER) instanceof ObjectNode header) {
-            filterArray(header, DmKeys.LOCALES, e -> A12Locales.key(headerLocaleCode(e)), A12Locales.key(code));
+            ElementMembers.filterArray(header, DmKeys.LOCALES, e -> A12Locales.key(headerLocaleCode(e)), A12Locales.key(code));
         }
         return this;
     }
@@ -679,27 +678,15 @@ public final class ModelDocument {
 
     /** Set a name/value annotation on any describable element or type definition (replacing a same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
-        upsertAnnotation(metaElement(elementPath), name, value);
+        ObjectNode element = metaElement(elementPath);
+        ElementMembers.upsertAnnotation(element, name, value);
+        ElementMembers.inA12Order(element);
         return this;
-    }
-
-    /** Set the value of {@code owner}'s annotation named {@code name}, or append one. */
-    private static void upsertAnnotation(ObjectNode owner, String name, String value) {
-        ArrayNode annotations = owner.has(DmKeys.ANNOTATIONS)
-                ? (ArrayNode) owner.get(DmKeys.ANNOTATIONS)
-                : owner.putArray(DmKeys.ANNOTATIONS);
-        for (JsonNode a : annotations) {
-            if (name.equals(a.path(DmKeys.NAME).asText())) {
-                ((ObjectNode) a).put(DmKeys.VALUE, value);
-                return;
-            }
-        }
-        annotations.addObject().put(DmKeys.NAME, name).put(DmKeys.VALUE, value);
     }
 
     /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
     public ModelDocument removeAnnotation(String elementPath, String name) {
-        filterArray(metaElement(elementPath), DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
+        ElementMembers.filterArray(metaElement(elementPath), DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
         return this;
     }
 
@@ -710,45 +697,44 @@ public final class ModelDocument {
      * text for an existing locale.
      */
     public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
-        LocalizedEntries.upsert(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, locale, text);
+        ObjectNode element = metaElement(elementPath);
+        LocalizedEntries.upsert(element, DmKeys.INTERNAL_DESCRIPTION, locale, text);
+        ElementMembers.inA12Order(element);
         return this;
     }
 
     /** Upsert one per-locale {@code externalDescription} entry on the element at {@code elementPath} (end-user text). */
     public ModelDocument setExternalDescription(String elementPath, String locale, String text) {
-        LocalizedEntries.upsert(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, locale, text);
+        ObjectNode element = metaElement(elementPath);
+        LocalizedEntries.upsert(element, DmKeys.EXTERNAL_DESCRIPTION, locale, text);
+        ElementMembers.inA12Order(element);
         return this;
     }
 
     /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeInternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
+        ElementMembers.filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
         return this;
     }
 
     /** Remove the {@code externalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeExternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
+        ElementMembers.filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, LocalizedEntries::keyOf, A12Locales.key(locale));
         return this;
     }
 
-    /** Drop every entry of {@code element[key]} whose {@code field} reads {@code matchValue}; remove the array if it empties. */
-    private static void filterArray(ObjectNode element, String key, Function<JsonNode, String> field, String matchValue) {
-        JsonNode array = element.path(key);
-        if (!array.isArray()) {
-            return;
-        }
-        ArrayNode kept = MAPPER.createArrayNode();
-        for (JsonNode e : array) {
-            if (!matchValue.equals(field.apply(e))) {
-                kept.add(e);
-            }
-        }
-        if (kept.isEmpty()) {
-            element.remove(key);
-        } else {
-            element.set(key, kept);
-        }
+    /** Set the {@code changeNote} of any describable element or type definition, replacing one it carries. */
+    public ModelDocument setChangeNote(String elementPath, String note) {
+        ObjectNode element = metaElement(elementPath);
+        ElementMembers.setChangeNote(element, note);
+        ElementMembers.inA12Order(element);
+        return this;
+    }
+
+    /** Remove the {@code changeNote} of the element at {@code elementPath} (no-op if absent). */
+    public ModelDocument removeChangeNote(String elementPath) {
+        metaElement(elementPath).remove(DmKeys.CHANGE_NOTE);
+        return this;
     }
 
     /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}). */
@@ -759,7 +745,7 @@ public final class ModelDocument {
 
     /** Upsert a model-level header <b>annotation</b> (replacing any existing entry with the same name). */
     public ModelDocument setModelAnnotation(String name, String value) {
-        upsertAnnotation((ObjectNode) root.path(DmKeys.HEADER), name, value);
+        ElementMembers.upsertAnnotation((ObjectNode) root.path(DmKeys.HEADER), name, value);
         return this;
     }
 
@@ -767,7 +753,7 @@ public final class ModelDocument {
     public ModelDocument removeModelAnnotation(String name) {
         JsonNode header = root.path(DmKeys.HEADER);
         if (header.isObject()) {
-            filterArray((ObjectNode) header, DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
+            ElementMembers.filterArray((ObjectNode) header, DmKeys.ANNOTATIONS, e -> e.path(DmKeys.NAME).asText(), name);
         }
         return this;
     }
@@ -802,12 +788,12 @@ public final class ModelDocument {
 
     /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
     public Map<String, String> modelAnnotations() {
-        return entryMap(root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
+        return ElementMembers.entryMap(root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
     }
 
     /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
     public Map<String, String> modelLabels() {
-        return entryMap(root.path(DmKeys.HEADER).path(DmKeys.LABELS), DmKeys.LOCALE, DmKeys.TEXT);
+        return ElementMembers.entryMap(root.path(DmKeys.HEADER).path(DmKeys.LABELS), DmKeys.LOCALE, DmKeys.TEXT);
     }
 
     /** The {@code Field} body object at {@code fieldPath}; fails fast if there is no field there. */
@@ -926,7 +912,7 @@ public final class ModelDocument {
      */
     public Optional<Map<String, String>> labels(String elementPath) {
         return findElement(elementPath)
-                .map(el -> localizedOf((ObjectNode) el.path(el.path(DmKeys.TYPE).asText()), DmKeys.LABEL));
+                .map(el -> ElementMembers.localizedOf((ObjectNode) el.path(el.path(DmKeys.TYPE).asText()), DmKeys.LABEL));
     }
 
     /** The typed payload object ({@code "Field"} or {@code "Group"}) of the element at {@code path}. */
@@ -973,12 +959,12 @@ public final class ModelDocument {
 
     /** Read an element's per-locale {@code internalDescription}/{@code externalDescription} (the metadata read verbs). */
     public Map<String, String> internalDescription(String pathOrTypeDefId) {
-        return localizedOf(metaElement(pathOrTypeDefId), DmKeys.INTERNAL_DESCRIPTION);
+        return ElementMembers.localizedOf(metaElement(pathOrTypeDefId), DmKeys.INTERNAL_DESCRIPTION);
     }
 
     /** Read an element's external description, by locale. */
     public Map<String, String> externalDescription(String pathOrTypeDefId) {
-        return localizedOf(metaElement(pathOrTypeDefId), DmKeys.EXTERNAL_DESCRIPTION);
+        return ElementMembers.localizedOf(metaElement(pathOrTypeDefId), DmKeys.EXTERNAL_DESCRIPTION);
     }
 
     /** Read a field's per-locale helper text; groups and other describable elements return an empty map. */
@@ -987,25 +973,17 @@ public final class ModelDocument {
         if (!DmNodes.is(ElementType.FIELD, element)) {
             return Map.of();
         }
-        return localizedOf((ObjectNode) element.path(ElementType.FIELD.wireName()), "helperText");
+        return ElementMembers.localizedOf((ObjectNode) element.path(ElementType.FIELD.wireName()), "helperText");
+    }
+
+    /** Read an element's or type definition's {@code changeNote}, A12's unlocalized note; empty when it has none. */
+    public Optional<String> changeNote(String pathOrTypeDefId) {
+        return ElementMembers.changeNote(metaElement(pathOrTypeDefId));
     }
 
     /** Read an element's annotations as a name→value map. */
     public Map<String, String> annotations(String pathOrTypeDefId) {
-        return entryMap(metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
-    }
-
-    private static Map<String, String> localizedOf(ObjectNode element, String key) {
-        return entryMap(element.path(key), DmKeys.LOCALE, DmKeys.TEXT);
-    }
-
-    /** A {@code [{keyField, valueField}]} array as a map, in entry order. */
-    private static Map<String, String> entryMap(JsonNode entries, String keyField, String valueField) {
-        Map<String, String> out = new LinkedHashMap<>();
-        for (JsonNode entry : entries) {
-            out.put(entry.path(keyField).asText(), entry.path(valueField).asText());
-        }
-        return out;
+        return ElementMembers.entryMap(metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS), DmKeys.NAME, DmKeys.VALUE);
     }
 
     private static ObjectNode findByPath(JsonNode container, String prefix, String target) {
