@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_ERRORED
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_VALUE
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_LOW_FIRING
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_MIXED
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import java.time.Instant
@@ -69,7 +70,7 @@ class ScenarioIdentityFingerprintTest {
             scenario.kernelModel,
             scenario.interpModel.copy(
                 fields = scenario.interpModel.fields.mapIndexed { index, field ->
-                    if (index == 0) field.copy(rejectBefore1900 = true) else field
+                    if (index == 0) field.copy(datePrecision = DatePrecision.DAY_OPTIONAL) else field
                 },
             ),
             scenario.op,

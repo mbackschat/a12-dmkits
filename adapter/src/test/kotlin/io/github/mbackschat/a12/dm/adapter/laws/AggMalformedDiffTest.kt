@@ -51,10 +51,10 @@ class AggMalformedDiffTest {
             .field(ITEM, "B", 1, 2, 1).field(PRICE, p2, 1, 2, 1)
         val (kernel, interpreter) = codes(code, kModel, kDoc, def, iDoc)
         val relevant = { c: String -> c == code || c.startsWith("zahl") }
-        // `errorField` is the kernel's raw pointer toString by RuntimeLaws' documented contract; take it from the
-        // first '[' so the row identity does not pin the pointer IMPL's class name.
+        // `errorField` is the kernel's raw pointer toString by RuntimeLaws' documented contract, A12's canonical
+        // `/a[1]/b[2]` form since kernel 31.2.
         val rows = RuntimeLaws.messages(kModel, kDoc).filter { relevant(it.code) }
-            .map { "${it.code}@${it.errorField.substringAfter('[').removeSuffix("]")}" }.sorted()
+            .map { "${it.code}@${it.errorField}" }.sorted()
         return Reading(kernel, interpreter, rows)
     }
 
@@ -139,17 +139,17 @@ class AggMalformedDiffTest {
         assertEquals(
             listOf(
                 "SM head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[SM]",
-                "SM rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
-                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
+                "SM rows head=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[1]/Price[1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[2]/Price[1]]",
                 "MX head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[MX]",
-                "MX rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
-                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
+                "MX rows head=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[1]/Price[1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[2]/Price[1]]",
                 "MN head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[MN]",
-                "MN rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
-                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
+                "MN rows head=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[1]/Price[1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[2]/Price[1]]",
                 "ND head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[ND]",
-                "ND rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
-                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
+                "ND rows head=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[1]/Price[1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart[1]/Lines[2]/Price[1]]",
             ),
             rows,
             "position must not select the VERDICT, while the formal error still names the offending row",

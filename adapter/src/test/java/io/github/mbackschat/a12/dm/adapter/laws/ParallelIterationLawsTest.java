@@ -58,7 +58,7 @@ class ParallelIterationLawsTest {
 
         // fires once — on the Eng iteration (Demand row 2), whose Supply side is "not specified"
         assertEquals(1, msgs.size(), () -> "fires only on the unmatched index value, got: " + msgs);
-        assertTrue(msgs.get(0).errorField().contains("[1, 2, 1]"),
+        assertTrue(msgs.get(0).errorField().contains("/Demand[2]/"),
                 () -> "the message attaches to the Eng Demand row: " + msgs);
     }
 

@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A computation that reads the field it writes — including through the GROUP that field sits in.
@@ -147,8 +146,7 @@ private fun TrackedFactBase.scaleGateStandsAside(
     if (declaredType != FieldType.NUMBER) {
         return true
     }
-    val suppressed = (body["errorCodesToSuppress"] as? JsonArray).orEmpty()
-    if (suppressed.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE }) return true
+    if (SUPPRESSIBLE in suppressedWarnings(body, conditionLanguage)) return true
     val operations = texts.map { it.first }.filter(::isOperationMember)
     return operations.isNotEmpty() && operationsPassingTheScaleGate(element).containsAll(operations)
 }

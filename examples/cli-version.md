@@ -15,10 +15,10 @@ dmtool --version | sed -E 's/(source: )[0-9a-f]{40} \((clean|dirty)\)/\1<git-rev
 ```output
 a12-dmkits 0.15.0
   source: <git-revision> (<tree-state>)
-  kernel: 31.1.1 (built) / 31.1.1 (runtime)
-  A12 Tools distribution: 2026.06-ext1
+  kernel: 31.3.1 (built) / 31.3.1 (runtime)  [skew — see RK_KERNEL_VERSION_SKEW]
+  A12 Tools distribution: 2026.06-ext2
   catalog verified against: 31.1.1
-  model version (reference): 29.4.0
+  model version (reference): 29.8.0
 ```
 
 The same facts machine-readably, so a cold agent reads them like any other manifest entry (`kernel.skewed` flags a runtime kernel newer than the catalog floor — F11, always informational).
@@ -36,13 +36,13 @@ dmtool manifest | jq '.version | .source = {revision: "<git-revision>", state: "
     "state": "<tree-state>"
   },
   "kernel": {
-    "builtAgainst": "31.1.1",
-    "a12Distribution": "2026.06-ext1",
-    "runtime": "31.1.1",
-    "skewed": false
+    "builtAgainst": "31.3.1",
+    "a12Distribution": "2026.06-ext2",
+    "runtime": "31.3.1",
+    "skewed": true
   },
   "catalogVerifiedAgainst": "31.1.1",
-  "modelVersion": "29.4.0"
+  "modelVersion": "29.8.0"
 }
 ```
 
@@ -101,7 +101,7 @@ exit=1
     {
       "severity": "ERROR",
       "code": "RK_MODEL_VERSION_INCOMPATIBLE",
-      "summary": "Version mismatch: Document model version is 99.0.0 and application version is 29.4.0."
+      "summary": "Version mismatch: Document model version is 99.0.0 and application version is 29.8.0."
     }
   ]
 }

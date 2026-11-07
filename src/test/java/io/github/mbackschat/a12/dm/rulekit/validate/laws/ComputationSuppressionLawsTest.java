@@ -21,28 +21,22 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
- * A computation's {@code errorCodesToSuppress} — a stored LIST that A12 can only ever honour one entry of.
+ * A computation's legacy {@code errorCodesToSuppress} list, which document-model format 29.8.0 replaced by the
+ * {@code additionalParserInformation} preamble ({@link ComputationParserInformationLawsTest}) and which A12 still reads.
  *
- * <p><b>It is not a set the Kernel inspects; it is TEXT the Kernel renders and then re-parses.</b>
- * {@code ComputationAlternativesJoiner.createPreamble} does
- * {@code String.format("@SuppressWarning(%s)\n", String.join(",", errorCodesToSuppress))}, so the member is
- * comma-joined into one inline pragma on the generated rule condition. Every row below follows from that and
- * from nothing else, which is why reading the member as a collection gets it wrong.
+ * <p><b>It is not a set the Kernel inspects; it is TEXT the Kernel renders and then parses.</b> The reader folds the
+ * list into the preamble when the preamble is blank ({@code Computation._internal_foldLegacyErrorCodesToSuppress}),
+ * comma-joined into {@code @SuppressWarning(a,b)}, or {@code @UnterdrueckeWarnung(a,b)} in a German model, and the
+ * preamble is then parsed on its own. Every row below follows from that.
  *
- * <p><b>A second entry is a PARSE error whatever it spells — the pragma takes one code.</b> The control
- * carries the supported code TWICE and still fails with {@code MVK_UNEXPECTED_TOKEN}, so the failure cannot
- * be attributed to an invalid member; the comma is the defect. An empty entry renders
- * {@code @SuppressWarning()} and a numeric entry renders {@code @SuppressWarning(7)}, both the same parse
- * failure. So a plural-looking member is single-valued in practice, and a checker treating it as a set would
- * admit lists A12 refuses.
+ * <p><b>Several entries are admitted, each judged as a code.</b> The preamble grammar takes a comma-separated list
+ * on kernel 31.3.1, so the supported code twice is admitted and an unsupported entry anywhere in the list draws
+ * {@code MVK_INVALID_SUPPRESSED_WARNING}. An empty entry renders {@code @SuppressWarning()} and a numeric entry
+ * {@code @SuppressWarning(7)}, both parse failures. (Kernel 31.1.1's grammar took one code, so any second entry was
+ * {@code MVK_UNEXPECTED_TOKEN} there.)
  *
- * <p><b>Our builder's allowlist is CLEARED, which is the opposite of what this test was written to catch.</b>
- * {@code Computation.Builder.errorCodesToSuppress} throws for any code outside
- * {@code MVK_INVALID_COMPARE_DEC_PLACES}, and a client-side refusal must never be broader than its measured
- * basis — so the question was whether A12 admits the others. It does not: an unsupported code draws
- * {@code MVK_INVALID_SUPPRESSED_WARNING}, matching the Kernel grammar's own statement that only
- * {@code MVK_INVALID_COMPARE_DEC_PLACES} is suppressible. The refusal has its basis and is recorded as
- * audited rather than left in the unaudited bucket.
+ * <p><b>Our builder's allowlist has a Kernel basis.</b> {@code Computation.Builder} refuses a code outside the
+ * supported set, and an unsupported code draws {@code MVK_INVALID_SUPPRESSED_WARNING} here.
  *
  * <p>Note the diagnostic ECHOES the offending code, so {@code KernelLaws.verdictOf} — which lifts every
  * {@code MVK_*} token out of the message — reports two tokens for those rows; the verdict is the second.
@@ -87,15 +81,12 @@ class ComputationSuppressionLawsTest {
         // row's expectation once stated `MVK_TOTALLY_BOGUS`, a code A12 does not have, as A12's answer.
         expected.put("an unsupported but real MVK code", "MVK_INVALID_SUPPRESSED_WARNING");
         expected.put("a code that does not exist at all", "MVK_INVALID_SUPPRESSED_WARNING");
-        // The law the LIST shape hides: two entries are comma-joined into one `@SuppressWarning(a,b)` pragma
-        // and the grammar takes a single code, so a second entry is a PARSE error whatever it spells. This
-        // control carries the supported code twice, so nothing about validity can explain it.
-        expected.put("the supported code TWICE — the control that isolates the comma", "MVK_UNEXPECTED_TOKEN");
-        expected.put("the supported code beside a bogus one", "MVK_UNEXPECTED_TOKEN");
-        // The row that separates "the comma answers first" from "the name gate answers first": a name A12
-        // refuses, read before the comma, still leaves the parse failure as the class.
-        expected.put("a bogus code AHEAD of the supported one", "MVK_UNEXPECTED_TOKEN");
-        expected.put("the supported code three times", "MVK_UNEXPECTED_TOKEN");
+        // Two entries are comma-joined into one `@SuppressWarning(a,b)` preamble, which the grammar reads as a list,
+        // so each entry is judged as a code wherever it stands.
+        expected.put("the supported code TWICE — the control that isolates the comma", KernelLaws.ADMITTED);
+        expected.put("the supported code beside a bogus one", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("a bogus code AHEAD of the supported one", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("the supported code three times", KernelLaws.ADMITTED);
         // …and an empty entry renders `@SuppressWarning()`, which is the same parse failure.
         expected.put("an empty string entry", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "what A12 does with each shape of errorCodesToSuppress");
@@ -104,7 +95,7 @@ class ComputationSuppressionLawsTest {
     /**
      * Which single entry A12 reads as a CODE it then refuses, and which it cannot read as one at all — the
      * distinction a client refusal needs before it can cite either class. The pragma's operand is the lexer's
-     * `NameOhnePunktSTRAmAnfang` token and `CheckPreambleImpl` compares its text with the one supported name,
+     * `NameOhnePunktSTRAmAnfang` token and `CheckPreambleImpl` compares its text with the supported names,
      * so the rows vary the spelling's lexical shape and hold everything else fixed.
      */
     @Test
@@ -165,7 +156,7 @@ class ComputationSuppressionLawsTest {
         expected.put("the row-iteration keyword", "MVK_UNEXPECTED_TOKEN");
         expected.put("the supported name padded with a no-break space", "MVK_LEXER_STANDARD_ERROR");
         expected.put("two entries, the first unlexable", "MVK_LEXER_STANDARD_ERROR");
-        expected.put("two entries, the second unlexable", "MVK_UNEXPECTED_TOKEN");
+        expected.put("two entries, the second unlexable", "MVK_LEXER_STANDARD_ERROR");
         // A12 answers the FIRST failure in the text, and a parse failure is not deferred by the parser's
         // recovery lookahead lexing the character behind it.
         expected.put("a digit-led identifier then an unlexable character", "MVK_UNEXPECTED_TOKEN");
@@ -174,8 +165,8 @@ class ComputationSuppressionLawsTest {
     }
 
     /**
-     * Whether a keyword is judged against the MODEL's condition language — A12 renders the pragma in it
-     * (`ComputationAlternativesJoiner`'s English and German preambles) and the lexer retypes a name only
+     * Whether a keyword is judged against the MODEL's condition language — A12's reader renders the preamble in it
+     * (`Computation._internal_buildSuppressPreamble`) and the lexer retypes a name only
      * against that language's terminals (`AbstractMultiLanguageHandler.setTypeInLexer`). One variable per
      * pair: the same entry in an English and in a German model.
      */
@@ -209,10 +200,9 @@ class ComputationSuppressionLawsTest {
         actual.put("an object", verdict("{\"code\":\"" + SUPPORTED + "\"}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        // An explicit null REFUSES the reader here, where the rounding pair took it as absence (KF297): the
-        // member is bound `@NonNull List<String>` rather than through an Optional accessor, so the tier is a
-        // property of the binding and not of DM-JSON. Measured rather than carried across.
-        expected.put("an explicit null", KernelLaws.UNREADABLE);
+        // An explicit null is absence: the reader binds the list to a nullable landing pad (kernel 31.3.1; 31.1.1
+        // bound it `@NonNull` and could not read it).
+        expected.put("an explicit null", KernelLaws.ADMITTED);
         expected.put("a bare string", KernelLaws.UNREADABLE);
         // A number IS coerced into the list, then rendered into the pragma as `7`, which is not an identifier.
         expected.put("a number element", "MVK_UNEXPECTED_TOKEN");

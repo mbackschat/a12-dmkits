@@ -508,16 +508,16 @@ class NestedGroupFillCountLawsTest {
         List<String> fourFilledRows = starTallyRefs(capacityDoc(4, true));
 
         assertEquals(List.of(
-                "/Catalogue[1]/TallyStar",
+                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount",
                 "/Catalogue[1]/Coverage[1]/Riders[0]/RiderName",
-                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount"), noRows,
+                "/Catalogue[1]/TallyStar"), noRows,
                 "with no row instantiated the operand's row fields are still named, at the unbound axis 0");
         assertEquals(noRows, fourFilledRows,
                 "four instantiated filled rows do not change it — so it is not built from what was read");
 
         assertEquals(List.of(
-                "/Catalogue[1]/TallySum",
-                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount"),
+                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount",
+                "/Catalogue[1]/TallySum"),
                 refsOf("TallySum", capacityDoc(4, true)),
                 "a Sum over one flattened field names that field alone, so the extent is the operand's own reach");
     }
@@ -526,11 +526,15 @@ class NestedGroupFillCountLawsTest {
         return refsOf("TallyStar", doc);
     }
 
+    /**
+     * The referenced pointers, sorted: A12 collects them into a hash set, so their order is not part of the
+     * contract, and kernel 31.2 changed the order by changing the pointer's {@code hashCode}.
+     */
     private static List<String> refsOf(String targetName, RuntimeLaws.Doc doc) {
         return RuntimeLaws.messages(POLARITY_MODEL, doc).stream()
                 .filter(x -> x.field() != null && x.field().contains(targetName))
                 .findFirst().orElseThrow(() -> new AssertionError("no message for " + targetName))
-                .referenced();
+                .referenced().stream().sorted().toList();
     }
 
     /**

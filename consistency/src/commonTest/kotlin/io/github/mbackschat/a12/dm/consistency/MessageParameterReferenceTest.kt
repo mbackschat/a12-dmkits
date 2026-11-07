@@ -105,11 +105,11 @@ class MessageParameterReferenceTest {
         // this family's reason. The row exists because a mutant returning them survived every other one.
         expected["a good parameter before an unterminated one"] = dollars
         expected["an ABSOLUTE path"] = listOf(invalidField)
-        // Only the OVERSHOOT is refused: a `..` landing inside the root group is ordinary and judged for
-        // membership like any other address (measured from a rule in `Claims`).
-        expected["a step above the root group"] = listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
+        // A step above the root group turns on the model root since kernel 31.3.1, so the next name is read as a
+        // root group (KF679); a `..` landing inside the root group is ordinary and judged for membership.
+        expected["a step above the root group"] = listOf("INVALID_ROOT_GROUP")
         // A path ending in the step is an address too — from a deeper carrier it names the group it lands
-        // on; from this root group it overshoots, so the same class answers it.
+        // on; from this root group it stops on the model root, which is never a target.
         expected["a bare step up, which here overshoots"] = listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
         // The short-name fallback is local-first and then model-wide, so a name the declaring group does not
         // own can match several fields — and A12 refuses the ADDRESS rather than choosing one.

@@ -37,7 +37,7 @@ internal class TypeDefinedTwins(
     /** The same for a computation at [group] writing [target] from [operation]. */
     fun judgeComputation(target: String, operation: String): Pair<List<String>, List<String>> {
         val draft = DraftComputation(group, "KindProbe", "../$target", null,
-            listOf(DraftComputation.Alternative(null, operation, null)), listOf())
+            listOf(DraftComputation.Alternative(null, operation, null)))
         return verdicts(validator.check(model, draft), validator.inject(model, draft))
     }
 

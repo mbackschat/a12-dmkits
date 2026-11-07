@@ -35,7 +35,7 @@ class McpToolSurfaceTest {
     }
 
     private static JsonNode manifest() throws Exception {
-        return MAPPER.readTree(CliTestSupport.run("manifest").out());
+        return MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
     }
 
     /**

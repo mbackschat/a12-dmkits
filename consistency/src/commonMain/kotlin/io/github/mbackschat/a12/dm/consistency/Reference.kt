@@ -56,11 +56,16 @@ sealed interface Reference {
     data class Ambiguous(val name: String, val candidates: List<String>) : Reference
 
     /**
-     * [written] climbs above the model root, so it names no position at all rather than a missing element.
-     * A12 says so with its own code (`MVK_TOO_MANY_PARENT_GROUPS`), which is why this is not [Undeclared]:
+     * [written] climbs above the model root, or ends on it, so it names no position at all rather than a missing
+     * element. A12 says so with its own code (`MVK_TOO_MANY_PARENT_GROUPS`), which is why this is not [Undeclared]:
      * the corrective is to remove a `..`, not to declare anything.
+     *
+     * [endsOnModelRoot] separates the two, because since kernel 31.3.1 the model root is a legal TURNING POINT
+     * into a sibling root group (`../Customer/Name` from a root-group rule, A12K-4276) and only a path that stops
+     * there is refused. A star on the up-step that lands there is therefore judged first, as on any landing that
+     * cannot repeat ([KERNEL-FINDINGS KF679]).
      */
-    data class AboveRoot(val written: String) : Reference
+    data class AboveRoot(val written: String, val endsOnModelRoot: Boolean = false) : Reference
 
     /**
      * A declared target [written] with a leading `/`, which A12's reference resolver refuses as an "illegal
@@ -125,10 +130,11 @@ enum class ReferenceRole {
  * `.*` is a repetition wildcard rather than part of a name, so it is stripped before matching and kept in the
  * reported text.
  *
- * **The floor is the ROOT GROUP, not the model root.** A `..` that would leave the outermost group has no
- * position to name — the model root holds groups, not fields — and A12 says so with a distinct code rather
- * than reporting a missing element: `../Code` is above the root for a rule declared in a root group and
- * perfectly ordinary one level down (measured through `ModelLoader.loadAndCheck`).
+ * **The floor is the MODEL ROOT, and it is a turning point, never a target** (kernel 31.3.1, A12K-4276; it was
+ * the root group before). A walk may climb onto it and descend into any root group, so `../Customer/Name` from a
+ * rule in `/Order` names `/Customer/Name` and `../Nope` names a root group that does not exist. A path that stops
+ * on the model root, or climbs past it, has no position to name and draws its own code rather than a missing
+ * element ([KERNEL-FINDINGS KF679]).
  */
 fun PreparedModel.resolveEntity(
     declaringGroup: String,
@@ -197,13 +203,14 @@ private fun PreparedModel.resolveSegments(
             // `..` optionally carries a TURNING-POINT LABEL naming the ancestor it lands on
             // (`relativeUp: relUp? '..' idName?`). The label is not a path segment; A12 checks that it names
             // the right ancestor and this does not, which under-reports rather than inventing a rejection.
-            step.startsWith(UP) -> if (path.size <= 1) aboveRoot = true else path.removeAt(path.size - 1)
+            step.startsWith(UP) -> if (path.isEmpty()) aboveRoot = true else path.removeAt(path.size - 1)
             else -> path += step
         }
     }
     val candidate = "/" + path.joinToString("/")
     return when {
         aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
+        path.isEmpty() -> Reference.AboveRoot(written, endsOnModelRoot = true)
         candidate in resolvableByPath -> Reference.Resolved(candidate)
         else -> Reference.Undeclared(
             candidate,
@@ -254,14 +261,17 @@ internal fun earlierSegmentGate(
             // The leading slash of an absolute path, whose root segment is the next one.
             continue
         }
-        val resolved = resolves(segments.take(at + 1).joinToString("/")) as? Reference.Resolved ?: return null
+        // The model root is reached, though it names nothing, so a star on the up-step landing there is judged.
+        val reached = resolves(segments.take(at + 1).joinToString("/"))
+        val resolved = reached as? Reference.Resolved
+        if (resolved == null && (reached as? Reference.AboveRoot)?.endsOnModelRoot != true) return null
         if (!segment.endsWith("*")) {
             continue
         }
         val stepped = segment.removeSuffix("*")
         val gate = when {
             stepped == UP -> EarlierSegmentGate.UP_STEP_WILDCARD.takeIf { segments.take(at).all { it == UP } }
-            stepped.isEmpty() || stepped.startsWith(".") -> null
+            resolved == null || stepped.isEmpty() || stepped.startsWith(".") -> null
             stepped.endsWith(".") -> EarlierSegmentGate.H_MODEL_SUFFIX
             !isRepeatableGroup(resolved.path) -> EarlierSegmentGate.WILDCARD_LANDING
             else -> continue

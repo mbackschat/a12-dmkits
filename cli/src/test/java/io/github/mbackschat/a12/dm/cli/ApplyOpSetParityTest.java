@@ -66,7 +66,7 @@ class ApplyOpSetParityTest {
             Map.entry("group attachment", "bulk authoring aid over a selection, not a single-element op-record"));
 
     private static Set<String> liveLocalVerbs() throws Exception {
-        CliTestSupport.Result res = CliTestSupport.run("manifest");
+        CliTestSupport.Result res = CliTestSupport.run("manifest", "--full");
         assertEquals(0, res.code(), res::err);
         Set<String> verbs = new TreeSet<>();
         for (JsonNode v : MAPPER.readTree(res.out()).path("verbs")) {

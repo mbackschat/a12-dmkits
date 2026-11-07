@@ -69,7 +69,7 @@ class TextComputationAdmissionReadTest {
         // ConfirmComputationSourceKindLawsTest uses the same independent-oracle discipline.
         Computation(group.path().value(), name, field, Optional.empty(),
             listOf(Computation.Alternative(Optional.empty(), operation)), listOf(Dsl.en(MESSAGE)),
-            Comments.none(), emptyList(), RoundingMode.EXACT)
+            Comments.none(), emptyList(), RoundingMode.EXACT, Optional.empty())
 
     @Test
     fun kernelAdmissionAndPortableCheckingRetainAllThirteenRows() {

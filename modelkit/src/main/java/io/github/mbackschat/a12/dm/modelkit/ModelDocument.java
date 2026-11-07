@@ -1137,14 +1137,13 @@ public final class ModelDocument {
         return this;
     }
 
-    /** The group's declared row sort fields (display/USB ordering), in declared order; empty if none. */
+    /**
+     * The group's declared row sort fields (display/USB ordering), in declared order; empty if none.
+     *
+     * @throws IllegalArgumentException when an entry is one A12's reader refuses
+     */
     public List<ElementDraft.SortField> sortFields(String groupPath) {
-        List<ElementDraft.SortField> out = new ArrayList<>();
-        for (JsonNode n : groupBody(groupPath).path(DmKeys.SORT_FIELDS)) {
-            out.add(new ElementDraft.SortField(n.path(DmKeys.NAME).asText(),
-                    SortOrder.valueOf(n.path(DmKeys.ORDER).asText("ASC"))));
-        }
-        return out;
+        return A12SortFields.read(groupBody(groupPath).path(DmKeys.SORT_FIELDS));
     }
 
     /**

@@ -686,8 +686,8 @@ private fun Interpreter.dateTimeLiteral(text: String): Val =
  * shift source, an extractor and `Min`/`Max` must not absorb it as an unknown (SPEC-2026-10-03-06).
  *
  * **Deliberately narrow to the refused-parse condition.** A temporal constant that fails its target's *value policy*
- * keeps store-and-flag: a pre-1900 Date constant is ERRORED retaining its rendered `1899-12-31` (KF231), so "a
- * temporal constant whose target check fails has no value" is false. A wall time in a spring-forward gap is no
+ * keeps store-and-flag: a Date constant below the Gregorian floor is ERRORED retaining its rendered value (KF231),
+ * so "a temporal constant whose target check fails has no value" is false. A wall time in a spring-forward gap is no
  * longer a member either: kernel 31.1.1 moves it forward by the gap, as it does every parsed wall time.
  */
 private fun Interpreter.parseTemporalLiteral(text: String, format: String): String? {

@@ -16,6 +16,21 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-11-06 23:53 CET — targeted A/B: the tiered `manifest` vs the one-call tree (haiku + sonnet, k=1, 12 agents, bare-tool)
+
+**Question.** Does a bare `manifest` that returns a 22 KB verb index (with `manifest <target> [<op>]` drill-down) cost an agent less than the 311 KB whole tree it replaced, without costing correctness? **Arms:** B is the working-tree launcher (kernel 31.3.1 build, uncommitted); A is the same launcher behind a shim that restores the previous surface byte for byte, apart from the manifest verb's own entry (bare `manifest` = the full tree, the old help footer and `manifest --help`, drill-down arguments refused), so the tiering is the only variable. Fresh `general-purpose` agents, one isolated work dir each, binary-only material, scored deterministically (re-running the reported `apply --dry-run`; set-equality against `manifest --full`'s required flags).
+
+| task | model | A: calls / tool-output chars / manifest calls | B: calls / tool-output chars / manifest calls | pass A · B |
+|---|---|---|---|---|
+| compose (one atomic `apply` preview: add a field + rename one) | haiku | 6 / 22.5k / 0 | 5 / 22.6k / 0 | ✓ · ✓ |
+| compose | sonnet | 7 / 27.6k / 0 | 6 / 25.2k / 1 (4.8k) | ✓ · ✓ |
+| inventory (`typedef` ops → required params) | haiku | 4 / 33.1k / 0 | 7 / 38.1k / 2 (6.0k) | ✓ · ✓ |
+| inventory | sonnet | 3 / 25.2k / 0 | 3 / 20.1k / 0 | ✓ · ✓ |
+| directed (same, `include`, told to use `dmtool manifest`) | haiku | 4 / 4.7k / 3 | 3 / 42.7k / 2 | ✓ · ✓ |
+| directed | sonnet | 6 / 10.2k / 1 | 4 / 2.9k / 2 | ✓ · ✓ |
+
+**Findings (n=1 per cell, so directional only).** (1) On neutral tasks no arm-A agent called `manifest` (0/4): agents orient through `--help`, as the 2026-06-19 measurement found, so the 311 KB tree never reached them. (2) Under Claude Code the whole tree is not ingested even when called: the harness persists any tool output above its inline limit to a file ("Output too large (303.5KB)"), and the arm-A haiku agent then queried that file with `jq` for 4.7k chars total. (3) The 22 KB index sits under that limit, so it IS read whole, and a target drill-down (`manifest include`, 20.5 KB, mostly `operationalProfiles` and `params`) is read whole too: directed haiku consumed 42.7k chars in B against 4.7k in A. Sonnet redirected to a file in both arms and was cheaper in B (2.9k vs 10.2k chars, 4 vs 6 calls). (4) The new footer line drew one B-haiku inventory run into a drill-down after `--help` had already answered (+3 calls, +6k chars). **Correctness was unaffected: 12/12.** The measured benefit of the tiering is therefore conditional: it removes a 311 KB read for a client that receives tool output whole (the MCP `dm.catalog` tool returns the verb's stdout as its result; whether a given host then truncates it was not measured), and it does not lower cost inside a harness that already persists large output to a file.
+
 ### 2026-07-09 02:13 CEST — WI-5c-2: full pass@3 after the facet build-out + skill migration (sonnet, k=3, 31 tasks, bare-tool)
 
 The N6 re-run for **WI-5c-2** ([SEMANTICS-FORMALIZATION-PROPOSAL](../docs/archived/SEMANTICS-FORMALIZATION-PROPOSAL.md) §4/§6.5): does the slimmer judgment-only skill (WI-5c-1: 175→152 lines) + the richer self-describing binary (WI-5a/5b: five probe-verified facet dimensions served by `operators`, operand-aware enricher correctives) **hold or improve** the scores vs the baseline? Bare-tool (the canonical trend-line mode). `wf_7ab64f2c-03a`, **188 agents, 9.34M tokens, ~25.6 min** + a targeted task-17 re-run (`wf_d1d963ce-b1e`, 8 agents, 0.38M) after the harness fix below.

@@ -50,7 +50,7 @@ class ComputationRoundingModeDiffTest {
             .calc(bound.num(operand).value(), if (banded) ToleranceBand.TR1 else null)
             .roundingMode(mode)
             .message(Dsl.en("The charged premium follows the base premium."))
-        if (operand == FINE) builder = builder.errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+        if (operand == FINE) builder = builder.suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")
         return admitted(builder)
     }
 

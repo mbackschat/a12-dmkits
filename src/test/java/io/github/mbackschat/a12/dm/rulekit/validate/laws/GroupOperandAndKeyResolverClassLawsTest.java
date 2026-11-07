@@ -17,7 +17,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *
  * <p>The split is by the path's FIRST segment and its spelling. An ABSOLUTE path whose first segment is not the
  * root draws {@code MVK_INVALID_ROOT_GROUP}, a declared group read at root position ({@code /Claims}) included;
- * a walk above the root draws {@code MVK_TOO_MANY_PARENT_GROUPS}; and any other miss, a relative one included
+ * a relative walk onto the model root names a root group too (kernel 31.3.1, KF679), so {@code ../Insured} from a
+ * root-level rule draws the same class; and any other miss, a relative one included
  * however its first segment reads, draws {@code MVK_INVALID_ENTITY}. A starred path is judged segment by segment,
  * so a star on a segment that is not a repeatable group answers ahead of a later miss, and a key is resolved
  * before the key list's own wildcard gate reads it.
@@ -34,7 +35,7 @@ class GroupOperandAndKeyResolverClassLawsTest {
             "/Nope/Insured", "MVK_INVALID_ROOT_GROUP",
             "/Nope", "MVK_INVALID_ROOT_GROUP",
             "/Claims", "MVK_INVALID_ROOT_GROUP",
-            "../Insured", "MVK_TOO_MANY_PARENT_GROUPS",
+            "../Insured", "MVK_INVALID_ROOT_GROUP",
             "/Policy/Nope", "MVK_INVALID_ENTITY",
             "Nope", "MVK_INVALID_ENTITY");
 
@@ -75,7 +76,7 @@ class GroupOperandAndKeyResolverClassLawsTest {
                 "Insured*/Nope", "MVK_INVALID_WILDCARD",
                 "/Policy*/Claims*", "MVK_INVALID_WILDCARD",
                 "Holder*/Nope", "MVK_INVALID_WILDCARD",
-                "../Claims*", "MVK_TOO_MANY_PARENT_GROUPS");
+                "../Claims*", "MVK_INVALID_ROOT_GROUP");
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
         for (String carrier : List.of("AtLeastOneGroupFilled(%s)", "NumberOfFilledGroups(%s) > 0")) {
@@ -142,7 +143,7 @@ class GroupOperandAndKeyResolverClassLawsTest {
                 "/Policy/Nope/ClaimRef", "MVK_INVALID_ENTITY",
                 "Nope", "MVK_INVALID_ENTITY",
                 "/Nope/Claims/ClaimRef", "MVK_INVALID_ROOT_GROUP",
-                "../Claims/ClaimRef", "MVK_TOO_MANY_PARENT_GROUPS",
+                "../Claims/ClaimRef", "MVK_INVALID_ROOT_GROUP",
                 "Remark", "MVK_FIELDNAME_NOT_UNIQUE",
                 "Claims*/ClaimRef", "MVK_NO_WILDCARDS_ALLOWED",
                 "Insured*/Remark", "MVK_INVALID_WILDCARD",

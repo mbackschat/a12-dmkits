@@ -66,7 +66,7 @@ class ProfileVerbTest {
         assertTrue(help.out().contains("-o"));
         assertTrue(help.out().contains("identifier-free"));
 
-        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest", "--full").out());
         assertTrue(manifest.path("verbs").findValuesAsText("verb").contains("profile extract"),
                 "profile extract is in the live manifest");
 

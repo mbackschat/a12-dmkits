@@ -234,9 +234,12 @@ class CheckerEmptyMemberAgreementTest {
             Row("a computation's message", "$E/8/Computation", "errorMessage", LIST),
         )
 
-        /** Measured on kernel 31.1.1; every other row answers its empty and its absent form alike. */
+        /**
+         * Measured on kernel 31.3.1; every other row answers its empty and its absent form alike. The locales left
+         * this set in 31.3.1, which reads an absent list as the empty one.
+         */
         val DIFFERING = setOf(
-            HEADER_ID, "the model version", "the locales", "a hint entry's locale", "a hint entry's values",
+            HEADER_ID, "the model version", "a hint entry's locale", "a hint entry's values",
             "an index field", INCLUDE_CONFIG, "a rule's condition", "a rule's severity", "a computation's precondition",
         )
 

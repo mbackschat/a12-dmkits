@@ -112,6 +112,17 @@ for doc in CLAUDE.md scripts/README.md docs/nested/deep.md; do
   git -C "$REPO" commit -qm "docs: touch $doc" --no-verify -q
 done
 
+# 5a. A corrective's source triggers: DiagnosticProseGuardTest holds RkCode's and StructuralKernelFix's prose to
+#     its budget, and the second file was outside the trigger set when that guard landed (2026-11-06).
+rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
+mkdir -p "$REPO/rulekit/src/main/java"
+echo 'final class StructuralKernelFix {}' > "$REPO/rulekit/src/main/java/StructuralKernelFix.java"
+git -C "$REPO" add -A
+fabricate_leak_evidence
+fix_out="$(commit_expecting_refusal "fix: reword a corrective")"
+[[ "$fix_out" == *"StructuralKernelFix.java"* ]] || fail "the refusal did not name the corrective source: $fix_out"
+git -C "$REPO" commit -qm "fix: reword a corrective" --no-verify -q
+
 # 5b. A performance run record triggers too: PerformanceRecordShapeGuardTest bounds the committed runs per
 #     environment, and a three-run anchor refresh committed 32 against a bound of 30 because no staged record
 #     demanded the guard (2026-11-05, red only in CI).

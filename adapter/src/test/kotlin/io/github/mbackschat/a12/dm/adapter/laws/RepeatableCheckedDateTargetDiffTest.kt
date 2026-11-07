@@ -13,12 +13,13 @@ import org.junit.jupiter.api.Test
  * Differential — the RUNTIME half of SPEC-2026-08-27-02, which a12-kernel-lean measured only statically and
  * explicitly asked us to close: a repeatable FULL Date target carrying `youngerThan1900Check` reads
  * `FirstFilledValue` over `../Quotes*` then `PromiseDate` from a sibling starred FULL Date source that does NOT carry the
- * check. So the pre-1900 value is admissible at the SOURCE and rejected at the TARGET — the point of the shape.
+ * check. Through kernel 31.1.1 the pre-1900 value was admissible at the SOURCE and rejected at the TARGET, ERRORED
+ * per instance and retaining the attempt.
  *
- * [DateBefore1900DiffTest] already locks the check on a NONREPEATABLE target with a direct source. What is new
- * here is the target-policy-versus-source-policy split under repetition: the entry warns that collapsing target
- * rejection into source poison or clearing loses the per-instance error channel, so the arms separate
- * ERRORED-at-an-exact-address from CLEARED and from a formal source error.
+ * **Since kernel 31.2 the target holds the value** (A12K-4073,
+ * [KF677](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf677)): the check is no longer evaluated, so the
+ * requested arm now reads like its post-1900 control. The source-poison control keeps the arms honest — a
+ * malformed quote still CLEARS the target, so the shape is still computing and still separating the buckets.
  *
  * **Every arm runs on BOTH declared Date formats.** The entry states its delta for a FULL **ISO** profile, and the
  * peer's own ISO probe reached the two kernel strategies but not our interpreter; our first pass measured the
@@ -54,6 +55,7 @@ class RepeatableCheckedDateTargetDiffTest {
                             .group("Quotes") { g -> g.repeatable(5).dateField("PromiseDate") { it.format(format) } }
                             // the TARGET carries it
                             .group("Endorsements") { g ->
+                                @Suppress("DEPRECATION") // the retired check is what this measures
                                 g.repeatable(5).dateField("SelectedPromise") { it.format(format).rejectBefore1900() }
                             }
                     }
@@ -114,16 +116,6 @@ class RepeatableCheckedDateTargetDiffTest {
     private fun kSig(c: RuntimeLaws.Computed): String =
         if (c.cleared()) "CLEARED" else if (c.errored()) "ERRORED" else "VALUE|${c.value().orElse("")}"
 
-    /**
-     * [kSig] drops the value of a non-VALUE bucket, which is exactly what the retained-attempt arm needs to keep —
-     * and it must keep the BUCKET too: hard-coding an `ERRORED|` prefix there once let a CLEARED outcome render as
-     * `ERRORED|<none>`, so only the value half of that arm discriminated (found by a planted mutant, 2026-08-28).
-     */
-    private fun kBucketAndAttempt(c: RuntimeLaws.Computed): String {
-        val bucket = if (c.cleared()) "CLEARED" else if (c.errored()) "ERRORED" else "VALUE"
-        return "$bucket|${c.value().orElse("<none>")}"
-    }
-
     private fun iSig(c: io.github.mbackschat.a12.dm.interpreter.model.Computed): String = when (c.outcome) {
         ComputeOutcome.CLEARED -> "CLEARED"
         ComputeOutcome.ERRORED -> "ERRORED"
@@ -145,9 +137,9 @@ class RepeatableCheckedDateTargetDiffTest {
 
     // ── the requested measurement: a pre-1900 selection against a stale CHECKED repeatable target ───────────
 
-    @Test fun aPre1900SelectionIsErroredAtTheExactRepeatedTarget() = onBothDeclarations { s ->
-        agree(s, "the source admits ${s.dates.pre1900}; the checked target rejects it per instance",
-            mapOf(selectedAt(1, 1) to "ERRORED")) { d ->
+    @Test fun aPre1900SelectionIsAValueAtTheCheckedRepeatedTarget() = onBothDeclarations { s ->
+        agree(s, "the source admits ${s.dates.pre1900}, and since kernel 31.2 so does the checked target",
+            mapOf(selectedAt(1, 1) to "VALUE|${s.dates.pre1900}")) { d ->
             d.policy(1, stale = s.dates.stale, promise = s.dates.pre1900)
         }
     }
@@ -162,7 +154,7 @@ class RepeatableCheckedDateTargetDiffTest {
     }
 
     @Test fun theBoundaryItselfIsAValue() = onBothDeclarations { s ->
-        agree(s, "boundary control — ${s.dates.boundary} is admissible, so the rejection is strictly below it",
+        agree(s, "boundary control — ${s.dates.boundary}, the retired check's threshold",
             mapOf(selectedAt(1, 1) to "VALUE|${s.dates.boundary}")) { d ->
             d.policy(1, stale = s.dates.stale, promise = s.dates.boundary)
         }
@@ -172,48 +164,6 @@ class RepeatableCheckedDateTargetDiffTest {
         agree(s, "source-poison control — a malformed quote clears rather than erroring the target",
             mapOf(selectedAt(1, 1) to "CLEARED")) { d ->
             d.policy(1, stale = s.dates.stale, promise = s.dates.malformed)
-        }
-    }
-
-    /**
-     * The entry asks for the attempted stored Date "if exposed", and it is — on the dynamic strategy, whose
-     * ERRORED instance still carries the rendered attempt, **rendered in the target's own declared format**
-     * (source and target declare the same format here, so the attempt is the source text verbatim; this is the
-     * one observable in the matrix the declaration actually moves). Generated Java collapses an errored instance
-     * to a bucket with no value (the same limitation [DateBefore1900DiffTest] works around), so this arm is
-     * deliberately dynamic + interpreter rather than a tri-check, and says so instead of pretending otherwise.
-     */
-    @Test fun theRejectedTargetRetainsTheExactAttemptAndRaisesNoSourceFormalError() = onBothDeclarations { s ->
-        val doc = RuntimeLaws.doc()
-        val iDoc = s.def.newDocument()
-        Both(doc, iDoc).policy(1, stale = s.dates.stale, promise = s.dates.pre1900)
-
-        val detail = RuntimeLaws.computeWithFormalErrors(s.json, doc)
-        assertEquals(
-            listOf("ERRORED|${s.dates.pre1900}"),
-            detail.outcomes().filter { it.path() == SELECTED }
-                .map { kBucketAndAttempt(it) },
-            "[${s.format}] the checked target retains the exact rendered pre-1900 attempt",
-        )
-        assertEquals(
-            emptyList<String>(),
-            detail.formalErrorsInOperands().map { "${it.code()}|${it.field()}" },
-            "[${s.format}] the SOURCE is unchecked, so a target-policy rejection raises no formal operand error "
-                + "— the distinction SPEC-2026-08-27-02 asks not to collapse",
-        )
-        assertEquals(
-            listOf("ERRORED|${s.dates.pre1900}"),
-            DmInterpreter(s.def).compute(iDoc).filter { it.path == SELECTED }
-                .map { "${it.outcome}|${it.value}" },
-            "[${s.format}] the interpreter retains the same attempt",
-        )
-    }
-
-    @Test fun aRejectedTargetInOnePolicyLeavesTheOtherAlone() = onBothDeclarations { s ->
-        agree(s, "policy 1 is rejected, policy 2 still computes — the rejection is per instance",
-            mapOf(selectedAt(1, 1) to "ERRORED", selectedAt(2, 1) to "VALUE|${s.dates.ordinary}")) { d ->
-            d.policy(1, stale = s.dates.stale, promise = s.dates.pre1900)
-            d.policy(2, stale = s.dates.stale, promise = s.dates.ordinary)
         }
     }
 }

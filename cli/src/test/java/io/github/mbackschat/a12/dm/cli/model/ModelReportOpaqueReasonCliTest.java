@@ -36,10 +36,10 @@ class ModelReportOpaqueReasonCliTest {
 
         JsonNode read = MAPPER.readTree(CliTestSupport.run(
                 "-m", model.toString(), "computation", "read", OPAQUE_COMPUTATION).out()).path("data");
-        assertEquals(SUPPRESSION, read.path("errorCodesToSuppress").get(0).asText());
+        assertEquals("@SuppressWarning(" + SUPPRESSION + ")", read.path("additionalParserInformation").asText());
         JsonNode explain = MAPPER.readTree(CliTestSupport.run(
                 "-m", model.toString(), "computation", "explain", OPAQUE_COMPUTATION).out()).path("data");
-        assertEquals(SUPPRESSION, explain.path("errorCodesToSuppress").get(0).asText());
+        assertEquals("@SuppressWarning(" + SUPPRESSION + ")", explain.path("additionalParserInformation").asText());
 
         var result = CliTestSupport.run("-m", model.toString(), "model", "report");
         assertEquals(0, result.code(), result::err);
@@ -58,7 +58,7 @@ class ModelReportOpaqueReasonCliTest {
         assertFalse(opaqueComputation.path("explained").asBoolean());
         assertTrue(opaqueComputation.hasNonNull("reason") && !opaqueComputation.path("reason").asText().isBlank(),
                 () -> "opaque computation reason missing: " + opaqueComputation);
-        assertEquals(SUPPRESSION, opaqueComputation.path("errorCodesToSuppress").get(0).asText());
+        assertEquals("@SuppressWarning(" + SUPPRESSION + ")", opaqueComputation.path("additionalParserInformation").asText());
         JsonNode explainedComputation = named(
                 data.path("computations"), "computation", "/Review/ExplainedComputation");
         assertTrue(explainedComputation.path("explained").asBoolean());
@@ -101,7 +101,7 @@ class ModelReportOpaqueReasonCliTest {
         session.addComputation(model -> model.computation(model.dateTime("/Review/ComputedOpaque").field())
                 .name("OpaqueComputation")
                 .calc(Dsl.addHours(model.dateTime("/Review/SourceDateTime"), 1).expression())
-                .errorCodesToSuppress(SUPPRESSION)
+                .suppressWarnings(SUPPRESSION)
                 .message(en("The opaque total follows a project calculation.")).build());
 
         ObjectNode root = (ObjectNode) MAPPER.readTree(session.toJson());

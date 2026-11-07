@@ -27,14 +27,14 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
  * trio for it; that was an invented serialization of an A12-owned domain object, which the dmtool
  * result-envelope exemption does not cover.
  *
- * <b>Two deliberate strictnesses, recorded because being stricter than the kernel needs its reason written
- * down</b> (CLAUDE.md "A client-side refusal needs a measured kernel basis"):
+ * <b>Arity, then one deliberate strictness.</b> Arity is enforced, as A12 enforces it: through kernel 31.1.1
+ * `PartiallyKnownDocumentMultiPointerImpl`'s constructor did not compare the name count against the repetition count
+ * (while `toDocumentPointer()` assumed it had), and this type was deliberately stricter; since kernel 31.2 that
+ * constructor refuses the mismatch itself ("fullName and repetitions have different length"). The strictness that
+ * remains is recorded because being stricter than the kernel needs its reason written down (CLAUDE.md "A client-side
+ * refusal needs a measured kernel basis"):
  *
- *  1. **Arity is enforced.** `PartiallyKnownDocumentMultiPointerImpl`'s constructor does not compare the name
- *     count against the repetition count, yet `toDocumentPointer()` documents the omission away — "we do not
- *     need to check the length of both lists, as we only construct valid instances" — and would then throw
- *     inside a `try` whose `catch` asserts the throw is impossible. We enforce the invariant that comment claims.
- *  2. **A negative other than `-5` and `-6` is rejected outright.** The kernel expresses that rule as a bare
+ *  - **A negative other than `-5` and `-6` is rejected outright.** The kernel expresses that rule as a bare
  *     Java `assert` admitting `-5` alone, so it binds under `-ea` (most of our test JVMs) and is silently
  *     absent in production. Its own comment says the assertion exists so the javadoc can be adapted if the set
  *     ever widens, and A12's own runtime has widened it without that: on the one measured carrier, a rule
@@ -87,7 +87,7 @@ class A12PartiallyKnownMultiPointer private constructor(
     fun toExactPointer(): A12Pointer? {
         require(repetitionIndexes.isNotEmpty()) {
             "the root pointer has no exact counterpart to compute: A12's own conversion raises for a " +
-                "zero-length pointer instead of reporting an absent result (measured, kernel 30.8.1)"
+                "zero-length pointer instead of reporting an absent result"
         }
         val finalLevel = repetitionIndexes.size - 1
         val namesOneCell = repetitionIndexes.withIndex().all { (level, repetition) ->

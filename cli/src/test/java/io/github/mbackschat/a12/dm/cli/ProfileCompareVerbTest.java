@@ -76,7 +76,7 @@ class ProfileCompareVerbTest {
         assertTrue(help.out().contains("--target"));
         assertTrue(help.out().contains("--actual"));
 
-        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest", "--full").out());
         assertTrue(manifest.path("verbs").findValuesAsText("verb").contains("profile compare"));
 
         JsonNode contract = JSON.readTree(CliTestSupport.run("schema", "profile", "compare").out());

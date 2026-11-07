@@ -24,7 +24,7 @@ class ManifestTreeTest {
 
     @Test
     void recursesIntoTargetGroupsSoNestedOpsAreDiscoverable() throws Exception {
-        JsonNode j = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode j = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> verbs = new HashSet<>();
         JsonNode docValidate = null;
         for (JsonNode v : j.path("verbs")) {
@@ -43,14 +43,14 @@ class ManifestTreeTest {
 
     @Test
     void pointsAtTheStandardResultSchema() throws Exception {
-        JsonNode j = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode j = M.readTree(CliTestSupport.run("manifest", "--full").out());
         assertEquals("result", j.path("resultSchema").asText(),
                 "manifest must name the standard envelope schema so an agent fetches it via `schema result`");
     }
 
     @Test
     void exposesTheModelContextOptionGloballyNotPerVerb() throws Exception {
-        JsonNode j = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode j = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> globals = new HashSet<>();
         for (JsonNode o : j.path("globalOptions")) {
             globals.add(o.path("flag").asText());

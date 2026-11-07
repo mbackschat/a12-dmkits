@@ -15,12 +15,17 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 
-/** End-to-end lock for A12's exact computation {@code errorCodesToSuppress} shape. */
+/**
+ * End-to-end lock for A12's computation preamble, {@code additionalParserInformation}: the CLI stores the text
+ * unchanged and lets A12 judge it ({@code validate.laws.ComputationParserInformationLawsTest}).
+ */
 class ComputationSuppressionCliTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String COMPUTATION = "/Subscription/Billing/EffectiveFeeComp";
     private static final String SUPPRESSION = "MVK_INVALID_COMPARE_DEC_PLACES";
+    private static final String PREAMBLE = "@SuppressWarning(" + SUPPRESSION + ")";
+    private static final String STORED = "\"additionalParserInformation\" : \"" + PREAMBLE + "\"";
 
     @Test
     void addPersistsAndEveryReviewSurfaceExposesTheSuppression(@TempDir Path dir) throws Exception {
@@ -38,21 +43,21 @@ class ComputationSuppressionCliTest {
 
         var add = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
         assertEquals(0, add.code(), add::err);
-        assertTrue(Files.readString(model).contains("\"errorCodesToSuppress\" : [ \"" + SUPPRESSION + "\" ]"));
+        assertTrue(Files.readString(model).contains(STORED));
 
         JsonNode read = data(CliTestSupport.run("-m", model.toString(), "computation", "read", COMPUTATION));
-        assertEquals(SUPPRESSION, read.path("errorCodesToSuppress").get(0).asText());
+        assertEquals(PREAMBLE, read.path("additionalParserInformation").asText());
 
         JsonNode explain = data(CliTestSupport.run("-m", model.toString(), "computation", "explain", COMPUTATION));
-        assertEquals(SUPPRESSION, explain.path("errorCodesToSuppress").get(0).asText());
+        assertEquals(PREAMBLE, explain.path("additionalParserInformation").asText());
 
         JsonNode report = data(CliTestSupport.run("-m", model.toString(), "model", "report"));
         JsonNode reported = report.path("computations").get(0);
-        assertEquals(SUPPRESSION, reported.path("errorCodesToSuppress").get(0).asText());
+        assertEquals(PREAMBLE, reported.path("additionalParserInformation").asText());
     }
 
     @Test
-    void modifyTreatsTheSuppressionListAsPartOfTheWholeReExpression(@TempDir Path dir) throws Exception {
+    void modifyTreatsThePreambleAsPartOfTheWholeReExpression(@TempDir Path dir) throws Exception {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
         Path suppressed = write(dir, "suppressed.json", spec("[BaseFee]", true));
         assertEquals(0, CliTestSupport.run(
@@ -67,7 +72,7 @@ class ComputationSuppressionCliTest {
         assertTrue(changed.path("changed").asBoolean(), modify::out);
         assertTrue(changed.path("before").asText().contains(SUPPRESSION), modify::out);
         assertFalse(changed.path("after").asText().contains(SUPPRESSION), modify::out);
-        assertTrue(Files.readString(model).contains("\"errorCodesToSuppress\" : [ \"" + SUPPRESSION + "\" ]"),
+        assertTrue(Files.readString(model).contains(STORED),
                 "--dry-run must not mutate the model");
 
         var committed = CliTestSupport.run(
@@ -75,12 +80,12 @@ class ComputationSuppressionCliTest {
                 "--spec", unsuppressed.toString());
         assertEquals(0, committed.code(), committed::err);
         JsonNode read = data(CliTestSupport.run("-m", model.toString(), "computation", "read", COMPUTATION));
-        assertTrue(read.path("errorCodesToSuppress").isEmpty(),
-                "omission in a whole re-expression removes the suppression list");
+        assertTrue(read.path("additionalParserInformation").isMissingNode(),
+                "omission in a whole re-expression removes the preamble");
     }
 
     @Test
-    void applyAuthorsTheSameOwnerShapedList(@TempDir Path dir) throws Exception {
+    void applyAuthorsTheSameOwnerShapedPreamble(@TempDir Path dir) throws Exception {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
         Path operations = write(dir, "ops.json", """
                 [ {"target":"computation","op":"add",
@@ -94,7 +99,7 @@ class ComputationSuppressionCliTest {
                    "computationPathInModel":"/Subscription/Billing/EffectiveFeeComp",
                    "computedField":"/Subscription/Billing/EffectiveFee",
                    "alternatives":[{"operation":"[BaseFee] / 3"}],
-                   "errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"],
+                   "additionalParserInformation":"@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
                    "messages":[
                      {"locale":"en_US","text":"Effective fee follows base."},
                      {"locale":"de_DE","text":"Effektivgebühr folgt Basis."}
@@ -103,40 +108,40 @@ class ComputationSuppressionCliTest {
 
         var apply = CliTestSupport.run("-m", model.toString(), "apply", operations.toString());
         assertEquals(0, apply.code(), apply::err);
-        assertTrue(Files.readString(model).contains("\"errorCodesToSuppress\" : [ \"" + SUPPRESSION + "\" ]"));
+        assertTrue(Files.readString(model).contains(STORED));
     }
 
+    /** A12 judges the stored text, so its own class reaches the caller and nothing is written. */
     @Test
-    void unsupportedSuppressionIsAWriteSafeStructuredRejection(@TempDir Path dir) throws Exception {
+    void aPreambleA12RefusesIsAWriteSafeKernelRejection(@TempDir Path dir) throws Exception {
+        assertRefusedUnwritten(dir, "unsupported", PREAMBLE.replace(SUPPRESSION, "MVK_INVALID_DATE_TYPE"),
+                "MVK_INVALID_SUPPRESSED_WARNING");
+        assertRefusedUnwritten(dir, "german", "@UnterdrueckeWarnung(" + SUPPRESSION + ")", "MVK_UNEXPECTED_TOKEN");
+    }
+
+    /** Kernel 31.3.1 reads a comma-separated list, the supported code twice included (KERNEL-FINDINGS KF329). */
+    @Test
+    void aListIsAdmittedAndStoredVerbatim(@TempDir Path dir) throws Exception {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
+        String list = "@SuppressWarning(" + SUPPRESSION + ", " + SUPPRESSION + ")";
+        Path spec = write(dir, "spec.json", spec(true).replace(PREAMBLE, list));
+
+        var add = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+
+        assertEquals(0, add.code(), add::out);
+        assertTrue(Files.readString(model).contains("\"additionalParserInformation\" : \"" + list + "\""));
+    }
+
+    private static void assertRefusedUnwritten(Path dir, String name, String preamble, String code) throws Exception {
+        Path model = write(dir, name + ".json", CliTestSupport.subscriptionJson());
         String before = Files.readString(model);
-        Path spec = write(dir, "spec.json", spec(true).replace(SUPPRESSION, "MVK_INVALID_DATE_TYPE"));
+        Path spec = write(dir, name + "-spec.json", spec(true).replace(PREAMBLE, preamble));
 
         var add = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
 
         assertEquals(1, add.code(), add::err);
-        JsonNode envelope = MAPPER.readTree(add.out());
-        assertEquals("RK_INVALID_VALUE", envelope.path("diagnostics").get(0).path("code").asText());
-        assertEquals(before, Files.readString(model), "a rejected suppression must not mutate the model");
-    }
-
-    /**
-     * The schema's {@code maxItems: 1} is enforced by A12 itself, which renders the list into a one-code pragma
-     * and fails on the comma (KERNEL-FINDINGS KF298), so even the supported code twice is refused unwritten.
-     */
-    @Test
-    void aSecondSuppressionEntryIsRefusedUnwritten(@TempDir Path dir) throws Exception {
-        Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());
-        String before = Files.readString(model);
-        Path spec = write(dir, "spec.json", spec(true).replace(
-                "\"" + SUPPRESSION + "\"", "\"" + SUPPRESSION + "\",\"" + SUPPRESSION + "\""));
-
-        var add = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
-
-        assertEquals(1, add.code(), add::err);
-        assertTrue(MAPPER.readTree(add.out()).path("diagnostics").findValuesAsText("code")
-                .contains("MVK_UNEXPECTED_TOKEN"), add::out);
-        assertEquals(before, Files.readString(model), "a two-entry list must not mutate the model");
+        assertTrue(MAPPER.readTree(add.out()).path("diagnostics").findValuesAsText("code").contains(code), add::out);
+        assertEquals(before, Files.readString(model), "a refused preamble must not mutate the model");
     }
 
     @Test
@@ -148,7 +153,7 @@ class ComputationSuppressionCliTest {
         String before = Files.readString(model);
 
         Path typo = write(dir, "typo.json", spec("[BaseFee]", false)
-                .replace("\"alternatives\"", "\"errorCodeToSuppress\": [\"" + SUPPRESSION
+                .replace("\"alternatives\"", "\"errorCodesToSuppress\": [\"" + SUPPRESSION
                         + "\"], \"alternatives\""));
         var modify = CliTestSupport.run(
                 "-m", model.toString(), "computation", "modify", COMPUTATION, "--spec", typo.toString());
@@ -168,7 +173,7 @@ class ComputationSuppressionCliTest {
         Path computationOnly = write(dir, "computation-only.json", """
                 {"field":"/Subscription/AutoRenew","condition":"FieldNotFilled(AutoRenew)",
                  "code":"AUTO_RENEW_REQUIRED",
-                 "errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"],
+                 "additionalParserInformation":"@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
                  "messages":[
                    {"locale":"en_US","text":"Choose auto renew."},
                    {"locale":"de_DE","text":"Bitte wählen Sie, ob sich das Abonnement automatisch verlängern soll."}
@@ -187,7 +192,7 @@ class ComputationSuppressionCliTest {
 
     private static String spec(String operation, boolean suppressed) {
         String suppression = suppressed
-                ? "\n  \"errorCodesToSuppress\": [\"" + SUPPRESSION + "\"],"
+                ? "\n  \"additionalParserInformation\": \"" + PREAMBLE + "\","
                 : "";
         return """
                 { "computedField": "/Subscription/Billing/EffectiveFee",%s

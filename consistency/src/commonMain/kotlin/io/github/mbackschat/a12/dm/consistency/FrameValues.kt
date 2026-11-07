@@ -92,8 +92,8 @@ private fun JsonElement?.frameText(): String? =
 /** `VersionChecker`'s pattern, its digits ASCII as Java's `\d` is: a major, then a minor read as a decimal. */
 private val VERSION = Regex("([0-9]+)\\.([0-9]+\\.[0-9]+)")
 
-/** The version A12 31.1.1 writes and reads up to, `DocumentModelContent.VERSION` (KERNEL-UPGRADE). */
-private const val A12_VERSION = "29.4.0"
+/** The version the pinned A12 kernel writes and reads up to, `DocumentModelContent.VERSION` (KERNEL-UPGRADE). */
+private const val A12_VERSION = "29.8.0"
 private val A12_PARTS = VERSION.matchEntire(A12_VERSION)!!.groupValues
 private val A12_MAJOR = A12_PARTS[1].toInt()
 private val A12_MINOR = A12_PARTS[2].toDouble()
@@ -124,8 +124,8 @@ internal fun TrackedFactBase.frameValueFindings(): List<Finding> {
 /**
  * The two codeless sentences A12's version rules state, published under this checker's codes: [RK_MODEL_VERSION_PATTERN]
  * when the entry's version is not `major.minor.patch` in ASCII digits, and [RK_MODEL_VERSION_INCOMPATIBLE] unless the
- * major is 29 and the minor and patch, read as one decimal, at most `4.0`, so `29.3.99` and `29.04.0` are compatible
- * and `29.4.1` is not. A text failing the pattern draws both, in that order, as A12 states both.
+ * major is 29 and the minor and patch, read as one decimal, at most `8.0` (kernel 31.3.1), so `29.7.99` and `29.08.0`
+ * are compatible and `29.8.1` is not. A text failing the pattern draws both, in that order, as A12 states both.
  *
  * A12 states them first and they withhold nothing, which is why they are asked at their own stage
  * ([ModelStage.VERSION]). A major past Java's `int` never reaches them: A12's check throws on it, a refusal of the

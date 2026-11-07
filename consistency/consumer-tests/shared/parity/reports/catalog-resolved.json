@@ -134,10 +134,6 @@
     },
     {
       "at": null,
-      "reason": "a rule's `errorCode` is judged on presence alone. A12's content law — \"only letters, digits, blanks and underscores\" — states its verdict in prose with no class this checker could cite, and which characters it counts as letters rests on a handful of rows (KERNEL-FINDINGS KF310), so a code such as `A-B` is left to A12. Re-open when this checker owns a code of its own for it"
-    },
-    {
-      "at": null,
       "reason": "two entity filters sharing ONE argument list are treated as separate connective levels without a measurement saying they are — `SumOfProducts` is the only operator whose argument list takes two entity specs and it refuses a filter on either for a reason of its own, so no oracle for that shape exists. This is silence rather than a wrong verdict"
     },
     {

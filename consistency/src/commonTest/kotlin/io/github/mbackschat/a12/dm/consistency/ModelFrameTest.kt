@@ -20,6 +20,9 @@ class ModelFrameTest {
             "language without code" to frame(""""modelConfig":{"conditionLanguage":{"code":null}}"""),
             "entry of the wrong kind" to frame(""""modelConfig":{"supportedCharacters":["a",{}]}"""),
             "needed by the check" to frame(""""modelConfig":{"supportedCharacters":[null]}""", modelInfo = false),
+            // Kernel 31.3.1 reads absent or `null` locales as none, which the language law judges, not the frame.
+            "no locales" to frame(""""modelConfig":{}""", locales = null),
+            "null locales" to frame(""""modelConfig":{}""", locales = "null"),
             "not an object" to "[]",
         )
         assertEquals(
@@ -34,13 +37,15 @@ class ModelFrameTest {
                     "CHECK `content.modelInfo` is absent",
                     "CHECK `content.modelConfig.supportedCharacters[0]` holds `null`",
                 ),
+                "no locales" to emptyList(),
+                "null locales" to emptyList(),
                 "not an object" to listOf("READ the model is not a JSON object"),
             ),
             rows.mapValues { (_, json) -> Json.parseToJsonElement(json).frameDefects().map { "${it.tier} ${it.sentence}" } },
         )
     }
 
-    private fun frame(content: String, modelInfo: Boolean = true): String =
-        """{"header":{"id":"policy","modelVersion":"29.4.0","locales":[{"code":"en_US"}]},
+    private fun frame(content: String, modelInfo: Boolean = true, locales: String? = """[{"code":"en_US"}]"""): String =
+        """{"header":{"id":"policy","modelVersion":"29.4.0"${locales?.let { ""","locales":$it""" } ?: ""}},
            "content":{${if (modelInfo) """"modelInfo":{"name":"policy"},""" else ""}$content}}"""
 }

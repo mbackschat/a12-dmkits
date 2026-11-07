@@ -40,8 +40,8 @@ public final class KernelPatternPolicy {
             case JAVA_SYNTAX -> throw Refusals.of(KernelCode.MVK_INVALID_PATTERN,
                     "invalid Java regular-expression syntax: " + regex);
             case KERNEL_ADMISSION -> throw Refusals.of(KernelCode.MVK_INVALID_PATTERN,
-                    "Java-valid pattern is rejected by the kernel 30.8.x pattern-admission gate "
-                            + "(the A12K-30 source-text blacklist; " + KernelCode.MVK_INVALID_PATTERN
+                    "Java-valid pattern is rejected by A12's pattern-admission gate "
+                            + "(its source-text blacklist; " + KernelCode.MVK_INVALID_PATTERN
                             + " in a condition, " + KernelCode.MVK_PATTERN_INVALID
                             + " on a declared field): " + regex);
             case null -> regex;

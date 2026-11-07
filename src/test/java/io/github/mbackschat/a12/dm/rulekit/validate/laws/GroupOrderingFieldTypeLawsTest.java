@@ -226,7 +226,7 @@ class GroupOrderingFieldTypeLawsTest {
             items.remove("indexFieldName");
             if (member != null) {
                 items.set(member, MAPPER.readTree(
-                        "sortFields".equals(member) ? "[{\"name\":\"Sku\"}]" : "\"Sku\""));
+                        "sortFields".equals(member) ? "[{\"name\":\"Sku\",\"order\":\"ASC\"}]" : "\"Sku\""));
             }
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {

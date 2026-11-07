@@ -22,8 +22,8 @@ import org.junit.jupiter.api.TestInstance
  * the classifier rule across a gate boundary rather than measured — a scope transfer. Two independent
  * a12-kernel-lean entries landed in exactly that corner; the comparison arm is
  * [KF248](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf248), and this file takes the extractor arm
- * (their `SPEC-2026-09-05-14` row, handed over so neither estate measures it twice) plus the **opt-in pre-1900
- * policy**, which turned out to be a model-ADMISSION question rather than a value one.
+ * (their `SPEC-2026-09-05-14` row, handed over so neither estate measures it twice) plus the **pre-1900 check**,
+ * which through kernel 31.1.1 was a model-ADMISSION question and since 31.2 is no question at all (KF677).
  *
  * **The extractor pair is KF211's sharpest single row, mirrored.** There, `YearFromDate` is admitted and
  * `HoursFromTime` refused on a date-declared TIME. Here both axes are flipped, so the two files together show
@@ -43,7 +43,7 @@ class ClockDeclaredDateGateDiffTest {
         /** The carrier: kind DATE, declared as a clock. It carries NO additional check — see [MODEL]. */
         const val DEPARTURE_CLOCK = "/Voyage/DepartureClock"
 
-        /** The guard's positive control — the same opt-in check on a year-bearing DATE declaration. */
+        /** The same check on a year-bearing DATE declaration, where it fired through kernel 31.1.1. */
         const val DEPARTURE_DATE = "/Voyage/DepartureDate"
 
         /** An ordinary clock, so the extractor rows have a same-family counterpart. */
@@ -52,17 +52,12 @@ class ClockDeclaredDateGateDiffTest {
         const val ADMITTED = "ADMITTED"
         const val WRONG_FORMAT_FOR_OP = "MVK_WRONG_DATE_FORMAT_FOR_OP"
 
-        /** The kernel's refusal for an additional check on a year-free date declaration. */
-        const val ADDITIONAL_CHECK_INVALID = "MVK_ADDITIONAL_CHECK_INVALID"
-
-        /** The kernel's value-policy cause, as KF211's own table spells it. */
-        const val DATE_INVALID = "datumFalsch"
-
         /**
-         * The legal model. `DepartureClock` deliberately carries no additional check: the kernel refuses that
-         * combination outright, which is what [theOptInGuardIsRefusedOnAYearFreeDateDeclaration] measures on its
-         * own model. Everything else here would be unreachable if this model were illegal.
+         * The legal model. `DepartureClock` deliberately carries no additional check, so the extractor rows do not
+         * depend on the check's verdict; [theRetiredCheckIsAdmittedOnAClockDeclaredDateAndFiresNowhere] measures
+         * that on its own model.
          */
+        @Suppress("DEPRECATION") // the retired check is what one arm measures
         val MODEL: String = DocumentModelDraft.named("clock-declared-date-gates").locale("en_US")
             .rootGroup("Voyage") { v ->
                 v.dateField("DepartureClock") { it.format(CLOCK_FORMAT) }
@@ -70,7 +65,8 @@ class ClockDeclaredDateGateDiffTest {
                     .timeField("BoardingClock") { it.format(CLOCK_FORMAT) }
             }.build().toJson()
 
-        /** The same clock-declared DATE field WITH the opt-in check — measured to be refused. */
+        /** The same clock-declared DATE field WITH the check — refused through 31.1.1, admitted since 31.2. */
+        @Suppress("DEPRECATION")
         val GUARDED_CLOCK_MODEL: String = DocumentModelDraft.named("guarded-clock-declared-date").locale("en_US")
             .rootGroup("Voyage") { v -> v.dateField("DepartureClock") { it.format(CLOCK_FORMAT).rejectBefore1900() } }
             .build().toJson()
@@ -96,7 +92,7 @@ class ClockDeclaredDateGateDiffTest {
         assertTrue(Regex("\"DepartureClock\"[\\s\\S]{0,600}?\"$CLOCK_FORMAT\"").containsMatchIn(MODEL),
             "declared as a clock")
         assertTrue(Regex("youngerThan1900Check\"?\\s*:\\s*true").containsMatchIn(GUARDED_CLOCK_MODEL),
-            "the guarded model must really set the opt-in check, or its refusal is about something else")
+            "the guarded model must really set the check, or its admission says nothing about it")
     }
 
     /**
@@ -138,36 +134,33 @@ class ClockDeclaredDateGateDiffTest {
     }
 
     /**
-     * **The opt-in pre-1900 guard is a model-ADMISSION question, and the kernel keys it on the declared
-     * format's components.** A DATE field declared `HH:mm:ss` carrying the check is refused outright —
-     * `MVK_ADDITIONAL_CHECK_INVALID`, "For date fields without a year, no 'additional check' may be specified"
-     * — while the identical check on a year-bearing DATE declaration is admitted and fires below 1900.
-     *
-     * This answers a question a12-kernel-lean raised about six sites of theirs, and it answers it in neither of
-     * the two directions their 2×2 offered: the guard is not admitted-and-inert on a clock declaration, it is
-     * not declarable there at all. A consumer policy that admits the opt-in check for the DATE *kind* is
-     * therefore over-permissive on exactly this declaration.
+     * **The pre-1900 check on a clock-declared DATE.** Through kernel 31.1.1 this was a model-ADMISSION question
+     * answered in neither direction a12-kernel-lean's 2×2 offered: the clock declaration was refused outright
+     * (`MVK_ADDITIONAL_CHECK_INVALID`) while a year-bearing declaration admitted the check and fired below 1900.
+     * Since kernel 31.2 ([KF677](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf677)) the clock
+     * declaration is admitted, the year-bearing one fires nothing, and the clock cell judges exactly as it does
+     * without the check — so the guard is admitted-and-inert on every declaration.
      */
     @Test
-    fun theOptInGuardIsRefusedOnAYearFreeDateDeclaration() {
-        val refusal = RuntimeLaws.consistencyMessages(GUARDED_CLOCK_MODEL)
-        assertEquals(1, refusal.size, "one refusal expected — got $refusal")
-        assertTrue(refusal.single().contains(ADDITIONAL_CHECK_INVALID),
-            "the year-free declaration must draw $ADDITIONAL_CHECK_INVALID — got ${refusal.single()}")
-
-        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(MODEL),
-            "the control model must be admitted, or the refusal above is not about the additional check")
+    fun theRetiredCheckIsAdmittedOnAClockDeclaredDateAndFiresNowhere() {
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(GUARDED_CLOCK_MODEL),
+            "the clock-declared DATE with the check is admitted")
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(MODEL), "the control model is admitted")
         assertEquals(
             mapOf(
-                "year-bearing declaration · below 1900" to listOf(DATE_INVALID),
+                "year-bearing declaration · below 1900" to emptyList<String>(),
                 "year-bearing declaration · at the boundary" to emptyList(),
             ),
             mapOf(
                 "year-bearing declaration · below 1900" to formalCodes(DEPARTURE_DATE to "1899-12-31"),
                 "year-bearing declaration · at the boundary" to formalCodes(DEPARTURE_DATE to "1900-01-01"),
             ),
-            "the same check on a year-bearing declaration is live, so it is genuinely switched on",
+            "the check on a year-bearing declaration fires on neither side of 1900",
         )
+        for (clock in listOf("10:00:00", "25:00:00")) {
+            val cell = DEPARTURE_CLOCK to clock
+            assertEquals(triCodes(MODEL, cell), triCodes(GUARDED_CLOCK_MODEL, cell), "the stored clock $clock")
+        }
     }
 
     /**

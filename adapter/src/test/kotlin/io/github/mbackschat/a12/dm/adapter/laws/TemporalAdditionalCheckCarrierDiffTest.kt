@@ -9,32 +9,30 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Tri-engine lock for the opt-in pre-1900 check on its two OTHER carriers — `DateFragmentType` and
- * `DateRangeType` both declare `youngerThan1900Check`, and [DateBefore1900DiffTest] covered only `DateType`
+ * Tri-engine lock for the pre-1900 check on its two OTHER carriers — `DateFragmentType` and `DateRangeType` both
+ * declare `youngerThan1900Check`, and [DateBefore1900DiffTest] covers `DateType`
  * ([KERNEL-FINDINGS](../../../../../../../../../../../docs/KERNEL-FINDINGS.md) KF253).
  *
- * <p>Every firing row is twinned with a **plain** sibling in the same model, identical but for the
- * `rejectBefore1900()` builder call, so a reported class belongs to the check and not to the value. The
- * range's year-free rows additionally vary the model's declared base year and nothing else, which is what
- * separates "the check reads a supplemented year" from "the check reads the declared text".
+ * <p>**Since kernel 31.2 the check fires on no carrier** (A12K-4073, KF677). Through 31.1.1 the checked rows below
+ * drew `datumFalsch` / `datumBereichDatumFalsch`, the year-free range read its base-year completion, and each was
+ * twinned with a **plain** sibling identical but for the `rejectBefore1900()` builder call. The twins stay: they
+ * now show the checked field behaves exactly like the plain one, which is the whole claim. The always-on Gregorian
+ * floor still fires on both, the liveness control that the formal path is running at all.
  */
 class TemporalAdditionalCheckCarrierDiffTest {
 
     @Test
-    fun aFragmentDeclarationCarriesTheCheckAndItsPlainTwinDoesNot() {
+    fun aFragmentDeclarationWithTheCheckBehavesAsItsPlainTwin() {
         val model = fragmentModel()
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
 
-        agree(model, "/Cal/FragCheck", "1899-12", "datumFalsch")
+        agree(model, "/Cal/FragCheck", "1899-12", null)
         agree(model, "/Cal/FragPlain", "1899-12", null)
         agree(model, "/Cal/FragCheck", "1900-01", null)
         agree(model, "/Cal/FragPlain", "1900-01", null)
     }
 
-    /**
-     * The always-on Gregorian floor is the separator: it fires on BOTH siblings, so a row that fired on both
-     * would not have shown the opt-in check doing anything.
-     */
+    /** The always-on Gregorian floor fires on BOTH siblings: the liveness control for the silent rows above. */
     @Test
     fun theAlwaysOnFloorStillFiresOnAFragmentWithoutTheCheck() {
         val model = fragmentModel()
@@ -43,33 +41,29 @@ class TemporalAdditionalCheckCarrierDiffTest {
     }
 
     @Test
-    fun aRangeDeclarationCarriesTheCheckOnItsStartDate() {
+    fun aRangeDeclarationWithTheCheckBehavesAsItsPlainTwin() {
         val model = rangeModel(baseYear = 2024)
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
 
-        agree(model, "/Cal/RangeCheck", "31.12.1899-31.12.1899", "datumBereichDatumFalsch")
+        agree(model, "/Cal/RangeCheck", "31.12.1899-31.12.1899", null)
         agree(model, "/Cal/RangePlain", "31.12.1899-31.12.1899", null)
         agree(model, "/Cal/RangeCheck", "01.01.1900-01.01.1900", null)
-        // The END may sit well past 1900 and the pre-1900 START still decides — the kernel checks the start and
-        // relies on end >= start for the other endpoint.
-        agree(model, "/Cal/RangeCheck", "31.12.1899-01.01.1901", "datumBereichDatumFalsch")
+        agree(model, "/Cal/RangeCheck", "31.12.1899-01.01.1901", null)
         agree(model, "/Cal/RangePlain", "31.12.1899-01.01.1901", null)
     }
 
     /**
-     * A year-free range format is admitted WITH the check — unlike DATE and DATEFRAGMENT, which the model check
-     * refuses (`MVK_ADDITIONAL_CHECK_INVALID`; `TemporalAdditionalCheckCarrierLawsTest` owns that grid) — and
-     * the check then reads the base-year completion. Two models differing in exactly the `baseYear` builder
-     * call, with the plain twin silent in all four cells.
+     * A year-free range with the check, completed from a base year below 1900: through 31.1.1 the check read that
+     * completion and fired; now neither twin does. Two models differing in exactly the `baseYear` builder call.
      */
     @Test
-    fun aYearFreeRangeIsMeasuredAgainstTheDeclaredBaseYear() {
+    fun aYearFreeRangeIgnoresTheCheckOnEitherSideOfTheBaseYear() {
         val below = yearFreeRangeModel(baseYear = 1899)
         val above = yearFreeRangeModel(baseYear = 1901)
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(below))
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(above))
 
-        agree(below, "/Cal/RangeCheck", "01.06-01.09", "datumBereichDatumFalsch")
+        agree(below, "/Cal/RangeCheck", "01.06-01.09", null)
         agree(below, "/Cal/RangePlain", "01.06-01.09", null)
         agree(above, "/Cal/RangeCheck", "01.06-01.09", null)
         agree(above, "/Cal/RangePlain", "01.06-01.09", null)
@@ -82,7 +76,7 @@ class TemporalAdditionalCheckCarrierDiffTest {
      * mechanism is unmeasured and deliberately not asserted; only the outcome is.
      */
     @Test
-    fun aPureMonthRangeReachesNeitherTheFloorNorTheOptInCheck() {
+    fun aPureMonthRangeReachesNeitherTheFloorNorTheCheck() {
         for (baseYear in listOf(1500, 1899, 1901)) {
             val model = monthRangeModel(baseYear)
             assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model))
@@ -92,6 +86,7 @@ class TemporalAdditionalCheckCarrierDiffTest {
         }
     }
 
+    @Suppress("DEPRECATION") // the retired check is what this measures
     private fun fragmentModel() = DocumentModelDraft.named("fragment-additional-check").locale("en_US")
         .rootGroup("Cal") { g ->
             g.dateFragmentField("FragPlain") { it.fragmentFormat("yyyy-MM") }
@@ -99,6 +94,7 @@ class TemporalAdditionalCheckCarrierDiffTest {
         }
         .build().toJson()
 
+    @Suppress("DEPRECATION")
     private fun rangeModel(baseYear: Int) = DocumentModelDraft.named("range-additional-check").locale("en_US")
         .baseYear(baseYear)
         .rootGroup("Cal") { g ->
@@ -107,6 +103,7 @@ class TemporalAdditionalCheckCarrierDiffTest {
         }
         .build().toJson()
 
+    @Suppress("DEPRECATION")
     private fun yearFreeRangeModel(baseYear: Int) =
         DocumentModelDraft.named("year-free-range-$baseYear").locale("en_US")
             .baseYear(baseYear)
@@ -116,6 +113,7 @@ class TemporalAdditionalCheckCarrierDiffTest {
             }
             .build().toJson()
 
+    @Suppress("DEPRECATION")
     private fun monthRangeModel(baseYear: Int) =
         DocumentModelDraft.named("month-range-$baseYear").locale("en_US")
             .baseYear(baseYear)

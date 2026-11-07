@@ -199,7 +199,7 @@ final class CollectionFields {
                                        JsonNode items, String path, Ctx ctx) {
         switch (ctx.profile().arrayOfScalar()) {
             case OMIT -> ctx.report().omit(path, "array '" + name + "' has scalar items — omitted. TO DO: add it "
-                    + "by hand as a multi-select group or a value-list field (proposal §9), or set the "
+                    + "by hand as a multi-select group or a value-list field, or set the "
                     + "array-of-scalar strategy in the MappingProfile (MULTI_SELECT / VALUE_LIST / REPEATABLE_SINGLE)");
             case MULTI_SELECT -> withCap(schema, name, path, ctx, max -> asMultiSelect(g, name, items, max, path, ctx));
             case VALUE_LIST -> withCap(schema, name, path, ctx, max -> asValueList(g, name, items, max, path, ctx));

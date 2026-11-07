@@ -642,7 +642,7 @@ internal class ComputationEngine(
             // IF82/IF92): scale-19 pre-round, then — when the natural scale FITS the target's maxFractionalDigits —
             // padded to at least its `minFractionalDigits`, UNCAPPED (10 → "10.00" in a min=2 field; a > 15-digit
             // form stores in full and the formal check below buckets it ERRORED). A value whose natural scale
-            // does NOT fit (authorable only via the `errorCodesToSuppress` scale-gate suppression) stores
+            // does NOT fit (authorable only by suppressing the scale gate in the computation's preamble) stores
             // length-bounded to 16 significant digits and is "fehlerhaft berechnet" — ERRORED unconditionally,
             // feeding the same poison set as any other errored computed cell (IF85/IF40).
             is Val.Num -> {

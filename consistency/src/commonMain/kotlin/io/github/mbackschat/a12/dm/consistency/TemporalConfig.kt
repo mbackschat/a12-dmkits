@@ -4,31 +4,28 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * A date field's declared CONFIG against its declared FORMAT — A12's two date-config gates.
+ * A date field's declared CONFIG against its declared FORMAT — A12's date-config gate.
  *
- * Both are consistency verdicts rather than reader refusals: A12 reads and builds the model and then reports
- * the conflict, so this family reproduces codes A12 itself gives ([KERNEL-FINDINGS KF314]).
+ * It is a consistency verdict rather than a reader refusal: A12 reads and builds the model and then reports the
+ * conflict, so this family reproduces a code A12 itself gives ([KERNEL-FINDINGS KF314]).
  *
  * | the declaration says | and the format is | A12 says |
  * |---|---|---|
- * | `youngerThan1900Check` is true | year-free | `MVK_ADDITIONAL_CHECK_INVALID` |
  * | `datePrecision` is a PARTIAL one | not a complete pure date | `MVK_OPTIONAL_DATE_TYPE_INVALID` |
  *
- * **The carrier denominator is DERIVED and it is three, not "the date family".** `youngerThan1900Check` is
- * declared by exactly `DateType`, `DateFragmentType` and `DateRangeType` (source-read of kernel `30.8.1`'s
- * `fieldtypes/` package, 2026-09-13), and the third is measured EXEMPT — every admitted range pair takes the
- * check, the year-free ones included. So a family that read the member wherever it found it would refuse a
- * model A12 admits, which is the one direction this checker may not take. `datePrecision` is declared by
- * `DateType` alone.
+ * `datePrecision` is declared by `DateType` alone. The second gate this family carried through kernel 31.1.1,
+ * `youngerThan1900Check` on a year-free format, went with the attribute's evaluation in 31.2 ([KERNEL-FINDINGS
+ * KF677]): A12 now admits the check on every format and every carrier, so reading the member at all would refuse
+ * models A12 takes.
  *
- * **Both gates fire only over the format vocabulary A12 admits, and that restriction is the safety.** The
+ * **The gate fires only over the format vocabulary A12 admits, and that restriction is the safety.** The
  * admitted set is derived from the kernel and published in [TEMPORAL-FORMAT-VOCABULARY], but it is explicitly
  * NOT claimed closed — a format outside the probed universe is undiscovered rather than refused, which
  * [KERNEL-FINDINGS KF313] demonstrated by finding a thirteenth. So an unrecognised format leaves this family
  * silent: reporting one would rest the refusal on the limit of a probe.
  *
- * **An absent `format` is the declared DEFAULT rather than nothing**, measured on both gates: the builder
- * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are ADMITTED — which is why
+ * **An absent `format` is the declared DEFAULT rather than nothing**, as measured: the builder fills
+ * `yyyy-MM-dd`, which is complete, so the row is ADMITTED — which is why
  * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
  *
  * The format itself is gated first, and only over the derived Refused table ([refusedFormatFinding]).
@@ -54,7 +51,7 @@ private fun TrackedFactBase.refusedFormatFinding(field: TrackedDeclaration): Fin
         FindingSeverity.ERROR,
         RK_DATE_FORMAT_INVALID,
         "the format `$format` is one A12 refuses on every date, time, datetime and fragment field, in a sentence " +
-            "with no class — declare one of the formats it admits, listed in TEMPORAL-FORMAT-VOCABULARY",
+            "with no class — declare one of the formats it admits, such as `yyyy-MM-dd` or `HH:mm:ss`",
         field.path,
     )
 }
@@ -64,14 +61,7 @@ private fun configFindings(field: TrackedDeclaration): List<Finding> {
     val type = declared.namedFieldType() ?: return emptyList()
     val body = type.bodyIn(declared) ?: return emptyList()
     return when (type) {
-        FieldType.DATE -> body.declaredFormat("format").let { format ->
-            listOfNotNull(pre1900Finding(field, body, format), partialPrecisionFinding(field, body, format))
-        }
-        // The fragment carrier spells its format under its own member and takes only the first gate,
-        // having no precision of its own.
-        FieldType.DATE_FRAGMENT -> listOfNotNull(
-            pre1900Finding(field, body, body.declaredFormat("formatOfFragment")),
-        )
+        FieldType.DATE -> listOfNotNull(partialPrecisionFinding(field, body, body.declaredFormat("format")))
         else -> emptyList()
     }
 }
@@ -83,7 +73,7 @@ private fun configFindings(field: TrackedDeclaration): List<Finding> {
  * than a string, or it holds a format the derived vocabulary does not carry.
  *
  * **The absent case is silence rather than ignorance.** A body with no format gets the builder's
- * `yyyy-MM-dd`, which is year-bearing AND a complete pure date, so A12 admits it on both gates (measured:
+ * `yyyy-MM-dd`, which is a complete pure date, so A12 admits it (measured:
  * [KERNEL-FINDINGS KF314]). Reading the absent member AS that default was written first and produced the
  * identical verdict on every input — a verdict-equivalent branch, removed rather than kept. A gate that
  * refused the default would have to read it, and that is the trigger for putting it back.
@@ -91,27 +81,6 @@ private fun configFindings(field: TrackedDeclaration): List<Finding> {
 private fun JsonObject.declaredFormat(member: String): String? {
     val text = (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
     return text.takeIf { it in ADMITTED_FORMATS }
-}
-
-private fun pre1900Finding(field: TrackedDeclaration, body: JsonObject, format: String?): Finding? {
-    // The gate is on the VALUE and not on the member's presence — `false` is admitted on a year-free format,
-    // so a checker keyed on presence would report a declaration A12 takes. The value is bound as A12 binds it,
-    // so `1` and `" TRUE"` set it too (`adapter.laws.CheckerDeclarationAdmissionAgreementTest`).
-    if (body.flag("youngerThan1900Check") != true) {
-        return null
-    }
-    if (format == null || format !in YEAR_FREE_FORMATS) {
-        return null
-    }
-    return Finding(
-        FindingCategory.A12_CONSTRAINT,
-        FindingSeverity.ERROR,
-        "MVK_ADDITIONAL_CHECK_INVALID",
-        "the pre-1900 check is declared on the format `$format`, which carries no YEAR — A12 gates the check " +
-            "on the format's year component, so either declare a year-bearing format or drop the check; it " +
-            "is not admitted-and-inert",
-        field.path,
-    )
 }
 
 private fun partialPrecisionFinding(field: TrackedDeclaration, body: JsonObject, format: String?): Finding? {
@@ -134,31 +103,21 @@ private fun partialPrecisionFinding(field: TrackedDeclaration, body: JsonObject,
     )
 }
 
-/**
- * The thirteen formats the kernel admits, split by whether they carry a year.
- *
- * Both halves are the measured outcome of one grid over the derived vocabulary
- * (`rulekit.validate.laws.TemporalDeclarationConfigAdmissionLawsTest`, whose own doc says a client-side
- * refusal may key on nothing wider), not a component predicate read off the strings — deriving them from a
- * predicate makes the checker agree with its own reading instead of with A12.
- */
+/** The thirteen formats the kernel admits, the denominator this family judges over. */
 // VOCABULARY-GRID-START — `rulekit.validate.laws.TemporalFormatVocabularyGuardTest` reads only this
 // delimited region and requires every admitted format to appear in it, so a member the kernel gains cannot
-// silently go missing from the partition. A format named elsewhere in this file does not count as carried.
-private val YEAR_BEARING_FORMATS = setOf(
-    "dd.MM.yyyy", "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd",
+// silently go missing from the set. A format named elsewhere in this file does not count as carried.
+internal val ADMITTED_FORMATS = setOf(
+    "HH:mm:ss", "MM", "MM-dd", "MMdd", "dd.MM.", "dd.MM.yyyy", "ddMM",
+    "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd",
 )
-
-private val YEAR_FREE_FORMATS = setOf("HH:mm:ss", "MM", "MM-dd", "MMdd", "ddMM", "dd.MM.")
 // VOCABULARY-GRID-END
-
-internal val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
 
 internal const val RK_DATE_FORMAT_INVALID = "RK_DATE_FORMAT_INVALID"
 
 /**
- * The formats a PARTIAL precision admits — a strict subset of the year-bearing set, and not "carries all
- * three components": `yyyy-MM-dd'T'HH:mm:ss` carries them and is refused.
+ * The formats a PARTIAL precision admits, measured by `rulekit.validate.laws.TemporalDeclarationConfigAdmissionLawsTest`
+ * — not "carries all three components": `yyyy-MM-dd'T'HH:mm:ss` carries them and is refused.
  */
 private val COMPLETE_DATE_FORMATS = setOf("dd.MM.yyyy", "yyyy-MM-dd", "yyyyMMdd")
 

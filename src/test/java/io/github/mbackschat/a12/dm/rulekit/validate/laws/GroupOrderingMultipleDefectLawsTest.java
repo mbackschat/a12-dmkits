@@ -150,7 +150,7 @@ class GroupOrderingMultipleDefectLawsTest {
             if (sortFields.length > 0) {
                 ArrayNode sorts = items.putArray("sortFields");
                 for (String name : sortFields) {
-                    sorts.addObject().put("name", name);
+                    sorts.addObject().put("name", name).put("order", "ASC");
                 }
             }
             return KernelLaws.verdictOf(root.toString());
@@ -189,7 +189,7 @@ class GroupOrderingMultipleDefectLawsTest {
             batch.put("type", "Field").put("id", "fbatch").put("name", "Batch");
             batch.putObject("Field").set("fieldType", MAPPER.readTree(OPAQUE));
             items.remove("indexFieldName");
-            items.putArray("sortFields").addObject().put("name", "Batch");
+            items.putArray("sortFields").addObject().put("name", "Batch").put("order", "ASC");
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture and the type fragment must parse", unreadable);
@@ -211,8 +211,8 @@ class GroupOrderingMultipleDefectLawsTest {
             batch.putObject("Field").set("fieldType", MAPPER.readTree(OPAQUE));
             items.remove("indexFieldName");
             ArrayNode sorts = items.putArray("sortFields");
-            sorts.addObject().put("name", "Sku");
-            sorts.addObject().put("name", "Batch");
+            sorts.addObject().put("name", "Sku").put("order", "ASC");
+            sorts.addObject().put("name", "Batch").put("order", "ASC");
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture and the type fragment must parse", unreadable);

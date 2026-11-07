@@ -109,7 +109,7 @@ class DeclarationReferenceTest {
      * An up-step inside a declared target is taken LEXICALLY, unlike one in a condition reference, and where
      * it lands decides the class (`rulekit.validate.laws.ErrorFieldRelativePathLawsTest`). A rule's target on
      * another group is judged like a field the condition does not name, and on the rule's OWN group A12
-     * cannot build the model; a computation's target on any group cannot be built either.
+     * cannot build the model; a computation's target on any group is "not found" to A12's converter.
      */
     @Test
     fun anUpStepIsTakenLexicallyAndWhereItLandsDecidesTheClass() {
@@ -126,8 +126,8 @@ class DeclarationReferenceTest {
                 listOf("MVK_ERROR_FIELD_NOT_REFERENCED at /Order/Check"),
                 listOf("MVK_ERROR_FIELD_NOT_REFERENCED at /Order/Check"),
                 emptyList(),
-                listOf("$CK_MODEL_NOT_BUILDABLE at /Order/Calc"),
-                listOf("$CK_MODEL_NOT_BUILDABLE at /Order/Calc"),
+                listOf("$RK_COMPUTED_FIELD_NOT_FOUND at /Order/Calc"),
+                listOf("$RK_COMPUTED_FIELD_NOT_FOUND at /Order/Calc"),
             ),
             listOf(codes("../Lines/../Code"), codes("../Code/.."), codes("../Lines"), codes("../Lines/Qty/.."),
                 calc("../Code"), calc(".."), calc("../Lines")),

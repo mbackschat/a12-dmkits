@@ -109,7 +109,7 @@ class KeyedRangeReadStateDiffTest {
         val direct = RuntimeLaws.messages(directModel, doc(rows)).filter { it.code() == CODE }
 
         assertEquals(1, escape.size, "the escaping rule fires once, not per row: $escape")
-        assertTrue(escape.single().errorField().contains("[1, -5, 1]"),
+        assertTrue(escape.single().errorField().contains("/Runs[-5]/"),
             "the escaping rule addresses with the kernel's clean-no-match sentinel row: "
                 + escape.single().errorField())
         assertEquals(listOf("/Shop[1]/Runs[1]/RunNote"), guarded.map { it.field() },

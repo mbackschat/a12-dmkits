@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
 
@@ -46,7 +47,7 @@ internal object PremiumProbes {
         suppress: List<String> = emptyList()): String = ModelWriter.addComputation(base, DraftComputation.builder()
             .groupPath(group).name("ProbeComp").computedFieldRelPath("../$target")
             .alternatives(alternatives.map { DraftComputation.Alternative(it.precondition, it.operation) })
-            .errorCodesToSuppress(suppress).build(), listOf(Dsl.en("Premium recomputed.")))
+            .suppressWarnings(ConditionLanguage.EN, suppress).build(), listOf(Dsl.en("Premium recomputed.")))
 
     fun rule(base: String, errorField: String, condition: String): String =
         RuntimeLaws.withRule(base, ROOT, "ProbeRule", "../$errorField", "PROBE_RULE", condition)

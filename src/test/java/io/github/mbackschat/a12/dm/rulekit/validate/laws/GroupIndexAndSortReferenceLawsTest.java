@@ -79,14 +79,14 @@ class GroupIndexAndSortReferenceLawsTest {
         // `..` more is a climb the reader cannot resolve.
         expected.put("a .. that climbs to the root", KernelLaws.ADMITTED);
         expected.put("a .. that climbs past the root", KernelLaws.UNREADABLE);
-        // A GROUP landing is the one that still leaves no model: the reader binds the group where a field is
-        // expected, and the cast fails ("Group cannot be cast to Field"). A rule is not in the reader's map,
-        // which holds fields and groups, so landing on one is only a name.
-        expected.put("a .. landing on the parent group", KernelLaws.NOT_BUILDABLE);
+        // A GROUP landing names nothing: kernel 31.3.1 resolves the member as a FIELD reference
+        // (`EntityReferenceResolverVisitor`, source-read), so it draws the member's code where 31.1.1 cast the
+        // group to a field and left no model (KERNEL-FINDINGS KF680). A rule is likewise only a name.
+        expected.put("a .. landing on the parent group", "MVK_INVALID_INDEX_FIELD");
         expected.put("a RULE of the group", "MVK_INVALID_INDEX_FIELD");
         // `Items/Sku` read from INSIDE `/Order/Items` names nothing, and its last segment is this group's `Sku`.
         expected.put("a descending path with no ..", KernelLaws.ADMITTED);
-        expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
+        expected.put("a child GROUP of the named group", "MVK_INVALID_INDEX_FIELD");
         // The same spelling read from `/Order` keeps `Sku`, which `/Order` does not carry.
         expected.put("a descending path that DOES resolve", "MVK_INVALID_INDEX_FIELD");
         // An absolute spelling is refused by the reader: `ElementPathUtils.splitRelPath` raises "illegal
@@ -99,44 +99,116 @@ class GroupIndexAndSortReferenceLawsTest {
     @Test
     void aSortFieldMustNameAFieldOfItsOwnGroup() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("Sku — the control", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\"}]"));
+        actual.put("Sku — the control", verdict(REPEATABLE, "sortFields", sorted("Sku")));
         actual.put("empty list", verdict(REPEATABLE, "sortFields", "[]"));
-        actual.put("a field that does not exist", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Missing\"}]"));
-        actual.put("an empty name", verdict(REPEATABLE, "sortFields", "[{\"name\":\"\"}]"));
-        actual.put("an entry with no name", verdict(REPEATABLE, "sortFields", "[{}]"));
-        actual.put("an absolute path", verdict(REPEATABLE, "sortFields", "[{\"name\":\"/Order/Items/Sku\"}]"));
-        actual.put("a numeric name", verdict(REPEATABLE, "sortFields", "[{\"name\":5}]"));
+        actual.put("a field that does not exist", verdict(REPEATABLE, "sortFields", sorted("Missing")));
+        actual.put("an empty name", verdict(REPEATABLE, "sortFields", sorted("")));
+        actual.put("an entry with no name", verdict(REPEATABLE, "sortFields", "[{\"order\":\"ASC\"}]"));
+        actual.put("an absolute path", verdict(REPEATABLE, "sortFields", sorted("/Order/Items/Sku")));
+        actual.put("a numeric name", verdict(REPEATABLE, "sortFields", "[{\"name\":5,\"order\":\"ASC\"}]"));
         actual.put("a field OUTSIDE the group that resolves",
-                verdict(REPEATABLE, "sortFields", "[{\"name\":\"../CustomerName\"}]"));
-        actual.put("a child GROUP of the named group", verdict("Order", "sortFields", "[{\"name\":\"Items\"}]"));
-        actual.put("a blank name", verdict(REPEATABLE, "sortFields", "[{\"name\":\"   \"}]"));
-        actual.put("a RULE of the group", verdictWithRule("sortFields", "[{\"name\":\"ItemCheck\"}]"));
-        actual.put("a .. that climbs to the root", verdict(REPEATABLE, "sortFields", "[{\"name\":\"../../Sku\"}]"));
+                verdict(REPEATABLE, "sortFields", sorted("../CustomerName")));
+        actual.put("a child GROUP of the named group", verdict("Order", "sortFields", sorted("Items")));
+        actual.put("a blank name", verdict(REPEATABLE, "sortFields", sorted("   ")));
+        actual.put("a RULE of the group", verdictWithRule("sortFields", sorted("ItemCheck")));
+        actual.put("a .. that climbs to the root", verdict(REPEATABLE, "sortFields", sorted("../../Sku")));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Sku — the control", KernelLaws.ADMITTED);
         expected.put("empty list", KernelLaws.ADMITTED);
         // The same law as the index (KERNEL-FINDINGS KF653), asked on this member rather than transferred.
         expected.put("a field that does not exist", "MVK_INVALID_SORT_FIELD");
-        // An empty or missing `name` binds no reference, and the converter dereferences it ("field is null").
-        // On 30.8.1 the missing one was the reader's refusal.
-        expected.put("an empty name", KernelLaws.NOT_BUILDABLE);
-        expected.put("an entry with no name", KernelLaws.NOT_BUILDABLE);
+        // An empty name is a name that resolves to nothing; a missing one is the reader's refusal, since A12's
+        // sort entry requires both members (aSortEntryIsReadOnlyWithBothItsMembers, KERNEL-FINDINGS KF680).
+        expected.put("an empty name", "MVK_INVALID_SORT_FIELD");
+        expected.put("an entry with no name", KernelLaws.UNREADABLE);
         // The rows the sibling member answers with a CODE — asked here rather than transferred, because
         // `MVK_INVALID_INDEX_FIELD` is named for the index and nothing says a sort field shares its gate.
         expected.put("a field OUTSIDE the group that resolves", "MVK_INVALID_SORT_FIELD");
-        expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
+        // The group landing as on the index; the carrier `/Order` is not repeatable, which adds its own class.
+        expected.put("a child GROUP of the named group", "MVK_INVALID_SORT_FIELD,MVK_INVALID_SORTINFO");
         // Asked on THIS member rather than carried from the index, which is the transfer that needs no new
         // branch and so prompts no question.
         expected.put("an absolute path", KernelLaws.UNREADABLE);
         // A non-string `name` is COERCED to the String member, as a rule's `errorCode` is — so it is a name
         // that resolves to nothing, not a shape the reader refuses.
         expected.put("a numeric name", "MVK_INVALID_SORT_FIELD");
-        // A blank name is an unfilled entry of A12's metamodel, which wants the field and the order together.
+        // A blank name also draws A12's incomplete-entry class, with the order present, so that class is about
+        // the unfilled name.
         expected.put("a blank name", "MVK_INVALID_SORT_FIELD,MVK_SORT_INFO_MISSING");
         expected.put("a RULE of the group", "MVK_INVALID_SORT_FIELD");
         expected.put("a .. that climbs to the root", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "what A12 does with each shape of a group's sortFields");
+    }
+
+    /**
+     * What A12's reader requires of one sort entry, and how it binds the order. Each row moves one member against
+     * the control, which carries both; which constant an admitted spelling binds to is
+     * {@code adapter.SortOrderBindingTest}'s, since a verdict cannot tell {@code ASC} from {@code DESC}.
+     */
+    @Test
+    void aSortEntryIsReadOnlyWithBothItsMembers() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("name and ASC — the control", verdict(REPEATABLE, "sortFields", sorted("Sku")));
+        actual.put("name and DESC", orderedBy("\"DESC\""));
+        actual.put("no order", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\"}]"));
+        actual.put("a null order", orderedBy("null"));
+        actual.put("a null name", verdict(REPEATABLE, "sortFields", "[{\"name\":null,\"order\":\"ASC\"}]"));
+        actual.put("neither member", verdict(REPEATABLE, "sortFields", "[{}]"));
+        actual.put("a bare name for an entry", verdict(REPEATABLE, "sortFields", "[\"Sku\"]"));
+        actual.put("an object name", verdict(REPEATABLE, "sortFields", "[{\"name\":{},\"order\":\"ASC\"}]"));
+        actual.put("a list name", verdict(REPEATABLE, "sortFields", "[{\"name\":[\"Sku\"],\"order\":\"ASC\"}]"));
+        actual.put("a lowercase order", orderedBy("\"asc\""));
+        actual.put("an unknown order", orderedBy("\"UP\""));
+        actual.put("an empty order", orderedBy("\"\""));
+        actual.put("a space-padded order", orderedBy("\" ASC\""));
+        actual.put("a tab-padded order", orderedBy("\"\\tDESC\""));
+        actual.put("an em-space-padded order", orderedBy("\"ASC\u2003\""));
+        actual.put("an ordinal", orderedBy("1"));
+        actual.put("a negative zero ordinal", orderedBy("-0"));
+        actual.put("an ordinal past the constants", orderedBy("2"));
+        actual.put("a negative ordinal", orderedBy("-1"));
+        actual.put("a fractional ordinal", orderedBy("1.0"));
+        actual.put("an ordinal string", orderedBy("\"1\""));
+        actual.put("a space-padded ordinal string", orderedBy("\" 1\""));
+        actual.put("a zero-padded ordinal string", orderedBy("\"01\""));
+        actual.put("a boolean order", orderedBy("true"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("name and ASC — the control", KernelLaws.ADMITTED);
+        expected.put("name and DESC", KernelLaws.ADMITTED);
+        // Kernel 31.3.1 builds the entry through a builder whose two members are non-null, so a missing or null
+        // member stops the read ("order is marked non-null but is null"); 31.1.1 read both (KERNEL-FINDINGS KF680).
+        expected.put("no order", KernelLaws.UNREADABLE);
+        expected.put("a null order", KernelLaws.UNREADABLE);
+        expected.put("a null name", KernelLaws.UNREADABLE);
+        expected.put("neither member", KernelLaws.UNREADABLE);
+        expected.put("a bare name for an entry", KernelLaws.UNREADABLE);
+        expected.put("an object name", KernelLaws.UNREADABLE);
+        expected.put("a list name", KernelLaws.UNREADABLE);
+        // A text binds by its constant name, case-sensitively, after Java's `trim`: a tab goes, an em space stays.
+        expected.put("a lowercase order", KernelLaws.UNREADABLE);
+        expected.put("an unknown order", KernelLaws.UNREADABLE);
+        expected.put("an empty order", KernelLaws.UNREADABLE);
+        expected.put("a space-padded order", KernelLaws.ADMITTED);
+        expected.put("a tab-padded order", KernelLaws.ADMITTED);
+        expected.put("an em-space-padded order", KernelLaws.UNREADABLE);
+        // An integer binds as an ordinal of the two constants, and so does its canonical text, padding trimmed.
+        expected.put("an ordinal", KernelLaws.ADMITTED);
+        expected.put("a negative zero ordinal", KernelLaws.ADMITTED);
+        expected.put("an ordinal past the constants", KernelLaws.UNREADABLE);
+        expected.put("a negative ordinal", KernelLaws.UNREADABLE);
+        expected.put("a fractional ordinal", KernelLaws.UNREADABLE);
+        expected.put("an ordinal string", KernelLaws.ADMITTED);
+        expected.put("a space-padded ordinal string", KernelLaws.ADMITTED);
+        expected.put("a zero-padded ordinal string", KernelLaws.UNREADABLE);
+        expected.put("a boolean order", KernelLaws.UNREADABLE);
+        assertEquals(expected, actual, "which sort entries A12 reads");
+    }
+
+    /** The one-entry list naming {@code Sku}, with [rawOrder] as the order's JSON value. */
+    private static String orderedBy(String rawOrder) {
+        return verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\",\"order\":" + rawOrder + "}]");
     }
 
     // The index/sort field's own TYPE is a separate family, measured in GroupOrderingFieldTypeLawsTest:
@@ -165,7 +237,7 @@ class GroupIndexAndSortReferenceLawsTest {
         actual.put("index ../Sku, with /Order/Sku",
                 verdict(REPEATABLE, "indexFieldName", "\"../Sku\"", true));
         actual.put("sort ../Sku, with /Order/Sku",
-                verdict(REPEATABLE, "sortFields", "[{\"name\":\"../Sku\"}]", true));
+                verdict(REPEATABLE, "sortFields", sorted("../Sku"), true));
         actual.put("index ../CustomerName, with /Order/Sku",
                 verdict(REPEATABLE, "indexFieldName", "\"../CustomerName\"", true));
 
@@ -199,9 +271,9 @@ class GroupIndexAndSortReferenceLawsTest {
     void whatASortListOnANonRepeatableGroupDraws() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("a sort list on a REPEATABLE group — the control",
-                verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\"}]"));
+                verdict(REPEATABLE, "sortFields", sorted("Sku")));
         actual.put("a sort list on a NON-repeatable group",
-                verdict(NON_REPEATABLE, "sortFields", "[{\"name\":\"Street\"}]"));
+                verdict(NON_REPEATABLE, "sortFields", sorted("Street")));
         actual.put("an EMPTY sort list on a non-repeatable group",
                 verdict(NON_REPEATABLE, "sortFields", "[]"));
 
@@ -351,6 +423,11 @@ class GroupIndexAndSortReferenceLawsTest {
         expected.put("an index member holding TWO names", KernelLaws.UNREADABLE);
         expected.put("a plural index member repeating ONE name", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "a group's repetition count and the cardinality of its index");
+    }
+
+    /** A one-entry sort list naming [name] in ascending order — both members A12's reader requires. */
+    private static String sorted(String name) {
+        return "[{\"name\":\"" + name + "\",\"order\":\"ASC\"}]";
     }
 
     /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */

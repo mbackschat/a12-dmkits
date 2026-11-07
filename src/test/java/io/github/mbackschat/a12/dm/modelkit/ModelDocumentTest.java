@@ -61,7 +61,7 @@ class ModelDocumentTest {
     void enumeratesTheModelHeaderAndConfig() {
         ModelDocument doc = ModelDocument.read(Fixtures.json("models/subscription.dm.json"));
         assertEquals("subscription", doc.id());
-        assertEquals("29.4.0", doc.modelVersion());
+        assertEquals("29.8.0", doc.modelVersion());
         assertEquals(List.of("en_US", "de_DE"), doc.locales());
 
         ModelDocument.DocConfig cfg = doc.config();

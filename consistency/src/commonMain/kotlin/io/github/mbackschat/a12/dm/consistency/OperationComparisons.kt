@@ -8,8 +8,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.PATTERN_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.TOLERANCE_COMPARISONS
 import io.github.mbackschat.a12.dm.consistency.syntax.spanning
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
 
 /** Comparison arms consume child results once; KF382–KF387 settle their order and direct-read boundaries. */
 internal fun OperationAnalysis.comparisonFinding(shape: ComparisonShape): Finding? {
@@ -146,9 +144,8 @@ private fun OperationAnalysis.comparisonFinding(
     if (partnerValue.constant is WrittenConstant.BooleanConstant) return problem("MVK_INCONSISTENT_TYPES_COMPARED",
         "`${comparison.left}` / `${comparison.right}` compare a number with a boolean constant; use a number on both sides")
     val partner = partnerValue.numeric ?: return null
-    val suppressed = (element.body?.get("errorCodesToSuppress") as? JsonArray).orEmpty()
-        .any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE } || text.javaTrimmedStart().startsWith("@") &&
-        text.substringBefore(')').contains(SUPPRESSIBLE)
+    val suppressed = SUPPRESSIBLE in suppressedWarnings(element.body, facts.conditionLanguage) ||
+        text.javaTrimmedStart().startsWith("@") && text.substringBefore(')').contains(SUPPRESSIBLE)
     if (suppressed) return null
     val x = number.scale
     val y = partner.scale

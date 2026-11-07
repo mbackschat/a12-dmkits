@@ -59,18 +59,22 @@ class ModelDiffFieldCompletenessTest {
         assertTrue(typeRef.reasons().contains("TYPE_CHANGED"));
     }
 
+    /**
+     * Kernel 31.2 stopped evaluating {@code youngerThan1900Check} (KF677), so toggling it changes what the model
+     * declares and nothing it validates: a diff reports it, as metadata rather than as a constraint direction.
+     */
     @Test
-    void detectsDateBefore1900ConstraintDirection() {
-        String unrestricted = date(false);
-        String restricted = date(true);
+    void theRetiredDateBefore1900CheckIsReportedAsMetadataInEitherDirection() {
+        String unchecked = date(false);
+        String checked = date(true);
 
-        ElementChange tightened = change(ModelDiff.between(unrestricted, restricted), "/Invoice/DueOn");
-        assertEquals("false", delta(tightened, "rejectBefore1900").before());
-        assertEquals("true", delta(tightened, "rejectBefore1900").after());
-        assertTrue(tightened.reasons().contains("CONSTRAINT_TIGHTENED"));
+        ElementChange added = change(ModelDiff.between(unchecked, checked), "/Invoice/DueOn");
+        assertEquals("false", delta(added, "rejectBefore1900").before());
+        assertEquals("true", delta(added, "rejectBefore1900").after());
+        assertEquals(List.of("METADATA_CHANGED"), added.reasons());
 
-        ElementChange loosened = change(ModelDiff.between(restricted, unrestricted), "/Invoice/DueOn");
-        assertTrue(loosened.reasons().contains("CONSTRAINT_LOOSENED"));
+        ElementChange removed = change(ModelDiff.between(checked, unchecked), "/Invoice/DueOn");
+        assertEquals(List.of("METADATA_CHANGED"), removed.reasons());
     }
 
     @Test
@@ -182,6 +186,7 @@ class ModelDiffFieldCompletenessTest {
                 .build().toJson();
     }
 
+    @SuppressWarnings("removal") // the retired check is what the diff is asked about
     private static String date(boolean rejectBefore1900) {
         return DocumentModelDraft.named("invoice").locale("en_US")
                 .rootGroup("Invoice", invoice -> invoice.dateField("DueOn", date -> {

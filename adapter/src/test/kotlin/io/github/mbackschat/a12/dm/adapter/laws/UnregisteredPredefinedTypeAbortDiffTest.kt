@@ -57,7 +57,7 @@ class UnregisteredPredefinedTypeAbortDiffTest {
             "inside a filter over no rows" to observe("/Order", "../CustomerName", customer.filled().and(inFilter), 0),
             "an iterating rule over two rows" to observe("/Order/Items", "../Sku", Dsl.invalidType(sku, TYPE), 2),
         )
-        val atCustomer = "VALUE_ERROR/PartiallyKnownDocumentMultiPointerImpl[/Order/CustomerName, [1, 1]]"
+        val atCustomer = "VALUE_ERROR//Order[1]/CustomerName[1]"
         assertEquals(linkedMapOf(
             "an ordinary firing, the references control" to "$atCustomer refs=[/Order[1]/CustomerName]",
             "a lone lookup" to "$atCustomer refs=[]",
@@ -67,7 +67,7 @@ class UnregisteredPredefinedTypeAbortDiffTest {
             "inside a filter over no rows" to "<none>",
             // One message at the first row, where a firing leaf would give one per row.
             "an iterating rule over two rows" to
-                "VALUE_ERROR/PartiallyKnownDocumentMultiPointerImpl[/Order/Items/Sku, [1, 1, 1]] refs=[]",
+                "VALUE_ERROR//Order[1]/Items[1]/Sku[1] refs=[]",
         ), observed)
     }
 

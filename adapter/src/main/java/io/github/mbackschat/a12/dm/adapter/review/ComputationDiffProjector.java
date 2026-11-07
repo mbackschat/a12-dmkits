@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode;
@@ -20,24 +21,37 @@ final class ComputationDiffProjector {
     static Map<String, Map<String, String>> project(ModelDiffState state) {
         Map<String, Map<String, String>> out = new LinkedHashMap<>();
         state.adapter().readAllComputations().forEach((name, read) -> out.put(name,
-                aspects(read, state.adapter().computationErrorCodesToSuppress(name),
-                        state.adapter().computationRoundingMode(name))));
+                aspects(read, OwnerMembers.of(state.adapter(), name))));
         return out;
+    }
+
+    /**
+     * The element's own members, which A12 keeps apart from the formula, so an Opaque formula still carries them
+     * into the diff: the stored preamble and error code ({@code null} for none) and the rounding mode.
+     */
+    record OwnerMembers(String additionalParserInformation, RoundingMode roundingMode, String errorCode) {
+        static OwnerMembers of(KernelAdapter adapter, String computation) {
+            return new OwnerMembers(adapter.computationAdditionalParserInformation(computation).orElse(null),
+                    adapter.computationRoundingMode(computation), adapter.computationErrorCode(computation).orElse(null));
+        }
     }
 
     static Map<String, String> aspects(ReadComputation read) {
         return switch (read) {
-            case ReadComputation.Converted converted -> convertedAspects(converted.computation());
-            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), List.of(), RoundingMode.EXACT);
+            case ReadComputation.Converted converted -> {
+                DraftComputation draft = converted.computation().draft();
+                yield convertedAspects(converted.computation(),
+                        new OwnerMembers(draft.additionalParserInformation(), draft.roundingMode(), draft.errorCode()));
+            }
+            case ReadComputation.Opaque opaque ->
+                    opaqueAspects(opaque.canonicalText(), new OwnerMembers(null, RoundingMode.EXACT, null));
         };
     }
 
-    /** {@code suppressions} and {@code roundingMode} are the element's own members, which A12 keeps apart from the
-     *  formula, so an Opaque formula still carries them into the diff. */
-    static Map<String, String> aspects(ReadComputation read, List<String> suppressions, RoundingMode roundingMode) {
+    static Map<String, String> aspects(ReadComputation read, OwnerMembers owner) {
         return switch (read) {
-            case ReadComputation.Converted converted -> convertedAspects(converted.computation());
-            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), suppressions, roundingMode);
+            case ReadComputation.Converted converted -> convertedAspects(converted.computation(), owner);
+            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), owner);
         };
     }
 
@@ -69,12 +83,13 @@ final class ComputationDiffProjector {
         return Set.copyOf(fields);
     }
 
-    private static Map<String, String> convertedAspects(Computation computation) {
+    private static Map<String, String> convertedAspects(Computation computation, OwnerMembers owner) {
         DraftComputation draft = computation.draft();
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("target", computation.computedField().path().value());
         draft.roundingMode().stored().ifPresent(mode -> aspects.put("roundingMode", mode));
         putIfPresent(aspects, "commonPrecondition", draft.commonPrecondition());
+        putIfPresent(aspects, "errorCode", owner.errorCode());
         for (int i = 0; i < draft.alternatives().size(); i++) {
             DraftComputation.Alternative alternative = draft.alternatives().get(i);
             String prefix = "alternative[" + i + "].";
@@ -84,21 +99,17 @@ final class ComputationDiffProjector {
                 aspects.put(prefix + "tolerance", alternative.toleranceRangeOp().wire());
             }
         }
-        if (!draft.errorCodesToSuppress().isEmpty()) {
-            aspects.put("errorCodesToSuppress", String.join(",", draft.errorCodesToSuppress()));
-        }
+        putIfPresent(aspects, "additionalParserInformation", owner.additionalParserInformation());
         computation.messages().forEach(message -> aspects.put("message." + message.locale(), message.text()));
         return aspects;
     }
 
-    private static Map<String, String> opaqueAspects(
-            String canonicalText, List<String> errorCodesToSuppress, RoundingMode roundingMode) {
+    private static Map<String, String> opaqueAspects(String canonicalText, OwnerMembers owner) {
         Map<String, String> aspects = new LinkedHashMap<>();
         aspects.put("opaque", canonicalText);
-        roundingMode.stored().ifPresent(mode -> aspects.put("roundingMode", mode));
-        if (!errorCodesToSuppress.isEmpty()) {
-            aspects.put("errorCodesToSuppress", String.join(",", errorCodesToSuppress));
-        }
+        owner.roundingMode().stored().ifPresent(mode -> aspects.put("roundingMode", mode));
+        putIfPresent(aspects, "errorCode", owner.errorCode());
+        putIfPresent(aspects, "additionalParserInformation", owner.additionalParserInformation());
         return aspects;
     }
 

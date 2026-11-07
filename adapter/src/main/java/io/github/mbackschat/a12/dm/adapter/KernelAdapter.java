@@ -24,7 +24,6 @@ import com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.internal.service.mapping.IRuleFromComputation;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -801,7 +800,7 @@ public final class KernelAdapter {
      * separate (and harder) {@code validateFull} path.
      */
     public List<LocalizedText> ruleMessages(String ruleFullName) {
-        return recoverMessages(rule(ruleFullName));
+        return StoredMembers.messages(rule(ruleFullName));
     }
 
     /**
@@ -884,9 +883,16 @@ public final class KernelAdapter {
         return readOne(calculationRule(computationFullName));
     }
 
-    /** A12's owner-level suppression metadata, independent of formula AST conversion. */
-    public List<String> computationErrorCodesToSuppress(String computationFullName) {
-        return errorCodesToSuppress(calculationRule(computationFullName));
+    /** A12's stored preamble ({@code IComputation.getAdditionalParserInformation}), independent of formula AST
+     *  conversion, or empty when the computation declares none. */
+    public Optional<String> computationAdditionalParserInformation(String computationFullName) {
+        return StoredMembers.additionalParserInformation(calculationRule(computationFullName));
+    }
+
+    /** A12's stored {@code IComputation.getErrorCode}, independent of formula AST conversion, or empty when the
+     *  computation declares none and A12 codes its generated validation by the name. */
+    public Optional<String> computationErrorCode(String computationFullName) {
+        return StoredMembers.errorCode(calculationRule(computationFullName));
     }
 
     /** A12's owner-level rounding mode ({@code ICalculationRule.getRoundingMode}), independent of formula AST
@@ -942,9 +948,10 @@ public final class KernelAdapter {
     }
 
     private ReadComputation readOne(ICalculationRule cr) {
-        String verbatim = verbatimComputationText(cr);
+        String verbatim = StoredMembers.verbatimComputationText(cr);
         try {
-            List<String> errorCodesToSuppress = errorCodesToSuppress(cr);
+            List<String> suppressedWarnings = StoredMembers.additionalParserInformation(cr)
+                    .map(ConditionDirectives::suppressedWarnings).orElse(List.of());
             Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
             if (info.isEmpty()) {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
@@ -954,7 +961,8 @@ public final class KernelAdapter {
             int wildcardLevels = sumOverSlots(info.get(), converter::countWildcardLevels);
             int filters = sumOverSlots(info.get(), converter::countFilters);
             Computation computation =
-                    converter.convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
+                    converter.convertComputation(info.get(), StoredMembers.messages(cr.getRule()), suppressedWarnings,
+                            StoredMembers.errorCode(cr));
             // backstops: a dropped [field -> Cat] projection, star or filter → Opaque, never a different operation
             String rendered = renderedSlots(computation);
             converter.verifyCategoryPreserved(rendered, categoryRefs);
@@ -1017,26 +1025,6 @@ public final class KernelAdapter {
         return out.toString();
     }
 
-    private static List<String> errorCodesToSuppress(ICalculationRule calculation) {
-        if (!(calculation.getRule() instanceof IRuleFromComputation source)) {
-            return List.of();
-        }
-        return List.copyOf(source.getOriginalComputation().getErrorCodesToSuppress());
-    }
-
-    /** The verbatim stored text to preserve for an opaque computation — a computation is stored as a rule,
-     *  so this is its raw {@code errorConditionText} (the {@link #verbatimConditionText} analogue). */
-    private static String verbatimComputationText(ICalculationRule cr) {
-        String raw = cr.getRule().getErrorConditionText();
-        return raw == null ? "" : raw;
-    }
-
-    /** Recover a computation's error messages (the kernel requires them) as rulekit {@link LocalizedText}. */
-    private static List<LocalizedText> recoverMessages(IRule rule) {
-        List<LocalizedText> messages = new ArrayList<>();
-        rule.getErrorMessages().forEach((locale, text) -> messages.add(new LocalizedText(locale.toString(), text)));
-        return messages;
-    }
 
     /**
      * Modify-by-re-express diff (F8 #2): render the rule's current condition (as read) against a
@@ -1124,10 +1112,11 @@ public final class KernelAdapter {
             alternative.toleranceRangeOp().ifPresent(
                     tolerance -> text.append(" [toleranceRangeOp=").append(tolerance.wire()).append(']'));
         }
-        if (!computation.errorCodesToSuppress().isEmpty()) {
-            text.append("\nerrorCodesToSuppress=").append(computation.errorCodesToSuppress());
+        if (!computation.suppressedWarnings().isEmpty()) {
+            text.append("\nsuppressedWarnings=").append(computation.suppressedWarnings());
         }
         computation.roundingMode().stored().ifPresent(mode -> text.append("\nroundingMode=").append(mode));
+        computation.errorCode().ifPresent(code -> text.append("\nerrorCode=").append(code));
         return text.toString();
     }
 

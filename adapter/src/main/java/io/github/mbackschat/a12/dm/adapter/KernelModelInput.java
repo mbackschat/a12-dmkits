@@ -9,7 +9,6 @@ import java.util.Optional;
 import com.mgmtp.a12.kernel.md.model.a12internal.Computation;
 import com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel;
 import com.mgmtp.a12.kernel.md.model.a12internal.Element;
-import com.mgmtp.a12.kernel.md.model.a12internal.Group;
 import com.mgmtp.a12.kernel.md.model.a12internal.Rule;
 import com.mgmtp.a12.kernel.md.model.a12internal.visitor.DocumentModelVisitor;
 import com.mgmtp.a12.kernel.md.model.a12internal.visitor.DocumentModelWalker;
@@ -126,14 +125,6 @@ final class KernelModelInput {
             @Override
             public VisitProcess visitComputation(Computation computation) {
                 require(computation.getComputedField(), computation, "computedFieldRelPath");
-                return VisitProcess.CONTINUE_TRAVERSAL;
-            }
-
-            @Override
-            public VisitProcess visitGroup(Group group) {
-                for (var sortField : group.getSortFields()) {
-                    require(sortField.getField(), group, "sortFields[].name");
-                }
                 return VisitProcess.CONTINUE_TRAVERSAL;
             }
 

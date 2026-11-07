@@ -162,14 +162,16 @@ class ModelLoaderTest {
         assertEquals(DatePrecision.DAY_OPTIONAL, whenField.datePrecision)
     }
 
+    /** Kernel 31.2 stopped evaluating `youngerThan1900Check` (KF677): it still loads, and changes nothing. */
     @Test
-    fun mapsDateBefore1900Check() {
+    fun loadsTheRetiredDateBefore1900CheckAsInert() {
+        val plain = ModelLoader.load(model).fields.first { it.path == "/Order/When" }
         val loaded = ModelLoader.load(model.replace(
             "\"datePrecision\":\"DAY_OPTIONAL\"",
             "\"datePrecision\":\"DAY_OPTIONAL\",\"youngerThan1900Check\":true",
         ))
 
-        assertTrue(loaded.fields.first { it.path == "/Order/When" }.rejectBefore1900)
+        assertEquals(plain, loaded.fields.first { it.path == "/Order/When" })
     }
 
     @Test

@@ -144,7 +144,7 @@ class UnregisteredPredefinedTypeObservableDiffTest {
         const val TYPE = "Unregistered"
 
         /** The measured error field, identical in every firing cell. */
-        private const val AT = "PartiallyKnownDocumentMultiPointerImpl[$NAME, [1, 1]]"
+        private const val AT = "/Order[1]/CustomerName[1]"
 
         /** A fired rule message with a real polarity — NOT an engine error, exception, or diagnostic. */
         private const val FIRED = "$CODE/VALUE_ERROR/$AT"

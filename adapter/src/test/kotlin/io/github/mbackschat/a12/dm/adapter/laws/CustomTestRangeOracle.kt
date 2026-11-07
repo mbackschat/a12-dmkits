@@ -16,8 +16,8 @@ import java.util.Locale
 internal class CustomTestRangeOracle(private val service: DocumentRtService, private val model: IDocumentModel) {
     fun hasUniqueEntities(): Boolean {
         val metadata = service.getMetaModel(model).getValue(
-            com.mgmtp.a12.kernel.core.rt._31_1.internal.util.IMetaKeysInternal.MODEL_METADATAVALIDIERUNG,
-        ) as com.mgmtp.a12.kernel.core.rt._31_1.internal.core.IMetaDataValidierung
+            com.mgmtp.a12.kernel.core.rt._31_3.internal.util.IMetaKeysInternal.MODEL_METADATAVALIDIERUNG,
+        ) as com.mgmtp.a12.kernel.core.rt._31_3.internal.core.IMetaDataValidierung
         return metadata.hasUniqueEntities()
     }
 

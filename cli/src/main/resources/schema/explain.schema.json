@@ -29,7 +29,7 @@
     },
     "messages": {
       "type": "array",
-      "description": "the rule's stored error messages by locale, raw + uninterpolated (G10, the modeler's own NL); same shape `rule read` surfaces",
+      "description": "the rule's stored error messages by locale, raw + uninterpolated (the modeler's own NL); same shape `rule read` surfaces",
       "items": {
         "type": "object",
         "additionalProperties": false,

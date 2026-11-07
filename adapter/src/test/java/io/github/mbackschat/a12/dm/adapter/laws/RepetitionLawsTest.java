@@ -64,9 +64,9 @@ class RepetitionLawsTest {
                 .filter(m -> m.code().equals("COUNT_HIGH")).toList();
 
         assertEquals(2, msgs.size(), () -> "fires once per offending row, got: " + msgs);
-        assertTrue(msgs.stream().anyMatch(m -> m.errorField().contains("[1, 2, 1]")),
+        assertTrue(msgs.stream().anyMatch(m -> m.errorField().contains("/Items[2]/")),
                 () -> "a message attaches to row 2: " + msgs);
-        assertTrue(msgs.stream().anyMatch(m -> m.errorField().contains("[1, 3, 1]")),
+        assertTrue(msgs.stream().anyMatch(m -> m.errorField().contains("/Items[3]/")),
                 () -> "a message attaches to row 3: " + msgs);
     }
 

@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
  * What EQUALITY demands of two numbers' declared scales, and what a number may stand against at all.
@@ -161,7 +162,7 @@ class NumberComparisonScaleGateLawsTest {
                 .computedFieldRelPath("../Discount")
                 .commonPrecondition("[Quantity] == [UnitPrice]")
                 .alternatives(List.of(new DraftComputation.Alternative(null, "1.00")))
-                .errorCodesToSuppress(suppressed)
+                .suppressWarnings(ConditionLanguage.EN, suppressed)
                 .messages(List.of(en("x"), de("y")))
                 .build();
         return KernelLaws.verdictOf(

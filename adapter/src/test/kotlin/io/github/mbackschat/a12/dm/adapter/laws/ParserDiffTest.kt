@@ -74,7 +74,7 @@ class ParserDiffTest {
         val text = "FieldFilled(Items/Count) And [Items/Count] > 50"
         val model = RuntimeLaws.withRule(order, "/Order", "CountCap", "../Items/Count", "COUNT_HIGH", text)
         val counts = listOf("10", "80", "90")
-        val rx = Regex("""\[1, (\d+), 1]""")
+        val rx = Regex("""/Items\[(\d+)]/""")
         val kernel = RuntimeLaws.messages(model, items(counts)).filter { it.code() == "COUNT_HIGH" }
             .mapNotNull { rx.find(it.errorField())?.groupValues?.get(1)?.toInt() }.toSet()
         val ast = parseCondition(text, "/Order")

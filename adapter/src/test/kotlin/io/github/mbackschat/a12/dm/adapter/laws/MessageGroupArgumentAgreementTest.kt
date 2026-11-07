@@ -88,8 +88,10 @@ class MessageGroupArgumentAgreementTest {
         row("read-sibling-absolute", Reads.SIBLING, "/Library/Returns")
         row("read-sibling-turning-point", Reads.SIBLING, "..Library/Returns")
         row("wrong-turning-point", Reads.SIBLING, "..Wrong/Returns", "INVALID_ENTITY")
-        row("root-above-root", Reads.ROOT_SHALLOW, "../Loans", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
-        row("nested-above-root", Reads.OWN, "../../Library", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
+        // Since kernel 31.3.1 a walk may turn on the model root (KF679): a group under it that is no root group is
+        // the group class, not the root-group one, and the rule's own root group is reached that way.
+        row("root-under-model-root", Reads.ROOT_SHALLOW, "../Loans", "INVALID_GROUP")
+        row("nested-via-model-root", Reads.OWN, "../../Library")
         row("missing-child", Reads.ROOT_SHALLOW, "Loans/Missing", "INVALID_GROUP")
         row("missing-bare", Reads.ROOT_SHALLOW, "Missing", "INVALID_GROUP")
         row("field-not-group", Reads.ROOT_SHALLOW, "Loans/Book", "INVALID_GROUP")

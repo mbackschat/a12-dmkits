@@ -232,7 +232,7 @@ class CheckerDeclarationWithholdingAgreementTest {
         val root = root(false)
         val items = policyElements(root).first { it.path("name").asText() == "Items" }.path("Group") as ObjectNode
         val list = items.putArray("sortFields")
-        names.forEach { list.addObject().put("name", it) }
+        names.forEach { list.addObject().put("name", it).put("order", "ASC") }
         return mapper.writeValueAsString(root)
     }
 

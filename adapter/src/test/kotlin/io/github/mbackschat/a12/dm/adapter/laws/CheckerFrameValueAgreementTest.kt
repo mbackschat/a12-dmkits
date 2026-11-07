@@ -62,19 +62,24 @@ class CheckerFrameValueAgreementTest {
         ))
     }
 
-    /** `VersionChecker`: a major of 29 and a minor and patch, read as one decimal, at most `4.0`; ASCII digits only. */
+    /**
+     * `VersionChecker`: a major of 29 and a minor and patch, read as one decimal, at most the kernel's own — `8.0` on
+     * kernel 31.3.1, `4.0` on 31.1.1 — in ASCII digits only. `29.4.0` and `29.4.1` are admitted rows here because the
+     * boundary moved past them with the kernel; they were the 31.1.1 edge.
+     */
     @Test
     fun theModelVersionIsJudgedAsA12ReadsIt() {
-        val texts = listOf("29.4.0", "29.0.0", "29.3.99", "29.4.00", "29.04.0", "029.4.0", "29.4.0000000000000000001", "29.4.1",
-            "30.0.0", "28.9.9", "29.5", "x", "29.4.0 ", "٢٩.4.0", "29.4.0.0", "-29.4.0", "99999999999.0.0", "2147483647.0.0", "2147483648.0.0")
+        val texts = listOf("29.8.0", "29.4.0", "29.4.1", "29.0.0", "29.7.99", "29.8.00", "29.08.0", "029.8.0",
+            "29.8.0000000000000000001", "29.8.1", "30.0.0", "28.9.9", "29.5", "x", "29.8.0 ", "٢٩.8.0", "29.8.0.0", "-29.8.0",
+            "99999999999.0.0", "2147483647.0.0", "2147483648.0.0")
         val rows = linkedMapOf<String, String>()
         texts.forEach { rows["version \"$it\""] = edited("/header/modelVersion", mapper.valueToTree(it)) }
         listOf("5", "true").forEach { rows["version $it"] = edited("/header/modelVersion", mapper.readTree(it)) }
         val both = PATTERN + INCOMPATIBLE
         assertAgreement(rows, refused = mapOf(
-            "version \"29.4.1\"" to INCOMPATIBLE, "version \"30.0.0\"" to INCOMPATIBLE, "version \"28.9.9\"" to INCOMPATIBLE,
-            "version \"29.5\"" to both, "version \"x\"" to both, "version \"29.4.0 \"" to both, "version \"٢٩.4.0\"" to both,
-            "version \"29.4.0.0\"" to both, "version \"-29.4.0\"" to both, "version 5" to both, "version true" to both,
+            "version \"29.8.1\"" to INCOMPATIBLE, "version \"30.0.0\"" to INCOMPATIBLE, "version \"28.9.9\"" to INCOMPATIBLE,
+            "version \"29.5\"" to both, "version \"x\"" to both, "version \"29.8.0 \"" to both, "version \"٢٩.8.0\"" to both,
+            "version \"29.8.0.0\"" to both, "version \"-29.8.0\"" to both, "version 5" to both, "version true" to both,
             // The major overflows Java's `int`, which A12 parses it into, so its check throws.
             "version \"99999999999.0.0\"" to UNBUILT, "version \"2147483647.0.0\"" to INCOMPATIBLE,
             "version \"2147483648.0.0\"" to UNBUILT,

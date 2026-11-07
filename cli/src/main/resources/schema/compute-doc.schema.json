@@ -48,7 +48,7 @@
               "element",
               "cell"
             ],
-            "description": "element = a model path or <compute> for a whole-call computation failure (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell. Published because the two used to share one key with nothing to tell them apart, so neither a consumer nor the renderer could treat the pointer half as a pointer"
+            "description": "element = a model path or <compute> for a whole-call computation failure (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell."
           },
           "reason": {
             "type": "string",

@@ -603,7 +603,7 @@ class ApplyVerbTest {
         // verb (its --stripped positional). They drifted once — manifest said rulePathInModel/computationPathInModel
         // while apply accepted only `rule`/`computation`, so an agent copying from the manifest hit RK_UNKNOWN_ARG.
         // Covers every path-located edit op (the siblings), not just the reported rule case.
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Path model = CliTestSupport.orderRuled(dir);
         Path ops = dir.resolve("ops.json");
         String[][] pathOps = {
@@ -780,7 +780,7 @@ class ApplyVerbTest {
         // and `config modify` (supported-character). The RICH-SPEC verbs (field/rule/computation/typedef
         // add·modify) are EXCLUDED: they carry a JSON spec body whose keys deliberately diverge from the CLI
         // flags (--message/--locale → messages) and are guarded by SpecKeys + the executable schema examples.
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());
         Files.writeString(dir.resolve("catalog.dm.json"),

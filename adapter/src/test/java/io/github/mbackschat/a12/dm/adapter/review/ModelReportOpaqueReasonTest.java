@@ -56,7 +56,7 @@ class ModelReportOpaqueReasonTest {
         assertNull(opaqueComputation.computedField());
         assertNull(opaqueComputation.commonPrecondition());
         assertEquals(List.of(), opaqueComputation.alternatives());
-        assertEquals(List.of(SUPPRESSION), opaqueComputation.errorCodesToSuppress());
+        assertEquals("@SuppressWarning(" + SUPPRESSION + ")", opaqueComputation.additionalParserInformation());
     }
 
     @Test
@@ -114,7 +114,7 @@ class ModelReportOpaqueReasonTest {
         session.addComputation(model -> model.computation(model.dateTime("/Review/ComputedOpaque").field())
                 .name("OpaqueComputation")
                 .calc(Dsl.addHours(model.dateTime("/Review/SourceDateTime"), 1).expression())
-                .errorCodesToSuppress(SUPPRESSION)
+                .suppressWarnings(SUPPRESSION)
                 .message(en("The opaque total follows a project calculation.")).build());
 
         ObjectNode root = (ObjectNode) MAPPER.readTree(session.toJson());

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-add.schema.json",
   "title": "field-add-spec",
-  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config and creation-time field metadata. The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. Post-creation field semantics use the narrower `schema field modify`; labels, descriptions, and annotations use `dmtool meta <ref>` (G45). `additionalProperties:false` is enforced: an undeclared/typo'd key is rejected with RK_UNKNOWN_ARG, not silently ignored. Validated against the real kernel before writing.",
+  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config and creation-time field metadata. The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. Post-creation field semantics use the narrower `schema field modify`; labels, descriptions, and annotations use `dmtool meta <ref>`. `additionalProperties:false` is enforced: an undeclared/typo'd key is rejected with RK_UNKNOWN_ARG, not silently ignored. Validated against the real kernel before writing.",
   "type": "object",
   "required": ["group", "name"],
   "additionalProperties": false,
@@ -12,7 +12,7 @@
     "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
     "typedef": { "type": "string", "description": "type the field by an existing type-definition id (wins over `kind`)" },
     "required": { "enum": [true, false, "ifParentPresent"], "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
-    "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; no locale coverage is owed — answering one of several declared locales is accepted, and a locale the model does not declare is kept rather than dropped" },
+    "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; any subset of the declared locales is accepted, and a locale the model does not declare is kept rather than dropped" },
     "global": { "type": "boolean", "description": "the kernel `global` flag (relevant to partial validation)" },
     "transient": { "type": "boolean", "description": "the kernel `transient` flag (present at runtime, not persisted)" },
     "internalDescription": { "type": "object", "description": "per-locale INTERNAL description — maintenance/technical notes shown read-only to *Form modelers*, never surfaced to end users; { \"<locale>\": \"<text>\" }" },
@@ -24,7 +24,7 @@
       "type": "object", "description": "(kind STRING) config", "additionalProperties": false,
       "properties": {
         "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator — the rule-level way to bound length (`operators Length`)" }, "maxLength": { "type": "integer", "description": "maximum character length" },
-        "pattern": { "type": "string", "description": "anchored Java Pattern; a non-empty pattern REQUIRES patternMessage; an empty pattern is inactive and needs no message (when a non-empty pattern is supplied, patternMessages does not replace the required patternMessage fallback). Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E — lowercase \\p only, uppercase \\P is admitted — and nested unescaped [), read on the pattern SOURCE TEXT so an escaped metacharacter before a quantifier (a\\*+) is refused too. Passing them does not prove JavaScript portability. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
+        "pattern": { "type": "string", "description": "anchored Java Pattern; a non-empty pattern REQUIRES patternMessage (patternMessages does not replace it); an empty pattern is inactive and needs no message. It must be valid Java syntax and avoid A12's blacklist: possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E (lowercase \\p only; \\P is admitted) and nested unescaped [. The blacklist reads the source text, so an escaped metacharacter before a quantifier (a\\*+) is refused too. Passing does not prove JavaScript portability. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
         "patternMessage": { "type": "string", "description": "the error text shown when the pattern fails; REQUIRED whenever `pattern` is non-empty (the base message, applied to every declared locale unless patternMessages overrides a locale). A non-empty `pattern` without it is rejected: 'a pattern and its error message must be set together'" },
         "patternMessages": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Explicit per-locale pattern error texts. With a non-empty pattern, each entry overrides patternMessage for its locale; patternMessage remains the required fallback. Entries for undeclared locales are preserved. Without a pattern, entries are still preserved and validated by the kernel; legality depends on the declared locales and message content."},
         "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
@@ -42,7 +42,7 @@
         "maxLength": { "type": "integer", "description": "maximum character length of the rendered stored-number text; this is the Date/Time component declaration gate, not maxIntegerDigits" },
         "maxIntegerDigits": { "type": "integer", "description": "maximum digits before the decimal separator; sign and fractional digits do not count" },
         "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
-        "positivesOnly": { "type": "boolean", "description": "forbid a SIGN (the kernel's NumberType.positivesOnly; default false, so every field is signed unless you set this). MEASURED: a minus makes the value the formal error zahlMitVorzeichen, a ZERO magnitude included \u2014 where a signed field instead reports zahlNullEnthaeltVorzeichen, so the two classes are DISJOINT rather than ordered. It also flips the empty-operand FILL polarity: an unsigned empty number can be filled bigger but never smaller. A NEGATIVE min beside it is kernel-VALID (measured) and the value refusal still fires. seeAlso: min \u2014 a non-negative min bounds the VALUE without changing the sign polarity." },
+        "positivesOnly": { "type": "boolean", "description": "forbid a sign (A12 NumberType.positivesOnly; default false, so a field is signed unless set). A minus, on a zero magnitude too, is the formal error zahlMitVorzeichen, where a signed field reports a minus zero as zahlNullEnthaeltVorzeichen instead. It also flips the empty-operand FILL polarity: an unsigned empty number can be filled bigger but never smaller. A negative min beside it is valid and the sign refusal still fires. seeAlso: min — a non-negative min bounds the value without changing the sign polarity." },
         "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
       }
     },
@@ -72,44 +72,44 @@
     },
     "date": {
       "type": "object", "description": "(kind DATE) config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "a CASE-SENSITIVE Java pattern from a fixed allowed WHITELIST, not a compositional rule. The gate reads the STRING and never the field's KIND, so the vocabulary is shared across DATE/TIME/DATETIME. THIRTEEN patterns are admitted in total, derived from the kernel in docs/TEMPORAL-FORMAT-VOCABULARY.md (cite that file rather than re-listing): the complete dates yyyy-MM-dd, dd.MM.yyyy and yyyyMMdd; the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd, MMdd, ddMM and dd.MM.; the clock HH:mm:ss; and the instant yyyy-MM-dd'T'HH:mm:ss — every one of them admitted on any of the three kinds, and meaning what its string says. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — so the SEPARATOR discriminates between formats with the same components (yyyy-MM is admitted, yyyy/MM is not; MMdd and ddMM are admitted while dd.MM is not, and a TRAILING separator counts too: dd.MM. with the closing dot IS admitted where dd.MM is not), and component order alone does not explain the set either. Note dd.MM is refused here yet is a legal DATERANGE format with -. Case is significant and is NOT merely lowercase: MM means months where mm means minutes, so yyyy-mm-dd is a different pattern rather than a miscased one. MEASURED: no all-lowercase or all-uppercase spelling of any admitted format is accepted, the editor's UPPERCASE display labels included. Copy a spelling from the vocabulary rather than recasing one. The A12 editor's UPPERCASE labels (YYYY-MM-DD) are display labels, NOT valid format values. Case is significant and is NOT merely lowercase: MM means months where mm means minutes, so yyyy-mm-dd is a different pattern rather than a miscased one. MEASURED: no all-lowercase or all-uppercase spelling of any admitted format is accepted, the editor's UPPERCASE display labels included. Copy a spelling from the vocabulary rather than recasing one. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL; every precision still admits fully known dates" }, "rejectBefore1900": { "type": "boolean", "description": "when true, enable A12 DateType.youngerThan1900Check: stored and computed dates before 1900-01-01 are invalid; default false. MEASURED: this REQUIRES the declared format to carry a YEAR \u2014 the year-free HH:mm:ss, MM, MM-dd, MMdd, ddMM and dd.MM. are refused MVK_ADDITIONAL_CHECK_INVALID (an INCOMPLETE format is not the trigger: yyyy and yyyy-MM carry no day and are accepted)." } }
+      "properties": { "format": { "type": "string", "description": "a case-sensitive Java pattern from a fixed WHITELIST shared by DATE, TIME and DATETIME (the gate reads the string, not the kind). The thirteen admitted patterns, each meaning what its string says: yyyy-MM-dd, dd.MM.yyyy, yyyyMMdd; yyyy, yyyy-MM, yyyyMM, MM, MM-dd, MMdd, ddMM, dd.MM.; HH:mm:ss and yyyy-MM-dd'T'HH:mm:ss. Separators count: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM are refused, dd.MM. with the trailing dot is admitted, and dd.MM is a legal DATERANGE format only. Case matters (MM is months, mm minutes): no all-lowercase or all-uppercase spelling of an admitted format is accepted, so the editor's UPPERCASE labels (YYYY-MM-DD) are not values: copy a spelling exactly. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL; every precision still admits fully known dates" }, "rejectBefore1900": { "type": "boolean", "description": "Deprecated, no effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so that read output round-trips. Default false." } }
     },
     "time": {
       "type": "object", "description": "(kind TIME) config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "a Java pattern from the shared temporal WHITELIST — the gate reads the string, not the kind. HH:mm (no seconds) is rejected; a date pattern such as yyyy-MM-dd is admitted on a TIME field, so the default is a convention rather than a restriction. Default HH:mm:ss." } }
+      "properties": { "format": { "type": "string", "description": "a Java pattern from the shared temporal whitelist (see date.format). HH:mm (no seconds) is rejected, while a date pattern such as yyyy-MM-dd is admitted on a TIME field. Default HH:mm:ss." } }
     },
     "dateTime": {
       "type": "object", "description": "(kind DATETIME) config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "a CASE-SENSITIVE Java date+time pattern; verify the exact accepted form with a `field add --dry-run`." } }
+      "properties": { "format": { "type": "string", "description": "a case-sensitive Java date+time pattern. The conventional DATETIME declaration is the ISO instant yyyy-MM-dd'T'HH:mm:ss, but any of the thirteen temporal patterns (see date.format) is admitted; verify the exact accepted form with a `field add --dry-run`." } }
     },
     "dateRange": {
       "type": "object", "description": "(kind DATERANGE) config", "additionalProperties": false,
       "required": ["format", "separator"],
       "properties": {
-        "format": { "type": "string", "description": "a CASE-SENSITIVE Java date pattern for both endpoints, from a fixed allowed set (independent of locale/conditionLanguage). It is the PAIR (format, separator) that is allowlisted, never the format alone — see `separator` for the twelve admitted pairs. The seven formats that appear in one are dd.MM.yyyy, yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd, dd.MM; note yyyyMM is a legal DATE format but not a legal DATERANGE one, and dd.MM is the reverse. The editor's UPPERCASE preset labels (YYYY-MM-DD, MM/MM, …) are display labels, NOT valid format values. Case is significant and is NOT merely lowercase: MM means months where mm means minutes, so yyyy-mm-dd is a different pattern rather than a miscased one. MEASURED: no all-lowercase or all-uppercase spelling of any admitted format is accepted, the editor's UPPERCASE display labels included. Copy a spelling from the vocabulary rather than recasing one." },
+        "format": { "type": "string", "description": "a case-sensitive Java date pattern for both endpoints, from a fixed allowed set (independent of locale/conditionLanguage). The (format, separator) PAIR is allowlisted, never the format alone; see `separator` for the twelve admitted pairs. Their formats are dd.MM.yyyy, yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd and dd.MM; yyyyMM is a legal DATE format but not a DATERANGE one, and dd.MM the reverse. Case matters (MM is months, mm minutes): no all-lowercase or all-uppercase spelling of an admitted format is accepted, so the editor's UPPERCASE labels (YYYY-MM-DD, MM/MM, …) are not values: copy a spelling exactly." },
         "separator": { "type": "string", "description": "the range separator PAIRED with the format; the PAIR is allowlisted, and exactly twelve are admitted: - for dd.MM.yyyy and dd.MM, and / or the empty separator, which is read as /, for yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd. Everything else is rejected ('The date range format is invalid'): every separator swap, the whole '.' column, a spaced ' - ', and yyyyMM with any separator." },
-        "interpretationOfYear": { "type": "string", "enum": ["FROM", "TO"], "description": "which endpoint of a WRAPPING yearless range keeps the base year — it matters only for a range whose two endpoints do not share a year (e.g. 01.11-31.01 on a dd.MM range), which without it reads as start-after-end and is reported invalid. The direction is the REVERSE of what the names suggest: the value names the endpoint the base year LABELS and the opposite one moves, so FROM keeps the start at the base year and rolls the END forward a year, while TO keeps the end and rolls the START back. The default is STANDARD (both endpoints take the base year) and it has NO spelling — express it by OMITTING this key; the tool API's STANDARD, PREVIOUS and SUBSEQUENT tokens are all refused by the kernel. Effective only when the model declares a base year (set it with `config modify`)." },
-        "rejectBefore1900": { "type": "boolean", "description": "when true, enable A12 DateRangeType.youngerThan1900Check: a range whose START date is before 1900-01-01 is invalid (datumBereichDatumFalsch; end >= start covers the other endpoint); default false. MEASURED and UNLIKE the date/dateFragment key: NO year co-requirement — every admitted (format, separator) pair takes it, the year-free ones included, and on a year-free pair the check reads the model's BASE YEAR completion. One exception: the pure MM pair, where the kernel appends no year at all, so neither this check nor the always-on 1583-10-16 floor ever fires on it." }
+        "interpretationOfYear": { "type": "string", "enum": ["FROM", "TO"], "description": "which endpoint of a WRAPPING yearless range keeps the base year; it matters only for a range whose endpoints do not share a year, e.g. 01.11-31.01 on a dd.MM range, which otherwise reads as start-after-end and is invalid. The direction is the REVERSE of what the names suggest: the value names the endpoint that keeps the base year and the OTHER one moves, so FROM rolls the end forward a year and TO rolls the start back. The default, STANDARD (both take the base year), has no spelling: omit the key; the tokens STANDARD, PREVIOUS and SUBSEQUENT are refused. Effective only when the model declares a base year (`config modify`)." },
+        "rejectBefore1900": { "type": "boolean", "description": "Deprecated, no effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so that read output round-trips. Default false." }
       }
     },
     "boolean": {
       "type": "object", "description": "(kind BOOLEAN) config", "additionalProperties": false,
       "properties": {
-        "trueValue": { "type": "string", "description": "A12 BooleanType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." },
-        "falseValue": { "type": "string", "description": "A12 BooleanType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." } }
+        "trueValue": { "type": "string", "description": "the text this model stores for true where it differs from A12's default (BooleanType.notInDCustomTrueValue). Independent of falseValue; omitting both writes no config block." },
+        "falseValue": { "type": "string", "description": "the text this model stores for false where it differs from A12's default (BooleanType.notInDCustomFalseValue). Independent of trueValue; omitting both writes no config block." } }
     },
     "confirm": {
       "type": "object", "description": "(kind CONFIRM) config", "additionalProperties": false,
       "properties": {
-        "trueValue": { "type": "string", "description": "A12 ConfirmType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." },
-        "falseValue": { "type": "string", "description": "A12 ConfirmType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." } }
+        "trueValue": { "type": "string", "description": "the text this model stores for true where it differs from A12's default (ConfirmType.notInDCustomTrueValue). Independent of falseValue; omitting both writes no config block." },
+        "falseValue": { "type": "string", "description": "the text this model stores for false where it differs from A12's default (ConfirmType.notInDCustomFalseValue). Independent of trueValue; omitting both writes no config block." } }
     },
     "dateFragment": {
       "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
       "required": ["format"],
       "properties": {
-        "rejectBefore1900": { "type": "boolean", "description": "when true, enable A12 DateFragmentType.youngerThan1900Check: values resolving before 1900-01-01 are invalid (datumFalsch); default false. MEASURED: like the date key and UNLIKE dateRange, this REQUIRES the declared format to carry a YEAR \u2014 the year-free HH:mm:ss, MM, MM-dd, MMdd, ddMM and dd.MM. are refused MVK_ADDITIONAL_CHECK_INVALID, while dd.MM.yyyy, yyyy, yyyy-MM, yyyy-MM-dd, yyyy-MM-dd'T'HH:mm:ss, yyyyMM and yyyyMMdd accept it." },
-        "format": { "type": "string", "description": "a CASE-SENSITIVE Java partial-date pattern (a date that isn't a full calendar date). MEASURED: the fragment kind admits the SAME TWELVE patterns as DATE/TIME/DATETIME — see docs/TEMPORAL-FORMAT-VOCABULARY.md, which probes it as its own domain rather than inheriting the shared answer. MM, yyyy, yyyy-MM and MM-dd are the conventional fragment declarations, not the limit. The A12 editor's UPPERCASE labels (YYYY, YYYY-MM) are display labels, NOT valid format values. Case is significant and is NOT merely lowercase: MM means months where mm means minutes, so yyyy-mm-dd is a different pattern rather than a miscased one. MEASURED: no all-lowercase or all-uppercase spelling of any admitted format is accepted, the editor's UPPERCASE display labels included. Copy a spelling from the vocabulary rather than recasing one." } }
+        "rejectBefore1900": { "type": "boolean", "description": "Deprecated, no effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so that read output round-trips. Default false." },
+        "format": { "type": "string", "description": "a case-sensitive Java pattern, conventionally a partial date (MM, yyyy, yyyy-MM, MM-dd), though it admits the same thirteen patterns as DATE/TIME/DATETIME (see date.format). Case matters (MM is months, mm minutes): no all-lowercase or all-uppercase spelling of an admitted format is accepted, so the editor's UPPERCASE labels (YYYY, YYYY-MM) are not values: copy a spelling exactly." } }
     }
   },
   "examples": [
@@ -136,19 +136,19 @@
       "group": "/Subscription/Addons",
       "name": "PromoWindow",
       "kind": "DATERANGE",
-      "dateRange": { "format": "dd.MM.yyyy", "separator": "-", "rejectBefore1900": true }
+      "dateRange": { "format": "dd.MM.yyyy", "separator": "-" }
     },
     {
       "group": "/Subscription/Addons",
       "name": "BilledMonth",
       "kind": "DATEFRAGMENT",
-      "dateFragment": { "format": "yyyy-MM", "rejectBefore1900": true }
+      "dateFragment": { "format": "yyyy-MM" }
     },
     {
       "group": "/Subscription/Addons",
       "name": "FoundedOn",
       "kind": "DATE",
-      "date": { "format": "yyyy-MM-dd", "precision": "YEAR_OPTIONAL", "rejectBefore1900": true }
+      "date": { "format": "yyyy-MM-dd", "precision": "YEAR_OPTIONAL" }
     }
   ]
 }

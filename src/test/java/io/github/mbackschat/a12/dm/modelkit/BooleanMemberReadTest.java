@@ -44,6 +44,7 @@ class BooleanMemberReadTest {
             Function<ModelDocument.FieldState, Boolean> authored, String block, String blockKey,
             Function<ModelIndex, Boolean> index) {}
 
+    @SuppressWarnings("removal") // the retired pre-1900 check still reads back until A12K-4439 removes it
     private static final List<Member> MEMBERS = List.of(
             new Member("StringType", "lineBreaksPermitted", "Note",
                     s -> ((FieldTypeSpec.StringSpec) s.type()).lineBreaksPermitted(), "string", "lineBreaks", null),

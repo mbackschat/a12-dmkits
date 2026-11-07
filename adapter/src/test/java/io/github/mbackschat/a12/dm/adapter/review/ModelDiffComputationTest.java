@@ -178,12 +178,25 @@ class ModelDiffComputationTest {
                 .calc(model.num(PRICE).value(), ToleranceBand.TR1)));
         String head = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
                 .calc(model.num(PRICE).value(), ToleranceBand.TR5)
-                .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")));
+                .suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")));
 
         ElementChange changed = change(ModelDiff.between(base, head));
         assertEquals(ToleranceBand.TR1.wire(), delta(changed, "alternative[0].tolerance").before());
         assertEquals(ToleranceBand.TR5.wire(), delta(changed, "alternative[0].tolerance").after());
-        assertEquals("MVK_INVALID_COMPARE_DEC_PLACES", delta(changed, "errorCodesToSuppress").after());
+        assertEquals("@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)", delta(changed, "additionalParserInformation").after());
+    }
+
+    /** The generated validation's code is the computation's own member, so setting it is a semantic change. */
+    @Test
+    void detectsAnErrorCodeChange() {
+        String base = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
+                .calc(model.num(PRICE).value())));
+        String head = withComputation(model -> computation(model, TOTAL, "Total.", builder -> builder
+                .calc(model.num(PRICE).value()).errorCode("PRICE_TOTAL_MISMATCH")));
+
+        ModelDiff.Delta changed = delta(change(ModelDiff.between(base, head)), "errorCode");
+        assertEquals(null, changed.before());
+        assertEquals("PRICE_TOTAL_MISMATCH", changed.after());
     }
 
     /** A mode-only change is a semantic change, and an Exact side carries no aspect, as A12 stores none. */
@@ -208,13 +221,15 @@ class ModelDiffComputationTest {
     void opaqueComputationsUseTheirVerbatimTextAsTheFingerprint() {
         var first = ComputationDiffProjector.aspects(
                 new ReadComputation.Opaque("[Price] * [Quantity]", "x"),
-                List.of("MVK_INVALID_COMPARE_DEC_PLACES"), RoundingMode.ROUND_UP);
+                new ComputationDiffProjector.OwnerMembers("@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
+                        RoundingMode.ROUND_UP, "PRICE_TOTAL_MISMATCH"));
         var second = ComputationDiffProjector.aspects(new ReadComputation.Opaque("[Price] + [Quantity]", "y"));
 
         assertEquals("[Price] * [Quantity]", first.get("opaque"));
-        assertEquals("MVK_INVALID_COMPARE_DEC_PLACES", first.get("errorCodesToSuppress"));
+        assertEquals("@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)", first.get("additionalParserInformation"));
         // the element's own members ride beside the verbatim formula
         assertEquals("RoundUp", first.get("roundingMode"));
+        assertEquals("PRICE_TOTAL_MISMATCH", first.get("errorCode"));
         assertEquals("[Price] + [Quantity]", second.get("opaque"));
         assertEquals(null, second.get("roundingMode"), "Exact is never an aspect");
     }

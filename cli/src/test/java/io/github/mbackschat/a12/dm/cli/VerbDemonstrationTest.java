@@ -54,7 +54,7 @@ class VerbDemonstrationTest {
      */
     @Test
     void noAgentFacingClaimNamesAnEnvelopeValueTheVerbNeverPublishes(@TempDir Path dir) throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode corpus = corpus();
         List<String> wrong = new ArrayList<>();
         for (JsonNode v : manifest.path("verbs")) {
@@ -119,7 +119,7 @@ class VerbDemonstrationTest {
      */
     @Test
     void interpreterBackedDemonstrationsNeverAttributeRuntimeOutputToTheKernel(@TempDir Path dir) throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode corpus = corpus();
         List<String> violations = new ArrayList<>();
         Set<String> checked = new LinkedHashSet<>();

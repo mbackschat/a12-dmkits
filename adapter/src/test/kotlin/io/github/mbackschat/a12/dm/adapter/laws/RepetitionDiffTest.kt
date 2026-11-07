@@ -96,7 +96,7 @@ class RepetitionDiffTest {
     }
 
     private fun kernelFiringRows(model: String, code: String, counts: List<String?>): Set<Int> {
-        val rx = Regex("""\[1, (\d+), 1]""")
+        val rx = Regex("""/Items\[(\d+)]/""")
         return RuntimeLaws.messages(model, kernelItems(counts)).filter { it.code() == code }
             .mapNotNull { rx.find(it.errorField())?.groupValues?.get(1)?.toInt() }.toSet()
     }

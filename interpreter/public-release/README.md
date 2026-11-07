@@ -34,7 +34,7 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 
 The package does not author models, render forms, persist Documents, provide a virtual filesystem, or bundle Kernel code. Kernel-shaped TypeScript and JVM drop-in adapters are separate, later compatibility products.
 
-**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 31.1.1**, as shipped in the **A12 Tools 2026.06-ext1** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
+**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 31.3.1**, as shipped in the **A12 Tools 2026.06-ext2** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
 
 <p align="center">
   <a href="assets/infographics/a12-interpreter-runtime.avif">

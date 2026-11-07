@@ -227,7 +227,7 @@ class CalendarTargetCompletionDiffTest {
             }
             val cause = generateSequence(failure as Throwable) { it.cause }.last()
             assertEquals(IllegalStateException::class.java, cause.javaClass, "dynamic=$dynamic")
-            assertTrue(cause.message!!.startsWith("Duplicate key PartiallyKnownDocumentMultiPointerImpl[/Plan/Cycle, [1, 1]]"),
+            assertTrue(cause.message!!.startsWith("Duplicate key /Plan[1]/Cycle[1]"),
                 "dynamic=$dynamic: ${cause.message}")
         }
         val interpreted = assertThrows(IllegalStateException::class.java) { DocumentDifferential.interpreter(model, document) }

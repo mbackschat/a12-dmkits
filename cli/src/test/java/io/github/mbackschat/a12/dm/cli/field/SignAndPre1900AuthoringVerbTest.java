@@ -136,28 +136,24 @@ class SignAndPre1900AuthoringVerbTest {
     }
 
     /**
-     * The co-requirement, delegated rather than pre-checked: a year-free FRAGMENT format with the check is
-     * refused by the kernel's own consistency gate. `dateRange` is the control — the same year-free shape is
-     * ADMITTED there, which is why no client-side refusal keyed on "a temporal declaration needs a year" may
-     * be added.
+     * The year co-requirement, delegated rather than pre-checked, is gone since kernel 31.2 (KF677): a year-free
+     * FRAGMENT format with the check is admitted, as the same shape on a range always was. Through 31.1.1 the
+     * kernel refused the fragment, and only that delegation kept the tool from needing a change now — a client-side
+     * refusal keyed on "a temporal declaration needs a year" would have outlived the kernel's.
      */
     @Test
-    void aYearFreeFragmentWithTheCheckIsRefusedWhileTheSameShapeIsAdmittedOnARange(@TempDir Path dir)
-            throws Exception {
+    void aYearFreeFragmentOrRangeWithTheCheckIsAdmitted(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path fragment = spec(dir, "fragment.json", """
                 {"group":"/Order","name":"BilledPeriod","kind":"DATEFRAGMENT",
                  "dateFragment":{"format":"MM-dd","rejectBefore1900":true}}""");
-
-        var refused = CliTestSupport.run("-m", model.toString(), "field", "add", fragment.toString());
-        assertFalse(refused.code() == 0, refused::out);
-        assertTrue((refused.out() + refused.err()).contains("MVK_ADDITIONAL_CHECK_INVALID"),
-                () -> refused.out() + refused.err());
+        var fragmentAdded = CliTestSupport.run("-m", model.toString(), "field", "add", fragment.toString());
+        assertEquals(0, fragmentAdded.code(), fragmentAdded::err);
 
         Path range = spec(dir, "range.json", """
                 {"group":"/Order","name":"BilledWindow","kind":"DATERANGE",
                  "dateRange":{"format":"MM-dd","separator":"/","rejectBefore1900":true}}""");
-        var admitted = CliTestSupport.run("-m", model.toString(), "field", "add", range.toString());
-        assertEquals(0, admitted.code(), admitted::err);
+        var rangeAdded = CliTestSupport.run("-m", model.toString(), "field", "add", range.toString());
+        assertEquals(0, rangeAdded.code(), rangeAdded::err);
     }
 }

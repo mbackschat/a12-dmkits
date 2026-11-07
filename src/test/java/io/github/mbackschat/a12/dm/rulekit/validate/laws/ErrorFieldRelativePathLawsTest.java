@@ -116,17 +116,20 @@ class ErrorFieldRelativePathLawsTest {
         actual.put("another group", computing("../Meta"));
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field, the control", KernelLaws.ADMITTED);
-        // Unlike the rule's target, ANY group fails the build here, the declaring one or another.
-        expected.put("its own group", NOT_BUILDABLE);
-        expected.put("another group", NOT_BUILDABLE);
+        // Unlike the rule's target, ANY group is refused here, the declaring one or another: A12 resolves a
+        // computed field as a FIELD, so a group is "not found" to its converter (kernel 31.1.1 could not build it).
+        expected.put("its own group",
+                "(no code: Computation with path '/Order/ProbeCalc': The computed field \"/Order\" was not found.)");
+        expected.put("another group",
+                "(no code: Computation with path '/Order/ProbeCalc': The computed field \"/Order/Meta\" was not found.)");
         assertEquals(expected, actual, "which groups a computation's target may name");
     }
 
     private static String computing(String target) {
         List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics = new RuleValidator().check(ORDER,
-                new DraftComputation("/Order", "ProbeCalc", target, null,
-                        List.of(new DraftComputation.Alternative(null, "\"x\"")), List.of(), null,
-                        List.of(new LocalizedText("en_US", "x")))).diagnostics();
+                DraftComputation.builder().groupPath("/Order").name("ProbeCalc").computedFieldRelPath(target)
+                        .alternatives(List.of(new DraftComputation.Alternative(null, "\"x\"")))
+                        .messages(List.of(new LocalizedText("en_US", "x"))).build()).diagnostics();
         return diagnostics.isEmpty() ? KernelLaws.ADMITTED : diagnostics.stream()
                 .map(ErrorFieldRelativePathLawsTest::byText).distinct().reduce((a, b) -> a + "," + b).orElse("?");
     }

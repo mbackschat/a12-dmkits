@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
  * edges (the kernel's `CalculationController.handleBerechnetenWert` rule): a stored form is NEVER re-rounded to
  * fit the 15-digit check — the fit arm renders `max(naturalScale, minFractionalDigits)` uncapped (a >15-digit
  * string is ERRORED with the FULL value), the no-fit arm (natural scale > the target's maxFractionalDigits —
- * authorable only via the `errorCodesToSuppress` scale-gate suppression) renders length-bounded to 16
+ * authorable only by suppressing the scale gate in the computation's preamble) renders length-bounded to 16
  * significant digits after the scale-19 store pre-round and is ERRORED unconditionally. Every expectation here
  * is kernel-verified by the quad-differential `adapter.laws.ComputedNumberDigitOverflowDiffTest`
  * (groovy-legacy == groovy-modern == java-static == interpreter).

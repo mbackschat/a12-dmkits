@@ -16,7 +16,8 @@ import org.junit.jupiter.api.Test
  * both of a rule and of a computation that survives the default variant and answers each with a sentence of its
  * own and no class: the name must be an ASCII letter followed by ASCII letters, digits and underscores, and the
  * error code may hold letters, digits, a space and the underscore, the letters including the German umlauts and
- * `ß`. A computation's code alphabet is asked of its name, and a refused name withholds the reserved-prefix class.
+ * `ß`. A computation's code alphabet is asked of its own `errorCode` when it declares one (kernel 31.3.1) and of its
+ * name otherwise, and a refused name withholds the reserved-prefix class.
  *
  * Own domain (an insurance policy and its premium calculation), built by editing the drafted model's JSON, because
  * the typed builder refuses every defective name here outright.
@@ -30,6 +31,8 @@ class CheckerDeclarationAlphabetAgreementTest {
         val condition: String = "FieldFilled(Reference)",
         val target: String = "../Reference",
         val numericCode: Number? = null,
+        /** A computation's own `errorCode` (kernel 31.3.1), or absent when null. */
+        val computationCode: String? = null,
     )
 
     private val rows = linkedMapOf(
@@ -91,6 +94,12 @@ class CheckerDeclarationAlphabetAgreementTest {
         "a negative number as the code" to Row(numericCode = -7),
         "a decimal number as the code" to Row(numericCode = 1.5),
         "a whole number as the code" to Row(numericCode = 7),
+        // Kernel 31.3.1: a computation's own errorCode is the code the alphabet reads, in place of its name.
+        "a dotted computation beside a code" to Row(name = "Prem.ium", computation = true, computationCode = "PREMIUM"),
+        "a computation with a hyphenated code" to Row(name = "Premium", computation = true, computationCode = "PREM-IUM"),
+        "a computation with an umlaut code" to Row(name = "Premium", computation = true, computationCode = "PRÄMIE"),
+        "a computation with an empty code" to Row(name = "Premium", computation = true, computationCode = ""),
+        "a computation with a blank code" to Row(name = "Premium", computation = true, computationCode = "  "),
     )
 
     @Test
@@ -111,7 +120,10 @@ class CheckerDeclarationAlphabetAgreementTest {
             "a dotted name and code" to listOf(CODE, NAME),
             "a dotted computation" to listOf(CODE, NAME),
             "a computation named with a space" to listOf(NAME),
+            "a dotted computation beside a code" to listOf(NAME),
+            "a computation with a hyphenated code" to listOf(CODE),
         ), sentences.filterKeys { it in PINNED })
+        assertEquals(listOf("MVK_ERROR_CODE_MISSING"), observed.getValue("a computation with a blank code").first)
         assertEquals(listOf("MVK_RULE_NAME_INVALID"), observed.getValue("a reserved name").first)
         assertEquals(listOf("MVK_ERROR_CODE_MISSING"), observed.getValue("a code that is a tab").first)
         assertEquals(listOf(CODE), observed.getValue("a code that is a no-break space").first)
@@ -152,7 +164,9 @@ class CheckerDeclarationAlphabetAgreementTest {
         }
         element.put("name", row.name).put("id", "/Policy/${row.name}")
         val body = element.path(if (row.computation) "Computation" else "Rule") as ObjectNode
-        if (!row.computation) {
+        if (row.computation) {
+            row.computationCode?.let { body.put("errorCode", it) }
+        } else {
             when {
                 row.numericCode != null -> body.set<ObjectNode>("errorCode", mapper.valueToTree(row.numericCode))
                 row.code == null -> body.remove("errorCode")
@@ -170,6 +184,7 @@ class CheckerDeclarationAlphabetAgreementTest {
         const val CODE = "RK_ERROR_CODE_ALPHABET"
         val PINNED = setOf("control", "a name with an umlaut", "a reserved dotted name", "a code with umlauts",
             "a code with an accent", "a code with a no-break space", "a dotted name and code",
-            "a dotted computation", "a computation named with a space")
+            "a dotted computation", "a computation named with a space", "a dotted computation beside a code",
+            "a computation with a hyphenated code")
     }
 }

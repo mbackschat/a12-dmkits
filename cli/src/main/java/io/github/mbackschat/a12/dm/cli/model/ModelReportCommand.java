@@ -189,8 +189,12 @@ final class ModelReportCommand extends BaseCommand {
                     }
                 }
             }
-            ArrayNode suppressions = node.putArray("errorCodesToSuppress");
-            c.errorCodesToSuppress().forEach(suppressions::add);
+            if (c.errorCode() != null) {
+                node.put("errorCode", c.errorCode());
+            }
+            if (c.additionalParserInformation() != null) {
+                node.put("additionalParserInformation", c.additionalParserInformation());
+            }
             putMessages(node, c.messages());
         }
         return data;

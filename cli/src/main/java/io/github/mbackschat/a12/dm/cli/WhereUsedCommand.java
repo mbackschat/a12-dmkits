@@ -56,8 +56,8 @@ final class WhereUsedCommand extends BaseCommand {
             // the model is now -m (consistent with every other verb); the pre-G11
             // `where-used <model> --entity=…` form (model passed positionally, no -m) lands here — name the
             // change so it self-corrects rather than failing opaquely
-            return fail("where-used now takes -m <model> + a positional <entity> — it no longer takes the model "
-                    + "as a positional argument. Try: -m <model.json> where-used "
+            return fail("where-used takes -m <model> + a positional <entity>, not the model as a positional "
+                    + "argument. Try: -m <model.json> where-used "
                     + (entity != null ? entity : "/Group/Field"));
         }
         if (entity == null) {

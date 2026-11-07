@@ -226,11 +226,12 @@ class CheckerDeclarationAdmissionAgreementTest {
     }
 
     /**
-     * The pre-1900 check on a year-free date is refused for its VALUE, so the checker must bind that value as A12
-     * binds every such member: `1` and `" TRUE"` set it, `0` clears it (cold review 2026-10-21).
+     * The pre-1900 check on a year-free date, in every spelling A12 binds. Through kernel 31.1.1 a set spelling
+     * (`true`, `1`, `" TRUE"`) was refused and a cleared one admitted, so the checker had to bind the value as A12
+     * does (cold review 2026-10-21). Since 31.2 every spelling is admitted (KF677), and so must the checker's be.
      */
     @Test
-    fun thePre1900CheckOnAYearFreeDateIsReadAsA12BindsIt() {
+    fun thePre1900CheckOnAYearFreeDateIsAdmittedInEverySpelling() {
         val spellings = listOf<Any>(true, 1, " TRUE", false, 0)
         val observed = spellings.associate { raw ->
             val model = policy().also { m ->
@@ -241,10 +242,8 @@ class CheckerDeclarationAdmissionAgreementTest {
                 .filter { it.severity() == Severity.ERROR }.mapNotNull { CLASS.find(it.message())?.groupValues?.get(1) }
             mapper.writeValueAsString(raw) to (a12 to ours(model))
         }
-        val refused = listOf("MVK_ADDITIONAL_CHECK_INVALID") to listOf("MVK_ADDITIONAL_CHECK_INVALID")
         val admitted = emptyList<String>() to emptyList<String>()
-        assertEquals(mapOf("true" to refused, "1" to refused, "\" TRUE\"" to refused, "false" to admitted, "0" to admitted),
-            observed, "(A12, ours)")
+        assertEquals(observed.keys.associateWith { admitted }, observed, "(A12, ours)")
     }
 
     /**

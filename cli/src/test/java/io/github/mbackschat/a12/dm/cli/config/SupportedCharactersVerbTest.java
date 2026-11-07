@@ -26,7 +26,7 @@ class SupportedCharactersVerbTest {
         assertTrue(help.contains("atomic combined grapheme"), help);
         assertTrue(help.contains("full BMP"), help);
 
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode option = findParam(manifest, "config modify", "--supported-character");
         assertTrue(option.path("description").asText().contains("atomic combined grapheme"), option::toString);
         assertTrue(option.path("description").asText().contains("full BMP"), option::toString);

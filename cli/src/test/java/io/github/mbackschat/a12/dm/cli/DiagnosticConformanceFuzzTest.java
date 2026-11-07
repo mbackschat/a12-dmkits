@@ -64,7 +64,7 @@ class DiagnosticConformanceFuzzTest {
 
     @Test
     void everyMutatingVerbStructuresADomainError() throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Path work = dir.resolve("work.dm.json");
         int tested = 0;
         List<String> skipped = new ArrayList<>();

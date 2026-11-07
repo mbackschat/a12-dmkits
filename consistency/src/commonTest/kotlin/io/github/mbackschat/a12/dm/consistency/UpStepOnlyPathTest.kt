@@ -36,12 +36,13 @@ class UpStepOnlyPathTest {
     }
 
     @Test
-    fun fromARootLevelRuleTheRunLeavesTheModel() {
+    fun fromARootLevelRuleTheRunStopsOnOrLeavesTheModelRoot() {
+        // The model root is a turning point since kernel 31.3.1, so a star on the step onto it answers first (KF679).
         val rows = linkedMapOf(
             "FieldFilled(..)" to listOf(TOO_MANY),
-            "AtLeastOneGroupFilled(..*)" to listOf(TOO_MANY),
+            "AtLeastOneGroupFilled(..*)" to listOf(WILDCARD_REL),
             "FieldFilled(../..)" to listOf(TOO_MANY),
-            "FieldFilled(..*/..)" to listOf(TOO_MANY),
+            "FieldFilled(..*/..)" to listOf(WILDCARD_REL),
             "FieldFilled(/..*)" to listOf(TOKEN),
         )
         assertEquals(rows, judged(rows, inInsured = false, errorField = "Holder"), "from a root-level rule")

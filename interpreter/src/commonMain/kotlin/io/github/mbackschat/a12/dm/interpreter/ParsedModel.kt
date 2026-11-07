@@ -182,7 +182,7 @@ internal class ParsedModel(
         // bundle belongs to the OWNING DECLARATION, not to a validation rule, which the kernel says in its
         // own refusal on this carrier — it calls the computation a rule (IF324).
         return RuleDef(node, group, "FieldFilled(${comp.targetPath}) And <implicit validation of $name>",
-            name, relativePath(node, comp.targetPath), messages = comp.messages)
+            comp.errorCode ?: name, relativePath(node, comp.targetPath), messages = comp.messages)
     }
 
     /**

@@ -1199,22 +1199,37 @@ Off a `GroupEditor` the same override reads `editor.addComputation(target, c -> 
 
 When the model declares a base year, its numeric role is also a normal numeric operand: `Dsl.baseYearNumber().plus(1)`, `Dsl.roundDown(Dsl.baseYearNumber())`, and `Dsl.abs(Dsl.baseYearNumber())` produce the configured scale-0 year through arithmetic or wrappers. The same constant remains date-valued through `Dsl.baseYear()` in explicitly temporal expressions; a derived numeric component such as `Dsl.yearFromDate(Dsl.baseYear())` can be wrapped in the same way. Omitting the model configuration is rejected as `MVK_NO_BASE_YEAR`. *Test-backed: `BaseYearArithmeticDiffTest`, `TemporalNumericWrapperDiffTest`, `BaseYearComputationTest`, `TemporalNumericWrapperTest`, and `BaseYearArithmeticLawsTest`.*
 
-**`errorCodesToSuppress` — the kernel's model-level escape hatch.** A computation may declare codes to suppress; the builder carries them, **domain-checked** against the kernel's supported set (currently only `MVK_INVALID_COMPARE_DEC_PLACES`, the static assignment-scale gate) — an unsupported code is refused fail-fast, not written, and so is a second entry, since A12 renders the list into a one-code pragma ([KF298](KERNEL-FINDINGS.md#kf298)). Its sole use today is letting a *scale-mismatched* operation load (finding 61):
+**`suppressWarnings` — the kernel's model-level escape hatch.** A computation may suppress warnings; the builder stores them as A12's `additionalParserInformation` preamble, `@SuppressWarning(…)` or `@UnterdrueckeWarnung(…)` by the model's condition language, **domain-checked** against the codes the builder supports (only `MVK_INVALID_COMPARE_DEC_PLACES`, the static assignment-scale gate; A12 also admits `MVK_ERROR_INVALID_ENUM_CALCULATION`, which the builder refuses until the interpreter evaluates it). An unsupported code is refused fail-fast, not written ([KF298](KERNEL-FINDINGS.md#kf298)). The draft boundary takes the same list as `DraftComputation.Builder.suppressWarnings(language, codes)`, or the raw text as `additionalParserInformation(text)`. Its use is letting a *scale-mismatched* operation load (finding 61):
 
 <!-- snippet: computation-suppress -->
 ```java
-// errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a
-// scale-mismatched operation load (the static assignment-scale gate, MVK_INVALID_COMPARE_DEC_PLACES).
+// suppressWarnings — the kernel's model-level escape hatch (domain-checked), stored as the computation's
+// preamble: it lets a scale-mismatched operation load (the static assignment-scale gate,
+// MVK_INVALID_COMPARE_DEC_PLACES).
 NumberExpr product = m.num("/Order/UnitPrice").asNumber().times(m.num("/Order/UnitPrice").asNumber());
 Computation comp = m.computation(m.num("/Order/BackorderQuantity"))
         .name("BackorderProjection")
         .calc(product.expression())              // scale-4 product into a scale-0 target
-        .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+        .suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")
         .message(Dsl.en("Backorder derived from the unit price."))
         .build();
 ```
 
-`KernelAdapter.readComputation` recovers the suppression list from the source `IComputation`, so the typed read → modify → write cycle preserves it together with the parsed calculation slots (finding 74).
+`KernelAdapter.readComputation` recovers the suppressed codes from the source `IComputation`'s preamble (the legacy `errorCodesToSuppress` list arrives folded into it), so the typed read → modify → write cycle preserves it together with the parsed calculation slots (finding 74).
+
+**`errorCode` — the code of the generated validation.** A12 turns every computation into a validation of its target, coded by the computation's `errorCode` when it declares one and by its name otherwise ([KF678](KERNEL-FINDINGS.md#kf678)). `Computation.Builder.errorCode(code)` sets it, a blank code is refused with A12's own `MVK_ERROR_CODE_MISSING`, and the read cycle keeps it (`KernelAdapter.computationErrorCode`). Its characters are A12's code alphabet, not the name's.
+
+<!-- snippet: computation-error-code -->
+```java
+// errorCode — the code of the validation A12 generates from the computation; without it the
+// validation is coded by the computation's name. A blank code is refused (MVK_ERROR_CODE_MISSING).
+Computation backorder = m.computation(m.num("/Order/BackorderQuantity"))
+        .name("BackorderCalc")
+        .errorCode("BACKORDER_MISMATCH")
+        .calc(m.num("/Order/Quantity").value())
+        .message(Dsl.en("Backorder follows the ordered quantity."))
+        .build();
+```
 
 ---
 
@@ -1293,7 +1308,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
       "gotchas":["a field carrying a formal error makes FieldFilled and FieldNotFilled unavailable rather than treating the cell as empty, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology"] },
     { "id":"GreaterThan","keyword":">", "kind":"OPERATOR",  "meaning":"True iff the left operand is strictly greater than the right." },
     { "id":"Sum",        "keyword":"Sum","kind":"FUNCTION",  "meaning":"The sum of the listed number fields' values, typically over a repetition list.",
-      "gotchas":["an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)"] }
+      "gotchas":["an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields"] }
   ],
   "references" : [
     { "path":"/Order/CustomerName", "kind":"STRING" },
@@ -1484,20 +1499,9 @@ Consumer<StringFieldBuilder> messages = text -> text.pattern("[A-Z]+", "capitals
 
 A Number has three distinct textual-size declarations in addition to scale and value bounds: `minLength(n)` / `maxLength(n)` count the rendered stored-number text (including sign and decimal separator), while `maxIntegerDigits(n)` counts only digits before the separator. Do not substitute the latter for `maxLength`: the kernel's `Date(...)` / `Time(...)` component gate consults `maxLength`. The same keys are accepted by the CLI's `number` block and returned by `field read` / `typedef read`; direct `FieldTypeSpec.NumberSpec` construction uses its fluent builder rather than a ten-position constructor (finding 104 / DG26).
 
-A Date field's `DatePrecision` is monotone: `DAY_OPTIONAL` allows an exact `00` day, `MONTH_OPTIONAL` additionally allows month zero only after day zero, and `YEAR_OPTIONAL` additionally allows year zero only after both. Modelkit authors all three through `DateFieldBuilder.datePrecision`; the interpreter loads the same complete A12 enum and `ValueAsDate` resolves known-year earliest/latest boundaries without substituting year 2000 for an unknown year (IF233). A separate opt-in constraint rejects concrete values before 1900:
+A Date field's `DatePrecision` is monotone: `DAY_OPTIONAL` allows an exact `00` day, `MONTH_OPTIONAL` additionally allows month zero only after day zero, and `YEAR_OPTIONAL` additionally allows year zero only after both. Modelkit authors all three through `DateFieldBuilder.datePrecision`; the interpreter loads the same complete A12 enum and `ValueAsDate` resolves known-year earliest/latest boundaries without substituting year 2000 for an unknown year (IF233). Do not infer that a computation may target a partial precision: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
 
-<!-- snippet: date-before-1900 -->
-```java
-DocumentModelDraft draft = permit()
-        .rootGroup("Permit", group -> group
-                .dateField("IssuedOn", d -> d.format("yyyy-MM-dd").rejectBefore1900())
-                .dateField("ObservedOn", d -> d.format("yyyy-MM-dd")))
-        .build();
-```
-
-This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
-
-**That check requires the declared format to carry a YEAR**, and the requirement is the format's rather than the kind's: over the kernel's admitted vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused `MVK_ADDITIONAL_CHECK_INVALID` on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. Incompleteness is not the trigger — `yyyy` carries no day and is accepted. The builder does not pre-check it: the kernel's own diagnostic carries a curated corrective naming the accepted formats (`StructuralKernelFix`), and a client-side refusal would also fire on the READ path, making an inconsistent-but-present model unreadable rather than merely unauthorable ([KF251](KERNEL-FINDINGS.md#kf251)).
+**`rejectBefore1900()` is deprecated and has no effect.** A12 stopped evaluating `youngerThan1900Check` in kernel 31.2 (A12K-4073) and removes it with A12K-4439. The builders on `dateField`, `dateFragmentField` and `dateRangeField`, and the CLI's `rejectBefore1900` key, only keep an existing declaration round-tripping ([KF677](KERNEL-FINDINGS.md#kf677), [DG181](DEV-API-GAPS.md#dg181)).
 
 **The two BOOLEAN-valued kinds are declared with their own builders, and each can override the text it stores:**
 
@@ -1515,25 +1519,18 @@ DocumentModelDraft draft = DocumentModelDraft.named("subscription").locale("en_U
 
 `booleanField` declares A12's three-state `BooleanType` and `confirmField` its two-state `ConfirmType`, whose unspecified value reads as False (§1). The difference is in EVALUATION rather than in configuration, which is why one `BooleanFieldBuilder` serves both: `trueValue`/`falseValue` emit `notInDCustomTrueValue` / `notInDCustomFalseValue` on either kind, and they are independent — override one and the other keeps A12's default. A bare declaration writes no inner block at all.
 
-**The same check rides two further declarations, and a Number can be declared unsigned:**
+**A Number can be declared unsigned:**
 
-<!-- snippet: unsigned-and-pre-1900-carriers -->
+<!-- snippet: unsigned-number -->
 ```java
 DocumentModelDraft draft = permit()
         .rootGroup("Permit", group -> group
                 .numberField("Deposit", n -> n.fractionDigits(2).positivesOnly())
-                .numberField("Adjustment", n -> n.fractionDigits(2))
-                .dateFragmentField("BilledMonth", f -> f.fragmentFormat("yyyy-MM").rejectBefore1900())
-                .dateFragmentField("NotedMonth", f -> f.fragmentFormat("yyyy-MM"))
-                .dateRangeField("CoverWindow",
-                        r -> r.format("dd.MM.yyyy").separator("-").rejectBefore1900())
-                .dateRangeField("NotedWindow", r -> r.format("dd.MM.yyyy").separator("-")))
+                .numberField("Adjustment", n -> n.fractionDigits(2)))
         .build();
 ```
 
 `positivesOnly()` emits A12's `NumberType.positivesOnly` (CLI: `"number":{"positivesOnly":true}`), which is the **only** input to the runtime's `hatVorzeichen` — a non-negative `min` bounds the value without changing the sign polarity. Two consequences, both measured: a minus is the formal error `zahlMitVorzeichen`, and an *empty* unsigned number can be filled bigger but never smaller, so a directional comparison over it types VALUE where a signed one types OMISSION. A minus on a **zero** magnitude reports the sign class rather than `zahlNullEnthaeltVorzeichen`, so the two are alternatives rather than a precedence pair.
-
-`DateFragmentFieldBuilder.rejectBefore1900()` and `DateRangeFieldBuilder.rejectBefore1900()` (CLI: `"dateFragment"`/`"dateRange"` `{"rejectBefore1900":true}`) carry the check on the other two declarations. **They do not share the year co-requirement.** The fragment kind reproduces the DATE gate exactly, while a DATERANGE takes the check on every admitted `(format, separator)` pair — the year-free ones included, where it then measures the model's base-year completion. So if you need a year-free period guarded against pre-1900 dates, declare it as a range; there is no year-free DATE or DATEFRAGMENT that will hold the flag ([KF276](KERNEL-FINDINGS.md#kf276)).
 
 A **date RANGE** adds one property beyond format and separator: `interpretationOfYear` decides which endpoint of a *wrapping* yearless range keeps the base year. Without it, an ordinary winter cover window (`01.11-31.01` on a `dd.MM` range) reads as start-after-end and is reported invalid. The direction is the reverse of what the names suggest — the value names the endpoint the base year **labels**, and the opposite endpoint moves:
 

@@ -89,8 +89,8 @@ class CorrelationLawsTest {
         List<RuntimeLaws.Msg> fired = RuntimeLaws.messages(model, counts("5", "5", "9")).stream()
                 .filter(m -> m.code().equals("CORR")).toList();
         assertEquals(2, fired.size(), () -> "fires on each row with a correlated duplicate, got: " + fired);
-        assertTrue(fired.stream().anyMatch(m -> m.errorField().contains("[1, 1, 1]")), () -> "row 1: " + fired);
-        assertTrue(fired.stream().anyMatch(m -> m.errorField().contains("[1, 2, 1]")), () -> "row 2: " + fired);
+        assertTrue(fired.stream().anyMatch(m -> m.errorField().contains("/Items[1]/")), () -> "row 1: " + fired);
+        assertTrue(fired.stream().anyMatch(m -> m.errorField().contains("/Items[2]/")), () -> "row 2: " + fired);
 
         // all distinct → no row has a different row sharing its Count → fires nowhere
         assertFalse(RuntimeLaws.fires(model, "CORR", counts("5", "6", "9")),
@@ -135,7 +135,7 @@ class CorrelationLawsTest {
         List<RuntimeLaws.Msg> fired = RuntimeLaws.messages(model, slots("2024-01-01", "2024-01-03", "2024-01-02"))
                 .stream().filter(m -> m.code().equals("CHRONO")).toList();
         assertEquals(1, fired.size(), () -> "fires only on the out-of-order row, got: " + fired);
-        assertTrue(fired.get(0).errorField().contains("[1, 3, 1]"), () -> "the third slot: " + fired);
+        assertTrue(fired.get(0).errorField().contains("/Slots[3]/"), () -> "the third slot: " + fired);
     }
 
     @Test

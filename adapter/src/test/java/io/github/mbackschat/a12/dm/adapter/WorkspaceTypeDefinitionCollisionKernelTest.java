@@ -69,7 +69,7 @@ class WorkspaceTypeDefinitionCollisionKernelTest {
         assertEquals(16, bound.getMaxLength().orElseThrow(), "the field binds the later definition");
         var unchecked = assertThrows(ConsistencyCheckFailedException.class,
                 () -> new KernelConsistencyOracle().checkConsistency(entry, ReferenceResolvers.selfContained()));
-        assertTrue(unchecked.getMessage().contains("Duplicate key SharedCode"), unchecked.getMessage());
+        assertTrue(unchecked.getMessage().contains("Duplicate Typedef for id 'SharedCode'"), unchecked.getMessage());
     }
 
     private static String importedConsumer() {

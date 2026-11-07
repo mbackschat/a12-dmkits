@@ -53,7 +53,7 @@ class GroupOrderingFieldTypeTest {
      * different law from the one these rows are about. Making the carrier repeatable is what keeps each row
      * on one variable.
      */
-    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written"}],"""
+    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written","order":"ASC"}],"""
 
     /**
      * A `noValueValidation` string is refused on both members, each with its OWN code.

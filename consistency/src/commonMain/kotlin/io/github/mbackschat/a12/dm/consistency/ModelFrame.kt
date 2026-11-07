@@ -101,8 +101,8 @@ private val FRAME = listOf(
     FrameMember("header", Bind.OBJECT, absent = FrameTier.READ, nulled = FrameTier.READ, members = listOf(
         text("id"), text("modelType"), text("description"),
         FrameMember("modelVersion", Bind.TEXT, absent = FrameTier.CHECK, nulled = FrameTier.CHECK),
-        FrameMember("locales", Bind.LIST, absent = FrameTier.CHECK, nulled = FrameTier.CHECK),
-        list("labels"), list("annotations"), list("modelReferences"),
+        // Kernel 31.3.1 reads an absent or `null` list here as the empty one, so no locales draws the language law.
+        list("locales"), list("labels"), list("annotations"), list("modelReferences"),
     )),
     FrameMember("content", Bind.OBJECT, absent = FrameTier.READ, nulled = FrameTier.READ, members = listOf(
         FrameMember("modelInfo", Bind.OBJECT, absent = FrameTier.CHECK, nulled = FrameTier.READ, members = listOf(

@@ -1,5 +1,5 @@
 {
-  "verifiedAgainst": "31.1.1",
+  "verifiedAgainst": "31.3.1",
   "emptyOperandDefaults": {
     "number": {
       "behavior": "AS_ZERO",
@@ -1346,7 +1346,7 @@
           "text": "inside a Having filter a group leaf obeys the same scope gate as a field one, marked or not: alone it draws MVK_NO_ITERATION_FOR_WILDCARD in BOTH spellings, and beside an in-scope conjunct both are admitted — so a refusal of GroupFilled($G) alone is about the missing in-scope reference, not about the $",
           "kind": "AUTHORING"
         },
-        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient (KF544).", "kind": "SURPRISE"}
+        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient.", "kind": "SURPRISE"}
       ],
       "validExample": {
         "dsl": "GroupFilled(ShippingAddress)",
@@ -1392,7 +1392,7 @@
           "text": "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)",
           "kind": "SURPRISE"
         },
-        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient (KF544).", "kind": "SURPRISE"}
+        {"text": "In a parallel join, a matching group row counts as filled even with an empty payload. Invalid indices make unmatched reads unavailable; partial validation also needs wildcard index coverage to establish unmatched absence. Concrete selections of every held index row are insufficient.", "kind": "SURPRISE"}
       ],
       "validExample": {
         "dsl": "GroupNotFilled(ShippingAddress)",
@@ -1933,7 +1933,7 @@
         {
           "code": "MVK_INVALID_COMPARE_DEC_PLACES",
           "whenOperands": [],
-          "fix": "the power derives a KNOWN scale only from a scale-0 BASE raised to a nonnegative literal exponent, and that derived scale is 0 — it is never the base's. Every other shape derives an UNKNOWN scale (reported as '?' on that side): a decimal-scale base, a non-literal exponent such as a field or an aggregate, a negative literal exponent, and a bare division anywhere in the expression. Equality (== / !=) refuses an unknown scale while ORDERING (< <= > >=) admits it, so the cheapest fix is often to order instead. Otherwise pin the scale with RoundAccounting(expr, n), or accept the mismatch on the rule itself with allowDifferingDecimals — the kernel's one suppressible warning, which prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) and admits every unknown-scale operand shape alike",
+          "fix": "the power derives a KNOWN scale only from a scale-0 BASE raised to a nonnegative literal exponent, and that derived scale is 0 — it is never the base's. Every other shape derives an UNKNOWN scale (reported as '?' on that side): a decimal-scale base, a non-literal exponent such as a field or an aggregate, a negative literal exponent, and a bare division anywhere in the expression. Equality (== / !=) refuses an unknown scale while ORDERING (< <= > >=) admits it, so the cheapest fix is often to order instead. Otherwise pin the scale with RoundAccounting(expr, n), or accept the mismatch on the rule itself with allowDifferingDecimals — a suppressible kernel warning, which prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) and admits every unknown-scale operand shape alike",
           "probe": { "dsl": "[UnitPrice] ^ 2 == 100.00" }
         }
       ],
@@ -2035,7 +2035,7 @@
       "constraints": [
         "the left side must be a bare string field value — no expressions, no constants, no enums",
         "the right side must be a string constant holding a valid regex",
-        "the regex must compile as Java Pattern and pass the kernel 30.8.x admission restrictions; passing that finite gate does not prove JavaScript portability"
+        "the regex must compile as Java Pattern and pass A12's admission restrictions; passing that finite gate does not prove JavaScript portability"
       ],
       "gotchas": [
         {
@@ -2051,7 +2051,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)",
+          "text": "a backtracking-prone pattern such as (a+)+ is a performance/security risk",
           "kind": "SURPRISE"
         },
         {
@@ -2123,7 +2123,7 @@
       "constraints": [
         "the left side must be a bare string field value — no expressions, no constants, no enums",
         "the right side must be a string constant holding a valid regex",
-        "the regex must compile as Java Pattern and pass the kernel 30.8.x admission restrictions; passing that finite gate does not prove JavaScript portability"
+        "the regex must compile as Java Pattern and pass A12's admission restrictions; passing that finite gate does not prove JavaScript portability"
       ],
       "gotchas": [
         {
@@ -2362,7 +2362,7 @@
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
         "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED. The denominator depends on the spelling: a LITERAL value list gates the field list alone, while a field-READ value list is gated as ONE union of both lists, so a reference repeated across the halves is MVK_DUPLICATE_PARAM1 too. The containment arm applies here as well: an operand strictly inside another — a group scope beside its own descendant — is refused MVK_DUPLICATE_PARAM2",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
-        "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required. This family does NOT carry the entity-list arity rule — ONE field on each side is admitted, so (A In B) is a legal single-slot form and Sum/FirstFilledValue's 'at least two operands' does not transfer here (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest)",
+        "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required. This family does NOT carry the entity-list arity rule — ONE field on each side is admitted, so (A In B) is a legal single-slot form and Sum/FirstFilledValue's 'at least two operands' does not transfer here",
         "values may also be string literals or field references"
       ],
       "gotchas": [
@@ -2686,7 +2686,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold (KF528).",
+          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold.",
           "kind": "SURPRISE"
         }
       ],
@@ -2962,7 +2962,7 @@
       "meaning": "True when the listed fields' values are not all distinct.",
       "constraints": [
         "takes plain or flattened (starred) field operands",
-        "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows, OR at least one GROUP — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest)",
+        "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows, OR at least one GROUP — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
         "every operand must share ONE comparability category (MVK_VARYING_TYPES_NOT_ALLOWED) — {String, Custom}, {Enumeration}, {Number}, or the temporal family {Date, Time, DateTime, DateFragment}; differing Number scales are admitted, which is what makes cross-scale equality reachable",
         "Boolean, Confirm, and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code — each gate reads the WHOLE operand list, so reordering the operands never changes which code you get",
         "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
@@ -2987,7 +2987,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "Filtered uniqueness stays dense above 100 cache-bounded candidates. In full validation and computation, a duplicate stops the scan after one kept successor: a failure while finding that successor is reached, but later filters and authored operands remain unread. Number and partially known Date lists are calibrated in KF528.",
+          "text": "Filtered uniqueness stays dense above 100 cache-bounded candidates. In full validation and computation, a duplicate stops the scan after one kept successor: a failure while finding that successor is reached, but later filters and authored operands remain unread. Verified for Number and partially known Date lists.",
           "kind": "SURPRISE"
         }
       ],
@@ -3039,11 +3039,11 @@
       "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
       "constraints": [
         "number fields only (MVK_NO_NUMBER)",
-        "more than one field, OR one repetition list, OR at least one GROUP — the gate's own text is a disjunction and one group satisfies it alone, whatever its field count (MVK_PARAMSIZE_INVALIDN; locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
+        "more than one field, OR one repetition list, OR at least one GROUP — the gate's own text is a disjunction and one group satisfies it alone, whatever its field count (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
-          "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)",
+          "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields",
           "kind": "SURPRISE"
         },
         {
@@ -3055,7 +3055,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold (KF528).",
+          "text": "For filtered Number lists spanning two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection. Initial/reset searches remain dense until a candidate is kept; a blank stored row still counts as occupied. Declared capacity alone does not determine the threshold.",
           "kind": "SURPRISE"
         }
       ],
@@ -3140,11 +3140,11 @@
       ],
       "gotchas": [
         {
-          "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MaxValue is grow-only (KERNEL-SEMANTICS §9/§12)",
+          "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MaxValue is grow-only",
           "kind": "SURPRISE"
         },
         {
-          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
+          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. Verified in full validation and computation; declared capacity alone does not determine the threshold.",
           "kind": "SURPRISE"
         }
       ],
@@ -3304,11 +3304,11 @@
       ],
       "gotchas": [
         {
-          "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MinValue is shrink-only (KERNEL-SEMANTICS §9/§12)",
+          "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MinValue is shrink-only",
           "kind": "SURPRISE"
         },
         {
-          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
+          "text": "For filtered Number and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. Verified in full validation and computation; declared capacity alone does not determine the threshold.",
           "kind": "SURPRISE"
         }
       ],
@@ -4202,7 +4202,7 @@
           ]
         },
         {
-          "text": "For filtered Number, String and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. This is measured in full validation and computation; declared capacity alone does not determine the threshold (KF528).",
+          "text": "For filtered Number, String and DateTime field lists over two unbound repetition levels, more than 100 cache-bounded candidates enables occupied-prefix selection; an explicitly blank row remains occupied. Verified in full validation and computation; declared capacity alone does not determine the threshold.",
           "kind": "SURPRISE"
         }
       ],
@@ -4326,7 +4326,7 @@
           ]
         },
         {
-          "text": "Having-filtered Number and String value counts spanning two unbound repetition levels retain dense candidate selection above 100 cache-bounded candidates, unlike Sum and NumberOfFilledFields. Missing slots can therefore expose a failing filter that those sparse aggregate scans skip (KF528).",
+          "text": "Having-filtered Number and String value counts spanning two unbound repetition levels retain dense candidate selection above 100 cache-bounded candidates, unlike Sum and NumberOfFilledFields. Missing slots can therefore expose a failing filter that those sparse aggregate scans skip.",
           "kind": "SURPRISE"
         }
       ],
@@ -4710,7 +4710,7 @@
       ],
       "gotchas": [
         {
-          "text": "a complete-period count truncated toward zero, not a calendar-field subtraction (KERNEL-SEMANTICS §6)",
+          "text": "a complete-period count truncated toward zero, not a calendar-field subtraction",
           "kind": "SURPRISE"
         }
       ],
@@ -5138,7 +5138,7 @@
       ],
       "gotchas": [
         {
-          "text": "AddMonths is date-only, requires a format carrying a month, and clamps month-end overflow; its behavior differs from AddYears across a leap-year boundary (§6)",
+          "text": "AddMonths is date-only, requires a format carrying a month, and clamps month-end overflow; its behavior differs from AddYears across a leap-year boundary",
           "kind": "SURPRISE"
         }
       ],
@@ -5173,7 +5173,7 @@
       ],
       "gotchas": [
         {
-          "text": "AddYears is date-only, requires a format carrying a year, and maps end-of-February to end-of-February; this differs from AddMonths across leap years (§6)",
+          "text": "AddYears is date-only, requires a format carrying a year, and maps end-of-February to end-of-February; this differs from AddMonths across leap years",
           "kind": "SURPRISE"
         }
       ],
@@ -5669,7 +5669,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, any-pair overlap retains dense candidate selection even above 100 cache-bounded candidates; scalar-to-list AtLeastOneDateRangeOverlaps enables occupied-prefix selection instead (KF528).",
+          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, any-pair overlap retains dense candidate selection even above 100 cache-bounded candidates; scalar-to-list AtLeastOneDateRangeOverlaps enables occupied-prefix selection instead.",
           "kind": "SURPRISE"
         }
       ],
@@ -5765,7 +5765,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, scalar-to-list overlap enables occupied-prefix selection above 100 cache-bounded candidates. An explicitly blank row still counts as occupied and can expose a failing filter; DateRangesOverlap retains dense selection (KF528).",
+          "text": "For Having-filtered exact yyyy-MM-dd and yearless MM-dd range lists spanning two unbound repetition levels, scalar-to-list overlap enables occupied-prefix selection above 100 cache-bounded candidates. An explicitly blank row still counts as occupied and can expose a failing filter; DateRangesOverlap retains dense selection.",
           "kind": "SURPRISE"
         }
       ],
@@ -6575,7 +6575,7 @@
       "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. Without a year component the year is the model's Base Year, which the model must then declare. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
         "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP); a field may also be read through a key (Rows/F For key), judged by the field it selects in",
-        "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
+        "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP"
       ],
       "gotchas": [
         {
@@ -6802,7 +6802,7 @@
       "returns": "boolean",
       "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"BIC\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING, ENUMERATION, or EXTENSIBLE-ENUMERATION field; operand 2 is the type name as a string literal.",
       "constraints": [
-        "operand 1 is a STRING or ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM) — the extensible-enumeration the code names is a FLAG on a string declaration, not a kind of its own, so a CUSTOM-typed field is refused (measured 2026-09-14); operand 2 is a string-literal type name"
+        "operand 1 is a STRING or ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM) — the extensible-enumeration the code names is a FLAG on a string declaration, not a kind of its own, so a CUSTOM-typed field is refused; operand 2 is a string-literal type name"
       ],
       "gotchas": [
         {
@@ -6840,7 +6840,7 @@
       "returns": "boolean",
       "meaning": "True iff the field's value is NOT a valid instance of the named predefined custom field type — the negation of ValidType. The custom-field-type overload of Invalid, distinct from the date-construct Invalid.",
       "constraints": [
-        "operand 1 is a STRING or ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM) — the extensible-enumeration the code names is a FLAG on a string declaration, not a kind of its own, so a CUSTOM-typed field is refused (measured 2026-09-14); operand 2 is a string-literal type name"
+        "operand 1 is a STRING or ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM) — the extensible-enumeration the code names is a FLAG on a string declaration, not a kind of its own, so a CUSTOM-typed field is refused; operand 2 is a string-literal type name"
       ],
       "gotchas": [
         {
@@ -7011,7 +7011,7 @@
       "meaning": "The first specified value across owner entity selectors in authored order. Selectors may be direct or wildcard fields, enum categories, semantic-indexed fields, or plain, wildcard, or semantic-indexed groups; groups and categories expand in model order, repetition lists scan in row order, and unspecified cells are skipped (a feldListenOp sibling of Sum).",
       "gotchas": [
         {
-          "text": "in full validation, an omitted or empty inner group under an earlier parent still counts as an empty prefix: a later matching first value fires as OMISSION, while moving that empty branch after the selected value preserves VALUE. Measured for STRING, NUMBER and BOOLEAN nested field/group stars and keyed group forms; locked by FirstFilledNestedPrefixDiffTest (KF126).",
+          "text": "in full validation, an omitted or empty inner group under an earlier parent still counts as an empty prefix: a later matching first value fires as OMISSION, while moving that empty branch after the selected value preserves VALUE. Verified for STRING, NUMBER and BOOLEAN nested field/group stars and keyed group forms.",
           "kind": "SURPRISE"
         },
         {
@@ -7032,8 +7032,8 @@
         }
       ],
       "constraints": [
-        "at least two direct selectors, or one repetition-list/group selector — a GROUP's own field count is not part of the rule, so a group owning exactly one field satisfies it too (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest); all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and across the four date-bearing kinds DATE/DATEFRAGMENT/TIME/DATE_TIME the gate reads the DECLARED FORMAT STRING rather than the kind or the component set: any two of them declared at one format share the list (a Date declared yyyy beside a DateFragment declared yyyy, a TIME declared yyyy-MM-dd beside a Date, a TIME beside a time-only DATE_TIME), while a DATE_RANGE shares only with a range of its own (format, separator) pair, while two temporal fields differing only in declared spelling are refused — including every equal-component-set pair the twelve-format vocabulary admits, all seven of them, under the SAME MVK_VARYING_TYPES_NOT_ALLOWED a cross-family list draws. That is FieldValuesNotUnique's rule and the opposite of MaxValue/MinValue/NumberOfDifferentValues', which admit those pairs. Confirm fields draw MVK_NO_BOOLY_ALLOWED (Locked: rulekit.validate.laws.FirstFilledValueFamilyLawsTest, rulekit.validate.laws.FirstFilledValueCrossKindFormatLawsTest, rulekit.validate.laws.TemporalEqualSetPairDenominatorLawsTest)",
-        "an exact non-wildcard entity duplicate draws MVK_DUPLICATE_PARAM1, repeating a wildcarded group preserves two legal authored slots, and a fixed group beside its strict descendant draws MVK_DUPLICATE_PARAM2. Exact duplicates are checked in authored encounter order, so whichever repeated entity completes first names the repair witness regardless of whether it is a field or group; every exact duplicate pre-empts strict overlap. This is static admission only (Locked: rulekit.validate.laws.FirstFilledValueDuplicatePrecedenceLawsTest)"
+        "at least two direct selectors, or one repetition-list/group selector — a GROUP's own field count is not part of the rule, so a group owning exactly one field satisfies it too; all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and across the four date-bearing kinds DATE/DATEFRAGMENT/TIME/DATE_TIME the gate reads the DECLARED FORMAT STRING rather than the kind or the component set: any two of them declared at one format share the list (a Date declared yyyy beside a DateFragment declared yyyy, a TIME declared yyyy-MM-dd beside a Date, a TIME beside a time-only DATE_TIME), while a DATE_RANGE shares only with a range of its own (format, separator) pair, while two temporal fields differing only in declared spelling are refused — including every equal-component-set pair the twelve-format vocabulary admits, all seven of them, under the SAME MVK_VARYING_TYPES_NOT_ALLOWED a cross-family list draws. That is FieldValuesNotUnique's rule and the opposite of MaxValue/MinValue/NumberOfDifferentValues', which admit those pairs. Confirm fields draw MVK_NO_BOOLY_ALLOWED",
+        "an exact non-wildcard entity duplicate draws MVK_DUPLICATE_PARAM1, repeating a wildcarded group preserves two legal authored slots, and a fixed group beside its strict descendant draws MVK_DUPLICATE_PARAM2. Exact duplicates are checked in authored encounter order, so whichever repeated entity completes first names the repair witness regardless of whether it is a field or group; every exact duplicate pre-empts strict overlap. This is static admission only"
       ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) > 10",
@@ -7222,7 +7222,7 @@
         }
       ],
       "constraints": [
-        "each operand is a bare entity reference whose DECLARED FORMAT carries date components and no time component — the declared KIND takes no part, so a TIME-declared or DATE_TIME-declared field carrying yyyy-MM-dd is admitted in the start position, the finish position and both at once, while a stamp-formatted DATE_TIME and a clock-formatted DATE are refused MVK_WRONG_DATE_FORMAT_FOR_OP. A DATE_FRAGMENT is admitted and may be mixed in. Both formats must contain the SAME date components, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
+        "each operand is a bare entity reference whose DECLARED FORMAT carries date components and no time component — the declared KIND takes no part, so a TIME-declared or DATE_TIME-declared field carrying yyyy-MM-dd is admitted in the start position, the finish position and both at once, while a stamp-formatted DATE_TIME and a clock-formatted DATE are refused MVK_WRONG_DATE_FORMAT_FOR_OP. A DATE_FRAGMENT is admitted and may be mixed in. Both formats must contain the SAME date components, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components"
       ],
       "validExample": {
         "dsl": "DateRange(OrderDate, DeliveryDate) == [CoverageWindow]",

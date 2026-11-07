@@ -1,0 +1,13 @@
+// The root guardians that read the consult-only A12 kernel and metamodel trees (KernelSourceCheckout,
+// MvkLedgerTest) run in several root Test tasks, `leakGuardTest` among them, and each reads its tree in the TEST
+// JVM, which never sees a `-D` given to Gradle unless it is forwarded. The value is an input, so pointing it at
+// another tree re-runs them instead of reusing a result read from the old one.
+tasks.withType(Test).configureEach {
+    ['a12.kernel.dir', 'a12.kernel.mm.dir'].each { key ->
+        def configured = System.getProperty(key)
+        if (configured != null) {
+            systemProperty key, configured
+            inputs.property(key, configured)
+        }
+    }
+}

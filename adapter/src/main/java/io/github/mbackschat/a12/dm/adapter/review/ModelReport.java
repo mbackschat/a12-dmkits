@@ -265,15 +265,16 @@ public final class ModelReport {
      * common precondition, alternatives, and messages together; the Opaque branch carries the preserved text
      * and conversion reason.
      *
-     * <p>{@code roundingMode} and {@code errorCodesToSuppress} are the element's own members, which A12 keeps
-     * apart from the formula, so they are set whether or not the formula is explained.
+     * <p>{@code roundingMode}, {@code additionalParserInformation} and {@code errorCode} are the element's own members,
+     * which A12 keeps apart from the formula, so they are set whether or not the formula is explained. The last two
+     * are A12's stored texts, or {@code null} for none.
      */
     public record ComputationEntry(String computation, String scope,
-            ComputationExplanationOutcome explanation, RoundingMode roundingMode, List<String> errorCodesToSuppress) {
+            ComputationExplanationOutcome explanation, RoundingMode roundingMode, String additionalParserInformation,
+            String errorCode) {
         public ComputationEntry {
             Objects.requireNonNull(explanation, "explanation");
             roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
-            errorCodesToSuppress = errorCodesToSuppress == null ? List.of() : List.copyOf(errorCodesToSuppress);
         }
 
         public static Builder builder(String computation, String scope) {
@@ -338,7 +339,8 @@ public final class ModelReport {
             private final String scope;
             private ComputationExplanationOutcome explanation;
             private RoundingMode roundingMode;
-            private List<String> errorCodesToSuppress;
+            private String additionalParserInformation;
+            private String errorCode;
 
             private Builder(String computation, String scope) {
                 this.computation = computation;
@@ -356,14 +358,21 @@ public final class ModelReport {
                 return this;
             }
 
-            /** {@code null} leaves the list empty. */
-            public Builder errorCodesToSuppress(List<String> errorCodesToSuppress) {
-                this.errorCodesToSuppress = errorCodesToSuppress;
+            /** {@code null} declares none. */
+            public Builder additionalParserInformation(String additionalParserInformation) {
+                this.additionalParserInformation = additionalParserInformation;
+                return this;
+            }
+
+            /** {@code null} declares none, and A12 codes the generated validation by the name. */
+            public Builder errorCode(String errorCode) {
+                this.errorCode = errorCode;
                 return this;
             }
 
             public ComputationEntry build() {
-                return new ComputationEntry(computation, scope, explanation, roundingMode, errorCodesToSuppress);
+                return new ComputationEntry(computation, scope, explanation, roundingMode,
+                        additionalParserInformation, errorCode);
             }
         }
     }
@@ -480,7 +489,9 @@ public final class ModelReport {
             };
             out.add(ComputationEntry.builder(name, scopeOf(name)).explanation(explanation)
                     .roundingMode(adapter.computationRoundingMode(name))
-                    .errorCodesToSuppress(adapter.computationErrorCodesToSuppress(name)).build());
+                    .additionalParserInformation(adapter.computationAdditionalParserInformation(name).orElse(null))
+                    .errorCode(adapter.computationErrorCode(name).orElse(null))
+                    .build());
         }
         return List.copyOf(out);
     }

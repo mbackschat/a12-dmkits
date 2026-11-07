@@ -87,7 +87,7 @@ class GroupOrderingMultipleDefectTest {
         val sortMember = if (sortFields.isEmpty()) {
             ""
         } else {
-            ""","sortFields":[${sortFields.joinToString(",") { """{"name":"$it"}""" }}]"""
+            ""","sortFields":[${sortFields.joinToString(",") { """{"name":"$it","order":"ASC"}""" }}]"""
         }
         return """
             {"header":{"modelVersion":"29.4.0","id":"order","locales":[{"code":"en_US"}]},

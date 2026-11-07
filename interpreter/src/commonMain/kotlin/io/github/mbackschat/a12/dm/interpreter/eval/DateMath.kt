@@ -135,7 +135,7 @@ private fun julianEpochDay(year: Int, month: Int, day: Int): Long {
  * Whether (year, month, day) is strictly before the kernel's always-on date floor — `Constants.DATE_FROM =
  * 16.10.1583`, "the begin of the gregorian calendar". A real calendar date earlier than that is the kernel's
  * `datumFalsch` (FEHLER_DATUM) formal error, flagged for EVERY stored or computed date value (and a date
- * range's start), independent of the opt-in "younger than 1900" additional check (`DATE_FROM_FOR_ADDITIONAL_CHECK`).
+ * range's start).
  * Kernel-confirmed in BOTH strategies (groovy-dynamic runtime `FormatDefinitionDatum.dateInvalid` + java-static
  * codegen): the boundary is exact — 1583-10-15 invalid, 1583-10-16 valid (strict `Date.before`).
  */

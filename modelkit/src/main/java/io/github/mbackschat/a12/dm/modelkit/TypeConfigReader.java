@@ -82,7 +82,7 @@ final class TypeConfigReader {
                 ObjectNode b = DocumentModelDraft.MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "datePrecision", b, "precision");
-                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
+                YoungerThan1900Check.copyToToolSpec(c, b);
                 if (!b.isEmpty()) out.set("date", b);
             }
             case "TimeType" -> {
@@ -102,13 +102,13 @@ final class TypeConfigReader {
                 // Absent when the declaration omits it, which is how STANDARD is expressed — so the read block
                 // stays a legal `field add`/`field modify` input in both cases.
                 copyText(c, "interpretationOfYear", b, "interpretationOfYear");
-                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
+                YoungerThan1900Check.copyToToolSpec(c, b);
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {
                 ObjectNode b = DocumentModelDraft.MAPPER.createObjectNode();
                 copyText(c, "formatOfFragment", b, "format");
-                if (A12Booleans.isSet(c.path("youngerThan1900Check"))) b.put("rejectBefore1900", true);
+                YoungerThan1900Check.copyToToolSpec(c, b);
                 if (!b.isEmpty()) out.set("dateFragment", b);
             }
             case "CustomFieldType" -> {

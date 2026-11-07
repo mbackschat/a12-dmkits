@@ -22,7 +22,7 @@ class ParamKindManifestTest {
     private static final ObjectMapper M = new ObjectMapper();
 
     private static Map<String, JsonNode> paramsOf(String verb) throws Exception {
-        JsonNode root = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode root = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Map<String, JsonNode> out = new HashMap<>();
         for (JsonNode v : root.path("verbs")) {
             if (verb.equals(v.path("verb").asText())) {

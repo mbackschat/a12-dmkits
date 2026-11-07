@@ -82,9 +82,6 @@ final class FieldDiffProjector {
         if (aspect.equals("pattern")) {
             return ModelDiff.patternChangeReason(delta);
         }
-        if (aspect.equals("rejectBefore1900")) {
-            return Boolean.parseBoolean(delta.after()) ? "CONSTRAINT_TIGHTENED" : "CONSTRAINT_LOOSENED";
-        }
         if (aspect.equals("scale") || aspect.equals("minFractionalDigits")) {
             return "SCALE_CHANGED";
         }
@@ -128,7 +125,9 @@ final class FieldDiffProjector {
                 || aspect.startsWith("internalDescription.") || aspect.startsWith("externalDescription.")
                 || aspect.startsWith("annotation.") || aspect.startsWith("enum.label.")
                 || aspect.startsWith("enum.categoryDescription.")
-                || aspect.equals("global") || aspect.equals("transient") || aspect.equals("alphabeticalSorting");
+                || aspect.equals("global") || aspect.equals("transient") || aspect.equals("alphabeticalSorting")
+                // Read and written by A12 but no longer evaluated since kernel 31.2 (A12K-4073, KF677).
+                || aspect.equals("rejectBefore1900");
     }
 
     private static Map<String, String> aspects(ModelDocument.FieldState field, ValueKind effectiveKind) {
@@ -143,6 +142,7 @@ final class FieldDiffProjector {
         return aspects;
     }
 
+    @SuppressWarnings("removal") // projects the retired pre-1900 check as an aspect until A12K-4439 removes it
     static void putType(Map<String, String> aspects, FieldTypeSpec type) {
         switch (type) {
             case FieldTypeSpec.StringSpec string -> putString(aspects, string);

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.predicates.a12LanguageTag
 import io.github.mbackschat.a12.dm.predicates.isReservedElementName
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -130,9 +131,9 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
  *
  * **The name takes ASCII only**: a letter, then letters, digits and underscores, so `1Probe`, `_Probe`, `Pro.be`
  * and `Prämie` are all refused, and `vk_vk.x` draws the sentence without `MVK_RULE_NAME_INVALID`. **The error code takes a wider set**: ASCII letters and digits, the German umlauts and `ß`, a space and
- * the underscore, and nothing else, so `C.1`, `C-1`, `Cé` and a tab are refused. A computation carries no
- * `errorCode`, and A12 asks the code alphabet of its NAME instead, which is why `Ca.lc` draws both sentences and
- * `Ca lc` only the name's. A blank code, a tab-only one included, is [errorCodeFindings]' business, never this
+ * the underscore, and nothing else, so `C.1`, `C-1`, `Cé` and a tab are refused. A computation's code is its own
+ * `errorCode` when it declares one (kernel 31.3.1) and its NAME otherwise, which is why `Ca.lc` draws both
+ * sentences, `Ca lc` only the name's, and `Ca.lc` beside a sound code only the name's. A blank code, a tab-only one included, is [errorCodeFindings]' business, never this
  * alphabet's, and a no-break space is not blank. A name or code carrying a supplementary-plane character meets
  * neither alphabet: A12 answers it with the unsupported-signs sentence alone, as it does an enumeration's texts
  * ([namedByA12]). Both are judged Java-trimmed, as the element-path sentences are, so `Probe ` and a code ending
@@ -140,11 +141,8 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
  * ([KERNEL-FINDINGS KF578], measured 2026-10-21).
  */
 private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
-    val code = if (element.kind == "Rule") {
-        (element.body?.get("errorCode") as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.javaTrimmed()
-    } else {
-        element.name.javaTrimmed()
-    }
+    val declaredCode = (element.body?.get("errorCode") as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
+    val code = (if (element.kind == "Rule") declaredCode else declaredCode ?: element.name)?.javaTrimmed()
     // A blank code is MVK_ERROR_CODE_MISSING's alone: a tab-only code never reaches this alphabet.
     val refusedCode = code?.takeIf { text ->
         !text.isA12Blank() && text.namedByA12() && text.any { it !in ERROR_CODE_CHARACTERS }
@@ -195,18 +193,18 @@ private fun reservedNameFinding(element: TrackedDeclaration): List<Finding> =
     }
 
 /**
- * A RULE's `errorCode`, which A12 requires non-blank — and the two shapes around it that are not verdicts.
+ * A declaration's `errorCode`, which A12 requires non-blank on a rule — and the two shapes around it that are not
+ * verdicts.
  *
- * **Nothing is reported for a computation**, and that is a shape fact rather than an omission: a computation
- * carries no `errorCode` member at all, and one carrying none is admitted ([KERNEL-FINDINGS KF291]). It is
- * stated because the sibling name law went the other way — `MVK_RULE_NAME_INVALID` reads as a rule's law and
- * fires for computations too, so "rule-only" is a claim that needs its own basis here.
+ * **A computation's code is optional** (kernel 31.3.1): absent or `null`, A12 codes the generated validation by the
+ * name. A present code is kept, so a blank one draws `MVK_ERROR_CODE_MISSING` as a rule's does, and a list leaves
+ * the model unreadable (`rulekit.validate.laws.ComputationErrorCodeLawsTest`).
  *
  * The `severity` slot beside it is [severityFindings].
  */
 private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
     if (element.kind != "Rule") {
-        return emptyList()
+        return computationErrorCodeFindings(element)
     }
     val declared = (element.body ?: return emptyList())["errorCode"]
     return when {
@@ -252,6 +250,35 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
         else -> emptyList()
     }
 }
+
+private fun computationErrorCodeFindings(element: TrackedDeclaration): List<Finding> =
+    when (val declared = element.body?.get("errorCode")) {
+        is JsonArray -> listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "`errorCode` is a list, which A12's own reader refuses; write one code, or omit the member to code " +
+                    "the generated validation by the computation's name",
+                element.path,
+            ),
+        )
+        is JsonPrimitive -> if (declared !is JsonNull && declared.isString && declared.content.isA12Blank()) {
+            listOf(
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_ERROR_CODE_MISSING",
+                    "this computation's `errorCode` is blank — A12 keeps a present code rather than falling back to " +
+                        "the name, so omit the member instead",
+                    element.path,
+                ),
+            )
+        } else {
+            emptyList()
+        }
+        else -> emptyList()
+    }
 
 /** The three constants A12's `Severity` binding admits — exactly, and case-sensitively. */
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")

@@ -44,7 +44,7 @@ dmtool -m examples/models/order-ruled.dm.json model check
   "verification" : "KERNEL_CONFIRMED",
   "engineRequested" : "A12_KERNEL",
   "engineExecuted" : "A12_KERNEL",
-  "engineVersion" : "31.1.1",
+  "engineVersion" : "31.3.1",
   "summary" : "model is valid",
   "diagnostics" : [ ],
   "written" : false
@@ -243,7 +243,7 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
   "verification" : "KERNEL_CONFIRMED",
   "engineRequested" : "A12_KERNEL",
   "engineExecuted" : "A12_KERNEL",
-  "engineVersion" : "31.1.1",
+  "engineVersion" : "31.3.1",
   "summary" : "candidate is kernel-valid",
   "diagnostics" : [ {
     "severity" : "WARNING",
@@ -255,7 +255,7 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
       "operator" : "LessThan"
     },
     "fix" : "decide by intent: if an empty/missing '/Order/Quantity' should NOT trip the rule, guard it — FieldFilled(/Order/Quantity) And <the comparison>; if a missing value IS a violation (empty-as-0 should fire), the unguarded form is intentional — keep it",
-    "explain" : "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), and the value functions (Length, the date/time extractors, DifferenceIn*) read an empty operand as 0 too — unlike a bare string/date/enum comparison, which an empty operand suppresses — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is legitimately unguarded"
+    "explain" : "an unspecified number defaults to 0 in a comparison, and the value functions (Length, the date/time extractors, DifferenceIn*) read an empty operand as 0 too — unlike a bare string/date/enum comparison, which an empty operand suppresses — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is legitimately unguarded"
   } ],
   "written" : false
 }

@@ -312,10 +312,6 @@ data class FieldDef(
     /** The field-owned empty-required text (`requirednessConfig.errorMessage`), keyed by locale. This is a
      *  separate producer from [patternMessages]: notably, its measured route preserves `$$` verbatim. */
     val requiredMessages: Map<String, String> = emptyMap(),
-    /** The opt-in `youngerThan1900Check` of a DATE, DATEFRAGMENT or DATERANGE declaration: a concrete value
-     *  before 1900-01-01 is `datumFalsch` (`datumBereichDatumFalsch` for a range's start).
-     *  Distinct from the always-on Gregorian floor at 1583-10-16. */
-    val rejectBefore1900: Boolean = false,
 )
 
 /**
@@ -436,9 +432,6 @@ data class FieldConstraints(
     val numberMinLength: Int? = null,
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
-    /** The opt-in `youngerThan1900Check` of a DATE, DATEFRAGMENT or DATERANGE declaration — a value before
-     *  1900-01-01 is `datumFalsch` (`datumBereichDatumFalsch` for a range's start); default false. */
-    val rejectBefore1900: Boolean = false,
     /** NUMBER `positivesOnly` — the kernel's `hatVorzeichen == false`. A minus is `zahlMitVorzeichen`. This is a
      *  PROJECTION of [FieldDef.signed], which stays the single declaration of the fact; it is repeated here
      *  because the per-cell formal check receives only the constraints. */
@@ -456,7 +449,7 @@ data class FieldConstraints(
         !fractionalPartChecked ||
         lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation ||
         maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null ||
-        numberMaxLength != null || rejectBefore1900 || positivesOnly || amountTrait
+        numberMaxLength != null || positivesOnly || amountTrait
 
     companion object {
         val NONE = FieldConstraints()
@@ -488,6 +481,9 @@ data class ComputationDef(
     val messages: Map<String, String> = emptyMap(),
     /** How the written value is rounded ([RoundingMode]); [RoundingMode.EXACT] unless the model states otherwise. */
     val roundingMode: RoundingMode = RoundingMode.EXACT,
+    /** The code of the implicit validation rule when the model declares one; null codes it by [name] instead
+     *  (`ComputationErrorCodeDiffTest`, kernel 31.3.1). */
+    val errorCode: String? = null,
 ) {
     /** Sugar for the common single-unconditional-operation computation (no precondition, no common guard). */
     constructor(targetPath: String, group: String, expressionText: String) :
@@ -604,19 +600,20 @@ data class ModelDef(
     /**
      * Each [Kind.DATE_RANGE] field's RUNTIME `(format, rangeSeparator)` — what rendering, formal checks and endpoint
      * completion use. A standard field keeps its own. An interpreted field takes the declaration of the FIRST field
-     * sharing its year interpretation and pre-1900 check, whatever that field's format: A12's generated runtime keys
-     * every interpreted declaration of one direction to one shared format and keeps the first definition per key
+     * sharing its year interpretation, whatever that field's format: A12's generated runtime keys every interpreted
+     * declaration of one direction to one shared format and keeps the first definition per key
      * (`IDateRangeType.getFormatOfDateRange`, `CodeGenDateRangeTypeImpl.equals`, `MetaGemeinsameFormate`, source-read;
-     * the behaviour is KERNEL-FINDINGS KF540).
+     * the behaviour is KERNEL-FINDINGS KF540). Through kernel 31.1.1 the key also carried the pre-1900 check, which
+     * 31.2 removed from `CodeGenDateRangeTypeImpl`.
      */
     val rangeConfig: Map<String, Pair<String, String>> = run {
-        val firstOfClass = HashMap<Pair<RangeYearInterpretation, Boolean>, Pair<String, String>>()
+        val firstOfClass = HashMap<RangeYearInterpretation, Pair<String, String>>()
         fields.filter { it.path in declaredRangeConfig }.associate { field ->
             val declared = declaredRangeConfig.getValue(field.path)
             field.path to when (field.rangeYearInterpretation) {
                 RangeYearInterpretation.STANDARD -> declared
                 RangeYearInterpretation.FROM, RangeYearInterpretation.TO ->
-                    firstOfClass.getOrPut(field.rangeYearInterpretation to field.rejectBefore1900) { declared }
+                    firstOfClass.getOrPut(field.rangeYearInterpretation) { declared }
             }
         }
     }
@@ -710,7 +707,6 @@ data class ModelDef(
                     if (it.amountTrait && it.maxIntegerDigits == null) 15 - (it.scale ?: 0) else null,
                 numberMinLength = it.numberMinLength,
                 numberMaxLength = it.numberMaxLength,
-                rejectBefore1900 = it.rejectBefore1900,
                 positivesOnly = !it.signed,
                 amountTrait = it.amountTrait,
             )

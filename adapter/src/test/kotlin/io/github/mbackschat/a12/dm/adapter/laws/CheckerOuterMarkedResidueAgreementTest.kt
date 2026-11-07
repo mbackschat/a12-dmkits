@@ -84,7 +84,7 @@ class CheckerOuterMarkedResidueAgreementTest {
             validator.check(model, draft) to validator.inject(model, draft)
         } else {
             val draft = DraftComputation("/Customer", "MarkedProbe", "../${row.computed}", null,
-                listOf(DraftComputation.Alternative(row.precondition, row.condition, null)), listOf())
+                listOf(DraftComputation.Alternative(row.precondition, row.condition, null)))
             validator.check(model, draft) to validator.inject(model, draft)
         }
         val a12 = if (result.ok()) emptyList() else result.diagnostics().map { it.code().orElse("(no code)") }

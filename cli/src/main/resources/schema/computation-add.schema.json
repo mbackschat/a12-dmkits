@@ -30,11 +30,13 @@
         }
       }
     },
-    "errorCodesToSuppress": {
-      "type": "array",
-      "items": { "type": "string", "enum": ["MVK_INVALID_COMPARE_DEC_PLACES"] },
-      "maxItems": 1,
-      "description": "A12 IComputation.errorCodesToSuppress, serialized unchanged as an array. The kernel currently accepts only MVK_INVALID_COMPARE_DEC_PLACES; use it when a numeric operation is intentionally valid despite the static assignment-scale gate. At most one entry: A12 renders the list into a one-code @SuppressWarning pragma, so a second entry, even the same code again, is refused with MVK_UNEXPECTED_TOKEN. Omit (or pass []) for no suppression."
+    "additionalParserInformation": {
+      "type": "string",
+      "description": "A12's computation preamble, stored unchanged: `@SuppressWarning(<codes>)` in an English-condition model, `@UnterdrueckeWarnung(<codes>)` in a German one, comma-separated codes and nothing else. Suppress MVK_INVALID_COMPARE_DEC_PLACES when a numeric operation is intentionally valid despite the static assignment-scale gate. Omit for no suppression."
+    },
+    "errorCode": {
+      "type": "string",
+      "description": "code of A12's generated validation; omit to use the computation's name"
     },
     "roundingMode": {
       "type": "string",
@@ -62,7 +64,7 @@
       "computedField": "/Subscription/Billing/EffectiveFee",
       "comment": "one-third of the base fee is intentional",
       "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee] / 3" } ],
-      "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
+      "additionalParserInformation": "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
       "messages": [
         { "locale": "en_US", "text": "Effective fee is one-third of base." },
         { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." }

@@ -38,22 +38,25 @@ class MessageGroupWalkAgreementTest {
         row("control-bin", At.BIN, null)
         row("control-bin-parent", At.BIN, "..")
 
-        // The walk: a single up-step counts as written, two or more before a non-name token count one more.
-        row("walk-root-one-up", At.ROOT, "../", ABOVE)
+        // The walk: a single up-step counts as written, two or more before a non-name token count one more. Since
+        // kernel 31.3.1 the model root is a turning point (KF679), so a walk that only reaches it answers with the
+        // token that follows, and the depth class needs one step more (the `…-past` rows, appended last to keep the
+        // replayed ordinals).
+        row("walk-root-one-up", At.ROOT, "../", INCOMPLETE)
         row("walk-loans-one-up", At.LOANS, "../", INCOMPLETE)
-        row("walk-shelf-two-up-end", At.SHELF, "../../", ABOVE)
-        row("walk-shelf-two-up-double", At.SHELF, "../..//", ABOVE)
+        row("walk-shelf-two-up-end", At.SHELF, "../../", EXPECTED)
+        row("walk-shelf-two-up-double", At.SHELF, "../..//", UNEXPECTED)
         row("walk-shelf-two-up-unknown", At.SHELF, "../../Nope", GROUP)
         row("walk-shelf-two-up-name", At.SHELF, "../../Loans")
         row("walk-shelf-two-up-lexer", At.SHELF, "../../%", LEXER)
-        row("walk-shelf-two-up-sign", At.SHELF, "../../-x", ABOVE)
-        row("walk-shelf-two-up-bracket", At.SHELF, "../../(", ABOVE)
+        row("walk-shelf-two-up-sign", At.SHELF, "../../-x", UNEXPECTED)
+        row("walk-shelf-two-up-bracket", At.SHELF, "../../(", UNEXPECTED)
         row("walk-shelf-two-up-digits", At.SHELF, "../../123", GROUP)
         row("walk-shelf-two-up-quoted", At.SHELF, "../../'Loans'")
         row("walk-bin-two-up-end", At.BIN, "../../", EXPECTED)
         row("walk-bin-two-up-rule", At.BIN, "../../RuleGroup", UNEXPECTED)
         row("walk-bin-two-up-double", At.BIN, "../..//", UNEXPECTED)
-        row("walk-bin-three-up-rule", At.BIN, "../../../RuleGroup", ABOVE)
+        row("walk-bin-three-up-rule", At.BIN, "../../../RuleGroup", UNEXPECTED)
 
         // The turning point is compared by its first word.
         row("turning-dotted-correct", At.LOANS, "..Library.x")
@@ -74,12 +77,17 @@ class MessageGroupWalkAgreementTest {
         row("dotted-offset", At.ROOT, "Zeile-1.x", RETIRED)
         row("dotted-lexer", At.ROOT, "Loans.%", LEXER)
         row("dotted-open-quote", At.ROOT, "Loans.'x", LEXER)
+
+        // The depth class one step past the model root (KF679).
+        row("walk-root-two-up-past", At.ROOT, "../../", ABOVE)
+        row("walk-shelf-three-up-past", At.SHELF, "../../../", ABOVE)
+        row("walk-bin-four-up-rule-past", At.BIN, "../../../../RuleGroup", ABOVE)
     }
 
     @Test
     fun parentWalksTurningPointsAndDottedNamesFollowTheEntry() {
         val rows = rows()
-        assertEquals(38, rows.size, "frozen witness rows")
+        assertEquals(41, rows.size, "frozen witness rows")
         assertEquals(rows.size, rows.map { it.id }.toSet().size, "observations retain independent identities")
         val observed = rows.map { it.id to kernel(it.model) }
         assertEquals(rows.map { it.id to it.classes }, observed, "kernel classes")

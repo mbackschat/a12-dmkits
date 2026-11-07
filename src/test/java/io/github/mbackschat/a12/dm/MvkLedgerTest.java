@@ -88,9 +88,6 @@ class MvkLedgerTest {
      */
     private static final int METAMODEL_CODE_FLOOR = 60;
 
-    /** The consult-only kernel checkout — the SOURCE oracle for whether a code has a Java raiser. */
-    private static final String KERNEL_DIR = System.getProperty("a12.kernel.dir", "../a12-kernel");
-
     /**
      * The four of the seven whose ledger rows claim no JAVA raiser — the claim this guard locks.
      *
@@ -291,8 +288,9 @@ class MvkLedgerTest {
      */
     @Test
     void theJavaAxisRaisesNoneOfTheCodesTheLedgerCallsDormantThere() throws IOException {
-        Path root = Path.of(KERNEL_DIR);
-        assumeTrue(Files.isDirectory(root), "a12-kernel not present — skipping the Java raiser sweep");
+        // The consult-only kernel checkout is the SOURCE oracle for whether a code has a Java raiser.
+        Path root = KernelSourceCheckout.locate().orElse(null);
+        assumeTrue(root != null, "a12-kernel not present — skipping the Java raiser sweep");
 
         Map<String, Integer> declarations = new LinkedHashMap<>();
         Map<String, Set<String>> uses = new LinkedHashMap<>();

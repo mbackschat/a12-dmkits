@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-roles.schema.json",
   "title": "WorkspaceRoles",
-  "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint (FEATURE-GAPS R3). Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. PURELY ADVISORY and NEVER BLOCKING: every finding is a WARNING (or a softer INFO) — never an error — and the verb ALWAYS exits 0, so it informs a BA / agent without stopping their work on the models. The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
+  "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint. Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. PURELY ADVISORY and NEVER BLOCKING: every finding is a WARNING (or a softer INFO) — never an error — and the verb ALWAYS exits 0, so it informs a BA / agent without stopping their work on the models. The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
   "type": "object",
   "required": ["root", "rolesFile", "usersFile", "definedRoles", "users", "modelCount", "models", "warnings", "infos", "findings"],
   "additionalProperties": false,

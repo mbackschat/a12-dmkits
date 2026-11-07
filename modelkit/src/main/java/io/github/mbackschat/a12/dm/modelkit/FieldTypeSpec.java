@@ -50,10 +50,9 @@ public sealed interface FieldTypeSpec {
      * base year — see {@link RangeYearInterpretation}. The interpretation is never {@code null}: an absent
      * declaration means {@link RangeYearInterpretation#STANDARD}, which is emitted by omitting the key.
      *
-     * <p>{@code rejectBefore1900} is the kernel's {@code DateRangeType.youngerThan1900Check} — the same opt-in
-     * additional check {@link DateSpec} carries, applied to the range's <b>start</b> date
-     * ({@code FormatDefinitionDatumBereich extends FormatDefinitionDatum}, which passes {@code zusatzPruefung}
-     * up; end ≥ start covers the end). Off by default.
+     * <p>{@code rejectBefore1900} is the kernel's {@code DateRangeType.youngerThan1900Check}, the same declaration
+     * {@link DateSpec} carries, which through kernel 31.1.1 checked the range's <b>start</b> date. It is deprecated for
+     * removal with A12's own attribute, see {@link DateSpec}. Off by default.
      *
      * <p>Author through {@code DateRangeFieldBuilder}. The shorter constructors are retained as delegating
      * overloads, so existing <em>construction</em> sites keep compiling and their binary descriptors are
@@ -63,7 +62,7 @@ public sealed interface FieldTypeSpec {
      * {@code EnumSpec}'s identical change. A delegating constructor cannot help with either.
      */
     record DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear,
-            boolean rejectBefore1900) implements FieldTypeSpec {
+            @Deprecated(forRemoval = true) boolean rejectBefore1900) implements FieldTypeSpec {
 
         public DateRangeSpec {
             interpretationOfYear = interpretationOfYear == null
@@ -94,7 +93,8 @@ public sealed interface FieldTypeSpec {
      * <p>The 1-arg constructor is a delegating overload; record deconstruction sees two components, as for
      * {@link DateRangeSpec}.
      */
-    record DateFragmentSpec(String fragmentFormat, boolean rejectBefore1900) implements FieldTypeSpec {
+    record DateFragmentSpec(String fragmentFormat, @Deprecated(forRemoval = true) boolean rejectBefore1900)
+            implements FieldTypeSpec {
 
         public DateFragmentSpec(String fragmentFormat) {
             this(fragmentFormat, false);
@@ -356,8 +356,14 @@ public sealed interface FieldTypeSpec {
      * A date field with a constant format (day-first constants, §6) and an optional <em>date precision</em>.
      * A precision other than {@code FULL} makes it a <em>partially known date</em> (a day/month/year part may
      * be unknown, e.g. {@code 00.02.2024}) — the field {@code ValueAsDate} resolves to a concrete date.
+     *
+     * <p>{@code rejectBefore1900} mirrors A12's {@code youngerThan1900Check}, which kernel 31.2 stopped evaluating
+     * (A12K-4073) and still carries, and which A12 removes with A12K-4439. The component is deprecated for removal
+     * on all three date carriers so that removal costs one compile: each remaining caller carries
+     * {@code @SuppressWarnings("removal")}.
      */
-    record DateSpec(String format, String datePrecision, boolean rejectBefore1900) implements FieldTypeSpec {
+    record DateSpec(String format, String datePrecision, @Deprecated(forRemoval = true) boolean rejectBefore1900)
+            implements FieldTypeSpec {
         public DateSpec(String format, String datePrecision) {
             this(format, datePrecision, false);
         }

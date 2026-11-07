@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,8 @@ class ComputationTargetFieldsTest {
         KernelAdapter adapter = KernelAdapter.ofJson(modelWithConvertedAndOpaqueComputations());
         assertInstanceOf(ReadComputation.Converted.class, adapter.readComputation(AMOUNT_COMPUTATION));
         assertInstanceOf(ReadComputation.Opaque.class, adapter.readComputation(TIME_COMPUTATION));
-        assertEquals(List.of(SUPPRESSION), adapter.computationErrorCodesToSuppress(TIME_COMPUTATION));
+        assertEquals(Optional.of("@SuppressWarning(" + SUPPRESSION + ")"),
+                adapter.computationAdditionalParserInformation(TIME_COMPUTATION));
         long parsesBefore = adapter.referenceParseCount();
 
         Map<String, String> targets = adapter.computationTargetFields();
@@ -55,7 +57,7 @@ class ComputationTargetFieldsTest {
         session.addComputation(model -> model.computation(model.dateTime("/Calibration/DerivedAt").field())
                 .name("DerivedAtComputation")
                 .calc(Dsl.addHours(model.dateTime("/Calibration/SourceAt"), 1).expression())
-                .errorCodesToSuppress(SUPPRESSION)
+                .suppressWarnings(SUPPRESSION)
                 .message(en("Derived time is one hour after the source time.")).build());
         return session.toJson();
     }

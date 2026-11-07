@@ -474,6 +474,10 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.JdkPinGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SchemaDescriptionGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.OperatorProseGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DiagnosticProseGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ManifestAndSkillProseGuardTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
     // loudly if any tree goes empty — so a moved folder can't silently turn this guard into a false green.
@@ -531,9 +535,11 @@ tasks.register('docGuardTest', Test) {
             'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' },
             'permit showcase fixture': rootProject.file(
                     'interpreter/src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json'),
-            // DocumentShapeSingleSourceTest walks the whole served schema dir at runtime, so a NEW schema that
-            // restates the --instance shape re-runs the guard that would catch it.
-            'served schemas'     : rootProject.fileTree('cli/src/main/resources/schema') { include '**/*.json' }])
+            // DocumentShapeSingleSourceTest and SchemaDescriptionGuardTest walk the whole served schema dir at
+            // runtime, so a NEW or edited schema re-runs the guards that would catch it.
+            'served schemas'     : rootProject.fileTree('cli/src/main/resources/schema') { include '**/*.json' },
+            // The agent-prose guards (schemas, operators, diagnostics, manifest, skill) read their budgets here.
+            'agent prose budget' : rootProject.file('cli/src/test/resources/agent-prose-budget.json')])
 }
 
 // The eval backbone reads its task corpus and workflow sources directly from the repository. Keep those
@@ -670,6 +676,7 @@ tasks.register('referentGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ReferentDriftGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.QuotedTitleCitationRatchetTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DerivedFigureDatingGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SourceMessageHistoryGuardTest'
     }
     rootProject.guardInputs(it, [
             'repo prose + source': rootProject.fileTree(rootProject.projectDir) {

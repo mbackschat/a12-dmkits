@@ -25,13 +25,12 @@ import org.junit.jupiter.api.Test;
  * appear without a new keyword or enum member — this guardian closes that blind spot.
  *
  * <p><b>Opt-in</b> like the other sibling-gated harnesses: reads the grammar from the consult-only
- * kernel source checkout ({@code ../a12-kernel}, overridable via {@code -Da12.kernel.src.dir=…}) and
+ * kernel source checkout ({@link KernelSourceCheckout}: {@code ../a12-kernel}, overridable via {@code -Da12.kernel.dir=…}) and
  * skips when absent. Productions are extracted comment-stripped, so the grammar's javadoc prose
  * (which contains {@code checker class: …} lines) cannot fake a rule.
  */
 class GrammarProductionLedgerTest {
 
-    private static final String KERNEL_SRC_DIR = System.getProperty("a12.kernel.src.dir", "../a12-kernel");
     private static final String GRAMMAR = "kernel-tool/kernel-core-parser/src/main/antlr4/"
             + "com/mgmtp/a12/kernel/core/parser/internal/grammar/gen/GrammarOnly_ConditionParser.g4";
 
@@ -65,8 +64,8 @@ class GrammarProductionLedgerTest {
     }
 
     private static Set<String> grammarProductions() throws IOException {
-        Path grammar = Path.of(KERNEL_SRC_DIR, GRAMMAR);
-        assumeTrue(Files.isReadable(grammar), "kernel source checkout not present — skipping grammar parity");
+        Path grammar = KernelSourceCheckout.locate().map(root -> root.resolve(GRAMMAR)).orElse(null);
+        assumeTrue(grammar != null && Files.isReadable(grammar), "kernel source checkout not present — skipping grammar parity");
 
         String src = Files.readString(grammar);
         src = src.replaceAll("(?s)/\\*.*?\\*/", "");   // block comments (incl. the rule javadocs)
@@ -115,13 +114,13 @@ class GrammarProductionLedgerTest {
         Map<String, Integer> expected = new LinkedHashMap<>();
         expected.put("rendered", 73);
         expected.put("plumbing", 23);
-        expected.put("entry", 3);
+        expected.put("entry", 4);
         expected.put("directive", 2);
         expected.put("legacy", 21);
         assertEquals(expected, actual,
-                "docs/GRAMMAR-LEDGER.md's classification split, measured 2026-11-03 against kernel 31.1.1: the "
-                        + "101 the portable checker owns, with the three SumOfTerms productions rendered since "
-                        + "KF670, and the 21 legacy productions it names as its non-goal. Changing a production's class is a scope decision — update these numbers "
+                "docs/GRAMMAR-LEDGER.md's classification split, measured 2026-11-07 against kernel 31.3.1: the "
+                        + "102 the portable checker owns, with the three SumOfTerms productions rendered since "
+                        + "KF670 and the preambleSnippet entry, and the 21 legacy productions it names as its non-goal. Changing a production's class is a scope decision — update these numbers "
                         + "deliberately, in the commit that makes it");
     }
 

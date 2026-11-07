@@ -45,7 +45,7 @@ class ModelVersionPolicyTest {
 
     @Test
     void referenceVersionRaisesNoVersionDiagnostic(@TempDir Path dir) throws Exception {
-        Path model = withModelVersion(dir, "29.4.0"); // the build's reference
+        Path model = withModelVersion(dir, "29.8.0"); // the build's reference
         var res = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());

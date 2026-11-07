@@ -14,7 +14,7 @@ internal val WIRING_MODEL = ModelSource(
         {"type":"Field","id":"f1","name":"Unbindable","Field":{
           "fieldType":{"type":"NotAType","NotAType":{}}}},
         {"type":"Field","id":"f2","name":"MisconfiguredDate","Field":{"fieldType":{"type":"DateType",
-          "DateType":{"format":"MM","youngerThan1900Check":true}}}},
+          "DateType":{"format":"MM","datePrecision":"DAY_OPTIONAL"}}}},
         {"type":"Field","id":"f3","name":"Bad-Name","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Field","id":"f96","name":"Tier.value","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Field","id":"f5","name":"MiscategorisedTier","Field":{"fieldType":{
@@ -62,7 +62,7 @@ internal val WIRING_MODEL = ModelSource(
           "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}],
           "sValue":"R"}}}},
         {"type":"Group","id":"g1","name":"Hollow","Group":{"elements":[]}},
-        {"type":"Group","id":"g9","name":"Aisle","Group":{"sortFields":[{"name":"AisleCode"}],"elements":[
+        {"type":"Group","id":"g9","name":"Aisle","Group":{"sortFields":[{"name":"AisleCode","order":"ASC"}],"elements":[
           {"type":"Field","id":"f34","name":"AisleCode","Field":{"fieldType":{"type":"StringType"}}}
         ]}},
         {"type":"Group","id":"g12","name":"Overstock","Group":{"repeatability":2000000000,"elements":[
@@ -442,7 +442,7 @@ internal val WIRING_MODEL = ModelSource(
         {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Field","id":"f2","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
         {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatability":20,
-          "sortFields":[{"name":""}],"elements":[
+          "sortFields":[{"name":"Label"}],"elements":[
             {"type":"Field","id":"f3","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
           ]}},
         {"type":"Group","id":"g2","name":"BadKey","Group":{"repeatability":20,

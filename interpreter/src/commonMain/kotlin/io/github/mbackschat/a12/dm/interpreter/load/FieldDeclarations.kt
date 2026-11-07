@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 
 internal fun fieldDef(node: JsonElement, id: String): FieldDef {
     requireConsistentEnumSValue(node, id)
+    requireBindableYoungerThan1900Check(node, id)
     val declaredMinimumFraction = typedPrimitiveInt(node, id, "NumberType", "minFractionalDigits")
     val declaredMaximumFraction = scaleOf(node, id)
     val fraction = declaredMaximumFraction?.let { resolveFractionalPair(declaredMinimumFraction, it) }
@@ -40,13 +41,6 @@ internal fun fieldDef(node: JsonElement, id: String): FieldDef {
         rangeSeparator = rangeSeparatorOf(node),
         rangeYearInterpretation = rangeYearInterpretationOf(node),
         datePrecision = datePrecisionOf(node, id),
-        // The opt-in additional check rides THREE declaration objects, not one: `DateType`,
-        // `DateFragmentType` and `DateRangeType` each declare `youngerThan1900Check` (kernel-md a12internal
-        // fieldtypes at 30.8.1). Reading only `DateType` left the flag inert on the other two, so a legal
-        // model carrying it there validated as if it were absent (KF253).
-        rejectBefore1900 = typedBool(node, id, "DateType", "youngerThan1900Check")
-            || typedBool(node, id, "DateFragmentType", "youngerThan1900Check")
-            || typedBool(node, id, "DateRangeType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
         enumValueLabels = enumValueLabelsOf(node),
         enumCategories = enumCategoriesOf(node),
@@ -295,6 +289,16 @@ private fun typedInteger(fieldNode: JsonElement?, id: String, typeName: String, 
  *  NUMBER field is unsigned iff it declares `positivesOnly`, so any other kind reads as signed. */
 private fun typedBool(fieldNode: JsonElement?, id: String, typeName: String, prop: String): Boolean =
     configFlag(typed(fieldNode, typeName).path(prop)).orRefuse { throw unbindableFlag("$id: $typeName.$prop") }
+
+/**
+ * `youngerThan1900Check` decides nothing since kernel 31.2 (A12K-4073: no refusal, no formal error, measured in
+ * `adapter.laws.TemporalAdditionalCheckCarrierDiffTest`), but A12's reader still binds it on all three date
+ * declarations, so a value it cannot bind still leaves A12 with no model (`BooleanMemberUnreadableDiffTest`). This is
+ * the loader's one reference to it; it goes when A12's reader drops the member with A12K-4439.
+ */
+private fun requireBindableYoungerThan1900Check(node: JsonElement, id: String) {
+    for (typeName in listOf("DateType", "DateFragmentType", "DateRangeType")) typedBool(node, id, typeName, "youngerThan1900Check")
+}
 
 private fun unbindableFlag(member: String): InvalidPreparedModelSourceException =
     invalidElement(member, "$member is not a boolean A12 can bind, so A12 does not load the model")

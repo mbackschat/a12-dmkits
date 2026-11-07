@@ -49,7 +49,10 @@ private val INTEGER_MEMBERS: Map<String, List<Pair<String, Boolean>>> = mapOf(
     "CustomFieldType" to listOf("minLength" to false, "maxLength" to false),
 )
 
-/** Each type body's primitive `boolean` members, from the same classes (the checker's `FieldType.booleanMembers`). */
+/**
+ * Each type body's primitive `boolean` members, from the same classes (the checker's `FieldType.booleanMembers`).
+ * `youngerThan1900Check` is deprecated in them since 31.2 and leaves with A12K-4439.
+ */
 private val BOOLEAN_MEMBERS: Map<String, List<String>> = mapOf(
     "StringType" to listOf("lineBreaksPermitted", "noValueValidation", "alphabeticalSorting"),
     "NumberType" to listOf("zeroNotAllowed", "positivesOnly", "leadingZerosAllowed"),

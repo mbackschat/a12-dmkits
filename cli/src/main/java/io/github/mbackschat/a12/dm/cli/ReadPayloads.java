@@ -247,9 +247,10 @@ public final class ReadPayloads {
         data.put("computation", computation);
         // Structural, so it is present for an Opaque read too: a computation's full name IS its group + name.
         data.put("group", computation.substring(0, computation.lastIndexOf('/')));
-        ArrayNode suppressions = data.putArray("errorCodesToSuppress");
-        adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
-        // Owner-level like the suppressions, so an Opaque formula still shows it; absent means Exact, as in the
+        adapter.computationAdditionalParserInformation(computation)
+                .ifPresent(preamble -> data.put("additionalParserInformation", preamble));
+        adapter.computationErrorCode(computation).ifPresent(code -> data.put("errorCode", code));
+        // Owner-level like the preamble, so an Opaque formula still shows it; absent means Exact, as in the
         // stored model, since A12's serializer never writes Exact.
         adapter.computationRoundingMode(computation).stored().ifPresent(mode -> data.put("roundingMode", mode));
         switch (adapter.readComputation(computation)) {

@@ -10,7 +10,7 @@ The CLI **describes itself** — start there rather than guessing:
 
 ```
 dmtool --help                     # the verb tree
-dmtool manifest                   # every verb + params, as JSON
+dmtool manifest                   # every verb, one line each; `manifest <target> [<op>]` adds params
 dmtool operators                  # the A12 DSL operator catalog
 dmtool schema <target> <op>       # a verb's input/output shape
 ```

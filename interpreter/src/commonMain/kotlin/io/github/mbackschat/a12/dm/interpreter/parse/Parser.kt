@@ -43,8 +43,8 @@ fun parseCondition(
 
 /**
  * Parse a RULE's condition: the grammar's start production `preamble? bedingung`, whose optional preamble is the
- * scale-gate waiver `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` (`@UnterdrueckeWarnung` in a German model;
- * KERNEL-FINDINGS KF75). The waiver lifts a static gate only, so it is consumed and changes no evaluation. Only a
+ * list of suppressed warnings, such as the scale-gate waiver `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)`
+ * (`@UnterdrueckeWarnung` in a German model; KERNEL-FINDINGS KF75). The waiver lifts a static gate only, so it is consumed and changes no evaluation. Only a
  * rule's own condition starts this way: a computation's preconditions do not, so they stay on [parseCondition].
  */
 fun parseRuleCondition(
@@ -123,23 +123,31 @@ private class ConditionParser(
         return parse()
     }
 
-    /** Consume the optional scale-gate waiver, answering whether it was there. */
+    /** Consume the optional preamble, answering whether it waives the scale gate. */
     fun consumePreamble(): Boolean {
         skipWs()
-        if (peek() == '@') {
-            next()
-            require(matchKeyword("SuppressWarning")) {
-                "parser: expected the localized @SuppressWarning keyword in \"$src\""
-            }
-            skipWsAndExpect('(')
-            // A12 admits exactly this one name, padding included (KF75); any other is refused before evaluation.
-            require(readIdent() == SCALE_GATE_WAIVER) {
-                "parser: only $SCALE_GATE_WAIVER can be waived, in \"$src\""
-            }
-            skipWsAndExpect(')')
-            return true
+        if (peek() != '@') {
+            return false
         }
-        return false
+        next()
+        require(matchKeyword("SuppressWarning")) {
+            "parser: expected the localized @SuppressWarning keyword in \"$src\""
+        }
+        skipWsAndExpect('(')
+        // Kernel 31.3.1 reads a comma-separated list of names, each from its supported set, padding included
+        // (KF75, `RulePreambleListLawsTest`); any other name is refused before evaluation.
+        val names = mutableListOf<String>()
+        while (true) {
+            skipWs()
+            val name = readIdent()
+            require(name in SUPPRESSIBLE_WARNINGS) { "parser: \"$name\" cannot be suppressed, in \"$src\"" }
+            names += name
+            skipWs()
+            if (peek() != ',') break
+            next()
+        }
+        skipWsAndExpect(')')
+        return SCALE_GATE_WAIVER in names
     }
 
     /** The source from the current position on. */
@@ -698,6 +706,9 @@ private class ConditionParser(
 
     private companion object {
         const val SCALE_GATE_WAIVER = "MVK_INVALID_COMPARE_DEC_PLACES"
+
+        /** The names A12's preamble may suppress (`CheckPreambleImpl`, kernel 31.3.1); only the scale gate is static. */
+        val SUPPRESSIBLE_WARNINGS = setOf(SCALE_GATE_WAIVER, "MVK_ERROR_INVALID_ENUM_CALCULATION")
         val PREDICATES = setOf(
             "FieldFilled", "FieldNotFilled", "AllFieldsFilled", "GroupFilled", "GroupNotFilled",
             "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList",

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -18,16 +19,16 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
- * A computation's {@code errorCodesToSuppress} (DEV-API-GAPS; {@code IComputation.getErrorCodesToSuppress},
- * the IF92 escape hatch). The kernel's only model-level suppression for the static assignment-scale gate:
- * a scale-mismatched operation ({@code [UnitPrice] * [UnitPrice]}, scale 4, into the scale-0
- * {@code BackorderQuantity}) draws {@code MVK_INVALID_COMPARE_DEC_PLACES} — unless the computation
- * declares {@code errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]}. The typed builder now carries
- * it (domain-checked against the kernel's supported set), the serializer writes it, and the real kernel
- * honors it. Mirrors {@code ComputedNumberDigitOverflowDiffTest}'s reachability control.
+ * A computation's suppressed warnings, stored as A12's {@code additionalParserInformation} preamble (document-model
+ * format 29.8.0, A12K-4372; the IF92 escape hatch). A scale-mismatched operation ({@code [UnitPrice] * [UnitPrice]},
+ * scale 4, into the scale-0 {@code BackorderQuantity}) draws {@code MVK_INVALID_COMPARE_DEC_PLACES} unless the
+ * computation suppresses it. The typed builder checks each code against the supported set, renders the preamble in
+ * the model's condition language, and the real kernel honors it. Mirrors {@code ComputedNumberDigitOverflowDiffTest}'s
+ * reachability control.
  */
 class ComputationSuppressionTest {
 
+    private static final String SCALE_GATE = "MVK_INVALID_COMPARE_DEC_PLACES";
     private static final BoundModel m = Fixtures.order();
 
     /** Scale-4 product into the scale-0 {@code BackorderQuantity} — the static gate, suppressed by [suppress]. */
@@ -36,35 +37,56 @@ class ComputationSuppressionTest {
         return m.computation(m.num("/Order/BackorderQuantity"))
                 .name("ScaleMismatchComp")
                 .calc(product.expression())
-                .errorCodesToSuppress(suppress)
+                .suppressWarnings(suppress)
                 .message(Dsl.en("Backorder derived from the unit price."))
                 .build();
     }
 
     @Test
-    void draftCarriesTheSuppressionList() {
-        DraftComputation d = scaleMismatch("MVK_INVALID_COMPARE_DEC_PLACES").draft();
-        assertEquals(List.of("MVK_INVALID_COMPARE_DEC_PLACES"), d.errorCodesToSuppress());
+    void theDraftCarriesThePreambleInTheModelsLanguage() {
+        Computation suppressed = scaleMismatch(SCALE_GATE);
+        assertEquals(List.of(SCALE_GATE), suppressed.suppressedWarnings());
+        assertEquals("@SuppressWarning(" + SCALE_GATE + ")", suppressed.draft().additionalParserInformation());
+        assertEquals("@UnterdrueckeWarnung(" + SCALE_GATE + ")",
+                suppressed.draft(ConditionLanguage.DE).additionalParserInformation());
     }
 
     @Test
-    void draftDefaultsToNoSuppressions() {
-        assertEquals(List.of(), scaleMismatch().draft().errorCodesToSuppress());
+    void noSuppressionStoresNoPreamble() {
+        assertNull(scaleMismatch().draft().additionalParserInformation());
+    }
+
+    /** The draft boundary's list form stores nothing for an empty list, which A12 would otherwise refuse as `()`. */
+    @Test
+    void theDraftBuilderRendersAListAndStoresNothingForAnEmptyOne() {
+        assertEquals("@UnterdrueckeWarnung(" + SCALE_GATE + ",MVK_ERROR_INVALID_ENUM_CALCULATION)",
+                DraftComputation.builder()
+                        .suppressWarnings(ConditionLanguage.DE, List.of(SCALE_GATE, "MVK_ERROR_INVALID_ENUM_CALCULATION"))
+                        .build().additionalParserInformation());
+        assertNull(DraftComputation.builder().additionalParserInformation("@SuppressWarning(" + SCALE_GATE + ")")
+                .suppressWarnings(ConditionLanguage.EN, List.of()).build().additionalParserInformation());
     }
 
     @Test
-    void serializedComputationCarriesErrorCodesToSuppress() {
-        String json = ModelWriter.addComputation(Fixtures.orderJson(),
-                scaleMismatch("MVK_INVALID_COMPARE_DEC_PLACES"));
-        assertTrue(json.contains("errorCodesToSuppress"), () -> "missing key in: " + json);
-        assertTrue(json.contains("MVK_INVALID_COMPARE_DEC_PLACES"));
+    void theSerializedComputationCarriesThePreamble() {
+        String json = ModelWriter.addComputation(Fixtures.orderJson(), scaleMismatch(SCALE_GATE));
+        assertTrue(json.contains("\"additionalParserInformation\" : \"@SuppressWarning(" + SCALE_GATE + ")\""),
+                () -> "missing member in: " + json);
+        assertFalse(json.contains("errorCodesToSuppress"), "the legacy list is not written");
     }
 
     @Test
     void kernelAcceptsScaleMismatchWithSuppression() {
-        ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(),
-                scaleMismatch("MVK_INVALID_COMPARE_DEC_PLACES").draft());
+        ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(), scaleMismatch(SCALE_GATE).draft());
         assertTrue(vr.ok(), () -> "kernel rejected the suppressed scale mismatch: " + vr.diagnostics());
+    }
+
+    /** A12 admits the same code twice, and so does the builder (`ComputationParserInformationLawsTest`). */
+    @Test
+    void kernelAcceptsTheSupportedCodeListedTwice() {
+        ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(),
+                scaleMismatch(SCALE_GATE, SCALE_GATE).draft());
+        assertTrue(vr.ok(), () -> "kernel rejected the repeated code: " + vr.diagnostics());
     }
 
     @Test
@@ -73,17 +95,18 @@ class ComputationSuppressionTest {
         ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(), scaleMismatch().draft());
         assertFalse(vr.ok(), "expected the static scale gate to fire without suppression");
         assertTrue(vr.diagnostics().stream()
-                        .anyMatch(d -> d.code().filter("MVK_INVALID_COMPARE_DEC_PLACES"::equals).isPresent()),
-                () -> "expected MVK_INVALID_COMPARE_DEC_PLACES, got: " + vr.diagnostics());
+                        .anyMatch(d -> d.code().filter(SCALE_GATE::equals).isPresent()),
+                () -> "expected " + SCALE_GATE + ", got: " + vr.diagnostics());
     }
 
     /**
-     * Only the kernel's supported set is authorable, and a lone code-shaped entry is refused with the class
-     * A12 gives it ({@code validate.laws.ComputationSuppressionLawsTest}, KERNEL-FINDINGS KF298).
+     * Only the builder's supported set is authorable, and a code-shaped entry outside it is refused with the class
+     * A12 gives a name it cannot suppress ({@code validate.laws.ComputationParserInformationLawsTest}).
      */
     @Test
     void anUnsupportedCodeIsRejectedWithTheKernelsClass() {
         assertEquals(KernelCode.MVK_INVALID_SUPPRESSED_WARNING, citedBy("MVK_NO_WILDCARD"));
+        assertEquals(KernelCode.MVK_INVALID_SUPPRESSED_WARNING, citedBy(SCALE_GATE, "MVK_NO_WILDCARD"));
     }
 
     /**
@@ -92,48 +115,26 @@ class ComputationSuppressionTest {
      */
     @Test
     void theClassIsWithheldWhereTheEntryAloneDoesNotDecideIt() {
-        assertEquals(null, citedBy("Sum"), "a keyword in English models, a name in German ones");
-        assertEquals(null, citedBy("7_DAYS"), "a digit-led spelling, which A12 cannot read as a name");
+        assertNull(citedBy("Sum"), "a keyword in English models, a name in German ones");
+        assertNull(citedBy("7_DAYS"), "a digit-led spelling, which A12 cannot read as a name");
     }
 
     /**
-     * A second entry is refused whatever it spells, because A12 renders the list into a one-code pragma and
-     * fails on the comma. The class is cited where the first entry is a name A12 reads, which puts its parser
-     * at that comma: the supported code twice or three times, and a bogus code on either side of it, are all
-     * {@code MVK_UNEXPECTED_TOKEN} ({@code validate.laws.ComputationSuppressionLawsTest}, KERNEL-FINDINGS KF298).
-     */
-    @Test
-    void aSecondEntryIsRefusedWithTheParseClass() {
-        String supported = "MVK_INVALID_COMPARE_DEC_PLACES";
-        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, supported));
-        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, supported, supported));
-        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy(supported, "MVK_NO_WILDCARD"));
-        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, citedBy("MVK_NO_WILDCARD", supported));
-        assertEquals(null, citedBy("Sum", supported), "a keyword first: which token fails depends on the language");
-        IllegalArgumentException twoCalls = assertThrows(IllegalArgumentException.class,
-                () -> m.computation(m.num("/Order/BackorderQuantity")).name("C")
-                        .calc(m.num("/Order/UnitPrice").value())
-                        .errorCodesToSuppress(supported).errorCodesToSuppress(supported));
-        assertEquals(KernelCode.MVK_UNEXPECTED_TOKEN, ((KernelCodeRefusal) twoCalls).code(),
-                "the list a second call extends is the one A12 renders");
-    }
-
-    /**
-     * A12 admits the supported code padded with whitespace, because its lexer discards the padding; the
-     * builder refuses it anyway so the stored member keeps the one spelling every consumer compares, and
-     * cites no class because A12 has none for it.
+     * A12 admits the supported code padded with whitespace, because its lexer discards the padding; the builder
+     * refuses it anyway so the stored preamble keeps the one spelling every consumer compares, and cites no class
+     * because A12 has none for it.
      */
     @Test
     void aPaddedSupportedCodeIsRefusedDeliberatelyAndUncited() {
-        assertEquals(null, citedBy(" MVK_INVALID_COMPARE_DEC_PLACES "));
+        assertNull(citedBy(" " + SCALE_GATE + " "));
     }
 
-    /** The code a refused {@code errorCodesToSuppress(codes)} cites, or {@code null} when it cites none. */
+    /** The code a refused {@code suppressWarnings(codes)} cites, or {@code null} when it cites none. */
     private static KernelCode citedBy(String... codes) {
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
                 () -> m.computation(m.num("/Order/BackorderQuantity")).name("C")
                         .calc(m.num("/Order/UnitPrice").value())
-                        .errorCodesToSuppress(codes));
+                        .suppressWarnings(codes));
         return refusal instanceof KernelCodeRefusal coded ? coded.code() : null;
     }
 }

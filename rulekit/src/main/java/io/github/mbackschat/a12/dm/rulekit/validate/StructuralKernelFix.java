@@ -23,10 +23,9 @@ import io.github.mbackschat.a12.dm.core.KernelCode;
  *       the fix is the absolute path), and the <b>enum locale-coverage</b> code
  *       ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but
  *       not all, whose opaque "display value and XML value not specified together" message hides the gap),
- *       and the <b>field-declaration</b> pair, where a DateType's config disagrees with its declared format
- *       ({@code MVK_ADDITIONAL_CHECK_INVALID}, {@code MVK_OPTIONAL_DATE_TYPE_INVALID} — the two gates read the
- *       format differently, so neither message says which formats would work, and the second echoes the
- *       offending one back in German pattern letters).</li>
+ *       and the <b>field-declaration</b> code, where a DateType's config disagrees with its declared format
+ *       ({@code MVK_OPTIONAL_DATE_TYPE_INVALID} — the message names the offending format but not which formats
+ *       would work).</li>
  *   <li><b>CROSS-CONTEXT codes</b> — documented by operator(s), but ALSO fired by a construct the catalog
  *       cannot describe, so the documenter's fix is <em>wrong</em> there (probe findings F06-2 / dec-places):
  *       {@code MVK_NO_WILDCARD} (CurrentRepetition documents it, but a non-iterating aggregate / computation
@@ -69,9 +68,9 @@ public final class StructuralKernelFix {
 
     private static final Map<KernelCode, Hint> HINTS = Map.ofEntries(
             Map.entry(KernelCode.MVK_INVALID_PATTERN, new Hint(
-                    "Use a Java-valid regular expression that also avoids the kernel 30.8.x admission restrictions: "
+                    "Use a Java-valid regular expression that also avoids A12's admission restrictions: "
                             + "possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, "
-                            + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — "
+                            + "the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — "
                             + "uppercase `\\P` is admitted), and nested unescaped `[` class syntax. The gate reads "
                             + "the pattern's SOURCE TEXT, so escaping buys no exemption: `a\\*+` is refused for "
                             + "spelling `*` before `+`, though the pattern it means is ordinary. Passing this gate "
@@ -84,7 +83,7 @@ public final class StructuralKernelFix {
             Map.entry(KernelCode.MVK_PATTERN_INVALID, new Hint(
                     "A DECLARED field pattern (`StringType.pattern`, and the same slot on a type definition) "
                             + "goes through the identical gate as a condition's pattern literal: valid Java "
-                            + "Pattern syntax, then the kernel's A12K-30 admission blacklist read on the "
+                            + "Pattern syntax, then A12's admission blacklist read on the "
                             + "pattern's SOURCE TEXT — possessive quantifiers, lookbehind/named-capture "
                             + "`(?<…`, atomic `(?>…)`, the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` "
                             + "(lowercase `\\p` only), and nested unescaped `[`. Because it reads text, "
@@ -94,23 +93,6 @@ public final class StructuralKernelFix {
                             + "here. Like it, it can mean invalid Java syntax or a Java-valid form the "
                             + "admission gate refuses, and passing it does not prove JavaScript "
                             + "portability.")),
-            Map.entry(KernelCode.MVK_ADDITIONAL_CHECK_INVALID, new Hint(
-                    "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our "
-                            + "`dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared "
-                            + "FORMAT to carry a YEAR. Over the kernel's admitted format vocabulary it is "
-                            + "accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` "
-                            + "and `yyyy-MM-dd'T'HH:mm:ss`, and refused on the year-free `MM`, `MM-dd`, `MMdd`, "
-                            + "`ddMM`, `dd.MM.` and `HH:mm:ss` — identically on both kinds. So either declare a "
-                            + "year-bearing format or drop the check — it is not admitted-and-inert on a "
-                            + "year-free declaration, so there is no way to keep both. An INCOMPLETE format is not "
-                            + "the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted. A DATERANGE is "
-                            + "EXEMPT from this gate — every admitted (format, separator) pair takes the check, "
-                            + "the year-free ones included — so if a year-free period is what you need, declare "
-                            + "it as a range.",
-                    "The kernel gates the additional date check on the declared format's YEAR component rather "
-                            + "than on the field's kind — except that the DATERANGE kind is not gated at all — so "
-                            + "the code means the format and the check disagree, never that the check is "
-                            + "unsupported for this field type.")),
             Map.entry(KernelCode.MVK_OPTIONAL_DATE_TYPE_INVALID, new Hint(
                     "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) "
                             + "requires the declared FORMAT to be a COMPLETE date and nothing further. Over the "
@@ -119,9 +101,7 @@ public final class StructuralKernelFix {
                             + "`yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of "
                             + "those three, or leave the precision at its FULL default — the precision is what "
                             + "lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able "
-                            + "to spell all of them. Do NOT copy the format out of this rejection: it echoes the "
-                            + "spelling in GERMAN pattern letters (`JJJJ-MM` for `yyyy-MM`, `MM-TT` for `MM-dd`) "
-                            + "in every locale, and those are not declarable.",
+                            + "to spell all of them.",
                     "The kernel requires a complete date format before it will accept a partial-precision marker, "
                             + "and reports the conflict against the format rather than against the precision — the "
                             + "verdict is the same for all three partial values, so the code identifies the "
@@ -140,8 +120,7 @@ public final class StructuralKernelFix {
                             + "field reports MVK_INVALID_COMPARE_TO_YESNO and a CONFIRM one "
                             + "MVK_INVALID_COMPARE_TO_YES for any constant at all; failing those, a temporal "
                             + "constant reports THIS code against every remaining kind; only then does the "
-                            + "field's own kind decide. Measured in KERNEL-FINDINGS entry KF257, which carries "
-                            + "the ladder and its controls.")),
+                            + "field's own kind decide.")),
             Map.entry(KernelCode.MVK_NO_WILDCARD, new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "
@@ -210,8 +189,8 @@ public final class StructuralKernelFix {
                             + "reads that from PATH CONTAINMENT: the written field must lie at or below the declaring "
                             + "group. It gates both constructs, but they differ in what derives the iteration — an "
                             + "unstarred per-row read does so for either, while a per-row COMPUTED field derives it "
-                            + "with no operand at all and a per-row ERROR field does not (measured 2026-09-15, "
-                            + "KERNEL-FINDINGS KF212). Crossing a root boundary is not itself a refusal.")),
+                            + "with no operand at all and a per-row ERROR field does not. "
+                            + "Crossing a root boundary is not itself a refusal.")),
             Map.entry(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED, new Hint(
                     "Name the rule's error field somewhere in the condition. Most often this is a model-level "
                             + "aggregate rule whose condition only references the aggregated per-row path — reference "
@@ -224,10 +203,10 @@ public final class StructuralKernelFix {
             Map.entry(KernelCode.MVK_ERROR_FIELD_AND_ITERATION_INVALID, new Hint(
                     "Read the error field itself per row, unstarred, somewhere in the condition — most often as "
                             + "the guard: FieldFilled(<the error field>) And … instead of a guard on a sibling "
-                            + "field of the same row. Or drop the per-row read, so the rule no longer iterates.",
+                            + "field of the same row. Or drop the per-row read, so the rule stops iterating.",
                     "A per-row (unstarred) read makes the rule run once per repetition, and the kernel then needs "
                             + "a reference NAMING the error field — the field or a group containing it — that "
-                            + "reads the same repetition per row. As KERNEL-FINDINGS KF417 measures, a starred list "
+                            + "reads the same repetition per row. A starred list "
                             + "such as Sum(Rows*/Field) names the field without saying which row, so it does not "
                             + "count. A computation has no error field and is not affected.")),
             Map.entry(KernelCode.MVK_NEG_CONDITION_IN_ITERATION, new Hint(
@@ -299,8 +278,8 @@ public final class StructuralKernelFix {
                     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified "
                             + "together\") is armed by the PRESENCE of a label entry, in any locale, not by coverage: a "
                             + "value that carries one owes a nonblank text for every declared locale, so a label "
-                            + "written only for an UNDECLARED locale arms it too, and a blank text is refused "
-                            + "(KERNEL-FINDINGS KF321, KF655). A value that carries no "
+                            + "written only for an UNDECLARED locale arms it too, and a blank text is refused. "
+                            + "A value that carries no "
                             + "`labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.")),
             Map.entry(KernelCode.MVK_INVALID_TIME_ZONE, new Hint(
                     "Set modelConfig.timeZone to a Java time-zone id, spelled exactly, or a GMT offset such as "
@@ -347,7 +326,7 @@ public final class StructuralKernelFix {
                             + "semantic index or a category access\") is the PROJECTED half of the "
                             + "calculated-field-reference ban, and it pre-empts the plain half when both readings occur "
                             + "in one operation — so this code identifies the reading MODE, while the plain code is what "
-                            + "an unprojected self-read reports (kernel-measured, KF182).")),
+                            + "an unprojected self-read reports.")),
             Map.entry(KernelCode.MVK_ERROR_WRONG_ROUNDING_MODE, new Hint(
                     "Give EVERY alternative a tolerance band (toleranceRangeOp DiffersWithToleranceRange1, 2, 5 or "
                             + "10), or keep the rounding mode Exact. The mode is never wrong by itself: it is refused "
@@ -359,8 +338,7 @@ public final class StructuralKernelFix {
                     "A12's check (\"When using exact calculation comparisons only the rounding mode 'exact' is "
                             + "allowed\") judges a PAIR: an alternative without a band compares the computed "
                             + "field exactly, and A12 refuses a non-Exact mode against that comparison, while the same "
-                            + "mode beside a band is admitted (kernel-measured, KF297; what the admitted pair writes: "
-                            + "KF474).")),
+                            + "mode beside a band is admitted.")),
             Map.entry(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES, new Hint(
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
@@ -373,7 +351,7 @@ public final class StructuralKernelFix {
                             + "surface if the operation also reads its own computed field, because this scale "
                             + "comparison is decided ahead of that refusal; (2) numeric == / != with "
                             + "incompatible derived scales — round one side to a known compatible scale, or accept it with "
-                            + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
+                            + "allowDifferingDecimals:true on the rule spec (a suppressible kernel warning — it "
                             + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES), @UnterdrueckeWarnung in a German-condition model; "
                             + "`rule modify`, which takes no spec, carries it as that directive written at the head of `--condition`); (3) a POWER, whose scale is "
                             + "DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only "
@@ -437,7 +415,7 @@ public final class StructuralKernelFix {
                             + "AND SEPARATOR are allowlisted as a PAIR, "
                             + "and exactly TWELVE pairs are admitted — `dd.MM.yyyy`+`-`, `dd.MM`+`-`, and `yyyy-MM-dd`, "
                             + "`yyyy`, `yyyy-MM`, `MM`, `MM-dd` each with `/` or with the empty separator, which "
-                            + "kernel 31.1.1 reads as `/`; swapping the separator is always refused "
+                            + "A12 reads as `/`; swapping the separator is always refused "
                             + "(`MM`+`-`, `dd.MM.yyyy`+`/`), no format takes `.`, `yyyyMM` is a legal DATE "
                             + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; and DATEFRAGMENT "
                             + "admits the same thirteen, measured as its own domain rather than inherited. The "
@@ -474,10 +452,6 @@ public final class StructuralKernelFix {
         if (lowerCaseMessage.contains("(missing required computedfieldrelpath on element")) {
             return Optional.of(new Hint("A computation names no computed field: give it `computedFieldRelPath`, the "
                     + "path of the field it writes, relative to the computation's group.", explain));
-        }
-        if (lowerCaseMessage.contains("(missing required sortfields[].name on element")) {
-            return Optional.of(new Hint("A group's `sortFields` entry names no field: give every entry a `name`, a "
-                    + "field of that group, or remove the entry.", explain));
         }
         if (lowerCaseMessage.contains("(missing required id on the header)")) {
             return Optional.of(new Hint("The model's header has no `id`: give `header.id` the model's identifier.",

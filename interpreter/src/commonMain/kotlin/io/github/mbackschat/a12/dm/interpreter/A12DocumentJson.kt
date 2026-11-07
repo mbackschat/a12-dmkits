@@ -235,33 +235,82 @@ internal object A12DocumentJson {
     /**
      * The **RUNTIME** rendering of an already-plain stored number — the text A12's `IData` hands every
      * evaluation channel, as against [plainNumberOrNull]'s **serializer** text. A12 renders one stored decimal
-     * twice, and the two differ in BOTH directions: `FormatDefinitionZahl.convertFromBasicType` computes
-     * `bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()`, so a fractional
-     * trailing zero beyond [minFractionalDigits] is **stripped** (`250.00` → `250`) and a value with fewer
-     * fractional digits than [minFractionalDigits] is **padded** (`250` → `250.00`). IF231; the measurement is
-     * KERNEL-FINDINGS "The canonical Document JSON …".
+     * twice, and the two differ in BOTH directions: a fractional trailing zero beyond [minFractionalDigits] is
+     * **stripped** (`250.00` → `250`) and a value with fewer fractional digits than [minFractionalDigits] is
+     * **padded** (`250` → `250.00`). IF231; the measurement is KERNEL-FINDINGS "The canonical Document JSON …".
+     *
+     * Kernel 31.3.1 caps that scale at fifteen digits less the value's [integerDigits], and rounds half up to it
+     * (`NumberConversion.determineFractionalDigits`, KERNEL-FINDINGS KF681): a pad stops at the cap
+     * (`123456` at a minimum of 10 → `123456.000000000`), and a value with more significant digits is rounded
+     * (`1234567890.1234567` → `1234567890.12346`). Within fifteen digits nothing is ever rounded.
      *
      * Purely lexical, for the same reason [plainNumberOrNull] is: routing a transport value through a decimal
-     * type would impose the evaluation model's rounding on a rendering that must not have one. Nothing is ever
-     * rounded here — the destination scale is by construction at least the value's own significant scale, so
-     * only trailing zeros are added or dropped. Cross-checked against `java.math.BigDecimal` itself by
-     * `A12RuntimeNumberFormTest`.
+     * type would impose the evaluation model's rounding on a rendering that must not have one. Cross-checked
+     * against `java.math.BigDecimal` itself by `A12RuntimeNumberFormTest`.
      *
      * [plain] must already be in plain form (a [plainNumberOrNull] / [canonicalNumberOrNull] output): no
-     * exponent, no leading `+`, no leading zeros beyond a lone `0`.
+     * exponent, no leading `+`, no leading zeros beyond a lone `0`. [integerDigits] is the stored decimal's
+     * precision less its scale; the plain form determines it except for a zero written with a positive exponent,
+     * whose caller passes the stored one.
      */
-    internal fun runtimeNumberForm(plain: String, minFractionalDigits: Int): String {
+    internal fun runtimeNumberForm(plain: String, minFractionalDigits: Int, integerDigits: Int = integerDigitsOf(plain)): String {
         val point = plain.indexOf('.')
         val fractionPart = if (point < 0) "" else plain.substring(point + 1)
         val significantFraction = fractionPart.trimEnd('0')
         // Once no significant fractional digit survives, `stripTrailingZeros().scale()` is <= 0 (`250.00` strips
         // to `2.5E+2`, scale -1; `0.00` to `0`, scale 0) — and `max(<= 0, minFractionalDigits)` is then just
         // minFractionalDigits, which is why the two branches need no signed scale of their own.
-        val scale = if (significantFraction.isEmpty()) minFractionalDigits
+        val wanted = if (significantFraction.isEmpty()) minFractionalDigits
         else maxOf(significantFraction.length, minFractionalDigits)
+        val scale = minOf(wanted, maxOf(0, MAX_RENDERED_DIGITS - integerDigits))
         if (scale == fractionPart.length) return plain
         val integerPart = if (point < 0) plain else plain.substring(0, point)
+        if (scale < significantFraction.length) return roundedHalfUp(integerPart, fractionPart, scale)
         return if (scale == 0) integerPart else integerPart + "." + significantFraction.padEnd(scale, '0')
+    }
+
+    /** The digits a runtime rendering keeps at most, `NumberConversion.MAX_ALLOWED_NUMBER_OF_DIGITS`. */
+    private const val MAX_RENDERED_DIGITS = 15
+
+    /**
+     * A plain number's precision less its scale, as `BigDecimal` counts them: the integer digits of a value of at
+     * least one, the negated count of leading fractional zeros below one (`0.5` → 0, `0.0000001` → -6), and for
+     * zero one less its written scale (`0` → 1, `0.00` → -1).
+     */
+    internal fun integerDigitsOf(plain: String): Int {
+        val unsigned = plain.removePrefix("-")
+        val point = unsigned.indexOf('.')
+        val integerPart = if (point < 0) unsigned else unsigned.substring(0, point)
+        val fractionPart = if (point < 0) "" else unsigned.substring(point + 1)
+        val significantInteger = integerPart.trimStart('0')
+        if (significantInteger.isNotEmpty()) return significantInteger.length
+        val firstSignificant = fractionPart.indexOfFirst { it != '0' }
+        return if (firstSignificant < 0) 1 - fractionPart.length else -firstSignificant
+    }
+
+    /**
+     * The stored decimal's precision less its scale, read from the written [raw] so that a zero with a positive
+     * exponent (`0E+3`, precision 1 and scale -3) counts as A12's converted value does; [plain] answers otherwise.
+     */
+    private fun integerDigitsOf(raw: String, plain: String): Int =
+        DecimalObjectIdentity.parse(raw)?.let { it.coefficient.removePrefix("-").length - it.scale } ?: integerDigitsOf(plain)
+
+    /** [integerPart]`.`[fractionPart] rounded half away from zero to [scale] fractional digits. */
+    private fun roundedHalfUp(integerPart: String, fractionPart: String, scale: Int): String {
+        val negative = integerPart.startsWith("-")
+        val kept = integerPart.removePrefix("-") + fractionPart.substring(0, scale)
+        val digits = if (fractionPart[scale] >= '5') incremented(kept) else kept
+        val whole = digits.substring(0, digits.length - scale)
+        val magnitude = if (scale == 0) whole else whole + "." + digits.substring(digits.length - scale)
+        return if (negative && digits.any { it != '0' }) "-$magnitude" else magnitude
+    }
+
+    /** A digit string plus one, carrying into a new leading digit when every digit was a nine. */
+    private fun incremented(digits: String): String {
+        val result = digits.toCharArray()
+        var i = result.size - 1
+        while (i >= 0 && result[i] == '9') result[i--] = '0'
+        return if (i < 0) "1" + result.concatToString() else result.also { it[i] = it[i] + 1 }.concatToString()
     }
 
     /**
@@ -324,7 +373,7 @@ internal object A12DocumentJson {
                     ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
                 if (converted == null) CellText(raw)   // A12's pass-through: a String, read back unchanged
                 else CellText(
-                    runtimeNumberForm(converted, minFractionalDigitsOf(path)),
+                    runtimeNumberForm(converted, minFractionalDigitsOf(path), integerDigitsOf(raw, converted)),
                     converted,
                     DecimalObjectIdentity.parse(raw),
                 )

@@ -61,8 +61,10 @@ class CheckerComputedPathAgreementTest {
      *
      * The root's sentence is its own. Two kinds of row leave no model at all, and ask only that the checker reports
      * the model unbuildable too (KF652): an EMPTY root name, because this model's computation then resolves its path
-     * from a full name that starts with two slashes, and a blank computed field, because A12's reader finds the field
-     * its converter then leaves out, so the calculation check runs on a computation with no target.
+     * from a full name that starts with two slashes, and a whitespace-named computed field, because A12's reader finds
+     * the field its converter then leaves out, so the calculation check runs on a computation with no target. An EMPTY
+     * computed-field name is neither: the renamed path `../` names the computation's group, which A12 resolves as no
+     * field and states "not found" (kernel 31.3.1; 31.1.1 could not build it).
      */
     @Test
     fun aBlankNameDrawsTheConverterSentence() {
@@ -71,7 +73,9 @@ class CheckerComputedPathAgreementTest {
             val a12 = kernel(json).map { it.substringBefore('@') }.sorted()
             val ours = ours(json).map { it.substringBefore('@') }.sorted()
             val agrees = when {
-                at == At.ROOT && blank.isEmpty() || at == At.LABEL -> a12 == listOf(UNBUILT) && UNBUILT in ours
+                at == At.ROOT && blank.isEmpty() || at == At.LABEL && blank.isNotEmpty() ->
+                    a12 == listOf(UNBUILT) && UNBUILT in ours
+                at == At.LABEL -> a12 == ours && COMPUTED_FIELD_NOT_FOUND in a12
                 at == At.ROOT -> a12 == ours && ROOT_GROUP_NAME_MISSING in a12
                 else -> a12 == ours && ELEMENT_NAME_MISSING in a12
             }
@@ -143,6 +147,7 @@ class CheckerComputedPathAgreementTest {
         const val UNBUILT = "CK_MODEL_NOT_BUILDABLE"
         const val ELEMENT_NAME_MISSING = "RK_ELEMENT_NAME_MISSING"
         const val ROOT_GROUP_NAME_MISSING = "RK_ROOT_GROUP_NAME_MISSING"
+        const val COMPUTED_FIELD_NOT_FOUND = "RK_COMPUTED_FIELD_NOT_FOUND"
         const val PATH = "MVK_PATH_INVALID"
         const val INVALID_FIELDNAME = "MVK_ERROR_INVALID_FIELDNAME"
         const val GROUP_SENTENCE = "RK_GROUP_PATH_INVALID"

@@ -122,10 +122,9 @@ class FieldTypeBodyMemberLawsTest {
         expected.put("DateRangeType with both", KernelLaws.ADMITTED);
         expected.put("DateFragmentType with an optional member only", KernelLaws.NOT_BUILDABLE);
         expected.put("DateFragmentType with its format", KernelLaws.ADMITTED);
-        // The second row where the required member is present and the model is still refused — here by a
-        // consistency check rather than a build failure, because a 1900 check needs a year and `dd.MM.` has
-        // none. The next row is its discriminator and admits with the identical pair of members.
-        expected.put("DateFragmentType with both", "MVK_ADDITIONAL_CHECK_INVALID");
+        // Through kernel 31.1.1 this row was refused by a consistency check, a 1900 check needing a year that
+        // `dd.MM.` lacks; kernel 31.2 stopped evaluating the check (KF677), so the pair is admitted like the next.
+        expected.put("DateFragmentType with both", KernelLaws.ADMITTED);
         expected.put("DateFragmentType with a YEAR-bearing format and the check", KernelLaws.ADMITTED);
         expected.put("EnumerationType with sorting only", KernelLaws.NOT_BUILDABLE);
         expected.put("EnumerationType with one value", KernelLaws.ADMITTED);

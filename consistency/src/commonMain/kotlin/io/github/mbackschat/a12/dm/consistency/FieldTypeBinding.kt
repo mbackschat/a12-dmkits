@@ -96,8 +96,8 @@ private fun unbindableMember(field: TrackedDeclaration, owner: JsonObject, membe
 
 /**
  * The primitive `boolean` members each type's body declares — enumerated from the `a12internal.fieldtypes` classes
- * (re-derived on kernel 31.1.1, `kernel-md-documentmodel` at eec9134), which `FieldtypeDeserializer` binds with
- * `treeToValue`. Exhaustive, so a type added to [FieldType] has to say whether it carries any.
+ * (re-derived on kernel 31.3.1, `kernel-md-documentmodel` at 6363abf, where `youngerThan1900Check` is deprecated
+ * since 31.2.0 but still bound until A12K-4439 removes it), which `FieldtypeDeserializer` binds with `treeToValue`. Exhaustive, so a type added to [FieldType] has to say whether it carries any.
  */
 internal val FieldType.booleanMembers: List<String>
     get() = when (this) {
@@ -483,9 +483,9 @@ private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
  * not that one. The measurement agrees with the builder.
  *
  * **The member is NECESSARY and not sufficient**, which is why its absence is what gets reported and its
- * presence, on its own, draws nothing. A measured row has the member and is still refused: the
- * `DateFragmentType` one — a 1900 check on a format with no year — is A12's own consistency verdict and belongs to
- * [temporalConfigFindings].
+ * presence, on its own, draws nothing. A row can have the member and still be refused by A12's own consistency
+ * verdict, which belongs to [temporalConfigFindings] (through kernel 31.1.1 the `DateFragmentType` row with a 1900
+ * check on a year-free format was one; kernel 31.2 admits it).
  *
  * `DateRangeType` is absent although its builder needs `format`: A12 composes an omitted format as the text `null`
  * and answers it with a verdict rather than a build failure, so [dateRangeFindings] judges it (KF581).

@@ -57,14 +57,21 @@ public record Computation(
         List<Alternative> alternatives,
         List<LocalizedText> messages,
         Comments comments,
-        List<String> errorCodesToSuppress,
-        RoundingMode roundingMode) {
+        List<String> suppressedWarnings,
+        RoundingMode roundingMode,
+        Optional<String> errorCode) {
 
-    private static final Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
+    /**
+     * The warnings the builder lets a computation suppress — a deliberate subset of A12's supported set, which also
+     * holds {@code MVK_ERROR_INVALID_ENUM_CALCULATION} on kernel 31.3.1 ({@code ComputationParserInformationLawsTest}).
+     * Suppressing that one admits a text computed into an enumeration, whose runtime the interpreter has not
+     * characterized, so the typed surface does not author it (INTERPRETER-GAPS IG187).
+     */
+    private static final Set<String> SUPPORTED_SUPPRESSED_WARNINGS =
             Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
 
     /**
-     * A spelling A12's pragma reads as a NAME in either condition language: an underscore keeps it longer than
+     * A spelling A12's preamble reads as a NAME in either condition language: an underscore keeps it longer than
      * any keyword the lexer could retype it to, and the leading letter keeps it off the digit-led name terminal.
      */
     private static final Pattern CODE_SHAPED = Pattern.compile("MVK_[A-Z0-9_]*");
@@ -72,8 +79,9 @@ public record Computation(
     public Computation {
         alternatives = List.copyOf(alternatives);
         messages = List.copyOf(messages);
-        errorCodesToSuppress = List.copyOf(errorCodesToSuppress);
+        suppressedWarnings = List.copyOf(suppressedWarnings);
         roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
+        errorCode = errorCode == null ? Optional.empty() : errorCode;
     }
 
     public record Alternative(
@@ -107,9 +115,9 @@ public record Computation(
         return EntityPath.of(groupPath + "/" + name).relativize(computedField.path());
     }
 
-    /** The kernel-measured domain accepted by A12's {@code IComputation.errorCodesToSuppress}. */
-    public static Set<String> supportedErrorCodesToSuppress() {
-        return SUPPORTED_ERROR_CODES_TO_SUPPRESS;
+    /** The warnings {@link Builder#suppressWarnings(String...)} accepts. */
+    public static Set<String> supportedSuppressedWarnings() {
+        return SUPPORTED_SUPPRESSED_WARNINGS;
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, computation.draft())}). */
@@ -129,16 +137,13 @@ public record Computation(
                                 renderer.render(a.operation(), comments),
                                 a.toleranceRangeOp().orElse(null)))
                         .toList())
-                .errorCodesToSuppress(errorCodesToSuppress).roundingMode(roundingMode).messages(messages).build();
+                .additionalParserInformation(suppressedWarnings.isEmpty() ? null
+                        : ConditionDirectives.suppressionPreamble(language, suppressedWarnings))
+                .roundingMode(roundingMode).errorCode(errorCode.orElse(null)).messages(messages).build();
     }
 
     public static final class Builder {
 
-        /**
-         * The kernel's supported {@code errorCodesToSuppress} set — currently only the static
-         * assignment-scale gate ({@code IComputation.getErrorCodesToSuppress}, KERNEL-FINDINGS; IF92).
-         * A code outside it is refused with a corrective error rather than silently written.
-         */
         private final FieldRef computedField;
         private final List<String> declaredLocales;
         /** The computed field's declared temporal {@code format}, or null when it declares none / is not
@@ -150,8 +155,9 @@ public record Computation(
         private Condition commonPrecondition;
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
-        private final List<String> errorCodesToSuppress = new ArrayList<>();
+        private final List<String> suppressedWarnings = new ArrayList<>();
         private RoundingMode roundingMode = RoundingMode.EXACT;
+        private String errorCode;
         private Comments comments = Comments.none();
         private String rootComment;
 
@@ -268,41 +274,30 @@ public record Computation(
         }
 
         /**
-         * Declare {@code errorCodesToSuppress} ({@code IComputation.getErrorCodesToSuppress}) — the kernel's
-         * model-level escape hatch. Each code is domain-checked against the kernel's supported set
-         * (currently only {@code MVK_INVALID_COMPARE_DEC_PLACES}, the static assignment-scale gate that lets
-         * a scale-mismatched operation load — IF92); an unsupported code is refused fail-fast, not written.
+         * Suppress warnings in the computation's preamble, A12's {@code additionalParserInformation}, which
+         * {@link Computation#draft(ConditionLanguage)} spells {@code @SuppressWarning(a,b)} in the destination model's
+         * condition language. Each code must be in {@link Computation#supportedSuppressedWarnings()}, today the
+         * static assignment-scale gate that lets a scale-mismatched operation load (IF92); any other is refused
+         * fail-fast, not written.
          *
-         * <p>The refusal cites A12's class only where the entries decide it, because A12 judges the pragma the
-         * list renders into rather than the list (KERNEL-FINDINGS KF298): a lone code-shaped entry is a name it
-         * reads and then refuses, while a keyword's class depends on the model's condition language, which a
-         * computation does not carry. A SECOND entry is refused whatever it spells, the pragma taking one code:
-         * behind a code-shaped first entry the parser fails on the comma with {@code MVK_UNEXPECTED_TOKEN},
-         * measured with the supported code and a bogus one on either side. The supported code padded with
-         * whitespace is the one spelling refused where A12 admits it, since its lexer discards the padding;
-         * refusing it keeps the member to the one spelling every consumer compares.
+         * <p>The refusal cites A12's class only where the code decides it, because A12 judges the preamble text
+         * (KERNEL-FINDINGS KF298): a code-shaped entry is a name it reads and then refuses with
+         * {@code MVK_INVALID_SUPPRESSED_WARNING} wherever it stands in the list, while a keyword's class depends on
+         * the model's condition language, which a computation does not carry. The supported code padded with
+         * whitespace is the one spelling refused where A12 admits it, since its lexer discards the padding; refusing
+         * it keeps the member to the one spelling every consumer compares.
          */
-        public Builder errorCodesToSuppress(String... codes) {
-            var entries = new ArrayList<>(errorCodesToSuppress);
-            entries.addAll(List.of(codes));
-            if (entries.size() > 1) {
-                String message = "errorCodesToSuppress takes one code, since A12 renders it into a one-code "
-                        + "@SuppressWarning pragma — got " + entries;
-                throw CODE_SHAPED.matcher(entries.getFirst()).matches()
-                        ? Refusals.of(KernelCode.MVK_UNEXPECTED_TOKEN, message)
-                        : new IllegalArgumentException(message);
-            }
-            boolean lone = codes.length == 1;
+        public Builder suppressWarnings(String... codes) {
             for (String code : codes) {
-                if (!supportedErrorCodesToSuppress().contains(code)) {
-                    String message = "errorCodesToSuppress only accepts the kernel's supported set "
-                            + supportedErrorCodesToSuppress() + " — got '" + code + "'";
-                    throw lone && CODE_SHAPED.matcher(code).matches()
+                if (!supportedSuppressedWarnings().contains(code)) {
+                    String message = "suppressWarnings only accepts " + supportedSuppressedWarnings()
+                            + " — got '" + code + "'";
+                    throw CODE_SHAPED.matcher(code).matches()
                             ? Refusals.of(KernelCode.MVK_INVALID_SUPPRESSED_WARNING, message)
                             : new IllegalArgumentException(message);
                 }
             }
-            errorCodesToSuppress.addAll(List.of(codes));
+            suppressedWarnings.addAll(List.of(codes));
             return this;
         }
 
@@ -318,6 +313,21 @@ public record Computation(
          */
         public Builder roundingMode(RoundingMode roundingMode) {
             this.roundingMode = roundingMode == null ? RoundingMode.EXACT : roundingMode;
+            return this;
+        }
+
+        /**
+         * The code of the validation A12 generates from this computation; {@code null} leaves it unset, and A12 then
+         * codes it by the computation's name. A blank code is refused with A12's own class: A12 keeps a present code
+         * rather than falling back, and judges it as the generated rule's missing code
+         * ({@code validate.laws.ComputationErrorCodeLawsTest}). Its characters are A12's to judge.
+         */
+        public Builder errorCode(String errorCode) {
+            if (errorCode != null && errorCode.isBlank()) {
+                throw Refusals.of(KernelCode.MVK_ERROR_CODE_MISSING,
+                        "errorCode needs a code, or null to code the generated validation by the computation's name");
+            }
+            this.errorCode = errorCode;
             return this;
         }
 
@@ -407,7 +417,7 @@ public record Computation(
                     : comments.before(alternatives.get(0).operation(), rootComment);
             return new Computation(groupPath, name, computedField,
                     Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments,
-                    errorCodesToSuppress, roundingMode);
+                    suppressedWarnings, roundingMode, Optional.ofNullable(errorCode));
         }
 
         /** One slot's reading of the computed field, kept with the slot so a rejection can name it. */
@@ -572,7 +582,7 @@ public record Computation(
         private void requireNoCustomCondition(Condition c) {
             switch (c) {
                 case CustomConditionRef ignored -> fail(KernelCode.MVK_ERROR_INVALID_LANGUAGE_FEATURE,
-                        "CustomCondition is not allowed in a computation rule (KERNEL-SEMANTICS §14)");
+                        "CustomCondition is not allowed in a computation rule");
                 case LogicCondition l -> {
                     requireNoCustomCondition(l.left());
                     requireNoCustomCondition(l.right());

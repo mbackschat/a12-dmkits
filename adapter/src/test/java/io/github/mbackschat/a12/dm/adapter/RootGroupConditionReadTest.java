@@ -41,7 +41,7 @@ class RootGroupConditionReadTest {
     @Test
     void roundTripsRootGroupPresence() {
         BoundModel m = forms();
-        // each rule self-references its OWN root group (cross-root refs draw MVK_TOO_MANY_PARENT_GROUPS)
+        // each rule self-references its OWN root group; cross-root reads are CrossRootGroupConditionReadTest
         Condition mainFilled = m.group("/Main").filled();          // GroupFilled(/Main)
         Condition optionalAbsent = m.group("/Optional").notFilled(); // GroupNotFilled(/Optional)
 

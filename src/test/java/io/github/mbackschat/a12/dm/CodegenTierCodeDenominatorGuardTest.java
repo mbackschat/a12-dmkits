@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -154,7 +153,7 @@ class CodegenTierCodeDenominatorGuardTest {
 
     /** The constants the sibling checkout declares, or a skipped test when it is not on this machine. */
     private static Set<String> declaredCodes() throws IOException {
-        Path source = kernelCheckout()
+        Path source = KernelSourceCheckout.locate()
                 .map(root -> root.resolve(ENUM_SOURCE))
                 .filter(Files::isRegularFile)
                 .orElse(null);
@@ -167,18 +166,5 @@ class CodegenTierCodeDenominatorGuardTest {
             found.add(matcher.group());
         }
         return found;
-    }
-
-    /** The sibling kernel checkout — a property first, then the two conventional relative places. */
-    private static Optional<Path> kernelCheckout() {
-        return List.of(
-                        Optional.ofNullable(System.getProperty("a12.kernel.dir")),
-                        Optional.of("../a12-kernel"),
-                        Optional.of("../../a12-kernel"))
-                .stream()
-                .flatMap(Optional::stream)
-                .map(Path::of)
-                .filter(Files::isDirectory)
-                .findFirst();
     }
 }

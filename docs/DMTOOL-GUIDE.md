@@ -48,7 +48,7 @@ Worked session: [`examples/cli-mcp.md`](../examples/cli-mcp.md). Full contract, 
 ## Discover the tool itself
 
 ```sh
-dmtool manifest                       # every verb × parameter + a worked example per verb, in one call
+dmtool manifest                       # every verb, one line each; `manifest <target> [<op>]` adds params + a worked example
 dmtool operators                      # the DSL operator catalogue …
 dmtool operators GroupFilled          #   … or one operator in full (meaning, examples, gotchas, OPPOSITE)
 dmtool patterns                       # the validation-idiom catalogue (date-order, required-when, …) …
@@ -330,7 +330,7 @@ dmtool -m sub.dm.json   computation add <comp-spec.json> --dry-run  # static pre
 dmtool -m sub.dm.json   computation add <comp-spec.json>   # persist the same kernel-accepted computation
 ```
 
-For intentionally scale-unknown division or field-exponent power, the computation spec uses A12's property unchanged: `"errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"]`. Discover the complete, target-specific shape with `dmtool schema computation add`; rule-only keys are rejected on computations and computation-only keys are rejected on rules.
+For intentionally scale-unknown division or field-exponent power, the computation spec uses A12's preamble member unchanged: `"additionalParserInformation":"@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)"` (`@UnterdrueckeWarnung(…)` in a German-condition model). Discover the complete, target-specific shape with `dmtool schema computation add`; rule-only keys are rejected on computations and computation-only keys are rejected on rules.
 
 Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically (and, on `computation add`, forbidden constructs + overlapping preconditions).
 
@@ -568,7 +568,7 @@ dmtool -m app/storefront.dm.json model check -w lib   # resolves include'd / typ
 
 ## Version & compatibility — tolerant, but explicit
 
-This build targets **A12 Kernel 31.1.1** (A12 Tools distribution **2026.06-ext1**). `dmtool --version` and `manifest.version` report that, alongside the base source revision, the clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` says the artifact differs from that revision.
+This build targets **A12 Kernel 31.3.1** (A12 Tools distribution **2026.06-ext2**). `dmtool --version` and `manifest.version` report that, alongside the base source revision, the clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` says the artifact differs from that revision.
 
 Loading a model authored for a different format is handled with the kernel as the authority:
 

@@ -37,8 +37,7 @@ class EnumIntoTextComputationReadTest {
         Map<String, String> computations = Map.of("Pick", "[/Order/Status]", "Note", "[/Order/Status -> Tier]");
         EditSession session = EditSession.read(ORDER);
         computations.forEach((target, operation) -> session.addComputation(new DraftComputation("/Order",
-                target + "Comp", "../" + target, null, List.of(new DraftComputation.Alternative(null, operation)),
-                List.of()), List.of(Dsl.en("The value."))));
+                target + "Comp", "../" + target, null, List.of(new DraftComputation.Alternative(null, operation))), List.of(Dsl.en("The value."))));
         KernelAdapter adapter = KernelAdapter.of(BoundModel.ofJson(session.toJson()));
         DslRenderer render = new DslRenderer(ConditionLanguage.EN);
 

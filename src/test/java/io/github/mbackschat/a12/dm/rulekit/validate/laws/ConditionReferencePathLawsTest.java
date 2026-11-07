@@ -53,25 +53,23 @@ class ConditionReferencePathLawsTest {
     }
 
     /**
-     * The floor is the ROOT GROUP, not the model root, and A12 gives it its own code rather than reporting
-     * a missing element — so a checker that reported {@code MVK_INVALID_ENTITY} here would name the wrong
-     * repair (declare the field, rather than remove a step).
+     * Two steps from a nested rule reach the MODEL ROOT, which is a turning point since kernel 31.3.1 (A12K-4276), so
+     * the next name is judged as a ROOT GROUP and A12 gives that its own code rather than reporting a missing
+     * element — a checker that reported {@code MVK_INVALID_ENTITY} here would name the wrong repair. Before 31.3.1 the
+     * floor was the root group and this row drew {@code MVK_TOO_MANY_PARENT_GROUPS}; the floor itself is
+     * {@link CrossRootGroupReferenceLawsTest}.
      */
     @Test
-    void climbingOutOfTheRootGroupIsItsOwnRejection() {
-        rejects("../../Code", "MVK_TOO_MANY_PARENT_GROUPS", "MVK_INVALID_ENTITY");
+    void twoStepsFromANestedRuleNameARootGroup() {
+        rejects("../../Code", "MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY");
     }
 
-    /**
-     * The other side of that boundary, in the same model: from a rule in the ROOT group a single step is
-     * already too many. Without this row, "the floor is the root group" and "two steps are too many" fit the
-     * row above equally.
-     */
+    /** The same boundary one level up, in the same model: from a rule in the ROOT group a single step reaches it. */
     @Test
-    void oneStepIsAlreadyTooManyFromARootGroupRule() {
+    void oneStepFromARootGroupRuleNamesARootGroup() {
         KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order", "../Code",
                 "FieldFilled(Code) And FieldFilled(../Code)",
-                "MVK_TOO_MANY_PARENT_GROUPS", "MVK_INVALID_ENTITY");
+                "MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY");
     }
 
     @Test

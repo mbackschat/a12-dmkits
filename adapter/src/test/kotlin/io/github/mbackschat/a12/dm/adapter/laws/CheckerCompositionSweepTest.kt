@@ -87,9 +87,7 @@ class CheckerCompositionSweepTest {
                         if (index == 0) alternative else DraftComputation.Alternative(alternative.precondition(),
                             leaves.mutate(alternative.operation()), alternative.toleranceRangeOp())
                     }
-                    val mutated = DraftComputation(computation.groupPath(), computation.name(),
-                        computation.computedFieldRelPath(), computation.commonPrecondition(), alternatives,
-                        computation.errorCodesToSuppress(), computation.roundingMode(), computation.messages())
+                    val mutated = computation.toBuilder().alternatives(alternatives).build()
                     add(ConditionCase("computation:$id", validator.inject(json, mutated), leaves.expected))
                 }
             }

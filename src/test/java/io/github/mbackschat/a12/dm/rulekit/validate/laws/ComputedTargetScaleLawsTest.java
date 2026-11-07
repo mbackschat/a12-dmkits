@@ -20,6 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
  * KERNEL-FINDINGS §11 — a computation's <b>declared target scale</b> is admitted by the same
@@ -204,8 +205,11 @@ class ComputedTargetScaleLawsTest {
     private static List<String> check(String target, String operation, String commonPrecondition,
             String... suppress) {
         String json = quotePricing();
-        DraftComputation comp = new DraftComputation("/Quote", "TotalComp", "../" + target, commonPrecondition,
-                List.of(new DraftComputation.Alternative(null, operation)), List.of(suppress));
+        DraftComputation comp = DraftComputation.builder().groupPath("/Quote").name("TotalComp")
+                .computedFieldRelPath("../" + target).commonPrecondition(commonPrecondition)
+                .alternatives(List.of(new DraftComputation.Alternative(null, operation)))
+                .suppressWarnings(ConditionLanguage.EN, List.of(suppress))
+                .build();
         ValidationResult result = VALIDATOR.check(json, comp);
         List<String> codes = result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
         assertEquals(result.diagnostics().size(), codes.size(),

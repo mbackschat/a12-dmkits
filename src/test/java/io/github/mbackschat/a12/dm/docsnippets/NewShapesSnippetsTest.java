@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Optional;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -557,17 +558,34 @@ class NewShapesSnippetsTest {
     @Test
     void computationSuppressionSnippet() {
         // tag::computation-suppress[]
-        // errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a
-        // scale-mismatched operation load (the static assignment-scale gate, MVK_INVALID_COMPARE_DEC_PLACES).
+        // suppressWarnings — the kernel's model-level escape hatch (domain-checked), stored as the computation's
+        // preamble: it lets a scale-mismatched operation load (the static assignment-scale gate,
+        // MVK_INVALID_COMPARE_DEC_PLACES).
         NumberExpr product = m.num("/Order/UnitPrice").asNumber().times(m.num("/Order/UnitPrice").asNumber());
         Computation comp = m.computation(m.num("/Order/BackorderQuantity"))
                 .name("BackorderProjection")
                 .calc(product.expression())              // scale-4 product into a scale-0 target
-                .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+                .suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")
                 .message(Dsl.en("Backorder derived from the unit price."))
                 .build();
         // end::computation-suppress[]
         assertTrue(new RuleValidator().check(Fixtures.orderJson(), comp.draft()).ok());
+    }
+
+    @Test
+    void computationErrorCodeSnippet() {
+        // tag::computation-error-code[]
+        // errorCode — the code of the validation A12 generates from the computation; without it the
+        // validation is coded by the computation's name. A blank code is refused (MVK_ERROR_CODE_MISSING).
+        Computation backorder = m.computation(m.num("/Order/BackorderQuantity"))
+                .name("BackorderCalc")
+                .errorCode("BACKORDER_MISMATCH")
+                .calc(m.num("/Order/Quantity").value())
+                .message(Dsl.en("Backorder follows the ordered quantity."))
+                .build();
+        // end::computation-error-code[]
+        assertEquals(Optional.of("BACKORDER_MISMATCH"), backorder.errorCode());
+        assertTrue(new RuleValidator().check(Fixtures.orderJson(), backorder.draft()).ok());
     }
 
     @Test

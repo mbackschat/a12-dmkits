@@ -13,8 +13,6 @@ import kotlin.test.assertEquals
  */
 class ComputedTargetKindTest {
 
-    private val notBuildable = "CK_MODEL_NOT_BUILDABLE"
-
     /**
      * A rental model whose one computation writes into [target].
      *
@@ -43,12 +41,13 @@ class ComputedTargetKindTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["computed field | a sibling FIELD — the control"] = emptyList()
-        expected["computed field | a FIXED group"] = listOf(notBuildable)
-        expected["computed field | a REPEATABLE group"] = listOf(notBuildable)
+        // A12 resolves a computed field as a field, so a group is the same converter sentence as a path that
+        // names nothing, and the model is checked on without the computation (KF329, KF652).
+        expected["computed field | a FIXED group"] = listOf(RK_COMPUTED_FIELD_NOT_FOUND)
+        expected["computed field | a REPEATABLE group"] = listOf(RK_COMPUTED_FIELD_NOT_FOUND)
         expected["computed field | a field inside a fixed group"] = emptyList()
-        // ONE finding, not two: the target A12 also refuses on the build tier, already named by the
-        // reference family. This family adds nothing there, which is what keeps a single cause single.
-        // A12's converter states this one and checks on without the computation (KF652).
+        // ONE finding, not two: the reference family names it, and this family adds nothing there, which is what
+        // keeps a single cause single.
         expected["computed field | a path that resolves to nothing"] = listOf(RK_COMPUTED_FIELD_NOT_FOUND)
         expected["error target | a sibling FIELD — the control"] = emptyList()
         // The rows that keep the two slots apart. A12 admits a group error target, so a checker applying the

@@ -30,24 +30,24 @@ internal data class PreparationScope(
 )
 
 /**
- * The reference member through which kernel 31.1.1's reader refuses a declaration beneath an empty-named root group,
- * or null when it has none ([KERNEL-FINDINGS KF652]).
+ * The reference member through which A12's reader refuses a declaration beneath an empty-named root group, or null
+ * when it has none ([KERNEL-FINDINGS KF652]).
  *
- * The reader resolves every non-empty relative reference from the declaring element's full name, and under a root
+ * The reader resolves every written relative reference from the declaring element's full name, and under a root
  * named `""` that name starts with two slashes, which its path arithmetic refuses as an illegal relative path. The
- * references are a rule's error field, a computation's computed field and a group's index and sort fields; an empty
- * one is not resolved, so it refuses nothing. The root's own index and sort fields resolve from `/` and pass, and
- * so does every reference under an absent or `null` root name, which A12 joins into the path as the text `null`
- * (all measured: `adapter.laws.CheckerConverterSentenceAgreementTest`).
+ * references are a rule's error field, a computation's computed field and a group's index and sort fields. Kernel
+ * 31.3.1 resolves an empty one as well, where 31.1.1 skipped it. The root's own index and sort fields resolve from
+ * `/` and pass, and so does every reference under an absent or `null` root name, which A12 joins into the path as
+ * the text `null` (all measured: `adapter.laws.CheckerConverterSentenceAgreementTest`).
  */
 private fun emptyRootRefusal(body: JsonObject?, kind: DeclaredKind?): String? {
-    fun written(member: String) = member.takeIf { !body?.scalarText(it).isNullOrEmpty() }
+    fun written(member: String) = member.takeIf { body?.scalarText(it) != null }
     return when (kind) {
         DeclaredKind.RULE -> written("errorEntityRelPath")
         DeclaredKind.COMPUTATION -> written("computedFieldRelPath")
         DeclaredKind.GROUP -> written("indexFieldName")
             ?: "sortFields[].name".takeIf {
-                (body?.get("sortFields") as? JsonArray)?.any { !(it as? JsonObject)?.scalarText("name").isNullOrEmpty() } == true
+                (body?.get("sortFields") as? JsonArray)?.any { (it as? JsonObject)?.scalarText("name") != null } == true
             }
         DeclaredKind.FIELD, null -> null
     }

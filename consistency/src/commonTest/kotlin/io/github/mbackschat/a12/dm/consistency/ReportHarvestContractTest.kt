@@ -163,6 +163,12 @@ class ReportHarvestContractTest {
             "ConditionMultipleDefectTest.aRepeatOfOneCodeIsKeptForEachPlaceToFix#1",
             "ConditionMultipleDefectTest.twoRulesAtOnePathAreNeverPlacedAgainstEachOther#2",
             "DispatchOrderTest.aPerDeclarationFamilyReportsInDeclarationOrderAndFamiliesStayProducerMajor#1",
+            // Kernel 31.3.1 reads a suppression list, so two supported codes no longer fail to parse and the texts'
+            // own classes show (`ComputationMemberVerdictLawsTest`); 31.1.1 refused the second entry.
+            "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#6",
+            "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#7",
+            "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#8",
+            "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#15",
         ), rows.filter { "replacement" in it }.map { it.getValue("id").jsonPrimitive.content }.toSet())
         val reports = rows.associate { row -> row.getValue("id").jsonPrimitive.content to
             checkRead(checkableSource(row.getValue("model").jsonPrimitive.content)).findings }

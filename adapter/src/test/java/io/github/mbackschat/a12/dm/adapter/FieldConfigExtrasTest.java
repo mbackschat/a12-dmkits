@@ -4,12 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.StringReader;
+import java.io.StringWriter;
+
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
+
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateFragmentType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
@@ -122,55 +127,89 @@ class FieldConfigExtrasTest {
     }
 
     @Test
+    @SuppressWarnings("removal") // the retired check still round-trips, which is what this measures
     void dateBefore1900CheckRoundTripsThroughTheKernel() {
-        // tag::date-before-1900[]
         DocumentModelDraft draft = permit()
                 .rootGroup("Permit", group -> group
                         .dateField("IssuedOn", d -> d.format("yyyy-MM-dd").rejectBefore1900())
                         .dateField("ObservedOn", d -> d.format("yyyy-MM-dd")))
                 .build();
-        // end::date-before-1900[]
 
-        IDateType issuedOn = (IDateType) fieldTypeAfterRoundTrip(draft, "/Permit/IssuedOn");
-        IDateType observedOn = (IDateType) fieldTypeAfterRoundTrip(draft, "/Permit/ObservedOn");
-        assertTrue(issuedOn.isYoungerThan1900Check(), "opt-in youngerThan1900Check honored");
-        assertFalse(observedOn.isYoungerThan1900Check(), "kernel default remains off");
+        JsonNode written = kernelReserialized(draft);
+        assertTrue(fieldTypeBody(written, "IssuedOn", "DateType").path("youngerThan1900Check").asBoolean(),
+                "A12 reads the declared check and writes it back");
+        assertTrue(fieldTypeBody(written, "ObservedOn", "DateType").path("youngerThan1900Check").isMissingNode(),
+                "an undeclared check stays absent");
     }
 
-    /**
-     * The same opt-in check on its two OTHER carriers, and the unsigned-number flag — the three knobs an
-     * external consumer was hand-patching into raw DM JSON. Read-back matters exactly as the class KDoc says:
-     * a key on the wrong declaration object would be silently dropped and still "load valid".
-     */
+    /** The unsigned-number flag, which an external consumer was hand-patching into raw DM JSON. */
     @Test
-    void theSignFlagAndThePre1900CheckOnItsOtherCarriersRoundTripThroughTheKernel() {
-        // tag::unsigned-and-pre-1900-carriers[]
+    void theSignFlagRoundTripsThroughTheKernel() {
+        // tag::unsigned-number[]
         DocumentModelDraft draft = permit()
                 .rootGroup("Permit", group -> group
                         .numberField("Deposit", n -> n.fractionDigits(2).positivesOnly())
-                        .numberField("Adjustment", n -> n.fractionDigits(2))
+                        .numberField("Adjustment", n -> n.fractionDigits(2)))
+                .build();
+        // end::unsigned-number[]
+
+        assertTrue(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Deposit")).isPositivesOnly(),
+                "positivesOnly honored");
+        assertFalse(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Adjustment")).isPositivesOnly(),
+                "the kernel default is SIGNED, so an unset flag must stay false");
+    }
+
+    /**
+     * The retired pre-1900 check on its two OTHER carriers. Read-back matters exactly as the class KDoc says: a key on
+     * the wrong declaration object would be silently dropped and still "load valid".
+     *
+     * <p>The check is read back through A12's own model serializer rather than the typed API: kernel 31.2 deprecated
+     * {@code isYoungerThan1900Check()}, which now answers {@code false} for every declaration (A12K-4073, KF677),
+     * while the serializer still carries the attribute — the round trip the deprecated builder exists to keep.
+     */
+    @Test
+    @SuppressWarnings("removal")
+    void thePre1900CheckOnItsOtherCarriersRoundTripsThroughTheKernel() {
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", group -> group
                         .dateFragmentField("BilledMonth", f -> f.fragmentFormat("yyyy-MM").rejectBefore1900())
                         .dateFragmentField("NotedMonth", f -> f.fragmentFormat("yyyy-MM"))
                         .dateRangeField("CoverWindow",
                                 r -> r.format("dd.MM.yyyy").separator("-").rejectBefore1900())
                         .dateRangeField("NotedWindow", r -> r.format("dd.MM.yyyy").separator("-")))
                 .build();
-        // end::unsigned-and-pre-1900-carriers[]
 
-        assertTrue(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Deposit")).isPositivesOnly(),
-                "positivesOnly honored");
-        assertFalse(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Adjustment")).isPositivesOnly(),
-                "the kernel default is SIGNED, so an unset flag must stay false");
+        JsonNode written = kernelReserialized(draft);
+        assertTrue(fieldTypeBody(written, "BilledMonth", "DateFragmentType").path("youngerThan1900Check").asBoolean(),
+                "the fragment carrier's check survives A12's read and write");
+        assertTrue(fieldTypeBody(written, "NotedMonth", "DateFragmentType").path("youngerThan1900Check")
+                .isMissingNode(), "an undeclared check stays absent");
+        assertTrue(fieldTypeBody(written, "CoverWindow", "DateRangeType").path("youngerThan1900Check").asBoolean(),
+                "the range carrier's check survives A12's read and write");
+        assertTrue(fieldTypeBody(written, "NotedWindow", "DateRangeType").path("youngerThan1900Check")
+                .isMissingNode(), "an undeclared check stays absent");
+    }
 
-        assertTrue(((IDateFragmentType) fieldTypeAfterRoundTrip(draft, "/Permit/BilledMonth"))
-                .isYoungerThan1900Check(), "the fragment carrier's youngerThan1900Check honored");
-        assertFalse(((IDateFragmentType) fieldTypeAfterRoundTrip(draft, "/Permit/NotedMonth"))
-                .isYoungerThan1900Check(), "kernel default remains off");
+    /** The draft as A12's own model serializer writes it after reading it. */
+    private static JsonNode kernelReserialized(DocumentModelDraft draft) {
+        var serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
+        StringWriter out = new StringWriter();
+        try {
+            serializer.serialize(serializer.deserialize(new StringReader(draft.toJson())), out, ignored -> { });
+            return new ObjectMapper().readTree(out.toString());
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
 
-        assertTrue(((IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Permit/CoverWindow"))
-                .isYoungerThan1900Check(), "the range carrier's youngerThan1900Check honored");
-        assertFalse(((IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Permit/NotedWindow"))
-                .isYoungerThan1900Check(), "kernel default remains off");
+    /** The {@code fieldType.<type>} body of the field named {@code name}, wherever it sits in the tree. */
+    private static JsonNode fieldTypeBody(JsonNode model, String name, String type) {
+        for (JsonNode element : model.findParents("Field")) {
+            if (name.equals(element.path("name").asText())) {
+                return element.path("Field").path("fieldType").path(type);
+            }
+        }
+        throw new AssertionError("no field named " + name);
     }
 
     @Test

@@ -57,7 +57,7 @@ class CliSpecVerbTableTest {
     }
 
     private static Set<String> manifestVerbs() throws Exception {
-        JsonNode j = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode j = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> verbs = new LinkedHashSet<>();
         for (JsonNode v : j.path("verbs")) {
             verbs.add(v.path("verb").asText());

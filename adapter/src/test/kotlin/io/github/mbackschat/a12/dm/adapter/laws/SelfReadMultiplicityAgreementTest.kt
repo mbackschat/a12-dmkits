@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.computation
 import io.github.mbackschat.a12.dm.adapter.laws.PremiumProbes.premium
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
@@ -42,7 +43,7 @@ class SelfReadMultiplicityAgreementTest {
         DraftComputation.builder().groupPath("/Premium").name("ProbeComp").computedFieldRelPath("../Total")
             .commonPrecondition(common)
             .alternatives(alternatives.map { DraftComputation.Alternative(it.precondition, it.operation) })
-            .errorCodesToSuppress(SUPPRESSED).build(), listOf(Dsl.en("Premium recomputed.")))
+            .suppressWarnings(ConditionLanguage.EN, SUPPRESSED).build(), listOf(Dsl.en("Premium recomputed.")))
 
     fun rows(): List<Row> = buildList {
         fun number(id: String, vararg alts: Alt, classes: List<String>) =

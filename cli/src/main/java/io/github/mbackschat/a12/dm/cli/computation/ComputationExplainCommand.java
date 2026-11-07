@@ -83,9 +83,10 @@ final class ComputationExplainCommand extends BaseCommand {
                 }
             }
             ObjectNode explained = (ObjectNode) data;
-            var suppressions = explained.putArray("errorCodesToSuppress");
-            adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
-            // Owner-level like the suppressions: an explained formula already carries the same value, an Opaque
+            adapter.computationAdditionalParserInformation(computation)
+                    .ifPresent(preamble -> explained.put("additionalParserInformation", preamble));
+            adapter.computationErrorCode(computation).ifPresent(code -> explained.put("errorCode", code));
+            // Owner-level like the preamble: an explained formula already carries the same value, an Opaque
             // one has no other source for it.
             adapter.computationRoundingMode(computation).stored().ifPresent(mode -> explained.put("roundingMode", mode));
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,

@@ -156,9 +156,8 @@ class RepetitionWildcardTest {
         // wildcard verdict here: the reference family reports the misplaced step (`MisplacedUpStepTest`).
         expected["a star on a MID-PATH up-step"] = listOf("MVK_UNEXPECTED_TOKEN")
         expected["a star on a NAMED turning point"] = listOf("MVK_UNEXPECTED_TOKEN")
-        // The DEPTH class pre-empts the wildcard gate, so A12 never reaches it and neither does this family;
-        // the reference family reports the overflow.
-        expected["a starred up-step that leaves the model"] = listOf("MVK_TOO_MANY_PARENT_GROUPS")
+        // The step lands on the model root, a turning point since kernel 31.3.1, so the star is judged there (KF679).
+        expected["a starred up-step that leaves the model"] = listOf("MVK_INVALID_WILDCARD_REL")
         expected["no star at all — the control"] = emptyList()
         assertEquals(expected, actual, "the shapes it leaves alone")
     }

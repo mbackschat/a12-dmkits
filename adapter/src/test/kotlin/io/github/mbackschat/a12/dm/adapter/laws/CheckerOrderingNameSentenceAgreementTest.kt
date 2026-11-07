@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
+import io.github.mbackschat.a12.dm.core.ModelInputException
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,6 +39,9 @@ class CheckerOrderingNameSentenceAgreementTest {
         assertEquals(listOf("$PATH@/Order/Items/Sk-u", "$SENTENCE@/Order/Items", "$SENTENCE@/Order/Items/Sk-u"),
             answer(Row("Sk-u", index = "Sk-u")))
         assertEquals(listOf("$INDEX_OUTSIDE@/Order/Items"), answer(Row("Sku", index = "../Channel")))
+        // The raw sort rows reach A12: an ordinal it reads beside a lowercase name it refuses.
+        assertEquals(emptyList<String>(), answer(Row("Sku", rawSorts = """[{"name":"Sku","order":1}]""")))
+        assertEquals(listOf("CK_MODEL_NOT_BUILDABLE@/"), answer(Row("Sku", rawSorts = """[{"name":"Sku","order":"asc"}]""")))
     }
 
     private data class Row(
@@ -48,6 +52,8 @@ class CheckerOrderingNameSentenceAgreementTest {
         val note: String = "Note",
         val noValueValidation: Boolean = false,
         val archiveRepeatability: Int? = null,
+        /** The `sortFields` member as raw JSON, in place of [sorts], for the entries A12's reader refuses. */
+        val rawSorts: String? = null,
     )
 
     private fun base(noValueValidation: Boolean): String = DocumentModelDraft.named("order-line-ordering").locale("en_US")
@@ -67,6 +73,7 @@ class CheckerOrderingNameSentenceAgreementTest {
         val items = order[0].path("Group") as ObjectNode
         items.put("repeatability", 5)
         row.index?.let { items.put("indexFieldName", it) }
+        row.rawSorts?.let { items.set<ObjectNode>("sortFields", mapper.readTree(it)) }
         if (row.sorts.isNotEmpty()) {
             val sorts = items.putArray("sortFields")
             row.sorts.forEach { sorts.addObject().put("name", it).put("order", "ASC") }
@@ -80,6 +87,9 @@ class CheckerOrderingNameSentenceAgreementTest {
     private fun kernel(json: String): List<String> = try {
         oracle.checkConsistency(json, ReferenceResolvers.selfContained())
     } catch (unbuildable: ConsistencyCheckFailedException) {
+        return listOf("CK_MODEL_NOT_BUILDABLE@/")
+    } catch (unreadable: ModelInputException) {
+        // The checker names a model A12 cannot read by the same code as one it cannot build.
         return listOf("CK_MODEL_NOT_BUILDABLE@/")
     }.map { notification ->
         val message = notification.message().trim()
@@ -128,13 +138,23 @@ class CheckerOrderingNameSentenceAgreementTest {
                 // Whether a refused name withholds the duplicate verdict when the repeated name is a sound one.
                 Row("Sku", sorts = listOf("Sku", "Sku", "Sk-u"), note = "Sk-u"),
                 Row("Sku", sorts = listOf("Sku", "Sku", "Qty", "Sk-u"), note = "Sk-u"),
-                // Kernel 31.1.1 keeps the last segment wherever the spelling lands, unless it lands on a group
-                // (KF653): empty, blank and em-space names, climbs to the root, and spellings landing on nothing.
+                // A12 keeps the last segment wherever the spelling lands, on a group too since kernel 31.3.1
+                // (KF653, KF680): empty, blank and em-space names, climbs to the root, and spellings landing on nothing.
                 Row("Sku", index = ""), Row("Sku", index = "   "), Row("Sku", index = EM_SPACE),
                 Row("Sku", index = "../../Sku"), Row("Sku", index = "Items/Sku"), Row("Sku", index = "Missing"),
                 Row("Sku", index = ".."), Row("Sku", sorts = listOf("")), Row("Sku", sorts = listOf("   ")),
                 Row("Sku", sorts = listOf("\t")), Row("Sku", sorts = listOf(EM_SPACE)), Row("Sku", sorts = listOf("   ", "\t")),
                 Row("Sku", sorts = listOf("../../Sku")), Row("Sku", sorts = listOf("Missing")), Row("Sku", sorts = listOf("..")),
+                // The entries A12's reader refuses on kernel 31.3.1, each beside the order spellings it reads (KF680).
+                *listOf(
+                    """[{"name":"Sku"}]""", """[{"name":"Sku","order":null}]""", """[{"name":"Sku","order":"asc"}]""",
+                    """[{"name":"Sku","order":"ASC\u2003"}]""", """[{"name":"Sku","order":"01"}]""",
+                    """[{"name":"Sku","order":2}]""", """[{"name":"Sku","order":1.0}]""", """[{"name":"Sku","order":true}]""",
+                    """[{"order":"ASC"}]""", """[{"name":null,"order":"ASC"}]""", """[{"name":{},"order":"ASC"}]""",
+                    """["Sku"]""", """[{"name":"Sku","order":"ASC"},{"name":"Note"}]""",
+                    """[{"name":"Sku","order":"\tDESC"}]""", """[{"name":"Sku","order":1}]""",
+                    """[{"name":"Sku","order":" 1"}]""", """[{"name":"Sku","order":-0}]""",
+                ).map { Row("Sku", rawSorts = it) }.toTypedArray(),
                 // Multiplicity: a repeated spelling, and a bad name beyond the three entries A12 holds.
                 Row("Sk-u", sorts = listOf("Sk-u", "Sk-u")),
                 Row("Sk-u", sorts = listOf("Note", "Qty", "Lot", "Sk-u")),

@@ -341,13 +341,14 @@ public final class ModelWriter {
      * never drops what it does not write.
      *
      * <p><b>The conditionally-written members are why this is a name set rather than a presence test.</b>
-     * {@code commonPrecondition}, {@code errorCodesToSuppress} and {@code roundingMode} are emitted only when
-     * the draft carries a non-default value, so carrying over whatever the old element had would make
-     * removing any of them impossible.
+     * {@code commonPrecondition}, {@code errorCode}, {@code additionalParserInformation} and {@code roundingMode} are emitted only
+     * when the draft carries a non-default value, so carrying over whatever the old element had would make
+     * removing any of them impossible. The legacy {@code errorCodesToSuppress} is listed too: A12 folds it into
+     * {@code additionalParserInformation} on read and never writes it, so a rebuild drops it as A12's serializer does.
      */
     private static final Set<String> REBUILT_COMPUTATION_BODY_SLOTS = Set.of(
-            "computedFieldRelPath", "roundingMode", "errorCodesToSuppress", "commonPrecondition",
-            "computationAlternatives", "errorMessage");
+            "computedFieldRelPath", "roundingMode", "additionalParserInformation", "errorCodesToSuppress",
+            "commonPrecondition", "errorCode", "computationAlternatives", "errorMessage");
 
     /**
      * Carry the old computation's leading {@code ;;} comments AND its element-level metadata onto the rebuilt one.
@@ -452,6 +453,9 @@ public final class ModelWriter {
         if (c.commonPrecondition() != null) {
             body.put("commonPrecondition", c.commonPrecondition());
         }
+        if (c.errorCode() != null) {
+            body.put("errorCode", c.errorCode());
+        }
         ArrayNode alternatives = body.putArray("computationAlternatives");
         for (DraftComputation.Alternative alternative : c.alternatives()) {
             ObjectNode alt = alternatives.addObject();
@@ -463,9 +467,8 @@ public final class ModelWriter {
                 alt.put("toleranceRangeOp", alternative.toleranceRangeOp().wire());
             }
         }
-        if (!c.errorCodesToSuppress().isEmpty()) {
-            ArrayNode suppress = body.putArray("errorCodesToSuppress");
-            c.errorCodesToSuppress().forEach(suppress::add);
+        if (c.additionalParserInformation() != null && !c.additionalParserInformation().isBlank()) {
+            body.put("additionalParserInformation", c.additionalParserInformation());
         }
         putMessages(body, messages);
         return node;

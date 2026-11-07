@@ -58,7 +58,7 @@ class MinMaxGroupOperandComputeCarrierLawsTest {
 
     private static String verdict(Row row) {
         DraftComputation comp = new DraftComputation("/Claim", "ProbeComp", "../Settlement", row.precondition(),
-                List.of(new DraftComputation.Alternative(null, row.operation())), List.of());
+                List.of(new DraftComputation.Alternative(null, row.operation())));
         ValidationResult r = VALIDATOR.check(PAYOUT_JSON, comp);
         if (r.ok()) {
             return "ACCEPT";

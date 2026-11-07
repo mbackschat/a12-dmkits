@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
  * KERNEL-FINDINGS §4 — <b>the power operator's derived scale, and the one waiver that admits an unknown one
@@ -34,7 +35,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * ordering admits and equality refuses.
  *
  * <p><b>The waiver is what shows the unknown-scale shape is legal rather than merely tolerated</b>, and it is
- * not power-specific: {@code errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]} admits a non-literal
+ * not power-specific: {@code @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)} admits a non-literal
  * exponent, a known-scale aggregate exponent and a bare division alike into the same scale-0 target that
  * refuses all three without it — one property apart.
  *
@@ -71,11 +72,13 @@ class PowerDerivedScaleWaiverLawsTest {
                 .collect(Collectors.joining(","));
     }
 
-    /** A computation writing the scale-0 target, optionally carrying the one suppressible code. */
+    /** A computation writing the scale-0 target, optionally suppressing the scale gate in its preamble. */
     private static String target(String operation, boolean waived) {
-        DraftComputation computation = new DraftComputation(GROUP, "TargetComp", "../Scale0Target", null,
-                List.of(new DraftComputation.Alternative(null, operation)),
-                waived ? List.of(SCALE_MISMATCH) : List.of());
+        DraftComputation computation = DraftComputation.builder().groupPath(GROUP).name("TargetComp")
+                .computedFieldRelPath("../Scale0Target")
+                .alternatives(List.of(new DraftComputation.Alternative(null, operation)))
+                .suppressWarnings(ConditionLanguage.EN, waived ? List.of(SCALE_MISMATCH) : List.of())
+                .build();
         ValidationResult r = VALIDATOR.check(SHEET, computation);
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))

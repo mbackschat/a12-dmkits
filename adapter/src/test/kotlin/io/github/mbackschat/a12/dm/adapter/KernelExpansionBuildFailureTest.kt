@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
+import io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException
 import io.github.mbackschat.a12.dm.core.ModelLoader
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException
@@ -8,6 +9,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import java.io.IOException
 import java.io.UncheckedIOException
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -15,10 +17,11 @@ import org.junit.jupiter.api.assertThrows
 
 /**
  * A model the kernel cannot build is a verdict on the caller's bytes wherever in the kernel the build dies
- * (KERNEL-FINDINGS KF259). Kernel 31.1.1's `CombinationModelService.expand` copies the model through its serializer,
- * whose basic consistency pass runs INSIDE expansion, so a crash that 30.8.1 raised inside `checkConsistency` now
- * escapes from expand: a computation whose target names a group dies in `ComputationWrapper.getComputedField` with a
- * `ClassCastException` (measured 2026-11-02 by `laws.CheckerBasicSentenceAgreementTest`).
+ * (KERNEL-FINDINGS KF259). The kernel's `CombinationModelService.expand` copies the model through its serializer, so a
+ * model the serializer cannot write dies inside expansion, before `checkConsistency` is reached: a computation with no
+ * `computedFieldRelPath` reaches `ComputationSerializer` with a null reference (measured 2026-11-07 on kernel 31.3.1,
+ * which `KernelModelPreparation.expand` throwing shows, since it stops before the consistency check). Kernel 31.1.1's
+ * trigger, a computation whose target names a group, is a converter sentence on 31.3.1 instead (KF652).
  *
  * The fold must not swallow what our own resolver bridge raises inside that same call, because those belong to an
  * earlier tier that reports itself; the two control rows keep that boundary, one for the bridge's own failure and
@@ -35,13 +38,17 @@ class KernelExpansionBuildFailureTest {
 
     @Test
     fun aKernelCrashDuringExpansionIsTheModelsVerdict() {
-        val groupTarget = RuntimeLaws.withComputation(base, "/Policy", "Calc", "../Items", "1")
+        val withTarget = RuntimeLaws.withComputation(base, "/Policy", "Calc", "../Total", "1")
+        val noTarget = withTarget.replace(Regex("\"computedFieldRelPath\"\\s*:\\s*\"\\.\\./Total\"\\s*,"), "")
+        assertNotEquals(withTarget, noTarget, "the fixture must lose its computed field")
 
-        val failure = assertThrows<ModelConsistencyException> { ModelLoader.loadSelfContained(groupTarget) }
-
+        assertThrows<ConsistencyCheckFailedException>("the crash is raised by expansion") {
+            KernelModelPreparation.expand(noTarget) { null }
+        }
+        val failure = assertThrows<ModelConsistencyException> { ModelLoader.loadSelfContained(noTarget) }
         assertTrue(failure.message!!.contains("the kernel could not build this model"), failure.message)
-        assertDoesNotThrow("the same computation on a field is a model the kernel builds") {
-            ModelLoader.loadSelfContained(RuntimeLaws.withComputation(base, "/Policy", "Calc", "../Total", "1"))
+        assertDoesNotThrow("the same computation with its computed field is a model the kernel builds") {
+            ModelLoader.loadSelfContained(withTarget)
         }
     }
 

@@ -101,13 +101,13 @@ class ComputationPreconditionLanguageFeatureLawsTest {
     /** One computation on {@code /Order} into [target], its single alternative guarded by [precondition]. */
     private static String computationInto(String target, String precondition, String operation) {
         return verdictOf(new DraftComputation("/Order", "CalcProbe", target, null,
-                List.of(new DraftComputation.Alternative(precondition, operation)), List.of()));
+                List.of(new DraftComputation.Alternative(precondition, operation))));
     }
 
     /** One computation on {@code /Order} whose single alternative is guarded by [precondition]. */
     private static String computation(String precondition) {
         return verdictOf(new DraftComputation("/Order", "CalcProbe", "../Items/UnitWeight", null,
-                List.of(new DraftComputation.Alternative(precondition, "1")), List.of()));
+                List.of(new DraftComputation.Alternative(precondition, "1"))));
     }
 
     /**
@@ -118,13 +118,13 @@ class ComputationPreconditionLanguageFeatureLawsTest {
      */
     private static String operation(String operation) {
         return verdictOf(new DraftComputation("/Order", "CalcProbe", "../Items/UnitWeight", null,
-                List.of(new DraftComputation.Alternative(null, operation)), List.of()));
+                List.of(new DraftComputation.Alternative(null, operation))));
     }
 
     /** …and the same guard on the computation's COMMON precondition instead of the alternative's. */
     private static String commonPrecondition(String precondition) {
         return verdictOf(new DraftComputation("/Order", "CalcProbe", "../Items/UnitWeight", precondition,
-                List.of(new DraftComputation.Alternative(null, "1")), List.of()));
+                List.of(new DraftComputation.Alternative(null, "1"))));
     }
 
     private static String verdictOf(DraftComputation computation) {

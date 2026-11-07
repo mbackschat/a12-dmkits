@@ -365,7 +365,7 @@ object ModelLoader {
                 sink.comps.add(
                     ComputationDef(
                         target, parent(id), alternatives, common, structure.name,
-                        localizedTexts(body.path("errorMessage")), roundingModeOf(body),
+                        localizedTexts(body.path("errorMessage")), roundingModeOf(body), errorCodeOf(body),
                     ),
                 )
             }
@@ -410,6 +410,15 @@ object ModelLoader {
         if (value is JsonNull) return RoundingMode.EXACT
         require(value.isTextual()) { "roundingMode must be a string equal to one of ${RoundingMode.entries.map { it.wire }}" }
         return RoundingMode.ofWire(value.asText())
+    }
+
+    /** A12 keeps a present code, empty included, and codes by the name only when the member is absent or null;
+     *  a number is read as its text (`rulekit.validate.laws.ComputationErrorCodeLawsTest`). */
+    private fun errorCodeOf(body: JsonElement): String? {
+        val value = (body as? JsonObject)?.get("errorCode") ?: return null
+        if (value is JsonNull) return null
+        require(value is JsonPrimitive) { "errorCode must be a string" }
+        return value.content
     }
 
     /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */

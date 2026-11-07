@@ -25,7 +25,7 @@ class CommandContractsTest {
 
     @Test
     void everyLiveLeafPublishesAtLeastOneCompleteOperationalProfile() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         int profiles = 0;
         for (JsonNode verb : manifest.path("verbs")) {
             String name = verb.path("verb").asText();
@@ -55,7 +55,7 @@ class CommandContractsTest {
 
     @Test
     void theDerivedOperationalDenominatorCountsEveryWriteAndPreview() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         int writes = 0;
         int previews = 0;
         for (JsonNode verb : manifest.path("verbs")) {
@@ -76,7 +76,7 @@ class CommandContractsTest {
 
     @Test
     void highRiskArgumentDependentProfilesStateTheirDistinctSemantics() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
 
         assertProfile(manifest, "apply", "commit", "TRANSACTION", "ROLLBACK", "TRANSACTION_COMMITTED");
         assertProfile(manifest, "batch", "dispatch", "DISPATCH", "CONTINUE_AFTER_CHILD_FAILURE",
@@ -106,7 +106,7 @@ class CommandContractsTest {
      */
     @Test
     void thePersistenceClaimPublishesItsScopeOnEveryVerbThatCanWrite() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode vocabulary = manifest.path("contractVocabulary");
         JsonNode persistence = vocabulary.path("failurePersistence");
         String scope = persistence.path("scope").asText();
@@ -166,7 +166,7 @@ class CommandContractsTest {
 
     @Test
     void schemaAndGeneratedHelpProjectTheSameOwner() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode batchManifest = verb(manifest, "batch").path("operationalProfiles");
         JsonNode batchSchema = MAPPER.readTree(CliTestSupport.run("schema", "batch").out())
                 .path("operationalProfiles");
@@ -261,7 +261,7 @@ class CommandContractsTest {
         // Their count is asserted live by theDerivedOperationalDenominatorCountsEveryWriteAndPreview, so it is
         // deliberately not restated here.
         Set<String> bespoke = new HashSet<>();
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> specialVerbs = Arrays.stream(CommandContracts.Special.values())
                 .map(CommandContracts.Special::verb).collect(Collectors.toSet());
         for (JsonNode verb : manifest.path("verbs")) {
@@ -305,7 +305,7 @@ class CommandContractsTest {
 
     @Test
     void resultEnvelopeProfilesDeclareTheGlobalTextView() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         int envelopeProfiles = 0;
         for (JsonNode verb : manifest.path("verbs")) {
             for (JsonNode profile : verb.path("operationalProfiles")) {
@@ -330,7 +330,7 @@ class CommandContractsTest {
 
     @Test
     void ordinaryStaticReadsClassifyConsistencyPrecisely() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> required = Set.of(
                 "model check", "model describe", "model diff", "model read", "model usage",
                 "rule read", "rule explain", "rule deps", "rule format",

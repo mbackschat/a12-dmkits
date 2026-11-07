@@ -68,7 +68,7 @@ class CliConformanceMatrixTest {
 
     @Test
     void everyVerbIsFullyDescribedAndContractVerbsResolveTheirSchema() throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         for (JsonNode v : manifest.path("verbs")) {
             String verb = v.path("verb").asText();
 
@@ -97,7 +97,7 @@ class CliConformanceMatrixTest {
 
     @Test
     void everyVerbIsDemonstratedInAction() throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         for (JsonNode v : manifest.path("verbs")) {
             String verb = v.path("verb").asText();
             if (DEMO_EXEMPT.contains(verb) || schemaDemonstrated(verb) || DEMONSTRATION_PENDING.containsKey(verb)) {
@@ -120,7 +120,7 @@ class CliConformanceMatrixTest {
      */
     @Test
     void noVerbOrParamDescriptionCarriesStatusLanguage() throws Exception {
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         for (JsonNode v : manifest.path("verbs")) {
             String verb = v.path("verb").asText();
             assertStatusFree(verb, "description", v.path("description").asText(""));
@@ -151,7 +151,7 @@ class CliConformanceMatrixTest {
     @Test
     void theLedgersAreHonest() throws Exception {
         // every exemption / pending row is real (no stale row) and reasoned (documents *why*).
-        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> verbs = new HashSet<>();
         manifest.path("verbs").forEach(v -> verbs.add(v.path("verb").asText()));
         SchemaCommand.CONTRACT_EXEMPT.forEach((verb, reason) -> {

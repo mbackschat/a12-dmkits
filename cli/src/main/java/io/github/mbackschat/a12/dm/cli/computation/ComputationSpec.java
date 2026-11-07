@@ -32,7 +32,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  *     { "precondition": "&lt;DSL&gt;", "operation": "&lt;DSL&gt;",
  *       "toleranceRangeOp": "DiffersWithToleranceRange1" }, // optional per tier
  *     { "operation": "&lt;DSL&gt;" } ],                          // OR one unconditional
- *   "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"], // optional A12 owner-shaped list
+ *   "additionalParserInformation": "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)", // optional A12 preamble
+ *   "errorCode": "FEE_MISMATCH",                 // optional; the generated validation's code, else the name
  *   "roundingMode": "RoundUp",                   // optional — Exact (the default), RoundUp or RoundDown
  *   "messages": [ {"locale":"en_US","text":"…"} ] }          // required, non-empty
  * </pre>
@@ -49,7 +50,7 @@ public final class ComputationSpec {
     /** The exact top-level computation-spec keys, shared with {@code apply}'s flat op gate. */
     public static final Set<String> KEYS = Set.of(
             "computedField", "group", "alternatives", "commonPrecondition", "comment", "name", "messages",
-            "errorCodesToSuppress", "roundingMode");
+            "additionalParserInformation", "roundingMode", "errorCode");
 
     private ComputationSpec() {
     }
@@ -155,10 +156,6 @@ public final class ComputationSpec {
             return incomplete("computation-spec needs at least one message {locale,text}", "messages");
         }
 
-        List<String> errorCodesToSuppress = new ArrayList<>();
-        for (JsonNode code : spec.path("errorCodesToSuppress")) {
-            errorCodesToSuppress.add(code.asText());
-        }
         RoundingMode roundingMode = RoundingMode.EXACT;
         if (spec.hasNonNull("roundingMode")) {
             try {
@@ -173,7 +170,9 @@ public final class ComputationSpec {
                 EntityPath.of(groupPath + "/" + name).relativize(EntityPath.of(computedField));
         DraftComputation draft = DraftComputation.builder().groupPath(groupPath).name(name)
                 .computedFieldRelPath(computedFieldRelPath).commonPrecondition(text(spec, "commonPrecondition"))
-                .alternatives(alternatives).errorCodesToSuppress(errorCodesToSuppress).roundingMode(roundingMode)
+                .alternatives(alternatives).additionalParserInformation(text(spec, "additionalParserInformation"))
+                .errorCode(text(spec, "errorCode"))
+                .roundingMode(roundingMode)
                 .messages(messages).build();
         return new Parsed(draft, messages, null);
     }

@@ -274,7 +274,7 @@ class RuleGroupIterationLawsTest {
     }
 
     /**
-     * <b>The parse-step lift IS authorable — the dec-places gate is the kernel's one suppressible warning.</b>
+     * <b>The parse-step lift IS authorable — the dec-places gate is a suppressible kernel warning.</b>
      * With {@code @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)} (the CLI's {@code allowDifferingDecimals})
      * a 17-digit literal reaches the classifier against a scale-14 field, and the two literals below differ only
      * in their final digit: {@code …98} falls inside {@code [1/2 - 2^-55, 1/2)} so {@code parseDouble} lifts it

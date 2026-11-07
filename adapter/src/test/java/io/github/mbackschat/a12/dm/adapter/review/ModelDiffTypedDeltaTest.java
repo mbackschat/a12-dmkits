@@ -36,8 +36,6 @@ class ModelDiffTypedDeltaTest {
 
         assertEquals(Optional.of(new StringListValue(List.of("de_DE", "en_US"))), locales.afterValue());
         assertEquals("[\"de_DE\",\"en_US\"]", locales.after(), "the established string contract remains stable");
-        assertEquals(Optional.of(new StringListValue(List.of("MVK_A", "MVK_B"))),
-                new Delta("errorCodesToSuppress", null, "MVK_A,MVK_B").afterValue());
     }
 
     @Test

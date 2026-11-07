@@ -120,6 +120,7 @@ private val BASIC_SENTENCES = mapOf(
     "One of the computation operations is empty." to "RK_COMPUTATION_OPERATION_EMPTY",
     "The id of the referenced type definition is not set properly." to "RK_TYPE_REFERENCE_EMPTY",
     "The name of the index field is not set properly." to "RK_INDEX_FIELD_EMPTY",
+    "The name of one of the sort fields is not set properly." to "RK_SORT_FIELD_EMPTY",
 )
 
 /** A12's criterion sentences name the criterion, and most the field, so they are matched as patterns. */

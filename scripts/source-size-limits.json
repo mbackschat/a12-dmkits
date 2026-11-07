@@ -14,8 +14,8 @@
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java": 2513,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/ComputationModelSynthesizer.java": 996,
     "adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/profile/StructureModelSynthesizer.java": 917,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 1318,
-    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/preparation/WorkspacePreparationFixtures.java": 1321,
+    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws/RuntimeLaws.java": 1316,
+    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/preparation/WorkspacePreparationFixtures.java": 1319,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/NumericIndexKeyDiffTest.kt": 930,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfCatalog.kt": 1095,
     "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt": 1099,
@@ -33,8 +33,8 @@
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 910,
     "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1084,
     "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 932,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 969,
-    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1064,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 964,
+    "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1059,
     "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1423
   }
 }

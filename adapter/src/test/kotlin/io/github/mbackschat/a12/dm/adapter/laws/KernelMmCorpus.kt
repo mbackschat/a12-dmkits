@@ -8,17 +8,19 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 /**
- * The `a12-kernel-mm` metamodels as kernel 31.1.1 reads them: put through A12's own forward migrator.
+ * The `a12-kernel-mm` metamodels as the pinned kernel reads them: put through A12's own forward migrator.
  *
- * The 2026.06-ext0 metamodel release (`a12-kernel-mm` `f7ea179`) still stores its models at 28.3.0 and 28.4.0,
- * and kernel 31.1.1 refuses to build anything older than 29.4.0 ("Version mismatch: Document model version is
- * 28.4.0 and application version is 29.4.0", measured 2026-11-02). Read raw, every model fails to build, and a
+ * The metamodel releases still store models below the kernel's model version: the 2026.06-ext0 release
+ * (`a12-kernel-mm` `f7ea179`) at 28.3.0 and 28.4.0, and the 2026.06-ext2 release (`fee5d90`) 32 of its 78 files at
+ * 28.4.0 and the rest at 29.4.0 (counted 2026-11-06). Kernel 31 refuses to build anything older than 29.4.0 ("Version
+ * mismatch: Document model version is 28.4.0 and application version is 29.4.0", measured on 31.1.1, 2026-11-02),
+ * so read raw, a model fails to build, and a
  * sweep that skips the models the Kernel does not build passes vacuously. Migrating through
  * `IDocumentModelMigrator` is A12's own path to the version it reads, so the corpus stays A12-written; any
  * shape we produced ourselves would be the invented-shape defect.
  *
  * Each file is migrated alone, because the variants of one metamodel (`a12-`, `codegen-`, `-previous`) share
- * a `header.id` and none references another model (both read from the 75 files at `f7ea179`). The migrated
+ * a `header.id` and none references another model (read from the 75 files at `f7ea179`). The migrated
  * tree mirrors the original's relative paths under a temporary directory and is built once per test JVM;
  * a file the migrator refuses is left out, and [KernelMmCorpusTest] fails naming it, since the sweeps' own vacuity
  * assertions only see an empty corpus.

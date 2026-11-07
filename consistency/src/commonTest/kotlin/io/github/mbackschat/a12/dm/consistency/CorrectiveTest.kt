@@ -43,7 +43,7 @@ class CorrectiveTest {
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Season","Field":{"fieldType":{"type":"DateType",
-              "DateType":{"format":"MM","youngerThan1900Check":true}}}},
+              "DateType":{"format":"MM"}}}},
             {"type":"Field","id":"f2","name":"Delivery","Field":{"fieldType":{"type":"DateType",
               "DateType":{"format":"yyyy-MM","datePrecision":"DAY_OPTIONAL"}}}},
             {"type":"Field","id":"f5","name":"Reference","Field":{"fieldType":{"type":"StringType",
@@ -115,7 +115,7 @@ class CorrectiveTest {
             {"type":"Field","id":"f96","name":"Grade","Field":{"fieldType":{"type":"EnumerationType",
               "EnumerationType":{"values":[{"value":"TOP\nTIER"}]}}}},
             {"type":"Group","id":"g94","name":"Bins","Group":{"repeatability":5,
-              "sortFields":[{"name":"BinA"},{"name":"BinB"},{"name":"BinC"},{"name":"BinD"}],"elements":[
+              "sortFields":[{"name":"BinA","order":"ASC"},{"name":"BinB","order":"ASC"},{"name":"BinC","order":"ASC"},{"name":"BinD","order":"ASC"}],"elements":[
               {"type":"Field","id":"f97","name":"BinA","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f98","name":"BinB","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f99","name":"BinC","Field":{"fieldType":{"type":"StringType"}}},
@@ -280,7 +280,9 @@ class CorrectiveTest {
               "computationAlternatives":[{"operation":"1"}],"errorMessage":[{"locale":"en_US","text":"x"}]}}
           ]}},
           {"type":"Group","id":"g98","name":" ","Group":{"elements":[]}},
-          {"type":"Group","id":"g99","name":"Unindexed","Group":{"indexFieldName":"","elements":[]}}
+          {"type":"Group","id":"g99","name":"Unindexed","Group":{"indexFieldName":"","elements":[]}},
+          {"type":"Group","id":"g100","name":"Unsorted","Group":{"repeatability":5,
+            "sortFields":[{"name":"","order":"ASC"}],"elements":[]}}
          ]}}}
         """.trimIndent(),
     )

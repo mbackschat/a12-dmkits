@@ -1,14 +1,15 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
  * A12 renders one stored decimal TWICE. `A12NumberPlainFormTest` is the oracle for the serializer's rendering
- * (`toPlainString()`); this is the oracle for the **runtime's**, which the kernel computes as
- * `bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()`
- * (`FormatDefinitionZahl.convertFromBasicType`). `BigDecimal` itself is the comparand, so the claim is measured
+ * (`toPlainString()`); this is the oracle for the **runtime's**, which kernel 31.3.1 computes as
+ * `bd.setScale(min(max(bd.stripTrailingZeros().scale(), minFractionalDigits), max(0, 15 - (bd.precision() -
+ * bd.scale()))), HALF_UP).toPlainString()` (`NumberConversion.determineFractionalDigits`; 31.1.1 had no cap). `BigDecimal` itself is the comparand, so the claim is measured
  * against the format's own implementation rather than derived from the formula's prose — the same discipline
  * that caught `-0e5` in the plain-form sibling. IF231.
  *
@@ -31,17 +32,23 @@ class A12RuntimeNumberFormTest {
         "-3.50", "-3.5", "-0.10", "-250",
         // beyond double precision
         "1234567890123456789012.5", "1234567890123456789012.50", "0.000000000000000000001",
+        // where the 15-digit cap binds: a pad past it, a rounding with and without a carry, a half that HALF_EVEN
+        // would round down, negatives rounding away from zero, an integer past the cap, a deep fraction
+        "123456", "12345", "1234567890.1234567", "0.1234567890123445", "9.9999999999999999", "-9.9999999999999995",
+        "99999999999999999", "123456789012345678.5", "-123456789012345678.5", "0.00000000000000000012345678901234567",
     )
 
     private fun oracle(plain: String, minFractionalDigits: Int): String {
         val bd = BigDecimal(plain)
-        return bd.setScale(maxOf(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()
+        val wanted = maxOf(maxOf(0, bd.stripTrailingZeros().scale()), minFractionalDigits)
+        val cap = maxOf(0, 15 - (bd.precision() - bd.scale()))
+        return bd.setScale(minOf(wanted, cap), RoundingMode.HALF_UP).toPlainString()
     }
 
     @Test
     fun everyPlainFormMatchesTheKernelsSetScaleRenderingAtEveryDeclaredMinimum() {
         val mismatches = plainForms.flatMap { plain ->
-            (0..4).mapNotNull { minFractionalDigits ->
+            (0..16).mapNotNull { minFractionalDigits ->
                 val expected = oracle(plain, minFractionalDigits)
                 val actual = A12DocumentJson.runtimeNumberForm(plain, minFractionalDigits)
                 if (actual == expected) null
@@ -67,8 +74,12 @@ class A12RuntimeNumberFormTest {
         assertEquals("250.5", A12DocumentJson.runtimeNumberForm("250.50", 1), "strip while above min 1")
         assertEquals("0.00", A12DocumentJson.runtimeNumberForm("0", 2), "pad: zero up to min 2")
         assertEquals("0", A12DocumentJson.runtimeNumberForm("0.00", 0), "strip: zero down to min 0")
-        // A significant digit is NEVER dropped, whatever the minimum — the destination scale is a floor, never a cap.
+        // Within 15 digits a significant digit is never dropped, whatever the minimum.
         assertEquals("250.555", A12DocumentJson.runtimeNumberForm("250.555", 0), "no rounding at min 0")
         assertEquals("250.555", A12DocumentJson.runtimeNumberForm("250.555", 2), "no rounding at min 2")
+        // Past them the cap binds: the pad stops at 15 digits, and a longer value rounds half up.
+        assertEquals("123456.000000000", A12DocumentJson.runtimeNumberForm("123456", 10), "the pad stops at the cap")
+        assertEquals("1234567890.12346", A12DocumentJson.runtimeNumberForm("1234567890.1234567", 0), "rounded to the cap")
+        assertEquals("10.00000000000000", A12DocumentJson.runtimeNumberForm("9.9999999999999999", 0), "a carry")
     }
 }

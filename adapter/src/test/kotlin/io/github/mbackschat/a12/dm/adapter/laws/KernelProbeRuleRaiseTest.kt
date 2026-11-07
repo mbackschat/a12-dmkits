@@ -79,7 +79,7 @@ class KernelProbeRuleRaiseTest {
         }
         val thrown = assertThrows(IllegalStateException::class.java) {
             recorder.conditions().getValue("Approved").check(DocumentV2.empty("probe-rule-raise"), null, unreadable,
-                PartiallyKnownDocumentMultiPointer.of("Policy/Holder", listOf()))
+                PartiallyKnownDocumentMultiPointer.of("/Policy/Holder", listOf(1, 1)))
         }
         recorder.caught(listOf(RuntimeException("wrapped by A12", thrown), IllegalArgumentException("A12's own")))
 

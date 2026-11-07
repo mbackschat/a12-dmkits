@@ -254,10 +254,7 @@ final class PatternsCommand extends BaseCommand {
         String compName = name != null ? name : built.name();
         List<LocalizedText> msgs = messages(bound, pattern.summary());
         // re-stamp the caller's chosen name over the idiom's placeholder (the structural draft is unchanged)
-        DraftComputation draft = DraftComputation.builder().groupPath(built.groupPath()).name(compName)
-                .computedFieldRelPath(built.computedFieldRelPath()).commonPrecondition(built.commonPrecondition())
-                .alternatives(built.alternatives()).errorCodesToSuppress(built.errorCodesToSuppress())
-                .roundingMode(built.roundingMode()).messages(msgs).build();
+        DraftComputation draft = built.toBuilder().name(compName).messages(msgs).build();
 
         ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
 

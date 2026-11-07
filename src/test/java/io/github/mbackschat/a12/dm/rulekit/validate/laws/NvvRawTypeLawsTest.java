@@ -213,7 +213,7 @@ class NvvRawTypeLawsTest {
 
     private static void rejectsComputation(String operation, String precondition, String code) {
         DraftComputation comp = new DraftComputation("/Claim", "CalcProbe", "../Len", null,
-                List.of(new DraftComputation.Alternative(precondition, operation)), List.of());
+                List.of(new DraftComputation.Alternative(precondition, operation)));
         ValidationResult r = VALIDATOR.check(CLAIM, comp);
         assertFalse(r.ok(), () -> "expected rejection of computation '" + operation + "' (precond " + precondition + ")");
         assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(code::equals).isPresent()),

@@ -79,14 +79,19 @@ class PathSegmentWalkLawsTest {
         assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy/Insured", "Remark", rows), "from a nested rule");
     }
 
-    /** A leading up-run that leaves the model answers with the depth class, starred or not. */
+    /**
+     * A leading up-run that stops on the model root or climbs past it answers with the depth class, unless a step
+     * that landed is starred: since kernel 31.3.1 the model root is a turning point (KF679), so a star on the step
+     * onto it is judged before the path's end, where it used to be the climb that failed first.
+     */
     @Test
-    void anUpRunThatLeavesTheModelDrawsTheDepthClass() {
+    void anUpRunEndingOnOrPastTheModelRootDrawsTheDepthClass() {
         Map<String, String> rows = orderedMap(
                 "..", "MVK_TOO_MANY_PARENT_GROUPS",
-                "..*", "MVK_TOO_MANY_PARENT_GROUPS",
+                "..*", "MVK_INVALID_WILDCARD_REL",
                 "../..", "MVK_TOO_MANY_PARENT_GROUPS",
-                "..*/..", "MVK_TOO_MANY_PARENT_GROUPS");
+                "..*/..", "MVK_INVALID_WILDCARD_REL",
+                "../..*", "MVK_TOO_MANY_PARENT_GROUPS");
         assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy", "Holder", rows), "an up-run from a root-level rule");
     }
 
@@ -238,7 +243,8 @@ class PathSegmentWalkLawsTest {
                 "..*/..*/Nope", "MVK_INVALID_WILDCARD_REL",
                 "..*/Claims.*", "MVK_INVALID_WILDCARD_REL",
                 "..*/Claims.*/Amount", "MVK_INVALID_WILDCARD_REL",
-                "../../Amount", "MVK_TOO_MANY_PARENT_GROUPS",
+                "../../Amount", "MVK_INVALID_ROOT_GROUP",
+                "../../../Amount", "MVK_TOO_MANY_PARENT_GROUPS",
                 "../Claims.*", "MVK_POINT_IN_A12_MODEL");
         assertEquals(rows, verdicts(SHORT_NAMES_ON, "/Policy/Insured", "Remark", rows), "a starred leading up-step");
     }
@@ -320,7 +326,8 @@ class PathSegmentWalkLawsTest {
         Map<String, String> nested = orderedMap(
                 "see $../Holder$", KernelLaws.ADMITTED,
                 "see $../Nope$", "INVALID_ENTITY",
-                "see $../../Holder$", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS",
+                "see $../../Holder$", "INVALID_ROOT_GROUP",
+                "see $../../../Holder$", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS",
                 "see $../Insured/../Holder$", "MVK_UNEXPECTED_TOKEN",
                 "see $../Claims/..$", "MVK_UNEXPECTED_TOKEN",
                 "see $../Nope/../Holder$", "MVK_UNEXPECTED_TOKEN",

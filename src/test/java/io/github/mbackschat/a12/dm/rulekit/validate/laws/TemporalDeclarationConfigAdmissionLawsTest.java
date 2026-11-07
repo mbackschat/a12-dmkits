@@ -26,18 +26,17 @@ import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
  * Kernel-admission laws — <b>which DateType CONFIG values a declared format admits</b>, over the whole
  * published format vocabulary.
  *
- * <p>This is the class behind {@code DG51}, enumerated rather than sampled. A {@code DateType} carries exactly
- * two config axes that can disagree with its declared format — {@code youngerThan1900Check} and
- * {@code datePrecision} — so the grid is finite and worth closing in one pass instead of refusing the one pair
- * that happened to be measured first.
+ * <p>This is the class behind {@code DG51}, enumerated rather than sampled. A {@code DateType} carries two config
+ * axes that could disagree with its declared format — {@code youngerThan1900Check} and {@code datePrecision} — so
+ * the grid is finite and worth closing in one pass instead of refusing the one pair that happened to be measured
+ * first.
  *
- * <p><b>The two axes read the format differently, which is the whole finding</b> and the reason a single
- * sampled pair could not have established either: the pre-1900 guard gates on the YEAR component alone, while
- * a partial precision gates on the format being a complete date <em>and nothing further</em>. The two gates
- * therefore disagree in both directions — {@code yyyy-MM} takes the guard and refuses the precision, and the
- * instant format {@code yyyy-MM-dd'T'HH:mm:ss} does the same despite carrying all three date components. A
- * refusal keyed on "the format is incomplete" over-rejects the first; one keyed on "the three components are
- * present" admits the second, which the kernel rejects.
+ * <p><b>Since kernel 31.2 only one of them is a gate</b> ([KF677](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf677)).
+ * Through 31.1.1 the pre-1900 check gated on the format's YEAR component ({@code MVK_ADDITIONAL_CHECK_INVALID});
+ * A12K-4073 stopped evaluating the attribute, and the gate went with it, so every admitted format now takes the
+ * check. A partial precision still gates on the format being a complete date <em>and nothing further</em>: the
+ * instant format {@code yyyy-MM-dd'T'HH:mm:ss} is refused despite carrying all three date components, so a refusal
+ * keyed on "the three components are present" would admit what the kernel rejects.
  *
  * <p><b>Why the axis is every admitted format and not one spelling per component profile.</b> Both claims are
  * about the format's COMPONENTS, and a grid whose admitted cells all share one string cannot tell a component
@@ -52,7 +51,6 @@ import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
 class TemporalDeclarationConfigAdmissionLawsTest {
 
     private static final String ADMITTED = "ADMITTED";
-    private static final String ADDITIONAL_CHECK_INVALID = "MVK_ADDITIONAL_CHECK_INVALID";
     private static final String OPTIONAL_DATE_TYPE_INVALID = "MVK_OPTIONAL_DATE_TYPE_INVALID";
 
     // VOCABULARY-GRID-START — the complete admitted temporal format vocabulary (docs/TEMPORAL-FORMAT-VOCABULARY.md).
@@ -61,14 +59,6 @@ class TemporalDeclarationConfigAdmissionLawsTest {
             "HH:mm:ss", "MM", "MM-dd", "MMdd", "dd.MM.", "dd.MM.yyyy", "ddMM",
             "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd");
     // VOCABULARY-GRID-END
-
-    /**
-     * The formats that admit {@code rejectBefore1900}, listed as measured rather than computed from a component
-     * predicate — deriving them from the predicate a refusal would use makes the test agree with the
-     * implementation instead of with the kernel.
-     */
-    private static final Set<String> ADMITS_THE_PRE_1900_GUARD = new LinkedHashSet<>(List.of(
-            "dd.MM.yyyy", "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd"));
 
     /**
      * The formats that admit a PARTIAL {@code datePrecision}, likewise listed as measured.
@@ -83,21 +73,19 @@ class TemporalDeclarationConfigAdmissionLawsTest {
             "dd.MM.yyyy", "yyyy-MM-dd", "yyyyMMdd"));
 
     /**
-     * The opt-in pre-1900 check against every admitted format. The gate is the YEAR component alone — a
-     * year-bearing format admits it whether or not it also carries a month, a day or a clock part.
+     * The pre-1900 check against every admitted format: admitted on all of them since kernel 31.2. Through 31.1.1
+     * the six year-free formats drew {@code MVK_ADDITIONAL_CHECK_INVALID}; a checker still keyed on the year
+     * component would refuse them now.
      */
     @Test
-    void theOptInPre1900CheckRequiresTheDeclaredFormatToCarryAYear() {
+    void thePre1900CheckIsAdmittedOnEveryFormat() {
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
         for (String format : FORMATS) {
             actual.put(format, verdict(guarded(format)));
-            expected.put(format,
-                    ADMITS_THE_PRE_1900_GUARD.contains(format) ? ADMITTED : ADDITIONAL_CHECK_INVALID);
+            expected.put(format, ADMITTED);
         }
-        assertEquals(expected, actual,
-                "the gate is the YEAR component, not completeness: yyyy-MM and yyyy carry no day and are still "
-                        + "admitted, so a refusal keyed on an incomplete format would over-reject them");
+        assertEquals(expected, actual, "kernel 31.2 retired the year gate with the attribute's evaluation");
     }
 
     /**
@@ -135,8 +123,8 @@ class TemporalDeclarationConfigAdmissionLawsTest {
             }
         }
         assertEquals(expected, actual,
-                "the precision axis gates on a complete PURE date, so its admitted set is a strict subset of "
-                        + "the pre-1900 guard's — and a client-side refusal may key on nothing wider than this");
+                "the precision axis gates on a complete PURE date, so a client-side refusal may key on nothing "
+                        + "wider than this");
     }
 
     /**
@@ -156,11 +144,11 @@ class TemporalDeclarationConfigAdmissionLawsTest {
     }
 
     /**
-     * Both axes on one field. The kernel reports the conflicts it finds rather than stopping at the first, so a
-     * format that fails both gates draws both codes — which is what a diagnostic for either has to survive.
+     * Both axes on one field. Through 31.1.1 a year-free incomplete format failed both gates and drew both codes;
+     * since 31.2 the check adds nothing, so only the precision verdict remains.
      */
     @Test
-    void theTwoAxesAreReportedIndependentlyWhenBothConflict() {
+    void theCheckBesideAPrecisionAddsNoVerdict() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("yyyy-MM-dd", verdict(guardedAndPrecise("yyyy-MM-dd", DatePrecision.DAY_OPTIONAL)));
         actual.put("yyyy", verdict(guardedAndPrecise("yyyy", DatePrecision.DAY_OPTIONAL)));
@@ -169,46 +157,27 @@ class TemporalDeclarationConfigAdmissionLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("yyyy-MM-dd", ADMITTED);
         expected.put("yyyy", OPTIONAL_DATE_TYPE_INVALID);
-        expected.put("MM-dd", ADDITIONAL_CHECK_INVALID + ", " + OPTIONAL_DATE_TYPE_INVALID);
-        assertEquals(expected, actual,
-                "a complete date satisfies both gates; a year-only format fails only the precision one; a "
-                        + "year-free incomplete one fails both and the kernel names both");
+        expected.put("MM-dd", OPTIONAL_DATE_TYPE_INVALID);
+        assertEquals(expected, actual, "only the precision gate remains, so each format draws its precision verdict");
+    }
+
+    /** The refusal TEXT, pinned because the curated {@code StructuralKernelFix} hint for this code quotes it. */
+    @Test
+    void thePrecisionRefusalSaysWhichConfigAxisTheFormatConflictsWith() {
+        assertEquals("model is not consistent: Field with path '/Loan/DueOn': "
+                        + "A partial known date is not permitted for the format: 'yyyy-MM'. "
+                        + "[MVK_OPTIONAL_DATE_TYPE_INVALID]",
+                message(precise("yyyy-MM", DatePrecision.DAY_OPTIONAL)),
+                "the enricher hint quotes this, so a kernel rewording must fail here");
     }
 
     /**
-     * The refusal TEXT, pinned because the curated {@code StructuralKernelFix} hints for these two codes quote
-     * it — and because it is the only part of the rejection that says which of a DateType's config axes the
-     * reader got wrong.
+     * The format the precision refusal quotes back is the declared spelling, in either locale. Through 31.1.1 it
+     * was a fixed German letter substitution ({@code yyyy-MM} echoed as {@code 'JJJJ-MM'}), which an author copying
+     * it would have declared and seen refused; since kernel 31.2 the echo is a format the author may declare.
      */
     @Test
-    void eachRefusalSaysWhichConfigAxisTheFormatConflictsWith() {
-        Map<String, String> actual = new LinkedHashMap<>();
-        actual.put(ADDITIONAL_CHECK_INVALID, message(guarded("MM-dd")));
-        actual.put(OPTIONAL_DATE_TYPE_INVALID, message(precise("yyyy-MM", DatePrecision.DAY_OPTIONAL)));
-
-        Map<String, String> expected = new LinkedHashMap<>();
-        expected.put(ADDITIONAL_CHECK_INVALID, "model is not consistent: Field with path '/Loan/DueOn': "
-                + "For date fields without a year, no 'additional check' may be specified. "
-                + "[MVK_ADDITIONAL_CHECK_INVALID]");
-        expected.put(OPTIONAL_DATE_TYPE_INVALID, "model is not consistent: Field with path '/Loan/DueOn': "
-                + "A partial known date is not permitted for the format: 'JJJJ-MM'. "
-                + "[MVK_OPTIONAL_DATE_TYPE_INVALID]");
-        assertEquals(expected, actual, "the enricher hints quote these, so a kernel rewording must fail here");
-    }
-
-    /**
-     * The trap inside that second message, and the reason its hint has to correct rather than merely explain:
-     * the English rejection echoes the offending format back in <b>German pattern letters</b> — the model
-     * declares {@code yyyy-MM} and is told {@code 'JJJJ-MM'} — so an author who copies the spelling out of the
-     * diagnostic writes a format the kernel refuses outright.
-     *
-     * <p><b>It is a fixed letter substitution, not a localization.</b> The same model built with a
-     * {@code de_DE} locale produces the identical spelling, which is what separates "the message renders the
-     * format in the reader's locale" from "the message always renders German letters" — and it is the second.
-     * A hint keyed on the reader's locale would therefore be wrong for every reader.
-     */
-    @Test
-    void thatMessageEchoesTheFormatInGermanPatternLettersRegardlessOfLocale() {
+    void thatMessageEchoesTheDeclaredFormatInEitherLocale() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("en_US · yyyy-MM", echoedFormat("en_US", "yyyy-MM"));
         actual.put("de_DE · yyyy-MM", echoedFormat("de_DE", "yyyy-MM"));
@@ -218,41 +187,30 @@ class TemporalDeclarationConfigAdmissionLawsTest {
         actual.put("en_US · HH:mm:ss", echoedFormat("en_US", "HH:mm:ss"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("en_US · yyyy-MM", "JJJJ-MM");
-        expected.put("de_DE · yyyy-MM", "JJJJ-MM");
-        expected.put("en_US · yyyy", "JJJJ");
-        expected.put("en_US · MM-dd", "MM-TT");
-        expected.put("en_US · MMdd", "MMTT");
+        expected.put("en_US · yyyy-MM", "yyyy-MM");
+        expected.put("de_DE · yyyy-MM", "yyyy-MM");
+        expected.put("en_US · yyyy", "yyyy");
+        expected.put("en_US · MM-dd", "MM-dd");
+        expected.put("en_US · MMdd", "MMdd");
         expected.put("en_US · HH:mm:ss", "HH:mm:ss");
-        assertEquals(expected, actual,
-                "y→J and d→T, both locales: the echoed spelling is never a format you may declare, which is "
-                        + "exactly what makes it worth a corrective rather than an explanation");
+        assertEquals(expected, actual, "the declared spelling, untranslated, in both locales");
     }
 
     /**
      * The corrective rides the real kernel rejection all the way to the surface a user meets.
      *
-     * <p>Both codes are ORPHANS of the operator catalog-join — no operator's {@code invalidExample} documents
-     * a field-declaration conflict — so without a curated {@link StructuralKernelFix} entry the rejection
-     * arrives with an empty {@code fix} and {@code dmtool diagnostics <code>} dead-ends. This asserts the
-     * enrichment through {@code KernelDiagnostics.enriched}, which is the exact call {@code model check} makes
-     * on each notification of a {@code ModelConsistencyException}, and it checks the one claim each hint makes
-     * that the kernel's own message does not: which formats WOULD be accepted.
+     * <p>The code is an ORPHAN of the operator catalog-join — no operator's {@code invalidExample} documents a
+     * field-declaration conflict — so without a curated {@link StructuralKernelFix} entry the rejection arrives with
+     * an empty {@code fix} and {@code dmtool diagnostics <code>} dead-ends. This asserts the enrichment through
+     * {@code KernelDiagnostics.enriched}, the exact call {@code model check} makes on each notification of a
+     * {@code ModelConsistencyException}, and checks the one claim the hint makes that the kernel's own message does
+     * not: which formats WOULD be accepted.
      */
     @Test
-    void bothRefusalsCarryACorrectiveThroughTheModelCheckPath() {
-        Map<String, String> fixes = new LinkedHashMap<>();
-        fixes.put(ADDITIONAL_CHECK_INVALID, enrichedFix(guarded("MM-dd"), ADDITIONAL_CHECK_INVALID));
-        fixes.put(OPTIONAL_DATE_TYPE_INVALID,
-                enrichedFix(precise("yyyy-MM", DatePrecision.DAY_OPTIONAL), OPTIONAL_DATE_TYPE_INVALID));
-
-        assertTrue(fixes.get(ADDITIONAL_CHECK_INVALID).contains("`yyyy-MM`"),
-                () -> "the pre-1900 corrective must name a year-bearing format that IS accepted, since the "
-                        + "kernel's message names none: " + fixes.get(ADDITIONAL_CHECK_INVALID));
-        assertTrue(fixes.get(OPTIONAL_DATE_TYPE_INVALID).contains("`yyyyMMdd`")
-                        && fixes.get(OPTIONAL_DATE_TYPE_INVALID).contains("JJJJ-MM"),
-                () -> "the precision corrective must name the accepted complete formats and warn off the German "
-                        + "spelling the message echoes: " + fixes.get(OPTIONAL_DATE_TYPE_INVALID));
+    void thePrecisionRefusalCarriesACorrectiveThroughTheModelCheckPath() {
+        String fix = enrichedFix(precise("yyyy-MM", DatePrecision.DAY_OPTIONAL), OPTIONAL_DATE_TYPE_INVALID);
+        assertTrue(fix.contains("`yyyyMMdd`"),
+                () -> "the precision corrective must name the accepted complete formats: " + fix);
     }
 
     // ---- the instruments ----
@@ -291,6 +249,7 @@ class TemporalDeclarationConfigAdmissionLawsTest {
         return quoted.find() ? quoted.group(1) : message(json);
     }
 
+    @SuppressWarnings("removal")
     private static String guarded(String format) {
         return model("lending-guarded", d -> d.format(format).rejectBefore1900());
     }
@@ -303,6 +262,7 @@ class TemporalDeclarationConfigAdmissionLawsTest {
         return model("lending-precise", d -> d.format(format).datePrecision(precision));
     }
 
+    @SuppressWarnings("removal")
     private static String guardedAndPrecise(String format, DatePrecision precision) {
         return model("lending-both", d -> d.format(format).datePrecision(precision).rejectBefore1900());
     }

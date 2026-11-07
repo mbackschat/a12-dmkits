@@ -58,7 +58,7 @@ class ValidateVerbTest {
         boolean corrective = false;
         for (JsonNode diagnostic : diagnostics) {
             corrective |= "MVK_INVALID_PATTERN".equals(diagnostic.path("code").asText())
-                    && diagnostic.path("fix").asText().contains("A12K-30")
+                    && diagnostic.path("fix").asText().contains("admission restrictions")
                     && diagnostic.path("explain").asText().contains("Java Pattern");
         }
         assertTrue(corrective, () -> "model check pattern corrective: " + res.out());

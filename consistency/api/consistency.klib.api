@@ -403,13 +403,16 @@ sealed interface io.github.mbackschat.a12.dm.consistency/DependencyOn { // io.gi
 
 sealed interface io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference|null[0]
     final class AboveRoot : io.github.mbackschat.a12.dm.consistency/Reference { // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot|null[0]
-        constructor <init>(kotlin/String) // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.<init>|<init>(kotlin.String){}[0]
+        constructor <init>(kotlin/String, kotlin/Boolean = ...) // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.<init>|<init>(kotlin.String;kotlin.Boolean){}[0]
 
+        final val endsOnModelRoot // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.endsOnModelRoot|{}endsOnModelRoot[0]
+            final fun <get-endsOnModelRoot>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.endsOnModelRoot.<get-endsOnModelRoot>|<get-endsOnModelRoot>(){}[0]
         final val written // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.written|{}written[0]
             final fun <get-written>(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.written.<get-written>|<get-written>(){}[0]
 
         final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.component1|component1(){}[0]
-        final fun copy(kotlin/String = ...): io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.copy|copy(kotlin.String){}[0]
+        final fun component2(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/Boolean = ...): io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.copy|copy(kotlin.String;kotlin.Boolean){}[0]
         final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reference.AboveRoot.toString|toString(){}[0]

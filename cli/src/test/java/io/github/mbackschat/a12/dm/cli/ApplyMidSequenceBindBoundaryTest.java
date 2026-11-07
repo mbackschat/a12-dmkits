@@ -33,7 +33,7 @@ class ApplyMidSequenceBindBoundaryTest {
     private static final String TRANSIENTLY_INCONSISTENT_ADD = """
             {"target":"computation","op":"add","computedField":"/Subscription/Billing/EffectiveFee",
              "alternatives":[{"operation":"[/Subscription/Billing/BaseFee] / 3"}],
-             "errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"],
+             "additionalParserInformation":"@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
              "messages":[{"locale":"en_US","text":"Only English."}]}""";
 
     private JsonNode applyWithFollowingOp(Path dir, String name, String followingOp) throws Exception {

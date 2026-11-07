@@ -48,7 +48,7 @@ class DmtoolMutationSafetyTest {
             runPreviewCase(dmtool, preview, dir, exercised);
         }
 
-        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest", "--full").out());
         Set<String> declared = profileKeys(manifest, profile -> "SUPPORTED".equals(profile.path("dryRun").asText()));
         assertEquals(declared, exercised,
                 () -> "dry-run cases and live registry differ; missing=" + difference(declared, exercised)
@@ -152,7 +152,7 @@ class DmtoolMutationSafetyTest {
         assertModelChecks(dmtool, batchModel);
         exercised.add("batch#dispatch-with-observations");
 
-        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest", "--full").out());
         Set<String> declared = profileKeys(manifest, profile -> Set.of(
                 "MODEL_WRITE", "ARTIFACT_WRITE", "MULTI_FILE_WRITE", "TRANSACTION", "DISPATCH")
                 .contains(profile.path("effect").asText()));
@@ -350,7 +350,7 @@ class DmtoolMutationSafetyTest {
         assertModelChecks(dmtool, bundle.resolve("A.dm.json"));
         keptEarlierWork.add("model import-jsonschema#bundle");
 
-        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest", "--full").out());
         Set<String> declaredRollback = profileKeys(manifest,
                 profile -> "ROLLBACK".equals(profile.path("failurePersistence").asText()));
         Set<String> declaredPartial = profileKeys(manifest,

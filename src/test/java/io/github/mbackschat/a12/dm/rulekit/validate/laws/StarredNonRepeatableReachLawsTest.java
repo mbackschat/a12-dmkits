@@ -198,10 +198,11 @@ class StarredNonRepeatableReachLawsTest {
         expected.put("a star on a leading up-step, from a rule one level down", "MVK_INVALID_WILDCARD_REL");
         expected.put("…the same step unstarred, one level down — the control", "admitted");
         expected.put("a star on a leading up-step with nothing after it", "MVK_INVALID_WILDCARD_REL");
-        // The depth check runs FIRST: from a root-level rule the step leaves the model before any wildcard
-        // gate sees it, so this row says nothing about the star — which is why the nested carrier exists.
-        expected.put("a starred up-step from a ROOT-level rule", "MVK_TOO_MANY_PARENT_GROUPS");
-        expected.put("…the same step unstarred, from ROOT — the control", "MVK_TOO_MANY_PARENT_GROUPS");
+        // From a root-level rule the step lands on the model root, a turning point since kernel 31.3.1 (KF679): the
+        // star is judged there, and unstarred the next name is read as a root group. Before 31.3.1 the step left
+        // the model first and both rows drew MVK_TOO_MANY_PARENT_GROUPS.
+        expected.put("a starred up-step from a ROOT-level rule", "MVK_INVALID_WILDCARD_REL");
+        expected.put("…the same step unstarred, from ROOT — the control", "MVK_INVALID_ROOT_GROUP");
         // A `..` is only ever a LEADING run: both rows are refused by the parser, starred or not, so there is
         // no mid-path shape for a wildcard gate to judge. Recorded because a checker walking every segment
         // would otherwise look for one.

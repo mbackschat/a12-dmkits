@@ -39,7 +39,7 @@ internal object KeyedOrderModel {
     fun judge(errorField: String, condition: String, computed: Boolean = false): Pair<List<String>, List<String>> {
         val (result, injected) = if (computed) {
             val draft = DraftComputation("/Order", "KeyedProbe", "../$errorField", null,
-                listOf(DraftComputation.Alternative(null, condition, null)), listOf())
+                listOf(DraftComputation.Alternative(null, condition, null)))
             validator.check(json, draft) to validator.inject(json, draft)
         } else {
             val draft = DraftRule("/Order", "KeyedProbe", "../$errorField", condition, "PROBE", "ERROR")

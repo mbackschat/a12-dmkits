@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/eval-doc.schema.json",
   "title": "EvalDocResult",
-  "description": "Output of `model eval` — the runtime verdict over a document INSTANCE: which rules fired on the data, via the native-safe interpreter (the sole runtime eval engine on every target). By default this is full validation. `--relevant <json>` selects partial validation: a JSON array of current-page field/group instance paths; `[0]` or `[*]` means every repetition (ALL_SEMANTIC), while `[n]` selects one 1-based row. An OMITTED index on a repeatable segment is refused — it means repetition 1 in A12 and used to mean ALL here, so state which you mean. Global fields are auto-relevant. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `input` half of `dmtool schema model eval`.",
+  "description": "Output of `model eval` — the runtime verdict over a document INSTANCE: which rules fired on the data, via the native-safe interpreter (the sole runtime eval engine on every target). By default this is full validation. `--relevant <json>` selects partial validation: a JSON array of current-page field/group instance paths; `[0]` or `[*]` means every repetition (ALL_SEMANTIC), while `[n]` selects one 1-based row. An OMITTED index on a repeatable segment is refused — it means repetition 1 in A12, so state which you mean. Global fields are auto-relevant. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `input` half of `dmtool schema model eval`.",
   "type": "object",
   "required": ["fired", "messages"],
   "additionalProperties": false,
@@ -34,14 +34,14 @@
     },
     "unsupported": {
       "type": "array",
-      "description": "present only when the engine could NOT evaluate some construct — a CustomCondition with no registered impl, or a custom-typed value with no --predefined-types entry. Reported here, NOT silently absent from `fired` (which would read as a clean pass) — G29. `--strict-custom` turns a non-empty `unsupported` into a refusal (exit 2).",
+      "description": "present only when the engine could NOT evaluate some construct — a CustomCondition with no registered impl, or a custom-typed value with no --predefined-types entry. Reported here, NOT silently absent from `fired` (which would read as a clean pass). `--strict-custom` turns a non-empty `unsupported` into a refusal (exit 2).",
       "items": {
         "type": "object",
         "required": ["name", "subject", "reason"],
         "additionalProperties": false,
         "properties": {
           "name": { "type": "string", "description": "what could not be evaluated — read it according to `subject`, since the two kinds are different addresses" },
-          "subject": { "type": "string", "enum": ["element", "cell"], "description": "element = a model path (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell. Published because the two used to share one key with nothing to tell them apart, so neither a consumer nor the renderer could treat the pointer half as a pointer" },
+          "subject": { "type": "string", "enum": ["element", "cell"], "description": "element = a model path (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell." },
           "reason": { "type": "string", "description": "why it couldn't be evaluated" }
         }
       }
@@ -58,7 +58,7 @@
         "field": { "type": "string", "format": "a12-message-address", "description": "the offending field's address. A message address is A12's PartiallyKnownDocumentMultiPointer (what IMessage.getErrorFieldPointer returns), so it is published in canonical A12 pointer form — no leading slash, [1] omitted, e.g. Order/Items[2]/Count, paste-compatible with A12 addressing — exactly when it names one cell. It may instead carry a wildcard above the last part, or the -5 of a level that matched no row; A12 defines no pointer string for such a value, so it passes through as the interpreter house form (/Order[1]/Items[2]/Count) rather than being given an invented canonical spelling. Test the leading slash to tell the two apart" },
         "severity": { "type": "string", "description": "ERROR | WARNING | INFO" },
         "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" },
-        "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads, G1)" },
+        "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads)" },
         "referenced": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "the fields the rule READ (its operands) — A12's referencedFields. Same address contract as `field`: canonical A12 pointer when the address names one cell, house form otherwise" },
         "fillToFix": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "for an OMISSION error, the operand fields that can cause the omission, filled ones included (the kernel's refOmissionErrorResponsible); an operand read only by a presence check such as `FieldFilled` is referenced but never listed here. Absent for a VALUE error. Same address contract as `field`" }
       }

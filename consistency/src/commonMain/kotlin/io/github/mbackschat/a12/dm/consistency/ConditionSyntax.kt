@@ -54,11 +54,8 @@ internal fun computationCondition(body: JsonObject, target: String, language: Co
         out.append(value, member, authored = true)
         out.append("\n) $and ", member)
     }
-    val suppressions = body["errorCodesToSuppress"] as? JsonArray
-    if (!suppressions.isNullOrEmpty()) {
-        val keyword = if (language == ConditionLanguage.EN) "SuppressWarning" else "UnterdrueckeWarnung"
-        out.append("@$keyword(${suppressions.joinToString(",") { (it as? JsonPrimitive)?.contentOrNull ?: "null" }})\n")
-    }
+    // A12 prepends the preamble text verbatim, then a line break (`ComputationAlternativesJoiner.createPreamble`).
+    (computationPreamble(body, language) as? ComputationPreamble.Text)?.let { out.append("${it.text}\n") }
     out.append("${words.getValue(OperatorId.FIELD_FILLED)}($target) $and ")
     precondition("commonPrecondition", text(body, "commonPrecondition"))
     val grouped = alternatives.size > 1

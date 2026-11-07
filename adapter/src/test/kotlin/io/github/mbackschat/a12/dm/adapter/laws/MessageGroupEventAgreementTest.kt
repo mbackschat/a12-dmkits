@@ -142,7 +142,7 @@ class MessageGroupEventAgreementTest {
             row("numeric-child", "Loans/123", GROUP)
             for ((id, argument, code) in listOf(Triple("label-incomplete", "..Wrong/", "INVALID_ENTITY"),
                 Triple("label-separator", "..Wrong//%", "INVALID_ENTITY"), Triple("correct-label-lexer", "..Library/%", LEXER),
-                Triple("wrong-label-lexer", "..Wrong/%", "INVALID_ENTITY"), Triple("above-root-separator", "../../Loans//%", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"))) {
+                Triple("wrong-label-lexer", "..Wrong/%", "INVALID_ENTITY"), Triple("under-model-root-separator", "../../Loans//%", "INVALID_GROUP"))) {
                 row("parent-$id", argument, code, Reads.OWN)
             }
         }

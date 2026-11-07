@@ -243,12 +243,23 @@ class CheckerConverterSentenceAgreementTest {
             "a root group with an empty name, its rule with an empty error path" to { w ->
                 w.emptyRootWithoutItsRule().rule(null, "Pathless", "FieldFilled(Code)", "").json()
             },
+            "a root group with an empty name, its computation with an empty target" to { w ->
+                w.emptyRootWithoutItsRule().computation("", "1").json()
+            },
+            "a root group with an empty name, its group with an empty index field" to { w ->
+                w.emptyRootWithoutItsRule().also { it.element("Items").withObject("/Group").put("indexFieldName", "") }.json()
+            },
+            "a root group with an empty name, its group sorted by an entry with an empty name" to { w ->
+                w.emptyRootWithoutItsRule().also {
+                    it.element("Items").withObject("/Group").putArray("sortFields").addObject().put("name", "").put("order", "ASC")
+                }.json()
+            },
             "a root group with an empty name, its group indexed by a field" to { w ->
                 w.emptyRootWithoutItsRule().also { it.element("Items").withObject("/Group").put("indexFieldName", "Label") }.json()
             },
             "a root group with an empty name, its group sorted by a field" to { w ->
                 w.emptyRootWithoutItsRule().also {
-                    it.element("Items").withObject("/Group").putArray("sortFields").addObject().put("name", "Label")
+                    it.element("Items").withObject("/Group").putArray("sortFields").addObject().put("name", "Label").put("order", "ASC")
                 }.json()
             },
             "a root group with an empty name, beside a named root holding a rule" to { w ->
@@ -323,8 +334,10 @@ class CheckerConverterSentenceAgreementTest {
             "a root group whose name is null, beside its rule" to setOf("RK_ROOT_GROUP_NAME_MISSING", "RK_NAME_EMPTY"),
             "a root group with an empty name, its rule in a nested group" to setOf(UNBUILT),
             "a root group with an empty name, holding a computation" to setOf(UNBUILT),
-            "a root group with an empty name, its rule with an empty error path" to
-                setOf("RK_ROOT_GROUP_NAME_MISSING", "RK_NAME_EMPTY", "RK_ERROR_ENTITY_EMPTY"),
+            "a root group with an empty name, its rule with an empty error path" to setOf(UNBUILT),
+            "a root group with an empty name, its computation with an empty target" to setOf(UNBUILT),
+            "a root group with an empty name, its group with an empty index field" to setOf(UNBUILT),
+            "a root group with an empty name, its group sorted by an entry with an empty name" to setOf(UNBUILT),
             "a root group with an empty name, its group indexed by a field" to setOf(UNBUILT),
             "a root group with an empty name, its group sorted by a field" to setOf(UNBUILT),
             "a root group with an empty name, beside a named root holding a rule" to

@@ -128,9 +128,9 @@ public final class RelevantSelection {
     private static IllegalArgumentException omittedIndexOnRepeatable(String pointer, String repeatablePath) {
         return new IllegalArgumentException("--relevant " + pointer + " omits the repetition index on repeatable "
                 + repeatablePath + " — say which rows you mean: '" + repeatablePath + "[0]' (or '[*]') for ALL "
-                + "repetitions, '" + repeatablePath + "[1]' for the first. An omitted index used to mean ALL here "
-                + "and means repetition 1 in A12, so it is no longer accepted rather than silently reinterpreted "
-                + "— which would have changed which rows are validated with a clean pass as the only symptom.");
+                + "repetitions, '" + repeatablePath + "[1]' for the first. An omitted index means repetition 1 in A12, so "
+                + "it is refused rather than read either way: a wrong guess changes which rows are validated, with "
+                + "a clean pass as the only symptom.");
     }
 
     private static IllegalArgumentException malformed(String pointer) {

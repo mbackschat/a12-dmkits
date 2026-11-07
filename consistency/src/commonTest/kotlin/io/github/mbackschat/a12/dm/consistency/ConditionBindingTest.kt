@@ -112,9 +112,10 @@ class ConditionBindingTest {
     }
 
     @Test
-    fun aConditionPathAboveTheRootIsItsOwnRejection() {
+    fun aConditionPathOntoTheModelRootNamesARootGroup() {
+        // Since kernel 31.3.1 the model root is a turning point, so `Code` is read as a root group (KF679).
         assertEquals(
-            listOf("MVK_TOO_MANY_PARENT_GROUPS"),
+            listOf("MVK_INVALID_ROOT_GROUP"),
             codes("FieldFilled(Amount) And FieldFilled(../../Code)"),
         )
     }

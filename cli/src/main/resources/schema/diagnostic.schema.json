@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json",
   "title": "Diagnostic",
-  "description": "One structured finding (LSP-shaped) carried in a result envelope's `diagnostics` array (CLI-SPEC §4). Built to be corrective — detect → locate → repair: a stable `code`, a `where`, and (for recoverable errors) a `fix`.",
+  "description": "One structured finding (LSP-shaped) carried in a result envelope's `diagnostics` array. Built to be corrective — detect → locate → repair: a stable `code`, a `where`, and (for recoverable errors) a `fix`.",
   "type": "object",
   "required": ["severity", "source", "summary", "where"],
   "additionalProperties": false,
@@ -42,7 +42,7 @@
       "summary": "'/Order/Quantity' is a number compared with an ordering operator but its presence isn't guarded",
       "where": { "rule": "", "operator": "LessThan" },
       "fix": "FieldFilled(/Order/Quantity) And <the comparison>",
-      "explain": "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2)"
+      "explain": "an unspecified number defaults to 0 in a comparison"
     },
     {
       "severity": "WARNING", "source": "PRECHECK", "code": "RK_REFERENCED",

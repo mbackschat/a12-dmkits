@@ -11,16 +11,17 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Tri-engine runtime lock for modelkit's DateType `youngerThan1900Check` support and the interpreter's shared
- * stored/computed formal owner. A computed exact attempt before 1900 is retained but classified ERRORED; the
- * boundary itself is a VALUE. This is distinct from the always-on 1583-10-16 Gregorian floor.
+ * Tri-engine runtime lock that DateType `youngerThan1900Check` constrains nothing since kernel 31.2 (A12K-4073,
+ * [KF677](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf677)). Through 31.1.1 a computed attempt
+ * before 1900 was retained but classified ERRORED; it is now a VALUE on both kernel strategies, and the interpreter
+ * must not keep the retired check. The always-on 1583-10-16 Gregorian floor is separate and unaffected.
  */
 class DateBefore1900DiffTest {
 
     private val base = DocumentModelDraft.named("historic-date-check").locale("en_US")
         .rootGroup("Calendar") { group ->
             group.dateField("Source") { it.format(FORMAT) }
-                .dateField("Target") { it.format(FORMAT).rejectBefore1900() }
+                .dateField("Target") { @Suppress("DEPRECATION") it.format(FORMAT).rejectBefore1900() }
         }
         .build().toJson()
     private val bound = BoundModel.ofJson(base)
@@ -32,8 +33,8 @@ class DateBefore1900DiffTest {
     private val definition = ModelLoader.load(modelJson)
 
     @Test
-    fun dateBefore1900IsAnErroredExactAttempt() =
-        assertTri("31.12.1899", "ERRORED|31.12.1899")
+    fun aDateBefore1900IsAValueOnACheckedTarget() =
+        assertTri("31.12.1899", "VALUE|31.12.1899")
 
     @Test
     fun dateAt1900BoundaryIsAValue() =

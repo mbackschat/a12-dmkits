@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An immutable node in a structure draft — a {@link Field}, a (possibly repeatable) {@link Group},
@@ -22,8 +23,16 @@ public sealed interface ElementDraft
     /** A name/value annotation pair. */
     record Annotation(String name, String value) {}
 
-    /** A repeatable group's declared row sort key — a direct-child field name + its {@link SortOrder}. */
-    record SortField(String fieldName, SortOrder order) {}
+    /**
+     * A repeatable group's declared row sort key — a direct-child field name + its {@link SortOrder}. Both are
+     * required: A12's reader refuses an entry missing either (KERNEL-FINDINGS KF680).
+     */
+    record SortField(String fieldName, SortOrder order) {
+        public SortField {
+            Objects.requireNonNull(fieldName, "a sort field needs its field name");
+            Objects.requireNonNull(order, "a sort field needs its order");
+        }
+    }
 
     /**
      * A leaf field — its short name, typed config ({@link FieldTypeSpec}), how it must be filled

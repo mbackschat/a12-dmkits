@@ -22,7 +22,7 @@ class GroupOperandAndKeyResolverClassTest {
         "/Nope/Insured" to listOf("MVK_INVALID_ROOT_GROUP"),
         "/Nope" to listOf("MVK_INVALID_ROOT_GROUP"),
         "/Claims" to listOf("MVK_INVALID_ROOT_GROUP"),
-        "../Insured" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
+        "../Insured" to listOf("MVK_INVALID_ROOT_GROUP"),
         "/Policy/Nope" to listOf("MVK_INVALID_ENTITY"),
         "Nope" to listOf("MVK_INVALID_ENTITY"),
     )
@@ -58,7 +58,7 @@ class GroupOperandAndKeyResolverClassTest {
             "Insured*/Nope" to listOf("MVK_INVALID_WILDCARD"),
             "/Policy*/Claims*" to listOf("MVK_INVALID_WILDCARD"),
             "Holder*/Nope" to listOf("MVK_INVALID_WILDCARD"),
-            "../Claims*" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
+            "../Claims*" to listOf("MVK_INVALID_ROOT_GROUP"),
         )
         val actual = linkedMapOf<String, List<String>>()
         val expected = linkedMapOf<String, List<String>>()
@@ -157,7 +157,7 @@ class GroupOperandAndKeyResolverClassTest {
             "/Policy/Nope/ClaimRef" to listOf("MVK_INVALID_ENTITY"),
             "Nope" to listOf("MVK_INVALID_ENTITY"),
             "/Nope/Claims/ClaimRef" to listOf("MVK_INVALID_ROOT_GROUP"),
-            "../Claims/ClaimRef" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
+            "../Claims/ClaimRef" to listOf("MVK_INVALID_ROOT_GROUP"),
             "Remark" to listOf("MVK_FIELDNAME_NOT_UNIQUE"),
             // The one row a resolving key draws from the key list's own gate rather than the reference walk.
             "Claims*/ClaimRef" to listOf("MVK_NO_WILDCARDS_ALLOWED"),

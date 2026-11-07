@@ -46,7 +46,7 @@ class ComputationSelfReadScopeLawsTest {
      */
     private static List<String> codes(String group, String relTarget, String operation, String precondition) {
         DraftComputation comp = new DraftComputation(group, "LegComp", relTarget, null,
-                List.of(new DraftComputation.Alternative(precondition, operation)), List.of());
+                List.of(new DraftComputation.Alternative(precondition, operation)));
         ValidationResult result = VALIDATOR.check(ROUTING, comp);
         List<String> codes = result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
         assertEquals(result.diagnostics().size(), codes.size(),

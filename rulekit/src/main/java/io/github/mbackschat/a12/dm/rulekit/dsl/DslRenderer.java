@@ -19,8 +19,9 @@ import java.util.stream.Stream;
  *
  * <p>Path policy (§18 fork 9, F3a): with a {@code baseGroup} set the renderer emits paths
  * <em>relative</em> within that root group (bare under the group, {@code ../} up to a sibling — both
- * kernel-verified, KERNEL-FINDINGS §10 (paths)). A reference into another root group remains
- * absolute because the DSL's parent navigation cannot cross a root boundary. This is how
+ * kernel-verified, KERNEL-FINDINGS §10 (paths)). A reference into another root group stays absolute: since kernel
+ * 31.3.1 a relative walk may turn on the model root into it (KF679), but the absolute form names the same element
+ * without a climb the reader has to count, and reads back as the same reference. This is how
  * {@code Rule}/{@code Computation} render; without a base group every path is absolute. A reference may
  * override that choice for itself with a {@link PathStyle} hint ({@link FieldRef#absolute()}); keyword-segment
  * quoting is applied to whichever form results.
@@ -74,7 +75,7 @@ public final class DslRenderer {
     /**
      * A path in the configured form: relative to the rule's group when the target belongs to the
      * same root group, otherwise absolute. Same-root relative paths are the kernel's preferred,
-     * readable form; cross-root parent navigation is not legal DSL.
+     * readable form; a cross-root path stays absolute, the shorter spelling of the same element.
      */
     private String path(String absolute) {
         return path(absolute, PathStyle.CANONICAL);

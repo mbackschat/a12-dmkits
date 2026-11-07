@@ -108,9 +108,10 @@ class ModelTextRepertoireLawsTest {
     }
 
     private static String computation(String common, String precondition, String operation, String message) {
-        return render(VALIDATOR.check(PLAIN, new DraftComputation("/Claim", "ProbeCalc", "../Summary", common,
-                List.of(new DraftComputation.Alternative(precondition, operation)), List.of(), null,
-                List.of(new LocalizedText("en_US", message)))).diagnostics());
+        return render(VALIDATOR.check(PLAIN, DraftComputation.builder().groupPath("/Claim").name("ProbeCalc")
+                .computedFieldRelPath("../Summary").commonPrecondition(common)
+                .alternatives(List.of(new DraftComputation.Alternative(precondition, operation)))
+                .messages(List.of(new LocalizedText("en_US", message))).build()).diagnostics());
     }
 
     private static final String ADMITTED = "admitted";
@@ -177,9 +178,10 @@ class ModelTextRepertoireLawsTest {
                         .stringField("Reference", f -> f.annotation("origin" + GRIN, "kept"))
                         .stringField("Note", f -> { }))
                 .build().toJson()));
-        actual.put("computation name", render(VALIDATOR.check(PLAIN, new DraftComputation("/Claim", "Calc" + GRIN,
-                "../Summary", null, List.of(new DraftComputation.Alternative(null, "[Note]")), List.of(), null,
-                List.of(new LocalizedText("en_US", "x")))).diagnostics()));
+        actual.put("computation name", render(VALIDATOR.check(PLAIN, DraftComputation.builder().groupPath("/Claim")
+                .name("Calc" + GRIN).computedFieldRelPath("../Summary")
+                .alternatives(List.of(new DraftComputation.Alternative(null, "[Note]")))
+                .messages(List.of(new LocalizedText("en_US", "x"))).build()).diagnostics()));
         actual.put("an enum label in an undeclared locale", rule(DocumentModelDraft.named("claims-repertoire").locale("en_US")
                 .rootGroup("Claim", c -> c
                         .stringField("Reference", f -> { })

@@ -6,7 +6,7 @@ This repository is the **public distribution** — release-only (binaries + the 
 
 > **Not an official A12 / mgm artifact.** `dmtool` is an independent tool built against the public A12 Kernel.
 
-This release targets **A12 Kernel 31.1.1** (A12 Tools distribution **2026.06-ext1**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
+This release targets **A12 Kernel 31.3.1** (A12 Tools distribution **2026.06-ext2**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
 
 ## Documentation
 
@@ -183,7 +183,7 @@ A worked session is in [`examples/cli-mcp.md`](examples/cli-mcp.md).
 Discover the whole surface from the binary alone (these need no model):
 
 ```sh
-dmtool manifest                 # every verb × parameter + a worked example, as JSON
+dmtool manifest                 # every verb, one line each, as JSON; `manifest <target>` adds params + examples
 dmtool operators                # the A12 DSL operator catalogue (or `operators <Name>` for one)
 dmtool patterns                 # validation idioms — date-order, required-when, … (or `patterns <id>`)
 dmtool schema rule check        # a verb's exact input / output shape

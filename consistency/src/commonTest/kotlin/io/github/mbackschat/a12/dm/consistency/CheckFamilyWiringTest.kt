@@ -35,7 +35,8 @@ class CheckFamilyWiringTest {
         CheckFamily.COMPUTATION_ALTERNATIVES to ("MVK_CONDITION_MISSING" to "/Catalog/NoWork"),
         CheckFamily.RULE_CONDITION_AND_TARGET to (CK_MODEL_NOT_BUILDABLE to "/Catalog/NoCondition"),
         CheckFamily.ELEMENT_NAME_UNIQUENESS to (RK_CHILD_NAME_DUPLICATE to "/Catalog/Twin"),
-        // An empty sort name leaves no model, which no earlier refusal in this fixture withholds (KF653).
+        // A sort entry with no order is the reader's refusal (KF680), which the entity walk's refusals in this
+        // fixture do not withhold, as they withhold the ordering gates' codes (KF589).
         CheckFamily.GROUP_ORDERING_REFERENCES to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Ordered"),
         CheckFamily.COMPUTATION_ROUNDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/BadRounding"),
         CheckFamily.SUPPRESSED_WARNINGS to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/BadSuppression"),
@@ -46,7 +47,7 @@ class CheckFamilyWiringTest {
         CheckFamily.RULE_PRESENTATION_MEMBERS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindablePatterns"),
         CheckFamily.STRING_SLOT_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindableSlot"),
         CheckFamily.FIELD_TYPE_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Unbindable"),
-        CheckFamily.TEMPORAL_CONFIG to ("MVK_ADDITIONAL_CHECK_INVALID" to "/Catalog/MisconfiguredDate"),
+        CheckFamily.TEMPORAL_CONFIG to ("MVK_OPTIONAL_DATE_TYPE_INVALID" to "/Catalog/MisconfiguredDate"),
         CheckFamily.ELEMENT_NAME_ALPHABET to ("MVK_PATH_INVALID" to "/Catalog/Bad-Name"),
         CheckFamily.FIELD_NAME_RESERVED_SEGMENT to
             ("MVK_NAME_INVALID_A12_DV" to "/Catalog/Tier.value"),
@@ -73,7 +74,7 @@ class CheckFamilyWiringTest {
         CheckFamily.EMPTY_GROUP_OPERAND to ("MVK_GROUP_IS_EMPTY" to "/Catalog/NamesHollow"),
         CheckFamily.ERROR_FIELD_REFERENCE to
             ("MVK_ERROR_FIELD_NOT_REFERENCED" to "/Catalog/Unreferenced"),
-        CheckFamily.COMPUTED_TARGET_KIND to (CK_MODEL_NOT_BUILDABLE to "/Catalog/IntoAGroup"),
+        CheckFamily.COMPUTED_TARGET_KIND to (RK_COMPUTED_FIELD_NOT_FOUND to "/Catalog/IntoAGroup"),
         CheckFamily.RAW_TYPE_LENGTH to ("MVK_INVALID_LENGTH_OF_RAW_TYPE" to "/Catalog/RawLength"),
         CheckFamily.COMPUTED_TARGET_INDEX_FIELD to
             ("MVK_ERROR_INDEX_AS_CALCULATED_FIELD" to "/Catalog/IntoAnIndex"),

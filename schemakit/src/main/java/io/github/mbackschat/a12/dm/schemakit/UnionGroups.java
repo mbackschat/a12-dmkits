@@ -91,7 +91,7 @@ final class UnionGroups {
             return;
         }
         ctx.report().omit(path, "property '" + name + "' has a cross-kind type union " + kinds + " — omitted: an "
-                + "a12 field has exactly one kind (SCHEMAKIT-SPEC §4c). TO DO: split it into separate fields, or "
+                + "a12 field has exactly one kind. TO DO: split it into separate fields, or "
                 + "pick the primary kind by hand");
     }
 

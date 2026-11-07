@@ -66,14 +66,13 @@ class ComputedFieldTargetKindLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a sibling FIELD — the control", KernelLaws.ADMITTED);
-        // NOT a consistency code: the Kernel's BUILDER refuses a group-valued computed target, so
-        // `MVK_GROUP_AS_CALCULATED_FIELD` never reaches `checkConsistency` from this shape at all. The
-        // distinction decides which vocabulary a portable checker may report it in.
-        expected.put("a FIXED group", "NOT BUILDABLE");
-        expected.put("a REPEATABLE group", "NOT BUILDABLE");
+        // NOT a consistency code: A12 resolves a computed field as a FIELD reference, so a group there is the
+        // converter's codeless "The computed field … was not found." (KERNEL-FINDINGS KF652), the same sentence as a
+        // path that names nothing, and `MVK_GROUP_AS_CALCULATED_FIELD` is never reached. Kernel 31.1.1 could not
+        // build either group row; 30.8.1 could not build the last one.
+        expected.put("a FIXED group", KernelLaws.REFUSED_CODELESS);
+        expected.put("a REPEATABLE group", KernelLaws.REFUSED_CODELESS);
         expected.put("a field inside a fixed group", KernelLaws.ADMITTED);
-        // Kernel 31.1.1's converter states "The computed field … was not found." with no class (KERNEL-FINDINGS
-        // KF652); 30.8.1 could not build the model.
         expected.put("a path that resolves to nothing", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "what a computation may compute into");
     }

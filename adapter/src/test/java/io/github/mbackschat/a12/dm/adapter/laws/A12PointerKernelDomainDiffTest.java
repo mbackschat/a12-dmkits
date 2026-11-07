@@ -45,9 +45,10 @@ import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
  * partitioned by entry point so that class of error cannot recur silently: each test names exactly one owner
  * factory, and none of them shares a corpus with another.
  *
- * <p><b>Three deliberate divergences are asserted AS divergences</b>, so departing from A12 stays a recorded
- * decision rather than an accident, and a kernel upgrade that closes one fails this build. Two are stricter than
- * the kernel; the third, {@code -6}, admits what A12's runtime emits although its own assertion refuses it.
+ * <p><b>The deliberate divergences are asserted AS divergences</b>, so departing from A12 stays a recorded
+ * decision rather than an accident, and a kernel upgrade that closes one fails this build. One did: the arity check,
+ * stricter than kernel 31.1.1, is A12's own since 31.2. What remains is the negative-index rule, stricter than the
+ * kernel, and {@code -6}, which admits what A12's runtime emits although its own assertion refuses it.
  */
 class A12PointerKernelDomainDiffTest {
 
@@ -385,23 +386,22 @@ class A12PointerKernelDomainDiffTest {
     }
 
     /**
-     * The arity divergence, asserted so a kernel upgrade that adds the check fails rather than passes.
-     *
-     * <p><b>And the contrast that makes it a per-entry-point fact rather than a kernel-wide one:</b> A12's
-     * <em>exact</em> pointer factory takes the same-looking {@code (fullName, repetitions)} pair and DOES enforce
-     * the pairing — {@code PathPartImpl.toPathPartList} refuses "path and repetitions have different length". So
-     * arity is not something A12 does or does not check; it is checked at one of these two entry points and not
-     * the other, which is this file's whole thesis. Measured on both rather than read off the source.
+     * Arity: both A12 entry points now refuse a {@code (fullName, repetitions)} pair of different lengths, and so do
+     * ours. Through kernel 31.1.1 the message factory did not compare them while the exact factory did
+     * ({@code PathPartImpl.toPathPartList}), so this test locked our check as deliberately stricter. Kernel 31.2 added
+     * the check to {@code PartiallyKnownDocumentMultiPointerImpl}'s constructor ("fullName and repetitions have
+     * different length", A12K-2361), which this test caught by failing, as it was written to. Measured on both
+     * entry points rather than read off the source.
      */
     @Test
-    void weAreStricterThanTheKernelOnArityDeliberately() {
-        assertTrue(accepts(() -> PartiallyKnownDocumentMultiPointer.of("/Plan/Demand", List.of(1))),
-                "the message factory is expected NOT to compare fullName parts against repetitions");
+    void bothEntryPointsRefuseAnArityMismatchAsWeDo() {
+        assertTrue(!accepts(() -> PartiallyKnownDocumentMultiPointer.of("/Plan/Demand", List.of(1))),
+                "the message factory compares fullName parts against repetitions since kernel 31.2");
         assertTrue(!accepts(() -> A12PartiallyKnownMultiPointer.Companion.of("/Plan/Demand", List.of(1))),
-                "we enforce the arity invariant toDocumentPointer()'s own comment assumes");
+                "and so do we");
 
         assertTrue(!accepts(() -> DocumentPointer.of("/Plan/Demand", List.of(1))),
-                "the EXACT factory does compare them — same argument shape, different domain");
+                "the EXACT factory compares them too");
         assertTrue(!accepts(() -> A12PointerFormat.INSTANCE.format("/Plan/Demand", List.of(1))),
                 "and so do we, on the exact side");
     }

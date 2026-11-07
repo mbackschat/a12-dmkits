@@ -217,8 +217,8 @@ class ComputationDeclaringGroupCliTest {
      *
      * <p>Which code you get depends on where the stale walk lands, which is why both ancestors are measured
      * rather than one: from the non-root {@code /Warehouse/Yard} the walk stays inside the tree and resolves to
-     * a group that does not exist ({@code MVK_INVALID_ENTITY}); from the root it walks off the top of the model
-     * instead and is refused earlier, on arity ({@code MVK_TOO_MANY_PARENT_GROUPS}). a12-kernel-lean's
+     * a group that does not exist ({@code MVK_INVALID_ENTITY}); from the root it turns on the model root and names a
+     * root group that does not exist ({@code MVK_INVALID_ROOT_GROUP}, kernel 31.3.1, KF679). a12-kernel-lean's
      * {@code SPEC-2026-08-29-02} reports only the first, because its ancestor was not a root.
      *
      * <p>The re-spelled row is the control: the same placement, the same target, an operand written for the new
@@ -262,7 +262,7 @@ class ComputationDeclaringGroupCliTest {
         var expected = new LinkedHashMap<String, String>();
         expected.put("the base the operand was written for", "preview");
         expected.put("a NON-root ancestor, spelling unchanged", "MVK_INVALID_ENTITY");
-        expected.put("the ROOT ancestor, spelling unchanged", "MVK_TOO_MANY_PARENT_GROUPS");
+        expected.put("the ROOT ancestor, spelling unchanged", "MVK_INVALID_ROOT_GROUP");
         expected.put("the same non-root ancestor, re-spelled", "preview");
         expected.put("the same root ancestor, re-spelled", "preview");
         assertEquals(expected, actual, "the declaring group is the operand's rendering base, not a filing label");

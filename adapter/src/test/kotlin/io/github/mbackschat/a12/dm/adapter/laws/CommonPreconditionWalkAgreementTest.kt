@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.core.EntityPath
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -47,7 +48,7 @@ class CommonPreconditionWalkAgreementTest {
                         .commonPrecondition(condition?.let { RuntimeLaws.render(groupPath, it) })
                         .alternatives(alternatives.map { (precondition, operation) -> DraftComputation.Alternative(
                             precondition?.let { RuntimeLaws.render(groupPath, it) }, RuntimeLaws.render(groupPath, operation.expression())) })
-                        .errorCodesToSuppress(listOf("MVK_INVALID_COMPARE_DEC_PLACES")).build()
+                        .suppressWarnings(ConditionLanguage.EN, listOf("MVK_INVALID_COMPARE_DEC_PLACES")).build()
                     add(Row("$groupPath:$id", ModelWriter.addComputation(base, computation, listOf(Dsl.en("Calculate invoice."))), classes.toList()))
                 }
                 row("lone-unguarded", common, listOf(null to source), REF)

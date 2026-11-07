@@ -955,7 +955,7 @@
           ],
           "modelMiddle": "Weight\",\"errorCodesToSuppress\":[\"MVK_INVALID_COMPARE_DEC_PLACES\",\"MVK_INVALID_COMPARE_DEC_PLACES\"],\n      \"computationAlternatives\":[{\"precondition\":\"FieldFilled(Base)\",\"operation\":\"[Base] + 1\"}],\n      \"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see ",
           "modelSha256": "0e3f6ead7e4916b6f9d4bf422ff9ea865269150ef1186746ed8cae187f366c17",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK", "replacement": {"expected": []}
         },
         {
           "id": "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#7",
@@ -967,7 +967,7 @@
           ],
           "modelMiddle": "Weight\",\"errorCodesToSuppress\":[\"MVK_INVALID_COMPARE_DEC_PLACES\",\"MVK_INVALID_COMPARE_DEC_PLACES\"],\n      \"computationAlternatives\":[{\"precondition\":\"FieldFilled(Base)\",\"operation\":\"[NoSuchField] + 1\"}],\n      \"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see ",
           "modelSha256": "d2a8e49094de29c4bcd4d6e86dcb132d66b4d0503e09fabaef1e0010d6d0cfb7",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK", "replacement": {"expected": ["MVK_INVALID_ENTITY"]}
         },
         {
           "id": "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#8",
@@ -979,7 +979,7 @@
           ],
           "modelMiddle": "Weight\",\"errorCodesToSuppress\":[\"MVK_INVALID_COMPARE_DEC_PLACES\",\"MVK_INVALID_COMPARE_DEC_PLACES\"],\n      \"computationAlternatives\":[{\"precondition\":\"FieldFilled(Base)\",\"operation\":\"RoundUpValue(Label, 2)\"}],\n      \"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see ",
           "modelSha256": "0be579a0544cecd82dea8b81e1a9e50405044ad921414612a90d3e98ff6db343",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK", "replacement": {"expected": ["MVK_NO_NUMBER"]}
         },
         {
           "id": "SuppressionPreambleWithholdingTest.aSuppressionsClassIsRaisedAheadOfEveryClassTheTextsCarry#9",
@@ -1063,7 +1063,7 @@
           ],
           "modelMiddle": "Weight\",\"errorCodesToSuppress\":[\"MVK_INVALID_COMPARE_DEC_PLACES\",\"MVK_INVALID_COMPARE_DEC_PLACES\"],\n      \"computationAlternatives\":[{\"precondition\":\"FieldFilled(Base)\",\"operation\":\"[Base] + 1\"}],\n      \"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"see\\t",
           "modelSha256": "87fd7b1309cf6e8f1c51bfafd310e2fdf0483d2ba7f28f4af2827d8b03408c32",
-          "kernelPhase": "CHECK"
+          "kernelPhase": "CHECK", "replacement": {"expected": ["INVALID_CHARACTERS"]}
         }
       ]
     },

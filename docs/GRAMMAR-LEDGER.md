@@ -2,7 +2,7 @@
 
 The classified inventory of every **parser production** in the kernel's condition grammar (`GrammarOnly_ConditionParser.g4`, kernel-tool source tree — consult-only). This is instrument 7 of the anti-whack-a-mole discipline: keywords already have two-way parity (`KeywordParityTest` / `KeywordReverseParityTest`) and constructs have reverse parity (`KernelConstructParityTest`), but a **syntax shape** — an optional clause, an alternative form, a new production — can appear without any new keyword or enum member. This ledger closes that blind spot at the production level.
 
-**CI lock (opt-in):** `GrammarProductionLedgerTest` reads the grammar from the sibling kernel checkout (`../a12-kernel`, overridable via `-Da12.kernel.src.dir=…`; **skips when absent**, like the other sibling-gated harnesses), extracts every production (comment-stripped, so doc prose can't fake a rule), and fails on any production this table misses or any stale row. A kernel bump that adds a syntax form lands in the queue loudly.
+**CI lock (opt-in):** `GrammarProductionLedgerTest` reads the grammar from the sibling kernel checkout (`../a12-kernel`, overridable via `-Da12.kernel.dir=…`; **skips when absent**, like the other sibling-gated harnesses, and **fails when present at a release other than the running kernel**, `KernelSourceCheckout`), extracts every production (comment-stripped, so doc prose can't fake a rule), and fails on any production this table misses or any stale row. A kernel bump that adds a syntax form lands in the queue loudly.
 
 Classifications:
 
@@ -110,6 +110,7 @@ Classifications:
 | `bedingung_start` | entry | full-condition parse (preamble + condition + EOF) |
 | `bedingungSnippet` | entry | condition snippet parse |
 | `operationSnippet` | entry | operation snippet parse |
+| `preambleSnippet` | entry | **new in kernel 31.2**: a preamble alone, the parse a computation's `additionalParserInformation` gets in isolation (`DocumentModelService.hasValidComputationParts`) |
 
 ### Legacy / out-of-scope (parity-excluded reasons)
 

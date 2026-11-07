@@ -134,17 +134,8 @@ enum class FormalErrorCode(val id: String) {
 
     /** A well-formed DATE value that resolves to a real calendar date but is BEFORE the kernel's always-on
      *  floor `Constants.DATE_FROM = 1583-10-16` (the start of the Gregorian calendar). The kernel flags it
-     *  `datumFalsch` (FEHLER_DATUM) for every stored OR computed date, independent of the opt-in "< 1900"
-     *  additional check — confirmed in both strategies (IF88). */
+     *  `datumFalsch` (FEHLER_DATUM) for every stored OR computed date, confirmed in both strategies (IF88). */
     DATE_TOO_EARLY("datumFalsch"),
-
-    /** A DATE / DATEFRAGMENT value before 1900-01-01 on a declaration carrying the **opt-in** additional check
-     *  (`youngerThan1900Check`). The kernel surfaces the same `datumFalsch` code as the always-on floor but
-     *  selects a different message key for it (`DATUM_ADDITIONAL_CHECK` beside `DATUM`), so this is a second
-     *  TEXT behind one code — the same shape as [PARTIAL_DATE_INVALID]. Its declaration is gated:
-     *  `MVK_ADDITIONAL_CHECK_INVALID` refuses the check unless the declared format carries a year (KF251), so a
-     *  year-free DATE or DATEFRAGMENT cannot reach this class at all. */
-    DATE_BEFORE_1900("datumFalsch"),
 
     /** ANY stored value longer than the kernel's fixed technical limit of [TECHNICAL_VALUE_LIMIT] UTF-16 code
      *  units, measured on the AUTHORED text before CRLF normalization — the kernel's `wertZuLang`
@@ -206,12 +197,6 @@ enum class FormalErrorCode(val id: String) {
      *  of [DATE_TOO_EARLY] (`FormatDefinitionDatumBereich extends FormatDefinitionDatum`; the kernel floors the
      *  start, and end >= start covers the end). Kernel code `datumBereichDatumFalsch` (FEHLER_DATUM_BEREICH_DATUM). */
     DATE_RANGE_TOO_EARLY("datumBereichDatumFalsch"),
-
-    /** A DATE_RANGE whose START is before 1900-01-01 on a declaration carrying the **opt-in** additional check
-     *  (`DateRangeType.youngerThan1900Check`) — the range sibling of [DATE_BEFORE_1900], sharing
-     *  `datumBereichDatumFalsch` with the always-on floor. Unlike the DATE and DATEFRAGMENT kinds, the kernel
-     *  admits the check on a **year-free** range format, where it then reads the base-year completion (KF253). */
-    DATE_RANGE_BEFORE_1900("datumBereichDatumFalsch"),
 
     // ── Declared field-type CONSTRAINT violations (IF20) — auto-fired against the field-type declaration,
     //    same `formalePruefung` mechanism as the format checks above (KERNEL-FINDINGS §3 "declared field-type
@@ -440,8 +425,6 @@ internal fun typeFormatErrorCached(
                 parts == null -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
-                // The field-owned additional check runs after partial-date completion and the ordinary floor.
-                constraints.rejectBefore1900 && parts.first < 1900 -> FormalErrorCode.DATE_BEFORE_1900
                 else -> null
             }
         }
@@ -520,13 +503,6 @@ internal fun typeFormatErrorCached(
                             // The kernel floors the range START at 1583-10-16 (IF88); end >= start covers the end.
                             beforeGregorianStart(positionYear, startParts.second, startParts.third) ->
                                 FormalErrorCode.DATE_RANGE_TOO_EARLY
-                            // The range's OWN opt-in additional check (`DateRangeType.youngerThan1900Check`),
-                            // on the START date. Unlike DATE/DATEFRAGMENT, the kernel does not statically
-                            // refuse the flag on a year-free range format, so this clause is reachable (KF253).
-                            // Same code as the floor, because the kernel's two arms share
-                            // FEHLER_DATUM_BEREICH_DATUM.
-                            constraints.rejectBefore1900 && positionYear < 1900 ->
-                                FormalErrorCode.DATE_RANGE_BEFORE_1900
                             else -> null
                         }
                     }
@@ -737,14 +713,10 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
         FormalErrorCode.DATE_TOO_EARLY ->
             if (de) "Datum liegt vor dem Beginn des gregorianischen Kalenders (16.10.1583)." else "Date is before the start of the Gregorian calendar (1583-10-16)."
-        FormalErrorCode.DATE_BEFORE_1900 ->
-            if (de) "Datum liegt vor dem 01.01.1900." else "Date is before 1900-01-01."
         FormalErrorCode.PARTIAL_DATE_INVALID ->
             if (de) "Unbekannte Datumsbestandteile müssen Tag, Monat und Jahr als Suffix bilden." else "Unknown date components must form a day, month, year suffix."
         FormalErrorCode.DATE_RANGE_TOO_EARLY ->
             if (de) "Datumsbereich: Startdatum liegt vor dem 16.10.1583." else "Date range: the start date is before 1583-10-16."
-        FormalErrorCode.DATE_RANGE_BEFORE_1900 ->
-            if (de) "Datumsbereich: Startdatum liegt vor dem 01.01.1900." else "Date range: the start date is before 1900-01-01."
         FormalErrorCode.LEADING_BLANK ->
             if (de) "Wert hat ein führendes Leerzeichen." else "Value has a leading blank."
         FormalErrorCode.TRAILING_BLANK ->

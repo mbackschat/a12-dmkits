@@ -27,9 +27,9 @@ class MessageParameterDecoderTest {
     @Test
     fun messageParametersReplayTheirKernelClassesAndExplicitDeclines() {
         val rows = SyntaxFixtureData.messageParameters.map { Json.parseToJsonElement(it).jsonObject }
-        assertEquals(235, rows.size)
+        assertEquals(238, rows.size)
         assertEquals(rows.size, rows.map { it.getValue("id").jsonPrimitive.content }.toSet().size)
-        assertEquals(mapOf("group-walk" to 38, "decoder" to 99, "name-position" to 45, "index-language" to 15,
+        assertEquals(mapOf("group-walk" to 41, "decoder" to 99, "name-position" to 45, "index-language" to 15,
             "keyed-decline" to 4, "key-follower" to 8, "family-order" to 4, "form-position" to 2,
             "indexed-group" to 16, "indexed-ancestry" to 4),
             rows.groupingBy { it.getValue("grid").jsonPrimitive.content }.eachCount())

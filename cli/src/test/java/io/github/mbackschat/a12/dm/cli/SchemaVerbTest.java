@@ -99,7 +99,7 @@ class SchemaVerbTest {
 
     @Test
     void everyManifestSchemaPointerAcceptsScalarAndTokenizedAddressingByteIdentically() throws Exception {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         int pointers = 0;
         for (JsonNode verb : manifest.path("verbs")) {
             for (String key : List.of("schema", "operationalSchema")) {

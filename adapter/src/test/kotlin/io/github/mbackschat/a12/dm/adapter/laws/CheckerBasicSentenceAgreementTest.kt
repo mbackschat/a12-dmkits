@@ -239,7 +239,8 @@ class CheckerBasicSentenceAgreementTest {
             "a computation whose target climbs past the root" to setOf(UNBUILT),
             "a computation with a slash-led target" to setOf(UNBUILT),
             "a computation with an unresolvable target" to setOf("RK_COMPUTED_FIELD_NOT_FOUND"),
-            "a computation with a group target" to setOf(UNBUILT),
+            // Kernel 31.3.1 states a group target as unfound, where 31.1.1 built no model (KF329).
+            "a computation with a group target" to setOf("RK_COMPUTED_FIELD_NOT_FOUND"),
             "a rule with no condition" to setOf(UNBUILT),
             "a rule with a slash-led error target" to setOf(UNBUILT),
             // The converter drops an entry without values before keying the list by the PARSED locale (KF643).

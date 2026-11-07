@@ -75,9 +75,7 @@ internal object NumericNamePopulation {
             .commonPrecondition(total.filled()).calc(total.plus(5))
             .message(Dsl.en("Check order total")).build().draft()
         return listOf("AbsValue(5)" to ENTITY, "[Total] + 5" to null).map { (operation, expected) ->
-            val draft = DraftComputation(probe.groupPath(), probe.name(), probe.computedFieldRelPath(),
-                probe.commonPrecondition(), listOf(DraftComputation.Alternative(null, operation)),
-                probe.errorCodesToSuppress(), probe.roundingMode(), probe.messages())
+            val draft = probe.toBuilder().alternatives(listOf(DraftComputation.Alternative(null, operation))).build()
             ConditionCase("computation:$operation", validator.inject(host, draft), expected)
         }
     }

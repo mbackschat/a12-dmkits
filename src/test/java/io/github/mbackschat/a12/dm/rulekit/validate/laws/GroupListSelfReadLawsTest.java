@@ -39,7 +39,7 @@ class GroupListSelfReadLawsTest {
 
     private static List<String> codes(String group, String relTarget, String precondition) {
         DraftComputation comp = new DraftComputation(group, "YardComp", relTarget, null,
-                List.of(new DraftComputation.Alternative(precondition, "1")), List.of());
+                List.of(new DraftComputation.Alternative(precondition, "1")));
         ValidationResult result = VALIDATOR.check(FLEET, comp);
         List<String> codes = result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
         assertEquals(result.diagnostics().size(), codes.size(),

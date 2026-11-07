@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
+## [Unreleased] — kernel 31.3.1 (A12 Tools 2026.06-ext2)
+
+### Changed
+
+- Targets A12 Kernel `31.3.1` / A12 Tools `2026.06-ext2` and writes the DM `29.8.0` model format, which kernel 31.1.1 cannot read; models down to `29.4.0` still load.
+- **`dmtool manifest` returns an index:** one entry per verb (name, schema pointer, description), about a fourteenth of the full document. `dmtool manifest <target> [<op>]` returns the full entries of those verbs, and `dmtool manifest --full` restores the previous whole-tree output.
+- `rejectBefore1900` is deprecated and has no effect, because A12 no longer evaluates `youngerThan1900Check`. It is still accepted and read back, and it no longer refuses a year-free format.
+
 ## [0.15.0] — kernel 31.1.1 (A12 Tools 2026.06-ext1)
 
 ### Added

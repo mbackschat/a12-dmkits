@@ -158,7 +158,7 @@ class StringSlotBindingTest {
         actual["sortFields — a string instead of a list"] = codesFor(groupSource(""","sortFields":"Sku""""))
         actual["sortFields — a number instead of a list"] = codesFor(groupSource(""","sortFields":7"""))
         actual["sortFields — a well formed list, the control"] =
-            codesFor(groupSource(""","sortFields":[{"name":"Sku"}]"""))
+            codesFor(groupSource(""","sortFields":[{"name":"Sku","order":"ASC"}]"""))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the control — a well formed index field"] = emptyList()

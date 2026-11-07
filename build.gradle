@@ -10,7 +10,7 @@ plugins {
 group = 'io.github.mbackschat.a12.dm'
 version = '0.15.0'
 
-apply from: 'gradle/focused-test-selection.gradle'
+['focused-test-selection', 'kernel-source-oracles'].each { apply from: "gradle/${it}.gradle" }
 
 // Single-source the shared coordinates (kernel-decoupling Stage 4, PROPOSAL §3a): the published kit modules
 // (core/rulekit/modelkit/edit + schemakit) inherit group + version from HERE, so bump-version.sh's
@@ -77,12 +77,12 @@ tasks.withType(JavaCompile).configureEach {
 
 // `ext` (not `def`) so subprojects can read the pin — the CLI bakes it into version.properties for
 // the `--version` / `manifest.version` surface (the kernel this release was built against).
-ext.kernelVersion = '31.1.1'
+ext.kernelVersion = '31.3.1'
 // The A12 Tools distribution that ships this kernel — the human-facing release tag (the kernel semver is
 // the machine compatibility key; this is its "A12 Tools <quarter>" label, RELEASE-SPEC). Single source of
 // truth: the CLI bakes it into the version surface, and a drift guard pins every README/plugin mention to
 // it. Bump it in lockstep with `kernelVersion` (KERNEL-UPGRADE).
-ext.a12Distribution = '2026.06-ext1'
+ext.a12Distribution = '2026.06-ext2'
 
 dependencies {
     // Root is a PURE AGGREGATOR + the cross-kit integration-test host (kernel-decoupling Stage 4, PROPOSAL

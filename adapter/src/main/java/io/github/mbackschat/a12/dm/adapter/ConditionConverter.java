@@ -3231,7 +3231,7 @@ final class ConditionConverter {
      * computation's recovered error {@code messages}, and its rounding mode.
      */
     Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages,
-            List<String> errorCodesToSuppress) {
+            List<String> suppressedWarnings, Optional<String> errorCode) {
         String computedPath = info.getCalculatedField().getFullName();
         FieldRef computed = model.field(computedPath);
         // A temporal target stores in the class its declared FORMAT names (KERNEL-FINDINGS KF222), and
@@ -3259,7 +3259,7 @@ final class ConditionConverter {
         // a read computation carries no comments on the AST (concrete syntax stays in the stored slot
         // texts); authoring/preservation populate the side-channel, not the converter.
         return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none(),
-                errorCodesToSuppress, roundingMode(info.getRoundingMode()));
+                suppressedWarnings, roundingMode(info.getRoundingMode()), errorCode);
     }
 
     static RoundingMode roundingMode(IBaseCalculationService.RoundingMode mode) {

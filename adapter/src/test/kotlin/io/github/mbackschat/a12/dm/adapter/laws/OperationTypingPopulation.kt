@@ -112,9 +112,7 @@ internal object OperationTypingPopulation {
             val probe = model.computation(model.field("/Order/$target")).name("TypingProbe")
                 .commonPrecondition(total.filled()).calc(source.expression())
                 .message(Dsl.en("Check order result")).build().draft()
-            val draft = DraftComputation(probe.groupPath(), probe.name(), probe.computedFieldRelPath(),
-                probe.commonPrecondition(), listOf(DraftComputation.Alternative(null, operation)),
-                probe.errorCodesToSuppress(), probe.roundingMode(), probe.messages())
+            val draft = probe.toBuilder().alternatives(listOf(DraftComputation.Alternative(null, operation))).build()
             ConditionCase("computation:$target:$operation", validator.inject(host, draft), expected)
         }
     }

@@ -119,7 +119,7 @@ private fun TrackedFactBase.shiftDefect(
         return if (unit in REFUSE_A_STAMP) {
             ShiftDefect(
                 "MVK_WRONG_DATE_FORMAT_FOR_OP", written,
-                "is the current timestamp, and A12 refuses a stamp under this operator (`A12K-620`) — shift " +
+                "is the current timestamp, and A12 refuses a stamp under this operator — shift " +
                     "`Today` or a date-only declaration instead",
             )
         } else {
@@ -151,7 +151,7 @@ private fun TrackedFactBase.shiftDefect(
         return ShiftDefect(
             "MVK_WRONG_DATE_FORMAT_FOR_OP", field.path,
             "is declared `$format`, and A12 refuses a stamp under this operator although the format " +
-                "spells what it adds (`A12K-620`) — shift a date-only declaration instead",
+                "spells what it adds — shift a date-only declaration instead",
         )
     }
     val amount = call.operands.getOrNull(1) ?: return null

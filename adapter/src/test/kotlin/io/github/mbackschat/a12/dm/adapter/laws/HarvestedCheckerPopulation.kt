@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
@@ -77,7 +78,12 @@ internal object HarvestedCheckerPopulation {
             ElementType.COMPUTATION -> validator.inject(json, DraftComputation.builder().groupPath(group).name(name)
                 .computedFieldRelPath(body.path("computedFieldRelPath").asText())
                 .commonPrecondition(body.get("commonPrecondition")?.asText())
-                .errorCodesToSuppress(body.path("errorCodesToSuppress").map { it.asText() })
+                .errorCode(body.get("errorCode")?.asText())
+                // The stored text when there is one, else the legacy list folded as A12's reader folds it.
+                .suppressWarnings(ConditionLanguage.ofModelCode(host.config().conditionLanguage()),
+                    body.path("errorCodesToSuppress").map { it.asText() })
+                .apply { body.get("additionalParserInformation")?.asText()?.takeIf { it.isNotBlank() }
+                    ?.let(::additionalParserInformation) }
                 .roundingMode(body.get("roundingMode")?.asText()?.let(RoundingMode::fromWire))
                 .alternatives(body.path("computationAlternatives").map {
                     DraftComputation.Alternative(it.get("precondition")?.asText(), it.path("operation").asText())
@@ -91,14 +97,19 @@ internal object HarvestedCheckerPopulation {
         when (declaration.type()) {
             ElementType.RULE -> expectedBody.put("severity", body.path("severity").asText("ERROR"))
             ElementType.COMPUTATION -> {
-                expectedBody.remove("errorCode")
-                if (expectedBody.path("errorCodesToSuppress").isArray &&
-                    expectedBody.path("errorCodesToSuppress").isEmpty) expectedBody.remove("errorCodesToSuppress")
+                // A12's reader folds a non-empty legacy list into the preamble when none is written, in the model's
+                // condition language, and drops the list (kernel 31.3.1 `Computation._internal_foldLegacyErrorCodesToSuppress`).
+                val legacy = expectedBody.remove("errorCodesToSuppress")?.map { it.asText() }.orEmpty()
+                if (legacy.isNotEmpty() && expectedBody.path("additionalParserInformation").asText().isBlank()) {
+                    val directive = if (host.config().conditionLanguage().startsWith("de")) "UnterdrueckeWarnung"
+                        else "SuppressWarning"
+                    expectedBody.put("additionalParserInformation", "@$directive(${legacy.joinToString(",")})")
+                }
             }
             else -> error("not a harvested declaration")
         }
         assertEquals(expectedBody, mapper.readTree(completed).findValues(declaration.type().wireName()).single(),
-            "declaration survives completion, except default severity, empty suppression and the stray computation errorCode")
+            "declaration survives completion, except default severity and the legacy suppression list A12 folds")
         return completed
     }
 }

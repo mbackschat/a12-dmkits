@@ -170,7 +170,8 @@ final class OperatorsCommand extends BaseCommand {
             });
         }
         // the semantics facets (CATALOG-SPEC §3–§4/§7) — the machine-readable per-operator semantics
-        // across every dimension; the CI-executed probes are elided (verification detail, not payload)
+        // across every dimension; each claim's basis and CI-executed probes are elided: they point our guards at
+        // the evidence, and an agent with only the binary can follow neither
         putSemantics(n, e);
         // the operand-conditional correctives (CATALOG-SPEC §6) — per operand shape, the fix for a code
         if (!e.correctives().isEmpty()) {
@@ -212,8 +213,8 @@ final class OperatorsCommand extends BaseCommand {
     }
 
     /**
-     * Emit the {@code semantics} facet block (CATALOG-SPEC §3) — every populated dimension, probes
-     * elided. The block is created only if at least one dimension speaks, so an operator with no facet
+     * Emit the {@code semantics} facet block (CATALOG-SPEC §3) — every populated dimension, basis and
+     * probes elided. The block is created only if at least one dimension speaks, so an operator with no facet
      * carries no empty {@code semantics} node.
      */
     private static void putSemantics(ObjectNode n, OperatorEntry e) {
@@ -236,7 +237,6 @@ final class OperatorsCommand extends BaseCommand {
                     ObjectNode pk = cn.putObject("perKind");
                     c.perKind().forEach((kind, b) -> pk.put(kind, b.name()));
                 }
-                cn.put("basis", c.basis());
                 if (c.note() != null) {
                     cn.put("note", c.note());
                 }
@@ -245,7 +245,6 @@ final class OperatorsCommand extends BaseCommand {
         if (e.boundaryClaim() != null) {
             ObjectNode b = sem.putObject("boundary");
             b.put("value", e.boundaryClaim().value().name());
-            b.put("basis", e.boundaryClaim().basis());
             if (e.boundaryClaim().note() != null) {
                 b.put("note", e.boundaryClaim().note());
             }
@@ -253,7 +252,6 @@ final class OperatorsCommand extends BaseCommand {
         if (e.iterationRangeClaim() != null) {
             ObjectNode ir = sem.putObject("iterationRange");
             ir.put("value", e.iterationRangeClaim().value().name());
-            ir.put("basis", e.iterationRangeClaim().basis());
             if (e.iterationRangeClaim().note() != null) {
                 ir.put("note", e.iterationRangeClaim().note());
             }
@@ -267,7 +265,6 @@ final class OperatorsCommand extends BaseCommand {
                 ObjectNode pk = ai.putObject("perKind");
                 e.aggregateIdentityClaim().perKind().forEach((kind, v) -> pk.put(kind, v.name()));
             }
-            ai.put("basis", e.aggregateIdentityClaim().basis());
             if (e.aggregateIdentityClaim().note() != null) {
                 ai.put("note", e.aggregateIdentityClaim().note());
             }
@@ -275,7 +272,6 @@ final class OperatorsCommand extends BaseCommand {
         if (e.polarityClaim() != null) {
             ObjectNode p = sem.putObject("polarity");
             p.put("value", e.polarityClaim().value().name());
-            p.put("basis", e.polarityClaim().basis());
             if (e.polarityClaim().note() != null) {
                 p.put("note", e.polarityClaim().note());
             }

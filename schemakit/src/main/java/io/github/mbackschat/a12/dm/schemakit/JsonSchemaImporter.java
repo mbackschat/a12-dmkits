@@ -482,7 +482,7 @@ public final class JsonSchemaImporter {
         }
         if (schema.has("$dynamicRef")) {
             ctx.report().omit(path, "property '" + name + "' uses $dynamicRef '" + schema.get("$dynamicRef").asText()
-                    + "' — a runtime-polymorphic reference with no static a12 form (SCHEMAKIT-SPEC §4c). TO DO: "
+                    + "' — a runtime-polymorphic reference with no static a12 form. TO DO: "
                     + "add the resolved structure by hand");
             return;
         }
@@ -492,7 +492,7 @@ public final class JsonSchemaImporter {
         }
         if (hasUnionNode(schema)) {   // a oneOf/anyOf that is NOT all-object → a cross-kind union (§4c)
             ctx.report().omit(path, "property '" + name + "' is a oneOf/anyOf of mixed or non-object kinds — "
-                    + "omitted: a12 has no cross-kind sum type (SCHEMAKIT-SPEC §4c). TO DO: model it as separate "
+                    + "omitted: a12 has no cross-kind sum type. TO DO: model it as separate "
                     + "fields, or pick the primary variant by hand");
             return;
         }
@@ -506,7 +506,7 @@ public final class JsonSchemaImporter {
         }
         if (schema.has("unevaluatedProperties") || schema.has("unevaluatedItems")) {
             ctx.report().diagnostic("property '" + name + "' uses unevaluatedProperties/unevaluatedItems — an "
-                    + "applicator-dependent dynamic closure with no static a12 form (SCHEMAKIT-SPEC §4c); the "
+                    + "applicator-dependent dynamic closure with no static a12 form; the "
                     + "declared structure imports but that constraint is NOT enforced. TO DO: enforce it by hand");
             // fall through: the object's declared structure still imports
         }
@@ -580,7 +580,7 @@ public final class JsonSchemaImporter {
         long depth = ctx.inlining().stream().filter(defName::equals).count();
         if (depth > ctx.profile().recursionDepth()) {   // 0 = expand once then stop; N = N extra recursive levels
             ctx.report().omit(path, "recursive $ref at '" + name + "' → '" + defName + "' — omitted at depth "
-                    + depth + ": a12 includes expand, so infinite recursion has no static form (SCHEMAKIT-SPEC §4c). "
+                    + depth + ": a12 includes expand, so infinite recursion has no static form. "
                     + "TO DO: raise the MappingProfile recursionDepth, or add the deeper structure by hand");
             return;
         }
@@ -589,7 +589,7 @@ public final class JsonSchemaImporter {
         ctx.inlining().pop();
         ctx.report().structure(path, "object $def inlined (" + defName + ")");
         ctx.report().diagnostic("object $def '" + defName + "' was INLINED at '" + name + "' — reuse via an a12 "
-                + "include/mount (a separate child model, proposal §4.1) is a later increment");
+                + "include/mount (a separate child model) is a later increment");
     }
 
     private static void addArray(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,

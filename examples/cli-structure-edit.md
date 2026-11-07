@@ -1190,7 +1190,7 @@ dmtool -m /tmp/struct2-exp.json export
 ```
 
 ```output
-# Model: subscription (v29.4.0)
+# Model: subscription (v29.8.0)
 
 - fields: 8
 - groups: 3 (1 repeatable)

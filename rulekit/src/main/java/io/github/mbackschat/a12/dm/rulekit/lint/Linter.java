@@ -177,7 +177,7 @@ public final class Linter {
                 new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
                 Optional.of("AllFieldsFilled(" + list + ") And <the comparison>"),
                 Optional.of("unlike a plain string comparison (an empty string is not evaluated), a string in a"
-                        + " concatenation concatenates as \"\" (KERNEL-FINDINGS §2), so guard the concatenated"
+                        + " concatenation concatenates as \"\", so guard the concatenated"
                         + " operands with AllFieldsFilled if an empty value should not trip the rule")));
     }
 
@@ -278,7 +278,7 @@ public final class Linter {
                 Optional.of("a negative condition under iteration must be guarded by a positive presence check so"
                         + " the kernel can bound the iteration (" + KernelCode.MVK_NEG_CONDITION_IN_ITERATION
                         + ", or " + KernelCode.MVK_PARALLEL_ITERATION_INVALID
-                        + " when two keyed groups iterate jointly; KERNEL-FINDINGS §9)")));
+                        + " when two keyed groups iterate jointly)")));
     }
 
     /**
@@ -685,7 +685,7 @@ public final class Linter {
                 Optional.of("decide by intent: if a missing '" + leftPath + "' or '" + rightPath + "' should NOT"
                         + " trip the rule, guard both — AllFieldsFilled(" + leftPath + ", " + rightPath + ") And"
                         + " <the comparison>; if empty-as-0 firing IS the intent, the unguarded form is fine"),
-                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), so an"
+                Optional.of("an unspecified number defaults to 0 in a comparison, so an"
                         + " ordering between two unguarded number fields fires whenever either side is empty and"
                         + " the resulting 0 satisfies the comparison — only a trap when empty should be NEUTRAL")));
     }
@@ -836,7 +836,7 @@ public final class Linter {
                 Optional.of("decide by intent: if an empty/missing '" + path + "' should NOT trip the rule, guard"
                         + " it — FieldFilled(" + path + ") And <the comparison>; if a missing value IS a violation"
                         + " (empty-as-0 should fire), the unguarded form is intentional — keep it"),
-                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), and the"
+                Optional.of("an unspecified number defaults to 0 in a comparison, and the"
                         + " value functions (Length, the date/time extractors, DifferenceIn*) read an empty operand"
                         + " as 0 too — unlike a bare string/date/enum comparison, which an empty operand suppresses"
                         + " — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is"

@@ -70,7 +70,7 @@
     },
     "unsupported": {
       "type": "array",
-      "description": "(unsupported only) what the engine could not evaluate — reported rather than passed off as a clean `passed` (G29). `--strict-custom` turns this into a refusal (exit 2)",
+      "description": "(unsupported only) what the engine could not evaluate — reported rather than passed off as a clean `passed`. `--strict-custom` turns this into a refusal (exit 2)",
       "items": {
         "type": "object",
         "required": ["name", "subject", "reason"],

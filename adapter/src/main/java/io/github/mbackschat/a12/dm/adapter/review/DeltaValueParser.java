@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,10 +47,6 @@ final class DeltaValueParser {
     }
 
     private static List<String> stringList(String aspect, String rendered) {
-        if (aspect.equals("errorCodesToSuppress")) {
-            return Arrays.stream(rendered.split(","))
-                    .map(String::trim).filter(value -> !value.isEmpty()).toList();
-        }
         try {
             return List.of(JSON.readValue(rendered, String[].class));
         } catch (JsonProcessingException exception) {
@@ -74,7 +69,7 @@ final class DeltaValueParser {
                 case "repeatability", "position", "scale", "minFractionalDigits", "minLength", "maxLength",
                         "baseYear" -> INTEGER;
                 case "min", "max" -> DECIMAL;
-                case "locales", "supportedCharacters", "roles", "errorCodesToSuppress" -> STRING_LIST;
+                case "locales", "supportedCharacters", "roles" -> STRING_LIST;
                 default -> aspect.startsWith("enum.position.") ? INTEGER : TEXT;
             };
         }

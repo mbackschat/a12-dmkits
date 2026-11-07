@@ -22,7 +22,9 @@ class MessageGroupParentBoundaryAgreementTest {
                     "minus-name" to "-x", "lexer" to "%", "slash-rule" to "/$rule")) {
                     val code = when {
                         tailId == "lexer" -> LEXER
-                        tailId == "slash-rule" && ups > 1 && ups + 1 >= depth -> ABOVE
+                        // A multi-up run before a non-name counts one step more, and since kernel 31.3.1 only a
+                        // count PAST the model root is refused (KF679): a single step onto it reaches `/RuleGroup`.
+                        tailId == "slash-rule" -> if (ups > 1 && ups + 1 > depth) ABOVE else UNEXPECTED
                         tailId in listOf("rule", "base-year") -> if (ups >= depth) ABOVE else UNEXPECTED
                         ups >= depth -> ABOVE
                         tail.isNotEmpty() -> UNEXPECTED

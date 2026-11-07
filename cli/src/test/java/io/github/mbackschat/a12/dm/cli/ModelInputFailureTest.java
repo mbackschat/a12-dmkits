@@ -20,8 +20,11 @@ class ModelInputFailureTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** Input no reader can bind: a refusal before any verdict. */
-    enum Malformation { TRUNCATED, ARRAY_INDEX_FIELD }
+    /**
+     * Input no reader can bind: a refusal before any verdict. Kernel 31.3.1 reads a sort entry only with both its
+     * members (KERNEL-FINDINGS KF680), where 31.1.1 read a nameless one and then failed to build it.
+     */
+    enum Malformation { TRUNCATED, ARRAY_INDEX_FIELD, MISSING_SORT_REFERENCE, MISSING_SORT_ORDER }
 
     /**
      * A model missing a required member. Kernel 31.1.1 reads it and then fails to build it (KERNEL-FINDINGS KF654),
@@ -30,7 +33,7 @@ class ModelInputFailureTest {
      */
     enum Unbuildable {
         MISSING_RULE_REFERENCE("errorEntityRelPath"), MISSING_COMPUTATION_REFERENCE("computedFieldRelPath"),
-        MISSING_SORT_REFERENCE("sortFields"), MISSING_ERROR_CODE("errorCode"), MISSING_HEADER_ID("id");
+        MISSING_ERROR_CODE("errorCode"), MISSING_HEADER_ID("id");
 
         final String member;
 
@@ -64,6 +67,7 @@ class ModelInputFailureTest {
             String expectedDetail = switch (malformation) {
                 case TRUNCATED -> "line:";
                 case ARRAY_INDEX_FIELD -> "indexFieldName";
+                case MISSING_SORT_REFERENCE, MISSING_SORT_ORDER -> "sortFields";
             };
             assertTrue(detail.contains(expectedDetail), result::out);
             assertEquals(file.toString(), diagnostic.path("where").path("arg").asText(), result::out);
@@ -132,6 +136,10 @@ class ModelInputFailureTest {
             case TRUNCATED -> { return "{\"header\":"; }
             case ARRAY_INDEX_FIELD -> ((ObjectNode) model.findValues("Group").getFirst())
                     .putArray("indexFieldName").add("Tier");
+            case MISSING_SORT_REFERENCE -> ((ObjectNode) model.findValues("Group").getFirst())
+                    .putArray("sortFields").addObject().put("order", "ASC");
+            case MISSING_SORT_ORDER -> ((ObjectNode) model.findValues("Group").getFirst())
+                    .putArray("sortFields").addObject().put("name", "Tier");
         }
         return MAPPER.writeValueAsString(model);
     }
@@ -143,8 +151,6 @@ class ModelInputFailureTest {
                     .remove("errorEntityRelPath");
             case MISSING_COMPUTATION_REFERENCE -> ((ObjectNode) model.findValues("Computation").getFirst())
                     .remove("computedFieldRelPath");
-            case MISSING_SORT_REFERENCE -> ((ObjectNode) model.findValues("Group").getFirst())
-                    .putArray("sortFields").addObject().put("order", "ASC");
             case MISSING_ERROR_CODE -> ((ObjectNode) model.findValues("Rule").getFirst()).remove("errorCode");
             case MISSING_HEADER_ID -> ((ObjectNode) model.path("header")).remove("id");
         }

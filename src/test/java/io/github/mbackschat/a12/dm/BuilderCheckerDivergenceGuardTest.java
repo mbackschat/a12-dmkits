@@ -437,13 +437,12 @@ class BuilderCheckerDivergenceGuardTest {
             // class, and no family owns the pinning law that decides it ([KF347]).
             Map.entry("MVK_NO_WILDCARD", Disposition.PROSE_ONLY),
 
-            // The two DateType config gates. rulekit names them only in `StructuralKernelFix`'s correctives,
+            // The DateType config gate. rulekit names it only in `StructuralKernelFix`'s correctives,
             // deliberately: a client-side refusal was measured and DECLINED there, because `FieldTypeSpecReader`
             // builds `DateSpec` on the READ path and a constructor check would make an inconsistent kernel
             // model unreadable rather than merely unauthorable ([KERNEL-FINDINGS KF251]). The checker has no
-            // read path to spoil — it reports on stored JSON — so it reproduces both codes, restricted to the
+            // read path to spoil — it reports on stored JSON — so it reproduces the code, restricted to the
             // formats A12 is measured to admit.
-            Map.entry("MVK_ADDITIONAL_CHECK_INVALID", Disposition.PROSE_ONLY),
             Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", Disposition.PROSE_ONLY),
 
             // The entity-list aggregate's temporal chain, added 2026-09-14 with TEMPORAL_AGGREGATE_COMPONENTS.
@@ -688,13 +687,17 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_DATE_TYPE_FOR_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_PARTIAL_DATE_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Both estates judge `errorCodesToSuppress` against A12's one suppressible code, and they part on
-            // exactly one spelling: the supported code padded with whitespace, which A12 admits because its
-            // lexer discards the padding. `Computation.Builder` refuses it so the member keeps one spelling;
-            // `SuppressedWarnings` classifies the rendered pragma with the checker's tokenizer and admits it,
-            // which is the row that found the checker's old character test reporting a false error (KF298).
-            // Elsewhere the builder cites this code only for a lone `MVK_`-shaped entry and withholds it.
-            Map.entry("MVK_INVALID_SUPPRESSED_WARNING", Disposition.STRICTER_IN_JAVA));
+            // Both estates judge suppressed codes, and the builder is stricter twice: it supports only the scale
+            // gate where A12 also lets a computation suppress MVK_ERROR_INVALID_ENUM_CALCULATION (Computation's
+            // own note), and it refuses the supported code padded with whitespace, which A12 admits because its
+            // lexer discards the padding. `SuppressedWarnings` classifies the preamble with the checker's tokenizer
+            // and admits both (KF298, KF329). The builder cites this code only for an `MVK_`-shaped entry.
+            Map.entry("MVK_INVALID_SUPPRESSED_WARNING", Disposition.STRICTER_IN_JAVA),
+
+            // …and the second suppressible code is the one that difference is about: `Computation` names it only
+            // in the note explaining why the builder does not author it (IG187), while the checker admits it as
+            // suppressible and draws it for a text computed into an enumeration.
+            Map.entry("MVK_ERROR_INVALID_ENUM_CALCULATION", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

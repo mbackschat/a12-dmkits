@@ -35,7 +35,7 @@ class ParamContentRoleTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static JsonNode manifest() throws Exception {
-        CliTestSupport.Result res = CliTestSupport.run("manifest");
+        CliTestSupport.Result res = CliTestSupport.run("manifest", "--full");
         assertEquals(0, res.code(), res::err);
         return MAPPER.readTree(res.out());
     }

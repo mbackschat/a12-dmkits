@@ -126,6 +126,8 @@ refused=""
 # THE MEASURED DRIFT PATHS, all invisible to a filtered or -Pfast run:
 #   a schema property DESCRIPTION      -> examples/cli-discover.md pins whole `schema result` blocks verbatim
 #   a new RkCode                       -> the same file pins the diagnostics COUNT
+#   a corrective's prose (RkCode,      -> DiagnosticProseGuardTest holds both sources to their budget
+#     StructuralKernelFix)
 #   a KERNEL-FINDINGS entry            -> docs/OPERATOR-INDEX.md is DERIVED and regenerated, never authored
 #   an operator-catalog edit           -> cli-discover pins the operator count; cli-tour pins operator prose
 #   a perf-results/ run record         -> PerformanceRecordShapeGuardTest bounds the runs per environment; a
@@ -140,7 +142,7 @@ refused=""
 # to stop false greens. `CommandReferencesResolveTest` reads CLAUDE.md and every command-bearing markdown in the
 # tree, so the honest trigger is the file type, not its folder.
 doc_triggers="$(printf '%s\n' "$staged" | grep -E \
-  '\.md$|^cli/src/main/resources/schema/|RkCode\.java$|^rulekit/src/main/resources/catalog/|^skill/|^perf-results/' \
+  '\.md$|^cli/src/main/resources/schema/|(RkCode|StructuralKernelFix)\.java$|^rulekit/src/main/resources/catalog/|^skill/|^perf-results/' \
   || true)"
 if [ -n "$doc_triggers" ]; then
   newest_trigger="$(newest_mtime "$doc_triggers")" || exit 1

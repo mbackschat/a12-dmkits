@@ -57,11 +57,11 @@ class ComputedNumberDigitOverflowDiffTest {
     private val bulk = bound.num(BULK).asNumber()
 
     /** `Projected` computed by [op] with the given target `(minFrac, maxFrac)`. [suppressScaleGate] declares
-     *  `errorCodesToSuppress: [MVK_INVALID_COMPARE_DEC_PLACES]` — the kernel's own escape hatch for the static
+     *  the preamble `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` — the kernel's own escape hatch for the static
      *  assignment-scale gate, the ONLY way a scale-mismatched operation (the runtime no-fit arm) can load. */
     private fun model(op: NumberExpr, minFrac: Int, maxFrac: Int, suppressScaleGate: Boolean = false): String {
         val rendered = RuntimeLaws.render("/Order", op.expression())
-        val suppress = if (suppressScaleGate) listOf("MVK_INVALID_COMPARE_DEC_PLACES") else listOf()
+        val suppress = if (suppressScaleGate) "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)" else null
         return RuntimeLaws.withComputation(base(minFrac, maxFrac), "/Order", "ProjectedComp", "../Projected", rendered, suppress)
     }
 
@@ -139,7 +139,7 @@ class ComputedNumberDigitOverflowDiffTest {
             "RoundAccounting(A*B, 2) at exactly 15 digits → VALUE, identical stored form (the fix must not over-ERRORED)")
 
     // ── the NO-FIT arm: natural scale > maxFractionalDigits renders length-bounded(16) and is ALWAYS ERRORED.
-    // Reachable on a legal model ONLY via the computation's `errorCodesToSuppress` scale-gate suppression —
+    // Reachable on a legal model ONLY via the computation's preamble suppressing the scale gate —
     // without it the codegen REJECTS the scale-mismatched assignment (MVK_INVALID_COMPARE_DEC_PLACES, an ERROR
     // for computations; the withoutSuppression control pins that) ─────────────────────────────────────────────
 

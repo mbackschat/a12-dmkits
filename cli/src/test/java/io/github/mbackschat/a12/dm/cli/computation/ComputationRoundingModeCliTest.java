@@ -68,7 +68,7 @@ class ComputationRoundingModeCliTest {
 
     /**
      * The mode is the computation element's own member in A12, stored beside the formula like
-     * {@code errorCodesToSuppress}, so a formula the adapter cannot convert still shows it, and a modify that
+     * {@code additionalParserInformation}, so a formula the adapter cannot convert still shows it, and a modify that
      * drops it is visible in the diff. The Opaque trigger is a braced operand, which the converted rendering
      * would drop ({@code KernelAdapter.readOne}).
      */

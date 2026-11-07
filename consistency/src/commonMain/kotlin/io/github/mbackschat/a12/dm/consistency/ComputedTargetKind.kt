@@ -14,11 +14,11 @@ import kotlinx.serialization.json.contentOrNull
  * into one ([KERNEL-FINDINGS KF329], `rulekit.validate.laws.ComputedFieldTargetKindLawsTest`). Both rows are
  * measured, because either alone licenses the wrong rule for the other slot.
  *
- * **It is reported as `CK_MODEL_NOT_BUILDABLE` rather than under A12's own key, and the measurement is what
- * decides that.** `MVK_GROUP_AS_CALCULATED_FIELD` exists in A12's vocabulary, but the Kernel's BUILDER refuses
- * a group-valued computed field before any consistency check runs, so that key is never what a consumer would
- * have seen. Reporting the `MVK_*` key here would claim a verdict A12 never reaches. (A computed field that names
- * nothing is a different tier on kernel 31.1.1: A12's converter states it and checks on, KF652.)
+ * **It is reported as A12's converter sentence rather than under `MVK_GROUP_AS_CALCULATED_FIELD`, and the
+ * measurement is what decides that.** A12 resolves a computed field as a FIELD reference, so a group there resolves to
+ * nothing and its converter states "The computed field … was not found." and checks the model without the
+ * computation, exactly as for a path that names nothing ([KERNEL-FINDINGS KF652]). The `MVK_*` key exists in A12's
+ * vocabulary and is never what a consumer sees. (Kernel 31.1.1 could not build such a model at all.)
  *
  * **The shape exists only in stored DM-JSON**, which is why the kits carry no such family: their computed
  * field slot is a typed field handle, so `MVK_GROUP_AS_CALCULATED_FIELD` is `erased` there. The member this
@@ -34,9 +34,9 @@ internal fun TrackedFactBase.computedTargetKindFindings(): List<Finding> = compu
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
-            CK_MODEL_NOT_BUILDABLE,
-            "in `computedFieldRelPath`: `$path` is a group, and a computation writes its result into a " +
-                "FIELD — the Kernel cannot build a model whose computed field names a group",
+            RK_COMPUTED_FIELD_NOT_FOUND,
+            "in `computedFieldRelPath`: `$path` is a group, and A12 resolves a computed field as a FIELD, so it " +
+                "states \"The computed field \"$path\" was not found.\" and checks the model without this computation",
             declared.declaredAt,
         )
     }

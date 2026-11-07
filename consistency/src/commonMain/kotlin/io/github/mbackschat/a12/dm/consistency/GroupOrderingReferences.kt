@@ -1,6 +1,11 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.A12SortOrderBinding
+import io.github.mbackschat.a12.dm.predicates.a12SortOrderOfNumber
+import io.github.mbackschat.a12.dm.predicates.a12SortOrderOfString
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -15,11 +20,10 @@ import kotlinx.serialization.json.contentOrNull
  *
  * **A12 keeps a NAME, not a position.** Its converter joins the spelling to the group's path and keeps only the
  * last segment, and the group must then carry a field of that short name, otherwise the member's own code. Where
- * the spelling lands does not matter on kernel 31.1.1, with three exceptions that leave no model: an absolute
- * spelling and one climbing past the root, which the reader cannot resolve, and one landing on a GROUP, which the
- * reader binds where a field is expected. Landing on nothing, or on a rule, is only a name; the reader's map holds
- * fields and groups alone (KERNEL-FINDINGS KF653, `GroupIndexAndSortReferenceLawsTest`). On 30.8.1 a spelling that
- * did not land on a field left no model.
+ * the spelling lands does not matter, with two exceptions that leave no model: an absolute spelling and one
+ * climbing past the root, which the reader cannot resolve. Landing on nothing, on a rule, or since kernel 31.3.1 on
+ * a GROUP, is only a name, because the member resolves as a field reference (KERNEL-FINDINGS KF653, KF680,
+ * `GroupIndexAndSortReferenceLawsTest`).
  *
  * **Why "judge where the path landed" is wrong, and two rows separate them.** With the short name `Sku` living at
  * two levels, `../Sku` written in `/Order/Items` lands on `/Order/Sku`, outside the group, and A12 admits the
@@ -42,11 +46,14 @@ import kotlinx.serialization.json.contentOrNull
  * enumeration with no values when it stands alone (KERNEL-FINDINGS KF653). The sort
  * member has no such gate to begin with, so the pair above is the whole family.
  *
- * **An ABSENT member is legal; an EMPTY one is not absent.** An empty index is joined to the group's own path, so
- * the short name it keeps is the group's name, and A12 adds its basic sentence ([basicSentenceFindings]). An empty
- * or missing sort `name` binds no reference and leaves no model. A blank sort name is an unfilled
- * entry of A12's metamodel, so it draws `MVK_SORT_INFO_MISSING` beside the member's code and no name sentence. The
- * check runs on every group, not only a repeatable one.
+ * **An ABSENT member is legal; an EMPTY one is not absent.** An empty index or sort name is joined to the group's own
+ * path, so the short name it keeps is the group's name, and A12 adds its basic sentence ([basicSentenceFindings]).
+ * A blank sort name is an unfilled entry of A12's metamodel, so it draws `MVK_SORT_INFO_MISSING` beside the member's
+ * code and no name sentence. The check runs on every group, not only a repeatable one.
+ *
+ * **A sort entry is READ only with both its members** on kernel 31.3.1: an entry that is no object, a `name` that is
+ * absent, `null` or a container, and an `order` outside the shared binding ([a12SortOrderOfString]) refuse A12's
+ * reader (KERNEL-FINDINGS KF680).
  *
  * **An ABSOLUTE spelling escapes every typed channel**: `ElementPathUtils.splitRelPath` raises "illegal
  * relPath" during conversion. The model is unusable, which is what this checker reports; that A12 reports it
@@ -74,32 +81,57 @@ private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonOb
     val judged = mutableSetOf<String>()
     val refusedNames = mutableSetOf<String>()
     val perEntry = entries.withIndex().flatMap { (position, entry) ->
-        // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
-        // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
-        // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
-        // object, is the refusal.
-        val name = (entry as? JsonObject)?.get("name")?.let { (it as? JsonPrimitive)?.contentOrNull }
-        when {
-            name.isNullOrEmpty() -> listOf(unbuildable(group, "a `sortFields` entry here carries no `name`, or an empty one"))
-            !judged.add(name) -> emptyList()
-            // The name sentence is A12's metamodel reading of the list, which holds three entries; the
-            // gates below read every entry ([KERNEL-FINDINGS KF589]).
-            else -> orderingFindings(
-                group, name, "sortFields[].name",
-                "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
-                statesName = position < SORT_CAPACITY,
-            ).also { found -> if (found.any { it.code == RK_FIELD_NAME_ALPHABET }) refusedNames += name }
+        when (val read = readSortEntry(entry)) {
+            is SortEntryRead.Refused ->
+                listOf(unbuildable(group, "`sortFields[$position]` ${read.reason}, which A12's reader refuses"))
+            is SortEntryRead.Named -> if (!judged.add(read.name)) {
+                emptyList()
+            } else {
+                // The name sentence is A12's metamodel reading of the list, which holds three entries; the
+                // gates below read every entry ([KERNEL-FINDINGS KF589]).
+                orderingFindings(
+                    group, read.name, "sortFields[].name",
+                    "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
+                    statesName = position < SORT_CAPACITY,
+                ).also { found -> if (found.any { it.code == RK_FIELD_NAME_ALPHABET }) refusedNames += read.name }
+            }
         }
     }
     return group.unsortableCarrier(entries) + group.repeatedSortField(entries, refusedNames) +
         group.sortCapacityFindings(entries) + group.unfilledSortEntries(entries) + perEntry
 }
 
+/** One `sortFields` entry as A12's reader takes it: the name it keeps, or why it refuses the entry. */
+private sealed interface SortEntryRead {
+    data class Named(val name: String) : SortEntryRead
+    data class Refused(val reason: String) : SortEntryRead
+}
+
+/**
+ * Read [entry] as A12's reader does. A non-string scalar `name` is COERCED to the String member, as a rule's
+ * `errorCode` is, so `5` is the name "5" and resolves like any other.
+ */
+private fun readSortEntry(entry: JsonElement): SortEntryRead {
+    if (entry !is JsonObject) return SortEntryRead.Refused("is not an object")
+    val name = (entry["name"] as? JsonPrimitive)?.contentOrNull ?: return SortEntryRead.Refused("carries no text `name`")
+    val order = entry["order"] as? JsonPrimitive
+    val binding = when {
+        order == null || order is JsonNull -> A12SortOrderBinding.UNREADABLE
+        order.isString -> a12SortOrderOfString(order.content)
+        else -> a12SortOrderOfNumber(order.content)
+    }
+    return if (binding == A12SortOrderBinding.UNREADABLE) {
+        SortEntryRead.Refused("carries no `order` A12 binds, `ASC` or `DESC`")
+    } else {
+        SortEntryRead.Named(name)
+    }
+}
+
 /**
  * One `MVK_SORT_INFO_MISSING` for a group whose list holds, within capacity, a name A12's metamodel reads as
  * unfilled: present, not empty, and blank as Java's `isBlank` reads it, so an em space counts and trimming would
- * not. The metamodel requires a sort entry's field, order and priority filled together; two such entries still
- * draw one. On 30.8.1 such a name left no model first (KERNEL-FINDINGS KF653).
+ * not. Two such entries still draw one, and the order is present, so the class is about the unfilled name
+ * (KERNEL-FINDINGS KF653, KF680).
  */
 private fun TrackedDeclaration.unfilledSortEntries(entries: JsonArray): List<Finding> =
     entries.take(SORT_CAPACITY).firstNotNullOfOrNull { entry ->
@@ -110,8 +142,7 @@ private fun TrackedDeclaration.unfilledSortEntries(entries: JsonArray): List<Fin
                     FindingCategory.A12_CONSTRAINT,
                     FindingSeverity.ERROR,
                     "MVK_SORT_INFO_MISSING",
-                    "a `sortFields` entry here names only blanks, which A12's metamodel reads as no field — a sort " +
-                        "entry names its field and its order together",
+                    "a `sortFields` entry here names only blanks, which A12's metamodel reads as no field",
                     path,
                 )
             }
@@ -222,10 +253,6 @@ private fun TrackedFactBase.orderingFindings(
     }
     val landed = resolvePositionally(group.path, written)
         ?: return listOf(unbuildable(group, "`$member` is `$written`, which climbs above the root group"))
-    // An empty spelling binds nothing; any other one landing on a group is bound where a field is expected.
-    if (written.isNotEmpty() && declarationAt(landed)?.declaredKind == DeclaredKind.GROUP) {
-        return listOf(unbuildable(group, "`$member` is `$written`, which names the group `$landed` where a field belongs"))
-    }
     // KF295's twin controls: the type gate reads the group's own field of this short name, not the landed one.
     val shortName = landed.substringAfterLast('/')
     // The short name A12 keeps is judged as a field name, in a sentence of its own that neither withholds the

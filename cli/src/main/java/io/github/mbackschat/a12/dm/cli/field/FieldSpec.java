@@ -213,7 +213,7 @@ public final class FieldSpec {
             case "CUSTOM" -> custom(spec.path("custom"));
             case "DATE" -> new FieldTypeSpec.DateSpec(text(spec.path("date"), "format"),
                     textOr(spec.path("date"), "precision", "FULL"),
-                    spec.path("date").path("rejectBefore1900").asBoolean(false));
+                    retiredPre1900Check(spec.path("date")));
             case "TIME" -> new FieldTypeSpec.TimeSpec(text(spec.path("time"), "format"));
             case "DATETIME", "DATE_TIME" -> new FieldTypeSpec.DateTimeSpec(text(spec.path("dateTime"), "format"));
             case "DATERANGE", "DATE_RANGE" -> new FieldTypeSpec.DateRangeSpec(
@@ -221,10 +221,10 @@ public final class FieldSpec {
                     // absent key = STANDARD (the default has no DM-JSON spelling); an unknown token throws a
                     // corrective naming it, which the caller surfaces as an invalid-spec refusal.
                     RangeYearInterpretation.fromJson(text(spec.path("dateRange"), "interpretationOfYear")),
-                    spec.path("dateRange").path("rejectBefore1900").asBoolean(false));
+                    retiredPre1900Check(spec.path("dateRange")));
             case "DATEFRAGMENT", "DATE_FRAGMENT" -> new FieldTypeSpec.DateFragmentSpec(
                     req(spec.path("dateFragment"), "format"),
-                    spec.path("dateFragment").path("rejectBefore1900").asBoolean(false));
+                    retiredPre1900Check(spec.path("dateFragment")));
             case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec(
                     text(spec.path("boolean"), "trueValue"), text(spec.path("boolean"), "falseValue"));
             case "CONFIRM" -> new FieldTypeSpec.ConfirmSpec(
@@ -235,6 +235,14 @@ public final class FieldSpec {
                     + "' (STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | "
                     + "BOOLEAN | CONFIRM | ENUM | CUSTOM, or a \"typedef\")");
         };
+    }
+
+    /**
+     * The spec's {@code rejectBefore1900}, A12's {@code youngerThan1900Check}: inert since kernel 31.2 (A12K-4073) and
+     * still carried so a read block round-trips. The one place this verb reads it; A12K-4439 removes it.
+     */
+    private static boolean retiredPre1900Check(JsonNode block) {
+        return block.path("rejectBefore1900").asBoolean(false);
     }
 
     private static FieldTypeSpec string(JsonNode s) {

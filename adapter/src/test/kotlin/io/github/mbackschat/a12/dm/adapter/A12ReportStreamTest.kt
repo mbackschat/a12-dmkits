@@ -111,10 +111,10 @@ class A12ReportStreamTest {
         for (missing in listOf(false, true)) for (first in listOf(false, true)) for (second in listOf(false, true)) {
             val common = calculation.commonPrecondition().let { if (missing) it.replace("Gate", "Missing") else it }
             val work = calculation.alternatives().single().operation()
-            val computation = DraftComputation(calculation.groupPath(), calculation.name(), calculation.computedFieldRelPath(),
-                common, listOf(first, second).map { blank ->
+            val computation = calculation.toBuilder().commonPrecondition(common)
+                .alternatives(listOf(first, second).map { blank ->
                     DraftComputation.Alternative(calculation.commonPrecondition(), if (blank) "" else work)
-                }, calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
+                }).build()
             val json = validator.inject(host, computation)
             // A12's basic check states the blank operation last, once however many alternatives are blank (KF626).
             val expected = when {
@@ -158,11 +158,11 @@ class A12ReportStreamTest {
         for (first in listOf(false, true)) for (second in listOf(false, true)) {
             val firstCall = rule.errorCondition().let { if (first) it.replace("Billing", "Shipping") else it }
             val secondCall = rule.errorCondition().let { if (second) it.replace("Shipping", "Billing") else it }
-            val computation = DraftComputation(calculation.groupPath(), calculation.name(), calculation.computedFieldRelPath(),
-                calculation.commonPrecondition().let { if (first) it.replace("[Left]", "[MissingOne]") else it },
-                calculation.alternatives().map { alternative -> DraftComputation.Alternative(alternative.precondition(),
-                    alternative.operation().let { if (second) it.replace("[Right]", "[MissingTwo]") else it }) },
-                calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
+            val computation = calculation.toBuilder()
+                .commonPrecondition(calculation.commonPrecondition().let { if (first) it.replace("[Left]", "[MissingOne]") else it })
+                .alternatives(calculation.alternatives().map { alternative -> DraftComputation.Alternative(alternative.precondition(),
+                    alternative.operation().let { if (second) it.replace("[Right]", "[MissingTwo]") else it }) })
+                .build()
             for ((carrier, json, code) in listOf(
                 Triple("rule", validator.inject(host, rule.withErrorCondition("$firstCall And $secondCall")), "MVK_DUPLICATE_PARAM1"),
                 Triple("computation", validator.inject(host, computation), "MVK_INVALID_ENTITY"))) {
@@ -565,9 +565,9 @@ class A12ReportStreamTest {
                             if (member.key == "computationAlternatives[$index].precondition") text else alternative.precondition(),
                             if (member.key == "computationAlternatives[$index].operation") text else alternative.operation())
                     }
-                    validator.inject(host, DraftComputation(computation.groupPath(), computation.name(),
-                        computation.computedFieldRelPath(), if (member == Member.COMMON) text else computation.commonPrecondition(),
-                        alternatives, computation.errorCodesToSuppress(), computation.roundingMode(), computation.messages()))
+                    validator.inject(host, computation.toBuilder()
+                        .commonPrecondition(if (member == Member.COMMON) text else computation.commonPrecondition())
+                        .alternatives(alternatives).build())
                 }
                 add(SiteRow("$member:${prefix.replace("\r", "\\r").replace("\n", "\\n")}:${inline ?: "none"}:$leaf",
                     json, member.key, text, leaf.code))
@@ -673,10 +673,9 @@ class A12ReportStreamTest {
         val twin = rule("Zeta", gate.filled().and(left.gt(0))).withErrorCondition(alpha.errorCondition())
         val calculation = model.computation(model.num("/Order/Result")).name("Computed").calc(left.plus(right))
             .message(Dsl.en("Check result"), Dsl.de("Check result")).build().draft()
-        val computation = DraftComputation(calculation.groupPath(), calculation.name(), calculation.computedFieldRelPath(),
-            calculation.commonPrecondition(), calculation.alternatives().map {
+        val computation = calculation.toBuilder().alternatives(calculation.alternatives().map {
                 DraftComputation.Alternative(it.precondition(), it.operation().replace("[Right]", "[Label]"))
-            }, calculation.errorCodesToSuppress(), calculation.roundingMode(), calculation.messages())
+            }).build()
         val zetaFirst = validator.inject(validator.inject(host, zeta), alpha)
         val alphaFirst = validator.inject(validator.inject(host, alpha), zeta)
         fun messages(english: String, german: String) = validator.inject(host,

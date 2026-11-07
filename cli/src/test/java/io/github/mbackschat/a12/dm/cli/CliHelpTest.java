@@ -27,9 +27,11 @@ class CliHelpTest {
         assertEquals(0, res.code(), res::err);
         String out = res.out();
         // R1 (CLI-SPEC §2): a top-level orientation footer — the read-when map in
-        // miniature — routing first contact to the one-call manifest + the catalog verbs.
+        // miniature — routing first contact to the manifest index, its drill-down, and the catalog verbs.
         assertTrue(out.contains("Getting started"), () -> "footer heading present: " + out);
-        assertTrue(out.contains("Whole verb tree as JSON"), () -> "positions manifest as the one-call map: " + out);
+        assertTrue(out.lines().anyMatch(line -> line.endsWith(" dmtool manifest"))
+                        && out.contains("dmtool manifest <target> [<op>]"),
+                () -> "routes to the manifest index, then to one target's entries: " + out);
         assertTrue(out.contains("diagnostics <CODE>"), () -> "routes error decoding to diagnostics: " + out);
         assertTrue(out.contains("operators") && out.contains("patterns"),
                 () -> "routes the DSL vocabulary/idioms: " + out);

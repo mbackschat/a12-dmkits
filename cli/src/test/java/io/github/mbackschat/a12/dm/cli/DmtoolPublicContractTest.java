@@ -138,7 +138,7 @@ class DmtoolPublicContractTest {
         assertEquals(0, human.code(), human::err);
         assertTrue(human.out().contains("source: " + revision + " (" + state.toLowerCase() + ")"), human::out);
 
-        PackagedDmtool.Result machine = dmtool.run("manifest");
+        PackagedDmtool.Result machine = dmtool.run("manifest", "--full");
         assertEquals(0, machine.code(), machine::err);
         JsonNode source = MAPPER.readTree(machine.out()).path("version").path("source");
         assertEquals(revision, source.path("revision").asText(), machine::out);
@@ -160,7 +160,7 @@ class DmtoolPublicContractTest {
     @Test
     void packagedManifestOwnsTheCompleteOperationalDenominator(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
-        PackagedDmtool.Result result = dmtool.run("manifest");
+        PackagedDmtool.Result result = dmtool.run("manifest", "--full");
         assertEquals(0, result.code(), result::err);
         JsonNode manifest = MAPPER.readTree(result.out());
 
@@ -195,7 +195,7 @@ class DmtoolPublicContractTest {
     @Test
     void packagedSchemaAndManifestRenderTheSameOperationalOwner(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
-        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest", "--full").out());
         Map<String, PackagedDmtool.Result> rendered = new HashMap<>();
         int checked = 0;
         for (JsonNode verb : manifest.path("verbs")) {
@@ -291,7 +291,7 @@ class DmtoolPublicContractTest {
                 "root help must not use the universal JSON-in/JSON-out slogan");
         assertTrue(help.contains("explicit JSON/text artifact profiles"), help);
 
-        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest", "--full").out());
         JsonNode seedProfiles = manifestVerb(manifest, "model seed").path("operationalProfiles");
         assertEquals(1, seedProfiles.size(), "model seed has one unconditional output contract");
         assertTrue(selectorIsUnconditional(seedProfiles.get(0).path("when")), seedProfiles::toPrettyString);

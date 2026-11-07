@@ -271,7 +271,7 @@
         "source": "CORRECTIVE",
         "ordinal": 0
       },
-      "digest": "sha256:156f51ebfeb4fbc0731ab714263d124173cc00511eb5f7eee5c4b968ed35eb60",
+      "digest": "sha256:6d7e9fc950cb9a5f3ae43a0a3d6578a43b23326a44809c7baf3579a04f7b7ad2",
       "fixture": "ORDER",
       "group": "/Order",
       "field": "../UnitPrice",

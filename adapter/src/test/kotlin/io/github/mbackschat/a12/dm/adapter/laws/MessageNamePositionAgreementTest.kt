@@ -56,7 +56,8 @@ class MessageNamePositionAgreementTest {
         row("bare-ambiguous", "\$Book\$", NOT_UNIQUE)
         row("bare-unread", "\$Borrower\$", FIELD)
         row("bare-group", "\$Loans\$", FIELD)
-        row("relative-above-root", "\$../../Book\$", ABOVE, reads = Reads.LOANS)
+        // Two steps from /Library/Loans turn on the model root since kernel 31.3.1, so `Book` is read as a root group (KF679).
+        row("relative-under-model-root", "\$../../Book\$", ROOT_GROUP, reads = Reads.LOANS)
         row("relative-wrong-turning-point", "\$..Wrong/Book\$", ENTITY, reads = Reads.LOANS)
         row("relative-unknown-child", "\$Nope/Book\$", ENTITY, reads = Reads.LOANS)
         row("relative-unread", "\$../Returns/Borrower\$", FIELD, reads = Reads.LOANS)
@@ -130,7 +131,6 @@ class MessageNamePositionAgreementTest {
         const val FIELD = "INVALID_FIELD"
         const val FIELD_IN_PARAMETER = "INVALID_FIELD_IN_PARAMETER"
         const val NOT_UNIQUE = "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
-        const val ABOVE = "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
         const val INDEX = "MVK_INDEX_FOR_ERROR_TEXT_INVALID"
         const val ILLEGAL_INDEX = "ILLEGAL_SEMANTIC_INDEX"
     }

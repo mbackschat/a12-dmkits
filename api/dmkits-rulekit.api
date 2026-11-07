@@ -766,7 +766,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition implem
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
-  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
+  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.Optional<java.lang.String>)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative> alternatives()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> commonPrecondition()
@@ -775,13 +775,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation draft()
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation draft(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
   public final boolean equals(java.lang.Object)
-  public java.util.List<java.lang.String> errorCodesToSuppress()
+  public java.util.Optional<java.lang.String> errorCode()
   public java.lang.String groupPath()
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode roundingMode()
-  public static java.util.Set<java.lang.String> supportedErrorCodesToSuppress()
+  public static java.util.Set<java.lang.String> supportedSuppressedWarnings()
+  public java.util.List<java.lang.String> suppressedWarnings()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative
@@ -826,11 +827,12 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Bu
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder commonPrecondition(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder errorCodesToSuppress(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder errorCode(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder group(io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder message(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder name(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder roundingMode(io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder suppressWarnings(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder when(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -850,6 +852,8 @@ public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionDirectives
   public static final java.lang.String SCALE_GATE
   public static java.lang.String allowDifferingDecimals(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.lang.String)
+  public static java.util.List<java.lang.String> suppressedWarnings(java.lang.String)
+  public static java.lang.String suppressionPreamble(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.util.List<java.lang.String>)
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind classify(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
@@ -2994,20 +2998,21 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource
   public static io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource[] values()
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
+  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
-  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>)
-  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public java.lang.String additionalParserInformation()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative> alternatives()
   public static io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder builder()
   public java.lang.String commonPrecondition()
   public java.lang.String computedFieldRelPath()
   public final boolean equals(java.lang.Object)
-  public java.util.List<java.lang.String> errorCodesToSuppress()
+  public java.lang.String errorCode()
   public java.lang.String groupPath()
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode roundingMode()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder toBuilder()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative
@@ -3027,15 +3032,17 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComp
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder toleranceRangeOp(io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
 
 public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder additionalParserInformation(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder alternatives(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation build()
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder commonPrecondition(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder computedFieldRelPath(java.lang.String)
-  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder errorCodesToSuppress(java.util.List<java.lang.String>)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder errorCode(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder groupPath(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder name(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder roundingMode(io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder suppressWarnings(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.util.List<java.lang.String>)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
@@ -3183,6 +3190,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ROOT_GROUP_NAME_ALPHABET
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ROOT_GROUP_NAME_MISSING
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RULE_NAME_ALPHABET
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode SORT_FIELD_EMPTY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode SORT_LIST_ABOVE_CAPACITY
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_DEFINITION_NOT_FOUND
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_MISMATCH

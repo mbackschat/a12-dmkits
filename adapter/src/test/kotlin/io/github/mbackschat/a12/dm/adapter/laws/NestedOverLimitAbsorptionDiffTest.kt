@@ -48,8 +48,8 @@ class NestedOverLimitAbsorptionDiffTest {
         const val NODE_CODE = "zuGrosseKontextnummer"
         const val BAD_NUMBER = "zahlHatUngueltigeZeichen"
 
-        /** `PartiallyKnownDocumentMultiPointerImpl[/a/b, [1, 3, 1]]` → `/a/b|1,3,1`, or a loud failure. */
-        private val RAW = Regex("""\[(/[^,\]]+), \[([0-9, ]*)]]""")
+        /** One `/name[rep]` segment of the kernel's pointer `toString`, `/a[1]/b[3]` since kernel 31.2. */
+        private val RAW_SEGMENT = Regex("""/([^/\[]+)\[(-?\d+)]""")
     }
 
     /** Three nested repeatable levels, each capped at 2, so index 3 is over-limit at any of them. */
@@ -264,11 +264,11 @@ class NestedOverLimitAbsorptionDiffTest {
             .messagesModern(rooted(base).also(::doublyOverLimit).kDoc, null, Locale.US))
 
         val expected = listOf(
-            "/Billing/Invoices/Periods/Label|1, 3, 3, 1",
-            "/Billing/Invoices/Periods|1, 3, 1",
-            "/Billing/Invoices/Periods|1, 3, 2",
-            "/Billing/Invoices/Periods|1, 3, 3",
-            "/Billing/Invoices|1, 3",
+            "/Billing/Invoices/Periods/Label|1,3,3,1",
+            "/Billing/Invoices/Periods|1,3,1",
+            "/Billing/Invoices/Periods|1,3,2",
+            "/Billing/Invoices/Periods|1,3,3",
+            "/Billing/Invoices|1,3",
         )
         assertEquals(expected, dynamic, "the kernel's own addresses, one per written node, all distinct")
         assertEquals(dynamic, static, "both codegen strategies address the nodes identically")
@@ -281,7 +281,7 @@ class NestedOverLimitAbsorptionDiffTest {
         )
     }
 
-    /** `/a/b|1, 3, 2` rendered the house way, so the loss is shown from the kernel's own coordinates. */
+    /** `/a/b|1,3,2` rendered the house way, so the loss is shown from the kernel's own coordinates. */
     private fun houseForm(rawAddress: String): String {
         val (path, coords) = rawAddress.split('|', limit = 2)
         return formatPointer(path, coords.split(',').map { it.trim().toInt() })
@@ -289,8 +289,11 @@ class NestedOverLimitAbsorptionDiffTest {
 
     /** Fails loudly rather than skipping if the kernel's pointer `toString` ever changes shape. */
     private fun rawAddresses(messages: List<RuntimeLaws.Msg>): List<String> = messages.map { msg ->
-        val m = RAW.find(msg.errorField())
-            ?: throw AssertionError("kernel pointer toString no longer parses: ${msg.errorField()}")
-        "${m.groupValues[1]}|${m.groupValues[2]}"
+        val raw = msg.errorField()
+        val segments = RAW_SEGMENT.findAll(raw).toList()
+        if (segments.isEmpty() || segments.joinToString("") { it.value } != raw) {
+            throw AssertionError("kernel pointer toString no longer parses: $raw")
+        }
+        segments.joinToString("") { "/" + it.groupValues[1] } + "|" + segments.joinToString(",") { it.groupValues[2] }
     }.sorted()
 }

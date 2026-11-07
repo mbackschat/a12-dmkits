@@ -26,14 +26,19 @@ class SlotParityTest {
             "getErrorCondition", "SUPPORTED: Rule.when(Condition) → render",
             "getSeverity", "SUPPORTED: Rule.severity",
             "getErrorMessage", "SUPPORTED: Rule.messages (locale-law checked)",
-            "getGuiPatterns", "DEFERRED: UI concern, no authoring demand yet");
+            "getGuiPatterns", "DEFERRED: UI concern, no authoring demand yet",
+            "getFilterForPossiblyCausingEntities",
+            "DEFERRED: KERNEL-31.3-UPGRADE-PROPOSAL B4, not authorable until that slice lands");
 
     private static final Map<String, String> COMPUTATION_SLOTS = Map.of(
             "getComputedField", "SUPPORTED: Computation.of(field) → computed computedFieldRelPath",
             "getComputationAlternatives", "SUPPORTED: when/calc alternatives",
             "getCommonPrecondition", "SUPPORTED: Computation.commonPrecondition",
             "getErrorMessage", "SUPPORTED: Computation.messages (locale-law checked)",
-            "getErrorCodesToSuppress", "SUPPORTED: Computation.Builder.errorCodesToSuppress (only DEC_PLACES is suppressible)",
+            "getAdditionalParserInformation",
+            "SUPPORTED: Computation.Builder.suppressWarnings renders the preamble (only DEC_PLACES is suppressible)",
+            "getErrorCodesToSuppress", "SUPPORTED: read only, deprecated since 31.2.0; A12 folds it into the preamble",
+            "getErrorCode", "DEFERRED: KERNEL-31.3-UPGRADE-PROPOSAL M5c, not authorable until that slice lands",
             "getRoundingMode", "SUPPORTED: Computation.Builder.roundingMode, judged with each alternative's band (KF297)");
 
     @Test

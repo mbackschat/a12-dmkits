@@ -22,15 +22,15 @@ final class FieldTypeSpecReader {
             case "StringType" -> string(config);
             case "NumberType" -> number(config);
             case "DateType" -> new FieldTypeSpec.DateSpec(text(config, "format"), text(config, "datePrecision"),
-                    A12Booleans.isSet(config.path("youngerThan1900Check")));
+                    YoungerThan1900Check.declaredIn(config));
             case "TimeType" -> new FieldTypeSpec.TimeSpec(text(config, "format"));
             case "DateTimeType" -> new FieldTypeSpec.DateTimeSpec(text(config, "format"));
             case "DateRangeType" -> new FieldTypeSpec.DateRangeSpec(
                     text(config, "format"), text(config, "rangeSeparator"),
                     RangeYearInterpretation.fromJson(text(config, "interpretationOfYear")),
-                    A12Booleans.isSet(config.path("youngerThan1900Check")));
+                    YoungerThan1900Check.declaredIn(config));
             case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"),
-                    A12Booleans.isSet(config.path("youngerThan1900Check")));
+                    YoungerThan1900Check.declaredIn(config));
             case "TypeDefType" -> new FieldTypeSpec.TypeDefRef(config.path(DmKeys.TYPE_DEFINITION_ID).asText());
             case "BooleanType" -> new FieldTypeSpec.BooleanSpec(
                     text(config, "notInDCustomTrueValue"), text(config, "notInDCustomFalseValue"));

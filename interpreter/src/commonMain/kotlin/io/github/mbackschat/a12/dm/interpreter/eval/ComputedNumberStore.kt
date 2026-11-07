@@ -23,8 +23,8 @@ data class StoredComputedNumber(val rendered: String, val fits: Boolean)
  *     digits, HALF_UP) and mark not-fitting — the caller reports ERRORED unconditionally.
  *
  * The no-fit arm is reachable on a legal model only through a computation declaring
- * `errorCodesToSuppress: [MVK_INVALID_COMPARE_DEC_PLACES]` (the kernel's own escape hatch for the static
- * assignment-scale gate, `IComputation.getErrorCodesToSuppress`); without it the codegen rejects the model.
+ * the preamble `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` (the kernel's own escape hatch for the static
+ * assignment-scale gate, `IComputation.getAdditionalParserInformation`); without it the codegen rejects the model.
  */
 fun storedComputedNumber(value: Dec, minFractionalDigits: Int, maxFractionalDigits: Int): StoredComputedNumber {
     val v19 = value.scale19()

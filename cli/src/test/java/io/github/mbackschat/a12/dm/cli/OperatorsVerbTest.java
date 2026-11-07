@@ -163,8 +163,8 @@ class OperatorsVerbTest {
         assertEquals("0", claim.path("operand").asText());
         assertEquals("AS_ZERO", claim.path("behavior").asText(),
                 () -> "Length's empty-as-0 facet must be served: " + res.out());
-        assertTrue(!claim.path("basis").asText().isBlank(), "the claim's basis (its lock) travels");
-        assertTrue(claim.path("probes").isMissingNode(), "probes are CI detail, not consumer payload");
+        assertTrue(claim.path("basis").isMissingNode() && claim.path("probes").isMissingNode(),
+                "a claim's basis and probes are evidence for our guards, not consumer payload");
         // gotchas travel WITH their kind (previously dropped)
         JsonNode gotcha = j.path("gotchas").get(0);
         assertTrue(!gotcha.path("text").asText().isBlank(), () -> "gotcha object with text: " + res.out());
@@ -198,15 +198,15 @@ class OperatorsVerbTest {
     /**
      * The WI-5b dimensions ride the same machine tier (CATALOG-SPEC §3a–§3d) — this is the eval judge's
      * ground-truth source (it consults {@code operators <id>} for per-operator semantics), so the
-     * serving must expose each dimension's {@code value}/{@code perKind} + {@code basis}, probes elided.
+     * serving must expose each dimension's {@code value}/{@code perKind}; its {@code basis} and probes are elided.
      */
     @Test
     void servesTheWi5bDimensions() throws Exception {
         // boundary — the tolerance band is STRICT
         JsonNode tol = sem(CliTestSupport.run("operators", "DiffersWithToleranceRange1")).path("boundary");
         assertEquals("STRICT", tol.path("value").asText(), "boundary served");
-        assertTrue(!tol.path("basis").asText().isBlank(), "boundary basis travels");
-        assertTrue(tol.path("probes").isMissingNode(), "probes are CI detail, not consumer payload");
+        assertTrue(tol.path("basis").isMissingNode() && tol.path("probes").isMissingNode(),
+                "a claim's basis and probes are evidence for our guards, not consumer payload");
 
         // iterationRange — AllFieldsFilled scans the DECLARED range
         assertEquals("DECLARED",

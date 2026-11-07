@@ -133,7 +133,8 @@ class MisplacedUpStepTest {
         val nested = linkedMapOf(
             "see \$../Holder\$" to emptyList(),
             "see \$../Nope\$" to listOf("INVALID_ENTITY"),
-            "see \$../../Holder\$" to listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"),
+            "see \$../../Holder\$" to listOf("INVALID_ROOT_GROUP"),
+            "see \$../../../Holder\$" to listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"),
             "see \$../Insured/../Holder\$" to listOf(TOKEN),
             "see \$../Claims/..\$" to listOf(TOKEN),
             "see \$../Nope/../Holder\$" to listOf(TOKEN),

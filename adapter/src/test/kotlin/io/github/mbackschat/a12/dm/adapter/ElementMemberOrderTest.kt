@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand
@@ -31,11 +32,12 @@ class ElementMemberOrderTest {
     private val computation = DraftComputation.builder()
         .groupPath("/Subscription/Billing").name("EffectiveFeeComp").computedFieldRelPath("EffectiveFee")
         .commonPrecondition("FieldFilled(BaseFee)")
+        .errorCode("FEE_TIER_MISMATCH")
         .alternatives(listOf(
             DraftComputation.Alternative.builder("[BaseFee]").precondition("[BaseFee] >= 100")
                 .toleranceRangeOp(ToleranceBand.TR5).build(),
             DraftComputation.Alternative.builder("0").precondition("[BaseFee] < 100").build()))
-        .errorCodesToSuppress(listOf("MVK_INVALID_COMPARE_DEC_PLACES"))
+        .suppressWarnings(ConditionLanguage.EN, listOf("MVK_INVALID_COMPARE_DEC_PLACES"))
         .roundingMode(RoundingMode.ROUND_UP)
         .messages(messages)
         .build()

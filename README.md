@@ -134,7 +134,7 @@ Same engine, no Java required. Model-bound operations use `dmtool -m <model> <ta
 A first taste:
 
 ```sh
-dmtool manifest                                  # every verb × parameter, with a worked example each
+dmtool manifest                                  # every verb, one line each; `manifest <target>` adds params + a worked example
 dmtool -m order.dm.json model describe           # the model card: fields, kinds, enum domains, groups
 dmtool -m order.dm.json rule check --field /Order/DeliveryDate --code DELIVERY_BEFORE_ORDER \
   --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0'
@@ -158,7 +158,7 @@ dmtool -m order.dm.json model eval --instance order-instance.json   # which rule
 | edit structure and refactor safely | `field`/`group`/`typedef`/`include`/`criterion`/`config` · rename · move · extract · gated `remove` | [structure](docs/DMTOOL-GUIDE.md#edit-structure--with-a-safe-delete-gate) |
 | apply many edits atomically | `apply` (one gate, one write, rollback) | [`apply`](docs/DMTOOL-GUIDE.md#both-kits-at-once-atomically--the-apply-session) |
 
-This build targets **A12 Kernel 31.1.1** (A12 Tools distribution **2026.06-ext1**); `dmtool --version` reports it, and the [compatibility section](docs/DMTOOL-GUIDE.md#version--compatibility--tolerant-but-explicit) covers how other model versions load. Every verb has a runnable, CI-verified walkthrough in [`examples/`](examples/README.md), and the full contract is the [CLI specification](docs/CLI-SPEC.md).
+This build targets **A12 Kernel 31.3.1** (A12 Tools distribution **2026.06-ext2**); `dmtool --version` reports it, and the [compatibility section](docs/DMTOOL-GUIDE.md#version--compatibility--tolerant-but-explicit) covers how other model versions load. Every verb has a runnable, CI-verified walkthrough in [`examples/`](examples/README.md), and the full contract is the [CLI specification](docs/CLI-SPEC.md).
 
 ---
 
@@ -329,7 +329,7 @@ Start at the 📚 **[documentation index →](docs/README.md)**; the rest of the
 
 ## Build & test
 
-The A12 Kernel comes from your local Maven repository: publish kernel `31.1.1` once with the sibling [`a12-kernel-bootstrap`](https://github.com/mbackschat/a12-kernel-bootstrap) kit (`./bootstrap.sh`). You also need JDK 21, Node >=24.12.0, and the latest [locmetry](https://github.com/mbackschat/locmetry). Then:
+The A12 Kernel comes from your local Maven repository: publish kernel `31.3.1` once with the sibling [`a12-kernel-bootstrap`](https://github.com/mbackschat/a12-kernel-bootstrap) kit (`./bootstrap.sh`). You also need JDK 21, Node >=24.12.0, and the latest [locmetry](https://github.com/mbackschat/locmetry). Then:
 
 ```sh
 scripts/doctor.sh                    # check the toolchain, Gradle home, hooks and local Kernel

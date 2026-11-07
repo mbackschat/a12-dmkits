@@ -19,9 +19,10 @@ import java.util.function.Consumer
  * written in the spellings A12's reader binds but a JSON-boolean reader does not: the integer `1` and the
  * padded `" TRUE"` set a member, `0` and the text `"false"` clear it ([KERNEL-FINDINGS KF569]; the binding is
  * `:predicates`' `a12BooleanOfString` / `a12BooleanOfNumber`). Each member sits alone on a claim model with a
- * document value it decides — a line break, a zero, a negative, leading zeros, a pre-1900 date, and the
- * eliminated `Length` rule a `noValueValidation` string carries — so a reader that bound the spelling as the
- * member's default would report a different message set.
+ * document value it decides — a line break, a zero, a negative, leading zeros, and the eliminated `Length` rule a
+ * `noValueValidation` string carries — so a reader that bound the spelling as the member's default would report a
+ * different message set. `youngerThan1900Check` decides nothing since kernel 31.2 (KF677), so its row only shows
+ * the engines agree on a pre-1900 date; it stays a member because A12 still binds it, which the exponent lock reads.
  *
  * `Field.global` is the same primitive binding one level up, and only partial validation shows it (IG11,
  * [PartialValidationGlobalFieldDiffTest]): a global error field is relevant although the caller named another.
@@ -57,6 +58,8 @@ class BooleanMemberBindingDiffTest {
         val value: String,
         val draft: (DocumentModelDraft.GroupBuilder) -> Unit,
         val rule: String? = null,
+        /** Whether the member changes the kernel's answer for [value] — the per-member positive control. */
+        val decides: Boolean = true,
     )
 
     private val members = listOf(
@@ -64,7 +67,10 @@ class BooleanMemberBindingDiffTest {
         Member("zeroNotAllowed", "NumberType", "Instalments", "0", { g -> g.numberField("Instalments") {} }),
         Member("positivesOnly", "NumberType", "Adjustment", "-5", { g -> g.numberField("Adjustment") {} }),
         Member("leadingZerosAllowed", "NumberType", "Branch", "007", { g -> g.numberField("Branch") {} }),
-        Member("youngerThan1900Check", "DateType", "Inception", "1850-01-01", { g -> g.dateField("Inception") {} }),
+        Member(
+            "youngerThan1900Check", "DateType", "Inception", "1850-01-01", { g -> g.dateField("Inception") {} },
+            decides = false,
+        ),
         Member(
             "noValueValidation", "StringType", "Scan", "abcdef",
             { g -> g.stringField("Scan") { s -> s.lineBreaks() } },
@@ -108,8 +114,9 @@ class BooleanMemberBindingDiffTest {
             // The control: the member must decide this document, in the kernel, or the row proves nothing.
             assertEquals(1, set.map { it.second.first }.toSet().size, "${member.name}: the set spellings agree")
             assertEquals(1, cleared.map { it.second.first }.toSet().size, "${member.name}: the cleared spellings agree")
-            check(set[0].second.first != cleared[0].second.first) {
-                "${member.name} does not decide its document in the kernel: ${set[0].second.first}"
+            check((set[0].second.first != cleared[0].second.first) == member.decides) {
+                "${member.name} decides its document in the kernel: ${member.decides} expected, " +
+                    "set=${set[0].second.first} cleared=${cleared[0].second.first}"
             }
             for ((spelling, observed) in set + cleared) {
                 val (groovy, java, interpreter) = observed

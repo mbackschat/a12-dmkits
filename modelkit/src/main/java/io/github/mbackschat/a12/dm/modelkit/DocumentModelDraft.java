@@ -392,6 +392,7 @@ public final class DocumentModelDraft {
     }
 
     /** Write the kernel {@code fieldType.<Type>} inner block for the configured slots (omitted when empty). */
+    @SuppressWarnings("removal") // the retired pre-1900 check, written through YoungerThan1900Check (A12K-4439)
     private static void writeTypeConfig(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
         switch (spec) {
             case FieldTypeSpec.StringSpec s -> {
@@ -482,9 +483,7 @@ public final class DocumentModelDraft {
                 if (d.datePrecision() != null && !d.datePrecision().equals("FULL")) {
                     inner.put("datePrecision", d.datePrecision());
                 }
-                if (d.rejectBefore1900()) {
-                    inner.put("youngerThan1900Check", true);
-                }
+                YoungerThan1900Check.writeInto(inner, d.rejectBefore1900());
             }
             case FieldTypeSpec.TimeSpec t ->
                     fieldType.putObject("TimeType").put("format", t.format() != null ? t.format() : "HH:mm:ss");
@@ -498,16 +497,12 @@ public final class DocumentModelDraft {
                 // STANDARD has no DM-JSON spelling: the kernel's deserializer refuses the token and reads an
                 // ABSENT key as the default, so the key is written only for FROM/TO.
                 dr.interpretationOfYear().json().ifPresent(v -> inner.put("interpretationOfYear", v));
-                if (dr.rejectBefore1900()) {
-                    inner.put("youngerThan1900Check", true);
-                }
+                YoungerThan1900Check.writeInto(inner, dr.rejectBefore1900());
             }
             case FieldTypeSpec.DateFragmentSpec df -> {
                 ObjectNode inner = fieldType.putObject("DateFragmentType");
                 inner.put("formatOfFragment", df.fragmentFormat());
-                if (df.rejectBefore1900()) {
-                    inner.put("youngerThan1900Check", true);
-                }
+                YoungerThan1900Check.writeInto(inner, df.rejectBefore1900());
             }
             case FieldTypeSpec.TypeDefRef ref ->
                     fieldType.putObject("TypeDefType").put(DmKeys.TYPE_DEFINITION_ID, ref.typeDefinitionId());

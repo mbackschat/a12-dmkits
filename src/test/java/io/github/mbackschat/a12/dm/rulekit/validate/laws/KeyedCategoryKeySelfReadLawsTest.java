@@ -43,7 +43,7 @@ class KeyedCategoryKeySelfReadLawsTest {
 
     private static List<String> kernel(String operation) {
         var result = new RuleValidator().check(ORDER, new DraftComputation("/Order", "PickComp", "../Pick", null,
-                List.of(new DraftComputation.Alternative(null, operation)), List.of()));
+                List.of(new DraftComputation.Alternative(null, operation))));
         return result.diagnostics().stream().map(d -> d.code().orElse("(no code)")).toList();
     }
 

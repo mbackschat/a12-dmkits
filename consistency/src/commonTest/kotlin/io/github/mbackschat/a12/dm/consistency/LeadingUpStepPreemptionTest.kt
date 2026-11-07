@@ -26,7 +26,8 @@ class LeadingUpStepPreemptionTest {
             "..*/..*/Nope" to listOf(WILDCARD_REL),
             "..*/Claims.*" to listOf(WILDCARD_REL),
             "..*/Claims.*/Amount" to listOf(WILDCARD_REL),
-            "../../Amount" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
+            "../../Amount" to listOf("MVK_INVALID_ROOT_GROUP"),
+            "../../../Amount" to listOf("MVK_TOO_MANY_PARENT_GROUPS"),
             "../Claims.*" to listOf("MVK_POINT_IN_A12_MODEL"),
         )
         assertEquals(rows, rows.keys.associateWith(::fromInsured), "a starred leading up-step")

@@ -73,6 +73,8 @@ Existing internal code is **not** the spec for how to consume the kit — the AP
 
 Decision test: *one operator → catalog; one spec field → schema; one error code → enricher; none of those (judgment / a multi-construct trap) → skill.* The skill is the **N6 material-under-test and is measured**, so a fact any of the first three surfaces can carry must **not** go in the skill (it would be cost without reach — and stale-prone). A trap can legitimately appear in **two** lanes when it is hit *before* the diagnostic fires (e.g. the enum locale cascade gets both an enricher hint *and* a skill note — the diagnostic corrects after the failure, the skill prevents it).
 
+**Every lane an agent reads is budgeted (owner directive, 2026-11-06).** A new fact replaces or condenses existing prose, a stale sentence is rewritten rather than annotated, and raising a budget needs a new contract fact in the same change; the budgets and their guards are [CLI-SPEC §5b](docs/CLI-SPEC.md#agent-prose-budgets).
+
 ### Editing `skill/SKILL.md` — the #1 rule: re-read the whole file, and verify every claim against the live tool (standing requirement, 2026-06-22)
 
 The skill is the **material under test for the N6 eval** — a wrong or stale claim in it is the *worst* class of defect, because it actively misleads every agent that reads it and **only an expensive probe run catches it** (a JUnit guard does not). So **before any edit to `skill/SKILL.md`, two things are mandatory, in order, no exceptions:**

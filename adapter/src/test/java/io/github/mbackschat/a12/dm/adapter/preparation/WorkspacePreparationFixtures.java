@@ -1077,18 +1077,16 @@ public final class WorkspacePreparationFixtures {
     private static DraftComputation storedPathDraft(
             io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation,
             DslRenderer renderer) {
-        return new DraftComputation(
-                computation.groupPath(),
-                computation.name(),
-                computation.computedFieldRelPath(),
-                computation.commonPrecondition().map(renderer::render).orElse(null),
-                computation.alternatives().stream()
+        return computation.draft().toBuilder()
+                .commonPrecondition(computation.commonPrecondition().map(renderer::render).orElse(null))
+                .alternatives(computation.alternatives().stream()
                         .map(alternative -> new DraftComputation.Alternative(
                                 alternative.precondition().map(renderer::render).orElse(null),
                                 renderer.render(alternative.operation()),
                                 alternative.toleranceRangeOp().orElse(null)))
-                        .toList(),
-                computation.errorCodesToSuppress());
+                        .toList())
+                .messages(java.util.List.of())
+                .build();
     }
 
     private static void rewriteOpaqueElementIds(ObjectNode root) {

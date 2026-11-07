@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG187 — a computation that suppresses `MVK_ERROR_INVALID_ENUM_CALCULATION` is uncharacterized at runtime (opened 2026-11-07).** <a id="ig187"></a> Kernel 31.3.1 admits a text computed into an enumeration field once the computation's preamble suppresses that code ([KF298](KERNEL-FINDINGS.md#kf298); `rulekit.validate.laws.ComputationParserInformationLawsTest`). No differential has measured what either kernel strategy stores for such a computation, nor what the interpreter does with the model, so `Computation.Builder.suppressWarnings` refuses the code. Settled by a runtime differential over an enumeration target fed a declared S-value, an undeclared text and an empty text, after which the builder's subset lifts ([KERNEL-31.3-UPGRADE-PROPOSAL](KERNEL-31.3-UPGRADE-PROPOSAL.md) B4).
 
 ## 2. Deferred / ongoing-incremental
 

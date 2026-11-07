@@ -60,8 +60,8 @@ class RepetitionNotUniqueLawsTest {
         List<RuntimeLaws.Msg> dup = RuntimeLaws.messages(model, counts("5", "5", "9")).stream()
                 .filter(m -> m.code().equals("DUP")).toList();
         assertEquals(2, dup.size(), () -> "fires on each duplicate row, got: " + dup);
-        assertTrue(dup.stream().anyMatch(m -> m.errorField().contains("[1, 1, 1]")), () -> "row 1: " + dup);
-        assertTrue(dup.stream().anyMatch(m -> m.errorField().contains("[1, 2, 1]")), () -> "row 2: " + dup);
+        assertTrue(dup.stream().anyMatch(m -> m.errorField().contains("/Items[1]/")), () -> "row 1: " + dup);
+        assertTrue(dup.stream().anyMatch(m -> m.errorField().contains("/Items[2]/")), () -> "row 2: " + dup);
 
         // all distinct → fires nowhere
         assertEquals(false, RuntimeLaws.fires(model, "DUP", counts("5", "6", "9")),

@@ -230,25 +230,22 @@ public final class RuntimeLaws {
      */
     public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
             String operation) {
-        return withComputation(modelJson, groupId, name, computedFieldRelPath, operation, List.of());
+        return withComputation(modelJson, groupId, name, computedFieldRelPath, operation, null);
     }
 
     /**
-     * As {@link #withComputation(String, String, String, String, String)} but declaring
-     * {@code errorCodesToSuppress} ({@code IComputation.getErrorCodesToSuppress}) — the kernel's own escape
-     * hatch for the static assignment-scale gate: {@code MVK_INVALID_COMPARE_DEC_PLACES} in the list lets a
-     * computation whose operation's static scale differs from the target's load (the only way the runtime
-     * no-fit store arm is reachable on a legal model — IF92).
+     * As {@link #withComputation(String, String, String, String, String)} but declaring the computation's
+     * {@code additionalParserInformation} preamble (null for none) — the kernel's own escape hatch for the static
+     * assignment-scale gate: {@code @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)} lets a computation whose
+     * operation's static scale differs from the target's load (the only way the runtime no-fit store arm is
+     * reachable on a legal model — IF92).
      */
     public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
-            String operation, List<String> errorCodesToSuppress) {
+            String operation, String additionalParserInformation) {
         String op = jsonEscape(operation);
-        String suppress = errorCodesToSuppress.isEmpty() ? ""
-                : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
-                        .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";
         String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
-                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + suppress
-                + " \"computationAlternatives\": [ { \"operation\": \"" + op + "\" } ],"
+                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\","
+                + " \"computationAlternatives\": [ { \"operation\": \"" + op + "\" } ]," + preamble(additionalParserInformation)
                 + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
         int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
         if (g < 0) {
@@ -336,13 +333,19 @@ public final class RuntimeLaws {
                 && alternatives.get(0).toleranceRangeOp() == null;
         if (simple) {
             return withComputation(modelJson, draft.groupPath(), draft.name(), draft.computedFieldRelPath(),
-                    alternatives.get(0).operation(), draft.errorCodesToSuppress());
+                    alternatives.get(0).operation(), draft.additionalParserInformation());
         }
         List<CompAlt> alts = alternatives.stream()
                 .map(a -> new CompAlt(a.precondition(), a.operation(), toleranceText(a.toleranceRangeOp())))
                 .toList();
         return withTieredComputation(modelJson, draft.groupPath(), draft.name(), draft.computedFieldRelPath(),
-                draft.commonPrecondition(), alts, draft.errorCodesToSuppress(), draft.roundingMode());
+                draft.commonPrecondition(), alts, draft.additionalParserInformation(), draft.roundingMode());
+    }
+
+    /** The stored preamble member, after the alternatives as A12's {@code ComputationSerializer} writes it. */
+    private static String preamble(String additionalParserInformation) {
+        return additionalParserInformation == null ? ""
+                : " \"additionalParserInformation\": \"" + jsonEscape(additionalParserInformation) + "\",";
     }
 
     /**
@@ -370,7 +373,7 @@ public final class RuntimeLaws {
     public static String withTieredComputation(String modelJson, String groupId, String name,
             String computedFieldRelPath, String commonPrecondition, List<CompAlt> alternatives) {
         return withTieredComputation(modelJson, groupId, name, computedFieldRelPath, commonPrecondition, alternatives,
-                List.of(), RoundingMode.EXACT);
+                null, RoundingMode.EXACT);
     }
 
     /**
@@ -381,7 +384,7 @@ public final class RuntimeLaws {
      */
     public static String withTieredComputation(String modelJson, String groupId, String name,
             String computedFieldRelPath, String commonPrecondition, List<CompAlt> alternatives,
-            List<String> errorCodesToSuppress, RoundingMode roundingMode) {
+            String additionalParserInformation, RoundingMode roundingMode) {
         StringBuilder alts = new StringBuilder();
         for (int i = 0; i < alternatives.size(); i++) {
             CompAlt a = alternatives.get(i);
@@ -400,12 +403,9 @@ public final class RuntimeLaws {
         String common = commonPrecondition == null ? ""
                 : " \"commonPrecondition\": \"" + jsonEscape(commonPrecondition) + "\",";
         String mode = roundingMode.stored().map(stored -> " \"roundingMode\": \"" + stored + "\",").orElse("");
-        String suppress = errorCodesToSuppress.isEmpty() ? ""
-                : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
-                        .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";
         String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
                 + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + mode + common
-                + " \"computationAlternatives\": [ " + alts + " ]," + suppress
+                + " \"computationAlternatives\": [ " + alts + " ]," + preamble(additionalParserInformation)
                 + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
         int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
         if (g < 0) {
@@ -498,8 +498,9 @@ public final class RuntimeLaws {
      * (OMISSION_ERROR = the rule could be satisfied by <em>filling</em> more fields; VALUE_ERROR
      * otherwise). The typing channel is what the error-type laws lock.
      *
-     * <p>{@code errorField} is the kernel's raw pointer {@code toString} (the {@code [1, 2, 1]} form the
-     * runtime-law tests assert row attribution on). The rich-message channels — {@code field},
+     * <p>{@code errorField} is the kernel's raw pointer {@code toString}, the form the runtime-law tests assert row
+     * attribution on: {@code /Order[1]/Items[2]/Count[1]} since kernel 31.2 ({@code DocumentV2InternalUtils.pointerToString}),
+     * where 31.1.1 printed {@code PartiallyKnownDocumentMultiPointerImpl[/Order/Items/Count, [1, 2, 1]]}. The rich-message channels — {@code field},
      * {@code referenced}, {@code omissionResponsible} — are the same pointers rendered the clean
      * {@link io.github.mbackschat.a12.dm.interpreter.PointerKt#formatPointer way} the interpreter uses, so
      * a differential can compare the interpreter's {@code Message} to the kernel's {@code IMessage}.

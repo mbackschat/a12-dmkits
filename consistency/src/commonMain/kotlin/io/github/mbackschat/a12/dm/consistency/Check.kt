@@ -87,8 +87,8 @@ enum class CheckFamily {
     COMPUTATION_ROUNDING,
 
     /**
-     * A computation's `errorCodesToSuppress` — that it renders into a pragma A12's parser can read, and that
-     * the one code it may carry is the one A12 lets a computation suppress.
+     * A computation's preamble, `additionalParserInformation` or the legacy list A12 folds into one — that A12's
+     * parser can read it, and that every code it names is one A12 lets a computation suppress.
      */
     SUPPRESSED_WARNINGS,
 
@@ -116,11 +116,10 @@ enum class CheckFamily {
     FIELD_TYPE_BINDING,
 
     /**
-     * That a date field's declared CONFIG agrees with its declared FORMAT — the pre-1900 check needs a
-     * year-bearing format and a partial `datePrecision` needs a complete pure date. Both are A12's own
-     * consistency codes rather than reader refusals, and both are asked only over the format vocabulary A12
-     * is measured to admit: an unrecognised format leaves this family silent, since the admitted set is a
-     * probe's result and not a closed one.
+     * That a date field's declared CONFIG agrees with its declared FORMAT — a partial `datePrecision` needs a
+     * complete pure date. That is A12's own consistency code rather than a reader refusal, and it is asked only
+     * over the format vocabulary A12 is measured to admit: an unrecognised format leaves this family silent,
+     * since the admitted set is a probe's result and not a closed one.
      */
     TEMPORAL_CONFIG,
 
@@ -301,9 +300,8 @@ enum class CheckFamily {
 
     /**
      * That a computation computes into a FIELD. A rule's error target resolves the same way and ADMITS a
-     * group, so the two slots are measured apart rather than sharing a rule; the Kernel refuses a
-     * group-valued computed field at the BUILD tier, so the report says the model is not buildable rather
-     * than naming A12's key for it.
+     * group, so the two slots are measured apart rather than sharing a rule; A12 resolves a computed field as a
+     * field, so a group there draws its converter's "not found" sentence rather than A12's key for the law.
      */
     COMPUTED_TARGET_KIND,
 
@@ -1227,14 +1225,6 @@ private val UNREAD_MEMBERS = listOf(
             "and a computation's texts, a field's and a group's annotations, enum values and labels, a " +
             "field type's own message, every element's path) and leaves the rest to A12 — a field type's " +
             "other members, a category, the header, and a mounted provider's declarations",
-    ),
-    CoverageGap(
-        at = null,
-        reason = "a rule's `errorCode` is judged on presence alone. A12's content law — \"only letters, " +
-            "digits, blanks and underscores\" — states its verdict in prose with no class this checker could " +
-            "cite, and which characters it counts as letters rests on a handful of rows " +
-            "(KERNEL-FINDINGS KF310), so a code such as `A-B` is left to A12. Re-open when this checker " +
-            "owns a code of its own for it",
     ),
     CoverageGap(
         at = null,

@@ -84,17 +84,17 @@ class TypedComputationSpliceTest {
     }
 
     @Test
-    void aSuppressListRidesThroughTheTypedForm() {
+    void aSuppressionPreambleRidesThroughTheTypedForm() {
         Computation typed = computation("TotalComp")
                 .calc(QUANTITY.asNumber().times(UNIT_PRICE.asNumber()).expression())
-                .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+                .suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")
                 .build();
 
         assertEquals(
                 RuntimeLaws.withComputation(ORDER, GROUP, "TotalComp", "../Total", "[Quantity] * [UnitPrice]",
-                        List.of("MVK_INVALID_COMPARE_DEC_PLACES")),
+                        "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)"),
                 RuntimeLaws.withComputation(ORDER, typed),
-                "the suppress list belongs to the computation, so the typed form must carry it");
+                "the preamble belongs to the computation, so the typed form must carry it");
     }
 
     /**

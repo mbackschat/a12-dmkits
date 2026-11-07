@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-report.schema.json",
   "title": "ModelReport",
-  "description": "The `data` payload of `dmtool -m <model> model report` (MODEL-REVIEW-SPEC §4). The default branch is the stable whole-model comprehension bundle. `--tree` selects the alternative flat, document-ordered node projection `{root,summary,nodes[]}`; hierarchy is recoverable from path/parent/depth and only `--text` draws it.",
+  "description": "The `data` payload of `dmtool -m <model> model report`. The default branch is the stable whole-model comprehension bundle. `--tree` selects the alternative flat, document-ordered node projection `{root,summary,nodes[]}`; hierarchy is recoverable from path/parent/depth and only `--text` draws it.",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
@@ -114,7 +114,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["computation", "scope", "explained", "errorCodesToSuppress", "messages"],
+        "required": ["computation", "scope", "explained", "messages"],
         "properties": {
           "computation": { "type": "string", "description": "the computation's full name" },
           "scope": { "type": "string", "description": "the group the computation is scoped to" },
@@ -125,11 +125,8 @@
           "reason": { "type": "string", "description": "the construct rulekit could not model — present only when explained is false" },
           "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
           "roundingMode": { "type": "string", "enum": ["RoundUp", "RoundDown"], "description": "how the computed value is rounded (to a whole number, in the mode's direction), when not Exact — absent means Exact, as A12 stores it (same shape as `computation read`); the computation element's own member, so it is present whether or not the formula is explained" },
-          "errorCodesToSuppress": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "the exact A12 IComputation.errorCodesToSuppress list, retained even when the formula is Opaque; empty only when the computation declares none"
-          },
+          "errorCode": { "type": "string", "description": "declared code of the generated validation" },
+          "additionalParserInformation": { "type": "string", "description": "A12's stored computation preamble (`@SuppressWarning(…)`), when declared; present whether or not the formula is explained" },
           "alternatives": {
             "type": "array",
             "description": "the (precondition?, operation, toleranceRangeOp?) formulae — same shape as `computation read`; present when explained",

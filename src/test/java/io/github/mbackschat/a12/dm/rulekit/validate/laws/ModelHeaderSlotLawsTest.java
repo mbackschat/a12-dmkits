@@ -89,7 +89,8 @@ class ModelHeaderSlotLawsTest {
         // the JDK tags it `en-US` as it tags `en_US` (KERNEL-FINDINGS KF649, a12-kernel-lean's row k09).
         expected.put("a header declaring the same locale twice", KernelLaws.NOT_BUILDABLE);
         expected.put("a header declaring two locales the JDK tags alike", "MVK_SUPP_LANGUAGES_DUPLICATE");
-        expected.put("no `locales` at all", KernelLaws.NOT_BUILDABLE);
+        // Kernel 31.3.1 reads absent locales as none, so the language law answers; 31.1.1 built no model.
+        expected.put("no `locales` at all", "MVK_SUPP_LANGUAGES_MISSING");
         // Of the header's other members two are load-bearing on kernel 31.1.1: the model builds with no
         // `modelType`, and not without a `modelVersion` or an `id` (a `NullPointerException` while it is built,
         // KERNEL-FINDINGS KF654; 30.8.1 admitted a header with no id).

@@ -68,7 +68,7 @@ class IndexedConstructReadBackTest {
         Computation computation = model.computation(model.num("/Stock/Total"))
                 .name("TotalComputation")
                 .calc(model.num("/Stock/Base").value())
-                .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+                .suppressWarnings("MVK_INVALID_COMPARE_DEC_PLACES")
                 .message(en("Total must match the selected quantity."))
                 .build();
 
@@ -76,7 +76,7 @@ class IndexedConstructReadBackTest {
                 .readComputation("/Stock/TotalComputation");
         Computation read = assertInstanceOf(ReadComputation.Converted.class, result).computation();
 
-        assertEquals(computation.errorCodesToSuppress(), read.errorCodesToSuppress());
+        assertEquals(computation.suppressedWarnings(), read.suppressedWarnings());
         assertEquals(computation.draft(), read.draft());
     }
 

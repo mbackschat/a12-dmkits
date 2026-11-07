@@ -40,7 +40,21 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+### DG181 — remove the retired pre-1900 check when A12 removes `youngerThan1900Check` (A12K-4439) <a id="dg181"></a>
+
+Kernel 31.2 stopped evaluating `youngerThan1900Check` (A12K-4073, [KF677](KERNEL-FINDINGS.md#kf677)) and still reads and writes it, so every component keeps the declaration round-tripping and nothing more. A12 removes the member with A12K-4439. Until then the kit carries a deprecated surface whose only job is to round-trip the declaration, and every remaining reference is one `git grep -n 'A12K-4439'` away.
+
+The removal is a delete-and-follow-the-compiler pass, prepared so that it stays one:
+
+- modelkit: `YoungerThan1900Check` (the one wire-key owner), the three `rejectBefore1900()` builders and the three record components. All are `@Deprecated(forRemoval = true)`; Java consumers in `:`, `:adapter` and `:cli` compile under `-Xlint:removal -Werror`, so each use carries `@SuppressWarnings("removal")`.
+- dmtool: `FieldSpec.retiredPre1900Check`, the `rejectBefore1900` schema properties and `FieldDiffProjector`'s aspect, tagged `A12K-4439`. With the key gone, a spec carrying it is refused `RK_UNKNOWN_ARG` rather than silently dropped.
+- interpreter: the loader's bind check and the `TypeDefinitionMembers` entries, tagged `A12K-4439`.
+- checker: the `FieldType.booleanMembers` entries, tagged `A12K-4439`.
+- tests and docs: the law, differential and authoring locks that still author the check fail to compile once the builders go; the API-GUIDE snippets fail `DocSnippetFreshnessTest`.
+
+One measurement decides the loader half: whether the removing release's reader still refuses an unbindable spelling of the member (`1e0`, locked today by `BooleanMemberUnreadableDiffTest` and `BooleanMemberBindingDiffTest`) or reads past it as an undeclared member ([KF654](KERNEL-FINDINGS.md#kf654)). Only the second lets the interpreter's bind check go.
+
+*Blocks: nothing until the sibling `a12-kernel` checkout carries a release with A12K-4439. Re-open trigger: a [KERNEL-UPGRADE](KERNEL-UPGRADE.md) whose release log names A12K-4439.*
 
 ## 3. Adjacent but out of scope
 

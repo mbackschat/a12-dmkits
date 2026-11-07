@@ -192,7 +192,7 @@ class SpecKeysTest {
 
         List<Diagnostic> rule = SpecKeys.forSchema("rule-add").validate(M.readTree("""
                 {"field":"/O/Q","condition":"x","code":"C","messages":[],
-                 "errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"]}"""));
+                 "additionalParserInformation":"@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)"}"""));
         assertEquals("RK_UNKNOWN_ARG", rule.get(0).code().orElse(null));
     }
 
@@ -216,10 +216,8 @@ class SpecKeysTest {
         assertEquals(new TreeSet<>(ComputationSpec.KEYS), schemaKeys,
                 "computation-add.schema keys must equal the parser/apply keys");
 
-        Set<String> schemaSuppressions = new TreeSet<>();
-        schema.path("properties").path("errorCodesToSuppress").path("items").path("enum")
-                .forEach(value -> schemaSuppressions.add(value.asText()));
-        assertEquals(new TreeSet<>(Computation.supportedErrorCodesToSuppress()), schemaSuppressions,
-                "the CLI schema must not drift from rulekit's kernel-measured suppression domain");
+        String preamble = schema.path("properties").path("additionalParserInformation").path("description").asText();
+        Computation.supportedSuppressedWarnings().forEach(code -> assertTrue(preamble.contains(code),
+                () -> "the CLI schema must name every code rulekit lets a computation suppress: " + code));
     }
 }

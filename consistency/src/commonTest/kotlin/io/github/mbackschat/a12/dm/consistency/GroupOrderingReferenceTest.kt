@@ -51,7 +51,7 @@ class GroupOrderingReferenceTest {
      * different law from the one these rows are about. Making the carrier repeatable is what keeps each row
      * on one variable.
      */
-    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written"}],"""
+    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written","order":"ASC"}],"""
 
     /**
      * A12 keeps the last segment of the spelling joined to the group's path and judges that name against the
@@ -94,12 +94,12 @@ class GroupOrderingReferenceTest {
             "a field of the parent reached with .." to outside,
             "a descending path that names nothing" to listOf(),
             "a descending path that DOES resolve" to outside,
-            // A group bound where a field is expected leaves no model.
-            "a child GROUP" to unusable,
+            // A group landing names nothing since kernel 31.3.1, which resolves the member as a field (KF680).
+            "a child GROUP" to outside,
             "an absolute path" to unusable,
             "a climb to the root" to listOf(),
             "a climb past the root" to unusable,
-            "a climb onto the parent group" to unusable,
+            "a climb onto the parent group" to outside,
         )
         assertEquals(expected, actual, "a group's indexFieldName")
     }
@@ -176,7 +176,7 @@ class GroupOrderingReferenceTest {
                         {"header":{"modelVersion":"29.4.0","id":"catalog","locales":[{"code":"en_US"}]},
                          "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Catalog","Group":{
-                            "repeatability":9,"sortFields":[{"name":5}],"elements":[
+                            "repeatability":9,"sortFields":[{"name":5,"order":"ASC"}],"elements":[
                             {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
                           ]}}
                          ]}}}
@@ -203,20 +203,27 @@ class GroupOrderingReferenceTest {
         actual["an empty name"] = codesFor(sort(""))
         actual["a field outside the group"] = codesFor(sort("../Label"))
         actual["an entry with no name"] = codesFor(""""repeatability":9,"sortFields":[{}],""")
-        actual["two entries, one bad"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku"},{"name":"Missing"}],""")
-        actual["a numeric name"] = codesFor(""""repeatability":9,"sortFields":[{"name":5}],""")
+        actual["two entries, one bad"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku","order":"ASC"},{"name":"Missing","order":"ASC"}],""")
+        actual["a numeric name"] = codesFor(""""repeatability":9,"sortFields":[{"name":5,"order":"ASC"}],""")
+        actual["an entry with no order"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku"}],""")
+        actual["a lowercase order"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku","order":"asc"}],""")
+        actual["an ordinal order"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku","order":1}],""")
 
         val expected = mapOf(
             "a field of its own group" to listOf(),
             "an empty list" to listOf(),
             "a field that does not exist" to listOf("MVK_INVALID_SORT_FIELD"),
-            // An empty or missing name binds no reference, and A12's converter dereferences it.
-            "an empty name" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            // An empty name keeps the group's own name (KF680); a missing one is the reader's refusal.
+            "an empty name" to listOf("MVK_INVALID_SORT_FIELD"),
             "a field outside the group" to listOf("MVK_INVALID_SORT_FIELD"),
             "an entry with no name" to listOf("CK_MODEL_NOT_BUILDABLE"),
             // Each entry is judged on its own, so a good one never covers for a bad one beside it.
             "two entries, one bad" to listOf("MVK_INVALID_SORT_FIELD"),
             "a numeric name" to listOf("MVK_INVALID_SORT_FIELD"),
+            // A12's reader binds an order by name or ordinal and refuses the entry otherwise (KF680).
+            "an entry with no order" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "a lowercase order" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "an ordinal order" to listOf(),
         )
         assertEquals(expected, actual, "a group's sortFields")
     }

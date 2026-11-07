@@ -227,7 +227,7 @@ class RuleComputationEditorTest {
     }
 
     /**
-     * A member the typed builder DOES express is the re-expression's to state, as {@code errorCodesToSuppress}
+     * A member the typed builder DOES express is the re-expression's to state, as the suppressed warnings
      * and {@code commonPrecondition} are: carrying the old value over would make removing it impossible. So a
      * restated mode survives, a changed one replaces it, and an unstated one is {@code Exact}, which A12 never
      * stores.

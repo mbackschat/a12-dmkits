@@ -33,16 +33,16 @@ class ElementNameReachTest {
 
     /**
      * The reader resolves a reference from its declaration's full name, which starts with two slashes under a root
-     * written as `""`. An empty reference is not resolved, and an omitted root name is joined as the text `null`,
-     * so neither refuses anything: those rows are the controls that keep the refusal from reading as "any nameless
-     * root".
+     * written as `""`. Kernel 31.3.1 resolves an empty reference too, where 31.1.1 skipped it. An omitted root name is
+     * joined as the text `null`, so it refuses nothing, and a root with no reference beneath it refuses nothing: those
+     * rows are the controls that keep the refusal from reading as "any nameless root".
      */
     @Test
     fun aReferenceBeneathARootWrittenEmptyLeavesNoModel() {
         val nameless = setOf(RK_ROOT_GROUP_NAME_MISSING, RK_NAME_EMPTY)
         val rows = linkedMapOf(
             "a rule beneath an empty root" to (model(""""name":"",""", rule("../Code")) to setOf(CK_MODEL_NOT_BUILDABLE)),
-            "an empty error path beneath it" to (model(""""name":"",""", rule("")) to nameless + "RK_ERROR_ENTITY_EMPTY"),
+            "an empty error path beneath it" to (model(""""name":"",""", rule("")) to setOf(CK_MODEL_NOT_BUILDABLE)),
             "a rule beneath an omitted root name" to (model("", rule("../Code")) to nameless),
             "a rule beneath a null root name" to (model(""""name":null,""", rule("../Code")) to nameless),
             "no reference beneath an empty root" to (model(""""name":"",""") to nameless),

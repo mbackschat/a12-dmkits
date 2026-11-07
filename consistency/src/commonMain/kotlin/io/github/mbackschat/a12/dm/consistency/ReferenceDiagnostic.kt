@@ -10,7 +10,7 @@ package io.github.mbackschat.a12.dm.consistency
  * reference as `MVK_INVALID_ENTITY`, which was right for one of the three.
  *
  * The two roles ALSO differ on climbing too far, in the opposite direction from the obvious guess. A
- * condition reference that leaves the root group draws `MVK_TOO_MANY_PARENT_GROUPS`, a rejection A12 issues
+ * condition reference that climbs past the model root draws `MVK_TOO_MANY_PARENT_GROUPS`, a rejection A12 issues
  * cleanly; a declared target that does the same makes the model UNLOADABLE — `ElementPathUtils.absPath`
  * raises before any check runs — so it joins the computed field's class rather than the error field's
  * (`ErrorFieldRelativePathLawsTest` records that row as uncoded).
@@ -51,7 +51,8 @@ fun Reference.asFinding(
             "the short name `$name` is carried by ${candidates.size} fields — " +
                 "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
         is Reference.AboveRoot ->
-            "`$written` climbs above the root group, so it names no position in this model"
+            if (endsOnModelRoot) "`$written` stops on the model root, which is a turning point into a root group, never a target"
+            else "`$written` climbs past the model root, so it names no position in this model"
         is Reference.IllegalRelPath ->
             "`$written` starts with `/`, which A12's reader refuses in a relative path, so the model cannot be read"
         is Reference.MisplacedUpStep ->
@@ -65,8 +66,7 @@ fun Reference.asFinding(
  *
  * The measured inputs reach it on two different tiers, and the code deliberately covers both because a consumer
  * acts on them identically — the model is unusable, and nothing else in the report is A12's word about it. The
- * model **is not built**: a computation whose computed field names a GROUP — A12 has a key for that one and never
- * reaches it, the builder refusing first ([KERNEL-FINDINGS KF329]) — or a rule whose error target climbs past the root
+ * model **is not built**: for example a rule whose error target climbs past the root
  * (`ElementPathUtils.absPath` raises an `IndexOutOfBoundsException` during deserialization). Or the source **is not read at all**: an `errorMessage` entry without a string `locale`
  * and `text`, or a locale code A12's parser refuses on either the header or the message side — each raises
  * `ModelInputException` before any rule is examined (measured 2026-09-12, `MessageSlotRawShapeLawsTest`).

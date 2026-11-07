@@ -35,7 +35,7 @@ permissions:
 
 env:
   # Keep in lockstep with build.gradle ext.kernelVersion / the bootstrap cache key (KERNEL-UPGRADE).
-  KERNEL_CACHE_KEY: a12-kernel-31.1.1-base-30.0.2
+  KERNEL_CACHE_KEY: a12-kernel-31.3.1-base-30.1.1
 
 jobs:
   # 1. Rebuild the kernel from public sources ONCE (Linux only — the bootstrap is bash) and publish the
@@ -52,8 +52,8 @@ jobs:
           # kit can't retroactively alter how it rebuilds; source determinism inside the kit is guaranteed by
           # the SHA pins in its bootstrap.sh. Move it with every kernel bump (KERNEL-UPGRADE step 1): the
           # 31.1.1 release first dispatched against the 2025.06 kit and found no 31.1.1 kernel in ~/.m2.
-          # This commit is the kit main that private CI bootstrapped 31.1.1 with on hosted runners.
-          ref: 44383ec0dc3a14d912a581c7deed1f4b0776c688
+          # This commit is the kit commit that builds 2026.06-ext2 (kernel 31.3.1).
+          ref: 0e82b7f30d403bd0c10f3e780201582be346799b
           path: a12-kernel-bootstrap
 
       - name: Set up JDK 21 + 25 (for the bootstrap)
@@ -200,11 +200,11 @@ jobs:
           ./scripts/native-no-java-smoke.sh "$BIN" "$VERSION"
           echo "== --version =="
           "$BIN" --version | norm | tee /tmp/v.txt
-          grep -q "A12 Tools distribution: 2026.06-ext1" /tmp/v.txt
+          grep -q "A12 Tools distribution: 2026.06-ext2" /tmp/v.txt
           # grep a FILE, not the pipe: `… | grep -q` exits on first match and SIGPIPEs the upstream
           # producer (manifest is ~66 KB) → exit 141 under `set -o pipefail`. Mirrors the --version check.
           echo "== manifest (catalog reflection) =="
-          "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2026.06-ext1"' /tmp/m.txt
+          "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2026.06-ext2"' /tmp/m.txt
           echo "== model check (kernel reflection) =="
           "$BIN" -m examples/models/order-ruled.dm.json model check | norm > /tmp/mv.txt
           jq -e '.target == "model" and .op == "check" and .ok == true and .valid == true and .verification == "KERNEL_CONFIRMED" and .written == false' /tmp/mv.txt >/dev/null

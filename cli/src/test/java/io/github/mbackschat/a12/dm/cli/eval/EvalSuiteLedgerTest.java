@@ -121,7 +121,7 @@ class EvalSuiteLedgerTest {
 
     @Test
     void runtimeTasksCoverEveryLiveDocumentInstanceVerb() throws IOException {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> liveRuntimeVerbs = new TreeSet<>();
         for (JsonNode verb : manifest.path("verbs")) {
             for (JsonNode param : verb.path("params")) {
@@ -178,7 +178,7 @@ class EvalSuiteLedgerTest {
 
     @Test
     void gapFinderReconcilesEveryManifestDerivedTargetWithAnAuditReceipt() throws IOException {
-        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         Set<String> liveTargets = new TreeSet<>();
         for (JsonNode verb : manifest.path("verbs")) {
             String[] parts = verb.path("verb").asText().trim().split("\\s+");

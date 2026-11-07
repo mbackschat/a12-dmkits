@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageCompletion
+import io.github.mbackschat.a12.dm.consistency.syntax.MessageEntity
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameter
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterActions
 import io.github.mbackschat.a12.dm.consistency.syntax.MessageParameterRead
@@ -14,12 +15,14 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
     var completed: MessageParameter? = null
     val actions = object : MessageParameterActions {
         override fun climb(steps: Int): String? =
-            if (steps >= group.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
+            // The model root is a turning point since kernel 31.3.1, so only a climb PAST it is refused here; one
+            // that stops on it is the resolver's AboveRoot (KF679).
+            if (steps > group.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
 
         override fun parent(written: String): String? = when {
             turningPointIsWrong(written.replace("'", ""), group) -> "INVALID_ENTITY"
-            resolveMessageEntity(group, written.replace("'", ""), element.origin) is Reference.AboveRoot ->
-                "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+            (resolveMessageEntity(group, written.replace("'", ""), element.origin) as? Reference.AboveRoot)
+                ?.endsOnModelRoot == false -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
             else -> null
         }
 
@@ -30,7 +33,10 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
                 is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
                 is Reference.MisplacedUpStep -> "MVK_UNEXPECTED_TOKEN"
                 is Reference.Undeclared -> when {
-                    resolved.rootUnresolved -> "INVALID_ROOT_GROUP"
+                    // A name after a resolved parent is looked up under it, and a group position names its own class
+                    // there whatever the depth; since kernel 31.3.1 that parent can be the model root
+                    // (`CheckIdNameImpl.resolveAndStoreEntity`, KF679).
+                    resolved.rootUnresolved && !(groupPosition && written.startsWith("..")) -> "INVALID_ROOT_GROUP"
                     groupPosition -> "INVALID_GROUP"
                     else -> "INVALID_ENTITY"
                 }
@@ -41,6 +47,11 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
 
         override fun completed(parameter: MessageParameter): MessageCompletion {
             completed = parameter
+            // The model root is refused as a whole entity, after the walk turned on it (`checkEntitySpec`, KF679).
+            if (parameter.entityOrNull()?.let { resolveMessageEntity(group, it.written.replace("'", ""), element.origin) }
+                    is Reference.AboveRoot) {
+                return MessageCompletion.Refused("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
+            }
             return when (parameter) {
                 is MessageParameter.Field -> completedFieldDefect(parameter, element)
                 is MessageParameter.Index -> completedIndexDefect(parameter, element)
@@ -79,7 +90,7 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
 private fun TrackedFactBase.messageParameterReason(code: String, parameter: MessageParameter?, element: TrackedDeclaration): String = when (code) {
     "INVALID_ENTITY", "INVALID_ROOT_GROUP" -> "names an entity this model does not declare — check the path"
     "ERROR_TEXT_FIELDNAME_NOT_UNIQUE" -> "names more than one field — qualify the path"
-    "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" -> "walks above the rule's root group — remove an up-step"
+    "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" -> "climbs past the model root or stops on it — remove an up-step"
     "INVALID_FIELD" -> "names an entity this declaration does not read — add it to the ${entitiesReadBy(element).memberName} or drop the parameter"
     "INVALID_FIELD_IN_PARAMETER" -> "puts a form-position suffix on a group — name a field"
     "INVALID_PARAMETER" -> "puts the rule-group shorthand in a field position — use the group form"
@@ -112,4 +123,11 @@ private fun TrackedFactBase.messageParameterReason(code: String, parameter: Mess
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND" -> "ends before the required name, delimiter or offset"
     "MVK_UNEXPECTED_TOKEN" -> "contains a token the message grammar does not admit at this position"
     else -> "is refused by the message-parameter check ($code)"
+}
+
+private fun MessageParameter.entityOrNull(): MessageEntity? = when (this) {
+    is MessageParameter.Field -> entity
+    is MessageParameter.Group -> entity
+    is MessageParameter.Index -> entity
+    MessageParameter.BaseYear, MessageParameter.RootRow, MessageParameter.Line, MessageParameter.User -> null
 }

@@ -51,14 +51,10 @@ class ComputedPartialDateTargetAdmissionDiffTest {
     @Test
     fun unsupportedSuppressionCannotDefeatTheGate() {
         val draft = computation(DAY_OPTIONAL).draft()
-        val suppressed = DraftComputation(
-            draft.groupPath(),
-            draft.name(),
-            draft.computedFieldRelPath(),
-            draft.commonPrecondition(),
-            draft.alternatives(),
-            listOf("MVK_INVALID_DATE_TYPE"),
-        )
+        val suppressed = DraftComputation.builder().groupPath(draft.groupPath()).name(draft.name())
+            .computedFieldRelPath(draft.computedFieldRelPath()).commonPrecondition(draft.commonPrecondition())
+            .alternatives(draft.alternatives()).additionalParserInformation("@SuppressWarning(MVK_INVALID_DATE_TYPE)")
+            .messages(draft.messages()).build()
         val result = validator.check(base, suppressed)
         assertFalse(result.ok())
         assertTrue(result.diagnostics().any { it.code().orElse("") == "MVK_INVALID_SUPPRESSED_WARNING" }) {

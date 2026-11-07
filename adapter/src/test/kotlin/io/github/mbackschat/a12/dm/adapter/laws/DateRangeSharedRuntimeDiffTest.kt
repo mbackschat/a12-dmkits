@@ -11,8 +11,10 @@ import org.junit.jupiter.api.TestInstance
 
 /**
  * An interpreted DateRange is converted under its own declared format, then rendered, checked and completed under the
- * runtime format its class shares: the first declaration of the same year interpretation and additional-check flag
- * (KERNEL-FINDINGS KF540, a12-kernel-lean SPEC-2026-10-09-12; the order-only control is [DateRangeSharedFormatOrderDiffTest]).
+ * runtime format its class shares: the first declaration of the same year interpretation (KERNEL-FINDINGS KF540,
+ * a12-kernel-lean SPEC-2026-10-09-12; the order-only control is [DateRangeSharedFormatOrderDiffTest]). Through kernel
+ * 31.1.1 the additional-check flag was part of the class too; since 31.2 it is not (KF677), so the flagged month pair
+ * below shares the format of the first declaration of its interpretation like any other.
  *
  * Every admitted format/separator pair is declared under FROM and under TO, plus a FROM/TO month pair with the pre-1900
  * check and a standard month control, and each source feeds its start year, end year and end day. Three declaration
@@ -74,6 +76,7 @@ class DateRangeSharedRuntimeDiffTest {
                 for (source in sources) cover.dateRangeField(source.name) { range ->
                     range.format(source.profile.format).separator(source.profile.separator)
                     source.interpretation?.let { range.interpretationOfYear(it) }
+                    @Suppress("DEPRECATION") // the retired flag no longer splits a class, which this measures
                     if (source.flagged) range.rejectBefore1900()
                 }
                 cover.dateRangeField("CopyIntoTo") { it.format("dd.MM").separator("-").interpretationOfYear(TO) }
@@ -170,7 +173,7 @@ class DateRangeSharedRuntimeDiffTest {
             "dotted-first: a year-only source ends on day 1" to outcome(dotted, "ordered", "YrFromEndDay"),
             "month-first: a dotted source ends on its month's last day" to outcome(month, "ordered", "DotFromEndDay"),
             "month-first: a year-only source ends on day 31" to outcome(month, "ordered", "YrFromEndDay"),
-            "dotted-first: the flagged month class keeps its month format" to outcome(dotted, "ordered", "MonFlagFromEndDay"),
+            "dotted-first: the flagged month source shares the dotted format" to outcome(dotted, "ordered", "MonFlagFromEndDay"),
             "month TO first: a dotted copy into a dotted TO target renders by month" to outcome(mixed, "ordered", "CopyIntoTo"),
             "month TO first: a month copy into a month FROM target renders dotted" to outcome(mixed, "ordered", "CopyIntoFrom"),
             "dotted-first: the dotted copy keeps its dotted rendering" to outcome(dotted, "ordered", "CopyIntoTo"),
@@ -185,7 +188,7 @@ class DateRangeSharedRuntimeDiffTest {
             "dotted-first: a year-only source ends on day 1" to "VALUE|1",
             "month-first: a dotted source ends on its month's last day" to "VALUE|31",
             "month-first: a year-only source ends on day 31" to "VALUE|31",
-            "dotted-first: the flagged month class keeps its month format" to "VALUE|31",
+            "dotted-first: the flagged month source shares the dotted format" to "VALUE|1",
             "month TO first: a dotted copy into a dotted TO target renders by month" to "VALUE|03/10",
             "month TO first: a month copy into a month FROM target renders dotted" to "VALUE|01.03-31.10",
             "dotted-first: the dotted copy keeps its dotted rendering" to "VALUE|01.03-31.10",

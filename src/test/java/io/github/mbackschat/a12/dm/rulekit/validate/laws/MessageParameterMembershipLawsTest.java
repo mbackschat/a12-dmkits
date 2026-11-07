@@ -138,7 +138,8 @@ class MessageParameterMembershipLawsTest {
         expected.put("an ABSOLUTE path", "INVALID_FIELD");
         // …and a step ABOVE the root group has a class of its own — measured from a rule in a root group,
         // which is the only depth this row covers.
-        expected.put("a path stepping UP", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS");
+        // From a root-level rule the step reaches the model root, so `Premium` is read as a root group (KF679).
+        expected.put("a path stepping UP", "INVALID_ROOT_GROUP");
         assertEquals(expected, actual, "which class each parameter shape draws");
     }
 

@@ -104,14 +104,16 @@ class ComputationMemberVerdictLawsTest {
     }
 
     /**
-     * Where a suppression's class stands against the texts' own: A12 renders {@code errorCodesToSuppress} as
-     * an {@code @SuppressWarning(…)} preamble in front of the generated condition and parses the two as one
-     * text ({@code ComputationSuppressionLawsTest}), so the member is not obviously beside the DSL at all.
+     * Where a suppression's class stands against the texts' own: A12 folds the legacy {@code errorCodesToSuppress}
+     * list into an {@code @SuppressWarning(…)} preamble ({@code ComputationSuppressionLawsTest}) and parses it on its own before
+     * the texts, stopping the computation's checks when it fails. A preamble that parses is transparent, so the
+     * two-entry rows (a parse failure on kernel 31.1.1) now draw the texts' own classes.
      */
     @Test
     void whereASuppressionsClassStandsAgainstTheTexts() {
         String bogus = "[\"MVK_TOTALLY_BOGUS\"]";
         String twice = "[\"MVK_INVALID_COMPARE_DEC_PLACES\",\"MVK_INVALID_COMPARE_DEC_PLACES\"]";
+        String empty = "[\"\"]";
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("an unsupported name, sound texts — the control",
                 verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", bogus));
@@ -129,6 +131,12 @@ class ComputationMemberVerdictLawsTest {
                 verdictInto("../Weight", "FieldFilled(Base)", "[NoSuchField] + 1", twice));
         actual.put("two entries, a rounding gate in the operation",
                 verdictInto("../Weight", "FieldFilled(Base)", "RoundUpValue(Label, 2)", twice));
+        actual.put("an empty entry, sound texts — the control",
+                verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", empty));
+        actual.put("an empty entry, an operation naming nothing",
+                verdictInto("../Weight", "FieldFilled(Base)", "[NoSuchField] + 1", empty));
+        actual.put("an empty entry, a rounding gate in the operation",
+                verdictInto("../Weight", "FieldFilled(Base)", "RoundUpValue(Label, 2)", empty));
         // Each withheld text class drawn without the member, so every row above withholds a live class.
         actual.put("no suppression, an operation naming nothing",
                 verdictInto("../Weight", "FieldFilled(Base)", "[NoSuchField] + 1"));
@@ -145,6 +153,8 @@ class ComputationMemberVerdictLawsTest {
                 verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", bogus, TAB));
         actual.put("two entries, a control character in the message",
                 verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", twice, TAB));
+        actual.put("an empty entry, a control character in the message",
+                verdictInto("../Weight", "FieldFilled(Base)", "[Base] + 1", empty, TAB));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an unsupported name, sound texts — the control", "MVK_INVALID_SUPPRESSED_WARNING");
@@ -152,16 +162,20 @@ class ComputationMemberVerdictLawsTest {
         expected.put("an unsupported name, a precondition naming nothing", "MVK_INVALID_SUPPRESSED_WARNING");
         expected.put("an unsupported name, a rounding gate in the operation", "MVK_INVALID_SUPPRESSED_WARNING");
         expected.put("an unsupported name, a read of the computed field", "MVK_INVALID_SUPPRESSED_WARNING");
-        expected.put("two entries, sound texts — the control", "MVK_UNEXPECTED_TOKEN");
-        expected.put("two entries, an operation naming nothing", "MVK_UNEXPECTED_TOKEN");
-        expected.put("two entries, a rounding gate in the operation", "MVK_UNEXPECTED_TOKEN");
+        expected.put("two entries, sound texts — the control", KernelLaws.ADMITTED);
+        expected.put("two entries, an operation naming nothing", "MVK_INVALID_ENTITY");
+        expected.put("two entries, a rounding gate in the operation", "MVK_NO_NUMBER");
+        expected.put("an empty entry, sound texts — the control", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an empty entry, an operation naming nothing", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an empty entry, a rounding gate in the operation", "MVK_UNEXPECTED_TOKEN");
         expected.put("no suppression, an operation naming nothing", "MVK_INVALID_ENTITY");
         expected.put("no suppression, a precondition naming nothing", "MVK_INVALID_ENTITY");
         expected.put("no suppression, a rounding gate in the operation", "MVK_NO_NUMBER");
         expected.put("no suppression, a read of the computed field", "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD");
         expected.put("sound texts, a control character in the message — the control", "INVALID_CHARACTERS");
         expected.put("an unsupported name, a control character in the message", "MVK_INVALID_SUPPRESSED_WARNING");
-        expected.put("two entries, a control character in the message", "MVK_UNEXPECTED_TOKEN");
+        expected.put("two entries, a control character in the message", "INVALID_CHARACTERS");
+        expected.put("an empty entry, a control character in the message", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "where a suppression's class stands against the texts'");
     }
 

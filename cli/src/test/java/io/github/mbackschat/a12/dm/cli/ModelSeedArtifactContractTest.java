@@ -18,7 +18,7 @@ class ModelSeedArtifactContractTest {
 
     @Test
     void publishesTheSameDocumentShapeTheRuntimeReads(@TempDir Path dir) throws Exception {
-        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest", "--full").out());
         assertEquals("model seed", manifestVerb(manifest, "model seed").path("schema").asText());
 
         JsonNode seedContract = contract("model", "seed");

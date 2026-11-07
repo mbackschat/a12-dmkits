@@ -422,8 +422,9 @@ class A12ParseTraceTest {
         assertTrue(tally.count(Kind.CHECK) >= 100, "check-action failures traced: ${tally.kinds}")
         // Witnesses of what KF493 states, each well below the first run's count: the entity spec failing deep in a
         // path, the simple condition failing past its first token, and every switch the model says can fail.
-        assertTrue(tally.witnessed(56, 5) >= 10, "deep entity-spec failures: ${tally.witnesses[56]}")
-        assertTrue(tally.witnessed(6, 1) >= 5, "simple-condition failures past the first token: ${tally.witnesses[6]}")
+        assertTrue(tally.witnessed("entitySpec#7", 5) >= 10, "deep entity-spec failures: ${tally.witnesses["entitySpec#7"]}")
+        assertTrue(tally.witnessed("einfacheBedingung#0", 1) >= 5,
+            "simple-condition failures past the first token: ${tally.witnesses["einfacheBedingung#0"]}")
         assertEquals(FALLIBLE_SWITCHES, tally.switchesFailed, "the switches observed failing")
     }
 
@@ -522,9 +523,9 @@ class A12ParseTraceTest {
         val failure = recorder?.failure
         return when {
             code == null -> Trace(null, null)
-            lexical != null -> Trace(code, Failure(Kind.LEXICAL, "-", -1, "-", 0, false, lexical))
+            lexical != null -> Trace(code, Failure(Kind.LEXICAL, "-", null, "-", 0, false, lexical))
             failure != null -> Trace(code, failure)
-            else -> Trace(code, Failure(Kind.CHECK, code, -1, "-", 0, false), problemRange)
+            else -> Trace(code, Failure(Kind.CHECK, code, null, "-", 0, false), problemRange)
         }
     }
 
@@ -542,12 +543,15 @@ class A12ParseTraceTest {
 
     /**
      * Where a parse failed: the exception [kind], the [rule] it failed in, the ATN [decision] for a failed
-     * prediction (-1 otherwise), the offending token's type, and for a failed prediction how many tokens past its
+     * prediction (null otherwise), the offending token's type, and for a failed prediction how many tokens past its
      * start the offending token lies ([depth]).
+     *
+     * A decision is named `rule#k`, the rule's k-th decision, because the ATN's own numbering moves whenever the
+     * grammar gains a decision: kernel 31.2's `preamble` rule took number 1 and moved every later one up.
      */
-    data class Failure(val kind: Kind, val rule: String, val decision: Int, val offending: String, val depth: Int,
+    data class Failure(val kind: Kind, val rule: String, val decision: String?, val offending: String, val depth: Int,
             val atEnd: Boolean, val location: Location? = null) {
-        fun signature() = "$kind\t$rule\t${if (decision < 0) "-" else "dec $decision"}\t$offending\t" +
+        fun signature() = "$kind\t$rule\t${if (decision == null) "-" else "dec $decision"}\t$offending\t" +
             (if (kind == Kind.NO_VIABLE) "depth $depth" else "-")
 
         /** Where a syntax failure happened, as a predicted row states it; a check or lexical failure has no site. */
@@ -567,11 +571,18 @@ class A12ParseTraceTest {
                     if (offending.type == Token.EOF) offending.startIndex else offending.stopIndex + 1)
                 return when (e) {
                     is NoViableAltException -> Failure(Kind.NO_VIABLE, rule,
-                        (parser.atn.states[e.offendingState] as? DecisionState)?.decision ?: -1, type,
+                        (parser.atn.states[e.offendingState] as? DecisionState)?.let { decisionName(parser, it.decision) }, type,
                         offending.tokenIndex - e.startToken.tokenIndex, offending.type == Token.EOF, position)
-                    is InputMismatchException -> Failure(Kind.MISMATCH, rule, -1, type, 0, offending.type == Token.EOF, position)
-                    else -> Failure(Kind.OTHER, rule, -1, type, 0, offending.type == Token.EOF, position)
+                    is InputMismatchException -> Failure(Kind.MISMATCH, rule, null, type, 0, offending.type == Token.EOF, position)
+                    else -> Failure(Kind.OTHER, rule, null, type, 0, offending.type == Token.EOF, position)
                 }
+            }
+
+            /** ATN decision [decision] as `rule#k`: the k-th decision of its rule, counted in ATN order. */
+            fun decisionName(parser: Parser, decision: Int): String {
+                val rule = parser.atn.getDecisionState(decision).ruleIndex
+                val ordinal = (0 until decision).count { parser.atn.getDecisionState(it).ruleIndex == rule }
+                return "${parser.ruleNames[rule]}#$ordinal"
             }
         }
     }
@@ -591,11 +602,11 @@ class A12ParseTraceTest {
         val modelDefects = mutableListOf<String>()
         var parsed = 0
         var beyondTheParse = 0
-        val witnesses = sortedMapOf<Int, MutableList<Int>>()
+        val witnesses = sortedMapOf<String, MutableList<Int>>()
         val switchesFailed = mutableSetOf<String>()
 
         /** How many failed predictions of [decision] lay at least [depth] tokens past its start. */
-        fun witnessed(decision: Int, depth: Int) = witnesses[decision].orEmpty().count { it >= depth }
+        fun witnessed(decision: String, depth: Int) = witnesses[decision].orEmpty().count { it >= depth }
 
         fun count(kind: Kind) = kinds.getValue(kind)
 
@@ -611,9 +622,7 @@ class A12ParseTraceTest {
             }
             if (trace.code !in a12) productionMismatches += "${trace.code} not in $a12 · $condition"
             kinds[failure.kind] = count(failure.kind) + 1
-            if (failure.kind == Kind.NO_VIABLE) {
-                witnesses.getOrPut(failure.decision) { mutableListOf() } += failure.depth
-            }
+            if (failure.kind == Kind.NO_VIABLE) failure.decision?.let { witnesses.getOrPut(it) { mutableListOf() } += failure.depth }
             if (failure.rule in FALLIBLE_SWITCHES) switchesFailed += failure.rule
             signatures.getOrPut(failure.signature()) { mutableListOf() } += condition
             modelViolation(failure, trace.code)?.let { modelDefects += "$it · ${failure.signature()} · $condition" }
@@ -654,12 +663,12 @@ class A12ParseTraceTest {
          */
         val PREDICTED_ROWS = listOf(
             AFTER + "FieldFilled" to "MISMATCH feldListenBedingung at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "Valid" to "NO_VIABLE einfacheBedingung dec 6 at EOF depth 1 MVK_INCOMPLETE_INPUT",
+            AFTER + "Valid" to "NO_VIABLE einfacheBedingung dec einfacheBedingung#0 at EOF depth 1 MVK_INCOMPLETE_INPUT",
             AFTER + "RoundUpValue(Total," to "MISMATCH rundenOp at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
             AFTER + "RangeAsNumber(Code, 1," to "MISMATCH feldOpMitParams at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
             AFTER + "ValueAsDate(Estimated," to "MISMATCH tagSpec at EOF MVK_EXPECTED_TOKEN_NOT_FOUND",
-            AFTER + "Max([Total]," to "NO_VIABLE operation dec 20 at EOF depth 0 MVK_INCOMPLETE_INPUT",
-            AFTER + "AddDays(Placed," to "NO_VIABLE operation dec 20 at EOF depth 0 MVK_INCOMPLETE_INPUT",
+            AFTER + "Max([Total]," to "NO_VIABLE operation dec operation#4 at EOF depth 0 MVK_INCOMPLETE_INPUT",
+            AFTER + "AddDays(Placed," to "NO_VIABLE operation dec operation#4 at EOF depth 0 MVK_INCOMPLETE_INPUT",
             AFTER + "FieldFilled(Items*/NoSuch.)" to "MISMATCH idNameRef at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
             AFTER + "FieldFilled(Items*/Count.)" to "MISMATCH idNameRef at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
             AFTER + "FieldFilled(Items*/Lots/Qty/)" to "MISMATCH nameOhnePunkt at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
@@ -667,9 +676,9 @@ class A12ParseTraceTest {
             AFTER + "FieldFilled(${'$'}Code/)" to "MISMATCH nameOhnePunkt at KLAMMER_ZU MVK_UNEXPECTED_TOKEN",
             AFTER + "CurrentRepetition(/Order/Items, /Order/Items/Lots) > 0" to "CHECK MVK_NO_WILDCARD",
             AFTER + "CurrentRepetition(/Order/Items*, /Order/Items/Lots) > 0" to "MISMATCH groupOp at KOMMA MVK_UNEXPECTED_TOKEN",
-            AFTER + "AddDays([Premium], 1) > 0" to "NO_VIABLE datumAngabe2 dec 39 at ECKIGE_KLAMMER_AUF depth 0 MVK_UNEXPECTED_TOKEN",
+            AFTER + "AddDays([Premium], 1) > 0" to "NO_VIABLE datumAngabe2 dec datumAngabe2#0 at ECKIGE_KLAMMER_AUF depth 0 MVK_UNEXPECTED_TOKEN",
             AFTER + "RoundUpValue(Total In NoSuch) > 0" to "MISMATCH rundenOp at IN1 MVK_UNEXPECTED_TOKEN",
-            AFTER + "Abs(RuleGroup) > 0" to "NO_VIABLE operation dec 20 at REGEL_KONTEXT depth 0 MVK_UNEXPECTED_TOKEN",
+            AFTER + "Abs(RuleGroup) > 0" to "NO_VIABLE operation dec operation#4 at REGEL_KONTEXT depth 0 MVK_UNEXPECTED_TOKEN",
             "[Total] > \u0662" to "LEXICAL MVK_LEXER_STANDARD_ERROR",
             AFTER + "[Total] > Abs Qty" to "MISMATCH feldOperOp at NameOhnePunktSTRAmAnfang MVK_UNEXPECTED_TOKEN",
             AFTER + "Abs({[Total]}) > 0" to "PARSED",
@@ -681,11 +690,16 @@ class A12ParseTraceTest {
         val MVK = Regex("MVK_[A-Z0-9_]+")
 
         /** The adaptive decisions whose alternatives share no prefix (proposal §2.4). */
-        val PREDICATE_ONLY = setOf(0, 4, 7, 9, 16, 23, 25, 31, 37, 38, 39, 40, 41, 57, 59, 69)
+        val PREDICATE_ONLY = setOf("bedingung_start#0", "teilBedingung#1", "wertListenSpezifier#0", "feldOderString#0",
+            "operation#0", "operation#7", "einfacheOperation#0", "commonKonstante#1", "timeKonstrukt#2", "datumAngabe#0",
+            "datumAngabe2#0", "datumBereichAngabe#0", "datumParam#0", "regelKontextEntity#0", "regelKontextEntity#2",
+            "semanticIndex#0")
 
         /** The adaptive decisions whose alternatives share a prefix, with the proposal's window where it is bounded. */
-        val OVERLAP = mapOf(3 to null, 6 to 3, 17 to null, 19 to null, 20 to 2, 24 to null, 55 to null, 56 to null,
-            58 to 2, 63 to 3, 66 to 3, 71 to null, 74 to 2, 79 to 2, 81 to 2, 83 to 2)
+        val OVERLAP = mapOf("teilBedingung#0" to null, "einfacheBedingung#0" to 3, "operation#1" to null,
+            "operation#3" to null, "operation#4" to 2, "operation#8" to null, "entitySpec#6" to null, "entitySpec#7" to null,
+            "regelKontextEntity#1" to 2, "relativeUp#0" to 3, "relUp#0" to 3, "entityHModel#1" to null,
+            "formularEbeneLfdNr#0" to 2, "lfdNrSpezifier#1" to 2, "zeileSpezifier#1" to 2, "idName#0" to 2)
 
         const val INTERNAL_ERROR = "MVK_INTERNAL_ERROR"
 
@@ -711,7 +725,7 @@ class A12ParseTraceTest {
             }
             if (code != expected) return "class $code, the model says $expected"
             if (failure.kind != Kind.NO_VIABLE) return null
-            val d = failure.decision
+            val d = failure.decision ?: return "a failed prediction with no decision state"
             return when {
                 d in PREDICATE_ONLY -> if (failure.depth == 0) null else "a prefix-free decision failed past its start"
                 d in OVERLAP -> OVERLAP.getValue(d)?.let { window ->

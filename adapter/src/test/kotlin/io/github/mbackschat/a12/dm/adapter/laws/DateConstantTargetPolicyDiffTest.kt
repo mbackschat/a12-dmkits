@@ -18,26 +18,14 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Tri-engine differential — a bare Date CONSTANT is not exempt from the target's opt-in pre-1900 policy.
- * a12-kernel-lean's `SPEC-2026-09-01-01`, which supersedes their earlier "a Date constant has no target check at
- * either time" claim, reproduced here on an independently authored carrier.
+ * Tri-engine differential — a bare Date CONSTANT on a target declaring the pre-1900 check, and its unchecked twin.
  *
- * **What was and was not already ours.** [DateBefore1900DiffTest] locks the check on a nonrepeatable target and
- * [RepeatableCheckedDateTargetDiffTest] locks it per instance on a repeatable one — but both drive the target
- * from a FIELD (a copy, and a `FirstFilledValue` selection). A constant is a different operand class: it reaches
- * the target through the model's own admission gate rather than through a document cell, and our
- * [ConstantTargetFormatLawsTest] rows show that gate has its own rules — the declared FORMAT decides admission
- * and the store, and components the format omits are dropped with no signal at all. Whether a target's *value*
- * policy still applies after that rendering is therefore not a corollary of either lock.
- *
- * **The pair is the whole instrument.** Both targets are ISO Date declarations differing in exactly one builder
- * call, and the identical constant goes into both from two computations of one model on one document. A single
- * guarded target answering ERRORED would be consistent with the constant simply not being storable; the
- * unguarded twin answering a value on the same run is what makes it the policy.
- *
- * **The bucket is asserted beside the retained attempt, not instead of it.** The claim is that the guarded target
- * is ERRORED and still carries `1899-12-31` — never cleared — so a signature that dropped either half would pass
- * on a clear. A planted mutant found exactly that hole in the sibling file on 2026-08-28.
+ * Through kernel 31.1.1 the constant was NOT exempt from the target's opt-in policy (a12-kernel-lean's
+ * `SPEC-2026-09-01-01`): the checked target was ERRORED retaining `1899-12-31` while its twin held the value.
+ * Kernel 31.2 stopped evaluating `youngerThan1900Check` (A12K-4073,
+ * [KF677](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf677)), so both targets now hold the value on
+ * every engine. The pair stays the instrument: two ISO Date declarations differing in exactly one builder call,
+ * the identical constant into both from two computations of one model on one document.
  *
  * Own domain (consumer-electronics warranty registration).
  */
@@ -57,7 +45,7 @@ class DateConstantTargetPolicyDiffTest {
         const val BOUNDARY = "/Warranty/Claims/BoundaryOn"
         const val REFERENCE = "/Warranty/Reference"
 
-        /** Below 1900 and well above the always-on 1583-10-16 Gregorian floor, so only the opt-in check can bite. */
+        /** Below 1900 and well above the always-on 1583-10-16 Gregorian floor, so only the retired check could bite. */
         val PRE_1900: LocalDate = LocalDate.of(1899, 12, 31)
 
         /** The threshold itself — the control that keeps the guard from reading as a blanket refusal. */
@@ -68,6 +56,7 @@ class DateConstantTargetPolicyDiffTest {
     }
 
     /** Two ISO Date targets differing in exactly one builder call, plus the boundary control beside them. */
+    @Suppress("DEPRECATION") // the retired check is what this measures
     private val base = DocumentModelDraft.named("warranty-date-constant-policy").locale("en_US")
         .rootGroup("Warranty") { warranty ->
             warranty.stringField("Reference") { }
@@ -105,10 +94,10 @@ class DateConstantTargetPolicyDiffTest {
             "a refused model computes nothing, which is indistinguishable from a rejected value")
 
     @Test
-    fun theSameConstantIsErroredOnTheGuardedTargetAndAValueOnItsUnguardedTwin() {
+    fun theSameConstantIsAValueOnTheCheckedTargetAsOnItsUncheckedTwin() {
         val expected = (1..ROWS).flatMap { row ->
             listOf(
-                outcomeKey(GUARDED, row) to "ERRORED|1899-12-31",
+                outcomeKey(GUARDED, row) to "VALUE|1899-12-31",
                 outcomeKey(OPEN, row) to "VALUE|1899-12-31",
                 outcomeKey(BOUNDARY, row) to "VALUE|1900-01-01",
             )
@@ -191,23 +180,6 @@ class DateConstantTargetPolicyDiffTest {
                     claims.timeField("StartsAt") { it.format(format) }
                 }
             }.build().toJson()
-
-    /**
-     * The rejected target is ERRORED rather than CLEARED and keeps the exact attempt, rendered in its own
-     * declared format. Asserted separately from the pair above so the distinction has a row of its own: a
-     * consumer that collapsed the rejection into a clear would lose the value the user typed nothing to produce.
-     */
-    @Test
-    fun theRejectedConstantIsRetainedAsAnErroredAttemptRatherThanCleared() {
-        val guarded = RuntimeLaws.compute(modelJson, kernelDocument())
-            .filter { it.path() == GUARDED }
-        assertEquals(ROWS, guarded.size, "one outcome per instantiated row")
-        assertEquals(
-            List(ROWS) { "errored=true cleared=false value=1899-12-31" },
-            guarded.map { "errored=${it.errored()} cleared=${it.cleared()} value=${it.value().orElse("<none>")}" },
-            "the guarded target must retain the attempt in its ISO declaration, and must not be a clear",
-        )
-    }
 
     // ---- the instrument ----
 

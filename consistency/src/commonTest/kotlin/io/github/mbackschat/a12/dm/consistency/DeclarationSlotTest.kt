@@ -329,10 +329,32 @@ class DeclarationSlotTest {
         )
     }
 
-    /** A computation carries neither member, and one carrying neither is admitted — so nothing is reported. */
+    /**
+     * A computation's optional `errorCode` (kernel 31.3.1, [KF678]): absent codes the generated validation by
+     * the computation's name, so only a blank code and a list — the two shapes A12 refuses — are reported.
+     */
     @Test
-    fun aComputationHasNoErrorCodeSlotToCheck() {
-        assertEquals(listOf(), codesFor("Computation", "PriceCheck", BOTH), "a computation owes no code")
+    fun aComputationsErrorCodeIsOptionalButNeverBlank() {
+        fun withCode(raw: String) = codesFor("Computation", "PriceCheck", BOTH, slots = """"errorCode":$raw""")
+        val actual = mutableMapOf<String, List<String>>()
+        actual["absent — the name codes it"] = codesFor("Computation", "PriceCheck", BOTH)
+        actual["a code"] = withCode(""""PRICE_MISMATCH"""")
+        actual["an empty code"] = withCode("""""""")
+        actual["a blank code"] = withCode(""""  """")
+        actual["a number, coerced"] = withCode("7")
+        actual["an explicit null, absence"] = withCode("null")
+        actual["a list"] = withCode("""["PRICE_MISMATCH"]""")
+
+        val expected = mapOf(
+            "absent — the name codes it" to listOf(),
+            "a code" to listOf(),
+            "an empty code" to listOf("MVK_ERROR_CODE_MISSING"),
+            "a blank code" to listOf("MVK_ERROR_CODE_MISSING"),
+            "a number, coerced" to listOf(),
+            "an explicit null, absence" to listOf(),
+            "a list" to listOf(CK_MODEL_NOT_BUILDABLE),
+        )
+        assertEquals(expected, actual, "a computation's error code slot, row for row with ComputationErrorCodeLawsTest")
     }
 
     /** A rule whose non-message slots are exactly [slots], so one member moves per row. */

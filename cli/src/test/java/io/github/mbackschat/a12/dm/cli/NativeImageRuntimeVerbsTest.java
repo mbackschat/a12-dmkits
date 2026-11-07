@@ -54,7 +54,7 @@ class NativeImageRuntimeVerbsTest {
 
     @Test
     void nativeManifestKeepsTheRuntimeVerbs() throws Exception {
-        CliTestSupport.Result res = CliTestSupport.runNative("manifest");
+        CliTestSupport.Result res = CliTestSupport.runNative("manifest", "--full");
         assertEquals(0, res.code(), res::err);
         Set<String> verbs = manifestVerbs(res.out());
         for (String verb : INTERPRETER_VERBS) {
@@ -83,8 +83,8 @@ class NativeImageRuntimeVerbsTest {
     @Test
     void noProfileOffersTheRetiredKernelFlag() throws Exception {
         // The --kernel eval flag was retired: it appears on NO runtime verb, on either profile's manifest.
-        String nativeManifest = CliTestSupport.runNative("manifest").out();
-        String jvmManifest = CliTestSupport.run("manifest").out();
+        String nativeManifest = CliTestSupport.runNative("manifest", "--full").out();
+        String jvmManifest = CliTestSupport.run("manifest", "--full").out();
         for (String verb : RUNTIME_VERBS) {
             Set<String> jvmFlags = manifestVerbFlags(jvmManifest, verb);
             Set<String> nativeFlags = manifestVerbFlags(nativeManifest, verb);

@@ -13,17 +13,13 @@ package io.github.mbackschat.a12.dm.consistency
  * this file and fails the build on any drift.
  */
 internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
-    "MVK_ADDITIONAL_CHECK_INVALID" to Corrective(
-        fix = "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our `dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared FORMAT to carry a YEAR. Over the kernel's admitted format vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM`, `dd.MM.` and `HH:mm:ss` — identically on both kinds. So either declare a year-bearing format or drop the check — it is not admitted-and-inert on a year-free declaration, so there is no way to keep both. An INCOMPLETE format is not the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted. A DATERANGE is EXEMPT from this gate — every admitted (format, separator) pair takes the check, the year-free ones included — so if a year-free period is what you need, declare it as a range.",
-        meaning = "The kernel gates the additional date check on the declared format's YEAR component rather than on the field's kind — except that the DATERANGE kind is not gated at all — so the code means the format and the check disagree, never that the check is unsupported for this field type.",
-    ),
     "MVK_ERROR_FIELD_AND_ITERATION_INVALID" to Corrective(
-        fix = "Read the error field itself per row, unstarred, somewhere in the condition — most often as the guard: FieldFilled(<the error field>) And … instead of a guard on a sibling field of the same row. Or drop the per-row read, so the rule no longer iterates.",
-        meaning = "A per-row (unstarred) read makes the rule run once per repetition, and the kernel then needs a reference NAMING the error field — the field or a group containing it — that reads the same repetition per row. As KERNEL-FINDINGS KF417 measures, a starred list such as Sum(Rows*/Field) names the field without saying which row, so it does not count. A computation has no error field and is not affected.",
+        fix = "Read the error field itself per row, unstarred, somewhere in the condition — most often as the guard: FieldFilled(<the error field>) And … instead of a guard on a sibling field of the same row. Or drop the per-row read, so the rule stops iterating.",
+        meaning = "A per-row (unstarred) read makes the rule run once per repetition, and the kernel then needs a reference NAMING the error field — the field or a group containing it — that reads the same repetition per row. A starred list such as Sum(Rows*/Field) names the field without saying which row, so it does not count. A computation has no error field and is not affected.",
     ),
     "MVK_ERROR_FIELD_NOT_IN_RULEGROUP" to Corrective(
         fix = "The declaration ITERATES and writes outside its own group, so there are three repairs and the first is usually the smallest: DECLARE it in a group that contains the field it writes — an ancestor will do, containment is what the kernel asks for, not membership of the repeating group. Or write into a field under the declaring group. Or stop the operand iterating: a STAR aggregate that stars EVERY repeatable level it crosses (Sum(Group*/Field), Sum(Outer*/Inner*/Field)) reads no row, where any level left unstarred is what makes it iterate. That lifts the demand unless the computed field itself repeats, which iterates with no operand at all.",
-        meaning = "A declaration that iterates has to say which repetition its result belongs to, and the kernel reads that from PATH CONTAINMENT: the written field must lie at or below the declaring group. It gates both constructs, but they differ in what derives the iteration — an unstarred per-row read does so for either, while a per-row COMPUTED field derives it with no operand at all and a per-row ERROR field does not (measured 2026-09-15, KERNEL-FINDINGS KF212). Crossing a root boundary is not itself a refusal.",
+        meaning = "A declaration that iterates has to say which repetition its result belongs to, and the kernel reads that from PATH CONTAINMENT: the written field must lie at or below the declaring group. It gates both constructs, but they differ in what derives the iteration — an unstarred per-row read does so for either, while a per-row COMPUTED field derives it with no operand at all and a per-row ERROR field does not. Crossing a root boundary is not itself a refusal.",
     ),
     "MVK_ERROR_FIELD_NOT_REFERENCED" to Corrective(
         fix = "Name the rule's error field somewhere in the condition. Most often this is a model-level aggregate rule whose condition only references the aggregated per-row path — reference the error field by comparing the aggregate AGAINST it (`[FeeCap] < Sum(Lines*/Amount)` references FeeCap) or by guarding with `FieldFilled(<the error field>) And …`.",
@@ -31,11 +27,11 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD" to Corrective(
         fix = "Drop the PROJECTION from the read of the computed field, not just the reference: a computation may not read its own computed field through an enum category (`[Target -> Cat]`) or a semantic index (`[Group/Target For \"key\"]`), in an operation OR a precondition. Compute from a DIFFERENT field's projection instead (`[Source -> Cat]` is accepted, including as a FirstFilledValue entry), or read the same indexed field into a different target. Removing only the projection still leaves the plain self-reference (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD), so the operand has to change, not its form.",
-        meaning = "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD (\"the calculated field must not specify a semantic index or a category access\") is the PROJECTED half of the calculated-field-reference ban, and it pre-empts the plain half when both readings occur in one operation — so this code identifies the reading MODE, while the plain code is what an unprojected self-read reports (kernel-measured, KF182).",
+        meaning = "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD (\"the calculated field must not specify a semantic index or a category access\") is the PROJECTED half of the calculated-field-reference ban, and it pre-empts the plain half when both readings occur in one operation — so this code identifies the reading MODE, while the plain code is what an unprojected self-read reports.",
     ),
     "MVK_ERROR_WRONG_ROUNDING_MODE" to Corrective(
         fix = "Give EVERY alternative a tolerance band (toleranceRangeOp DiffersWithToleranceRange1, 2, 5 or 10), or keep the rounding mode Exact. The mode is never wrong by itself: it is refused only beside an alternative without a band, in any position. Before adding the band, check that rounding is what you want: RoundUp/RoundDown round the WRITTEN value to a whole number (RoundUp toward +infinity, RoundDown toward -infinity), not to the computed field's digits; to round to digits, keep Exact and round inside the operation (RoundUp([op], 2)).",
-        meaning = "A12's check (\"When using exact calculation comparisons only the rounding mode 'exact' is allowed\") judges a PAIR: an alternative without a band compares the computed field exactly, and A12 refuses a non-Exact mode against that comparison, while the same mode beside a band is admitted (kernel-measured, KF297; what the admitted pair writes: KF474).",
+        meaning = "A12's check (\"When using exact calculation comparisons only the rounding mode 'exact' is allowed\") judges a PAIR: an alternative without a band compares the computed field exactly, and A12 refuses a non-Exact mode against that comparison, while the same mode beside a band is admitted.",
     ),
     "MVK_FIELDNAME_NOT_UNIQUE" to Corrective(
         fix = "The bare name resolved through the model-wide fallback, which found MORE THAN ONE field with that short name and will not choose between them. Qualify the reference instead of declaring anything: give it the ABSOLUTE path of the field you mean (a leading `/`, e.g. `/Order/Warehouse/Code`). This is the OPPOSITE corrective to MVK_INVALID_ENTITY, which means no field carries the name at all — there the field is missing, here there are too many, and turning `fieldRefByShortNameAllowed` off converts this code into that one rather than fixing the reference.",
@@ -43,19 +39,19 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES" to Corrective(
         fix = "An enum's display labels are STARTED and not finished: top each value's `labels` up so every value carries a NONBLANK text for every declared locale, or remove the label entries altogether — an unlabelled enum is accepted. Blanking a text does not remove it. This most often surfaces right after adding a locale (`config modify --add-locale`): do the `--add-locale` and the per-value label top-ups in ONE `apply` so the single terminal gate sees a consistent model.",
-        meaning = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified together\") is armed by the PRESENCE of a label entry, in any locale, not by coverage: a value that carries one owes a nonblank text for every declared locale, so a label written only for an UNDECLARED locale arms it too, and a blank text is refused (KERNEL-FINDINGS KF321, KF655). A value that carries no `labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.",
+        meaning = "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified together\") is armed by the PRESENCE of a label entry, in any locale, not by coverage: a value that carries one owes a nonblank text for every declared locale, so a label written only for an UNDECLARED locale arms it too, and a blank text is refused. A value that carries no `labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.",
     ),
     "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE" to Corrective(
         fix = "Keep exactly one RepetitionNotUnique leaf in the condition. Put every component of the composite repetition key into that one call, then combine that leaf with ordinary conditions as needed.",
         meaning = "The kernel's structural model gate permits at most one RepetitionNotUnique node in one condition tree. The restriction counts nodes, not key fields and not And/Or nesting; one leaf may carry a composite key and otherwise composes normally.",
     ),
     "MVK_INVALID_COMPARE_DEC_PLACES" to Corrective(
-        fix = "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries a known SIGNED scale or unknown plus an independent multiplicative-constant capability: when known scales differ, only a capable SMALLER-scale side may be padded; an unknown scale rejects. ORDERING (< <= > >=) is exempt. THREE contexts trigger this code: (1) a COMPUTED FIELD whose declared scale is incompatible with its expression (e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — re-scale the computed field or explicitly round the expression, doing both edits in ONE `apply` so the terminal gate sees a consistent model; expect a SECOND rejection to surface if the operation also reads its own computed field, because this scale comparison is decided ahead of that refusal; (2) numeric == / != with incompatible derived scales — round one side to a known compatible scale, or accept it with allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES), @UnterdrueckeWarnung in a German-condition model; `rule modify`, which takes no spec, carries it as that directive written at the head of `--condition`); (3) a POWER, whose scale is DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only for a scale-0 base under a nonnegative literal exponent, never the base's own scale, so a decimal-scale base, a non-literal exponent such as a field or aggregate, and a negative literal exponent all leave it unknown; ordering the power instead of comparing it for equality is usually the smallest repair.",
+        fix = "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries a known SIGNED scale or unknown plus an independent multiplicative-constant capability: when known scales differ, only a capable SMALLER-scale side may be padded; an unknown scale rejects. ORDERING (< <= > >=) is exempt. THREE contexts trigger this code: (1) a COMPUTED FIELD whose declared scale is incompatible with its expression (e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — re-scale the computed field or explicitly round the expression, doing both edits in ONE `apply` so the terminal gate sees a consistent model; expect a SECOND rejection to surface if the operation also reads its own computed field, because this scale comparison is decided ahead of that refusal; (2) numeric == / != with incompatible derived scales — round one side to a known compatible scale, or accept it with allowDifferingDecimals:true on the rule spec (a suppressible kernel warning — it prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES), @UnterdrueckeWarnung in a German-condition model; `rule modify`, which takes no spec, carries it as that directive written at the head of `--condition`); (3) a POWER, whose scale is DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only for a scale-0 base under a nonnegative literal exponent, never the base's own scale, so a decimal-scale base, a non-literal exponent such as a field or aggregate, and a negative literal exponent all leave it unknown; ordering the power instead of comparing it for equality is usually the smallest repair.",
         meaning = "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires when numeric == / != cannot reconcile the operands' derived signed-scale/capability summaries, OR when a computed field is incompatible with its expression. It is not specific to any one operator (Sum, Equal, …); the scale-coupling is the constraint, so the corrective is context-dependent.",
     ),
     "MVK_INVALID_COMPARE_TO_DATE" to Corrective(
         fix = "Check the LITERAL before the field. A double-quoted literal whose CONTENT parses as a date is a TEMPORAL constant — `\"05.03.2024\"` is one — and it reports this date class against whatever it meets, including a String, Enumeration or Number field with nothing temporal about it. So the code does NOT imply either side is a date. If the field really is textual, stop the literal looking like a date rather than changing the field.",
-        meaning = "This is the kernel's COMPARISON vocabulary, not an assignment-specific class: it fires the same way on a plain rule condition, inside a Having filter, and on a computation's constant assignment. Which class a wrong-kind constant draws is an ordered ladder over the (constant, field) PAIR rather than a function of the field: a BOOLEAN field reports MVK_INVALID_COMPARE_TO_YESNO and a CONFIRM one MVK_INVALID_COMPARE_TO_YES for any constant at all; failing those, a temporal constant reports THIS code against every remaining kind; only then does the field's own kind decide. Measured in KERNEL-FINDINGS entry KF257, which carries the ladder and its controls.",
+        meaning = "This is the kernel's COMPARISON vocabulary, not an assignment-specific class: it fires the same way on a plain rule condition, inside a Having filter, and on a computation's constant assignment. Which class a wrong-kind constant draws is an ordered ladder over the (constant, field) PAIR rather than a function of the field: a BOOLEAN field reports MVK_INVALID_COMPARE_TO_YESNO and a CONFIRM one MVK_INVALID_COMPARE_TO_YES for any constant at all; failing those, a temporal constant reports THIS code against every remaining kind; only then does the field's own kind decide.",
     ),
     "MVK_INVALID_ENTITY" to Corrective(
         fix = "The group or field name in the condition could not be resolved in the rule's scope. Use its ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative name — a bare name binds against the rule's OWN group first, and reaches ANY other group (an ancestor's field included: there is no upward search) only through the model-wide fallback, which needs `fieldRefByShortNameAllowed` AND a unique match. If the name is already correct, check the rule's iteration scope contains it: a per-row field needs the rule to iterate over its repeatable group (set the rule group to that group's PARENT, error field inside).",
@@ -66,7 +62,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "MVK_INVALID_LENGTH_OF_RAW_TYPE (\"conditions using the length of a field which defines 'no value validation' must have following form: 'Length(<field>) > <constant>'\"): the kernel accepts exactly that comparison as a meta-length restraint (codegen removes the rule and tightens the generated max length); every other Length use of a raw-type field is rejected because its value is never available to evaluation.",
     ),
     "MVK_INVALID_PATTERN" to Corrective(
-        fix = "Use a Java-valid regular expression that also avoids the kernel 30.8.x admission restrictions: possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — uppercase `\\P` is admitted), and nested unescaped `[` class syntax. The gate reads the pattern's SOURCE TEXT, so escaping buys no exemption: `a\\*+` is refused for spelling `*` before `+`, though the pattern it means is ordinary. Passing this gate does NOT prove JavaScript portability.",
+        fix = "Use a Java-valid regular expression that also avoids A12's admission restrictions: possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — uppercase `\\P` is admitted), and nested unescaped `[` class syntax. The gate reads the pattern's SOURCE TEXT, so escaping buys no exemption: `a\\*+` is refused for spelling `*` before `+`, though the pattern it means is ordinary. Passing this gate does NOT prove JavaScript portability.",
         meaning = "The kernel first requires Java Pattern syntax, then applies an additional textual admission gate. MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid kernel-rejected form; it is not a general cross-runtime portability check. A DECLARED field pattern raises MVK_PATTERN_INVALID instead — the same two words swapped, and a different code.",
     ),
     "MVK_INVALID_RAW_TYPE" to Corrective(
@@ -94,7 +90,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "MVK_NO_WILDCARD fires when a repeatable group is referenced from a non-iterating scope: the kernel expected either a flattening `*` (aggregates) or a rule that iterates over that group (per-repetition predicates). The required form depends on the operator, so this code is not specific to any single one.",
     ),
     "MVK_OPTIONAL_DATE_TYPE_INVALID" to Corrective(
-        fix = "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) requires the declared FORMAT to be a COMPLETE date and nothing further. Over the kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and `yyyyMMdd`; every component-omitting format is refused, and so is the instant `yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of those three, or leave the precision at its FULL default — the precision is what lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able to spell all of them. Do NOT copy the format out of this rejection: it echoes the spelling in GERMAN pattern letters (`JJJJ-MM` for `yyyy-MM`, `MM-TT` for `MM-dd`) in every locale, and those are not declarable.",
+        fix = "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) requires the declared FORMAT to be a COMPLETE date and nothing further. Over the kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and `yyyyMMdd`; every component-omitting format is refused, and so is the instant `yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of those three, or leave the precision at its FULL default — the precision is what lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able to spell all of them.",
         meaning = "The kernel requires a complete date format before it will accept a partial-precision marker, and reports the conflict against the format rather than against the precision — the verdict is the same for all three partial values, so the code identifies the mismatch and not which side to edit.",
     ),
     "MVK_PARAMSIZE_INVALIDGN" to Corrective(
@@ -102,7 +98,7 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
         meaning = "The count admits either two or more distinct groups or a single STARRED repeatable group, so \"there must be more than one group\" names only one of the two ways out. Which code a sole unstarred repeatable operand draws depends on the rule's anchoring: MVK_NO_WILDCARD when the error field sits outside that group, this code when it sits inside — and the star satisfies both.",
     ),
     "MVK_PATTERN_INVALID" to Corrective(
-        fix = "A DECLARED field pattern (`StringType.pattern`, and the same slot on a type definition) goes through the identical gate as a condition's pattern literal: valid Java Pattern syntax, then the kernel's A12K-30 admission blacklist read on the pattern's SOURCE TEXT — possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only), and nested unescaped `[`. Because it reads text, escaping buys no exemption: `a\\*+` is refused for spelling `*` before `+`.",
+        fix = "A DECLARED field pattern (`StringType.pattern`, and the same slot on a type definition) goes through the identical gate as a condition's pattern literal: valid Java Pattern syntax, then A12's admission blacklist read on the pattern's SOURCE TEXT — possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only), and nested unescaped `[`. Because it reads text, escaping buys no exemption: `a\\*+` is refused for spelling `*` before `+`.",
         meaning = "The DECLARED-field twin of MVK_INVALID_PATTERN, and a DIFFERENT code — the same two words swapped, so a consumer keying on the condition's code sees nothing here. Like it, it can mean invalid Java syntax or a Java-valid form the admission gate refuses, and passing it does not prove JavaScript portability.",
     ),
     "MVK_REPEATABLE_GROUP_MISSING" to Corrective(
@@ -115,198 +111,202 @@ internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     ),
     "RK_BOUND_SIGNED_ZERO" to Corrective(
         fix = "write a bound that keeps its value at the declared fractional digits — 0 itself, or allow a fractional digit so a small negative bound does not round to -0.",
-        meaning = "A12's sentence \"The value '0' as well as positive values must be provided without a sign.\": a Number's `minValue` or `maxValue` prints as `-0`, A12 rounding it half away from zero to a whole number when no fractional digit is allowed (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The value '0' as well as positive values must be provided without a sign.\": a Number's `minValue` or `maxValue` prints as `-0`, A12 rounding it half away from zero to a whole number when no fractional digit is allowed, and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
     ),
     "RK_BOUND_TOO_MANY_DIGITS" to Corrective(
         fix = "write the bound with 15 digits or fewer, counting a leading 0; drop precision the field's fractional digits cannot hold.",
-        meaning = "A12's sentence \"Only values with up to 15 digits are allowed.\": a Number's `minValue` or `maxValue`, as A12 prints it, has more than 15 digits, a leading `0` counted (KERNEL-FINDINGS KF569), and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values with up to 15 digits are allowed.\": a Number's `minValue` or `maxValue`, as A12 prints it, has more than 15 digits, a leading `0` counted, and it withholds `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE`, where the portable checker names the sentence by this code.",
     ),
     "RK_CHILD_NAME_DUPLICATE" to Corrective(
         fix = "rename one of the two; a group may hold one child of each name, whatever its kind.",
-        meaning = "A12's sentence \"Cannot have two child elements with the same name […] in group '…'.\": a group holds two children of one name, of any kinds; the comparison is case-sensitive. A12's converter keeps the first, states this sentence at the later one and checks the model without it or anything beneath it (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Cannot have two child elements with the same name […] in group '…'.\": a group holds two children of one name, of any kinds; the comparison is case-sensitive. A12's converter keeps the first, states this sentence at the later one and checks the model without it or anything beneath it, where the portable checker names the sentence by this code.",
     ),
     "RK_COMPUTATION_OPERATION_EMPTY" to Corrective(
         fix = "write the operation of every alternative.",
-        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, `null` or absent (KERNEL-FINDINGS KF643), stated once however many are. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"One of the computation operations is empty.\": an alternative's `operation` is the empty string, `null` or absent, stated once however many are. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_EMPTY" to Corrective(
         fix = "name the field the computation writes.",
-        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it over the model as read, beside its converter's \"The computed field was not specified.\" (`RK_COMPUTED_FIELD_NOT_SPECIFIED`; KERNEL-FINDINGS KF626, KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The computed field is not set properly.\": a computation's `computedFieldRelPath` is the empty string. A12 states it over the model as read, beside its converter's \"The computed field was not specified.\" (`RK_COMPUTED_FIELD_NOT_SPECIFIED`), where the portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_NOT_FOUND" to Corrective(
         fix = "point `computedFieldRelPath` at a field the model declares, relative to the computation.",
-        meaning = "A12's sentence \"The computed field \"…\" was not found.\": a computation's `computedFieldRelPath` resolves to no field or group, a rule's or a computation's path included (KERNEL-FINDINGS KF674). A12's converter states it with the resolved path and checks the model without the computation (KERNEL-FINDINGS KF652). A path that climbs past the root or starts with `/` is refused by the reader instead, and one naming a field the converter itself leaves out leaves no model. The portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The computed field \"…\" was not found.\": a computation's `computedFieldRelPath` resolves to no field, a group's, a rule's or a computation's path included. A12's converter states it with the resolved path and checks the model without the computation. A path that climbs past the root or starts with `/` is refused by the reader instead, and one naming a field the converter itself leaves out leaves no model. The portable checker names the sentence by this code.",
     ),
     "RK_COMPUTED_FIELD_NOT_SPECIFIED" to Corrective(
         fix = "name the field the computation writes.",
-        meaning = "A12's sentence \"The computed field was not specified.\": a computation's `computedFieldRelPath` is empty. A12's converter states it and checks the model without the computation, beside the basic sentence `RK_COMPUTED_FIELD_EMPTY` (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The computed field was not specified.\": a computation's `computedFieldRelPath` is empty. A12's converter states it and checks the model without the computation, beside the basic sentence `RK_COMPUTED_FIELD_EMPTY`, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_ERROR_TEXT_MISSING" to Corrective(
         fix = "add an error text for that locale.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': No error text was specified for locale 'l'.\": a document uniqueness criterion has no text, or an empty one, for a locale the model declares; a blank text is a text (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': No error text was specified for locale 'l'.\": a document uniqueness criterion has no text, or an empty one, for a locale the model declares; a blank text is a text, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_ERROR_TEXT_PARAMETER" to Corrective(
         fix = "name only the criterion's own fields in its text, by full path.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Invalid error text parameter for locale 'l'. Only fields referenced in the Criterion are allowed.\": a criterion text names, between dollars, something other than one of the criterion's own fields by its full path, with or without `.value`; each such parameter draws the sentence (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Invalid error text parameter for locale 'l'. Only fields referenced in the Criterion are allowed.\": a criterion text names, between dollars, something other than one of the criterion's own fields by its full path, with or without `.value`; each such parameter draws the sentence, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_FIELDS_EMPTY" to Corrective(
         fix = "name at least one field of the model by its full path, such as `/Policy/PolicyNo`.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Must specify at least one field.\": a document uniqueness criterion names no field (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Must specify at least one field.\": a document uniqueness criterion names no field, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_FIELD_NOT_FOUND" to Corrective(
         fix = "name an existing field by its full path, without `.value`.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' does not exist in the Document Model.\": a criterion field names no field of the model: a group, a relative path and a `.value` suffix name none, and nothing else is asked of that entry (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' does not exist in the Document Model.\": a criterion field names no field of the model: a group, a relative path and a `.value` suffix name none, and nothing else is asked of that entry, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_FIELD_NOT_REQUIRED" to Corrective(
         fix = "make the field always required, or name another field.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is not set as required.\": a criterion field is not always required; required only when its parent is present does not count (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is not set as required.\": a criterion field is not always required; required only when its parent is present does not count, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_FIELD_REPEATABLE" to Corrective(
         fix = "name a field outside every repeatable group.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is repeatable.\": a criterion field lies below a repeatable group, at any depth (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is repeatable.\": a criterion field lies below a repeatable group, at any depth, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_FIELD_TRANSIENT" to Corrective(
         fix = "name a persisted field, or persist this one.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is transient.\": a criterion field is not persisted (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': The field 'f' is transient.\": a criterion field is not persisted, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_NAME_EMPTY" to Corrective(
         fix = "give the criterion a name.",
-        meaning = "A12's sentence \"A Document Uniqueness Criterion must have a name.\": a document uniqueness criterion has an empty name; its fields and texts are still judged (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"A Document Uniqueness Criterion must have a name.\": a document uniqueness criterion has an empty name; its fields and texts are still judged, where the portable checker names the sentence by this code.",
     ),
     "RK_CRITERION_NAME_NOT_UNIQUE" to Corrective(
         fix = "give each criterion its own name.",
-        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Name is not unique in the Document Model.\": two document uniqueness criteria of the model share a name, and each of them draws the sentence, before anything else about any criterion is stated (KERNEL-FINDINGS KF671), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document Uniqueness Criterion 'n': Name is not unique in the Document Model.\": two document uniqueness criteria of the model share a name, and each of them draws the sentence, before anything else about any criterion is stated, where the portable checker names the sentence by this code.",
     ),
     "RK_DATE_FORMAT_INVALID" to Corrective(
-        fix = "declare a format A12 admits, for example `yyyy-MM-dd` for a date or `HH:mm:ss` for a time; TEMPORAL-FORMAT-VOCABULARY lists them.",
-        meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field or through the type definition it uses (KERNEL-FINDINGS KF648). The checker names only the formats measured refused in TEMPORAL-FORMAT-VOCABULARY, where the portable checker names the sentence by this code.",
+        fix = "declare a format A12 admits, for example `yyyy-MM-dd` for a date or `HH:mm:ss` for a time.",
+        meaning = "A12's sentence \"The date format is invalid.\": a date's, time's or datetime's `format`, or a fragment's `formatOfFragment`, is one A12 refuses, on a field or through the type definition it uses. The portable checker reports this code only for formats measured as refused.",
     ),
     "RK_DATE_RANGE_FORMAT_INVALID" to Corrective(
         fix = "pair the format with the separator A12 admits for it, for example `dd.MM` with `-`, or `yyyy` with `/`.",
-        meaning = "A12's sentence \"The date range format is invalid.\": a DateRange type composes `format + rangeSeparator + format`, and A12 allowlists that PAIR rather than either half, so a valid format and a valid separator can still be refused together (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The date range format is invalid.\": a DateRange type composes `format + rangeSeparator + format`, and A12 allowlists that PAIR rather than either half, so a valid format and a valid separator can still be refused together, where the portable checker names the sentence by this code.",
     ),
     "RK_DATE_RANGE_SEPARATOR_INVALID" to Corrective(
         fix = "use `-` or `/` as the range separator.",
-        meaning = "A12's sentence \"Only minus (-) or slash (/) may be used for date range types.\": a DateRange type's `rangeSeparator`, trimmed, is neither empty, `-` nor `/` (KERNEL-FINDINGS KF581), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only minus (-) or slash (/) may be used for date range types.\": a DateRange type's `rangeSeparator`, trimmed, is neither empty, `-` nor `/`, where the portable checker names the sentence by this code.",
     ),
     "RK_ELEMENT_ID_NOT_UNIQUE" to Corrective(
         fix = "give each element its own id, such as its path.",
-        meaning = "A12's sentence \"The id [x] of element on path 'p' is not unique: Used by [p1, p2].\": two elements written in the model share an `id`, the empty id included, and each of them draws the sentence at its own path; an element that arrived through a mount never shares (KERNEL-FINDINGS KF661), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The id [x] of element on path 'p' is not unique: Used by [p1, p2].\": two elements written in the model share an `id`, the empty id included, and each of them draws the sentence at its own path; an element that arrived through a mount never shares, where the portable checker names the sentence by this code.",
     ),
     "RK_ELEMENT_NAME_MISSING" to Corrective(
         fix = "give the declaration a name: a blank, absent or `null` name is no name.",
-        meaning = "A12's sentence \"Element must have a name.\", stated at the group that holds it: a field, group, rule or computation has a name that is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without that declaration or anything beneath it (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Element must have a name.\", stated at the group that holds it: a field, group, rule or computation has a name that is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without that declaration or anything beneath it, where the portable checker names the sentence by this code.",
     ),
     "RK_ENUM_CATEGORY_DUPLICATE" to Corrective(
         fix = "give each category its own name.",
-        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name. A12's build fails first and states no sentence (KERNEL-FINDINGS KF626), and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
+        meaning = "A12's sentence \"The enumeration contains the category '…' multiple times.\": an Enumeration declares two categories of one name. A12's build fails first and states no sentence, and the portable checker names the defect by this code beside the unbuilt model's class, a deliberate addition.",
     ),
     "RK_ENUM_TEXT_LINE_BREAK" to Corrective(
         fix = "remove the line break from the value, label or category token.",
-        meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return inside its Java-trimmed text, a break at either end being admitted. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break (KERNEL-FINDINGS KF418), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values without line breaks are allowed.\": an Enumeration's value, label for a declared locale or category token carries a newline or carriage return inside its Java-trimmed text, a break at either end being admitted. A12 states it once for the field, ahead of the tab and pipe classes, and does not ask those of the text carrying the break, where the portable checker names the sentence by this code.",
     ),
     "RK_ENUM_VALUE_DUPLICATE" to Corrective(
         fix = "declare each value once.",
-        meaning = "A12's sentence \"The enumeration contains the value '…' multiple times.\": an Enumeration declares one value token twice, stated once for each repeated token. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The enumeration contains the value '…' multiple times.\": an Enumeration declares one value token twice, stated once for each repeated token. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CODE_ALPHABET" to Corrective(
         fix = "write the error code, or the computation's name, in letters, digits, spaces and underscores only.",
-        meaning = "A12's sentence \"The error code is only allowed to contain letters, digits, blanks and underscores.\": a rule's trimmed error code, or a computation's name, carries anything else, the letters including the German umlauts and `ß` (KERNEL-FINDINGS KF578), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error code is only allowed to contain letters, digits, blanks and underscores.\": a rule's trimmed error code, or a computation's name, carries anything else, the letters including the German umlauts and `ß`, where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CODE_EMPTY" to Corrective(
         fix = "give the rule a non-empty `errorCode`.",
-        meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is the empty string (an absent one leaves no model on kernel 31.1.1, KERNEL-FINDINGS KF654), drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence over the model as read (KERNEL-FINDINGS KF579), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error code is empty.\": a rule's `errorCode` is the empty string (an absent one leaves no model), drawn beside `MVK_ERROR_CODE_MISSING`; a blank but non-empty code draws that class alone, and A12 states this sentence over the model as read, where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_CONDITION_EMPTY" to Corrective(
         fix = "write the rule's condition.",
-        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged; a `null` or absent condition leaves the model unbuilt (KERNEL-FINDINGS KF643). A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error condition is empty.\": a rule's `errorCondition` is the empty string, drawn beside `MVK_CONDITION_MISSING` where the rule is judged; a `null` or absent condition leaves the model unbuilt. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_ERROR_ENTITY_EMPTY" to Corrective(
         fix = "name the field the rule attaches its error to.",
-        meaning = "A12's sentence \"The error entity is not set properly.\": a rule's `errorEntityRelPath` is the empty string, drawn beside `MVK_ERROR_FIELD_MISSING` where the rule is judged. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The error entity is not set properly.\": a rule's `errorEntityRelPath` is the empty string, drawn beside `MVK_ERROR_FIELD_MISSING` where the rule is judged. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_FIELD_NAME_ALPHABET" to Corrective(
         fix = "rename the field to ASCII letters, digits, underscores and colons, separating parts with a dot and starting each later part with an ASCII letter.",
-        meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not ASCII letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with an ASCII letter. Despite the sentence, a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"A field name may only contain letters, digits or underscores. Field names must not begin with a digit.\": a field's trimmed name is not ASCII letters, digits, underscores and colons in dot-separated parts, each part after the first beginning with an ASCII letter. Despite the sentence, a leading digit is admitted, where the portable checker names the sentence by this code.",
     ),
     "RK_GROUP_PATH_INVALID" to Corrective(
         fix = "rename the group: a nested group name begins with an ASCII letter or `_` and continues in ASCII letters, digits, `_`, the German umlauts and `ß`, at most 60 characters.",
-        meaning = "A12's sentence \"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …\": a part of the trimmed group path an element lives in is over 60 characters or outside the group alphabet, so A12 states it at that group and at every element beneath (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore. Name parts may not be longer than 60 characters …\": a part of the trimmed group path an element lives in is over 60 characters or outside the group alphabet, so A12 states it at that group and at every element beneath, where the portable checker names the sentence by this code.",
     ),
     "RK_ID_EMPTY" to Corrective(
         fix = "give it a non-empty `id`.",
-        meaning = "A12's sentence \"The id is empty.\": a declaration's or a type definition's `id` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The id is empty.\": a declaration's or a type definition's `id` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_INDEX_FIELD_EMPTY" to Corrective(
         fix = "name the field the group is indexed by, or remove `indexFieldName`.",
-        meaning = "A12's sentence \"The name of the index field is not set properly.\": a group's `indexFieldName` is the empty string, drawn beside `MVK_INVALID_INDEX_FIELD` for the group's own name. A12 states it over the model as read (KERNEL-FINDINGS KF653), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The name of the index field is not set properly.\": a group's `indexFieldName` is the empty string, drawn beside `MVK_INVALID_INDEX_FIELD` for the group's own name. A12 states it over the model as read, where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_60_CHARACTERS" to Corrective(
         fix = "shorten the root group's name to 60 characters or fewer.",
-        meaning = "A12's sentence \"Only values with up to 60 characters are allowed.\": a root group's name is longer than 60 characters, and its alphabet is admitted (an alphabet refusal takes this sentence's place; KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values with up to 60 characters are allowed.\": a root group's name is longer than 60 characters, and its alphabet is admitted (an alphabet refusal takes this sentence's place), where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_DIGIT_BUDGET" to Corrective(
         fix = "declare 15 integer places or fewer; integer and fractional places together are bounded by the same budget.",
-        meaning = "A12's sentence \"Only values smaller than or equal to 15 are allowed.\": a Number's integer count, declared or derived for an amount, is above A12's digit budget of 15 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 15 are allowed.\": a Number's integer count, declared or derived for an amount, is above A12's digit budget of 15, where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_SCALE_LIMIT" to Corrective(
         fix = "declare 14 fractional places or fewer.",
-        meaning = "A12's sentence \"Only values smaller than or equal to 14 are allowed.\": a Number's fractional count is above A12's scale cap of 14 (KERNEL-FINDINGS KF559), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 14 are allowed.\": a Number's fractional count is above A12's scale cap of 14, where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_ABOVE_TECHNICAL_LIMIT" to Corrective(
         fix = "declare a length of 99,999 or less, or -1 for no bound on a String or Custom field.",
-        meaning = "A12's sentence \"Only values smaller than or equal to 99999 are allowed.\": a String, Custom or Number length is above A12's technical limit of 99,999 (KERNEL-FINDINGS KF556), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values smaller than or equal to 99999 are allowed.\": a String, Custom or Number length is above A12's technical limit of 99,999, where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_NOT_POSITIVE" to Corrective(
         fix = "declare at least 1; to leave a String or Custom length unbounded, write -1 rather than 0.",
-        meaning = "A12's sentence \"Only values greater than 0 are allowed.\": a length, an integer count or a group's repeatability is 0, where A12 admits 1 and above (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values greater than 0 are allowed.\": a length, an integer count or a group's repeatability is 0, where A12 admits 1 and above, where the portable checker names the sentence by this code.",
     ),
     "RK_MEMBER_SIGNED" to Corrective(
         fix = "write a count of 1 or more (a fractional count may be 0), or -1 to declare no bound where the member admits it; a Number length admits no -1.",
-        meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count) (KERNEL-FINDINGS KF556, KF559, KF590), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Only values without a sign are allowed.\": a length, a digit count or a group's repeatability is negative. -1 is the one signed value admitted, and only where it means \"no bound\" (a String or Custom length, a fractional count), where the portable checker names the sentence by this code.",
     ),
     "RK_MODEL_VERSION_INCOMPATIBLE" to Corrective(
         fix = "load a model whose version is compatible with this kernel, or migrate the model.",
-        meaning = "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast. It is A12's sentence \"Version mismatch: Document model version is … and application version is ….\", drawn unless the version is `major.minor.patch` with the kernel's major and a minor and patch, read as one decimal, no greater than the kernel's (KERNEL-FINDINGS KF650); the portable checker names the sentence by this code too.",
+        meaning = "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast. It is A12's sentence \"Version mismatch: Document model version is … and application version is ….\", drawn unless the version is `major.minor.patch` with the kernel's major and a minor and patch, read as one decimal, no greater than the kernel's; the portable checker names the sentence by this code too.",
     ),
     "RK_MODEL_VERSION_PATTERN" to Corrective(
         fix = "write the modelVersion as `major.minor.patch`, such as the version the kernel writes.",
-        meaning = "A12's sentence \"Document model version … does not match proper version schema. Expected version is ….\": the document's modelVersion is not `major.minor.patch` in ASCII digits, which also draws `RK_MODEL_VERSION_INCOMPATIBLE`'s sentence (KERNEL-FINDINGS KF650), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Document model version … does not match proper version schema. Expected version is ….\": the document's modelVersion is not `major.minor.patch` in ASCII digits, which also draws `RK_MODEL_VERSION_INCOMPATIBLE`'s sentence, where the portable checker names the sentence by this code.",
     ),
     "RK_NAME_EMPTY" to Corrective(
         fix = "give it a non-empty `name`.",
-        meaning = "A12's sentence \"The name is empty.\": a declaration's or a type definition's `name` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check (KERNEL-FINDINGS KF626), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The name is empty.\": a declaration's or a type definition's `name` is the empty string; a blank one is not empty. A12 states it over the model as read, after every other check, where the portable checker names the sentence by this code.",
     ),
     "RK_ROOT_GROUP_NAME_ALPHABET" to Corrective(
         fix = "rename the root group to ASCII letters, digits, underscores, the German umlauts and `ß`.",
-        meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside ASCII letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted (KERNEL-FINDINGS KF580), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"A root group name may only contain letters, numbers and underscores.\": a root group's trimmed name carries a character outside ASCII letters, digits, `_`, the German umlauts and `ß`; a leading digit is admitted, where the portable checker names the sentence by this code.",
     ),
     "RK_ROOT_GROUP_NAME_MISSING" to Corrective(
         fix = "give the root group a name.",
-        meaning = "A12's sentence \"Root group must have a name.\": a root group's name is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without the root group or anything beneath it (KERNEL-FINDINGS KF652); a root named with the empty text leaves no model at all when anything beneath it names a reference, which A12's reader then cannot resolve. The portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Root group must have a name.\": a root group's name is blank as Java's `isBlank` reads it, absent or `null`. A12's converter checks the model without the root group or anything beneath it; a root named with the empty text leaves no model at all when anything beneath it names a reference, which A12's reader then cannot resolve. The portable checker names the sentence by this code.",
     ),
     "RK_RULE_NAME_ALPHABET" to Corrective(
         fix = "rename it to an ASCII letter followed by ASCII letters, digits and underscores.",
-        meaning = "A12's sentence \"A rule name must start with a letter followed by letters, digits and underscores.\": a rule's or computation's trimmed name is not an ASCII letter followed by ASCII letters, digits and underscores (KERNEL-FINDINGS KF578), and it withholds `MVK_RULE_NAME_INVALID`, where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"A rule name must start with a letter followed by letters, digits and underscores.\": a rule's or computation's trimmed name is not an ASCII letter followed by ASCII letters, digits and underscores, and it withholds `MVK_RULE_NAME_INVALID`, where the portable checker names the sentence by this code.",
+    ),
+    "RK_SORT_FIELD_EMPTY" to Corrective(
+        fix = "name the field each `sortFields` entry sorts by, or remove the entry.",
+        meaning = "A12's sentence \"The name of one of the sort fields is not set properly.\": a `sortFields` entry's `name` is `\"\"`, drawn once per group beside A12's unresolved-sort-field class.",
     ),
     "RK_SORT_LIST_ABOVE_CAPACITY" to Corrective(
         fix = "keep at most three `sortFields` entries.",
-        meaning = "A12's sentence \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.\": a group's `sortFields` holds more than three entries, and each entry beyond the third draws it once (KERNEL-FINDINGS KF345), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The index for group '/MVK/Model/Groups/SortInfo/SortFields' was specified with 4, but at most 3 is allowed.\": a group's `sortFields` holds more than three entries, and each entry beyond the third draws it once, where the portable checker names the sentence by this code.",
     ),
     "RK_TYPE_DEFINITION_NOT_FOUND" to Corrective(
         fix = "declare the type definition in `content.typeDefinitions`, or point `typeDefinitionId` at one that is declared.",
-        meaning = "A12's sentence \"Typedefinition with id '…' could not be found.\": a `TypeDefType` field's `typeDefinitionId` is absent, empty or names no declared type definition. A12's converter states it and checks the field as a plain String (KERNEL-FINDINGS KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"Typedefinition with id '…' could not be found.\": a `TypeDefType` field's `typeDefinitionId` is absent, empty or names no declared type definition. A12's converter states it and checks the field as a plain String, where the portable checker names the sentence by this code.",
     ),
     "RK_TYPE_REFERENCE_EMPTY" to Corrective(
         fix = "name a type definition the model declares.",
-        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string. A12 states it over the model as read, beside its converter's \"Typedefinition with id '…' could not be found.\" (`RK_TYPE_DEFINITION_NOT_FOUND`; KERNEL-FINDINGS KF626, KF652), where the portable checker names the sentence by this code.",
+        meaning = "A12's sentence \"The id of the referenced type definition is not set properly.\": a `TypeDefType` field's `typeDefinitionId` is absent or the empty string. A12 states it over the model as read, beside its converter's \"Typedefinition with id '…' could not be found.\" (`RK_TYPE_DEFINITION_NOT_FOUND`), where the portable checker names the sentence by this code.",
     ),
     "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
         fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",
-        meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text is never examined, and A12's code generation asks only that each of its parameters be spelled as a declared locale's text spells one (KERNEL-FINDINGS KF659).",
+        meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text is never examined, and A12's code generation asks only that each of its parameters be spelled as a declared locale's text spells one.",
     ),
     "RK_UNSUPPORTED_CHARACTER" to Corrective(
         fix = "replace the character above U+FFFF, such as an emoji, in that text.",
-        meaning = "A12's sentence \"The field contains one or several unsupported signs.\": a text A12 validates as part of the model, such as a rule's condition, code or message, or an enum value, carries a character outside the Basic Multilingual Plane. Model, group and field labels are not checked (KERNEL-FINDINGS KF489), where the portable checker names the sentence by this code, once per element.",
+        meaning = "A12's sentence \"The field contains one or several unsupported signs.\": a text A12 validates as part of the model, such as a rule's condition, code or message, or an enum value, carries a character outside the Basic Multilingual Plane. Model, group and field labels are not checked, where the portable checker names the sentence by this code, once per element.",
     ),
 )

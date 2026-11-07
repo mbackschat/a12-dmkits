@@ -17,9 +17,9 @@ import kotlinx.serialization.json.JsonObject
  * among them on 31.1.1, where its absence leaves no model (KF654). The others are left to the reader, which refuses
  * them before this check is reached.
  *
- * Two of A12's sentences are not here because no JSON source reaches them: an empty `sortFields[].name` leaves the
- * model unbuilt first, and a localized text of `null` is refused by the reader. An empty `indexFieldName` reaches its
- * sentence on kernel 31.1.1 (KERNEL-FINDINGS KF653).
+ * One of A12's sentences is not here because no JSON source reaches it: a localized text of `null` is refused by the
+ * reader. An empty `indexFieldName` reaches its sentence (KERNEL-FINDINGS KF653), and since kernel 31.3.1 an empty
+ * `sortFields[].name` reaches its own, once per group whatever the number of empty entries (KF680).
  */
 internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
     // A12's walker visits the type definitions before the elements (KERNEL-FINDINGS KF647).
@@ -35,6 +35,8 @@ internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
             DeclaredKind.COMPUTATION -> computationSentences(element, body)
             DeclaredKind.GROUP -> listOfNotNull(
                 body?.emptyMember("indexFieldName")?.let { sentence(element, RK_INDEX_FIELD_EMPTY, "this group's `indexFieldName` is empty") },
+                body?.takeIf { it.namesAnEmptySortField() }
+                    ?.let { sentence(element, RK_SORT_FIELD_EMPTY, "a `sortFields` entry of this group names the empty string") },
             )
             else -> emptyList()
         }
@@ -44,8 +46,12 @@ internal fun TrackedFactBase.basicSentenceFindings(): List<Finding> =
 internal val BASIC_SENTENCE_CODES = setOf(
     RK_ID_EMPTY, RK_NAME_EMPTY, RK_ERROR_CODE_EMPTY, RK_ERROR_CONDITION_EMPTY, RK_ERROR_ENTITY_EMPTY,
     RK_COMPUTED_FIELD_EMPTY, RK_COMPUTATION_OPERATION_EMPTY, RK_ENUM_VALUE_DUPLICATE, RK_ENUM_CATEGORY_DUPLICATE,
-    RK_TYPE_REFERENCE_EMPTY, RK_INDEX_FIELD_EMPTY,
+    RK_TYPE_REFERENCE_EMPTY, RK_INDEX_FIELD_EMPTY, RK_SORT_FIELD_EMPTY,
 )
+
+/** Whether a `sortFields` entry's `name` is the empty string; a missing one is the reader's refusal, not this check's. */
+private fun JsonObject.namesAnEmptySortField(): Boolean =
+    (this["sortFields"] as? JsonArray).orEmpty().any { (it as? JsonObject)?.emptyMember("name") != null }
 
 /**
  * An Enumeration's repeated values and category names, one sentence for each, and an absent or empty type reference.
@@ -157,3 +163,4 @@ internal const val RK_ENUM_VALUE_DUPLICATE = "RK_ENUM_VALUE_DUPLICATE"
 internal const val RK_ENUM_CATEGORY_DUPLICATE = "RK_ENUM_CATEGORY_DUPLICATE"
 internal const val RK_TYPE_REFERENCE_EMPTY = "RK_TYPE_REFERENCE_EMPTY"
 internal const val RK_INDEX_FIELD_EMPTY = "RK_INDEX_FIELD_EMPTY"
+internal const val RK_SORT_FIELD_EMPTY = "RK_SORT_FIELD_EMPTY"

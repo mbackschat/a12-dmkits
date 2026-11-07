@@ -51,7 +51,7 @@ class ManifestVerbTest {
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {
-        CliTestSupport.Result res = CliTestSupport.run("manifest");
+        CliTestSupport.Result res = CliTestSupport.run("manifest", "--full");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
 
@@ -90,7 +90,7 @@ class ManifestVerbTest {
     }
 
     private static JsonNode verb(String name) throws Exception {
-        JsonNode j = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode j = MAPPER.readTree(CliTestSupport.run("manifest", "--full").out());
         for (JsonNode v : j.path("verbs")) {
             if (name.equals(v.path("verb").asText())) {
                 return v;

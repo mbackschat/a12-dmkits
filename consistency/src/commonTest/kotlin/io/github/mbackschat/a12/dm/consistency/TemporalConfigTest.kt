@@ -9,12 +9,12 @@ import kotlin.test.assertEquals
  * Every row mirrors one measured through stored JSON against the real kernel
  * (`rulekit.validate.laws.TemporalConfigWireShapeLawsTest`, whose own grid settles the MEMBER NAMES this
  * family reads, and `TemporalDeclarationConfigAdmissionLawsTest` / `TemporalAdditionalCheckCarrierLawsTest`,
- * which sweep both gates across the whole admitted format vocabulary).
+ * which sweep the gate across the whole admitted format vocabulary).
  *
  * **The silent rows are the ones that could do damage**, because this family reports A12's own consistency
- * codes on models A12 reads and builds. A `false` check, a `FULL` precision and the range carrier are each a
- * shape A12 ACCEPTS — reporting one would refuse a model the kernel takes, and nothing downstream could catch
- * it. A format outside the admitted vocabulary draws neither config code: A12 refuses it with its own sentence
+ * code on models A12 reads and builds. A `FULL` precision and, since kernel 31.2, the pre-1900 check on any
+ * carrier are shapes A12 ACCEPTS — reporting one would refuse a model the kernel takes, and nothing downstream
+ * could catch it. A format outside the admitted vocabulary draws neither config code: A12 refuses it with its own sentence
  * instead, which the checker names only over the probed Refused table (KERNEL-FINDINGS KF648).
  */
 class TemporalConfigTest {
@@ -35,45 +35,37 @@ class TemporalConfigTest {
 
     private fun date(body: String) = codes("""{"type":"DateType","DateType":$body}""")
 
-    private val pre1900 = listOf("MVK_ADDITIONAL_CHECK_INVALID")
     private val partial = listOf("MVK_OPTIONAL_DATE_TYPE_INVALID")
     private val refused = listOf(RK_DATE_FORMAT_INVALID)
 
+    /**
+     * The pre-1900 check draws nothing on any of its three carriers since kernel 31.2 ([KERNEL-FINDINGS KF677]).
+     * Through 31.1.1 the DATE and FRAGMENT rows were refused on a year-free format; these rows lock that the
+     * checker no longer reports what A12 now admits.
+     */
     @Test
-    fun thePre1900CheckIsReportedOnAYearFreeFormatAndNowhereElse() {
+    fun thePre1900CheckIsReportedOnNoCarrier() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["a plain date format — the control"] = date("""{"format":"yyyy-MM-dd"}""")
-        actual["the check on a year-free format"] = date("""{"format":"MM","youngerThan1900Check":true}""")
-        actual["the check on a year-bearing format"] =
-            date("""{"format":"yyyy-MM","youngerThan1900Check":true}""")
-        actual["the check written FALSE"] = date("""{"format":"MM","youngerThan1900Check":false}""")
-        actual["the check with no format, so the default applies"] = date("""{"youngerThan1900Check":true}""")
-        actual["the check on a format A12 refuses"] =
-            date("""{"format":"MM.yyyy","youngerThan1900Check":true}""")
-        actual["the check on a format outside the probed universe"] =
-            date("""{"format":"QQQ","youngerThan1900Check":true}""")
-        // The trailing-separator format, admitted and year-free — the thirteenth member, which a checker
-        // keyed on a twelve-format list would have left silent (KERNEL-FINDINGS KF313).
-        actual["the check on the trailing-dot format"] =
-            date("""{"format":"dd.MM.","youngerThan1900Check":true}""")
+        actual["a DATE with a year-free format"] = date("""{"format":"MM","youngerThan1900Check":true}""")
+        actual["a DATE with the trailing-dot format"] = date("""{"format":"dd.MM.","youngerThan1900Check":true}""")
+        actual["a FRAGMENT with a year-free format"] = codes(
+            """{"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"MM",""" +
+                """"youngerThan1900Check":true}}""",
+        )
+        actual["a RANGE with a year-free pair"] = codes(
+            """{"type":"DateRangeType","DateRangeType":{"format":"MM","rangeSeparator":"/",""" +
+                """"youngerThan1900Check":true}}""",
+        )
+        // A refused format still draws its own sentence (KERNEL-FINDINGS KF648), check or not.
+        actual["the check on a format A12 refuses"] = date("""{"format":"MM.yyyy","youngerThan1900Check":true}""")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["a plain date format — the control"] = emptyList()
-        expected["the check on a year-free format"] = pre1900
-        expected["the check on a year-bearing format"] = emptyList()
-        // The gate is on the VALUE: `false` on a year-free format is a declaration A12 accepts.
-        expected["the check written FALSE"] = emptyList()
-        // The builder's default is `yyyy-MM-dd`, which carries a year and is a complete pure date, so A12
-        // admits a body with no format on BOTH gates — the two rows lock that A12 answer, not the branch the
-        // checker takes to reach it (reading the default and reading nothing are verdict-equivalent here).
-        expected["the check with no format, so the default applies"] = emptyList()
-        // A refused format draws its own sentence and no config gate (KERNEL-FINDINGS KF648).
+        expected["a DATE with a year-free format"] = emptyList()
+        expected["a DATE with the trailing-dot format"] = emptyList()
+        expected["a FRAGMENT with a year-free format"] = emptyList()
+        expected["a RANGE with a year-free pair"] = emptyList()
         expected["the check on a format A12 refuses"] = refused
-        // Silent by design: the admitted set is a probe's result rather than a closed one, so a format
-        // outside it is undiscovered and refusing it would rest on the limit of that probe.
-        expected["the check on a format outside the probed universe"] = emptyList()
-        expected["the check on the trailing-dot format"] = pre1900
-        assertEquals(expected, actual, "where the checker reports the pre-1900 gate")
+        assertEquals(expected, actual, "the pre-1900 check gates nothing")
     }
 
     @Test
@@ -112,45 +104,13 @@ class TemporalConfigTest {
         assertEquals(expected, actual, "where the checker reports the precision gate")
     }
 
-    /**
-     * The carrier denominator: three types declare the pre-1900 member and only two are gated on it.
-     *
-     * A family that read the member wherever it found it would refuse the range row, which A12 admits — and
-     * the range carrier is the one whose law is the OPPOSITE of its siblings', so it cannot be inferred.
-     * Its exemption is measured (`rulekit.validate.laws.TemporalAdditionalCheckCarrierLawsTest`).
-     */
+    /** The check beside a conflicting precision adds nothing: A12 reports the precision code alone. */
     @Test
-    fun theCheckIsGatedOnTwoOfItsThreeCarriers() {
-        val actual = mutableMapOf<String, List<String>>()
-        actual["a DATE with a year-free format"] = date("""{"format":"MM","youngerThan1900Check":true}""")
-        actual["a FRAGMENT with a year-free format"] = codes(
-            """{"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"MM",""" +
-                """"youngerThan1900Check":true}}""",
-        )
-        actual["a FRAGMENT with a year-bearing format"] = codes(
-            """{"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"dd.MM.yyyy",""" +
-                """"youngerThan1900Check":true}}""",
-        )
-        actual["a RANGE with a year-free pair — EXEMPT"] = codes(
-            """{"type":"DateRangeType","DateRangeType":{"format":"MM","rangeSeparator":"/",""" +
-                """"youngerThan1900Check":true}}""",
-        )
-
-        val expected = mutableMapOf<String, List<String>>()
-        expected["a DATE with a year-free format"] = pre1900
-        expected["a FRAGMENT with a year-free format"] = pre1900
-        expected["a FRAGMENT with a year-bearing format"] = emptyList()
-        expected["a RANGE with a year-free pair — EXEMPT"] = emptyList()
-        assertEquals(expected, actual, "which carriers the pre-1900 gate is asked of")
-    }
-
-    /** Both gates are reported independently, exactly as A12 reports both codes for one declaration. */
-    @Test
-    fun bothGatesAreReportedWhenOneDeclarationFailsBoth() {
+    fun theCheckBesideAConflictingPrecisionDrawsOnlyThePrecisionCode() {
         assertEquals(
-            pre1900 + partial,
+            partial,
             date("""{"format":"MM","youngerThan1900Check":true,"datePrecision":"DAY_OPTIONAL"}"""),
-            "neither gate pre-empts the other, so a checker reporting one is not reporting the other",
+            "kernel 31.2 retired the year gate, so only the precision verdict remains",
         )
     }
 }

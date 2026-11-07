@@ -88,7 +88,7 @@ class ProfileSynthesizeVerbTest {
         assertTrue(help.out().contains("unbounded"));
         assertFalse(help.out().contains("profile-version"));
 
-        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
+        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest", "--full").out());
         JsonNode verb = findVerb(manifest, "profile synthesize");
         assertEquals("profile synthesize", verb.path("schema").asText());
 

@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
  * KERNEL-FINDINGS KF182 — a computation that reads its own computed field <b>through a projection</b> draws
@@ -65,7 +66,7 @@ class ComputedTargetProjectedReadLawsTest {
     private static List<String> codes(String group, String relTarget, String operation,
             String commonPrecondition, String tierPrecondition) {
         DraftComputation comp = new DraftComputation(group, "TierComp", relTarget, commonPrecondition,
-                List.of(new DraftComputation.Alternative(tierPrecondition, operation)), List.of());
+                List.of(new DraftComputation.Alternative(tierPrecondition, operation)));
         ValidationResult result = VALIDATOR.check(ROUTING, comp);
         List<String> codes = result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
         assertEquals(result.diagnostics().size(), codes.size(),
@@ -229,9 +230,11 @@ class ComputedTargetProjectedReadLawsTest {
      */
     @Test
     void suppressingTheScaleGateSurfacesThisClassUnderneathIt() {
-        DraftComputation comp = new DraftComputation("/Routing/Legs", "TierComp", "../Distance", null,
-                List.of(new DraftComputation.Alternative(null, "[" + DISTANCE + " For \"L-1\"] * 1.5")),
-                List.of(SCALE_GATE));
+        DraftComputation comp = DraftComputation.builder().groupPath("/Routing/Legs").name("TierComp")
+                .computedFieldRelPath("../Distance")
+                .alternatives(List.of(new DraftComputation.Alternative(null, "[" + DISTANCE + " For \"L-1\"] * 1.5")))
+                .suppressWarnings(ConditionLanguage.EN, List.of(SCALE_GATE))
+                .build();
         ValidationResult result = VALIDATOR.check(ROUTING, comp);
         assertEquals(List.of(PROJECTED), result.diagnostics().stream().flatMap(d -> d.code().stream()).toList());
     }

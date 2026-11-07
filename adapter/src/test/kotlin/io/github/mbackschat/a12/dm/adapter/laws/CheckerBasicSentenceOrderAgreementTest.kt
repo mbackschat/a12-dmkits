@@ -139,7 +139,7 @@ class CheckerBasicSentenceOrderAgreementTest {
             val refused = assertThrows<ModelConsistencyException> { BoundModel.ofJson(json) }
             // The empty id reaches the build as `null`, the expand copy's empty-as-absent reading (KF658).
             val key = id.ifEmpty { "null" }
-            assertTrue("Duplicate key $key " in refused.message.orEmpty(), "A12's consistency build trips on '$id': ${refused.message}")
+            assertTrue("Duplicate Typedef for id '$key'" in refused.message.orEmpty(), "A12's consistency build trips on '$id': ${refused.message}")
             assertTrue("CK_MODEL_NOT_BUILDABLE" in check(ModelSource(json)).findings.map { it.code }, "the checker says so for '$id'")
         }
     }

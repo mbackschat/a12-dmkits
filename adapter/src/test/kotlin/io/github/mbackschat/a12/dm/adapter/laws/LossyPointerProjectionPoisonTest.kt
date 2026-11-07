@@ -68,7 +68,7 @@ class LossyPointerProjectionPoisonTest {
                 "the collapsing house form must be poisoned, not silently compared: ${finding.field()}")
             assertTrue(finding.field().contains("compare Msg.key()"),
                 "the poison must name the remedy: ${finding.field()}")
-            assertTrue(finding.errorField().contains("/Order/Lines"),
+            assertTrue(finding.errorField().contains("/Lines["),
                 "the kernel's own pointer toString stays untouched — it is the key's independent oracle")
         }
     }

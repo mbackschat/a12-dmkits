@@ -13,8 +13,8 @@ import kotlin.test.assertEquals
  * Multiplatform (JVM + JS) lock for IF88 — the kernel's **always-on Gregorian-calendar date floor**: a date
  * VALUE that resolves to a real calendar date before `Constants.DATE_FROM = 1583-10-16` is the formal error
  * `datumFalsch` (FEHLER_DATUM), and a DATE_RANGE whose start is below the floor is `datumBereichDatumFalsch`.
- * Always applied (both kernel strategies), distinct from the opt-in "< 1900" additional check — so 1899 is
- * valid. The kernel differential (both strategies, compute path) is `adapter.laws.ComputedDateGregorianFloorDiffTest`.
+ * Always applied (both kernel strategies), and distinct from the "< 1900" additional check that kernel 31.2 stopped
+ * evaluating (KF677) — so 1899 is valid. The kernel differential (both strategies, compute path) is `adapter.laws.ComputedDateGregorianFloorDiffTest`.
  *
  * Boundary pinned by that differential: 1583-10-15 errors, 1583-10-16 is valid (strict `Date.before`).
  */
@@ -29,7 +29,6 @@ class DateGregorianFloorFormalTest {
     private val isoDate = FieldDef("/G/D", Kind.DATE, format = "yyyy-MM-dd")
     private val germanDate = FieldDef("/G/D", Kind.DATE, format = "dd.MM.yyyy")
     private val dayOptional = FieldDef("/G/D", Kind.DATE, format = "dd.MM.yyyy", datePrecision = DatePrecision.DAY_OPTIONAL)
-    private val rejectBefore1900 = FieldDef("/G/D", Kind.DATE, format = "yyyy-MM-dd", rejectBefore1900 = true)
     private val range = FieldDef("/G/D", Kind.DATE_RANGE, format = "yyyy-MM-dd", rangeSeparator = "/")
     private val stamp = FieldDef("/G/D", Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss")
     private val clock = FieldDef("/G/D", Kind.DATE_TIME, format = "HH:mm:ss")
@@ -39,12 +38,8 @@ class DateGregorianFloorFormalTest {
     @Test fun dayBeforeFloorIsTooEarly() = assertEquals("datumFalsch", code(isoDate, "1583-10-15"), "1583-10-15 = floor − 1 day")
     @Test fun floorDayIsValid() = assertEquals(null, code(isoDate, "1583-10-16"), "1583-10-16 = the floor itself → valid")
     @Test fun dayAfterFloorIsValid() = assertEquals(null, code(isoDate, "1583-10-17"), "1583-10-17 → valid")
-    // The floor is NOT the opt-in "< 1900" additional check — a plain date field accepts 1899.
+    // The floor is NOT the retired "< 1900" additional check — a date field accepts 1899.
     @Test fun year1899IsValid() = assertEquals(null, code(isoDate, "1899-12-31"), "1899 is above the Gregorian floor")
-    @Test fun optInYear1899IsTooEarly() =
-        assertEquals("datumFalsch", code(rejectBefore1900, "1899-12-31"), "opt-in additional check rejects 1899")
-    @Test fun optInYear1900IsValid() =
-        assertEquals(null, code(rejectBefore1900, "1900-01-01"), "opt-in additional check admits its boundary")
     @Test fun modernDateIsValid() = assertEquals(null, code(isoDate, "2024-06-15"), "a modern date → valid")
     // The floor does not shadow a genuine format/calendar error (a wrong month is still datumFormatFalsch).
     @Test fun malformedStaysFormatError() = assertEquals("datumFormatFalsch", code(isoDate, "2024-13-01"), "month 13 → format error")

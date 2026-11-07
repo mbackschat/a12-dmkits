@@ -70,11 +70,7 @@ final class AuthoredStateReader {
     }
 
     private static ModelDocument.GroupStructure structure(ObjectNode body) {
-        List<ElementDraft.SortField> sortFields = new ArrayList<>();
-        for (JsonNode sort : body.path(DmKeys.SORT_FIELDS)) {
-            sortFields.add(new ElementDraft.SortField(sort.path(DmKeys.NAME).asText(),
-                    SortOrder.valueOf(sort.path(DmKeys.ORDER).asText(SortOrder.ASC.name()))));
-        }
+        List<ElementDraft.SortField> sortFields = A12SortFields.read(body.path(DmKeys.SORT_FIELDS));
         int repeatability = A12IntMembers.repetitionCount(body.path(DmKeys.REPEATABILITY));
         JsonNode include = body.path(DmKeys.INCLUDE_CONFIG);
         Optional<ModelDocument.MountState> mount = !include.isObject() ? Optional.empty()

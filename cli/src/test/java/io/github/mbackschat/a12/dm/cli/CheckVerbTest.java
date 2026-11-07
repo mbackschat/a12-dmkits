@@ -108,7 +108,7 @@ class CheckVerbTest {
     private static boolean hasPatternCorrective(JsonNode diagnostics) {
         for (JsonNode diagnostic : diagnostics) {
             if ("MVK_INVALID_PATTERN".equals(diagnostic.path("code").asText())
-                    && diagnostic.path("fix").asText().contains("A12K-30")
+                    && diagnostic.path("fix").asText().contains("admission restrictions")
                     && diagnostic.path("explain").asText().contains("Java Pattern")) {
                 return true;
             }
