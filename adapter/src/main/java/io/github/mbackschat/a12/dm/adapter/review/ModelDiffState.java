@@ -18,7 +18,8 @@ record ModelDiffState(ModelDocument document, ModelDocument.AuthoredState author
         var model = BoundModel.ofJsonLenient(json, effective);
         var document = ModelDocument.read(json);
         var adapter = KernelAdapter.checkAndOpen(model);
-        return new ModelDiffState(document, document.authoredState(), model, adapter, adapter.referrersByEntity(),
-                ChangeNotes.of(document));
+        var authored = document.authoredState();
+        return new ModelDiffState(document, authored, model, adapter, adapter.referrersByEntity(),
+                ChangeNotes.of(document, authored));
     }
 }
