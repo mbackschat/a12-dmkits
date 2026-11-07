@@ -17053,7 +17053,7 @@ Carrier: `/Policy` holding `Premium`, `Holder`, a required `Ref`, a group `Rider
 | text literal `"A"`, field key empty | one member keyed `String` `A`, one with no key |
 | text literal `"A"`, field key `B` / `A` | keyed `A` and `B` / keyed `A` once |
 | number literals `"7"`, `"7.0"`, field key `8.50` (index field 0–2 fraction digits) | keyed `BigDecimal` `7`, `7.0` and `8.50`: the scale is kept and splits members |
-| the same, field key `x` (not a number) | keyed `7` and `7.0`; the formally invalid field key adds no member, keyed or not |
+| the same, field key `x` (not a number) or `8.505` (a number past the two declared fraction digits) | keyed `7` and `7.0`; the formally invalid field key adds no member, keyed or not |
 | enumeration literal `"GOLD"` | keyed `String` `GOLD` |
 | a join on `Code`, the claim side without the reserve's row `C` | keyed `String` `C` |
 | a join on `No` (0–2 fraction digits), the credit side without the fee's row stored `7.50` | keyed `BigDecimal` `7.5`: a joined key is the iterated value in the runtime number form, not the stored text |

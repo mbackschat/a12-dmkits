@@ -34,6 +34,7 @@ class UnknownIndexKeyLawsTest {
             "two text keys, the field key equal to the literal" to Row(TEXT_KEYS, bare.field(WANTED, "A", 1, 1)),
             "number keys of three scales" to Row(NUMBER_KEYS, bare.field(WANTED_NO, "8.50", 1, 1)),
             "number keys, the field key not a number" to Row(NUMBER_KEYS, bare.field(WANTED_NO, "x", 1, 1)),
+            "number keys, the field key a number of three fraction digits" to Row(NUMBER_KEYS, bare.field(WANTED_NO, "8.505", 1, 1)),
             "an enumeration key" to Row(ENUM_KEY, bare),
             "a text join, no claim for the reserve's code" to Row(JOINS, RuntimeLaws.doc().group("/Portfolio", 1)
                 .group("/Portfolio/Reserves", 1, 1).field("/Portfolio/Reserves/Code", "C", 1, 1, 1)
@@ -55,6 +56,8 @@ class UnknownIndexKeyLawsTest {
                 "$NO BigDecimal:7", "$NO BigDecimal:7.0", "$NO BigDecimal:8.50",
                 "$RATE BigDecimal:7", "$RATE BigDecimal:7.0", "$RATE BigDecimal:8.50", "$OWNER -"),
             "number keys, the field key not a number" to listOf(
+                "$NO BigDecimal:7", "$NO BigDecimal:7.0", "$RATE BigDecimal:7", "$RATE BigDecimal:7.0", "$OWNER -"),
+            "number keys, the field key a number of three fraction digits" to listOf(
                 "$NO BigDecimal:7", "$NO BigDecimal:7.0", "$RATE BigDecimal:7", "$RATE BigDecimal:7.0", "$OWNER -"),
             "an enumeration key" to listOf("$OWNER -", "$CAP String:GOLD", "$LEVEL String:GOLD"),
             "a text join, no claim for the reserve's code" to listOf("$CODE String:C", "$COST String:C"),

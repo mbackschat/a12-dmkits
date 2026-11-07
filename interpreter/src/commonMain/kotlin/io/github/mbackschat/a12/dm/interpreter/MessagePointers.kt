@@ -42,8 +42,8 @@ internal class MessagePointers(private val model: ModelDef, private val paths: M
                 val text = when (val key = reference.key) {
                     is SelectedKey.Literal -> key.value
                     // A12 keeps a selection's key as stored, so `8.50` keeps the scale its evaluation value `8.5` drops.
-                    is SelectedKey.Field -> if (pass.readsAsKey(ctx, key.path)) ctx.messageDisplayValue(key.path) else null
-                } ?: return pointer
+                    is SelectedKey.Field -> ctx.messageDisplayValue(key.path)
+                }?.takeIf { it.isNotEmpty() } ?: return pointer   // an empty field key leaves the member unkeyed
                 checkNotNull(reference.indexField) { "a selected reference is expanded before it is resolved" } to text
             }
             // On a joined row, the level no row matched is the side's group, and its key is the joined value.
@@ -54,7 +54,6 @@ internal class MessagePointers(private val model: ModelDef, private val paths: M
                 indexField to (pass.doc.messageIndexValue(indexField, ctx) ?: return pointer)
             }
         }
-        if (text.isEmpty()) return pointer
         val key = when {
             indexField in model.customTypes -> null
             model.kinds[indexField] == Kind.STRING -> UnknownIndexKey.Text(text)

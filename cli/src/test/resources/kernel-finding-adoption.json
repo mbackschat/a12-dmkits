@@ -26163,7 +26163,7 @@
       }
     },
     "kf683": {
-      "sha256": "c3d7ef72e19ff523b6af59d2e83eb5e65eec54c71efedf3f26b17348950e118b",
+      "sha256": "65d843285a337053736b5fb6943575eeaa60b88960be6c672f34a8c48f8061b2",
       "task": "K313",
       "scope": {
         "dmkits": [],
@@ -26229,7 +26229,7 @@
             },
             "missed index keys": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnknownIndexKeyLawsTest.kt#aMissedKeyIsKeptOnTheCauseMemberAsItsIndexFieldTypesIt",
-              "witness": "Selected and joined text, number and enumeration keys equal both kernel strategies' on nine rows, scale included; date and custom-typed keys are IG188."
+              "witness": "Selected and joined text, number and enumeration keys equal both kernel strategies' on ten rows, scale included; date and custom-typed keys are IG188."
             }
           }
         },
