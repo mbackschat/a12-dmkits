@@ -55,11 +55,12 @@ export interface A12PartiallyKnownMultiPointer {
   /**
    * `semanticIndexValueForUnknownIndexGroup()` — on a possibly-causing entity at the
    * {@link A12PartiallyKnownMultiPointer.UNKNOWN} row, the key its semantic index found no row for, as A12's own
-   * TypeScript runtime types it: the text of a text or enumeration key, a number for a number key. Absent on every
-   * other pointer. Each missed key is its own entity, told apart by its text, so `7` and `7.0` are two entities
-   * that both read `7` here.
+   * TypeScript runtime types it: the text of a text, enumeration or custom-typed key, a number for a number key,
+   * and for a date key a `Date` at midnight of that date in the model's time zone. Absent on every other pointer.
+   * Each missed key is its own entity, and a number key is told apart by its text, so `7` and `7.0` are two
+   * entities that both read `7` here.
    */
-  readonly semanticIndexValueForUnknownIndexGroup?: string | number;
+  readonly semanticIndexValueForUnknownIndexGroup?: string | number | Date;
 }
 
 const rejected = (message: string | null | undefined): TypeError =>

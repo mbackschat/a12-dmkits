@@ -74,13 +74,16 @@ class TypeScriptBridgeFindingTest {
         const val COUNT = "/Order/Items/Count"
     }
 
-    /** A missed key crosses as A12's TypeScript runtime types it: the text, or a number (KERNEL-FINDINGS KF683). */
+    /** A missed key crosses as A12's TypeScript runtime types it: the text, a number, or a `Date` (KERNEL-FINDINGS KF683). */
     @Test
-    fun aMissedKeyCrossesAsTextOrNumber() {
+    fun aMissedKeyCrossesAsTextNumberOrDate() {
         val missed = A12PartiallyKnownMultiPointer.of("/Portfolio/Fees/Rate", listOf(1, A12PartiallyKnownMultiPointer.UNKNOWN, 1))
 
         assertEquals<Any?>("A", bridgePartiallyKnown(missed.withUnknownIndexKey(UnknownIndexKey.Text("A"))).semanticIndexValueForUnknownIndexGroup)
         assertEquals<Any?>(8.5, bridgePartiallyKnown(missed.withUnknownIndexKey(UnknownIndexKey.Decimal("8.50"))).semanticIndexValueForUnknownIndexGroup)
         assertEquals<Any?>(null, bridgePartiallyKnown(missed).semanticIndexValueForUnknownIndexGroup)
+        val day = bridgePartiallyKnown(missed.withUnknownIndexKey(UnknownIndexKey.Instant(1_767_308_400_000L)))
+            .semanticIndexValueForUnknownIndexGroup
+        assertEquals(1_767_308_400_000.0, (day as kotlin.js.Date).getTime())
     }
 }

@@ -275,16 +275,15 @@ internal object DocumentDifferential {
 
     internal fun pointer(p: A12PartiallyKnownMultiPointer): String = pointerComparisonKey(p.fullName, p.repetitionIndexes)
 
-    /**
-     * A cause member's key: its pointer, and the missed key's type and value, which A12's equality reads too. A
-     * date key is left out, because the interpreter does not carry one yet (INTERPRETER-GAPS IG188).
-     */
+    /** A cause member's key: its pointer, and the missed key's type and value, which A12's equality reads too. */
     private fun causeMember(p: PartiallyKnownDocumentMultiPointer): String =
-        pointer(p) + p.semanticIndexValueForUnknownIndexGroup().filter { it !is java.util.Date }
-            .map { " ${it::class.simpleName}:$it" }.orElse("")
+        pointer(p) + p.semanticIndexValueForUnknownIndexGroup().map(::missedKey).orElse("")
 
     private fun causeMember(p: A12PartiallyKnownMultiPointer): String =
-        pointer(p) + (p.semanticIndexValueForUnknownIndexGroup?.let { " ${it::class.simpleName}:$it" } ?: "")
+        pointer(p) + (p.semanticIndexValueForUnknownIndexGroup?.let(::missedKey) ?: "")
+
+    /** A `Date` renders as the epoch millis its equality reads, not in the JVM's own zone. */
+    private fun missedKey(value: Any): String = " ${value::class.simpleName}:${(value as? java.util.Date)?.time ?: value}"
 
     private fun kernelSignature(m: IMessage): MessageSignature = MessageSignature(m.errorCode, m.messageType.name,
         pointer(m.errorFieldPointer), m.referencedFieldsPointers.map(::pointer).sorted(),

@@ -22,9 +22,10 @@ class UnknownIndexKeyPointerTest {
             missed,
             a,
             missed.withUnknownIndexKey(UnknownIndexKey.Text("B")),
-            missed.withUnknownIndexKey(UnknownIndexKey.Text("7")),
             missed.withUnknownIndexKey(UnknownIndexKey.Decimal("7")),
             missed.withUnknownIndexKey(UnknownIndexKey.Decimal("7.0")),
+            missed.withUnknownIndexKey(UnknownIndexKey.Instant(1_767_308_400_000L)),
+            missed.withUnknownIndexKey(UnknownIndexKey.Instant(1_767_312_000_000L)),
         )
 
         assertEquals(keys.size, keys.toSet().size, "every pointer is distinct: $keys")
@@ -32,6 +33,16 @@ class UnknownIndexKeyPointerTest {
         assertEquals(a, again)
         assertEquals(a.hashCode(), again.hashCode())
         assertNotEquals(missed, a)
+    }
+
+    /** The debug form names the key's value, so two unequal pointers never print alike. */
+    @Test
+    fun theDebugFormNamesTheKeyValue() {
+        assertEquals(
+            listOf("\"A\"", "7.0", "Date(1767308400000)"),
+            listOf(UnknownIndexKey.Text("A"), UnknownIndexKey.Decimal("7.0"), UnknownIndexKey.Instant(1_767_308_400_000L))
+                .map { missed.withUnknownIndexKey(it).toString().substringAfterLast(", ").removeSuffix("]") },
+        )
     }
 
     @Test

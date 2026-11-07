@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer as 
 
 /**
  * One parsed message pointer — A12's `PartiallyKnownDocumentMultiPointer` shape, `fullName` plus indexes, and the
- * missed key a possibly-causing entity carries: a string or a number, as A12's TypeScript runtime types it.
+ * missed key a possibly-causing entity carries: a string, a number or a `Date`, as A12's TypeScript runtime types it.
  */
 @JsExport
 class InterpreterBridgeParsedPartiallyKnownPointer internal constructor(

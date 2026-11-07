@@ -62,17 +62,18 @@ class A12PartiallyKnownMultiPointer private constructor(
 
     /**
      * `semanticIndexValueForUnknownIndexGroup()` — on a possibly-causing entity at the [UNKNOWN] row, the key its
-     * semantic index found no row for: a `String` for a text or enumeration index, and for a number index a
-     * `BigDecimal` on the JVM or a number in JavaScript. Null on every other pointer, including the error,
-     * referenced and fill-to-fix pointers, which A12 leaves without one, and for a date or custom-typed index,
-     * whose key is not carried (INTERPRETER-GAPS IG188). It takes part in equality, so each missed key is its own
-     * entity and `7` and `7.0` are two (KERNEL-FINDINGS KF683).
+     * semantic index found no row for: a `String` for a text, enumeration or custom-typed index; for a number index
+     * a `BigDecimal` on the JVM or a number in JavaScript; for a date, time or date-time index a `java.util.Date` or
+     * a JavaScript `Date` at the instant the key names in the model's time zone. Null on every other pointer,
+     * including the error, referenced and fill-to-fix pointers, which A12 leaves without one. It takes part in
+     * equality, so each missed key is its own entity and `7` and `7.0` are two (KERNEL-FINDINGS KF683).
      */
     val semanticIndexValueForUnknownIndexGroup: Any?
         get() = when (val key = unknownIndexKey) {
             null -> null
             is UnknownIndexKey.Text -> key.value
             is UnknownIndexKey.Decimal -> publishedIndexValue(key)
+            is UnknownIndexKey.Instant -> publishedIndexValue(key)
         }
 
     /** This pointer carrying [key], which only a pointer to the [UNKNOWN] row can carry. */
@@ -134,8 +135,8 @@ class A12PartiallyKnownMultiPointer private constructor(
     override fun hashCode(): Int = (31 * fullName.hashCode() + repetitionIndexes.hashCode()) * 31 + unknownIndexKey.hashCode()
 
     /**
-     * `PartiallyKnownDocumentMultiPointerImpl.toString` — a debug form, never a pointer string. It names a missed key,
-     * which A12's leaves out, so two unequal pointers never print alike.
+     * `PartiallyKnownDocumentMultiPointerImpl.toString` — a debug form, never a pointer string. It names a missed key's
+     * value, which A12's leaves out, so two unequal pointers never print alike.
      */
     override fun toString(): String =
         "A12PartiallyKnownMultiPointer[$fullName, $repetitionIndexes${unknownIndexKey?.let { ", $it" } ?: ""}]"

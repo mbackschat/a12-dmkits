@@ -8,7 +8,7 @@
 
 ## 1. Open
 
-- **IG188 — a missed key on a date or custom-typed index is not carried on the interpreter's cause pointer (opened 2026-11-07; narrowed 2026-11-07).** <a id="ig188"></a> The interpreter carries `semanticIndexValueForUnknownIndexGroup` for a text, number and enumeration index, selected or joined, measured against both kernel strategies ([KF683](KERNEL-FINDINGS.md#kf683), `adapter.laws.UnknownIndexKeyLawsTest`). For a date index A12 converts the key to a `java.util.Date` (`convertWithOnlyBasicTypeCheck`), whose instant depends on a time zone not yet measured, and a custom-typed index's conversion is not measured at all; the interpreter names such a missed row once, unkeyed, and the shared differential leaves a date key out of its `causes` comparison (`DocumentDifferential.causeMember`), where A12's pointer equality (read from source, not measured for these kinds) would name it once per key. Settled by a differential over a date-indexed and a custom-typed group in the shape of `UnknownIndexKeyLawsTest`, which also decides the published type of a date key on the JVM and in TypeScript.
+_None open._
 
 ## 2. Deferred / ongoing-incremental
 

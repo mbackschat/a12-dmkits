@@ -16,7 +16,7 @@ export interface A12PartiallyKnownMultiPointer {
     readonly [A12_PARTIALLY_KNOWN_POINTER]: true;
     readonly fullName: string;
     readonly repetitionIndexes: readonly number[];
-    readonly semanticIndexValueForUnknownIndexGroup?: string | number;
+    readonly semanticIndexValueForUnknownIndexGroup?: string | number | Date;
 }
 A12PartiallyKnownMultiPointer: Readonly<{
     WILDCARD: number;

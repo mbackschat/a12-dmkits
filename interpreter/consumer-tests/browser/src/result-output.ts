@@ -14,7 +14,8 @@ import {
  * Both halves are shown for the same reason the computation results show both: the value is what the API hands
  * over and the string is what a user can paste back into A12. `a12Pointer` is `null` when the address carries a
  * wildcard above the last level or an unresolved one — A12 defines no pointer string for that, and a demo must
- * not invent one.
+ * not invent one. A possibly-causing entity at a row no key matched also carries that key, which is what tells two
+ * such members of one group apart.
  */
 const messageAddressOutput = (pointer: A12PartiallyKnownMultiPointer) => {
   const exact = A12MessagePointer.toExactPointer(pointer);
@@ -24,6 +25,9 @@ const messageAddressOutput = (pointer: A12PartiallyKnownMultiPointer) => {
       : A12PointerFormat.format(exact.fullName, exact.repetitionIndexes),
     fullName: pointer.fullName,
     repetitionIndexes: pointer.repetitionIndexes,
+    ...(pointer.semanticIndexValueForUnknownIndexGroup === undefined
+      ? {}
+      : {semanticIndexValueForUnknownIndexGroup: pointer.semanticIndexValueForUnknownIndexGroup}),
   };
 };
 

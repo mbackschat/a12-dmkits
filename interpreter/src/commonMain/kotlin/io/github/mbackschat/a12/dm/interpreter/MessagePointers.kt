@@ -1,6 +1,11 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.epochDay
+import io.github.mbackschat.a12.dm.interpreter.eval.completeFragmentToIso
+import io.github.mbackschat.a12.dm.interpreter.eval.parseDeclaredDateTime
+import io.github.mbackschat.a12.dm.interpreter.eval.startOfDayMillis
+import io.github.mbackschat.a12.dm.interpreter.eval.zonedInstantOf
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
@@ -31,8 +36,7 @@ internal class MessagePointers(private val model: ModelDef, private val paths: M
      * A possibly-causing entity's pointer: [of], and at a row no key matched, that key as A12 keeps it on a cause
      * member — converted to the index field's basic type, absent for an empty key (KERNEL-FINDINGS KF683,
      * `adapter.laws.UnknownIndexKeyLawsTest`). The key is a selected reference's own key, or on a joined row the
-     * value the join iterates, which the side without that row lacks. A date index's key, a `Date` in A12, and a
-     * custom-typed one are not carried (INTERPRETER-GAPS IG188).
+     * value the join iterates, which the side without that row lacks.
      */
     fun causeOf(reference: MessageReference, pass: ValidationPass, ctx: EvalContext): A12PartiallyKnownMultiPointer {
         val pointer = of(reference, pass, ctx)
@@ -47,20 +51,33 @@ internal class MessagePointers(private val model: ModelDef, private val paths: M
                 checkNotNull(reference.indexField) { "a selected reference is expanded before it is resolved" } to text
             }
             // On a joined row, the level no row matched is the side's group, and its key is the joined value.
-            else -> {
-                val level = pointer.repetitionIndexes.indexOf(A12PartiallyKnownMultiPointer.UNKNOWN)
-                val group = pointer.fullName.split('/').take(level + 2).joinToString("/")
-                val indexField = model.indexFields.firstOrNull { it.substringBeforeLast('/') == group } ?: return pointer
+            is MessageReference.Ordinary, is MessageReference.Wildcard -> {
+                val group = paths.groupsThrough(reference.path)[pointer.repetitionIndexes.indexOf(A12PartiallyKnownMultiPointer.UNKNOWN)]
+                val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return pointer
                 indexField to (pass.doc.messageIndexValue(indexField, ctx) ?: return pointer)
             }
         }
-        val key = when {
-            indexField in model.customTypes -> null
-            model.kinds[indexField] == Kind.STRING -> UnknownIndexKey.Text(text)
-            model.kinds[indexField] == Kind.NUMBER -> A12DocumentJson.canonicalNumberOrNull(text)?.let(UnknownIndexKey::Decimal)
-            else -> null
-        } ?: return pointer
-        return pointer.withUnknownIndexKey(key)
+        return keyOf(indexField, text)?.let(pointer::withUnknownIndexKey) ?: pointer
+    }
+
+    /**
+     * [text] in [indexField]'s basic type, or null where A12 keeps no key: a text, enumeration or custom-typed key is
+     * its text as written; a number its stored text; a temporal key the instant its value names in the model's zone.
+     */
+    private fun keyOf(indexField: String, text: String): UnknownIndexKey? = when (model.kinds[indexField]) {
+        Kind.STRING -> UnknownIndexKey.Text(text)
+        Kind.NUMBER -> A12DocumentJson.canonicalNumberOrNull(text)?.let(UnknownIndexKey::Decimal)
+        // A date is completed as a stored date is — a missing month or day is the first, a missing year the base year
+        // or 2000 — and taken at midnight.
+        Kind.DATE -> model.dateFormatOf(indexField)
+            ?.let { format -> completeFragmentToIso(text, format, model.baseYear ?: 2000, model.timeZone) }
+            ?.let(::epochDay)?.let { day -> UnknownIndexKey.Instant(startOfDayMillis(day, model.timeZone)) }
+        // A time is that time of 1970-01-01.
+        Kind.TIME, Kind.DATE_TIME -> model.dateLikeFormatOf(indexField)
+            ?.let { format -> parseDeclaredDateTime(text, format, model.timeZone) }
+            ?.let { iso -> zonedInstantOf(if ('T' in iso) iso else "1970-01-01T$iso", model.timeZone) }
+            ?.let { seconds -> UnknownIndexKey.Instant(seconds * 1_000L) }
+        Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE, null -> null
     }
 
     /**
