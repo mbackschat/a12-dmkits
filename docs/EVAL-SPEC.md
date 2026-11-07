@@ -8,8 +8,9 @@ How we measure — and improve — whether **dmtool's** bundled material (its se
 
 **Self-evaluation is invalid.** The main-loop assistant that built dmkits has internalized the design; if *it* authors a rule, that proves nothing about the *material*. So the LLM-under-test is a **freshly spawned subagent with clean context**, given **only the material under test** + a task. It is a faithful stand-in for "an arbitrary LLM consumer meeting dmtool for the first time."
 
+- **Clean means no inherited context, checked on every run.** The subagent starts with no CLAUDE.md (global or project), no memory index, no skill listing and no installed plugin. An in-process subagent — the Agent tool or a Workflow `agent()` — inherits all four, measured 2026-11-08 in every transcript of a workflow run, so producers run as headless sessions through [`clean-agent.ts`](../scripts/typescript/clean-agent.ts), which refuses a run whose init event shows any of them. Its `--self-test` proves the check both ways: a plain session must name a canary only the global CLAUDE.md states, and a clean one must not. Every result recorded before that date ran with the inherited context ([RESULTS](../eval/RESULTS.md)).
 - **Honest caveat:** the subagent is *Claude-family*, so this measures Claude-family self-sufficiency, not "any LLM." It is still vastly better than self-eval and is what we can run in-loop.
-- **Model dimension (pin it).** The subagent's model is a first-class benchmark axis: the `Agent`/`Workflow` `model` param (`opus`/`sonnet`/`haiku`) runs the *same task across tiers* → `model × task → pass@k`, so we can compare e.g. Sonnet vs Opus self-sufficiency. **Always pin the model explicitly** for reproducibility (don't inherit the session model — it drifts). Results are labeled by model; an unpinned baseline run measures the *strongest* tier (an upper bound: if Opus struggles, weaker tiers struggle more).
+- **Model dimension (pin it).** The subagent's model is a first-class benchmark axis: the producer's pinned model (`opus`/`sonnet`/`haiku`, optionally with an effort) runs the *same task across tiers* → `model × task → pass@k`, so we can compare e.g. Sonnet vs Opus self-sufficiency. **Always pin the model explicitly** for reproducibility (don't inherit the session model — it drifts). Results are labeled by model; an unpinned baseline run measures the *strongest* tier (an upper bound: if Opus struggles, weaker tiers struggle more).
 - **The N6 stance (decisive):** when the agent fails, **the material is incomplete, not the LLM.** Every failure localizes a gap — a missing operator example, an unclear gotcha, an absent verb — which becomes the prioritized worklist for N1.
 
 ## 2. The material under test — and the boundary that makes the eval valid
@@ -39,14 +40,11 @@ Why bare-tool is the default instrument, not an afterthought: CLAUDE.md's standi
 - a bare-tool failure the **skill would fix** (a polarity flip, a missed iteration guard) → a **skill-worklist** item (N1), *not* a CLI defect;
 - a bare-tool failure about an **undiscoverable verb/param/operator** → a **CLI/catalog** defect (fix the self-description).
 
-`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is opt-in (wired 2026-06-08; `skillPath` added 2026-06-09),** and gives **every** producer family (authoring, computation authoring/preflight, both modify families, comprehension, computation-comprehension, runtime, and the modelkit/mixed families) the skill, two ways:
+`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is opt-in (wired 2026-06-08; `skillPath` added 2026-06-09),** and gives **every** producer family (authoring, computation authoring/preflight, both modify families, comprehension, computation-comprehension, runtime, and the modelkit/mixed families) the skill through **`args.skillPath`**: `eval-produce.ts --skill FILE` copies the file outside the repository and passes that absolute path, and the producer prompt tells the agent to **read that file itself**, naming it as the **only** extra material. The skill thus reaches the agent verbatim and cannot drift from the committed file.
 
-- **`args.skillPath`** (PREFERRED, 2026-06-09) — a repo-relative path; the producer prompt tells the agent to **read that file itself** (it already runs in the repo with shell access). The **verbatim** skill thus needs no inline transcription by the main loop (the script has no filesystem access) and can't drift from the committed file. The prompt names that file as the **only** extra material the agent may read.
-- **`args.skill`** — the skill's CONTENTS inlined (the main loop pastes them). Kept for inlining callers; for a *definitive* run prefer `skillPath` so "verbatim" is trustworthy.
+Without it, the run is bare-tool exactly as before. The skill goes to **producers only** — judges stay skill-free (they score against the gold).
 
-With neither, the run is bare-tool exactly as before. The skill goes to **producers only** — judges stay skill-free (they score against the gold).
-
-**Mandatory boundary audit (production runs).** `skillPath` lets a producer agent read a file, so the run is only valid if the agents read **nothing but the skill**. After a production run, grep the producer transcripts (`…/subagents/workflows/wf_…/agent-*.jsonl`) for Read-tool `file_path` + bash read commands; the only files read may be `skill/SKILL.md`, the model `.dm.json`, and the agents' own `/tmp` docs — any `docs/` · `src/` · `*Test` · other `*.md` · `eval/tasks` read is a boundary breach that **invalidates the run**. (The grep + interpretation live in the `run-dmtool-eval` skill, checklist step 7.)
+**Boundary audit (every run).** The material boundary is the measurement, so `eval-produce.ts` checks every producer transcript and refuses the run when a tool input names the repository, a `docs/` path, a skill file or any `*.md` other than the copied skill (`boundaryBreaches`, locked by `eval-produce.test.ts`).
 
 **Bare-tool stays the default and the only mode CI / the historical trend line use** — a production number is labelled separately and is not comparable to the bare-tool series.
 
@@ -115,7 +113,7 @@ The benchmark is the **forcing function**: it tells us, objectively, which verbs
 
 > **Operationally, run via the `run-dmtool-eval` skill** (`.claude/skills/`) — it loads these guardrails at point-of-use so they aren't run from memory. This section is the rationale behind them.
 
-- Spawn a **fresh agent** (clean context; the `Agent` tool does this). For the suite at scale, a **Workflow** fans out tasks × k runs through clean agents, each scored via the CLI, aggregating pass@k (opt-in — it spawns many agents).
+- Spawn a **clean agent**: a headless session with no inherited context (§1). The `Agent` tool does not give one — it hands the subagent the operator's CLAUDE.md files, memory index and skill listing. For the suite at scale, `eval-produce.ts` fans tasks × k runs out to clean agents and the **Workflow** scores them, aggregating pass@k (opt-in — it spawns many agents).
 - The prompt **must not leak the answer.** *(Protocol lesson from the 2026-06-05 baseline: the first probe prompt hinted at the error-scenario inversion — "think about when the condition is true" — which biases the result. Keep prompts neutral; state the business requirement and the constraints, not the technique.)*
 - **No teaching to the test.** The skill's worked examples must be *structurally distinct* from the benchmark tasks, or a pass measures copying, not self-sufficiency. *(Lesson: the skill's worked example (Order/EXPRESS/DeliveryDate) is near-identical in shape to T1 (Subscription/PRO/MonthlyFee), so the T1-with-skill pass measures pattern-substitution transfer, not novel composition — add T2 tasks whose shape no taught example covers.)*
 - State the hard boundary (§2: no source/docs).
@@ -181,28 +179,32 @@ The run has **three layers**, each with a deliberate role. Getting the layering 
 
 ```
 MAIN LOOP  (you, via the run-dmtool-eval skill)      — orchestration; shares your context
-  · invoke the skill   · ./gradlew :cli:installDist   · bash eval/prep-sandbox.sh   · bundle tasks → args
+  · invoke the skill   · ./build.sh :cli:installDist   · bash eval/prep-sandbox.sh   · bundle tasks → tasks.json
   · estimate cost (§8a)   · fold results → eval/RESULTS.md   · resume / cost-track (session-scoped)
   │
-  │   Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })
+  │   scripts/run-typescript.sh eval-produce scripts/typescript/eval-produce.ts \
+  │       --tasks tasks.json --models sonnet [--efforts '{"sonnet":"xhigh"}'] --k 3 --out DIR
   ▼
-WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE allowed level of nesting
-  Prep (verify sandbox, read-only) ──► Produce ──► Recheck (where needed) ──► Judge/executor (where needed) ──► aggregate pass@k
-  │
-  │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
-  ▼
-CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
-  see ONLY: the self-describing CLI launcher (verbs · --help · cli operators) + the model file under test
+CLEAN PRODUCERS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
+  headless sessions with no inherited context (§1), at most 4 at a time; prompts come from the
+  workflow's `prompts` mode, so they are written once, in the workflow
+  see ONLY: `dmtool` on PATH (verbs · --help · cli operators) + the model file under test
             + the task's inline Document instance or computation proposal where applicable
             (bare-tool mode, §2a — the wired default; production mode would also inject skill/SKILL.md)
-  return:  a candidate rule / an explanation, via StructuredOutput
+  return:  a candidate rule / an explanation as structured output → DIR/produced.json; a run with wider
+           context, or a tool input naming the repository, docs or a skill, is refused
+  │
+  │   Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks, produced } })
+  ▼
+WORKFLOW  (eval/benchmark.workflow.js)                — scoring; ONE allowed level of nesting
+  Prep (verify sandbox, read-only) ──► map produced ──► Recheck (where needed) ──► Judge/executor (where needed) ──► aggregate pass@k
 ```
 
-**Isolation belongs at exactly one layer — the clean subagents.** A walled-off, first-time consumer is the honest test (§1). **Orchestration must stay in the main loop** because it needs *shared* context: it writes `eval/RESULTS.md`, tracks token cost, and can `resumeFromRunId` (session-scoped). So **do not wrap orchestration in its own sub-agent** — it would (a) hit the nesting limit (Workflow can't nest; a sub-agent spawning sub-agents is unsupported), likely unable to launch the run at all; and (b) re-wall orchestration from your context, so pass@k detail + judge rationales return only as a lossy summary and write-back/resume/cost-tracking break. The skill is a **main-loop** playbook; the Workflow — not a sub-agent — provides the isolation.
+**Isolation belongs at exactly one layer — the clean producers.** A walled-off, first-time consumer is the honest test (§1). **Orchestration must stay in the main loop** because it needs *shared* context: it writes `eval/RESULTS.md`, tracks token cost, and can `resumeFromRunId` (session-scoped). So **do not wrap orchestration in its own sub-agent** — it would (a) hit the nesting limit (Workflow can't nest; a sub-agent spawning sub-agents is unsupported), likely unable to launch the run at all; and (b) re-wall orchestration from your context, so pass@k detail + judge rationales return only as a lossy summary and write-back/resume/cost-tracking break. The skill is a **main-loop** playbook; the clean-agent launcher — not the Workflow, whose agents inherit the operator's context — provides the isolation. That inheritance is acceptable for the recheck and judge agents, which are the scoring instrument and read the gold anyway, and never for a producer.
 
 **How the run is assembled — who builds what, when.** Two artifacts, different actors and lifetimes:
 - The **script** `eval/benchmark.workflow.js` is a *committed, persistent file* — authored ahead of time, edited only when the orchestration logic changes. It never holds tasks or tiers; it reads them from the `args` global.
-- The **`Workflow(...)` call is built by the main loop** (you, following the skill) at run time. `scriptPath` just *references* that committed file; `args = {models, k, tasks}` is assembled fresh each run — read `eval/tasks/*/*.json` (recurse the kit folders), trim each task, choose the tiers and `k` (a selective run includes only the affected task objects). You emit the call; the **harness launches it in the background** and the Workflow runtime executes the script, **injecting `args` as a global** — *that* is what spawns the clean subagents (you don't run the JS). On completion the return value (`{agg, …}`) comes back to the main loop to fold into `RESULTS.md`.
+- The **`Workflow(...)` call is built by the main loop** (you, following the skill) at run time. `scriptPath` just *references* that committed file; `args = {models, k, tasks, produced}` is assembled fresh each run, `produced` being the clean producers' `produced.json` — read `eval/tasks/*/*.json` (recurse the kit folders), trim each task, choose the tiers and `k` (a selective run includes only the affected task objects). You emit the call; the **harness launches it in the background** and the Workflow runtime executes the script, **injecting `args` as a global** — *that* is what runs the scoring agents (you don't run the JS). On completion the return value (`{agg, …}`) comes back to the main loop to fold into `RESULTS.md`.
 
 This script-vs-`args` split is deliberate: the script is fixed, `args` varies per run — which is exactly what makes **selective runs** (vary `args`, never the script) and **resume** (same script + same `args` ⇒ cache hit) work.
 
@@ -217,9 +219,9 @@ The lesson generalizes: **a 0/k cell whose candidates look correct is an artifac
 
 | Boundary | Payload |
 |---|---|
-| Main → Workflow | `args = { models, k, tasks }` (plain JSON) |
-| Workflow → clean subagent | a neutral prompt + the path to the shipped material (never source/docs/this spec) |
-| Clean subagent → Workflow | `StructuredOutput` — a candidate artifact, an explanation, or directly scored runtime/preflight observations |
+| Workflow (`prompts` mode) → eval-produce | one cell per model × task × run: a neutral prompt naming only `dmtool` and the sandboxed model (never source/docs/this spec), its output schema, model and effort |
+| Clean producer → Main | structured output per cell — a candidate artifact, an explanation, or directly scored runtime/preflight observations — in `produced.json`, plus each transcript and an isolation/boundary report |
+| Main → Workflow | `args = { models, k, tasks, produced }` (plain JSON) |
 | Recheck (inside Workflow) | all candidates → **one** agent runs `cli batch` (one warm JVM) → `{verdicts:[{id, valid}]}`; falls back to self-report on failure |
 | Judge/executor → Workflow | `{equivalent\|correct, why}` or raw execution facts for families requiring a second agent; no second-agent boundary for runtime/preflight |
 | Workflow → Main | `{agg, …family details}` — you fold `agg` + rationales/facts into `RESULTS.md` |
@@ -229,7 +231,10 @@ The lesson generalizes: **a 0/k cell whose candidates look correct is an artifac
 | param | meaning | selective-run use |
 |---|---|---|
 | `models` | tiers to pin, e.g. `["opus","sonnet"]` | pass one tier to re-check just it |
-| `efforts` | optional reasoning effort per model, e.g. `{"sonnet":"xhigh"}`; producers only, an unlisted model inherits the session effort | pin a tier's effort, not just its model |
+| `efforts` | optional reasoning effort per model, e.g. `{"sonnet":"xhigh"}`; producers only, an unlisted model runs at its default | pin a tier's effort, not just its model |
+| `produced` | the clean producers' outputs, keyed by cell (`<family>/<model>/<task id>/<run>`); required in the default `score` mode | a cell missing from it scores as a failure |
+| `mode` | `prompts` returns the producer cells and spawns nothing; only `eval-produce.ts` uses it | — |
+| `cli` | how a prompt names the CLI; `eval-produce.ts` passes `dmtool`, which its producers find on PATH | — |
 | `k` | runs per (model, task) cell | low `k` for a quick trial; higher for stable pass@k |
 | `tasks` | the trimmed task objects (`id/family/model/intent/gold/rules/expected`) | **pass only the affected tasks** → targeted re-run (§8b) |
 

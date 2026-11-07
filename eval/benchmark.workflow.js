@@ -11,17 +11,21 @@
 // Prereq: build the launcher once — `./gradlew :cli:installDist` → cli/build/install/dmtool/bin/dmtool
 // (the agents invoke it through the repo's bin/dmtool shim, the same canonical `dmtool` entry the
 // examples/ demos use; never the native binary — EVAL-SPEC §2a).
-// Invoke:
+// Producers run OUTSIDE this script, as clean headless agents (scripts/typescript/eval-produce.ts): an in-process
+// agent() inherits the operator's CLAUDE.md files, memory index and skill listing — every transcript of the
+// 2026-11-08 wf_6da3824a-e73 run carried them — and the material boundary forbids all of it. So two modes:
+//   args.mode = 'prompts'  → returns { cells } (one producer prompt per model × task × run) and spawns nothing;
+//                            eval-produce.ts runs the script this way, so the prompts stay single-sourced here.
+//   default ('score')      → scores args.produced ({ cellKey: output }), the map eval-produce.ts wrote.
 //   Workflow({ scriptPath: "eval/benchmark.workflow.js",
-//     args: { models: ["opus","sonnet"], k: 3, tasks: [ /* contents of eval/tasks/<kit>/*.json */ ] } })
-// (The script has no filesystem access, so the caller reads eval/tasks/*/*.json — the kit subfolders — and passes them in.)
+//     args: { models: ["sonnet"], k: 3, tasks: [ /* eval/tasks/<kit>/*.json */ ], produced: { /* produced.json */ } } })
 
 export const meta = {
   name: 'rulekit-self-sufficiency-benchmark',
   description: 'N6 self-sufficiency benchmark — clean agents author/read rules from only the shipped material; pass@k per model',
   phases: [
     { title: 'Prep', detail: 'mirror the models tree into a /tmp sandbox (committed fixtures stay read-only)' },
-    { title: 'Produce', detail: 'clean agent per (model,task,run) — author or explain' },
+    { title: 'Produce', detail: 'map the clean producers\' outputs (args.produced) onto their cells' },
     { title: 'Recheck', detail: 'one warm-JVM `cli batch` re-validates every authored candidate' },
     { title: 'Judge', detail: 'semantic correctness vs the gold / rubric' },
   ],
@@ -43,7 +47,10 @@ if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothi
 // The JDK-21 pin comes from the shared helper, not a second copy of `java_home -v 21`: this string is a
 // shell command an agent runs from the repository root, so it can source it like every other consumer.
 // The hard-coded form was also macOS-only, which would have broken the eval anywhere else.
-const CLI = 'JAVA_HOME="$(. scripts/gradle-environment.sh && a12_pinned_jdk21_home)" bin/dmtool'
+const CLI = A.cli || 'JAVA_HOME="$(. scripts/gradle-environment.sh && a12_pinned_jdk21_home)" bin/dmtool'
+const MODE = A.mode || 'score'
+if (MODE === 'score' && !A.produced) throw new Error('no args.produced: run eval-produce.ts first (EVAL-SPEC §8c)')
+const CELLS = []
 // A task names its model by stem (<MODELS_ROOT>/<model>.dm.json) OR carries an explicit `modelPath`
 // (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to every verb
 // as `-w/--workspace` so the recheck/judge can resolve a multi-file model's includes/typedefs.
@@ -68,38 +75,19 @@ const WS_DIR = t => sandboxed(t.workspaceDir)
 const sq = s => `'` + String(s).replace(/'/g, `'\\''`) + `'`
 
 // Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
-// PRODUCTION mode is opt-in and gives every PRODUCER agent the N1 skill, two ways:
-//   • args.skillPath (PREFERRED) — a repo-relative path; the produce prompt tells the agent to READ that file
-//     itself. The agent already runs in the repo with shell access, so the VERBATIM skill needs no inline
-//     transcription by the main loop (the script has no filesystem access) and can't drift from the committed
-//     file. The prompt names that file as the ONLY extra material the agent may read.
-//   • args.skill — the skill's CONTENTS inlined (the main loop pastes them). Kept for callers that prefer
-//     inlining; for a definitive run prefer skillPath so "verbatim" is trustworthy.
-// Either way the skill goes to PRODUCERS only; judges stay skill-free (they score against the gold). After a
-// production run, AUDIT the producer transcripts to confirm the agents read ONLY the skill — nothing else
-// (the material boundary IS the measurement): see EVAL-SPEC §2a / the run-dmtool-eval skill for the grep.
-// Label every result as production — it is NOT comparable to the bare-tool trend line.
-const SKILL = (typeof A.skill === 'string' && A.skill.trim()) ? A.skill.trim() : null
+// PRODUCTION mode is opt-in: args.skillPath is the absolute path eval-produce.ts --skill copied the N1 skill to,
+// outside the repository. The produce prompt tells the agent to READ that file itself, so the skill reaches it
+// verbatim, and names it as the ONLY extra material; eval-produce.ts refuses any other .md or repository read.
+// The skill goes to PRODUCERS only; judges stay skill-free (they score against the gold). Label every result
+// as production — it is NOT comparable to the bare-tool trend line.
 const SKILL_PATH = (typeof A.skillPath === 'string' && A.skillPath.trim()) ? A.skillPath.trim() : null
-log(`run mode: ${(SKILL || SKILL_PATH)
-  ? `PRODUCTION (N1 skill ${SKILL_PATH ? 'read by the agent from ' + SKILL_PATH : 'inlined'})`
-  : 'bare-tool (no skill)'}`)
+log(`run mode: ${SKILL_PATH ? `PRODUCTION (N1 skill read by the agent from ${SKILL_PATH})` : 'bare-tool (no skill)'}`)
 function skillBlock() {
-  if (SKILL_PATH) {
-    return `
+  if (!SKILL_PATH) return ''
+  return `
   - the A12 authoring SKILL (expert-distilled judgment — polarity, the traps, iteration): READ IT IN FULL from
     the file \`${SKILL_PATH}\` before composing, and APPLY it. That file is the ONLY extra thing you may read —
     do NOT read any other file (no docs, source, tests, other *.md, or test/eval fixtures).`
-  }
-  if (SKILL) {
-    return `
-  - the A12 authoring SKILL below — expert-distilled judgment (polarity, the traps, iteration). Treat it as
-    trusted background and APPLY it; this is the only extra material you get — do not seek other docs.
-<<<SKILL
-${SKILL}
-SKILL>>>`
-  }
-  return ''
 }
 
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
@@ -444,28 +432,31 @@ const COMPUTATION_PREFLIGHT_SCHEMA = {
 // cannot be granted approval for a mutating setup command (`rm`/`cp`), so prompting one to build the sandbox
 // is non-deterministically denied. This phase only CONFIRMS the sandbox is present (read-only `ls`) and
 // HALTS loudly if not, so a forgotten prep can never silently score correct candidates as failures.
-phase('Prep')
-const prep = await agent(
-  `Verify the benchmark's model sandbox exists — READ-ONLY, do NOT create anything. Run exactly:  ls ${SANDBOX}
+if (MODE === 'score') {
+  phase('Prep')
+  const prep = await agent(
+    `Verify the benchmark's model sandbox exists — READ-ONLY, do NOT create anything. Run exactly:  ls ${SANDBOX}
 It must list the model files (e.g. order.dm.json, subscription.dm.json). Report whether the sandbox is ready.`,
-  { label: 'verify sandbox', phase: 'Prep',
-    schema: { type: 'object', additionalProperties: false, required: ['ready'],
-      properties: { ready: { type: 'boolean' }, detail: { type: 'string' } } } })
-if (!prep || prep.ready !== true) {
-  throw new Error(`model sandbox ${SANDBOX} is not ready — run \`bash eval/prep-sandbox.sh\` from the repo `
-    + `root before launching (EVAL-SPEC §8c). Detail: ${(prep && prep.detail) || 'no report'}`)
+    { label: 'verify sandbox', phase: 'Prep',
+      schema: { type: 'object', additionalProperties: false, required: ['ready'],
+        properties: { ready: { type: 'boolean' }, detail: { type: 'string' } } } })
+  if (!prep || prep.ready !== true) {
+    throw new Error(`model sandbox ${SANDBOX} is not ready — run \`bash eval/prep-sandbox.sh\` from the repo `
+      + `root before launching (EVAL-SPEC §8c). Detail: ${(prep && prep.detail) || 'no report'}`)
+  }
 }
 
 // ---- Produce: one clean agent per (model, task, run); model pinned for reproducibility ------------
 
 phase('Produce')
-// Every producer phase fans out the same (model × task × run) grid, one clean agent per cell; only the prompt,
-// the label and the output schema differ. A failed agent becomes `out: null` so the scorers see the cell.
-const produce = (kind, tasks, prompt, label, schema) => parallel(
-  MODELS.flatMap(model => tasks.flatMap(task => Array.from({ length: K }, (_, i) => ({ model, task, i })))).map(r => () =>
-    agent(prompt(r.task), { label: `${label} ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, effort: EFFORT(r.model), schema })
-      .then(out => ({ kind, model: r.model, task: r.task, i: r.i, out }))
-      .catch(() => ({ kind, model: r.model, task: r.task, i: r.i, out: null }))))
+// Every producer family fans out the same (model × task × run) grid; only the prompt, label and schema differ.
+// A cell the producers left without an output scores as `out: null`, so the scorers still see it.
+const produce = async (kind, tasks, prompt, label, schema) =>
+  MODELS.flatMap(model => tasks.flatMap(task => Array.from({ length: K }, (_, i) => ({ model, task, i })))).map(r => {
+    const key = `${kind}/${r.model}/${r.task.id}/${r.i}`
+    if (MODE === 'prompts') CELLS.push({ key, label: `${label} ${r.model}:${r.task.id}#${r.i}`, model: r.model, effort: EFFORT(r.model), prompt: prompt(r.task), schema })
+    return { kind, model: r.model, task: r.task, i: r.i, out: (A.produced && A.produced[key]) || null }
+  })
 
 // self-correction = authoring + a recovery trap; same pass path
 const authored = await produce('authoring', [...AUTHORING, ...SELF_CORRECTION], authorPrompt, 'author', AUTHOR_SCHEMA)
@@ -483,6 +474,7 @@ const authoredModRule = await produce('modify-rule', MODIFY_RULE, modifyRuleProm
 const authoredMetadata = await produce('metadata', METADATA, metadataPrompt, 'meta', METADATA_SCHEMA)
 const authoredTemplate = await produce('template', TEMPLATE, templatePrompt, 'tmpl', TEMPLATE_SCHEMA)
 const authoredRefactor = await produce('refactor', REFACTOR, refactorPrompt, 'refac', REFACTOR_SCHEMA)
+if (MODE === 'prompts') return { cells: CELLS }
 
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:

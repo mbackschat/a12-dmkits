@@ -15,10 +15,10 @@
 # after the probe agent finishes, BEFORE trusting the report. It is deterministic (scripts for checks,
 # agents for judgment — the CLAUDE.md rule), so it can also gate a future automated probe.
 #
-#   ./probe/audit-probe.sh <agent-transcript.jsonl | agentId>
+#   ./probe/audit-probe.sh <transcript.jsonl>
 #
-# The probe subagent's transcript is …/<session>/subagents/agent-<agentId>.jsonl; the Agent tool result
-# prints the agentId. Pass the path, or just the agentId and the script locates it under ~/.claude/projects.
+# The transcript is the one the clean launch wrote (probe/README.md step 3). An agentId still resolves to an
+# Agent-tool subagent's transcript under ~/.claude/projects, which check 7 then refuses.
 # Env: RK_PROBE_SANDBOX (default /tmp/rk-probe-sandbox).
 set -euo pipefail
 
@@ -26,6 +26,8 @@ ARG="${1:?usage: audit-probe.sh <agent-transcript.jsonl | agentId>}"
 SANDBOX="${RK_PROBE_SANDBOX:-/tmp/rk-probe-sandbox}"
 LOG="$SANDBOX/dmtool-calls.log"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# The tool set the probe launch grants (probe/README.md step 3); check 7 refuses a wider one.
+PROBE_TOOLS="${RK_PROBE_TOOLS:-Bash,Read,Write,Edit,Glob,Grep}"
 
 command -v jq >/dev/null || { echo "audit needs jq" >&2; exit 3; }
 
@@ -179,6 +181,20 @@ if [[ -n "${rawread// /}" ]]; then
   printf '%s\n' "$rawread" | sed '/^$/d;s/^/      /'
 else
   note "clean — models were inspected only through dmtool (no raw-JSON read)"
+fi
+
+# --- Check 7: the session started with NO inherited context (no CLAUDE.md, memory, skill listing, plugin) ---
+# An Agent-tool subagent inherits the runner's CLAUDE.md files, memory index and skill listing (measured
+# 2026-11-08 with a canary only the global CLAUDE.md states), so the probe runs as a clean headless session
+# (scripts/typescript/clean-agent.ts) and this re-checks the init event that launch writes. A transcript with
+# no init event is an Agent-tool session and fails here.
+echo "[7] context isolation — the session started with no inherited context"
+iso="$("$REPO/scripts/run-typescript.sh" clean-agent "$REPO/scripts/typescript/clean-agent.ts" \
+  --check-transcript "$T" --tools "$PROBE_TOOLS" 2>&1 || true)"
+if [[ -n "$iso" ]]; then
+  fail=1; note "SUSPECT — the session was not launched clean (probe/README.md step 3):"; printf '%s\n' "$iso" | sed 's/^/      /'
+else
+  note "clean — the init event shows only the probe tools, no skill, plugin, MCP server or slash command"
 fi
 
 echo

@@ -62,19 +62,20 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 ./probe/prep-probe.sh                                                   #   clean start (from-scratch)
 ./probe/prep-probe.sh cli/src/test/resources/models/order-ruled.dm.json #   fixture start (seed work/)
 
-# 3. (main loop) drive a general-purpose subagent through a task's prompts IN ORDER, as one session.
-#    FIRST clear the main-loop TaskList — the subagent INHERITS it via system-reminders and a revealing task
-#    name biases the probe (PROBE-SPEC, audit check 5). Build its prompt as: agent-preamble.md (single-sourced
-#    framing) + the task's TURN blocks (verbatim). cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare
-#    `dmtool` → the shim), skill at <sandbox>/SKILL.md. The subagent prompt = `agent-preamble.md` + the task
-#    turns + `report-pass.md` as a FINAL turn (it points the agent at the SHIPPED a12-dmtool-bug-report skill,
-#    copied into the sandbox) — so the agent writes its OWN bug-and-findings report
-#    (`<sandbox>/work/REPORT.md`) from the full context it holds (what it did and WHY). The report narrative
-#    is the AGENT's; the main loop verifies it (step 6), it does not author it.
+# 3. (main loop) run the task's prompts IN ORDER as ONE CLEAN SESSION — never through the Agent tool, whose
+#    subagent inherits your CLAUDE.md files, memory index, skill listing and TaskList (PROBE-SPEC, audit
+#    check 7). The prompt = agent-preamble.md (single-sourced framing) + the task's TURN blocks (verbatim) +
+#    report-pass.md as a FINAL turn (it points the agent at the SHIPPED a12-dmtool-bug-report skill, copied
+#    into the sandbox), so the agent writes its OWN bug-and-findings report (<sandbox>/work/REPORT.md) from the
+#    full context it holds (what it did and WHY). The report narrative is the AGENT's; the main loop verifies
+#    it (step 6), it does not author it. A long session goes to the background:
+scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --model sonnet \
+  --tools Bash,Read,Write,Edit,Glob,Grep --cwd /tmp/rk-probe-sandbox/work \
+  --transcript /tmp/rk-probe-sandbox/transcript.jsonl < prompt.txt
 
 # 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
-#    Pass the agentId the Agent tool reported (or the transcript path). STOP and discard if it says SUSPECT:
-./probe/audit-probe.sh <agentId>
+#    Pass the clean session's transcript. STOP and discard if it says SUSPECT:
+./probe/audit-probe.sh /tmp/rk-probe-sandbox/transcript.jsonl
 
 # 5. DETERMINISTIC DIGEST — the mechanical trajectory facts + auto RED-FLAGS (an internal tool error:
 #    an escaped exception OR a structured RK_INTERNAL_ERROR/outcome:error/exit 70 — exits 1 if any):
