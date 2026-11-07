@@ -1,7 +1,7 @@
 {
     "meta": {
         "id": "model-validation-seed",
-        "kernelVersion": "31.1.1",
+        "kernelVersion": "31.3.1",
         "source": "fuzz-seed",
         "sections": [
             "§9"
