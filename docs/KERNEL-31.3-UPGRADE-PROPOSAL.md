@@ -40,7 +40,7 @@ Behaviour changes beside the format: relative paths may climb to the model root 
 | B4c | Typed, read and CLI surface for the filter and `changeNote` | kits done 2026-11-07: `Rule.possibleCauses` takes handles and derives A12's entry through the shared `:predicates` spelling, `RuleInfo.possibleCauses()` reads it, the writer places it last and omits an empty list, and `EditSession` edits keep it with every `changeNote` (`EditSessionUnmodeledMemberTest`); the CLI too: `rule add` and `apply` take `possibleCauses` by absolute path, `rule read` returns them, and the two `NOT_REFERENCED` codes carry a corrective (`RulePossibleCausesCliTest`); `changeNote` is read and written on every element and type definition (`ModelDocument`, `EditSession`, the element editors, `meta --change-note`, `apply`), each metadata write placing its member where A12 writes it; the draft emitter's description order is [DG183](DEV-API-GAPS.md#dg183) |
 | B5 | Re-capture: corpus, native metadata, `operators.json` `verifiedAgainst`, perf anchors, interpreter measurement | open; the conformance corpus was re-captured 2026-11-07 and only its `meta.kernelVersion` moved, so 31.3.1 changed no captured outcome; the `checker-near-miss` replay fixtures were restamped under M4, `verifiedAgainst` and the conformance-frontier admission digests with the landing. The landing moved all 15 perf scenarios to version 5: the 29.8.0 stamp and the retired pre-1900 fingerprint entry reproduce the version-4 hashes exactly, so no lane changed what it measures, but every anchored key is orphaned until both runner classes are re-anchored |
 | B6 | a12-kernel-lean update letter (outbound, per [A12-KERNEL-LEAN-HANDBACK](A12-KERNEL-LEAN-HANDBACK.md)) | done 2026-11-07: Letter J, `a12-kernel-lean-spec-corrections-2026-11-07.md`, carries the 33 findings the migration added or amended for the peer, each adoption record naming its section; no peer session was live, so the owner hands it over |
-| B7 | Simplification pass, cold review, growth record | open |
+| B7 | Simplification pass, cold review, growth record | done 2026-11-07: the simplification pass landed as its own commits; the cold review's in-scope findings were each settled by a kernel oracle and fixed (a duplicate-key cluster passing through the filter, an undecided root group under partial validation, the `X..` entry spelling, a replaced computation's metadata order, a move carrying the filter, KF681's comparison column); the growth is [recorded below](#repository-growth) |
 
 **Landing.** Every commit must be green, and the pin bump turns 64 tests red across 43 classes (measured 2026-11-07, root + cli + adapter on the 31.3.1 build), so B1, B2, Y and M1–M8 land together once the estate is green; B4 and B5 may follow as their own commits.
 
@@ -58,3 +58,18 @@ Behaviour changes beside the format: relative paths may climb to the model root 
 | B5 | `InterpreterMeasurementCurrencyGuardTest` |
 
 Each batch gets its acceptance matrix (row, oracle, predicted outcome, discriminator) before its first run, per the [witness-grid procedure](TESTING-SPEC.md#witness-grid-design). A changed kernel verdict is a measured fact: it amends the owning [KERNEL-FINDINGS](KERNEL-FINDINGS.md) entry in place and updates the checker or interpreter where an agreement test now differs.
+
+## Repository growth (measured 2026-11-07) <a id="repository-growth"></a>
+
+Measured with [the runbook's command](KERNEL-UPGRADE.md#major-release-playbook) (step 10) over `kernel-31.1.1-final..e2bf01cf1` after `git repack -ad`: 23 commits and 782 new file versions, with 133 of 164 521 objects loose. The migration commit `b86afdbf0` alone is the lower bound; the range adds the four new members across every component and the review's fixes.
+
+| Kind | Versions | Raw | Packed |
+|---|---|---|---|
+| Docs (`.md`) | 82 | 28.5 MB | 2.40 MB |
+| Source (Java, Kotlin, TypeScript, Gradle, shell) | 445 | 8.0 MB | 0.91 MB |
+| JSON | 231 | 19.5 MB | 0.43 MB |
+| ABI dumps, perf JSONL, other | 24 | 2.3 MB | 0.08 MB |
+| **Range total** | 782 | 58.3 MB | **3.82 MB** |
+| Migration commit `b86afdbf0` (521 files) | 521 | 18.1 MB | **1.73 MB** |
+
+Against [31.1.1's](archived/KERNEL-31-UPGRADE-PROPOSAL.md#repository-growth) 11.6 MB over 93 commits, this migration cost a third, and its own commit 1.73 MB against 4.5 MB. The pack is 84.5 MiB after the full repack, so the range is about 4 % of the repository; the 31.1.1 record's 104.7 MiB was taken on an incrementally packed store and is not comparable. `KERNEL-FINDINGS.md` is again the largest single cost, 0.98 MB packed over 7 versions; `kernel-finding-adoption.json` took 11 versions, 15.2 MB raw and 0.20 MB packed.
