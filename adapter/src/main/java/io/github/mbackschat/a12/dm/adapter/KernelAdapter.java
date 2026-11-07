@@ -26,6 +26,7 @@ import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
@@ -811,6 +812,19 @@ public final class KernelAdapter {
      */
     public String ruleSeverity(String ruleFullName) {
         return rule(ruleFullName).getSeverityType().name();
+    }
+
+    /**
+     * A rule's possible-cause filter as A12 holds it, its entries relative to the rule's group; empty when A12
+     * derives the causes itself ({@code IRule.hasCustomRefEntities}), which a stored filter with both lists empty
+     * also leaves it doing.
+     */
+    public Optional<PossibleCauseFilter> rulePossibleCauses(String ruleFullName) {
+        IRule rule = rule(ruleFullName);
+        return rule.hasCustomRefEntities()
+                ? Optional.of(new PossibleCauseFilter(rule.getCustomRefErrorEntitiesIfFilled(),
+                        rule.getCustomRefErrorEntitiesIfNotFilled()))
+                : Optional.empty();
     }
 
     /**

@@ -66,7 +66,17 @@ public final class StructuralKernelFix {
     public record Hint(String fix, String explain) {
     }
 
+    /** One corrective for both lists of a rule's possible causes (KERNEL-FINDINGS KF682). */
+    private static final Hint POSSIBLE_CAUSE_NOT_READ = new Hint(
+            "Read the entity in the condition, or drop it from the possible causes. Only what the condition "
+                    + "names counts: a field it reads (`Lines/Amount` for Sum(Lines*/Amount), not `Lines`), or a "
+                    + "group it names itself (`Rider` for GroupFilled(Rider), not `Rider/Code`).",
+            "The message quotes the entry as A12 stores it, relative to the rule's group, even when it was "
+                    + "written as an absolute path; one finding names every failing entry of its list.");
+
     private static final Map<KernelCode, Hint> HINTS = Map.ofEntries(
+            Map.entry(KernelCode.MVK_REF_ERROR_ENTITY_IF_FILLED_NOT_REFERENCED, POSSIBLE_CAUSE_NOT_READ),
+            Map.entry(KernelCode.MVK_REF_ERROR_ENTITY_IF_NOT_FILLED_NOT_REFERENCED, POSSIBLE_CAUSE_NOT_READ),
             Map.entry(KernelCode.MVK_INVALID_PATTERN, new Hint(
                     "Use a Java-valid regular expression that also avoids A12's admission restrictions: "
                             + "possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, "

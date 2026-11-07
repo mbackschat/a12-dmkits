@@ -27,8 +27,7 @@ class SlotParityTest {
             "getSeverity", "SUPPORTED: Rule.severity",
             "getErrorMessage", "SUPPORTED: Rule.messages (locale-law checked)",
             "getGuiPatterns", "DEFERRED: UI concern, no authoring demand yet",
-            "getFilterForPossiblyCausingEntities",
-            "DEFERRED: KERNEL-31.3-UPGRADE-PROPOSAL B4, not authorable until that slice lands");
+            "getFilterForPossiblyCausingEntities", "SUPPORTED: Rule.possibleCauses → derived possibleCauseFilter");
 
     private static final Map<String, String> COMPUTATION_SLOTS = Map.of(
             "getComputedField", "SUPPORTED: Computation.of(field) → computed computedFieldRelPath",
@@ -38,7 +37,7 @@ class SlotParityTest {
             "getAdditionalParserInformation",
             "SUPPORTED: Computation.Builder.suppressWarnings renders the preamble (only DEC_PLACES is suppressible)",
             "getErrorCodesToSuppress", "SUPPORTED: read only, deprecated since 31.2.0; A12 folds it into the preamble",
-            "getErrorCode", "DEFERRED: KERNEL-31.3-UPGRADE-PROPOSAL M5c, not authorable until that slice lands",
+            "getErrorCode", "SUPPORTED: Computation.Builder.errorCode",
             "getRoundingMode", "SUPPORTED: Computation.Builder.roundingMode, judged with each alternative's band (KF297)");
 
     @Test

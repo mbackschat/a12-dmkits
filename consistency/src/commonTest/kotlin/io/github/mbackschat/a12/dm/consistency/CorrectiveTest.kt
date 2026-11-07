@@ -288,6 +288,27 @@ class CorrectiveTest {
     )
 
     /**
+     * Both possible-cause classes, each list naming a field the condition does not read, in a model of their own:
+     * [reachability] trips A12's ordering gates, which withhold them (KERNEL-FINDINGS KF682).
+     */
+    private val causeReachability = ModelSource(
+        """
+        {"header":{"modelVersion":"29.8.0","id":"causes","locales":[{"code":"en_US"}]},
+         "content":{"modelInfo":{"name":"model"},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Note","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Rule","id":"r0","name":"UnreadCauses","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
+              "errorCode":"C0","errorMessage":[{"locale":"en_US","text":"x"}],
+              "filterForPossiblyCausingEntities":{
+                "entitiesEnabledAsPossibleCauseIfFilled":[{"relativePath":"Amount"}],
+                "entitiesEnabledAsPossibleCauseIfNotFilled":[{"relativePath":"Amount"}]}}}
+          ]}}]}}}
+        """,
+    )
+
+    /**
      * The frame values' codes, in a model of their own: an unknown time zone stops A12's entity walk before its
      * ordering gates (`refusesTheEntityWalk`), which would silence codes [reachability] exists to reach.
      */
@@ -360,7 +381,7 @@ class CorrectiveTest {
     /** The complete projected vocabulary must be reachable; deleting the phase table removed its inert member. */
     @Test
     fun everyProjectedEntryIsReachable() {
-        val reported = listOf(reachability, frameReachability, criterionReachability)
+        val reported = listOf(reachability, frameReachability, criterionReachability, causeReachability)
             .flatMap { checkRead(it).findings }.map { it.code }.toSet()
         assertEquals(
             emptySet(),

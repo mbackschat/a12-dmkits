@@ -27,6 +27,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession addLocale(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession addMultiSelectGroup(java.lang.String, java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
   public io.github.mbackschat.a12.dm.edit.EditSession addRepeatableGroup(java.lang.String, java.lang.String, int)
+  public io.github.mbackschat.a12.dm.edit.EditSession addRule(io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
   public io.github.mbackschat.a12.dm.edit.EditSession addRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public io.github.mbackschat.a12.dm.edit.EditSession addRule(java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Rule>)
   public io.github.mbackschat.a12.dm.edit.EditSession addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)

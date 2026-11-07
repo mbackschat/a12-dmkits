@@ -24,9 +24,9 @@
     "patterns.schema.json": 3371,
     "profile-comparison.schema.json": 376,
     "profile.schema.json": 7736,
-    "read.schema.json": 2026,
+    "read.schema.json": 2127,
     "result.schema.json": 10041,
-    "rule-add.schema.json": 4792,
+    "rule-add.schema.json": 4975,
     "rule-eval.schema.json": 3897,
     "typedef-add.schema.json": 9248,
     "typedef-read.schema.json": 1572,
@@ -150,7 +150,7 @@
   },
   "diagnostics": {
     "RkCode": 32605,
-    "StructuralKernelFix": 24069
+    "StructuralKernelFix": 24931
   },
   "surfaces": {
     "manifest": 19549,

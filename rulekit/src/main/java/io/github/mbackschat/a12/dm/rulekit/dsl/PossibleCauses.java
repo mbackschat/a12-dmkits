@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
-import io.github.mbackschat.a12.dm.predicates.PossibleCausePredicatesKt;
 
 /**
  * Which entities a fired rule may report as its possible causes: those of {@link #ifFilled} where they are filled,
@@ -44,11 +43,10 @@ public record PossibleCauses(List<ErrorEntity> ifFilled, List<ErrorEntity> ifNot
 
     /** The stored filter of a rule in {@code group}: each entity's one admitted entry. */
     PossibleCauseFilter filterFrom(GroupRef group) {
-        return new PossibleCauseFilter(entries(group, ifFilled), entries(group, ifNotFilled));
+        return PossibleCauseFilter.ofEntities(group.path().value(), paths(ifFilled), paths(ifNotFilled));
     }
 
-    private static List<String> entries(GroupRef group, List<ErrorEntity> entities) {
-        return entities.stream().map(entity -> PossibleCausePredicatesKt.possibleCauseEntry(
-                group.path().value(), entity.entityPath().value())).toList();
+    private static List<String> paths(List<ErrorEntity> entities) {
+        return entities.stream().map(entity -> entity.entityPath().value()).toList();
     }
 }

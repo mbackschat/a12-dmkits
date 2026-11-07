@@ -172,7 +172,7 @@ dmtool operators | jq "{verifiedAgainst, count: (.operators|length), kinds: (.op
 
 ```output
 {
-  "verifiedAgainst": "31.1.1",
+  "verifiedAgainst": "31.3.1",
   "count": 111,
   "kinds": [
     "CONSTANT",
@@ -360,6 +360,7 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
     "internal-description",
     "messages",
     "name",
+    "possibleCauses",
     "severity"
   ]
 }

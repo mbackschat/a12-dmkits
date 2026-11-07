@@ -32,6 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
@@ -524,13 +525,19 @@ public final class EditSession {
     }
 
     /**
-     * Add a rule from its spec parts (raw condition <em>text</em>) — the {@code apply}/spec path, distinct
+     * Add a rule from its stored parts (raw condition <em>text</em>) — the {@code apply}/spec path, distinct
      * from the DSL-builder {@link #addRule(Function)}. Text injection only (no per-op kernel gate), so a
      * sequence can stay transiently invalid until {@link #validate()} confirms the whole model.
      */
     public EditSession addRule(String groupPath, String name, String errorEntityRelPath,
             String code, String condition, String severity, List<LocalizedText> messages) {
         json = ModelWriter.addRule(json, groupPath, name, errorEntityRelPath, code, condition, severity, messages);
+        return this;
+    }
+
+    /** {@link #addRule(String, String, String, String, String, String, List)} for a draft, possible causes included. */
+    public EditSession addRule(DraftRule rule) {
+        json = ModelWriter.addRule(json, rule, rule.messages());
         return this;
     }
 

@@ -26089,7 +26089,7 @@
         "json-schema-export": [],
         "adapter": [],
         "interpreter": [],
-        "dmtool-cli": [],
+        "dmtool-cli": ["rule add and read"],
         "a12-kernel-lean": []
       },
       "consumers": {
@@ -26134,9 +26134,14 @@
           "evidence": {}
         },
         "dmtool-cli": {
-          "state": "OPEN",
-          "basis": "The CLI surface for the filter is work item B4c.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "rule add and apply take the causes by absolute path and store A12's entries; rule read returns them in the spec's form, and a cause the condition does not read is A12's rejection with a corrective.",
+          "evidence": {
+            "rule add and read": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/rule/RulePossibleCausesCliTest.java#addStoresA12sEntriesAndReadAnswersInTheSpecsForm",
+              "witness": "The stored entries are BaseFee, InvoiceEmail and ../TermsAccepted, which A12 admits, and rule read returns the absolute paths the spec gave."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "OPEN",

@@ -15,9 +15,9 @@ dmtool --version | sed -E 's/(source: )[0-9a-f]{40} \((clean|dirty)\)/\1<git-rev
 ```output
 a12-dmkits 0.15.0
   source: <git-revision> (<tree-state>)
-  kernel: 31.3.1 (built) / 31.3.1 (runtime)  [skew — see RK_KERNEL_VERSION_SKEW]
+  kernel: 31.3.1 (built) / 31.3.1 (runtime)
   A12 Tools distribution: 2026.06-ext2
-  catalog verified against: 31.1.1
+  catalog verified against: 31.3.1
   model version (reference): 29.8.0
 ```
 
@@ -39,9 +39,9 @@ dmtool manifest | jq '.version | .source = {revision: "<git-revision>", state: "
     "builtAgainst": "31.3.1",
     "a12Distribution": "2026.06-ext2",
     "runtime": "31.3.1",
-    "skewed": true
+    "skewed": false
   },
-  "catalogVerifiedAgainst": "31.1.1",
+  "catalogVerifiedAgainst": "31.3.1",
   "modelVersion": "29.8.0"
 }
 ```

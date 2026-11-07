@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.cli.rule.PossibleCauseSpec;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.criterion.CriterionSpec;
 import io.github.mbackschat.a12.dm.cli.computation.ComputationSpec;
@@ -80,7 +82,8 @@ final class ApplyCommand extends BaseCommand {
         GROUP_MODIFY("group", "modify", withLocator("groupPathInModel", GroupModification.DIRECTIVE_KEYS)),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
-                "allowDifferingDecimals", "annotation", "internal-description", "external-description")),
+                "allowDifferingDecimals", "annotation", "internal-description", "external-description",
+                PossibleCauseSpec.KEY)),
         RULE_MODIFY("rule", "modify",
                 Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
@@ -521,7 +524,16 @@ final class ApplyCommand extends BaseCommand {
                 if (op.path("allowDifferingDecimals").asBoolean(false)) {
                     condition = ConditionDirectives.allowDifferingDecimals(session.conditionLanguage(), condition);
                 }
-                session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
+                Optional<PossibleCauseSpec.Refusal> causeRefusal = PossibleCauseSpec.refusal(op, group);
+                if (causeRefusal.isPresent()) {
+                    throw new IllegalArgumentException(
+                            "rule add " + causeRefusal.get().summary() + " — " + causeRefusal.get().fix());
+                }
+                DraftRule.Builder draft = DraftRule.builder().groupPath(group).name(ruleName)
+                        .errorEntityRelPath(errorEntityRelPath).errorCondition(condition).errorCode(code)
+                        .severity(severity).messages(messages);
+                PossibleCauseSpec.filter(op, group).ifPresent(draft::possibleCauses);
+                session.addRule(draft.build());
                 // G39: optional rule metadata at add time (annotation / internal-/external-description)
                 metadataOps(op, session, group + "/" + ruleName, changed);
                 changed.put("rule", group + "/" + ruleName);

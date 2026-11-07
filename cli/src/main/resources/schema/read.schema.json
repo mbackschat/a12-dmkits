@@ -14,6 +14,7 @@
     "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"], "description": "(one rule) the rule's stored severity (kernel default ERROR) — confirms the `severity` set in the `rule add` spec" },
     "errorCode": { "type": "string", "description": "(one rule) the rule's stored error code (distinct from its full name) — confirms the `code` set in the `rule add` spec" },
     "errorField": { "type": "string", "description": "(one rule) the error entity's full path — the field/group the rule attaches to (its iteration anchor); omitted when the rule carries none" },
+    "possibleCauses": { "type": "object", "description": "(one rule) the entities it may name as its cause, in `rule add`'s form; omitted when A12 chooses them" },
     "converted": { "type": "boolean", "description": "(one rule) true = Converted (full rulekit AST); false = Opaque (verbatim passthrough)" },
     "condition": { "type": "string", "description": "(one rule, Converted) the rendered DSL of the condition" },
     "allowDifferingDecimals": { "type": "boolean", "const": true, "description": "(one rule, Converted) present when the stored condition carries the scale-gate waiver, which is not part of `condition`; pass it to `rule add` with the condition, which A12 otherwise refuses as MVK_INVALID_COMPARE_DEC_PLACES" },

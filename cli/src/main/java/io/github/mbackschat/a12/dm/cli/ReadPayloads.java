@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
+import io.github.mbackschat.a12.dm.cli.rule.PossibleCauseSpec;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.cli.criterion.CriterionSpec;
@@ -184,10 +186,20 @@ public final class ReadPayloads {
         adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
         putRuleRead(data, adapter.read(rule));
         RuleMessages.putInto(data, adapter.ruleMessages(rule));
+        adapter.rulePossibleCauses(rule).ifPresent(filter -> putPossibleCauses(data, filter, rule.substring(0, rule.lastIndexOf('/'))));
         putIfNotEmpty(data, "annotations", doc.annotations(rule));
         putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
         putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
         return data;
+    }
+
+    /** The filter in {@code rule add}'s own form: absolute paths, under the keys the spec takes. */
+    private static void putPossibleCauses(ObjectNode data, PossibleCauseFilter filter, String group) {
+        ObjectNode causes = data.putObject(PossibleCauseSpec.KEY);
+        ArrayNode ifFilled = causes.putArray("ifFilled");
+        filter.entityPathsIfFilled(group).forEach(ifFilled::add);
+        ArrayNode ifNotFilled = causes.putArray("ifNotFilled");
+        filter.entityPathsIfNotFilled(group).forEach(ifNotFilled::add);
     }
 
     /**
