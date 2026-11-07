@@ -82,6 +82,11 @@ internal class ValidationPass(
     }
     private val resolveIndexColumn: (Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn =
         { key, build -> indexColumns.getOrPut(key, build) }
+    private val aggregatedCauseAnswers = HashMap<AggregatedQuestion, Boolean>()
+
+    /** The call's answer to an aggregated cause [question], computed once ([RowEntityPresence]). */
+    fun aggregatedCauseAnswer(question: AggregatedQuestion, answer: () -> Boolean): Boolean =
+        aggregatedCauseAnswers.getOrPut(question, answer)
 
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.

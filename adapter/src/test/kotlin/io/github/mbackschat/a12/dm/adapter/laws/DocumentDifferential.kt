@@ -241,6 +241,8 @@ internal object DocumentDifferential {
             operandFindings.map { causes(it.code, pointer(it.errorPath), it.possiblyCausing.map { group -> group.map(::pointer) }) }.sorted())
     }
 
+    // Each group is a set on both sides, so its pointer strings can coincide only where A12's pointer equality reads
+    // more than the coordinates: a missed key, which the interpreter's pointer does not carry (INTERPRETER-GAPS IG188).
     private fun causes(code: String, address: String, groups: List<List<String>>): String =
         "$code $address ${groups.map { it.toSortedSet().toList() }}"
 

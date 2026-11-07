@@ -29,6 +29,14 @@ internal class CausingEntity(
     private val aggregatedRoot = group && reference is MessageReference.Wildcard && pathParts(reference.path).size == 1
 
     /**
+     * A root group named at one instance, which A12 asks through its root-group branch: not given whenever it is not
+     * known to be given, so an undecided answer — a root outside a partial validation's relevant set — counts as not
+     * given (`MainValidatorController.isGiven`, source-read; `adapter.laws.PossiblyCausingEntitiesLawsTest`). A
+     * selected root keeps the entity questions, its key's own rules being measured only below the root.
+     */
+    val singleRoot = group && reference is MessageReference.Ordinary && pathParts(reference.path).size == 1
+
+    /**
      * Whether [instances] rows of this aggregated group leave some of its declared ones absent, which A12 counts as not
      * given: its question walks every declared repetition (`EntityIterator`), where the group-list quantifiers walk
      * the instantiated rows (KERNEL-FINDINGS KF683, `adapter.laws.SumOfTermsRuntimeLawsTest`).
@@ -103,7 +111,19 @@ private fun <T> joined(cluster: Set<T>, members: Set<T>): Set<T> {
  * are every entity the condition references and the subset that can cause an omission; a filter replaces each with
  * the referenced entities its own list names (KERNEL-FINDINGS KF683).
  */
-internal class CausingEntityCandidates(val given: List<CausingEntity>, val omission: List<CausingEntity>)
+internal class CausingEntityCandidates(
+    val given: List<CausingEntity>,
+    val omission: List<CausingEntity>,
+    private val namesFilledKey: (String) -> Boolean,
+    private val namesEmptyKey: (String) -> Boolean,
+) {
+    /**
+     * Whether a `RepetitionNotUnique` cluster names its [filled] or empty key cells at [keyPath]. A key cell is a
+     * candidate like any other, so under a filter only the list that names the key lets its cells through (KF683).
+     */
+    fun namesClusterKey(keyPath: String, filled: Boolean): Boolean =
+        if (filled) namesFilledKey(keyPath) else namesEmptyKey(keyPath)
+}
 
 /** The candidates of [rule] from its [referenced] entities and the [omission] subset, both prepared by the caller. */
 internal fun causingEntityCandidates(
@@ -115,8 +135,10 @@ internal fun causingEntityCandidates(
     // A12 applies a filter only when either list names an entity (`IRule.hasCustomRefEntities`, source-read); with
     // both empty it derives the causes as for an unfiltered rule (`PossiblyCausingEntitiesLawsTest`).
     val filter = rule.possibleCauses?.takeIf { it.ifFilled.isNotEmpty() || it.ifNotFilled.isNotEmpty() }
-    val given = if (filter == null) referenced else named(referenced, rule.group, filter.ifFilled)
-    val omitted = if (filter == null) omission else named(referenced, rule.group, filter.ifNotFilled)
+    val namesFilled = if (filter == null) EVERY_PATH else entryMatcher(rule.group, filter.ifFilled)
+    val namesEmpty = if (filter == null) EVERY_PATH else entryMatcher(rule.group, filter.ifNotFilled)
+    val given = if (filter == null) referenced else referenced.filter { namesFilled(it.path) }
+    val omitted = if (filter == null) omission else referenced.filter { namesEmpty(it.path) }
     // Prepared for every rule of a model, so a reference both lists name shares one entity, and equal lists one list.
     val entities = HashMap<MessageReference, CausingEntity>()
     fun entitiesOf(references: List<MessageReference>): List<CausingEntity> = if (references.isEmpty()) emptyList()
@@ -127,7 +149,8 @@ internal fun causingEntityCandidates(
             }
         }
     val givenEntities = entitiesOf(given)
-    return CausingEntityCandidates(givenEntities, if (omitted == given) givenEntities else entitiesOf(omitted))
+    return CausingEntityCandidates(givenEntities, if (omitted == given) givenEntities else entitiesOf(omitted),
+        namesFilled, namesEmpty)
 }
 
 /**
@@ -171,7 +194,8 @@ internal class RowEntityPresence(
 
     override fun given(entity: CausingEntity): Boolean = answer(entity, notGiven = false)
 
-    override fun notGiven(entity: CausingEntity): Boolean = answer(entity, notGiven = true)
+    override fun notGiven(entity: CausingEntity): Boolean =
+        if (entity.singleRoot) !answer(entity, notGiven = false) else answer(entity, notGiven = true)
 
     // A registered custom field type that is unavailable leaves its cell undecided rather than unmessaged: the
     // outage is reported on the cell already, and the message the rule fired is A12's to keep
@@ -205,14 +229,23 @@ internal class RowEntityPresence(
             entity.group -> parts.size
             else -> parts.size - 1
         }
-        val local = if (bound == 0) ctx else pass.doc.contextFor("/" + parts.take(bound).joinToString("/"), repetitions.take(bound))
-        val operand = if (open >= 0) Expr.Star(reference.path, bindDepth = open) else Expr.Field(reference.path)
-        val pred = question(operand) ?: return true
-        if (notGiven && open >= 0 && entity.group &&
-            entity.leavesDeclaredRowsAbsent(local.rowContexts(reference.path, open).size)) return true
-        return pass.interpreterFor(local, errorPath).evalPred(pred) == Tri.TRUE
+        val scope = repetitions.take(bound)
+        fun answer(): Boolean {
+            val local = if (bound == 0) ctx else pass.doc.contextFor("/" + parts.take(bound).joinToString("/"), scope)
+            val operand = if (open >= 0) Expr.Star(reference.path, bindDepth = open) else Expr.Field(reference.path)
+            val pred = question(operand) ?: return true
+            if (notGiven && open >= 0 && entity.group &&
+                entity.leavesDeclaredRowsAbsent(local.rowContexts(reference.path, open).size)) return true
+            return pass.interpreterFor(local, errorPath).evalPred(pred) == Tri.TRUE
+        }
+        // An aggregated entity walks every row of its scope, and every message the rule fires in that scope asks it
+        // again, so it is answered once per scope (`RowInvariantStarReaderPerfTest`, SUM_OF_TERMS_FIRING).
+        return if (open < 0) answer() else pass.aggregatedCauseAnswer(AggregatedQuestion(entity, notGiven, scope), ::answer)
     }
 }
+
+/** An aggregated entity's presence question in one scope, the levels its pointer binds. */
+internal data class AggregatedQuestion(val entity: CausingEntity, val notGiven: Boolean, val scope: List<Int>)
 
 /** A formal check's groups: the one cell it reports on, an omission included (KERNEL-FINDINGS KF683). */
 internal fun <P> ownCellGroups(pointer: P): List<Set<P>> = listOf(setOf(pointer))
@@ -226,11 +259,13 @@ private fun declaredInstances(reference: MessageReference, model: ModelDef): Int
     }
 }
 
+private val EVERY_PATH: (String) -> Boolean = { true }
+
 // An entry is matched as A12 checks it, by text against the shortest relative path from the rule's group after one
 // spelling map (KF682), so a reference named twice — once plain and once aggregated — is selected twice.
-private fun named(referenced: List<MessageReference>, group: String, entries: List<String>): List<MessageReference> {
+private fun entryMatcher(group: String, entries: List<String>): (String) -> Boolean {
     val wanted = entries.mapTo(HashSet(), ::canonicalEntry)
-    return referenced.filter { canonicalEntry(relativePath(group, it.path)) in wanted }
+    return { path -> canonicalEntry(relativePath(group, path)) in wanted }
 }
 
 private fun canonicalEntry(entry: String): String = when {

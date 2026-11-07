@@ -113,9 +113,11 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
             .firstOrNull { it in model.repeatable }
 
     /** Build one call's duplicate cache from the already-validated, document-independent [plan]. */
-    fun outcomes(plan: RnuPlan?, pass: ValidationPass): RnuCache? {
+    fun outcomes(plan: RnuPlan?, pass: ValidationPass, candidates: CausingEntityCandidates): RnuCache? {
         plan ?: return null
         val keys = plan.keys
+        val namesFilled = keys.map { candidates.namesClusterKey(it, filled = true) }
+        val namesEmpty = keys.map { candidates.namesClusterKey(it, filled = false) }
         val keyGroup = plan.keyGroup
         val errorPath = plan.errorPath
         val scopeLen = plan.scopePrefixLength
@@ -166,11 +168,12 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
                     // copy defensively, and copying per finding restores the O(N²) this sharing exists to avoid
                     // (IF261).
                     val cells = duplicates.flatMap { duplicate ->
-                        keys.indices.map { i -> pass.doc.messagePointer(keys[i], duplicate.keyReps[i]) to (duplicate.key[i] != null) }
+                        keys.indices.map { i -> Triple(pass.doc.messagePointer(keys[i], duplicate.keyReps[i]), duplicate.key[i] != null, i) }
                     }
                     val peerKeyPointers = immutableListSnapshot(cells.map { it.first }.distinct())
                     val (filled, empty) = cells.partition { it.second }
-                    val causes = ClusterCauses(filled.map { it.first }, empty.map { it.first })
+                    val causes = ClusterCauses(filled.filter { namesFilled[it.third] }.map { it.first },
+                        empty.filter { namesEmpty[it.third] }.map { it.first })
                     for (row in duplicates) {
                         // RNU's own polarity: OMISSION when a (fillable) key component is empty, else VALUE. The
                         // surrounding And/Or combines this with any guard/branch via the ordinary 3VL walk.

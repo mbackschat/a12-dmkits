@@ -719,7 +719,7 @@ class DmInterpreter private constructor(
         // guard-independent, keyed by error-path reps; the per-row seam looks the current row up in O(1). Null for
         // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
-        val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
+        val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass, prepared.causingEntities)
         val directMessageRefs = prepared.messageReferences
         val semanticErrorIndex = prepared.semanticErrorIndex
         val selectedErrorReference = if (semanticErrorIndex == null) null
