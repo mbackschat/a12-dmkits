@@ -97,7 +97,9 @@ class MessageTokenNameAlphabetDiffTest {
                 .group("Schäden") { s -> s.repeatable(3).indexField("Ref").stringField("Ref") { }.stringField("Size") { } } }
             .build().toJson()
         fun admission(parameter: String) = MessageParameterProbes.kernel(RuleValidator().inject(claims,
-            DraftRule("/Police/Schäden", "Probe", "../Size", "FieldFilled(Size)", "PROBE", "ERROR", listOf(Dsl.en("p=[$parameter]")))))
+            DraftRule.builder().groupPath("/Police/Schäden").name("Probe").errorEntityRelPath("../Size")
+                .errorCondition("FieldFilled(Size)").errorCode("PROBE").severity("ERROR")
+                .messages(listOf(Dsl.en("p=[$parameter]"))).build()))
         assertEquals(
             listOf(emptyList(), listOf("INVALID_INDEX_FIELD"), listOf("INVALID_INDEX_FIELD"), listOf("INVALID_ENTITY"), listOf("INVALID_ENTITY")),
             listOf("\$index(Ref).value\$", "\$index(../Schäden/Ref).value\$", "\$index(/Police/Schäden/Ref).value\$",

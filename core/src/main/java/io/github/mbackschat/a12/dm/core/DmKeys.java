@@ -78,6 +78,10 @@ public final class DmKeys {
     public static final String ERROR_CONDITION = "errorCondition";
     public static final String ERROR_CODE = "errorCode";
     public static final String SEVERITY = "severity";
+    public static final String POSSIBLE_CAUSE_FILTER = "filterForPossiblyCausingEntities";
+    public static final String POSSIBLE_CAUSES_IF_FILLED = "entitiesEnabledAsPossibleCauseIfFilled";
+    public static final String POSSIBLE_CAUSES_IF_NOT_FILLED = "entitiesEnabledAsPossibleCauseIfNotFilled";
+    public static final String RELATIVE_PATH = "relativePath";
 
     // --- model-level config (modelConfig / modelInfo settings) ---
     public static final String CONDITION_LANGUAGE = "conditionLanguage";

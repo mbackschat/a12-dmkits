@@ -26083,7 +26083,7 @@
       "sha256": "1ef607d9daf1a264227980c197587a0d16e625c70a33802b1edf82f42f2debb3",
       "task": "K313",
       "scope": {
-        "dmkits": [],
+        "dmkits": ["typed possible-cause filter"],
         "checker": ["possible-cause filter"],
         "json-schema-import": [],
         "json-schema-export": [],
@@ -26094,9 +26094,14 @@
       },
       "consumers": {
         "dmkits": {
-          "state": "OPEN",
-          "basis": "The kits neither author nor type the filter yet; the typed, read and CLI surface is work item B4c.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "A rule names its causes as handles, stored as the one relative path A12 admits from the rule's group; the core reader returns the filter and edits keep it.",
+          "evidence": {
+            "typed possible-cause filter": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/RulePossibleCausesTest.java#causesAreSpelledFromTheRulesGroupAndTheKernelAdmitsEveryOne",
+              "witness": "The kernel admits the derived entries Amount, ../Premium and ./, and reports an unread cause and a repeated one with its own classes."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",

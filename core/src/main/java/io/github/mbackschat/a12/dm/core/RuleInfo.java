@@ -16,7 +16,7 @@ import java.util.Optional;
  * {@link #errorEntityPath()} is then empty. The declared {@code errorEntityRelPath} is relative to the rule
  * <em>element</em>, as a computation's target is, so a field of the rule's own group is {@code "../Field"}.
  *
- * <p>Construction goes through {@link #builder()}: seven of the eight components are {@code String}s.
+ * <p>Construction goes through {@link #builder()}: seven of the nine components are {@code String}s.
  *
  * @param path               the rule element's name-path (e.g. {@code /Claim/DamageKnown})
  * @param groupPath          the containing group's name-path (e.g. {@code /Claim})
@@ -26,6 +26,7 @@ import java.util.Optional;
  * @param errorCode          the error code
  * @param severity           {@code ERROR}, {@code WARNING} or {@code INFO} as authored
  * @param messages           the error message per locale code, in model order
+ * @param possibleCauses     the rule's possible-cause filter, when it declares one
  */
 public record RuleInfo(
         String path,
@@ -35,10 +36,12 @@ public record RuleInfo(
         String errorCondition,
         String errorCode,
         String severity,
-        Map<String, String> messages) {
+        Map<String, String> messages,
+        Optional<PossibleCauseFilter> possibleCauses) {
 
     public RuleInfo {
         messages = messages == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(messages));
+        possibleCauses = possibleCauses == null ? Optional.empty() : possibleCauses;
     }
 
     /** The error entity's absolute name-path, resolved against the rule element; empty when none is declared. */
@@ -62,6 +65,7 @@ public record RuleInfo(
         private String errorCode;
         private String severity;
         private Map<String, String> messages = Map.of();
+        private Optional<PossibleCauseFilter> possibleCauses = Optional.empty();
 
         private Builder() {
         }
@@ -74,10 +78,11 @@ public record RuleInfo(
         public Builder errorCode(String v) { this.errorCode = v; return this; }
         public Builder severity(String v) { this.severity = v; return this; }
         public Builder messages(Map<String, String> v) { this.messages = v; return this; }
+        public Builder possibleCauses(PossibleCauseFilter v) { this.possibleCauses = Optional.ofNullable(v); return this; }
 
         public RuleInfo build() {
             return new RuleInfo(path, groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity,
-                    messages);
+                    messages, possibleCauses);
         }
     }
 }

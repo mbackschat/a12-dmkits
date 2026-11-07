@@ -843,7 +843,23 @@ public final class ModelReader {
                 .errorCode(body.path(DmKeys.ERROR_CODE).asText(""))
                 .severity(body.path(DmKeys.SEVERITY).asText(DEFAULT_RULE_SEVERITY))
                 .messages(messages)
+                .possibleCauses(possibleCauseFilter(body.path(DmKeys.POSSIBLE_CAUSE_FILTER)))
                 .build();
+    }
+
+    /** A rule's possible-cause filter as written, or null where the rule declares none. */
+    private static PossibleCauseFilter possibleCauseFilter(JsonNode filter) {
+        if (!filter.isObject()) {
+            return null;
+        }
+        return new PossibleCauseFilter(relativePaths(filter.path(DmKeys.POSSIBLE_CAUSES_IF_FILLED)),
+                relativePaths(filter.path(DmKeys.POSSIBLE_CAUSES_IF_NOT_FILLED)));
+    }
+
+    private static List<String> relativePaths(JsonNode entries) {
+        List<String> paths = new ArrayList<>();
+        entries.forEach(entry -> paths.add(entry.path(DmKeys.RELATIVE_PATH).asText()));
+        return paths;
     }
 
     /**

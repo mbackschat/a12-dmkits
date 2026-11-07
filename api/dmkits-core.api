@@ -86,8 +86,12 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String NAME
   public static final java.lang.String ORDER
   public static final java.lang.String PACKET
+  public static final java.lang.String POSSIBLE_CAUSES_IF_FILLED
+  public static final java.lang.String POSSIBLE_CAUSES_IF_NOT_FILLED
+  public static final java.lang.String POSSIBLE_CAUSE_FILTER
   public static final java.lang.String PURPOSE
   public static final java.lang.String REFERENCE
+  public static final java.lang.String RELATIVE_PATH
   public static final java.lang.String REPEATABILITY
   public static final java.lang.String REQUIREDNESS_CONFIG
   public static final java.lang.String ROOT_GROUPS
@@ -559,6 +563,14 @@ public record io.github.mbackschat.a12.dm.core.Notification
   public io.github.mbackschat.a12.dm.core.Severity severity()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.core.PossibleCauseFilter
+  public PossibleCauseFilter(java.util.List<java.lang.String>, java.util.List<java.lang.String>)
+  public java.util.List<java.lang.String> entitiesIfFilled()
+  public java.util.List<java.lang.String> entitiesIfNotFilled()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
 public final class io.github.mbackschat.a12.dm.core.ReferenceResolvers
   public static io.github.mbackschat.a12.dm.core.ModelResolver directory(java.nio.file.Path[])
   public static java.util.Optional<java.lang.String> documentModelJson(java.lang.String, java.nio.file.Path[])
@@ -569,7 +581,7 @@ public final class io.github.mbackschat.a12.dm.core.Refusals
   public static io.github.mbackschat.a12.dm.core.KernelCodeRefusal of(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
 
 public record io.github.mbackschat.a12.dm.core.RuleInfo
-  public RuleInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public RuleInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>, java.util.Optional<io.github.mbackschat.a12.dm.core.PossibleCauseFilter>)
   public static io.github.mbackschat.a12.dm.core.RuleInfo.Builder builder()
   public final boolean equals(java.lang.Object)
   public java.lang.String errorCode()
@@ -581,6 +593,7 @@ public record io.github.mbackschat.a12.dm.core.RuleInfo
   public java.util.Map<java.lang.String, java.lang.String> messages()
   public java.lang.String name()
   public java.lang.String path()
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.PossibleCauseFilter> possibleCauses()
   public java.lang.String severity()
   public final java.lang.String toString()
 
@@ -593,6 +606,7 @@ public static final class io.github.mbackschat.a12.dm.core.RuleInfo.Builder
   public io.github.mbackschat.a12.dm.core.RuleInfo.Builder messages(java.util.Map<java.lang.String, java.lang.String>)
   public io.github.mbackschat.a12.dm.core.RuleInfo.Builder name(java.lang.String)
   public io.github.mbackschat.a12.dm.core.RuleInfo.Builder path(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.RuleInfo.Builder possibleCauses(io.github.mbackschat.a12.dm.core.PossibleCauseFilter)
   public io.github.mbackschat.a12.dm.core.RuleInfo.Builder severity(java.lang.String)
 
 public enum io.github.mbackschat.a12.dm.core.Severity

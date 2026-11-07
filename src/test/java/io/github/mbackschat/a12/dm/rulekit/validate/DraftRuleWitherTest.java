@@ -20,15 +20,16 @@ class DraftRuleWitherTest {
     @Test
     void aNewConditionKeepsEveryOtherComponent() {
         DraftRule edited = SEED.withErrorCondition("FieldNotFilled(Code)");
-        assertEquals(new DraftRule("/Policy", "Probe", "../Code", "FieldNotFilled(Code)", "P1", "ERROR",
-                SEED.messages()), edited);
+        assertEquals(DraftRule.builder().groupPath("/Policy").name("Probe").errorEntityRelPath("../Code")
+                .errorCondition("FieldNotFilled(Code)").errorCode("P1").severity("ERROR").messages(SEED.messages()).build(), edited);
     }
 
     @Test
     void newMessagesReplaceTheOldOnesAndKeepEveryOtherComponent() {
         List<LocalizedText> replaced = List.of(new LocalizedText("de_DE", "Code gesetzt"));
         DraftRule edited = SEED.withMessages(replaced);
-        assertEquals(new DraftRule("/Policy", "Probe", "../Code", "FieldFilled(Code)", "P1", "ERROR", replaced),
+        assertEquals(DraftRule.builder().groupPath("/Policy").name("Probe").errorEntityRelPath("../Code")
+                .errorCondition("FieldFilled(Code)").errorCode("P1").severity("ERROR").messages(replaced).build(),
                 edited);
     }
 }

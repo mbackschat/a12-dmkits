@@ -42,8 +42,8 @@ class ErrorTextCharacterGateLawsTest {
 
     private static String verdict(String fieldMessage, String ruleMessage) {
         List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics = VALIDATOR.check(
-                model(fieldMessage), new DraftRule("/Claim", "ProbeRule", "../Reference", READS, "PROBE", "ERROR",
-                        List.of(new LocalizedText("en_US", ruleMessage)))).diagnostics();
+                model(fieldMessage), DraftRule.builder().groupPath("/Claim").name("ProbeRule").errorEntityRelPath("../Reference")
+                        .errorCondition(READS).errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", ruleMessage))).build()).diagnostics();
         return diagnostics.isEmpty() ? KernelLaws.ADMITTED : diagnostics.stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
     }

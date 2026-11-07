@@ -292,8 +292,8 @@ class FieldTypeMessageTextLawsTest {
 
     private static String besideARule(String condition, String target) {
         List<Diagnostic> diagnostics = new RuleValidator().check(patterned(f -> f.pattern("[A-Z]+", "a\tb"), "en_US"),
-                new DraftRule("/Claim", "ProbeRule", target, condition, "PROBE", "ERROR",
-                        List.of(new LocalizedText("en_US", "see the reference")))).diagnostics();
+                DraftRule.builder().groupPath("/Claim").name("ProbeRule").errorEntityRelPath(target)
+                        .errorCondition(condition).errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", "see the reference"))).build()).diagnostics();
         return diagnostics.stream().map(d -> d.code().orElse("(no code)")).collect(Collectors.joining(","));
     }
 

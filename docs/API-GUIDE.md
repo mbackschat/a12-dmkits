@@ -1087,6 +1087,22 @@ waived.render();   // "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) FieldFil
 
 The waiver lifts a static gate only. Evaluation stays exact, so `5 == 5.01` still does not hold (`adapter.laws.RuleConditionPreambleDiffTest`).
 
+### 4.1c A rule that names its possible causes
+
+A12 lets a rule restrict which of the entities its condition reads are offered as the cause of its message: those to blame when filled, and those to blame when empty ([KF682](KERNEL-FINDINGS.md#kf682)). `possibleCauses` takes the same refs as the condition and stores each as the relative path A12 admits, the shortest one from the rule's group.
+
+<!-- snippet: rule-possible-causes -->
+```java
+Rule rule = lines.rule(r -> r.name("AmountAbovePremium").code("ABOVE").errorField(amount)
+        .when(Dsl.groupFilled(lines.ref()).and(amount.gt(premium)))
+        .possibleCauses(PossibleCauses.filled(amount.field(), premium.field())  // filled values to blame
+                .andNotFilled(lines.ref()))                                    // the empty row to blame
+        .message(en("The amount exceeds the premium.")).build());
+rule.possibleCauseFilter();   // ifFilled ["Amount", "../Premium"], ifNotFilled ["./"]
+```
+
+A cause the condition does not read draws `MVK_REF_ERROR_ENTITY_IF_FILLED_NOT_REFERENCED` (or its `IF_NOT_FILLED` twin) from the kernel, and the same entity twice in one list draws `CUSTOM_REF_ERROR_ENTITY_IF_FILLED_DUPLICATE`. `ModelIndex.rules()` reads the filter back on `RuleInfo.possibleCauses()`, and an `EditSession` edit keeps it, a condition rewrite included.
+
 ### 4.2 Render → validate → emit
 
 <!-- teaser -->

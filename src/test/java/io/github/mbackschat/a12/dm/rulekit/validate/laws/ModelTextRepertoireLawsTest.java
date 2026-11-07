@@ -95,8 +95,8 @@ class ModelTextRepertoireLawsTest {
     }
 
     private static String rule(String json, String condition, String code, String message) {
-        return render(VALIDATOR.check(json, new DraftRule("/Claim", "ProbeRule", "../Reference", condition, code,
-                "ERROR", List.of(new LocalizedText("en_US", message)))).diagnostics());
+        return render(VALIDATOR.check(json, DraftRule.builder().groupPath("/Claim").name("ProbeRule").errorEntityRelPath("../Reference")
+                .errorCondition(condition).errorCode(code).severity("ERROR").messages(List.of(new LocalizedText("en_US", message))).build()).diagnostics());
     }
 
     private static String rule(String json) {
@@ -161,18 +161,18 @@ class ModelTextRepertoireLawsTest {
         actual.put("computation common precondition", computation("FieldFilled(Note) ;; " + GRIN, null, "[Note]", "x"));
         actual.put("computation alternative precondition", computation(null, "FieldFilled(Note) ;; " + GRIN, "[Note]", "x"));
         actual.put("computation message", computation(null, null, "[Note]", "see " + GRIN));
-        actual.put("rule name", render(VALIDATOR.check(PLAIN, new DraftRule("/Claim", "Probe" + GRIN, "../Reference", READS,
-                "PROBE", "ERROR", List.of(new LocalizedText("en_US", "x")))).diagnostics()));
-        actual.put("a message in an undeclared locale", render(VALIDATOR.check(PLAIN, new DraftRule("/Claim", "ProbeRule",
-                "../Reference", READS, "PROBE", "ERROR", List.of(new LocalizedText("en_US", "x"),
-                        new LocalizedText("de_DE", "see " + GRIN)))).diagnostics()));
+        actual.put("rule name", render(VALIDATOR.check(PLAIN, DraftRule.builder().groupPath("/Claim").name("Probe" + GRIN).errorEntityRelPath("../Reference")
+                .errorCondition(READS).errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", "x"))).build()).diagnostics()));
+        actual.put("a message in an undeclared locale", render(VALIDATOR.check(PLAIN, DraftRule.builder().groupPath("/Claim").name("ProbeRule").errorEntityRelPath("../Reference")
+                .errorCondition(READS).errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", "x"),
+                        new LocalizedText("de_DE", "see " + GRIN))).build()).diagnostics()));
         actual.put("nested group, plain", rule(nested("Part", "origin", "kept")));
         actual.put("nested group name", rule(nested("Part" + GRIN, "origin", "kept")));
         actual.put("group annotation value", rule(nested("Part", "origin", "kept " + GRIN)));
         actual.put("annotation name", rule(nested("Part", "origin" + GRIN, "kept")));
         actual.put("a rule inside a defective group", render(VALIDATOR.check(nested("Part" + GRIN, "origin", "kept"),
-                new DraftRule("/Claim/Part" + GRIN, "InnerRule", "../Detail", "FieldFilled(Detail)", "PROBE", "ERROR",
-                        List.of(new LocalizedText("en_US", "x")))).diagnostics()));
+                DraftRule.builder().groupPath("/Claim/Part" + GRIN).name("InnerRule").errorEntityRelPath("../Detail")
+                        .errorCondition("FieldFilled(Detail)").errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", "x"))).build()).diagnostics()));
         actual.put("a field's annotation name", rule(DocumentModelDraft.named("claims-repertoire").locale("en_US")
                 .rootGroup("Claim", c -> c
                         .stringField("Reference", f -> f.annotation("origin" + GRIN, "kept"))
@@ -283,7 +283,7 @@ class ModelTextRepertoireLawsTest {
     }
 
     private static String targeting(String errorTarget, String message) {
-        return render(VALIDATOR.check(PLAIN, new DraftRule("/Claim", "ProbeRule", errorTarget, READS, "PROBE",
-                "ERROR", List.of(new LocalizedText("en_US", message)))).diagnostics());
+        return render(VALIDATOR.check(PLAIN, DraftRule.builder().groupPath("/Claim").name("ProbeRule").errorEntityRelPath(errorTarget)
+                .errorCondition(READS).errorCode("PROBE").severity("ERROR").messages(List.of(new LocalizedText("en_US", message))).build()).diagnostics());
     }
 }

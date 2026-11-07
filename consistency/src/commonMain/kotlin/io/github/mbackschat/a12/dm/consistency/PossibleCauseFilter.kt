@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.OPERATOR_SPELLINGS
+import io.github.mbackschat.a12.dm.predicates.possibleCauseEntry
+import io.github.mbackschat.a12.dm.predicates.possibleCauseSpelling
 import io.github.mbackschat.a12.dm.consistency.syntax.OperatorId
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 import kotlinx.serialization.json.JsonArray
@@ -27,7 +29,7 @@ internal fun TrackedFactBase.possibleCauseFilterContributions(element: TrackedDe
         ?: return listOf(unbuildable(element, "`$FILTER_MEMBER` is not an object"))
     lists.firstNotNullOfOrNull { (list, entries) -> entries.exceptionOrNull()?.let { list to it.message } }
         ?.let { (list, complaint) -> return listOf(unbuildable(element, "`${list.member}` $complaint")) }
-    val written = lists.associate { (list, entries) -> list to entries.getOrThrow().map(::dorForm) }
+    val written = lists.associate { (list, entries) -> list to entries.getOrThrow().map(::possibleCauseSpelling) }
     val candidates by lazy { referencedRelativePaths(element, group) }
     return PossibleCauseList.entries.flatMap { list ->
         val entries = written.getValue(list)
@@ -72,16 +74,6 @@ private fun climbsWithin(written: String, group: String): Boolean =
     written.split('/').takeWhile { it == ".." }.size <= group.split('/').count { it.isNotEmpty() }
 
 /**
- * The spelling A12 compares and reports: an empty path is `./`, and a path ending in `..` gains a trailing `/`.
- * Nothing else is normalized, so `./Premium`, `Premium/` and ` Premium` stay distinct from `Premium`.
- */
-private fun dorForm(written: String): String = when {
-    written.isEmpty() -> "./"
-    written == ".." || written.endsWith("/..") -> "$written/"
-    else -> written
-}
-
-/**
  * Every spelling A12 accepts for this rule: the canonical relative path from [group] to each entity the condition
  * references, and to the index field of each group a semantic index keys. A starred level is not itself
  * referenced, and the rule's own group is `./`.
@@ -94,15 +86,7 @@ private fun TrackedFactBase.referencedRelativePaths(element: TrackedDeclaration,
         .mapNotNull { use -> use.valuePath?.let { resolvedPathOf(it, group, element) } }
         .mapNotNull { value -> indexGroupOf(value)?.let { indexed -> declarationAt(indexed) } }
         .mapNotNull { indexed -> indexFieldNameOf(indexed)?.let { "${indexed.path}/$it" } }
-    return (referenced + indexFields).mapTo(HashSet()) { dorForm(relativePath(group, it)) }
-}
-
-/** The shortest relative path from [base] to [target]: up to their shared ancestor, then down. */
-private fun relativePath(base: String, target: String): String {
-    val from = base.split('/').filter { it.isNotEmpty() }
-    val to = target.split('/').filter { it.isNotEmpty() }
-    val shared = from.zip(to).takeWhile { (a, b) -> a == b }.size
-    return (List(from.size - shared) { ".." } + to.drop(shared)).joinToString("/")
+    return (referenced + indexFields).mapTo(HashSet()) { possibleCauseEntry(group, it) }
 }
 
 private fun unbuildable(element: TrackedDeclaration, complaint: String) = DeclarationFinding(

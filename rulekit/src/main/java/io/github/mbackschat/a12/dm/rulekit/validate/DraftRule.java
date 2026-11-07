@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 /**
@@ -19,9 +21,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
  * missing-locale finding the caller never claimed to be authoring. Empty (the default) is the placeholder-only
  * behaviour every existing caller had.
  *
- * <p>Construction goes through {@link #builder()}: six of the seven components are {@code String}s, which is
- * exactly the silently-swap-prone shape the project's builder rule names. The six-argument constructor is kept
- * for the message-free case that predates this component.
+ * <p>Construction goes through {@link #builder()}: six of the eight components are {@code String}s, which is
+ * exactly the silently-swap-prone shape the project's builder rule names. The six-argument constructor is kept for
+ * the message-free case that predates the later components.
  */
 public record DraftRule(
         String groupPath,
@@ -30,16 +32,18 @@ public record DraftRule(
         String errorCondition,
         String errorCode,
         String severity,
-        List<LocalizedText> messages) {
+        List<LocalizedText> messages,
+        Optional<PossibleCauseFilter> possibleCauses) {
 
     public DraftRule {
         messages = messages == null ? List.of() : List.copyOf(messages);
+        possibleCauses = possibleCauses == null ? Optional.empty() : possibleCauses;
     }
 
     /** The message-free draft: the kernel sees {@link RuleValidator}'s per-locale placeholder error text. */
     public DraftRule(String groupPath, String name, String errorEntityRelPath, String errorCondition,
             String errorCode, String severity) {
-        this(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity, List.of());
+        this(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity, List.of(), Optional.empty());
     }
 
     public static Builder builder() {
@@ -48,7 +52,8 @@ public record DraftRule(
 
     /** This draft with another condition, every other component kept: one candidate of a near-miss sweep. */
     public DraftRule withErrorCondition(String condition) {
-        return new DraftRule(groupPath, name, errorEntityRelPath, condition, errorCode, severity, messages);
+        return new DraftRule(groupPath, name, errorEntityRelPath, condition, errorCode, severity, messages,
+                possibleCauses);
     }
 
     /**
@@ -56,7 +61,8 @@ public record DraftRule(
      * {@link Builder#messages} adds rather than replaces, which is why this is not spelled through it.
      */
     public DraftRule withMessages(List<LocalizedText> messages) {
-        return new DraftRule(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity, messages);
+        return new DraftRule(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity, messages,
+                possibleCauses);
     }
 
     /** The fluent construction path; a null/empty argument means "leave this aspect unset". */
@@ -68,6 +74,7 @@ public record DraftRule(
         private String errorCode;
         private String severity;
         private final List<LocalizedText> messages = new ArrayList<>();
+        private PossibleCauseFilter possibleCauses;
 
         private Builder() {
         }
@@ -87,9 +94,12 @@ public record DraftRule(
             return this;
         }
 
+        /** The rule's possible-cause filter, written after its messages as A12 writes it. */
+        public Builder possibleCauses(PossibleCauseFilter v) { this.possibleCauses = v; return this; }
+
         public DraftRule build() {
             return new DraftRule(groupPath, name, errorEntityRelPath, errorCondition, errorCode, severity,
-                    messages);
+                    messages, Optional.ofNullable(possibleCauses));
         }
     }
 }

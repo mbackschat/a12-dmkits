@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -21,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -29,6 +31,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
@@ -60,9 +63,7 @@ public final class ModelWriter {
      * model's declared condition language; the raw-slot overload remains verbatim.
      */
     public static String addRule(String modelJson, Rule rule) {
-        return insertTyped(modelJson, rule.group().path().value(), language ->
-                ruleNode(rule.group().path() + "/" + rule.name(), rule.name(), rule.errorEntityRelPath(),
-                        rule.code(), rule.render(language), rule.severity().name(), rule.messages()));
+        return insertTyped(modelJson, rule.group().path().value(), language -> ruleNode(rule, language));
     }
 
     /**
@@ -72,8 +73,18 @@ public final class ModelWriter {
      */
     public static String addRule(String modelJson, String groupPath, String name, String errorEntityRelPath,
             String errorCode, String errorCondition, String severity, List<LocalizedText> messages) {
-        return DmJson.insertIntoGroup(modelJson, groupPath,
-                ruleNode(groupPath + "/" + name, name, errorEntityRelPath, errorCode, errorCondition, severity, messages));
+        return DmJson.insertIntoGroup(modelJson, groupPath, ruleNode(groupPath + "/" + name, name, errorEntityRelPath,
+                errorCode, errorCondition, severity, messages, Optional.empty()));
+    }
+
+    /**
+     * Returns {@code modelJson} with {@code rule} added to its group, every member the draft carries written
+     * verbatim with {@code messages} as its error texts. The caller is expected to have validated it first.
+     */
+    public static String addRule(String modelJson, DraftRule rule, List<LocalizedText> messages) {
+        return DmJson.insertIntoGroup(modelJson, rule.groupPath(), ruleNode(rule.groupPath() + "/" + rule.name(),
+                rule.name(), rule.errorEntityRelPath(), rule.errorCode(), rule.errorCondition(), rule.severity(),
+                messages, rule.possibleCauses()));
     }
 
     /**
@@ -206,15 +217,7 @@ public final class ModelWriter {
             Map<String, ArrayNode> elementsByGroup = new HashMap<>();
             for (Rule rule : rules) {
                 Objects.requireNonNull(rule, "rule");
-                elements(root, elementsByGroup, rule.group().path().value()).add(
-                        ruleNode(
-                                rule.group().path() + "/" + rule.name(),
-                                rule.name(),
-                                rule.errorEntityRelPath(),
-                                rule.code(),
-                                rule.render(language),
-                                rule.severity().name(),
-                                rule.messages()));
+                elements(root, elementsByGroup, rule.group().path().value()).add(ruleNode(rule, language));
             }
             for (Computation computation : computations) {
                 Objects.requireNonNull(computation, "computation");
@@ -474,9 +477,16 @@ public final class ModelWriter {
         return node;
     }
 
+    /** A typed rule's element node, its condition rendered in {@code language}. */
+    private static ObjectNode ruleNode(Rule rule, ConditionLanguage language) {
+        return ruleNode(rule.group().path() + "/" + rule.name(), rule.name(), rule.errorEntityRelPath(), rule.code(),
+                rule.render(language), rule.severity().name(), rule.messages(), rule.possibleCauseFilter());
+    }
+
     /** Build a {@code Rule} element node from its slots, in the order A12's {@code RuleSerializer} writes them. */
     private static ObjectNode ruleNode(String id, String name, String errorEntityRelPath, String errorCode,
-            String errorCondition, String severity, List<LocalizedText> messages) {
+            String errorCondition, String severity, List<LocalizedText> messages,
+            Optional<PossibleCauseFilter> possibleCauses) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Rule");
         node.put("id", id);
@@ -488,7 +498,25 @@ public final class ModelWriter {
         body.put("errorCondition", errorCondition);
         body.put("severity", severity);
         putMessages(body, messages);
+        possibleCauses.ifPresent(filter -> putPossibleCauses(body, filter));
         return node;
+    }
+
+    /**
+     * A present filter as A12's {@code RuleSerializer} writes it: the object always, each list only when it holds an
+     * entry. A12 reads an absent list as an empty one, so the two spellings mean the same filter.
+     */
+    private static void putPossibleCauses(ObjectNode body, PossibleCauseFilter filter) {
+        ObjectNode node = body.putObject(DmKeys.POSSIBLE_CAUSE_FILTER);
+        putRelativePaths(node, DmKeys.POSSIBLE_CAUSES_IF_FILLED, filter.entitiesIfFilled());
+        putRelativePaths(node, DmKeys.POSSIBLE_CAUSES_IF_NOT_FILLED, filter.entitiesIfNotFilled());
+    }
+
+    private static void putRelativePaths(ObjectNode filter, String list, List<String> paths) {
+        if (!paths.isEmpty()) {
+            ArrayNode entries = filter.putArray(list);
+            paths.forEach(path -> entries.addObject().put(DmKeys.RELATIVE_PATH, path));
+        }
     }
 
     private static void putMessages(ObjectNode body, List<LocalizedText> messages) {

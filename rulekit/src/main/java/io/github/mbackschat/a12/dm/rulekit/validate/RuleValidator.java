@@ -244,9 +244,7 @@ public final class RuleValidator {
      * message-required check does not mask the authored candidate.
      */
     public String inject(String modelJson, DraftRule rule) {
-        return ModelWriter.addRule(modelJson, rule.groupPath(), rule.name(), rule.errorEntityRelPath(),
-                rule.errorCode(), rule.errorCondition(), rule.severity(),
-                messagesForEveryLocale(modelJson, rule.messages(), rule.name()));
+        return ModelWriter.addRule(modelJson, rule, messagesForEveryLocale(modelJson, rule.messages(), rule.name()));
     }
 
     /** The computation twin of {@link #inject(String, DraftRule)}: the model text {@link #check} validates. */

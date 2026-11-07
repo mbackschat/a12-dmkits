@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
 import io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
@@ -45,6 +46,8 @@ class ElementMemberOrderTest {
     private val rule = DraftRule.builder()
         .groupPath("/Subscription/Billing").name("BaseFeeRule").errorEntityRelPath("BaseFee")
         .errorCondition("[BaseFee] < 0").errorCode("FEE").severity("ERROR").messages(messages)
+        // An empty list too, which A12 leaves out of a present filter (measured here, 2026-11-07).
+        .possibleCauses(PossibleCauseFilter(listOf("BaseFee"), listOf()))
         .build()
 
     @Test
@@ -59,8 +62,7 @@ class ElementMemberOrderTest {
 
     @Test
     fun aWrittenRuleKeepsA12sMemberOrder() {
-        assertA12Order(ModelWriter.addRule(model, rule.groupPath(), rule.name(), rule.errorEntityRelPath(),
-            rule.errorCode(), rule.errorCondition(), rule.severity(), messages), "/Subscription/Billing/BaseFeeRule")
+        assertA12Order(ModelWriter.addRule(model, rule, messages), "/Subscription/Billing/BaseFeeRule")
     }
 
     @Test

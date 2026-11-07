@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
@@ -34,7 +35,8 @@ public record Rule(
         String code,
         Severity severity,
         List<LocalizedText> messages,
-        Comments comments) {
+        Comments comments,
+        Optional<PossibleCauses> possibleCauses) {
 
     public Rule {
         messages = List.copyOf(messages);
@@ -49,6 +51,11 @@ public record Rule(
      */
     public String errorEntityRelPath() {
         return group.path().elementReference(errorEntity.entityPath());
+    }
+
+    /** The possible-cause filter A12 stores for this rule, its entries spelled from the rule's group. */
+    public Optional<PossibleCauseFilter> possibleCauseFilter() {
+        return possibleCauses.map(causes -> causes.filterFrom(group));
     }
 
     /**
@@ -79,7 +86,8 @@ public record Rule(
     public DraftRule draft(ConditionLanguage language) {
         return DraftRule.builder().groupPath(group.path().value()).name(name)
                 .errorEntityRelPath(errorEntityRelPath()).errorCondition(render(language))
-                .errorCode(code).severity(severity.name()).messages(messages).build();
+                .errorCode(code).severity(severity.name()).messages(messages)
+                .possibleCauses(possibleCauseFilter().orElse(null)).build();
     }
 
     /**
@@ -134,6 +142,7 @@ public record Rule(
         private Comments comments = Comments.none();
         private String rootComment;
         private String rootCommentAfter;
+        private PossibleCauses possibleCauses;
 
         Builder(GroupRef group, List<String> declaredLocales) {
             this.group = group;
@@ -226,6 +235,12 @@ public record Rule(
          */
         public Builder allowDifferingDecimals() {
             this.allowsDifferingDecimals = true;
+            return this;
+        }
+
+        /** Which of the condition's entities A12 may report as causing the rule to fire; all of them when unset. */
+        public Builder possibleCauses(PossibleCauses causes) {
+            this.possibleCauses = causes;
             return this;
         }
 
@@ -345,7 +360,7 @@ public record Rule(
                 finalComments = finalComments.after(condition, rootCommentAfter);
             }
             return new Rule(group, name, errorEntity, condition, allowsDifferingDecimals, code, declaredSeverity,
-                    messages, finalComments);
+                    messages, finalComments, Optional.ofNullable(possibleCauses));
         }
 
         /** A refusal naming the KERNEL code it prevents. */

@@ -47,6 +47,7 @@ class CheckerKeyReadMarkingAgreementTest {
     }
 
     private fun rule(condition: String, parameter: String): String = RuleValidator().inject(order,
-        DraftRule("/Order", "KeyMarking", "../Lines/Sku", condition, "PICK", "ERROR",
-            listOf(LocalizedText("en_US", "Check $parameter."))))
+        DraftRule.builder().groupPath("/Order").name("KeyMarking").errorEntityRelPath("../Lines/Sku")
+            .errorCondition(condition).errorCode("PICK").severity("ERROR")
+            .messages(listOf(LocalizedText("en_US", "Check $parameter."))).build())
 }

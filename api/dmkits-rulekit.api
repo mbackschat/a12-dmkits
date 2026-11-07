@@ -2419,6 +2419,18 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition implement
   public java.lang.String regex()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses
+  public PossibleCauses(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity>)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses andFilled(io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses andNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity[])
+  public final boolean equals(java.lang.Object)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses filled(io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity[])
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity> ifFilled()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity> ifNotFilled()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses notFilled(io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity[])
+  public final java.lang.String toString()
+
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier ALL_FIELDS_FILLED
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier AT_LEAST_ONE_FIELD_FILLED
@@ -2520,7 +2532,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.RoundingMode
   public java.lang.String wire()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
-  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, boolean, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ErrorEntity, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, boolean, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses>)
   public boolean allowsDifferingDecimals()
   public java.lang.String code()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
@@ -2535,6 +2547,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.PossibleCauseFilter> possibleCauseFilter()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses> possibleCauses()
   public java.lang.String render()
   public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Severity severity()
@@ -2562,6 +2576,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder message(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder possibleCauses(io.github.mbackschat.a12.dm.rulekit.dsl.PossibleCauses)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder when(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
 
@@ -3046,7 +3061,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComp
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
-  public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, java.util.Optional<io.github.mbackschat.a12.dm.core.PossibleCauseFilter>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder builder()
   public final boolean equals(java.lang.Object)
   public java.lang.String errorCode()
@@ -3056,6 +3071,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.PossibleCauseFilter> possibleCauses()
   public java.lang.String severity()
   public final java.lang.String toString()
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule withErrorCondition(java.lang.String)
@@ -3069,6 +3085,7 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder groupPath(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder possibleCauses(io.github.mbackschat.a12.dm.core.PossibleCauseFilter)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder severity(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics
@@ -3261,6 +3278,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+  public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.lang.String addRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> readMessages(java.lang.String, java.lang.String)
   public static java.lang.String removeComputation(java.lang.String, java.lang.String)
