@@ -108,7 +108,9 @@ internal fun causingEntityCandidates(
     referenced: List<MessageReference>,
     omission: List<MessageReference>,
 ): CausingEntityCandidates {
-    val filter = rule.possibleCauses
+    // A12 applies a filter only when either list names an entity (`IRule.hasCustomRefEntities`, source-read); with
+    // both empty it derives the causes as for an unfiltered rule (`PossiblyCausingEntitiesLawsTest`).
+    val filter = rule.possibleCauses?.takeIf { it.ifFilled.isNotEmpty() || it.ifNotFilled.isNotEmpty() }
     val given = if (filter == null) referenced else named(referenced, rule.group, filter.ifFilled)
     val omitted = if (filter == null) omission else named(referenced, rule.group, filter.ifNotFilled)
     fun entity(reference: MessageReference) =

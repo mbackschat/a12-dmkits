@@ -49,6 +49,8 @@ class PossiblyCausingEntitiesLawsTest {
                 PossibleCauseFilter(listOf(), listOf("Holder"))),
             rule("/Policy", "FilterFilled", "Holder", "FieldFilled(Premium) And FieldNotFilled(Holder)",
                 PossibleCauseFilter(listOf("Premium"), listOf())),
+            rule("/Policy", "FilterEmpty", "Holder", "FieldFilled(Premium) And FieldNotFilled(Holder)",
+                PossibleCauseFilter(listOf(), listOf())),
             rule("/Policy", "Either", "Premium", "[Premium] > Sum(Lines*/Amount) Or FieldNotFilled(Holder)"),
             rule("/Policy", "RootGroup", "Premium", "FieldFilled(Premium) And GroupNotFilled(/Agent)"),
             rule("/Policy", "OtherRoot", "Premium", "FieldFilled(Premium) And FieldNotFilled(/Agent/Name)"),
@@ -132,6 +134,16 @@ class PossiblyCausingEntitiesLawsTest {
             mapOf("FilterNotFilled" to groups(setOf(HOLDER), setOf()), "FilterFilled" to groups(setOf(), setOf(PREMIUM))),
             causes(base, "FilterNotFilled", "FilterFilled"),
         )
+    }
+
+    /**
+     * A stored filter whose two lists are both empty is no filter: A12 derives the causes as for an unfiltered rule,
+     * so the rule names what `FilledAndEmpty`, its unfiltered twin, names. The rival reading, a filter that lets no
+     * entity through, predicts `[[], []]`.
+     */
+    @Test
+    fun aFilterWithBothListsEmptyLeavesTheCausesDerived() {
+        assertEquals(mapOf("FilterEmpty" to groups(setOf(HOLDER), setOf(PREMIUM))), causes(base, "FilterEmpty"))
     }
 
     /** A formal check names only the cell it reports on, in one group, an omission included. */

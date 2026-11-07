@@ -335,7 +335,8 @@ data class RuleDef(
 /**
  * A rule's `filterForPossiblyCausingEntities` as A12 stores it: the `relativePath` entries, relative to the rule's
  * group, of the entities a fired message may name as possibly causing it when filled ([ifFilled]) or unfilled
- * ([ifNotFilled]). Present with both lists empty it still filters, and lets nothing through (KERNEL-FINDINGS KF683).
+ * ([ifNotFilled]). With both lists empty A12 does not apply it and derives the causes as for an unfiltered rule
+ * (KERNEL-FINDINGS KF683).
  */
 data class PossibleCauseFilter(val ifFilled: List<String>, val ifNotFilled: List<String>)
 
