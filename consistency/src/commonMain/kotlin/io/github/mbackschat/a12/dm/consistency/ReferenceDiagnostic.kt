@@ -50,9 +50,9 @@ fun Reference.asFinding(
         is Reference.Ambiguous ->
             "the short name `$name` is carried by ${candidates.size} fields — " +
                 "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
-        is Reference.AboveRoot ->
-            if (endsOnModelRoot) "`$written` stops on the model root, which is a turning point into a root group, never a target"
-            else "`$written` climbs past the model root, so it names no position in this model"
+        is Reference.OnModelRoot ->
+            "`$written` stops on the model root, which is a turning point into a root group, never a target"
+        is Reference.PastModelRoot -> "`$written` climbs past the model root, so it names no position in this model"
         is Reference.IllegalRelPath ->
             "`$written` starts with `/`, which A12's reader refuses in a relative path, so the model cannot be read"
         is Reference.MisplacedUpStep ->

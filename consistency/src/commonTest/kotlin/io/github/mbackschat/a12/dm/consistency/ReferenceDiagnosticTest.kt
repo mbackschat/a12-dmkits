@@ -36,7 +36,7 @@ class ReferenceDiagnosticTest {
 
     @Test
     fun aConditionPathAboveTheRootReportsTheKernelsUpwardStepCode() {
-        val finding = Reference.AboveRoot("../../Code")
+        val finding = Reference.PastModelRoot("../../Code")
             .asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Rule")
 
         assertEquals("MVK_TOO_MANY_PARENT_GROUPS", finding?.code)
@@ -74,12 +74,12 @@ class ReferenceDiagnosticTest {
     fun theSameFailureInADifferentRoleIsADifferentRejection() {
         assertEquals(
             listOf("MVK_ERROR_FIELD_MISSING", CK_MODEL_NOT_BUILDABLE),
-            listOf(Reference.Undeclared("/Order/Nope"), Reference.AboveRoot("../../../Nope"))
+            listOf(Reference.Undeclared("/Order/Nope"), Reference.PastModelRoot("../../../Nope"))
                 .map { it.asFinding(ReferenceRole.ERROR_TARGET, at = "/Order/Rule")?.code },
         )
         assertEquals(
             listOf("MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS"),
-            listOf(Reference.Undeclared("/Order/Nope"), Reference.AboveRoot("../../../Nope"))
+            listOf(Reference.Undeclared("/Order/Nope"), Reference.PastModelRoot("../../../Nope"))
                 .map { it.asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Rule")?.code },
         )
     }
@@ -91,7 +91,7 @@ class ReferenceDiagnosticTest {
      */
     @Test
     fun anUnbuildableModelCarriesTheCheckersOwnCode() {
-        val finding = Reference.AboveRoot("../../../Nope")
+        val finding = Reference.PastModelRoot("../../../Nope")
             .asFinding(ReferenceRole.COMPUTED_TARGET, at = "/Order/Comp")
 
         assertEquals(CK_MODEL_NOT_BUILDABLE, finding?.code)
@@ -139,7 +139,7 @@ class ReferenceDiagnosticTest {
         listOf(
             Reference.Undeclared("/Catalog/Code"),
             Reference.Ambiguous("Code", listOf("/A/Code", "/B/Code")),
-            Reference.AboveRoot("../../Code"),
+            Reference.PastModelRoot("../../Code"),
         ).forEach { outcome ->
             assertEquals(
                 ConsistencyStatus.Invalid,

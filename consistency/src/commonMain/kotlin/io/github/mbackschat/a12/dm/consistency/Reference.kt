@@ -56,16 +56,24 @@ sealed interface Reference {
     data class Ambiguous(val name: String, val candidates: List<String>) : Reference
 
     /**
-     * [written] climbs above the model root, or ends on it, so it names no position at all rather than a missing
+     * [written] climbs past the model root, or ends on it, so it names no position at all rather than a missing
      * element. A12 says so with its own code (`MVK_TOO_MANY_PARENT_GROUPS`), which is why this is not [Undeclared]:
      * the corrective is to remove a `..`, not to declare anything.
      *
-     * [endsOnModelRoot] separates the two, because since kernel 31.3.1 the model root is a legal TURNING POINT
-     * into a sibling root group (`../Customer/Name` from a root-group rule, A12K-4276) and only a path that stops
-     * there is refused. A star on the up-step that lands there is therefore judged first, as on any landing that
-     * cannot repeat ([KERNEL-FINDINGS KF679]).
+     * The two are separate kinds, because since kernel 31.3.1 the model root is a legal TURNING POINT into a
+     * sibling root group (`../Customer/Name` from a root-group rule, A12K-4276) and only a path that stops there is
+     * refused. A star on the up-step that lands there is therefore judged first, as on any landing that cannot
+     * repeat ([KERNEL-FINDINGS KF679]).
      */
-    data class AboveRoot(val written: String, val endsOnModelRoot: Boolean = false) : Reference
+    sealed interface AboveRoot : Reference {
+        val written: String
+    }
+
+    /** [written] climbs past the model root. */
+    data class PastModelRoot(override val written: String) : AboveRoot
+
+    /** [written] stops on the model root, which may be turned on but never named. */
+    data class OnModelRoot(override val written: String) : AboveRoot
 
     /**
      * A declared target [written] with a leading `/`, which A12's reference resolver refuses as an "illegal
@@ -209,8 +217,8 @@ private fun PreparedModel.resolveSegments(
     }
     val candidate = "/" + path.joinToString("/")
     return when {
-        aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
-        path.isEmpty() -> Reference.AboveRoot(written, endsOnModelRoot = true)
+        aboveRoot -> Reference.PastModelRoot(written)   // the AUTHORED text: that is what a reader has to edit
+        path.isEmpty() -> Reference.OnModelRoot(written)
         candidate in resolvableByPath -> Reference.Resolved(candidate)
         else -> Reference.Undeclared(
             candidate,
@@ -264,7 +272,7 @@ internal fun earlierSegmentGate(
         // The model root is reached, though it names nothing, so a star on the up-step landing there is judged.
         val reached = resolves(segments.take(at + 1).joinToString("/"))
         val resolved = reached as? Reference.Resolved
-        if (resolved == null && (reached as? Reference.AboveRoot)?.endsOnModelRoot != true) return null
+        if (resolved == null && reached !is Reference.OnModelRoot) return null
         if (!segment.endsWith("*")) {
             continue
         }

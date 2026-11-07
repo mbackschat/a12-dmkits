@@ -99,7 +99,7 @@ class DeclarationReferenceTest {
             prepared(rule("../../Order/Code")).declaredReferences().single().target,
         )
         assertEquals(
-            Reference.AboveRoot("../../../Order/Code"),
+            Reference.PastModelRoot("../../../Order/Code"),
             prepared(rule("../../../Order/Code")).declaredReferences().single().target,
             "clamping at the root would have resolved this to the same element as the legal case",
         )

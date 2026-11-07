@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.predicates.a12LanguageTag
 import io.github.mbackschat.a12.dm.predicates.isReservedElementName
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -142,7 +143,7 @@ private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
  */
 private fun alphabetFindings(element: TrackedDeclaration): List<Finding> {
     val declaredCode = (element.body?.get("errorCode") as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
-    val code = (if (element.kind == "Rule") declaredCode else declaredCode ?: element.name)?.javaTrimmed()
+    val code = (if (element.declaredKind == DeclaredKind.RULE) declaredCode else declaredCode ?: element.name)?.javaTrimmed()
     // A blank code is MVK_ERROR_CODE_MISSING's alone: a tab-only code never reaches this alphabet.
     val refusedCode = code?.takeIf { text ->
         !text.isA12Blank() && text.namedByA12() && text.any { it !in ERROR_CODE_CHARACTERS }
@@ -203,7 +204,7 @@ private fun reservedNameFinding(element: TrackedDeclaration): List<Finding> =
  * The `severity` slot beside it is [severityFindings].
  */
 private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
-    if (element.kind != "Rule") {
+    if (element.declaredKind != DeclaredKind.RULE) {
         return computationErrorCodeFindings(element)
     }
     val declared = (element.body ?: return emptyList())["errorCode"]
@@ -220,7 +221,7 @@ private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
                 element.path,
             ),
         )
-        declared is JsonPrimitive && declared.isString && declared.content.isA12Blank() ->
+        declared.isBlankCode() ->
             listOf(
                 Finding(
                     FindingCategory.A12_CONSTRAINT,
@@ -263,7 +264,7 @@ private fun computationErrorCodeFindings(element: TrackedDeclaration): List<Find
                 element.path,
             ),
         )
-        is JsonPrimitive -> if (declared !is JsonNull && declared.isString && declared.content.isA12Blank()) {
+        is JsonPrimitive -> if (declared.isBlankCode()) {
             listOf(
                 Finding(
                     FindingCategory.A12_CONSTRAINT,
@@ -279,6 +280,9 @@ private fun computationErrorCodeFindings(element: TrackedDeclaration): List<Find
         }
         else -> emptyList()
     }
+
+// A string code A12 reads as blank; `null` and a coerced scalar are not strings.
+private fun JsonElement?.isBlankCode(): Boolean = this is JsonPrimitive && isString && content.isA12Blank()
 
 /** The three constants A12's `Severity` binding admits — exactly, and case-sensitively. */
 private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
@@ -375,7 +379,7 @@ private fun TrackedDeclaration.unprefixedErrorTextFinding(
  * Nothing is reported for a computation, for [errorCodeFindings]'s reason: the member does not exist there.
  */
 private fun severityFindings(element: TrackedDeclaration): List<Finding> {
-    if (element.kind != "Rule") {
+    if (element.declaredKind != DeclaredKind.RULE) {
         return emptyList()
     }
     val declared = (element.body ?: return emptyList())["severity"] ?: return emptyList()

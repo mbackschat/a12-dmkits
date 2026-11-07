@@ -16,13 +16,13 @@ internal fun TrackedFactBase.messageParameterFindings(element: TrackedDeclaratio
     val actions = object : MessageParameterActions {
         override fun climb(steps: Int): String? =
             // The model root is a turning point since kernel 31.3.1, so only a climb PAST it is refused here; one
-            // that stops on it is the resolver's AboveRoot (KF679).
+            // that stops on it is the resolver's OnModelRoot (KF679).
             if (steps > group.count { it == '/' }) "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS" else null
 
         override fun parent(written: String): String? = when {
             turningPointIsWrong(written.replace("'", ""), group) -> "INVALID_ENTITY"
-            (resolveMessageEntity(group, written.replace("'", ""), element.origin) as? Reference.AboveRoot)
-                ?.endsOnModelRoot == false -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+            resolveMessageEntity(group, written.replace("'", ""), element.origin) is Reference.PastModelRoot ->
+                "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
             else -> null
         }
 

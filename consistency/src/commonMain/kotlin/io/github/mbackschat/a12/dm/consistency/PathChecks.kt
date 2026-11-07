@@ -42,7 +42,7 @@ internal fun TrackedFactBase.pathContributions(
             // A12 refuses the model root only as the WHOLE reference's target (`CheckEntitySpecImpl`, kernel
             // 31.3.1), after every up-step has been judged: an up-run stopping there is a turning point into a root
             // group, and a star on one of its steps answers first (KF679).
-            val onModelRoot = reached is Reference.AboveRoot && reached.endsOnModelRoot
+            val onModelRoot = reached is Reference.OnModelRoot
             val missing = if (onModelRoot && (run.last().end < fullEnd || segments.any { it == "..*" })) null
             else reached.asFinding(ReferenceRole.CONDITION_ENTITY, element.path, span.member, span)
             if (missing != null) {
