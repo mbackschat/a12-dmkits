@@ -6075,7 +6075,7 @@ Kernel 31.3.1 stores a computation's suppression as the free-text member `additi
 
 **A suppressed enumeration calculation stores only a declared token** (measured 2026-11-07, both strategies alike). A text computed into an enumeration stores the text when it spells a declared S-value; that value's label and an undeclared text leave the target ERRORED, and an empty text clears a seeded target, all without a message. `CheckPreambleImpl` lifts the check for every source kind, but only a text was measured. *(Locked: `adapter.laws.EnumComputationSuppressionDiffTest`, which the interpreter matches.)*
 
-**Which entry is a name is the LEXER's question, not a character class** (measured 2026-09-24, one entry per row, English model unless named). The pragma's operand is the lexer's `NameOhnePunktSTRAmAnfang` token, and `CheckPreambleImpl` compares that token's text with the one suppressible name, so A12 answers the first thing in the rendered text that is not that name:
+**Which entry is a name is the LEXER's question, not a character class** (measured 2026-09-24, one entry per row, English model unless named). The pragma's operand is the lexer's `NameOhnePunktSTRAmAnfang` token, and `CheckPreambleImpl` compares that token's text with the suppressible name (one on 31.1.1, where this was measured; 31.3.1 admits the two above), so A12 answers the first thing in the rendered text that is not that name:
 
 | entry | A12 |
 |---|---|
