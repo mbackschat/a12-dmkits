@@ -39,7 +39,7 @@ internal class ImmutableListSnapshot<T>(values: Collection<T>) : AbstractList<T>
 internal fun <T> immutableListSnapshot(values: Collection<T>): List<T> = ImmutableListSnapshot(values)
 
 /** Whether [values] may be published without copying it — see [ImmutableProjection]. */
-internal fun isImmutableProjection(values: List<*>): Boolean = values is ImmutableProjection
+internal fun isImmutableProjection(values: Collection<*>): Boolean = values is ImmutableProjection
 
 private val safeDiagnosticMetadataPattern =
     Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,63}(:[A-Za-z0-9][A-Za-z0-9._-]{0,63})?")

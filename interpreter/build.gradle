@@ -1169,7 +1169,7 @@ dokka {
             file('src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/DmInterpreter.kt'),
             file('src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/Unsupported.kt'),
             file('src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/Dec.js.kt'),
-            file('src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt'),
+            fileTree('src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter') { include 'TypeScriptBridge*.kt' },
             file('src/jvmMain/kotlin/io/github/mbackschat/a12/dm/interpreter/Dec.jvm.kt'),
         )
         perPackageOption {

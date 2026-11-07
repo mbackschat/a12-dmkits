@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  * **The message channel carries A12's message pointer, not a string.**
  *
  * A12 types every address on `IMessage` as `PartiallyKnownDocumentMultiPointer`, so this library does too:
- * [ValidationFinding.errorPath], `referenced` and `fillToFix` are that type, and the engine *retains* it rather
+ * [ValidationFinding.errorPath], `referenced`, `fillToFix` and the members of `possiblyCausing` are that type, and the engine *retains* it rather
  * than deriving it later from text.
  *
  * **The direction is forced, not chosen.** The interpreter's house string is lossy — its renderer writes an
@@ -92,6 +92,7 @@ class MessagePointerChannelTest {
         val error = A12PartiallyKnownMultiPointer.of("/Error", listOf(3))
         val referenced = A12PartiallyKnownMultiPointer.of("/Referenced", listOf(0))
         val fillToFix = A12PartiallyKnownMultiPointer.of("/Fill", listOf(-5))
+        val cause = A12PartiallyKnownMultiPointer.of("/Cause", listOf(0))
         val projected = validationFinding(
             EngineMessage(
                 code = "POINTER-CHANNEL",
@@ -101,12 +102,13 @@ class MessagePointerChannelTest {
                 type = MsgType.OMISSION,
                 referencedPointers = listOf(referenced),
                 fillToFixPointers = listOf(fillToFix),
-                groupsOfPossiblyCausingEntities = emptyList(),
+                groupsOfPossiblyCausingEntities = listOf(setOf(cause), setOf(fillToFix, referenced)),
             ),
         )
 
         assertEquals(error, projected.errorPath)
         assertEquals(listOf(referenced), projected.referenced)
         assertEquals(listOf(fillToFix), projected.fillToFix)
+        assertEquals(listOf(setOf(cause), setOf(fillToFix, referenced)), projected.possiblyCausing)
     }
 }

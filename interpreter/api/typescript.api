@@ -424,6 +424,7 @@ export interface ValidationFinding {
     readonly text: string;
     readonly referenced: readonly A12PartiallyKnownMultiPointer[];
     readonly fillToFix: readonly A12PartiallyKnownMultiPointer[];
+    readonly possiblyCausing: readonly (readonly A12PartiallyKnownMultiPointer[])[];
 }
 
 ## ValidationFindingType

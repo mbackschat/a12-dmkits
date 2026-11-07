@@ -27,12 +27,18 @@ export type ValidationFindingType = "value" | "omission";
 /**
  * Detached projection of one firing validation rule.
  *
- * Its three addresses are A12's message pointer — `IMessage` types `getErrorFieldPointer()`,
- * `getReferencedFieldsPointers()` and `getRefOmissionErrorResponsiblePointers()` as
- * `PartiallyKnownDocumentMultiPointer`, and so does this. They arrive branded, so a finding's address is
+ * Its addresses are A12's message pointer — `IMessage` types `getErrorFieldPointer()`,
+ * `getReferencedFieldsPointers()`, `getRefOmissionErrorResponsiblePointers()` and the members of
+ * `getGroupsOfPossiblyCausingEntities()` as `PartiallyKnownDocumentMultiPointer`, and so does this. They arrive branded, so a finding's address is
  * accepted wherever an {@link A12PartiallyKnownMultiPointer} is required and rejected where an
  * {@link A12Pointer} is. Use {@link A12PartiallyKnownMultiPointer.toExactPointer} for the exact pointer when
  * the address names one cell; it answers `null` when it does not.
+ *
+ * `possiblyCausing` is `IMessage.getGroupsOfPossiblyCausingEntities()`, each pointer set as an array: an omission
+ * has two groups, the entities whose absence may cause it and then the given ones; a value finding has one. A
+ * formal check names only its own cell, and an evaluation fault has one empty group. Order within a
+ * group carries no meaning. Where two keys select no row of the same group, A12 names that entity once per key,
+ * but this pointer has no member for the key, so the interpreter names it once.
  */
 export interface ValidationFinding {
   readonly code: string;
@@ -43,6 +49,7 @@ export interface ValidationFinding {
   readonly text: string;
   readonly referenced: readonly A12PartiallyKnownMultiPointer[];
   readonly fillToFix: readonly A12PartiallyKnownMultiPointer[];
+  readonly possiblyCausing: readonly (readonly A12PartiallyKnownMultiPointer[])[];
 }
 
 /** What kind of address an {@link UnsupportedProgram.path} carries — the two are not interchangeable. */
@@ -144,6 +151,7 @@ const validationFinding = (
     readonly text: string;
     readonly referenced: readonly BridgeMessagePointer[];
     readonly fillToFix: readonly BridgeMessagePointer[];
+    readonly possiblyCausing: readonly (readonly BridgeMessagePointer[])[];
   },
 ): ValidationFinding =>
   Object.freeze({
@@ -155,6 +163,9 @@ const validationFinding = (
     text: finding.text,
     referenced: Object.freeze(finding.referenced.map(frozenPartiallyKnown)),
     fillToFix: Object.freeze(finding.fillToFix.map(frozenPartiallyKnown)),
+    possiblyCausing: Object.freeze(
+      finding.possiblyCausing.map((group) => Object.freeze(group.map(frozenPartiallyKnown))),
+    ),
   });
 
 const validationReport = (

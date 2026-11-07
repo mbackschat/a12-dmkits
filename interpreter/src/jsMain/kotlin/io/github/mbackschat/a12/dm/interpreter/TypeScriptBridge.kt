@@ -43,12 +43,9 @@ import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate as CoreRelevan
 import io.github.mbackschat.a12.dm.interpreter.RelevantEntityPointer as CoreRelevantEntityPointer
 import io.github.mbackschat.a12.dm.interpreter.RelevantSelectionPointer as CoreRelevantSelectionPointer
 import io.github.mbackschat.a12.dm.interpreter.UnknownModelPathError as CoreUnknownModelPathError
-import io.github.mbackschat.a12.dm.interpreter.ValidationFinding as CoreValidationFinding
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedProgram as CoreUnsupportedProgram
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedProgramSubject as CoreUnsupportedProgramSubject
-import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType as CoreValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.ValidationReport as CoreValidationReport
-import io.github.mbackschat.a12.dm.interpreter.ValidationSeverity as CoreValidationSeverity
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource as CoreWorkspaceModelSource
 import io.github.mbackschat.a12.dm.interpreter.awaitValue
 import io.github.mbackschat.a12.dm.interpreter.promiseFromSuspend
@@ -420,18 +417,6 @@ class InterpreterBridgeSupportReport internal constructor(
 )
 
 @JsExport
-class InterpreterBridgeValidationFinding internal constructor(
-    val code: String,
-    val rulePath: String,
-    val errorPath: InterpreterBridgeParsedPartiallyKnownPointer,
-    val severity: String,
-    val type: String,
-    val text: String,
-    val referenced: Array<InterpreterBridgeParsedPartiallyKnownPointer>,
-    val fillToFix: Array<InterpreterBridgeParsedPartiallyKnownPointer>,
-)
-
-@JsExport
 class InterpreterBridgeValidationReport internal constructor(
     val findings: Array<InterpreterBridgeValidationFinding>,
     val unsupported: Array<InterpreterBridgeUnsupportedProgram>,
@@ -706,7 +691,7 @@ fun interpreterBridgeA12PartiallyKnownOf(
     }
 
 /** The one crossing of a message pointer, so a built one and a finding's one cannot take different shapes. */
-private fun bridgePartiallyKnown(pointer: CorePartiallyKnown) = InterpreterBridgeParsedPartiallyKnownPointer(
+internal fun bridgePartiallyKnown(pointer: CorePartiallyKnown) = InterpreterBridgeParsedPartiallyKnownPointer(
     pointer.fullName,
     pointer.repetitionIndexes.toTypedArray(),
 )
@@ -969,18 +954,6 @@ private fun integrationFailure(error: CoreInterpreterIntegrationError): Interpre
     )
 }
 
-private fun validationFinding(finding: CoreValidationFinding): InterpreterBridgeValidationFinding =
-    InterpreterBridgeValidationFinding(
-        code = finding.code,
-        rulePath = finding.rulePath,
-        errorPath = bridgePartiallyKnown(finding.errorPath),
-        severity = finding.severity.wireName(),
-        type = finding.type.wireName(),
-        text = finding.text,
-        referenced = finding.referenced.map(::bridgePartiallyKnown).toTypedArray(),
-        fillToFix = finding.fillToFix.map(::bridgePartiallyKnown).toTypedArray(),
-    )
-
 private fun CoreProviderFailureReason.wireName(): String = when (this) {
     CoreProviderFailureReason.ACCESS_DENIED -> "access-denied"
     CoreProviderFailureReason.UNAVAILABLE -> "unavailable"
@@ -1042,12 +1015,6 @@ private fun CoreModelEntityKind.wireName(): String = when (this) {
     CoreModelEntityKind.FIELD -> "field"
 }
 
-private fun CoreValidationSeverity.wireName(): String = when (this) {
-    CoreValidationSeverity.ERROR -> "error"
-    CoreValidationSeverity.WARNING -> "warning"
-    CoreValidationSeverity.INFO -> "info"
-}
-
 /** The one core → bridge projection for an unsupported entry, so no site can drop the subject. */
 private fun unsupportedProgram(program: CoreUnsupportedProgram): InterpreterBridgeUnsupportedProgram =
     InterpreterBridgeUnsupportedProgram(program.path, program.reason, program.subject.wireName())
@@ -1055,11 +1022,6 @@ private fun unsupportedProgram(program: CoreUnsupportedProgram): InterpreterBrid
 private fun CoreUnsupportedProgramSubject.wireName(): String = when (this) {
     CoreUnsupportedProgramSubject.ELEMENT -> "element"
     CoreUnsupportedProgramSubject.CELL -> "cell"
-}
-
-private fun CoreValidationFindingType.wireName(): String = when (this) {
-    CoreValidationFindingType.VALUE -> "value"
-    CoreValidationFindingType.OMISSION -> "omission"
 }
 
 private fun CoreComputationOutcome.wireName(): String = when (this) {

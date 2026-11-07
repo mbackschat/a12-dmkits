@@ -10,6 +10,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 - **BREAKING: evaluates as A12 Kernel `31.1.1` does, on the DM `29.4.0` model format.** A mount is written as `includeConfig` and identified by its `reference` alone. A group still carrying a DM 28 mount member such as `modelAlias` is refused, because A12 would read it as a plain group and lose the mount silently. A mount's local elements are replaced by the included content, as A12 prepares them.
 - **Dates follow kernel 31.1.1's runtime:** the proleptic calendar, Europe/Berlin's historical offsets, a daylight-saving gap moved forward and an overlap read at its earlier offset, and `DifferenceInDays` counted on wall clocks.
+- **BREAKING: a finding names its possibly-causing entities.** `ValidationFinding.possiblyCausing` groups them as A12's `getGroupsOfPossiblyCausingEntities()` does: an omission's entities whose absence may cause it, then the given ones. A rule's possible-cause filter decides which entities are named. A `ValidationFinding` built by hand, or a TypeScript object typed as one, now needs the groups.
 
 ### Added
 

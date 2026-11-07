@@ -8,10 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData as Engi
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType as EngineCustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
-import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
-import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.MessageLabelProvider
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
@@ -19,7 +16,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule as EngineUn
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject as EngineUnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
-import io.github.mbackschat.a12.dm.interpreter.workspace.isImmutableProjection
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
@@ -329,9 +325,10 @@ enum class ValidationFindingType {
 /**
  * Detached, kernel-free projection of one validation finding.
  *
- * <b>Its three addresses are A12's message pointer.</b> `IMessage` types `getErrorFieldPointer()`,
- * `getReferencedFieldsPointers()` and `getRefOmissionErrorResponsiblePointers()` as
- * `PartiallyKnownDocumentMultiPointer`, so `errorPath`, `referenced` and `fillToFix` carry
+ * <b>Its addresses are A12's message pointer.</b> `IMessage` types `getErrorFieldPointer()`,
+ * `getReferencedFieldsPointers()`, `getRefOmissionErrorResponsiblePointers()` and the members of
+ * `getGroupsOfPossiblyCausingEntities()` as `PartiallyKnownDocumentMultiPointer`, so `errorPath`, `referenced`,
+ * `fillToFix` and `possiblyCausing` carry
  * [A12PartiallyKnownMultiPointer] — the value the engine retains, not a string it was rendered into. The
  * distinction is observable: an unresolved level ([A12PartiallyKnownMultiPointer.UNKNOWN]) and a terminal
  * wildcard are exactly what a rendered path drops, so a consumer that needs them can only get them from here.
@@ -339,6 +336,12 @@ enum class ValidationFindingType {
  * Rendering is the consumer's call: [A12PartiallyKnownMultiPointer.toExactPointer] plus
  * [A12PointerFormat.render] gives A12's canonical pointer string for an address that names one cell, and
  * `null` for one that does not.
+ *
+ * `possiblyCausing` is `IMessage.getGroupsOfPossiblyCausingEntities()`, with the same shape: a list of pointer
+ * sets. An omission has two groups, the entities whose absence may cause it and then the given ones; a value
+ * finding has one group. A formal check names only its own cell, and an evaluation fault has one empty group. A rule's possible-cause filter decides which referenced entities are named. Order within a group
+ * carries no meaning. Where two keys select no row of the same group, A12 names that entity once per key, but
+ * this pointer has no member for the key, so the interpreter names it once.
  */
 data class ValidationFinding(
     val code: String,
@@ -349,6 +352,7 @@ data class ValidationFinding(
     val text: String,
     val referenced: List<A12PartiallyKnownMultiPointer>,
     val fillToFix: List<A12PartiallyKnownMultiPointer>,
+    val possiblyCausing: List<Set<A12PartiallyKnownMultiPointer>>,
 )
 
 /** What kind of address an [UnsupportedProgram.path] carries — the two are not interchangeable. */
@@ -1025,48 +1029,6 @@ class Interpreter private constructor(
         ): Interpreter = Interpreter(prepared, configuration)
     }
 }
-
-/**
- * Publish a pointer list across the public boundary — **without copying one that is already immutable**.
- *
- * The engine hands every message of a duplicate cluster the *same* pointer-list instance rather than a private
- * copy per message (IF191). Snapshotting defensively per message therefore copies one N-element list N times:
- * quadratic in both time and memory, and it cancels that optimization at exactly the boundary a library consumer
- * calls. Measured, the façade exhausted the default test heap on 8,000 all-duplicate rows — a document the
- * engine itself handles.
- *
- * The first fix cached the last snapshot per channel, which held for ONE cluster and missed on every message of
- * two interleaved ones — the copy, and the O(N²), came straight back (IF261). Since nothing bounds how many
- * duplicate clusters a document may interleave, no fixed number of slots is defensible. So the engine marks every list it
- * builds immutably (`ImmutableProjection`) and this boundary recognizes the marker: no copy, no cache, no scale
- * at which it degrades. A list from anywhere else is still copied, so the published list is immutable either way.
- */
-private fun publishedPointers(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> =
-    when {
-        values.isEmpty() -> emptyList()
-        isImmutableProjection(values) -> values
-        else -> immutableListSnapshot(values)
-    }
-
-/** The single engine-to-public message projection; internal so common tests can lock the channel boundary. */
-internal fun validationFinding(message: EngineMessage): ValidationFinding =
-    ValidationFinding(
-        code = message.code,
-        rulePath = message.rulePath,
-        errorPath = message.errorPointer,
-        severity = when (message.severity) {
-            Severity.ERROR -> ValidationSeverity.ERROR
-            Severity.WARNING -> ValidationSeverity.WARNING
-            Severity.INFO -> ValidationSeverity.INFO
-        },
-        type = when (message.type) {
-            MsgType.VALUE -> ValidationFindingType.VALUE
-            MsgType.OMISSION -> ValidationFindingType.OMISSION
-        },
-        text = message.text,
-        referenced = publishedPointers(message.referencedPointers),
-        fillToFix = publishedPointers(message.fillToFixPointers),
-    )
 
 private class CallbackFailure(cause: Throwable) : RuntimeException(cause)
 
