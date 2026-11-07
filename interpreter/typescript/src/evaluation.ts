@@ -141,38 +141,54 @@ type BridgeMessagePointer = {
   readonly repetitionIndexes: readonly number[];
 };
 
-const validationFinding = (
-  finding: {
-    readonly code: string;
-    readonly rulePath: string;
-    readonly errorPath: BridgeMessagePointer;
-    readonly severity: string;
-    readonly type: string;
-    readonly text: string;
-    readonly referenced: readonly BridgeMessagePointer[];
-    readonly fillToFix: readonly BridgeMessagePointer[];
-    readonly possiblyCausing: readonly (readonly BridgeMessagePointer[])[];
-  },
-): ValidationFinding =>
-  Object.freeze({
-    code: finding.code,
-    rulePath: finding.rulePath,
-    errorPath: frozenPartiallyKnown(finding.errorPath),
-    severity: finding.severity as ValidationSeverity,
-    type: finding.type as ValidationFindingType,
-    text: finding.text,
-    referenced: Object.freeze(finding.referenced.map(frozenPartiallyKnown)),
-    fillToFix: Object.freeze(finding.fillToFix.map(frozenPartiallyKnown)),
-    possiblyCausing: Object.freeze(
-      finding.possiblyCausing.map((group) => Object.freeze(group.map(frozenPartiallyKnown))),
-    ),
-  });
+type BridgeValidationFinding = {
+  readonly code: string;
+  readonly rulePath: string;
+  readonly errorPath: BridgeMessagePointer;
+  readonly severity: string;
+  readonly type: string;
+  readonly text: string;
+  readonly referenced: readonly BridgeMessagePointer[];
+  readonly fillToFix: readonly BridgeMessagePointer[];
+  readonly possiblyCausing: readonly (readonly BridgeMessagePointer[])[];
+};
+
+/**
+ * One report's crossing of its findings. The bridge hands every finding of a duplicate cluster the same
+ * `referenced` array and cause groups, so each shared array and pointer is frozen once and published to every
+ * finding; freezing them per finding allocates N² pointers for an N-row cluster (INTERPRETER-FINDINGS IF256).
+ */
+const findingCrossing = (): ((finding: BridgeValidationFinding) => ValidationFinding) => {
+  const crossed = new Map<object, unknown>();
+  const once = <V>(key: object, make: () => V): V => {
+    if (!crossed.has(key)) {
+      crossed.set(key, make());
+    }
+    return crossed.get(key) as V;
+  };
+  const pointer = (value: BridgeMessagePointer): A12PartiallyKnownMultiPointer =>
+    once(value, () => frozenPartiallyKnown(value));
+  const pointers = (values: readonly BridgeMessagePointer[]): readonly A12PartiallyKnownMultiPointer[] =>
+    once(values, () => Object.freeze(values.map(pointer)));
+  return (finding) =>
+    Object.freeze({
+      code: finding.code,
+      rulePath: finding.rulePath,
+      errorPath: pointer(finding.errorPath),
+      severity: finding.severity as ValidationSeverity,
+      type: finding.type as ValidationFindingType,
+      text: finding.text,
+      referenced: pointers(finding.referenced),
+      fillToFix: pointers(finding.fillToFix),
+      possiblyCausing: once(finding.possiblyCausing, () => Object.freeze(finding.possiblyCausing.map(pointers))),
+    });
+};
 
 const validationReport = (
   report: InterpreterBridgeValidationReport,
 ): ValidationReport =>
   Object.freeze({
-    findings: Object.freeze(report.findings.map(validationFinding)),
+    findings: Object.freeze(report.findings.map(findingCrossing())),
     unsupported: unsupportedPrograms(report.unsupported),
     noErrorOccurred: report.noErrorOccurred,
     fullySupported: report.fullySupported,
@@ -181,6 +197,7 @@ const validationReport = (
 const computationReport = (
   report: InterpreterBridgeComputationReport,
 ): ComputationReport => {
+  const validationFinding = findingCrossing();
   const computedFields = (
     values: typeof report.results,
   ): readonly ComputationResult[] =>

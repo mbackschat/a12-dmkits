@@ -23,6 +23,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 ### Performance
 
 - **Partial validation shares gated group counts across a scope,** and a row-invariant `SumOfTerms` is folded once per scope.
+- **The JavaScript and TypeScript packages publish a duplicate cluster's shared pointers once,** so all findings share them, as on the JVM. They used to be copied per finding, which exhausted a 4 GB heap at 4,000 duplicate rows.
 - **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel `30.8.1` generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ## [0.14.0]

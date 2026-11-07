@@ -426,7 +426,7 @@ class InterpreterBridgeValidationReport internal constructor(
     companion object {
         internal fun fromCore(report: CoreValidationReport): InterpreterBridgeValidationReport =
             InterpreterBridgeValidationReport(
-                findings = report.findings.map(::validationFinding).toTypedArray(),
+                findings = FindingCrossing().let { crossing -> report.findings.map(crossing::finding).toTypedArray() },
                 unsupported = report.unsupported.map { unsupported ->
                     unsupportedProgram(unsupported)
                 }.toTypedArray(),
@@ -448,10 +448,11 @@ class InterpreterBridgeComputedField internal constructor(
 class InterpreterBridgeComputationReport internal constructor(
     private val core: CoreComputationReport,
 ) {
-    val results: Array<InterpreterBridgeComputedField> = core.results.map(::computedField).toTypedArray()
-    val actions: Array<InterpreterBridgeComputedField> = core.actions.map(::computedField).toTypedArray()
+    private val crossing = FindingCrossing()
+    val results: Array<InterpreterBridgeComputedField> = core.results.map(crossing::computedField).toTypedArray()
+    val actions: Array<InterpreterBridgeComputedField> = core.actions.map(crossing::computedField).toTypedArray()
     val formalErrorsInOperands: Array<InterpreterBridgeValidationFinding> =
-        core.formalErrorsInOperands.map(::validationFinding).toTypedArray()
+        core.formalErrorsInOperands.map(crossing::finding).toTypedArray()
     val unsupported: Array<InterpreterBridgeUnsupportedProgram> = core.unsupported.map { unsupported ->
         unsupportedProgram(unsupported)
     }.toTypedArray()
@@ -471,16 +472,8 @@ class InterpreterBridgeComputationReport internal constructor(
     companion object {
         internal fun fromCore(report: CoreComputationReport): InterpreterBridgeComputationReport =
             InterpreterBridgeComputationReport(report)
-
-        private fun computedField(result: io.github.mbackschat.a12.dm.interpreter.ComputationResult):
-            InterpreterBridgeComputedField =
-            InterpreterBridgeComputedField(
-                pointer = InterpreterBridgePointer(result.pointer),
-                outcome = result.outcome.wireName(),
-                value = result.value,
-                diagnostic = result.diagnostic?.let(::validationFinding),
-            )
     }
+
 }
 
 @JsExport
@@ -1024,7 +1017,7 @@ private fun CoreUnsupportedProgramSubject.wireName(): String = when (this) {
     CoreUnsupportedProgramSubject.CELL -> "cell"
 }
 
-private fun CoreComputationOutcome.wireName(): String = when (this) {
+internal fun CoreComputationOutcome.wireName(): String = when (this) {
     CoreComputationOutcome.VALUE -> "value"
     CoreComputationOutcome.CLEARED -> "cleared"
     CoreComputationOutcome.ERRORED -> "errored"

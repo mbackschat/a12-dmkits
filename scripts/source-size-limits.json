@@ -31,7 +31,7 @@
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt": 1550,
     "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt": 910,
     "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/IncludeAssemblyTest.kt": 1084,
-    "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 898,
+    "interpreter/src/jsMain/kotlin/io/github/mbackschat/a12/dm/interpreter/TypeScriptBridge.kt": 891,
     "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/DocumentModelDraft.java": 964,
     "modelkit/src/main/java/io/github/mbackschat/a12/dm/modelkit/ModelDocument.java": 1032,
     "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java": 1423

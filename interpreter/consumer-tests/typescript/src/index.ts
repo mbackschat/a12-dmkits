@@ -29,6 +29,7 @@ import {
 } from "./boundary-contract.js";
 import {assertDocumentInputConversions} from "./document-input.js";
 import {assertMessagePointerDomains} from "./message-pointer.js";
+import {assertClusterCrossesOnce} from "./shared-crossing.js";
 import {validateWithProjectCondition} from "./guide-customization.js";
 import {runInterpreter} from "./guide-finite.js";
 import {collectWorkspace} from "./guide-provider.js";
@@ -356,6 +357,8 @@ if (new InterpreterIntegrationError(
 ).code !== "A12_INTERPRETER_INTEGRATION_FAILED") {
   throw new Error("integration error lost its public code");
 }
+
+assertClusterCrossesOnce(model("order-ruled"));
 
 const customPrepared = PreparedModel.loadExpandedJson(model("order-ruled"));
 const customSnapshot = customPrepared.documents.readDocument({

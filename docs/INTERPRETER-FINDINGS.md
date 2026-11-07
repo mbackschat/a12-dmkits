@@ -5254,3 +5254,8 @@ Portable preparation refused a group carrying both `includeConfig` and local ele
 
 *Locked:* `adapter.laws.NumberRenderCapDiffTest` (both strategies and the interpreter, with a `HALF_EVEN` discriminator); `interpreter.A12RuntimeNumberFormTest` against `java.math.BigDecimal` on the capped formula, minimums 0 to 16.
 
+### IF465: the JavaScript boundary crosses a duplicate cluster's shared pointers once per report (2026-11-07) <a id="if465"></a>
+
+The engine shares a duplicate cluster's `referenced` list and its cause group across the cluster's findings, and the Kotlin API publishes them without copying ([IF191](#if191), [IF261](#if261)). The JavaScript bridge (`TypeScriptBridgeFinding.kt`) and the TypeScript façade (`evaluation.ts`) still mapped every pointer of every finding into a fresh object, so an N-row cluster allocated N² pointers there, the defect [IF256](#if256) had removed from the JVM. Each report now crosses through one identity-keyed memo per layer: a shared list, group or pointer is bridged and frozen once, and every finding that shares it receives the same array. The key is identity on purpose, because lists the engine built separately need no sharing, and hashing them by value would cost the N² time the memo exists to avoid. A computation report shares one memo across its results, actions and formal errors. Measured in the [checkpoint](INTERPRETER-PERFORMANCE-RESULTS.md#checkpoint-2026-11-07-ts-cluster-crossing).
+
+*Locked:* `TypeScriptBridgeFindingTest.aClusterCrossesItsSharedPointersOnce` (the bridge); the TypeScript consumer's `assertClusterCrossesOnce`, through the packed package (the façade).

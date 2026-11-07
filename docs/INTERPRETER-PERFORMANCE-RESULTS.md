@@ -22,6 +22,17 @@
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
 <a id="checkpoint-2026-11-07-cause-question-per-scope"></a>
+### Checkpoint 2026-11-07 — the TypeScript package publishes a duplicate cluster's shared pointers once, so 8,000 rows retain 61 MB instead of exhausting the heap <a id="checkpoint-2026-11-07-ts-cluster-crossing"></a>
+
+Node 26.10.0 on Apple M1, the packed `@mbackschat/a12-interpreter` installed in the TypeScript consumer, `node --expose-gc --max-old-space-size=4096`. The order example model gains `RepetitionNotUnique(Items/Count)`, and every one of N items carries the same count, so all N findings fire and each names all N items. Heap retained across one `validateFull`, after a forced collection:
+
+| bridge | N = 1 000 | N = 2 000 | N = 4 000 | N = 8 000 |
+|---|---|---|---|---|
+| per finding (the bridge before this change) | 249 MB, 742 ms | 976 MB, 2 939 ms | heap exhausted at 4 GB | not run |
+| once per report | 10 MB, 259 ms | — | — | 61 MB, 935 ms |
+
+Doubling N quadrupled the per-finding retention, the N² of [IF256](INTERPRETER-FINDINGS.md#if256) restored at the JavaScript boundary; [IF465](INTERPRETER-FINDINGS.md#if465) has the mechanism. A single run per cell, so the wall times are indicative only.
+
 ### Checkpoint 2026-11-07 — asking a fired message's aggregated causes once per scope returns a rule firing on every line to linear growth
 
 `scripts/perf.sh gate` on Apple M1, JDK 21.0.13, A12 Kernel 31.3.1. `RowInvariantStarReaderPerfTest`'s `SUM_OF_TERMS_FIRING` lane, whose rule fires on every one of N lines:
