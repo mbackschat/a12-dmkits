@@ -35,7 +35,7 @@ if(args[0]==='api') {
 } else if(args[0]==='repo' && args[1]==='create') {
  git(['init','--bare','--initial-branch=main',path.join(home,'mirror.git')]);state.repo=true;save();
 } else if(args[0]==='repo' && args[1]==='clone') git(['clone',path.join(home,'mirror.git'),args[3]]);
-else if(args[0]==='release' && args[1]==='create') { state.release={draft:true,tag_name:args[2],assets:[]};save(); }
+else if(args[0]==='release' && args[1]==='create') { state.release={draft:true,tag_name:args[2],assets:[]};state.notes=args[args.indexOf('--notes')+1];save(); }
 else if(args[0]==='release' && args[1]==='upload') {
  const name=path.basename(args[3]);
  if(state.fail===name){process.stderr.write('injected upload failure');process.exit(1);}
@@ -81,6 +81,7 @@ test('production publisher resumes uploads and go-live while refusing altered id
         writeFileSync(join(root, '.locmetryrc'), readFileSync(resolve('.locmetryrc')));
         mkdirSync(join(root, 'consistency/public-release'), { recursive: true });
         writeFileSync(join(root, 'consistency/public-release/README.md'), readFileSync(resolve('consistency/public-release/README.md')));
+        writeFileSync(join(root, 'consistency/public-release/CHANGELOG.md'), '# Changelog\n\n## [@VERSION@]\n\n### Added\n\n- **First rehearsed publication.**\n');
         writeFileSync(join(root, 'LICENSE'), 'MIT License\n');
         mkdirSync(join(root, 'scripts')); mkdirSync(join(root, 'docs'));
         writeFileSync(join(root, 'scripts/update-code-statistics.sh'), '#!/bin/sh\n[ \"$*\" = \"--check --artifact checker\" ] && [ \"${STATISTICS_STALE:-0}\" = 0 ]\n', { mode: 0o755 });
@@ -107,6 +108,8 @@ test('production publisher resumes uploads and go-live while refusing altered id
         assert.equal(state().release.assets.length, 1);
         assert.equal(run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'show', 'main:.locmetryrc']), readFileSync(resolve('.locmetryrc'), 'utf8').trim());
         assert.match(run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'show', 'main:README.md']), /source-statistics:checker-release:start/);
+        assert.match(run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'show', 'main:CHANGELOG.md']), /^## \[0\.14\.0\]$/m);
+        assert.match(state().notes, /^### Added\n\n- \*\*First rehearsed publication\.\*\*\n\nMaven publications/);
         const first = readFileSync(join(home, 'asset-1'));
         const mirrorCommit = run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'rev-parse', 'main']);
         save({ ...state(), fail: null });

@@ -3,7 +3,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileS
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileInventory, scanBytes } from './checker-maven.ts';
-import { assertHistoricalArtifacts, mergeMaven, type Receipt } from './checker-release-core.ts';
+import { assertHistoricalArtifacts, mergeMaven, renderChangelog, type Receipt } from './checker-release-core.ts';
 
 export const repository = 'mbackschat/a12-consistency-releases';
 export const pages = 'https://mbackschat.github.io/a12-consistency-releases';
@@ -16,7 +16,7 @@ export function assertMirrorTree(mirror: string): void {
             const file = resolve(directory, entry), stat = lstatSync(file);
             if (stat.isSymbolicLink()) throw new Error(`unexpected mirror symlink: ${name}`);
             if (stat.isDirectory()) { visit(file, name + '/'); continue; }
-            if (!stat.isFile() || !/^(?:\.locmetryrc|README\.md|LICENSE|\.github\/workflows\/deploy-pages\.yml|releases\/v\d+\.\d+\.\d+\.json|presentations\/v\d+\.\d+\.\d+-[a-f0-9]{40}\.json|site\/(?:index|guide|privacy)\.html|site\/style\.css|site\/assets\/(?:a12-consistency-checker|kotlin-graalvm-kernel-roles)\.avif|site\/showcase\/(?:index\.html|assets\/[A-Za-z0-9_-]+\.(?:js|css))|site\/maven\/io\/github\/mbackschat\/a12\/dm\/[^]+)$/.test(name)) throw new Error(`unexpected mirror file: ${name}`);
+            if (!stat.isFile() || !/^(?:\.locmetryrc|README\.md|CHANGELOG\.md|LICENSE|\.github\/workflows\/deploy-pages\.yml|releases\/v\d+\.\d+\.\d+\.json|presentations\/v\d+\.\d+\.\d+-[a-f0-9]{40}\.json|site\/(?:index|guide|privacy)\.html|site\/style\.css|site\/assets\/(?:a12-consistency-checker|kotlin-graalvm-kernel-roles)\.avif|site\/showcase\/(?:index\.html|assets\/[A-Za-z0-9_-]+\.(?:js|css))|site\/maven\/io\/github\/mbackschat\/a12\/dm\/[^]+)$/.test(name)) throw new Error(`unexpected mirror file: ${name}`);
         }
     }
     visit(mirror);
@@ -49,6 +49,10 @@ export function assembleChecker(root: string, mirror: string, staging: string, o
     const policy = readFileSync(resolve(root, '.locmetryrc'));
     scanBytes('README statistics', Buffer.from(blocks[0]));
     scanBytes('.locmetryrc', policy);
+    const publishedChangelog = resolve(mirror, 'CHANGELOG.md');
+    const changelog = renderChangelog(readFileSync(resolve(root, 'consistency/public-release/CHANGELOG.md'), 'utf8'), version,
+        existsSync(publishedChangelog) ? readFileSync(publishedChangelog, 'utf8') : undefined);
+    scanBytes('CHANGELOG.md', Buffer.from(changelog));
     const maven = resolve(mirror, 'site/maven');
     const history = resolve(mirror, 'releases');
     const manifests = existsSync(history) ? readdirSync(history).map(name => {
@@ -60,6 +64,7 @@ export function assembleChecker(root: string, mirror: string, staging: string, o
     const readme = `# A12 consistency checker\n\nKernel-free model consistency checks for Kotlin and Java, released under the MIT license. This checker has partial coverage: ALL_CHECKS_PASSED means its implemented checks passed; it does not establish that A12 would accept the model. Reports retain complete: false and disclose gaps.\n\n## Gradle (Kotlin Multiplatform or JVM)\n\n\u0060\u0060\u0060kotlin\nrepositories {\n    maven("${pages}/maven/")\n    mavenCentral()\n}\ndependencies {\n    implementation("io.github.mbackschat.a12.dm:dm-consistency:${version}")\n}\n\u0060\u0060\u0060\n\nGradle selects the JVM or JS variant. Java/Maven consumers use the same repository URL and io.github.mbackschat.a12.dm:dm-consistency-jvm:${version}. The matching dm-predicates coordinates are transitive dependencies. JVM requires Java 21 or newer.\n\n[Checker sources](${pages}/maven/io/github/mbackschat/a12/dm/dm-consistency/${version}/dm-consistency-${version}-sources.jar) · [Release assets](https://github.com/${repository}/releases/tag/v${version})\n\nThis mirror provides Maven artifacts only. npm and Maven Central publication are not part of this release.\n`;
     writeFileSync(resolve(mirror, 'README.md'), readme + '\n' + blocks[0] + '\n');
     writeFileSync(resolve(mirror, '.locmetryrc'), policy);
+    writeFileSync(publishedChangelog, changelog);
     writeFileSync(resolve(mirror, 'LICENSE'), readFileSync(resolve(root, 'LICENSE')));
     mkdirSync(resolve(mirror, '.github/workflows'), { recursive: true });
     writeFileSync(resolve(mirror, '.github/workflows/deploy-pages.yml'), readFileSync(resolve(root, '.github/consistency-mirror-workflows/deploy-pages.yml')));

@@ -67,3 +67,39 @@ export async function promoteChecker(host: PromotionHost): Promise<void> {
     await host.verifyAnonymous();
     await host.latest();
 }
+
+const sectionHeading = /^## \[([^\]]+)\]/m;
+function sections(changelog: string): string {
+    const start = changelog.search(sectionHeading);
+    return start < 0 ? '' : changelog.slice(start);
+}
+function splitFirst(history: string): [heading: string, body: string, rest: string] {
+    const next = history.slice(1).search(/^## \[/m);
+    const first = next < 0 ? history : history.slice(0, next + 1);
+    const newline = first.indexOf('\n');
+    return [first.slice(0, newline < 0 ? first.length : newline), newline < 0 ? '' : first.slice(newline + 1), next < 0 ? '' : history.slice(next + 1)];
+}
+/**
+ * The changelog as release [version] publishes it. Its first section is the rolling `[@VERSION@]` one, and every
+ * section after it must equal what the mirror already published: a previous release's section that was never frozen
+ * would otherwise be announced again as this release's, which the interpreter's changelog was twice (INTERPRETER-RELEASE-SPEC).
+ */
+export function renderChangelog(source: string, version: string, published: string | undefined): string {
+    const [heading, body, rest] = splitFirst(sections(source));
+    if (heading !== '## [@VERSION@]') throw new Error('checker changelog must open with the unreleased [@VERSION@] section');
+    if (!/^- /m.test(body)) throw new Error('checker changelog has no entry for this release');
+    if (published !== undefined && rest !== sections(published)) {
+        throw new Error('checker changelog differs from the published history; freeze the previous release\'s section and never rewrite one');
+    }
+    return source.replace('## [@VERSION@]', `## [${version}]`);
+}
+/** The body of release [version]'s changelog section, which is that release's notes. */
+export function releaseNotes(changelog: string, version: string): string {
+    let history = sections(changelog);
+    while (history) {
+        const [heading, body, rest] = splitFirst(history);
+        if (heading === `## [${version}]`) return body.trim();
+        history = rest;
+    }
+    throw new Error(`checker changelog has no section for ${version}`);
+}

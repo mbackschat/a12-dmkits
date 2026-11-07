@@ -73,3 +73,22 @@ test('historical artifact hashes reject modification, removal and unrecorded ver
         assert.throws(() => assertHistoricalArtifacts(bad, manifests), /historical/);
     }
 });
+
+test('the changelog renders one release and its notes, refusing an unfrozen or rewritten history', async () => {
+    const { renderChangelog, releaseNotes } = await import('./checker-release-core.ts');
+    const head = '# Changelog\n\nIntro.\n\n';
+    const frozen = '## [0.14.0]\n\n### Added\n\n- **First publication.**\n';
+    const source = `${head}## [@VERSION@]\n\n### Changed\n\n- **BREAKING: a reshaped reference.**\n\n${frozen}`;
+    const rendered = renderChangelog(source, '0.15.0', undefined);
+    assert.equal(rendered, source.replace('@VERSION@', '0.15.0'));
+    assert.doesNotThrow(() => renderChangelog(source, '0.15.0', `${head}${frozen}`));
+    assert.equal(releaseNotes(rendered, '0.15.0'), '### Changed\n\n- **BREAKING: a reshaped reference.**');
+    assert.equal(releaseNotes(rendered, '0.14.0'), '### Added\n\n- **First publication.**');
+    // The previous release's section was never frozen, so its entries would be announced again as this release's.
+    const unfrozen = `${head}## [@VERSION@]\n\n### Added\n\n- **First publication.**\n- **Another.**\n`;
+    assert.throws(() => renderChangelog(unfrozen, '0.15.0', `${head}${frozen}`), /published history/);
+    assert.throws(() => renderChangelog(source.replace('First publication', 'Rewritten'), '0.15.0', `${head}${frozen}`), /published history/);
+    assert.throws(() => renderChangelog(`${head}${frozen}`, '0.15.0', undefined), /\[@VERSION@\]/);
+    assert.throws(() => renderChangelog(`${head}## [@VERSION@]\n\n${frozen}`, '0.15.0', undefined), /no entry/);
+    assert.throws(() => releaseNotes(rendered, '0.16.0'), /no section/);
+});

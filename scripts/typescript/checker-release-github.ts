@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileInventory } from './checker-maven.ts';
-import { assertQualification, promoteChecker, type Receipt } from './checker-release-core.ts';
+import { assertQualification, promoteChecker, releaseNotes, type Receipt } from './checker-release-core.ts';
 import { assembleChecker, assertMirrorTree, bundleMaven, pages, repository, type ReleaseManifest } from './checker-release-files.ts';
 import { smokeChecker } from './checker-consumers.ts';
 
@@ -101,7 +101,10 @@ export async function stageChecker(root: string, receipt: Receipt): Promise<void
         command(mirror, 'git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`]);
     }
     const assets = releaseAssets(output, manifest);
-    if (!existingRelease) gh(root, ['release', 'create', tag, '--repo', repository, '--verify-tag', '--draft', '--title', `A12 consistency checker ${receipt.version}`, '--notes', `Maven publications for the checker and its predicate dependency. Usage: https://github.com/${repository}. Source: consistency-v${receipt.version} (${source}).`]);
+    if (!existingRelease) {
+        const notes = `${releaseNotes(readFileSync(resolve(mirror, 'CHANGELOG.md'), 'utf8'), receipt.version)}\n\nMaven publications for the checker and its predicate dependency. Usage: https://github.com/${repository}. Source: consistency-v${receipt.version} (${source}).`;
+        gh(root, ['release', 'create', tag, '--repo', repository, '--verify-tag', '--draft', '--title', `A12 consistency checker ${receipt.version}`, '--notes', notes]);
+    }
     const release = getRelease(root, receipt.version)!;
     verifyRelease(root, release, assets, true);
     for (const name of Object.keys(assets)) if (!release.assets.some(a => a.name === name)) gh(root, ['release', 'upload', tag, resolve(output, name), '--repo', repository]);
