@@ -40,6 +40,12 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
+### DG1003 — model diff and the model report do not show a changed changeNote or a rule's possible causes (opened 2026-11-07) <a id="dg1003"></a>
+
+The review projectors carry an element's annotations and descriptions (`AuthoredStateReader`, `FieldDiffProjector.putDescriptive`) but not its `changeNote`, and `RuleDiffProjector` projects no `filterForPossiblyCausingEntities`. Measured through the launcher on `order-aggregates.dm.json`: `meta /Order/DeliveryNotBeforeOrder --change-note=reviewed` and then `model diff` reports `0 added, 0 removed, 0 modified`, where the same edit as an annotation reports one modification. A reviewer comparing two revisions therefore misses both members, which A12 stores and serializes.
+
+*Blocks: a review that relies on `model diff` to see every authored change. Closes when both members are projected as diff aspects and in the model report, each locked by a diff test.*
+
 ### DG183 — a built model writes its descriptions in another order than A12 (opened 2026-11-07) <a id="dg183"></a>
 
 `DocumentModelDraft` writes an element's `internalDescription` before its `externalDescription`, and a type definition's `annotations` before both descriptions; A12's serializer writes the reverse in each case, so a built model re-serializes with different bytes. The edit path already places them as A12 does (`ElementMembers.inA12Order`, `adapter.ElementMemberOrderTest`, which measured both orders). Reading is unaffected. The fix is one call per emitted node, `fieldNode`, `groupNode` and the type-definition node, and it re-baselines every fixture and demo built by the draft.
