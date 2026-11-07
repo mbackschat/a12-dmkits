@@ -819,7 +819,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §1), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -2487,7 +2487,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker agree on the empty and blank formats with blank separators, which draw the class alone.", "evidence": {"date range format missing": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDateRangeSentenceAgreementTest.kt#theCheckerStatesA12sRangeVerdictsOnEveryPair", "witness": "Every grid row's classes and paths agree, and A12's own stream is pinned on the rows that separate the three verdicts."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no range logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Triaged at bf2216b6 as spec-only: the peer states it in spec/, and its Lean side is the peer's returned omission K19. (§2.8) The kernel 31.3.1 correction goes in batch letter B6.", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Triaged at bf2216b6 as spec-only: the peer states it in spec/, and its Lean side is the peer's returned omission K19. (§2.8) Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.", "evidence": {}}
       }
     },
     "kf580": {
@@ -2559,7 +2559,7 @@
         "adapter": {"state": "APPLIED", "basis": "The kernel and the portable checker are compared on name and code shapes over rules and computations, declared computation codes included, with variant-deleted and withholding rows.", "evidence": {"declaration alphabets": {"reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerDeclarationAlphabetAgreementTest.kt#theCheckerNamesA12sSentencesOnEveryRow", "witness": "Every row's class list agrees, and A12's sentences are pinned on the rows that separate the two alphabets."}}},
         "interpreter": {"state": "NOT_APPLICABLE", "basis": "Static admission; the interpreter evaluates models A12 admitted.", "evidence": {}},
         "dmtool-cli": {"state": "NOT_APPLICABLE", "basis": "dmtool's checks run the kernel or the portable checker and carry no name logic of their own.", "evidence": {}},
-        "a12-kernel-lean": {"state": "OPEN", "basis": "Triaged at bf2216b6 as spec-only: the peer states it in spec/, and its Lean side is the peer's returned omission K19. (§2.5, §2.18)", "evidence": {}}
+        "a12-kernel-lean": {"state": "OPEN", "basis": "Triaged at bf2216b6 as spec-only: the peer states it in spec/, and its Lean side is the peer's returned omission K19. (§2.5, §2.18) Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §5), prepared 2026-11-07 for the owner to hand over.", "evidence": {}}
       }
     },
     "kf418": {
@@ -2694,7 +2694,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit. SPEC-2026-10-10-07 conversion is reconciled here; Lean owns verification. The declared comma separator (SPEC-2026-10-30-09) was accepted against our handback of 2026-10-30e at ce266fb0; a computed Number's rendering under `,` stays unmeasured there. The kernel 31.3.1 cap on the runtime rendering (KF681) goes in batch letter B6.",
+          "basis": "SPEC-2026-10-09-11 is answered at 2d57eca2: native decimal semantics corroborated and the inline scale-loss requirement withdrawn as our probe defect. The peer's SG5 keeps the repaired inline route and large scientific String values as an executable audit. SPEC-2026-10-10-07 conversion is reconciled here; Lean owns verification. The declared comma separator (SPEC-2026-10-30-09) was accepted against our handback of 2026-10-30e at ce266fb0; a computed Number's rendering under `,` stays unmeasured there. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §4), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {
             "native number node text": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-11",
@@ -5338,7 +5338,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -5431,7 +5431,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier.",
+          "basis": "The September 30 message-reference extension needs this consumer’s own adoption evidence; no transfer is inferred from another carrier. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -5745,7 +5745,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The peer's grids hold for kernel 31.1.1; the 31.3.1 turning point on the model root (KF679) is not yet handed over and goes in batch letter B6.",
+          "basis": "The peer's grids hold for kernel 31.1.1. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -10475,7 +10475,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "SPEC-2026-10-09-12 is accepted at 2d57eca2 for the shared runtime format; dependent stored-value readback is adopted in prose but the peer's SG6 owns its executable audit, so that surface stays open.",
+          "basis": "SPEC-2026-10-09-12 is accepted at 2d57eca2 for the shared runtime format; dependent stored-value readback is adopted in prose but the peer's SG6 owns its executable audit, so that surface stays open. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §1), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {
             "shared DateRange runtime format": {
               "reference": "a12-kernel-lean@2d57eca2e89d05309528f08bb9b486c4e8a95f77:docs/A12-DMKITS-SPEC-SYNC-LEDGER.md#spec-2026-10-09-12",
@@ -17501,7 +17501,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §3), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -17937,7 +17937,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; received at a12-kernel-lean 655827aa and not yet adopted. The kernel 31.3.1 message change goes in batch letter B6.",
+          "basis": "Reported in Letter E (a12-kernel-lean-spec-corrections-2026-11-03d.md), sent 2026-11-03; received at a12-kernel-lean 655827aa and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -18425,7 +18425,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The peer adopted the frame rows sent on 2026-10-29 and the frame values of our letter of 2026-10-30b at 2e61b297; the kernel 31.3.1 correction, missing locales leaving the check-only shapes, goes in batch letter B6.",
+          "basis": "The peer adopted the frame rows sent on 2026-10-29 and the frame values of our letter of 2026-10-30b at 2e61b297. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {
             "the frame rows of our message of 2026-10-29": {
               "reference": "a12-kernel-lean@2e61b297b1dc3cd6bc140d3c6ab4b30b16508d9b:spec/01-data-model.md#member-binding",
@@ -19196,7 +19196,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §1), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -21023,7 +21023,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §1), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -22621,7 +22621,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. The kernel 31.3.1 correction goes in batch letter B6.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -22701,7 +22701,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its parallel-join rows reported in Letter G, received at 32bca586b, where spec/07 §2.2 already agreed.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted; its parallel-join rows reported in Letter G, received at 32bca586b, where spec/07 §2.2 already agreed. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §3), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -22781,7 +22781,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §3), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -23167,7 +23167,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. The kernel 31.3.1 correction goes in batch letter B6.",
+          "basis": "Reported in Letter B, re-issued 2026-11-03 as a12-kernel-lean-spec-corrections-2026-11-03c.md; received at a12-kernel-lean 25fe8cf9 and not yet adopted. Its kernel 31.3.1 rows are in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25116,7 +25116,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed to the peer.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §1), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25215,7 +25215,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 correction goes into the batch letter (KERNEL-31.3-UPGRADE-PROPOSAL B6).",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §5), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25278,7 +25278,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 correction goes into the batch letter (KERNEL-31.3-UPGRADE-PROPOSAL B6).",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §8), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25341,7 +25341,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 correction goes into the batch letter (KERNEL-31.3-UPGRADE-PROPOSAL B6).",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §5), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25404,7 +25404,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 correction goes into the batch letter (KERNEL-31.3-UPGRADE-PROPOSAL B6).",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §5), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25485,7 +25485,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 member goes into the batch letter (KERNEL-31.3-UPGRADE-PROPOSAL B6).",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §5), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25546,7 +25546,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25617,7 +25617,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25683,7 +25683,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25744,7 +25744,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25805,7 +25805,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25876,7 +25876,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "The kernel 31.3.1 turning point on the model root (KF679) is not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §2), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -25952,7 +25952,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §3), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -26018,7 +26018,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §4), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -26145,7 +26145,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §6), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
@@ -26222,7 +26222,7 @@
         },
         "a12-kernel-lean": {
           "state": "OPEN",
-          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "basis": "Reported in Letter J (a12-kernel-lean-spec-corrections-2026-11-07.md, §7), prepared 2026-11-07 for the owner to hand over.",
           "evidence": {}
         }
       }
