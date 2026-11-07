@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
 
 /**
  * One entity a fired rule may name as possibly causing it, and the two questions A12 asks of it at the firing row:
@@ -51,7 +52,46 @@ internal class CausingEntity(
 internal interface EntityPresence {
     fun given(entity: CausingEntity): Boolean
     fun notGiven(entity: CausingEntity): Boolean
-    fun cellFilled(pointer: A12PartiallyKnownMultiPointer): Boolean
+}
+
+/**
+ * The key cells of one `RepetitionNotUnique` duplicate cluster, split by presence: A12 names each cell on every
+ * message the cluster raises, an empty key as not given (KERNEL-FINDINGS KF683). Built once per cluster and
+ * shared by all its messages, because a per-message copy of N cells is O(N²) allocation on a dense cluster
+ * (INTERPRETER-FINDINGS IF256; `CausingGroupClusterSharingTest`).
+ */
+internal class ClusterCauses(given: Collection<A12PartiallyKnownMultiPointer>, empty: Collection<A12PartiallyKnownMultiPointer>) {
+    val given: Set<A12PartiallyKnownMultiPointer> = PointerSet(given)
+    val empty: Set<A12PartiallyKnownMultiPointer> = PointerSet(empty)
+    val all: Set<A12PartiallyKnownMultiPointer> = PointerSet(given + empty)
+
+    companion object {
+        val NONE = ClusterCauses(emptyList(), emptyList())
+    }
+}
+
+/** An immutable, hash-backed pointer set that may be shared and published as-is. */
+internal class PointerSet<T>(members: Collection<T>) : AbstractSet<T>(), ImmutableProjection {
+    private val members = LinkedHashSet(members)
+    override val size: Int get() = members.size
+    override fun contains(element: T): Boolean = element in members
+    override fun iterator(): Iterator<T> = members.iterator().let { source -> object : Iterator<T> by source {} }
+}
+
+/** A shared [cluster] set joined by a few [extra] members it lacks: one message's view, never a copy. */
+internal class CausingUnion<T>(val cluster: Set<T>, private val extra: List<T>) : AbstractSet<T>(), ImmutableProjection {
+    override val size: Int get() = cluster.size + extra.size
+    override fun contains(element: T): Boolean = element in cluster || element in extra
+    override fun iterator(): Iterator<T> = (cluster.asSequence() + extra.asSequence()).iterator()
+}
+
+private fun <T> joined(cluster: Set<T>, members: Set<T>): Set<T> {
+    val extra = members.filterNot(cluster::contains)
+    return when {
+        extra.isEmpty() -> cluster
+        cluster.isEmpty() -> PointerSet(extra)
+        else -> CausingUnion(cluster, extra)
+    }
 }
 
 /**
@@ -80,22 +120,26 @@ internal fun causingEntityCandidates(
 /**
  * A12's groups for a message of [type] fired at one row: an OMISSION names its not-given candidates, then the given
  * ones not already named; a VALUE error names both in one group. [presence] answers for an entity at that row, and
- * [pointerOf] places it there, an aggregated level as the wildcard. [duplicateKeys] are the key cells of the
- * `RepetitionNotUnique` rows the message reports, which A12 names cell by cell, an empty key as not given.
+ * [pointerOf] places it there, an aggregated level as the wildcard. [cluster] holds the key cells of the
+ * `RepetitionNotUnique` rows the message reports, joined to the row's own entities without being copied.
  */
 internal fun possiblyCausingEntityGroups(
     candidates: CausingEntityCandidates,
     type: MsgType,
     presence: EntityPresence,
     pointerOf: (MessageReference) -> A12PartiallyKnownMultiPointer,
-    duplicateKeys: List<A12PartiallyKnownMultiPointer>,
+    cluster: ClusterCauses,
 ): List<Set<A12PartiallyKnownMultiPointer>> {
     val empty = candidates.omission.filter(presence::notGiven).mapTo(LinkedHashSet()) { pointerOf(it.reference) }
     val given = candidates.given.filter(presence::given).mapTo(LinkedHashSet()) { pointerOf(it.reference) }
-    duplicateKeys.forEach { key -> if (presence.cellFilled(key)) given += key else empty += key }
     return when (type) {
-        MsgType.OMISSION -> listOf(empty, given - empty)
-        MsgType.VALUE -> listOf(given + empty)
+        MsgType.OMISSION -> {
+            // The cluster's given and empty cells are disjoint, so only a row entity can move a given cell out.
+            val givenCells = if (empty.none(cluster.given::contains)) cluster.given else PointerSet(cluster.given - empty)
+            val givenEntities = given.filterNotTo(LinkedHashSet()) { it in empty || it in cluster.empty }
+            listOf(joined(cluster.empty, empty), joined(givenCells, givenEntities))
+        }
+        MsgType.VALUE -> listOf(joined(cluster.all, given + empty))
     }
 }
 
@@ -124,12 +168,6 @@ internal class RowEntityPresence(
     } catch (outage: UnsupportedConstructException) {
         if (!entity.customTyped) throw outage
         false
-    }
-
-    override fun cellFilled(pointer: A12PartiallyKnownMultiPointer): Boolean {
-        val repetitions = pointer.repetitionIndexes
-        val group = parentGroup(pointer.fullName)
-        return pass.doc.contextFor(group, repetitions.dropLast(1)).filled(pointer.fullName)
     }
 
     // Null when A12 cannot tell: a selection whose key field is not check-relevant, which reads as neither given nor

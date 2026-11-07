@@ -8,10 +8,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 
-/** One duplicate row's RNU-leaf polarity and the shared pointer projection of its duplicate cluster. */
+/** One duplicate row's RNU-leaf polarity, and the shared pointer projection and key cells of its duplicate cluster. */
 internal data class RnuRowOutcome(
     val type: MsgType,
     val peerKeyPointers: List<A12PartiallyKnownMultiPointer>,
+    val causes: ClusterCauses,
 )
 
 /** The call-scoped RNU cache: typed-key paths plus O(1) error-row lookup. */
@@ -164,14 +165,17 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
                     // as-is: a boundary that cannot tell "already immutable" from "someone's ArrayList" must
                     // copy defensively, and copying per finding restores the O(N²) this sharing exists to avoid
                     // (IF261).
-                    val peerKeyPointers = immutableListSnapshot(duplicates.flatMap { duplicate ->
-                        keys.zip(duplicate.keyReps).map { (path, reps) -> pass.doc.messagePointer(path, reps) }
-                    }.distinct())
+                    val cells = duplicates.flatMap { duplicate ->
+                        keys.indices.map { i -> pass.doc.messagePointer(keys[i], duplicate.keyReps[i]) to (duplicate.key[i] != null) }
+                    }
+                    val peerKeyPointers = immutableListSnapshot(cells.map { it.first }.distinct())
+                    val (filled, empty) = cells.partition { it.second }
+                    val causes = ClusterCauses(filled.map { it.first }, empty.map { it.first })
                     for (row in duplicates) {
                         // RNU's own polarity: OMISSION when a (fillable) key component is empty, else VALUE. The
                         // surrounding And/Or combines this with any guard/branch via the ordinary 3VL walk.
                         val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
-                        out[row.errorReps] = RnuRowOutcome(type, peerKeyPointers)
+                        out[row.errorReps] = RnuRowOutcome(type, peerKeyPointers, causes)
                     }
                 }
             }

@@ -849,7 +849,8 @@ class DmInterpreter private constructor(
                         .map { pointers.of(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
                 val causes = possiblyCausingEntityGroups(prepared.causingEntities, firedType,
-                    RowEntityPresence(pass, ctx, interp, pointers, errorPath), { pointers.of(it, pass, ctx) }, rnuPointers)
+                    RowEntityPresence(pass, ctx, interp, pointers, errorPath), { pointers.of(it, pass, ctx) },
+                    matchingRnuOutcome?.causes ?: ClusterCauses.NONE)
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     errorPointer(ctx), rule.severity, firedType, text, referenced,
                     fillToFix, causes))
