@@ -16,14 +16,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * A list that is immutable **by construction** and may therefore cross the public boundary as-is.
+ * A list or set that is immutable **by construction** and may therefore cross the public boundary as-is.
  *
- * This marker is what lets a shared list be published without a defensive copy. Copying instead is not merely
+ * This marker is what lets a shared collection be published without a defensive copy. Copying instead is not merely
  * wasteful: when the engine deliberately hands N findings ONE list (IF191), a per-finding copy is O(N²)
  * allocation, and no bounded reuse cache fixes it in general — interleaved duplicate clusters miss every slot
  * (IF261). It is a marker rather than a type check on one class because the engine has more than one such shape:
  * the cluster projection is a snapshot, and a message that ALSO carries direct references publishes an immutable
- * concatenation over it. Missing the second is how the copy survived the first fix on the commoner shape.
+ * concatenation over it, and a duplicate cluster's cause cells are a shared set (`PointerSet`, `CausingUnion`). Missing
+ * the second is how the copy survived the first fix on the commoner shape.
  *
  * The obligation on an implementor is exact: no mutation after construction, and none of its backing lists
  * mutated either.

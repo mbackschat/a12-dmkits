@@ -29,11 +29,11 @@ internal class CausingEntity(
     private val aggregatedRoot = group && reference is MessageReference.Wildcard && pathParts(reference.path).size == 1
 
     /**
-     * Whether [instances] rows of an aggregated group leave some of its declared ones absent, which A12 counts as not
+     * Whether [instances] rows of this aggregated group leave some of its declared ones absent, which A12 counts as not
      * given: its question walks every declared repetition (`EntityIterator`), where the group-list quantifiers walk
      * the instantiated rows (KERNEL-FINDINGS KF683, `adapter.laws.SumOfTermsRuntimeLawsTest`).
      */
-    fun leavesDeclaredRowsAbsent(instances: Int): Boolean = group && instances < declaredInstances
+    fun leavesDeclaredRowsAbsent(instances: Int): Boolean = instances < declaredInstances
 
     fun given(operand: Expr): Cond.Pred =
         quantifier(if (group) PredicateOp.AT_LEAST_ONE_GROUP_FILLED else PredicateOp.AT_LEAST_ONE_FIELD_FILLED, operand)
@@ -63,7 +63,11 @@ internal interface EntityPresence {
 internal class ClusterCauses(given: Collection<A12PartiallyKnownMultiPointer>, empty: Collection<A12PartiallyKnownMultiPointer>) {
     val given: Set<A12PartiallyKnownMultiPointer> = PointerSet(given)
     val empty: Set<A12PartiallyKnownMultiPointer> = PointerSet(empty)
-    val all: Set<A12PartiallyKnownMultiPointer> = PointerSet(given + empty)
+    val all: Set<A12PartiallyKnownMultiPointer> = when {
+        this.empty.isEmpty() -> this.given
+        this.given.isEmpty() -> this.empty
+        else -> PointerSet(given + empty)
+    }
 
     companion object {
         val NONE = ClusterCauses(emptyList(), emptyList())
@@ -113,10 +117,17 @@ internal fun causingEntityCandidates(
     val filter = rule.possibleCauses?.takeIf { it.ifFilled.isNotEmpty() || it.ifNotFilled.isNotEmpty() }
     val given = if (filter == null) referenced else named(referenced, rule.group, filter.ifFilled)
     val omitted = if (filter == null) omission else named(referenced, rule.group, filter.ifNotFilled)
-    fun entity(reference: MessageReference) =
-        CausingEntity(reference, reference.path !in model.kinds, declaredInstances(reference, model),
-            reference.path in model.customTypes)
-    return CausingEntityCandidates(given.map(::entity), omitted.map(::entity))
+    // Prepared for every rule of a model, so a reference both lists name shares one entity, and equal lists one list.
+    val entities = HashMap<MessageReference, CausingEntity>()
+    fun entitiesOf(references: List<MessageReference>): List<CausingEntity> = if (references.isEmpty()) emptyList()
+        else references.map { reference ->
+            entities.getOrPut(reference) {
+                CausingEntity(reference, reference.path !in model.kinds, declaredInstances(reference, model),
+                    reference.path in model.customTypes)
+            }
+        }
+    val givenEntities = entitiesOf(given)
+    return CausingEntityCandidates(givenEntities, if (omitted == given) givenEntities else entitiesOf(omitted))
 }
 
 /**
@@ -166,25 +177,25 @@ internal class RowEntityPresence(
     // outage is reported on the cell already, and the message the rule fired is A12's to keep
     // (`CustomFieldTypeMultiplatformTest.unsupportedIndexValuesRemainLenientButStillObeyCollisionPolicy`).
     private fun answer(entity: CausingEntity, notGiven: Boolean): Boolean = try {
-        ask(entity, notGiven) == true
+        ask(entity, notGiven)
     } catch (outage: UnsupportedConstructException) {
         if (!entity.customTyped) throw outage
         false
     }
 
-    // Null when A12 cannot tell: a selection whose key field is not check-relevant, which reads as neither given nor
-    // not given (`adapter.laws.SelectedErrorReanchorEligibilityDiffTest`, ShortKey). A key that selects no row leaves
-    // the entity with no instance, which is not given. A question that is null is answered TRUE. An entity the row
+    // A selection whose key field is not check-relevant reads as neither given nor not given, so both questions
+    // answer false (`adapter.laws.SelectedErrorReanchorEligibilityDiffTest`, ShortKey). A key that selects no row
+    // leaves the entity with no instance, which is not given. A question the entity leaves null is answered TRUE. An entity the row
     // names in its own terms is asked at the row; any other one at the place its pointer names, a level the pointer
     // leaves open being aggregated there.
-    private fun ask(entity: CausingEntity, notGiven: Boolean): Boolean? {
+    private fun ask(entity: CausingEntity, notGiven: Boolean): Boolean {
         fun question(operand: Expr): Cond.Pred? = if (notGiven) entity.notGiven(operand) else entity.given(operand)
         val reference = entity.reference
         if (reference is MessageReference.Ordinary) {
             return question(Expr.Field(reference.path))?.let { interpreter.evalPred(it) == Tri.TRUE } ?: true
         }
         val key = (reference as? MessageReference.Selected)?.key
-        if (key is SelectedKey.Field && !pass.readsAsKey(ctx, key.path)) return null
+        if (key is SelectedKey.Field && !pass.readsAsKey(ctx, key.path)) return false
         val repetitions = pointers.of(reference, pass, ctx).repetitionIndexes
         if (A12PartiallyKnownMultiPointer.UNKNOWN in repetitions) return notGiven
         val parts = pathParts(reference.path)
@@ -197,7 +208,8 @@ internal class RowEntityPresence(
         val local = if (bound == 0) ctx else pass.doc.contextFor("/" + parts.take(bound).joinToString("/"), repetitions.take(bound))
         val operand = if (open >= 0) Expr.Star(reference.path, bindDepth = open) else Expr.Field(reference.path)
         val pred = question(operand) ?: return true
-        if (notGiven && open >= 0 && entity.leavesDeclaredRowsAbsent(local.rowContexts(reference.path, open).size)) return true
+        if (notGiven && open >= 0 && entity.group &&
+            entity.leavesDeclaredRowsAbsent(local.rowContexts(reference.path, open).size)) return true
         return pass.interpreterFor(local, errorPath).evalPred(pred) == Tri.TRUE
     }
 }

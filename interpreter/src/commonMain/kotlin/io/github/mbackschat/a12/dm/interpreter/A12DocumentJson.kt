@@ -289,11 +289,11 @@ internal object A12DocumentJson {
     }
 
     /**
-     * The stored decimal's precision less its scale, read from the written [raw] so that a zero with a positive
+     * The stored decimal's precision less its scale, read from its written [identity] so that a zero with a positive
      * exponent (`0E+3`, precision 1 and scale -3) counts as A12's converted value does; [plain] answers otherwise.
      */
-    private fun integerDigitsOf(raw: String, plain: String): Int =
-        DecimalObjectIdentity.parse(raw)?.let { it.coefficient.removePrefix("-").length - it.scale } ?: integerDigitsOf(plain)
+    private fun integerDigitsOf(identity: DecimalObjectIdentity?, plain: String): Int =
+        identity?.let { it.coefficient.removePrefix("-").length - it.scale } ?: integerDigitsOf(plain)
 
     /** [integerPart]`.`[fractionPart] rounded half away from zero to [scale] fractional digits. */
     private fun roundedHalfUp(integerPart: String, fractionPart: String, scale: Int): String {
@@ -372,11 +372,10 @@ internal object A12DocumentJson {
                 val converted = canonicalNumberOrNull(raw)
                     ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
                 if (converted == null) CellText(raw)   // A12's pass-through: a String, read back unchanged
-                else CellText(
-                    runtimeNumberForm(converted, minFractionalDigitsOf(path), integerDigitsOf(raw, converted)),
-                    converted,
-                    DecimalObjectIdentity.parse(raw),
-                )
+                else DecimalObjectIdentity.parse(raw).let { identity ->
+                    CellText(runtimeNumberForm(converted, minFractionalDigitsOf(path), integerDigitsOf(identity, converted)),
+                        converted, identity)
+                }
             }
         }
         Kind.BOOLEAN -> when {

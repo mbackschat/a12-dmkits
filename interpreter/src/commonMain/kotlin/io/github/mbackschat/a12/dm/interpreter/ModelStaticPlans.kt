@@ -152,6 +152,7 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             semanticIndex.indexFieldOuter,
         )
         val rawMessageRefs = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+        val rawOmissionRefs = omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
         val directMessageRefs = withJoinIndexes(iteration, rawMessageRefs.flatMap(::expandMessageReference)).distinct()
         // Two DIFFERENT questions, which is why this one is asked before the expansion rather than after it.
         // `ordinaryErrorReference` asks how the CONDITION names the error path — an authored star does not fix an
@@ -182,12 +183,10 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             repetitionNotUnique = rnu,
             semanticErrorIndex = semanticErrorIndex,
             messageReferences = directMessageRefs,
-            omissionReferences = withJoinIndexes(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-                .flatMap(::expandMessageReference)).toSet(),
+            omissionReferences = withJoinIndexes(iteration, rawOmissionRefs.flatMap(::expandMessageReference)).toSet(),
             causingEntities = causingEntityCandidates(rule, model,
                 causingReferences(iteration, rawMessageRefs, groupOperandReferences(ast, omission = false)),
-                causingReferences(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null),
-                    groupOperandReferences(ast, omission = true))),
+                causingReferences(iteration, rawOmissionRefs, groupOperandReferences(ast, omission = true))),
             skippedInPartial = starRefs(ast).any { it.having != null } || errorPath in model.groupPaths,
             reachObservable = reachIsObservable(ast),
             classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
