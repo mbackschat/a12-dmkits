@@ -4,7 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript } = require("./clean-agent.ts");
+const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, TurnFeeder } = require("./clean-agent.ts");
 
 /** The init event a clean run printed on Claude Code 2.1.319 (measured 2026-11-08), trimmed to the checked keys. */
 const CLEAN_INIT = {
@@ -68,6 +68,7 @@ test("the launch arguments carry every isolation switch", () => {
   assert.equal(args[args.indexOf("--setting-sources") + 1], "project");
   assert.deepEqual(JSON.parse(args[args.indexOf("--settings") + 1]), { autoMemoryEnabled: false });
   assert.equal(args[args.indexOf("--tools") + 1], "Bash,Read");
+  assert.equal(args[args.indexOf("--input-format") + 1], "stream-json");
   assert.equal(args[args.indexOf("--effort") + 1], "xhigh");
   assert.deepEqual(JSON.parse(args[args.indexOf("--json-schema") + 1]), { type: "object" });
   assert.equal(CLEAN_ENV.CLAUDE_CODE_DISABLE_CLAUDE_MDS, "1");
@@ -85,4 +86,28 @@ test("the transcript yields the init event, the structured output and the result
   assert.deepEqual(read.structured, { ok: true });
   assert.equal(read.resultText, "done");
   assert.equal(read.isError, false);
+});
+
+/**
+ * A probe session is several analyst turns, and the agent must not see turn n+1 before it finished turn n
+ * (probe/agent-preamble.md). So the feeder sends one user message per `result` event and closes the input
+ * after the last turn's result, never earlier.
+ */
+test("the turn feeder sends the next turn only after the previous turn's result", () => {
+  const sent: string[] = [];
+  let ended = false;
+  const feeder = new TurnFeeder(["first", "second"], (line: string) => sent.push(line), () => { ended = true; });
+  feeder.start();
+  assert.deepEqual(sent.map(line => JSON.parse(line).message.content), ["first"]);
+  feeder.onLine(JSON.stringify({ type: "assistant", message: { content: [] } }));
+  assert.equal(sent.length, 1, "an assistant event is not the end of a turn");
+  feeder.onLine(JSON.stringify({ type: "result", subtype: "success" }));
+  assert.deepEqual(sent.map(line => JSON.parse(line)), [
+    { type: "user", message: { role: "user", content: "first" } },
+    { type: "user", message: { role: "user", content: "second" } },
+  ]);
+  assert.equal(ended, false);
+  feeder.onLine(JSON.stringify({ type: "result", subtype: "error_during_execution" }));
+  assert.equal(ended, true, "the input closes after the last turn's result, even a failed one");
+  assert.equal(sent.length, 2);
 });

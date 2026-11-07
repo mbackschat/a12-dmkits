@@ -171,7 +171,7 @@ The runner is the **main assistant loop**, not a script — setup and the deep a
 ```
 re-capture metadata (if :cli src/tests changed) → rebuild native → native-gate   ← #1 precondition (below)
   → ./probe/prep-probe.sh                              # sandbox + logging shim + skill   (script; FRESHNESS-GATED)
-  → clean-agent.ts: agent-preamble.md + task turns     # one clean session, no inherited context
+  → probe-turns.ts → clean-agent.ts --turns          # one clean session, one turn at a time
   → ./probe/audit-probe.sh <transcript>                # integrity gate — STOP if SUSPECT  (script)
   → ./probe/digest-probe.sh                            # deterministic trajectory facts + RED FLAGS  (script)
   → analyze vs gold (judgment) → probe/reports/<date>-<task>.md

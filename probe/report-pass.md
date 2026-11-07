@@ -1,6 +1,6 @@
 # Probe report pass — point the agent at the SHIPPED bug-report skill (single-sourced)
 
-The main loop appends this as the **final turn** of a probe session. The report RIGOR is **not** inlined here
+[`probe-turns.ts`](../scripts/typescript/probe-turns.ts) appends the text below the `---` line as the **final turn** of a probe session. The report RIGOR is **not** inlined here
 — it lives in the shipped **`a12-dmtool-bug-report`** skill (the same one plugin users get), copied into the
 sandbox by `prep-probe.sh` as `BUG-REPORT-SKILL.md`. So the probe agent files its report exactly as a real
 user would, with one source of report rigor (no probe-only preamble). The objective backstop — the

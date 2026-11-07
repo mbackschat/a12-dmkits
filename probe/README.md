@@ -68,10 +68,12 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 #    report-pass.md as a FINAL turn (it points the agent at the SHIPPED a12-dmtool-bug-report skill, copied
 #    into the sandbox), so the agent writes its OWN bug-and-findings report (<sandbox>/work/REPORT.md) from the
 #    full context it holds (what it did and WHY). The report narrative is the AGENT's; the main loop verifies
-#    it (step 6), it does not author it. A long session goes to the background:
+#    it (step 6), it does not author it. probe-turns.ts builds the turns; clean-agent.ts sends each only after
+#    the previous turn's result, so the agent cannot look ahead. A long session goes to the background:
+scripts/run-typescript.sh probe-turns scripts/typescript/probe-turns.ts probe/tasks/<task>.md > /tmp/rk-probe-sandbox/turns.json
 scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --model sonnet \
   --tools Bash,Read,Write,Edit,Glob,Grep --cwd /tmp/rk-probe-sandbox/work \
-  --transcript /tmp/rk-probe-sandbox/transcript.jsonl < prompt.txt
+  --turns /tmp/rk-probe-sandbox/turns.json --transcript /tmp/rk-probe-sandbox/transcript.jsonl
 
 # 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
 #    Pass the clean session's transcript. STOP and discard if it says SUSPECT:

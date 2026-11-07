@@ -1,9 +1,9 @@
 # Probe subagent preamble (single-sourced — do not re-type per run)
 
-This is the fixed harness preamble for every probe run. The main loop builds the subagent prompt as:
-**this preamble** + the chosen task's `## The session (multi-prompt, in order)` turns (verbatim, nothing else from the task file — never the gold or the "what to mine" notes). Keeping it single-sourced is what makes the spawn *repeatable*: the material boundary, the env quirk, and the no-look-ahead rule are identical every time, so runs are comparable and the boundary instruction can't drift.
+This is the fixed harness preamble for every probe run. [`probe-turns.ts`](../scripts/typescript/probe-turns.ts) builds the session from
+**the text between the two `---` lines below** + the chosen task's `## The session (multi-prompt, in order)` turns (verbatim, nothing else from the task file — never the gold or the "what to mine" notes). Keeping it single-sourced is what makes the spawn *repeatable*: the material boundary, the env quirk, and the no-look-ahead rule are identical every time, so runs are comparable and the boundary instruction can't drift.
 
-Default sandbox is `/tmp/rk-probe-sandbox`; if `RK_PROBE_SANDBOX` was overridden, substitute that path below.
+Default sandbox is `/tmp/rk-probe-sandbox`; `probe-turns.ts` substitutes an overridden `RK_PROBE_SANDBOX`.
 
 ---
 
@@ -37,4 +37,4 @@ If you're unsure how to do something, consult those — that's exactly what they
 
 ---
 
-(The main loop appends the task's TURN blocks here, each followed by a "STOP — do not read below until this turn is complete and verified." barrier before the next turn.)
+(`probe-turns.ts` appends TURN 1 here; each later turn is its own message, which `clean-agent.ts` sends only after the previous turn's result.)

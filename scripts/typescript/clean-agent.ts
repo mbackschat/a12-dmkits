@@ -21,9 +21,12 @@ const { spawn } = require("node:child_process");
  * which asks a clean agent for the global file's canary next to a plain agent that must know it.
  *
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --model sonnet [--effort xhigh] \
- *       [--tools Bash,Read] [--schema schema.json] [--cwd DIR] --transcript out.jsonl < prompt.txt
+ *       [--tools Bash,Read] [--schema schema.json] [--cwd DIR] [--turns turns.json] --transcript out.jsonl < prompt.txt
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --self-test
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --check-transcript FILE --tools Bash,Read
+ *
+ * `--turns` takes a JSON array of prompts and runs them as successive turns of ONE session, each sent only after
+ * the previous turn's result, as a probe needs; without it the prompt is read from stdin as the single turn.
  *
  * `--check-transcript` re-checks a finished session, for the probe's audit: a transcript with no init event
  * (an Agent-tool subagent's) or a wider one fails, since only a clean launch writes a clean init event.
@@ -52,7 +55,7 @@ function cleanAgentArgs(options: Options): string[] {
     "--strict-mcp-config",
     "--tools", options.tools.join(","),
     "--no-session-persistence",
-    "--output-format", "stream-json", "--verbose",
+    "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
   ];
   if (options.effort) args.push("--effort", options.effort);
   if (options.schema !== undefined) args.push("--json-schema", JSON.stringify(options.schema));
@@ -110,8 +113,35 @@ function checkTranscript(file: string, tools: string[]): string[] {
   return isolationProblems(readTranscript(fs.readFileSync(file, "utf8")).init, tools);
 }
 
-/** Run one clean agent; resolves after the process exits, with the transcript written to `transcript`. */
-function runCleanAgent(options: Options & { prompt: string; cwd?: string; transcript: string; env?: Record<string, string> }): Promise<Run> {
+/** Feeds a session its turns one at a time: the next user message goes out only when the previous turn's result arrives. */
+class TurnFeeder {
+  private next = 0;
+  private readonly turns: string[];
+  private readonly write: (line: string) => void;
+  private readonly end: () => void;
+
+  constructor(turns: string[], write: (line: string) => void, end: () => void) {
+    this.turns = turns;
+    this.write = write;
+    this.end = end;
+  }
+
+  start(): void { this.send(); }
+
+  onLine(line: string): void {
+    let event: { type?: string };
+    try { event = JSON.parse(line); } catch { return; }
+    if (event.type !== "result") return;
+    if (this.next < this.turns.length) this.send(); else this.end();
+  }
+
+  private send(): void {
+    this.write(JSON.stringify({ type: "user", message: { role: "user", content: this.turns[this.next++] } }));
+  }
+}
+
+/** Run one clean session over `turns`; resolves after the process exits, with the transcript written to `transcript`. */
+function runCleanAgent(options: Options & { turns: string[]; cwd?: string; transcript: string; env?: Record<string, string> }): Promise<Run> {
   const cwd = options.cwd ?? fs.mkdtempSync(path.join(os.tmpdir(), "clean-agent-"));
   const above = contextFilesAbove(cwd);
   if (above.length) return Promise.resolve({ problems: [`context files above ${cwd}: ${above.join(", ")}`], structured: undefined, resultText: undefined, isError: true });
@@ -119,9 +149,17 @@ function runCleanAgent(options: Options & { prompt: string; cwd?: string; transc
   const out = fs.openSync(options.transcript, "w");
   return new Promise(resolve => {
     const child = spawn("claude", cleanAgentArgs(options), {
-      cwd, env: { ...process.env, ...CLEAN_ENV, ...(options.env ?? {}) }, stdio: ["pipe", out, "inherit"],
+      cwd, env: { ...process.env, ...CLEAN_ENV, ...(options.env ?? {}) }, stdio: ["pipe", "pipe", "inherit"],
     });
-    child.stdin.end(options.prompt);
+    const feeder = new TurnFeeder(options.turns, line => child.stdin.write(line + "\n"), () => child.stdin.end());
+    let pending = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      fs.writeSync(out, chunk);
+      const lines = (pending + chunk.toString()).split("\n");
+      pending = lines.pop() ?? "";
+      for (const line of lines) feeder.onLine(line);
+    });
+    feeder.start();
     child.on("close", () => {
       fs.closeSync(out);
       const read = readTranscript(fs.readFileSync(options.transcript, "utf8"));
@@ -159,7 +197,7 @@ async function selfTest(): Promise<number> {
     console.error(`self-test: the positive control did not name the canary (got ${JSON.stringify(plain.trim())}); the check cannot detect contamination`);
     return 1;
   }
-  const clean = await runCleanAgent({ model: "haiku", tools: ["Bash"], prompt: question, cwd: dir, transcript: path.join(dir, "transcript.jsonl") });
+  const clean = await runCleanAgent({ model: "haiku", tools: ["Bash"], turns: [question], cwd: dir, transcript: path.join(dir, "transcript.jsonl") });
   const leaked = (clean.resultText ?? "").includes(canary);
   for (const problem of clean.problems) console.error(`self-test: ${problem}`);
   if (leaked) console.error(`self-test: the clean agent named the canary — it read the global CLAUDE.md`);
@@ -183,20 +221,22 @@ async function main(argv: string[]): Promise<number> {
   const model = option(argv, "--model");
   const transcript = option(argv, "--transcript");
   if (!model || !transcript) {
-    console.error("usage: clean-agent.ts --model M [--effort E] [--tools Bash,Read] [--schema FILE] [--cwd DIR] --transcript FILE < prompt");
+    console.error("usage: clean-agent.ts --model M [--effort E] [--tools Bash,Read] [--schema FILE] [--cwd DIR] [--turns FILE] --transcript FILE < prompt");
     console.error("       clean-agent.ts --self-test");
     return 2;
   }
   const schemaFile = option(argv, "--schema");
+  const turnsFile = option(argv, "--turns");
   const run = await runCleanAgent({
     model, effort: option(argv, "--effort"), tools: (option(argv, "--tools") ?? "Bash").split(","),
     schema: schemaFile ? JSON.parse(fs.readFileSync(schemaFile, "utf8")) : undefined,
-    cwd: option(argv, "--cwd"), transcript, prompt: fs.readFileSync(0, "utf8"),
+    cwd: option(argv, "--cwd"), transcript,
+    turns: turnsFile ? JSON.parse(fs.readFileSync(turnsFile, "utf8")) : [fs.readFileSync(0, "utf8")],
   });
   console.log(JSON.stringify({ isolated: run.problems.length === 0, problems: run.problems, isError: run.isError, structured: run.structured, result: run.resultText }));
   return run.problems.length ? 1 : 0;
 }
 
-module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, runCleanAgent };
+module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, runCleanAgent, TurnFeeder };
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));
