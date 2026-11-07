@@ -6073,6 +6073,8 @@ Kernel 31.3.1 stores a computation's suppression as the free-text member `additi
 
 **Two codes are suppressible: `MVK_INVALID_COMPARE_DEC_PLACES` and `MVK_ERROR_INVALID_ENUM_CALCULATION`** (`CheckPreambleImpl`, kernel 31.3.1; 31.1.1 had only the first). Each was measured against a control without the preamble that draws the class it suppresses, and suppressing one does not suppress the other. Any other NAME draws `MVK_INVALID_SUPPRESSED_WARNING` with the offending code echoed in the message — so a reader lifting every `MVK_*` token from that message sees two, the second being the verdict ([MVK-LEDGER](MVK-LEDGER.md) recorded the echo on 2026-07-30).
 
+**A suppressed enumeration calculation stores only a declared token** (measured 2026-11-07, both strategies alike). A text computed into an enumeration stores the text when it spells a declared S-value; that value's label and an undeclared text leave the target ERRORED, and an empty text clears a seeded target, all without a message. `CheckPreambleImpl` lifts the check for every source kind, but only a text was measured. *(Locked: `adapter.laws.EnumComputationSuppressionDiffTest`, which the interpreter matches.)*
+
 **Which entry is a name is the LEXER's question, not a character class** (measured 2026-09-24, one entry per row, English model unless named). The pragma's operand is the lexer's `NameOhnePunktSTRAmAnfang` token, and `CheckPreambleImpl` compares that token's text with the one suppressible name, so A12 answers the first thing in the rendered text that is not that name:
 
 | entry | A12 |

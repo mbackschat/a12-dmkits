@@ -25122,7 +25122,7 @@
       }
     },
     "kf298": {
-      "sha256": "c0411039f2e24d9771e336d725cc7cffc03f0713d3229334c6ad005043749bd4",
+      "sha256": "bd39795c886873b05d773aa0c7bb095e1c39bcf3260e122930a73ea7a329d6ff",
       "task": "K313",
       "scope": {
         "adapter": [
@@ -25130,9 +25130,12 @@
         ],
         "dmkits": [
           "preamble authoring",
-          "list admitted"
+          "list admitted",
+          "enumeration calculation admitted"
         ],
-        "interpreter": [],
+        "interpreter": [
+          "enumeration calculation evaluated"
+        ],
         "checker": [
           "preamble verdict",
           "legacy fold"
@@ -25158,7 +25161,7 @@
         },
         "dmkits": {
           "state": "APPLIED",
-          "basis": "The builder renders the preamble in the model's condition language and admits a list; it stays deliberately stricter on the enumeration-calculation code and on padding (KF298).",
+          "basis": "The builder renders the preamble in the model's condition language and admits a list; it admits the enumeration-calculation code for a text source only and stays deliberately stricter on padding (KF298).",
           "evidence": {
             "preamble authoring": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ComputationSuppressionTest.java#theDraftCarriesThePreambleInTheModelsLanguage",
@@ -25167,13 +25170,22 @@
             "list admitted": {
               "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ComputationSuppressionTest.java#kernelAcceptsTheSupportedCodeListedTwice",
               "witness": "The kernel admits a two-entry list the builder authored."
+            },
+            "enumeration calculation admitted": {
+              "reference": "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ComputationSuppressionTest.java#aSuppressedEnumCalculationAdmitsATextIntoAnEnumeration",
+              "witness": "A text into an enumeration is refused until the code is suppressed, and the kernel admits the suppressed one."
             }
           }
         },
         "interpreter": {
-          "state": "OPEN",
-          "basis": "A rule condition's preamble list is read (RuleConditionPreambleParseTest); a computation suppressing MVK_ERROR_INVALID_ENUM_CALCULATION is not yet evaluated (KERNEL-31.3-UPGRADE-PROPOSAL B4).",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "A rule condition's preamble list is read (RuleConditionPreambleParseTest), and a suppressed enumeration calculation stores only a declared token, as both kernel strategies do.",
+          "evidence": {
+            "enumeration calculation evaluated": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EnumComputationSuppressionDiffTest.kt#aSuppressedTextIntoAnEnumerationComputesAsBothStrategiesDo",
+              "witness": "A declared token, its label, an undeclared text and no text compute alike on both strategies and the interpreter."
+            }
+          }
         },
         "checker": {
           "state": "APPLIED",

@@ -62,13 +62,11 @@ public record Computation(
         Optional<String> errorCode) {
 
     /**
-     * The warnings the builder lets a computation suppress — a deliberate subset of A12's supported set, which also
-     * holds {@code MVK_ERROR_INVALID_ENUM_CALCULATION} on kernel 31.3.1 ({@code ComputationParserInformationLawsTest}).
-     * Suppressing that one admits a text computed into an enumeration, whose runtime the interpreter has not
-     * characterized, so the typed surface does not author it (INTERPRETER-GAPS IG187).
+     * The warnings a computation may suppress: A12's supported set on kernel 31.3.1
+     * ({@code validate.laws.ComputationParserInformationLawsTest}).
      */
-    private static final Set<String> SUPPORTED_SUPPRESSED_WARNINGS =
-            Set.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name());
+    private static final Set<String> SUPPORTED_SUPPRESSED_WARNINGS = Set.of(
+            KernelCode.MVK_INVALID_COMPARE_DEC_PLACES.name(), KernelCode.MVK_ERROR_INVALID_ENUM_CALCULATION.name());
 
     /**
      * A spelling A12's preamble reads as a NAME in either condition language: an underscore keeps it longer than
@@ -506,6 +504,11 @@ public record Computation(
                 // a ref cannot see, so that refusal stays the kernel's (validate.laws.EnumIntoTextComputationLawsTest)
                 case STRING, CUSTOM -> operation.kind() == ValueKind.STRING || operation.kind() == ValueKind.CUSTOM
                         || operation.kind() == ValueKind.ENUMERATION;
+                // A suppressed enumeration check admits a text, which stores only a declared token at runtime
+                // (validate.laws.ComputationParserInformationLawsTest, adapter.laws.EnumComputationSuppressionDiffTest).
+                // A12 then skips the check for every source kind; only a text is measured, so the rest stays refused.
+                case ENUMERATION -> operation.kind() == ValueKind.ENUMERATION || operation.kind() == ValueKind.STRING
+                        && suppressedWarnings.contains(KernelCode.MVK_ERROR_INVALID_ENUM_CALCULATION.name());
                 default -> operation.kind() == computedField.kind();
             };
         }

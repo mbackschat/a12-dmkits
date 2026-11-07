@@ -32,7 +32,7 @@
     },
     "additionalParserInformation": {
       "type": "string",
-      "description": "A12's computation preamble, stored unchanged: `@SuppressWarning(<codes>)` in an English-condition model, `@UnterdrueckeWarnung(<codes>)` in a German one, comma-separated codes and nothing else. Suppress MVK_INVALID_COMPARE_DEC_PLACES when a numeric operation is intentionally valid despite the static assignment-scale gate. Omit for no suppression."
+      "description": "A12's computation preamble, stored unchanged: `@SuppressWarning(<codes>)` (`@UnterdrueckeWarnung(<codes>)` in a German-condition model), comma-separated codes only. MVK_INVALID_COMPARE_DEC_PLACES waives the static assignment-scale gate; MVK_ERROR_INVALID_ENUM_CALCULATION admits a text into an enumeration, storing only a declared token. Omit for none."
     },
     "errorCode": {
       "type": "string",

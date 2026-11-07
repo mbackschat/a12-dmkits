@@ -13,7 +13,9 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -29,6 +31,7 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 class ComputationSuppressionTest {
 
     private static final String SCALE_GATE = "MVK_INVALID_COMPARE_DEC_PLACES";
+    private static final String ENUM_CALCULATION = "MVK_ERROR_INVALID_ENUM_CALCULATION";
     private static final BoundModel m = Fixtures.order();
 
     /** Scale-4 product into the scale-0 {@code BackorderQuantity} — the static gate, suppressed by [suppress]. */
@@ -127,6 +130,31 @@ class ComputationSuppressionTest {
     @Test
     void aPaddedSupportedCodeIsRefusedDeliberatelyAndUncited() {
         assertNull(citedBy(" " + SCALE_GATE + " "));
+    }
+
+    /**
+     * Suppressing {@code MVK_ERROR_INVALID_ENUM_CALCULATION} admits a text computed into an enumeration, on the kernel
+     * and in the builder alike; without it the builder still refuses. What such a computation stores is the
+     * differential {@code adapter.laws.EnumComputationSuppressionDiffTest}: a declared token only.
+     */
+    @Test
+    void aSuppressedEnumCalculationAdmitsATextIntoAnEnumeration() {
+        String json = DocumentModelDraft.named("policy-tier").locale("en_US")
+                .rootGroup("Policy", policy -> policy.stringField("Code", text -> { })
+                        .enumField("Tier", tier -> tier.value("GOLD").value("SILVER")))
+                .build().toJson();
+        BoundModel policy = BoundModel.ofJson(json);
+        assertThrows(PrecheckException.class, () -> tierFromCode(policy).build());
+        Computation admitted = tierFromCode(policy).suppressWarnings(ENUM_CALCULATION).build();
+        assertEquals("@SuppressWarning(" + ENUM_CALCULATION + ")", admitted.draft().additionalParserInformation());
+        ValidationResult vr = new RuleValidator().check(json, admitted.draft());
+        assertTrue(vr.ok(), () -> "kernel rejected the suppressed text into an enumeration: " + vr.diagnostics());
+    }
+
+    private static Computation.Builder tierFromCode(BoundModel policy) {
+        return policy.computation(policy.enumOf("/Policy/Tier").field()).name("TierComp")
+                .calc(policy.str("/Policy/Code").asString().expression())
+                .message(Dsl.en("The tier follows the code."));
     }
 
     /** The code a refused {@code suppressWarnings(codes)} cites, or {@code null} when it cites none. */

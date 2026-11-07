@@ -693,17 +693,16 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_DATE_TYPE_FOR_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_PARTIAL_DATE_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Both estates judge suppressed codes, and the builder is stricter twice: it supports only the scale
-            // gate where A12 also lets a computation suppress MVK_ERROR_INVALID_ENUM_CALCULATION (Computation's
-            // own note), and it refuses the supported code padded with whitespace, which A12 admits because its
-            // lexer discards the padding. `SuppressedWarnings` classifies the preamble with the checker's tokenizer
-            // and admits both (KF298, KF329). The builder cites this code only for an `MVK_`-shaped entry.
+            // Both estates judge suppressed codes and admit the same two, and the builder is stricter once: it
+            // refuses the supported code padded with whitespace, which A12 admits because its lexer discards the
+            // padding. `SuppressedWarnings` classifies the preamble with the checker's tokenizer and admits it
+            // (KF298, KF329). The builder cites this code only for an `MVK_`-shaped entry.
             Map.entry("MVK_INVALID_SUPPRESSED_WARNING", Disposition.STRICTER_IN_JAVA),
 
-            // …and the second suppressible code is the one that difference is about: `Computation` names it only
-            // in the note explaining why the builder does not author it (IG187), while the checker admits it as
-            // suppressible and draws it for a text computed into an enumeration.
-            Map.entry("MVK_ERROR_INVALID_ENUM_CALCULATION", Disposition.PROSE_ONLY));
+            // …and once the enumeration check is suppressed, A12 skips it for every source kind, while
+            // `Computation` admits only the measured text (KF298's runtime row) and keeps refusing the rest as a
+            // kind mismatch. The checker draws the code when it is not suppressed.
+            Map.entry("MVK_ERROR_INVALID_ENUM_CALCULATION", Disposition.STRICTER_IN_JAVA));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
