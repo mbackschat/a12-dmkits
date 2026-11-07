@@ -102,7 +102,9 @@ internal object ProbeRequestDifferential {
         val lines = channel("messages", kernel.messages, interpreter.messages) +
             channel("outcomes", kernel.outcomes.map { (k, v) -> "$k|$v" }, interpreter.outcomes.map { (k, v) -> "$k|$v" }) +
             channel("operand errors", kernel.operandErrors, interpreter.operandErrors) +
-            channel("authored texts", kernel.authoredTexts, interpreter.authoredTexts)
+            channel("authored texts", kernel.authoredTexts, interpreter.authoredTexts) +
+            channel("causes", kernel.causes, interpreter.causes) +
+            channel("operand causes", kernel.operandCauses, interpreter.operandCauses)
         return if (lines.isEmpty()) {
             RowVerdict.Agree(row, Call.FULL, kernel.messages.size, kernel.outcomes.size, kernel.operandErrors.size)
         } else RowVerdict.Differ(row, Call.FULL, lines)

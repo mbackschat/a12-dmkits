@@ -379,7 +379,7 @@ This is the empirical check a static "is it valid?" can't give: it's how you con
 **`rule eval` scopes it to one rule** with a three-way verdict. It distinguishes a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid.
 
 - Its locator has two exclusive forms: a stored `<rulePathInModel>`, or a non-stored candidate given as `--condition` plus absolute `--field` (optional `--code`). Candidate evaluation uses the same focused envelope and leaves the model byte-identical.
-- A **firing** also reports that message's own channels: `code`, `field`, `severity`, `type`, `message`, `referenced`, and `fillToFix` for an omission. These are the same keys `model eval` puts on a `messages[]` entry, so the message `type` (`VALUE_ERROR` / `OMISSION_ERROR`) is observable without persisting the candidate first. `dmtool schema rule eval` serves the shape.
+- A **firing** also reports that message's own channels: `code`, `field`, `severity`, `type`, `message`, `referenced`, `fillToFix` for an omission, and `possiblyCausing`, A12's groups of the entities that may have caused it. These are the same keys `model eval` puts on a `messages[]` entry, so the message `type` (`VALUE_ERROR` / `OMISSION_ERROR`) is observable without persisting the candidate first. `dmtool schema rule eval` serves the shape.
 
 **Partial validation.** `model eval --relevant '["/Order/Name","/Order/Lines[2]/Quantity"]'` selects partial or wizard-page validation, and global fields are added automatically.
 

@@ -75,7 +75,8 @@ dmtool -m examples/models/order-ruled.dm.json \
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "The delivery date must not be earlier than the order date.",
-      "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ]
+      "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ],
+      "possiblyCausing" : [ [ "Order/OrderDate", "Order/DeliveryDate" ] ]
     } ],
     "unsupported" : [ {
       "name" : "/Order/EligibilityCheck",
@@ -92,7 +93,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 }
 ```
 
-→ `data.rule.fired: true` and `DELIVERY_BEFORE_ORDER` in `data.fired` — the rule fired on this data. The `messages[]` entry attributes it to its `rule` (`/Order/DeliveryNotBeforeOrder`), points at the offending `field` in **canonical A12 pointer form** — no leading slash, and the first repetition left implicit, so it reads `Order/DeliveryDate` here and `Order/Lines[2]/Quantity` for row 2 of a repeated group — and lists `referenced` — the operand fields the rule read. (An **OMISSION** error also carries `fillToFix`: the operands that, filled or changed, would clear it — the kernel's `refOmissionErrorResponsible`.) Remember the **polarity**: the condition describes the *violation* (delivery strictly before order), so "fired" means "this order is bad", not "this order is fine".
+→ `data.rule.fired: true` and `DELIVERY_BEFORE_ORDER` in `data.fired` — the rule fired on this data. The `messages[]` entry attributes it to its `rule` (`/Order/DeliveryNotBeforeOrder`), points at the offending `field` in **canonical A12 pointer form** — no leading slash, and the first repetition left implicit, so it reads `Order/DeliveryDate` here and `Order/Lines[2]/Quantity` for row 2 of a repeated group — lists `referenced` — the operand fields the rule read — and groups them in `possiblyCausing`, A12's possibly-causing entities. (An **OMISSION** error also carries `fillToFix`: the operands that, filled or changed, would clear it — the kernel's `refOmissionErrorResponsible`.) Remember the **polarity**: the condition describes the *violation* (delivery strictly before order), so "fired" means "this order is bad", not "this order is fine".
 
 Notice `data.unsupported`. The model's *other* rule, `/Order/EligibilityCheck`, uses a `CustomCondition` (`ExternalEligibility`) — project code the native engine can't run. Rather than silently skip it (which would read as a clean pass), the engine **surfaces** it here so you know it wasn't evaluated. Custom *field types* whose format is declarative can be supplied with `--predefined-types`, and `--strict-custom` turns any such gap into a failure instead of a lenient pass — see [`cli-custom-types`](cli-custom-types.md).
 
@@ -205,14 +206,15 @@ dmtool -m examples/models/order-ruled.dm.json \
     "severity" : "ERROR",
     "type" : "VALUE_ERROR",
     "message" : "The delivery date must not be earlier than the order date.",
-    "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ]
+    "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ],
+    "possiblyCausing" : [ [ "Order/OrderDate", "Order/DeliveryDate" ] ]
   },
   "diagnostics" : [ ],
   "written" : false
 }
 ```
 
-→ `verdict: fired` — a violation, reported with the firing message's own channels: the same `code`/`field`/`severity`/`type`/`message`/`referenced` keys a `model eval` `messages[]` entry carries (plus `fillToFix` on an omission). `type` is the one worth knowing about — `VALUE_ERROR` means *what is there is wrong*, `OMISSION_ERROR` means *filling something could clear it* — and it is a semantic fact, not a label: for `FieldValuesNotUnique` a reached `Having` on the starred operand flips a firing to `OMISSION_ERROR` on otherwise identical data. Reading it here needs no persisted rule, so a `--condition` candidate can be measured without touching the model. Now feed it a **malformed** delivery date (`not-a-date`, which the `yyyy-MM-dd` field can't parse). The rule references `DeliveryDate`, so it is never evaluated:
+→ `verdict: fired` — a violation, reported with the firing message's own channels: the same `code`/`field`/`severity`/`type`/`message`/`referenced`/`possiblyCausing` keys a `model eval` `messages[]` entry carries (plus `fillToFix` on an omission). `type` is the one worth knowing about — `VALUE_ERROR` means *what is there is wrong*, `OMISSION_ERROR` means *filling something could clear it* — and it is a semantic fact, not a label: for `FieldValuesNotUnique` a reached `Having` on the starred operand flips a firing to `OMISSION_ERROR` on otherwise identical data. Reading it here needs no persisted rule, so a `--condition` candidate can be measured without touching the model. Now feed it a **malformed** delivery date (`not-a-date`, which the `yyyy-MM-dd` field can't parse). The rule references `DeliveryDate`, so it is never evaluated:
 
 ```bash
 cat > /tmp/rt-order-baddate.json <<'JSON'
@@ -284,7 +286,8 @@ dmtool -m examples/models/order-ruled.dm.json \
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "EvalDocCandidate",
-      "referenced" : [ "Order/Quantity" ]
+      "referenced" : [ "Order/Quantity" ],
+      "possiblyCausing" : [ [ "Order/Quantity" ] ]
     } ],
     "unsupported" : [ {
       "name" : "/Order/EligibilityCheck",

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
+import java.util.Collection;
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
@@ -51,8 +52,8 @@ public final class A12Pointers {
         return exact != null ? exact : houseForm(pointer);
     }
 
-    /** {@link #canonical(A12PartiallyKnownMultiPointer)} over a list — the {@code referenced} / {@code fillToFix} channels. */
-    public static List<String> canonical(List<A12PartiallyKnownMultiPointer> pointers) {
+    /** {@link #canonical(A12PartiallyKnownMultiPointer)} over a channel's addresses, in their order. */
+    public static List<String> canonical(Collection<A12PartiallyKnownMultiPointer> pointers) {
         return pointers.stream().map(A12Pointers::canonical).toList();
     }
 

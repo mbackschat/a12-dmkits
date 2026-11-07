@@ -83,15 +83,16 @@ class PublishedPointerCanonicalTest {
         assertEquals(
                 Map.of("field", MESSAGE_ADDRESS_FORMAT,
                         "referenced", MESSAGE_ADDRESS_FORMAT,
-                        "fillToFix", MESSAGE_ADDRESS_FORMAT),
+                        "fillToFix", MESSAGE_ADDRESS_FORMAT,
+                        "possiblyCausing", MESSAGE_ADDRESS_FORMAT),
                 evalMarks,
-                "eval publishes the three IMessage channels, and they are message ADDRESSES — pinned so removing "
+                "eval publishes the four IMessage address channels, and they are message ADDRESSES — pinned so removing "
                         + "a mark (silently shrinking this guard) fails, and so does quietly promoting one to "
                         + POINTER_FORMAT);
         assertEquals(Map.of("field", POINTER_FORMAT, "declaration", POINTER_FORMAT), computeMarks,
                 "a computed cell is an exact pointer at every level, so both of its keys keep the strong mark");
         assertEquals(evalMarks, ruleEvalMarks,
-                "a focused rule firing publishes the same three IMessage channels as a whole-document message, so "
+                "a focused rule firing publishes the same IMessage channels as a whole-document message, so "
                         + "it carries the same marks — a divergence here would mean one firing is described two ways");
 
         Map<String, Integer> seen = new LinkedHashMap<>();
@@ -128,10 +129,10 @@ class PublishedPointerCanonicalTest {
     }
 
     /**
-     * Four invocations that between them populate all four marked keys:
-     * a VALUE error in a repeated row ({@code field}, {@code referenced}), an OMISSION error
-     * ({@code fillToFix}), a computation ({@code field}, {@code declaration}), and the same row violation read
-     * through the FOCUSED single-rule verb, which publishes the message channels on its own payload.
+     * Three invocations that between them populate every marked key:
+     * a VALUE error in a repeated row ({@code field}, {@code referenced}, {@code possiblyCausing}), an OMISSION
+     * error ({@code fillToFix}), a computation ({@code field}, {@code declaration}), and the same row violation
+     * read through the FOCUSED single-rule verb, which publishes the message channels on its own payload.
      *
      * <p>The rules the eval scenarios need are authored <b>through the tool</b> rather than added to a committed
      * fixture — {@code order-ruled} is shared by many tests, and a guard should not reshape everyone else's model
@@ -260,16 +261,12 @@ class PublishedPointerCanonicalTest {
         if (node.isTextual()) {
             out.add(node.asText());
         } else if (node.isArray()) {
-            node.forEach(child -> {
-                if (child.isTextual()) {
-                    out.add(child.asText());
-                }
-            });
+            node.forEach(child -> out.addAll(strings(child)));
         }
         return out;
     }
 
-    /** Every property (including under {@code $defs}) carrying an address mark, on itself or its items. */
+    /** Every property (including under {@code $defs}) carrying an address mark, on itself or its (nested) items. */
     private static void collectPointerKeys(JsonNode node, Map<String, String> into) {
         if (node.isArray()) {
             node.forEach(child -> collectPointerKeys(child, into));
@@ -282,7 +279,11 @@ class PublishedPointerCanonicalTest {
         if (props != null && props.isObject()) {
             props.properties().forEach(e -> {
                 JsonNode p = e.getValue();
-                String format = p.has("format") ? p.path("format").asText() : p.path("items").path("format").asText();
+                JsonNode typed = p;
+                while (!typed.has("format") && typed.has("items")) {
+                    typed = typed.path("items");
+                }
+                String format = typed.path("format").asText();
                 if (POINTER_FORMAT.equals(format) || MESSAGE_ADDRESS_FORMAT.equals(format)) {
                     into.put(e.getKey(), format);
                 }

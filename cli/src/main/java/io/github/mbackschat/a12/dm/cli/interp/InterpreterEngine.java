@@ -567,10 +567,12 @@ public final class InterpreterEngine {
         if (!m.getFillToFixPointers().isEmpty()) {
             putPointers(node.putArray("fillToFix"), m.getFillToFixPointers());
         }
+        ArrayNode causes = node.putArray("possiblyCausing");
+        m.getGroupsOfPossiblyCausingEntities().forEach(group -> putPointers(causes.addArray(), group));
         return node;
     }
 
-    private static void putPointers(ArrayNode arr, java.util.List<A12PartiallyKnownMultiPointer> pointers) {
+    private static void putPointers(ArrayNode arr, java.util.Collection<A12PartiallyKnownMultiPointer> pointers) {
         A12Pointers.canonical(pointers).forEach(arr::add);
     }
 

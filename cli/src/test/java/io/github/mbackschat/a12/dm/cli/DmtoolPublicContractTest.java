@@ -552,16 +552,8 @@ class DmtoolPublicContractTest {
                 assertEquals(expected, data.path("messages").size(), evaluated::out);
                 JsonNode kernelMessages = MAPPER.readTree(oracle.out()).path("data").path("messages");
                 assertEquals(expected, kernelMessages.size(), oracle::out);
-                for (JsonNode messages : List.of(kernelMessages, data.path("messages"))) {
-                    for (JsonNode message : messages) {
-                        assertEquals("JOIN", message.path("code").asText());
-                        var references = new java.util.ArrayList<JsonNode>();
-                        message.path("referenced").forEach(references::add);
-                        references.sort(java.util.Comparator.comparing(JsonNode::asText));
-                        ((com.fasterxml.jackson.databind.node.ObjectNode) message).set("referenced", MAPPER.valueToTree(references));
-                    }
-                }
-                assertEquals(kernelMessages, data.path("messages"));
+                data.path("messages").forEach(message -> assertEquals("JOIN", message.path("code").asText()));
+                assertEquals(MessageSignatures.of(kernelMessages), MessageSignatures.of(data.path("messages")));
                 assertEquals(input, Files.readString(document));
                 assertEquals(modelJson, Files.readString(model));
             }
@@ -629,7 +621,8 @@ class DmtoolPublicContractTest {
         assertEquals(0, result.code(), result::out);
         assertEquals(0, oracle.code(), oracle::out);
         var messages = MAPPER.readTree(result.out()).path("data").path("messages");
-        assertEquals(MAPPER.readTree(oracle.out()).path("data").path("messages"), messages);
+        assertEquals(MessageSignatures.of(MAPPER.readTree(oracle.out()).path("data").path("messages")),
+                MessageSignatures.of(messages));
         assertEquals(1, messages.size());
         assertEquals("Store/Depots[2]/Bins[2]/Slots/Qty", messages.get(0).path("field").asText());
     }
@@ -663,23 +656,7 @@ class DmtoolPublicContractTest {
         assertEquals(0, oracle.code(), oracle::out);
         JsonNode actual = MAPPER.readTree(result.out()).path("data").path("messages");
         JsonNode expected = MAPPER.readTree(oracle.out()).path("data").path("messages");
-        var normalized = new java.util.ArrayList<List<String>>();
-        for (JsonNode messages : List.of(expected, actual)) {
-            var signatures = new java.util.ArrayList<String>();
-            for (JsonNode message : messages) {
-                for (String channel : List.of("referenced", "fillToFix")) {
-                    if (!message.has(channel)) continue;
-                    var pointers = new java.util.ArrayList<JsonNode>();
-                    message.path(channel).forEach(pointers::add);
-                    pointers.sort(java.util.Comparator.comparing(JsonNode::asText));
-                    ((com.fasterxml.jackson.databind.node.ObjectNode) message).set(channel, MAPPER.valueToTree(pointers));
-                }
-                signatures.add(message.toString());
-            }
-            signatures.sort(String::compareTo);
-            normalized.add(signatures);
-        }
-        assertEquals(normalized.get(0), normalized.get(1));
+        assertEquals(MessageSignatures.of(expected), MessageSignatures.of(actual));
         var types = new HashMap<String, String>();
         actual.forEach(message -> types.put(message.path("code").asText(), message.path("type").asText()));
         assertEquals(Map.of("ROW", "VALUE_ERROR", "PAIR", "OMISSION_ERROR"), types);

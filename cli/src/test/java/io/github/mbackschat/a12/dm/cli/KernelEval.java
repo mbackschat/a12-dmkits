@@ -272,6 +272,7 @@ final class KernelEval {
                 ArrayNode fillToFix = mn.putArray("fillToFix");
                 m.fillToFix().forEach(p -> fillToFix.add(pointer(p)));
             }
+            putGroups(mn.putArray("possiblyCausing"), m);
         }
         if (targetRule != null) {
             boolean ruleFired = result.messages().stream()
@@ -281,6 +282,13 @@ final class KernelEval {
             rule.put("fired", ruleFired);
         }
         return data;
+    }
+
+    private static void putGroups(ArrayNode groups, EvalMessage m) {
+        m.possiblyCausing().forEach(group -> {
+            ArrayNode members = groups.addArray();
+            group.forEach(p -> members.add(pointer(p)));
+        });
     }
 
     private static ObjectNode ruleTestData(RuleTestOutcome outcome) {
@@ -302,6 +310,7 @@ final class KernelEval {
                 ArrayNode fillToFix = data.putArray("fillToFix");
                 m.fillToFix().forEach(p -> fillToFix.add(pointer(p)));
             }
+            putGroups(data.putArray("possiblyCausing"), m);
         });
         if (!outcome.suppressedBy().isEmpty()) {
             ArrayNode arr = data.putArray("suppressedBy");

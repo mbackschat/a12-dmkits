@@ -86,6 +86,8 @@ internal data class DocumentObservation(
      *  set of its pointer keys (KERNEL-FINDINGS KF683). A set, because A12 may name one unknown row once per key that
      *  missed it, which the interpreter's pointer cannot yet tell apart (INTERPRETER-GAPS IG188). */
     val causes: List<String>,
+    /** The same groups on the computation's formal errors in operands, which A12 reports as messages too. */
+    val operandCauses: List<String>,
 )
 
 private const val AUTHORED_FAULT = "(the evaluation-fault text)"
@@ -195,6 +197,7 @@ internal object DocumentDifferential {
             computation.formalErrorsInOperands().map(::kernelSignature).sorted(),
             authoredTexts(authoredCodes(model), messages.map { Triple(it.errorCode, pointer(it.errorFieldPointer), it.errorText) }),
             messages.map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
+            computation.formalErrorsInOperands().map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
         )
     }
 
@@ -227,14 +230,15 @@ internal object DocumentDifferential {
             outcomeKey(it.substringBefore('|')) to it.substringAfter('|')
         }.toSortedMap()
         val prepared = PreparedModel.loadExpandedJson(model)
-        val operandErrors = prepared.createInterpreter().compute(prepared.documents.readDocument(json))
-            .formalErrorsInOperands.map {
-                MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPath),
-                    it.referenced.map(::pointer).sorted(), it.fillToFix.map(::pointer).sorted())
-            }.sorted()
+        val operandFindings = prepared.createInterpreter().compute(prepared.documents.readDocument(json)).formalErrorsInOperands
+        val operandErrors = operandFindings.map {
+            MessageSignature(it.code, typeName(it.type.name), pointer(it.errorPath),
+                it.referenced.map(::pointer).sorted(), it.fillToFix.map(::pointer).sorted())
+        }.sorted()
         return DocumentObservation(messages, outcomes, operandErrors,
             authoredTexts(authoredCodes(model), report.messages.map { Triple(it.code, pointer(it.errorPointer), it.text) }),
-            report.messages.map { causes(it.code, pointer(it.errorPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted())
+            report.messages.map { causes(it.code, pointer(it.errorPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
+            operandFindings.map { causes(it.code, pointer(it.errorPath), it.possiblyCausing.map { group -> group.map(::pointer) }) }.sorted())
     }
 
     private fun causes(code: String, address: String, groups: List<List<String>>): String =

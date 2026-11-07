@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentValidationResult;
@@ -27,6 +28,8 @@ final class KernelMessages {
                 .message(m.getErrorText())
                 .referenced(fieldPointers(m.getReferencedFieldsPointers()))
                 .fillToFix(fieldPointers(m.getRefOmissionErrorResponsiblePointers()))
+                .possiblyCausing(m.getGroupsOfPossiblyCausingEntities().stream()
+                        .map(group -> Set.copyOf(fieldPointers(group))).toList())
                 .build();
     }
 

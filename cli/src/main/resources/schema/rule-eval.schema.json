@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/rule-eval.schema.json",
   "title": "RuleEvalResult",
-  "description": "Output of `rule eval` — the runtime verdict for ONE rule against a document INSTANCE, either a stored `<rulePathInModel>` or a non-stored `--condition`/`--field` candidate. Both forms return this identical shape. FOUR verdicts, and `fired:false` is three of them: `fired` (a violation), `passed` (evaluated, condition false), `suppressed` (never evaluated — a referenced field is formally invalid, so reporting a pass would mislead), `unsupported` (a construct the engine does not model, e.g. a CustomCondition with no registered impl). A `fired` verdict additionally publishes the firing MESSAGE's own channels — `code`, `field`, `severity`, `type`, `message`, `referenced`, and (for an omission) `fillToFix` — the same keys and the same meanings as one `model eval` `messages[]` entry, so one message parser reads both. It reports the FIRST firing only: a rule that violates several rows of its iteration scope yields one message here, where `model eval` yields one per row. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `docInput` half of `dmtool schema rule eval`.",
+  "description": "Output of `rule eval` — the runtime verdict for ONE rule against a document INSTANCE, either a stored `<rulePathInModel>` or a non-stored `--condition`/`--field` candidate. Both forms return this identical shape. FOUR verdicts, and `fired:false` is three of them: `fired` (a violation), `passed` (evaluated, condition false), `suppressed` (never evaluated — a referenced field is formally invalid, so reporting a pass would mislead), `unsupported` (a construct the engine does not model, e.g. a CustomCondition with no registered impl). A `fired` verdict additionally publishes the firing MESSAGE's own channels — `code`, `field`, `severity`, `type`, `message`, `referenced`, `possiblyCausing`, and (for an omission) `fillToFix` — the same keys and the same meanings as one `model eval` `messages[]` entry, so one message parser reads both. It reports the FIRST firing only: a rule that violates several rows of its iteration scope yields one message here, where `model eval` yields one per row. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `docInput` half of `dmtool schema rule eval`.",
   "type": "object",
   "required": ["rule", "fired", "verdict"],
   "additionalProperties": false,
@@ -48,6 +48,11 @@
       "type": "array",
       "items": { "type": "string", "format": "a12-message-address" },
       "description": "(fired with `type: OMISSION_ERROR`) the operand fields that can cause the omission, filled ones included (the kernel's refOmissionErrorResponsible); an operand read only by a presence check such as `FieldFilled` is referenced but never listed here. Absent for a value error. Same address contract as `field`"
+    },
+    "possiblyCausing": {
+      "type": "array",
+      "items": { "type": "array", "items": { "type": "string", "format": "a12-message-address" } },
+      "description": "(fired only) as on a `model eval` message"
     },
     "suppressedBy": {
       "type": "array",

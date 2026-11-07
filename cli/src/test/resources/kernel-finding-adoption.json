@@ -26158,11 +26158,15 @@
         "checker": [],
         "json-schema-import": [],
         "json-schema-export": [],
-        "adapter": [],
+        "adapter": [
+          "possibly-causing entity groups"
+        ],
         "interpreter": [
           "possibly-causing entity groups"
         ],
-        "dmtool-cli": [],
+        "dmtool-cli": [
+          "possibly-causing entity groups"
+        ],
         "a12-kernel-lean": []
       },
       "consumers": {
@@ -26187,9 +26191,14 @@
           "evidence": {}
         },
         "adapter": {
-          "state": "OPEN",
-          "basis": "EvalMessage does not carry the groups yet; work item B4b-3.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "Every DocumentDifferential.assertAgree compares the groups A12's IMessage reports with the interpreter's, and EvalMessage carries them to the CLI's kernel leg.",
+          "evidence": {
+            "possibly-causing entity groups": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PossiblyCausingEntitiesLawsTest.kt#aMissedKeyIsNamedOncePerKey",
+              "witness": "The kernel's groups are read off IMessage with their typed missed-key members, and compared with the interpreter's."
+            }
+          }
         },
         "interpreter": {
           "state": "APPLIED",
@@ -26202,9 +26211,14 @@
           }
         },
         "dmtool-cli": {
-          "state": "OPEN",
-          "basis": "No verb reports the groups yet; work item B4b-3.",
-          "evidence": {}
+          "state": "APPLIED",
+          "basis": "model eval messages and rule eval firings publish the groups as possiblyCausing, in the address form of referenced.",
+          "evidence": {
+            "possibly-causing entity groups": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/rule/MessagePossiblyCausingCliTest.java#anOmissionNamesTheEmptyEntityFirstAndTheGivenOneSecond",
+              "witness": "An omission publishes the empty DeliveryDate first and the given OrderDate second; a value error publishes both in one group."
+            }
+          }
         },
         "a12-kernel-lean": {
           "state": "OPEN",
