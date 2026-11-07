@@ -123,6 +123,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckFamily : java/la
 	public static final field OUTER_MARKER_POSITION Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field PARALLEL_ITERATION_UNIQUENESS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field PATTERN_COMPARISON_OPERANDS Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
+	public static final field POSSIBLE_CAUSE_FILTER Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field RANGE_OPERAND_GATES Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field RAW_TYPE_LENGTH Lio/github/mbackschat/a12/dm/consistency/CheckFamily;
 	public static final field REPETITION_KEY_CONTAINMENT Lio/github/mbackschat/a12/dm/consistency/CheckFamily;

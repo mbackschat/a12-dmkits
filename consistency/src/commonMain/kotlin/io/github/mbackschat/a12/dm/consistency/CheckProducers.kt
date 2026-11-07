@@ -297,6 +297,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         base.groupRepetitionCountFindings(at)
     },
     perDeclarationWalk(CheckFamily.RULE_PRESENTATION_MEMBERS, DeclarationStage.INDEPENDENT) { it.presentationMemberFindings() },
+    CheckProducer.Declaration(setOf(CheckFamily.POSSIBLE_CAUSE_FILTER)) { base, at -> base.possibleCauseFilterContributions(at) },
     perDeclaration(CheckFamily.STRING_SLOT_BINDING, DeclarationStage.INDEPENDENT) { base, at -> base.stringSlotFindings(at) },
     CheckProducer.ModelWide(
         stage = ModelStage.DECLARATION,

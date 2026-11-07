@@ -363,6 +363,10 @@ internal val WIRING_MODEL = ModelSource(
         {"type":"Rule","id":"r11","name":"UnbindableSlot","Rule":{
           "errorCondition":{"value":"FieldFilled(Price)"},"errorEntityRelPath":"../Price",
           "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
+        {"type":"Rule","id":"r95","name":"RepeatedCause","Rule":{
+          "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+          "errorCode":"C95","errorMessage":[{"locale":"en_US","text":"x"}],
+          "filterForPossiblyCausingEntities":{"entitiesEnabledAsPossibleCauseIfFilled":[{"relativePath":"Price"},{"relativePath":"Price"}]}}},
         {"type":"Rule","id":"r10","name":"UnbindablePatterns","Rule":{
           "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
           "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}],

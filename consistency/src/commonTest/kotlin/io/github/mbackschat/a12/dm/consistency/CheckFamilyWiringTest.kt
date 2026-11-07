@@ -45,6 +45,7 @@ class CheckFamilyWiringTest {
         CheckFamily.CONNECTIVE_AGREEMENT to ("MVK_BRACKET_MISSING" to "/Catalog/MixedConnectives"),
         CheckFamily.CONDITION_GRAMMAR to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/Ungrammatical"),
         CheckFamily.RULE_PRESENTATION_MEMBERS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindablePatterns"),
+        CheckFamily.POSSIBLE_CAUSE_FILTER to ("CUSTOM_REF_ERROR_ENTITY_IF_FILLED_DUPLICATE" to "/Catalog/RepeatedCause"),
         CheckFamily.STRING_SLOT_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindableSlot"),
         CheckFamily.FIELD_TYPE_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Unbindable"),
         CheckFamily.TEMPORAL_CONFIG to ("MVK_OPTIONAL_DATE_TYPE_INVALID" to "/Catalog/MisconfiguredDate"),

@@ -49,6 +49,14 @@ internal data class ModelFinding(val stage: ModelStage, override val finding: Fi
 /** R5's outer stages retain occurrence ownership until the public projection. */
 internal enum class DeclarationStage {
     INDEPENDENT, TARGET, PREAMBLE, CONDITION,
+
+    /**
+     * A rule's possible-cause filter references, which A12 checks only once the rule's condition reads, so
+     * [selectDeclaration] withholds them with everything after a refused target or condition
+     * ([possibleCauseFilterContributions]).
+     */
+    POSSIBLE_CAUSES,
+
     CALCULATION_TARGET, CALCULATION_STRUCTURE, CALCULATION_NORMAL_FORM,
     CALCULATION_ALTERNATIVES, CALCULATION_EXTRACTION, MESSAGE,
 }
@@ -81,6 +89,7 @@ internal fun selectDeclaration(
             addAll(local)
             if (local.any { it.finding.justifiesRejection }) return@buildList
         }
+        addAll(byStage[DeclarationStage.POSSIBLE_CAUSES].orEmpty())
         for (stage in listOf(DeclarationStage.CALCULATION_TARGET, DeclarationStage.CALCULATION_STRUCTURE,
             DeclarationStage.CALCULATION_NORMAL_FORM, DeclarationStage.CALCULATION_ALTERNATIVES,
             DeclarationStage.CALCULATION_EXTRACTION)) {
@@ -153,10 +162,13 @@ internal fun ExecutedChecks.reportFindings(facts: TrackedFactBase): List<Finding
     // A12's ordering gates run only on a model its earlier entity walk admitted (KERNEL-FINDINGS KF589).
     val walkRefused = local.any { facts.refusesTheEntityWalk(it.finding) }
     val model = if (walkRefused) reported.filterNot { it.finding.code in ORDERING_GATE_CODES } else reported
+    val possibleCausesWithheld = facts.withholdsPossibleCauseReferences(local.map { it.finding })
+    val rules = declarations.filterNot { it.owner in computations }
+        .filterNot { possibleCausesWithheld && it.finding.code in POSSIBLE_CAUSE_REFERENCE_CODES }
     val selected = (model.filter { it.stage == ModelStage.DECLARATION } +
         declarations.filter { it.owner in computations } +
         model.filter { it.stage == ModelStage.METAMODEL } +
-        declarations.filterNot { it.owner in computations }).map { it.finding }
+        rules).map { it.finding }
     fun staged(stage: ModelStage) = model.filter { it.stage == stage }.map { it.finding }
     // A12's converter states its sentences and checks on, so they withhold nothing later (KERNEL-FINDINGS KF652).
     val judged = if (selected.any { it.justifiesRejection && it.code !in CONVERTER_SENTENCE_CODES }) selected

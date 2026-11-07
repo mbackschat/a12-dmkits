@@ -100,6 +100,12 @@ enum class CheckFamily {
     RULE_PRESENTATION_MEMBERS,
 
     /**
+     * A rule's `filterForPossiblyCausingEntities`: that A12's reader can bind it, that neither list repeats an entry,
+     * and that every entry is the relative path of an entity the rule's condition references.
+     */
+    POSSIBLE_CAUSE_FILTER,
+
+    /**
      * That every member A12 binds to TEXT actually holds text — one law across all three carriers that own
      * such a member. A container there refuses A12's reader outright, so the model never loads; a non-text
      * scalar is coerced and is not this family's business, nor is a blank or absent member, which the

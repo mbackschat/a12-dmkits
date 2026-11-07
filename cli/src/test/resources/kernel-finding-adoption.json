@@ -26022,6 +26022,123 @@
           "evidence": {}
         }
       }
+    },
+    "kf61": {
+      "sha256": "b772cae5388284890da409977c8a39d346684b0c247ef73fb0757fb03b36bd2c",
+      "task": "K313",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A dated correction pointing at kf682, which owns the live law and its adoption.",
+          "evidence": {}
+        }
+      }
+    },
+    "kf682": {
+      "sha256": "1ef607d9daf1a264227980c197587a0d16e625c70a33802b1edf82f42f2debb3",
+      "task": "K313",
+      "scope": {
+        "dmkits": [],
+        "checker": ["possible-cause filter"],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "OPEN",
+          "basis": "The kits neither author nor type the filter yet; the typed, read and CLI surface is work item B4c.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "APPLIED",
+          "basis": "The checker reads the filter, refuses the shapes A12's reader refuses, states each list's repeats and its unreferenced entries, and withholds the reference class where A12 does.",
+          "evidence": {
+            "possible-cause filter": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CheckerPossibleCauseFilterAgreementTest.kt#anEntryMustBeTheCanonicalRelativePathOfAReferencedEntity",
+              "witness": "Every row of the four grids, admitted spellings, near misses, repeats, withholding gates and reader shapes, has A12's class set."
+            }
+          }
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no rule filter.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "JSON Schema carries no rule filter.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Consistency verdicts are A12's own here, so these classes reach the adapter's reports unchanged.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A consistency law; what the filter does to a fired message is work item B4b.",
+          "evidence": {}
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "The CLI surface for the filter is work item B4c.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "evidence": {}
+        }
+      }
     }
   }
 }
