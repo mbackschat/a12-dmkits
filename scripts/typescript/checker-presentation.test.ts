@@ -31,7 +31,8 @@ test('presentation refresh preserves release and Maven identities and admits onl
 });
 
 test('only presentation changes may differ from the published library source', () => {
-    assert.doesNotThrow(() => assertPresentationChanges(['consistency/showcase/src/main.ts', 'docs/RELEASE-SPEC.md', 'scripts/typescript/checker-presentation.ts']));
+    // The changelog's post-release freeze is a presentation change (RELEASE-SPEC §12).
+    assert.doesNotThrow(() => assertPresentationChanges(['consistency/showcase/src/main.ts', 'docs/RELEASE-SPEC.md', 'scripts/typescript/checker-presentation.ts', 'consistency/public-release/CHANGELOG.md']));
     for (const name of ['shared-regex/src/commonMain/kotlin/Changed.kt', 'build.gradle', 'gradle.properties', 'gradle/new-build-input.json', 'consistency/src/jsMain/Changed.kt', 'unknown-input']) assert.throws(() => assertPresentationChanges([name]), /outside presentation/);
 });
 

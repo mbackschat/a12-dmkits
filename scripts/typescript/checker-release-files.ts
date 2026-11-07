@@ -3,7 +3,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileS
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileInventory, scanBytes } from './checker-maven.ts';
-import { assertHistoricalArtifacts, mergeMaven, renderChangelog, type Receipt } from './checker-release-core.ts';
+import { assertHistoricalArtifacts, mergeMaven, releaseNotes, renderChangelog, type Receipt } from './checker-release-core.ts';
 
 export const repository = 'mbackschat/a12-consistency-releases';
 export const pages = 'https://mbackschat.github.io/a12-consistency-releases';
@@ -53,6 +53,7 @@ export function assembleChecker(root: string, mirror: string, staging: string, o
     const changelog = renderChangelog(readFileSync(resolve(root, 'consistency/public-release/CHANGELOG.md'), 'utf8'), version,
         existsSync(publishedChangelog) ? readFileSync(publishedChangelog, 'utf8') : undefined);
     scanBytes('CHANGELOG.md', Buffer.from(changelog));
+    releaseNotes(changelog, version); // staging reads the notes after the mirror push, so they must exist before it
     const maven = resolve(mirror, 'site/maven');
     const history = resolve(mirror, 'releases');
     const manifests = existsSync(history) ? readdirSync(history).map(name => {

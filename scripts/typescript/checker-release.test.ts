@@ -92,3 +92,37 @@ test('the changelog renders one release and its notes, refusing an unfrozen or r
     assert.throws(() => renderChangelog(`${head}## [@VERSION@]\n\n${frozen}`, '0.15.0', undefined), /no entry/);
     assert.throws(() => releaseNotes(rendered, '0.16.0'), /no section/);
 });
+
+test('assembly checks the changelog against the published one before it writes any mirror file', async t => {
+    const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { assembleChecker, readTree } = await import('./checker-release-files.ts');
+    const { releaseNotes } = await import('./checker-release-core.ts');
+    const home = mkdtempSync(join(tmpdir(), 'checker-assembly-')); t.after(() => rmSync(home, { recursive: true, force: true }));
+    const root = join(home, 'source'), staging = join(home, 'maven'), output = join(home, 'assets');
+    mkdirSync(join(root, '.github/consistency-mirror-workflows'), { recursive: true });
+    cpSync('consistency/public-release/README.md', join(root, 'consistency/public-release/README.md'));
+    cpSync('.locmetryrc', join(root, '.locmetryrc'));
+    writeFileSync(join(root, 'LICENSE'), 'MIT License\n');
+    writeFileSync(join(root, '.github/consistency-mirror-workflows/deploy-pages.yml'), 'name: fixture\n');
+    mkdirSync(join(staging, `${groupPath}/dm-consistency/0.15.0`), { recursive: true });
+    writeFileSync(join(staging, `${groupPath}/dm-consistency/0.15.0/dm-consistency-0.15.0.pom`), 'qualified fixture');
+    const head = '# Changelog\n\nEach release opens a `## [@VERSION@]` section.\n\n';
+    const published = `${head}## [0.14.0]\n\n- **First publication.**\n`;
+    const receipt = { schema: 1, version: '0.15.0', source, files: {} };
+    const assemble = (changelog: string) => {
+        const mirror = join(home, `mirror-${Math.random()}`);
+        mkdirSync(mirror); writeFileSync(join(mirror, 'CHANGELOG.md'), published);
+        writeFileSync(join(root, 'consistency/public-release/CHANGELOG.md'), changelog);
+        const before = readTree(mirror);
+        try { assembleChecker(root, mirror, staging, output, receipt); return readFileSync(join(mirror, 'CHANGELOG.md'), 'utf8'); }
+        catch (error) { assert.deepEqual(readTree(mirror), before); throw error; }
+    };
+    // The heading a preamble mentions is not the section's; the section is the one rendered.
+    const rendered = assemble(`${head}## [@VERSION@]\n\n- **A reshaped reference.**\n\n## [0.14.0]\n\n- **First publication.**\n`);
+    assert.equal(releaseNotes(rendered, '0.15.0'), '- **A reshaped reference.**');
+    assert.match(rendered, /a `## \[@VERSION@\]` section/);
+    assert.throws(() => assemble(`${head}## [@VERSION@]\n\n- **First publication.**\n- **A reshaped reference.**\n`), /published history/);
+    assert.throws(() => assemble(`${head}## [@VERSION@]\n\n- **Built at ${['', 'Users', 'private', 'model'].join('/')}.**\n\n## [0.14.0]\n\n- **First publication.**\n`), /private marker/);
+});

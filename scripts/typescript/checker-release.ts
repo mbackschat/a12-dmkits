@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { inspectCheckerMaven } from './checker-maven.ts';
 import { smokeChecker } from './checker-consumers.ts';
-import { command, sourceIdentity, stageChecker, goLiveChecker } from './checker-release-github.ts';
+import { command, publishedChangelog, sourceIdentity, stageChecker, goLiveChecker } from './checker-release-github.ts';
+import { renderChangelog } from './checker-release-core.ts';
 import type { Receipt } from './checker-release-core.ts';
 
 async function main(): Promise<void> {
@@ -17,6 +18,8 @@ async function main(): Promise<void> {
         // Losing this build-local receipt is harmless: qualification recreates it; public tags and manifests retain release identity.
         rmSync(receiptPath, { force: true });
         const source = sourceIdentity(root, version);
+        // Checked here as well as at staging: the source tag is still unpushed, so a missed freeze can be fixed and retagged.
+        renderChangelog(readFileSync(resolve(root, 'consistency/public-release/CHANGELOG.md'), 'utf8'), version, publishedChangelog(root));
         command(root, './build.sh', [':consistency:verifyCheckerMavenPublication', '--console=plain'], true);
         const staging = resolve(root, 'build/consistency-release/maven');
         const files = inspectCheckerMaven(staging, version);

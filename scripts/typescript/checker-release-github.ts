@@ -19,6 +19,11 @@ function api(cwd: string, path: string): unknown | undefined {
     if (result.stderr?.includes('(HTTP 404)')) return undefined;
     throw new Error(`GitHub lookup failed: ${result.stderr || result.error}`);
 }
+/** The changelog the mirror publishes on its main branch; absent before the first release that carried one. */
+export function publishedChangelog(root: string): string | undefined {
+    const file = api(root, `repos/${repository}/contents/CHANGELOG.md`) as { content: string } | undefined;
+    return file && Buffer.from(file.content, 'base64').toString('utf8');
+}
 export function sourceIdentity(root: string, version: string): string {
     if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('stable SemVer required');
     if (command(root, 'git', ['status', '--porcelain'])) throw new Error('release source checkout must be clean');

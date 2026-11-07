@@ -68,13 +68,13 @@ export async function promoteChecker(host: PromotionHost): Promise<void> {
     await host.latest();
 }
 
-const sectionHeading = /^## \[([^\]]+)\]/m;
+const sectionHeading = /^## \[/m;
 function sections(changelog: string): string {
     const start = changelog.search(sectionHeading);
     return start < 0 ? '' : changelog.slice(start);
 }
 function splitFirst(history: string): [heading: string, body: string, rest: string] {
-    const next = history.slice(1).search(/^## \[/m);
+    const next = history.slice(1).search(sectionHeading);
     const first = next < 0 ? history : history.slice(0, next + 1);
     const newline = first.indexOf('\n');
     return [first.slice(0, newline < 0 ? first.length : newline), newline < 0 ? '' : first.slice(newline + 1), next < 0 ? '' : history.slice(next + 1)];
@@ -91,7 +91,9 @@ export function renderChangelog(source: string, version: string, published: stri
     if (published !== undefined && rest !== sections(published)) {
         throw new Error('checker changelog differs from the published history; freeze the previous release\'s section and never rewrite one');
     }
-    return source.replace('## [@VERSION@]', `## [${version}]`);
+    // Substituted at the section's own offset: the preamble may name the placeholder heading in prose.
+    const start = source.search(sectionHeading);
+    return `${source.slice(0, start)}## [${version}]${source.slice(start + heading.length)}`;
 }
 /** The body of release [version]'s changelog section, which is that release's notes. */
 export function releaseNotes(changelog: string, version: string): string {
