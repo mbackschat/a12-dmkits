@@ -21,6 +21,18 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-11-07-cause-question-per-scope"></a>
+### Checkpoint 2026-11-07 — asking a fired message's aggregated causes once per scope returns a rule firing on every line to linear growth
+
+`scripts/perf.sh gate` on Apple M1, JDK 21.0.13, A12 Kernel 31.3.1. `RowInvariantStarReaderPerfTest`'s `SUM_OF_TERMS_FIRING` lane, whose rule fires on every one of N lines:
+
+| run | revision | N = 1 000 | N = 4 000 | median growth |
+|---|---|---|---|---|
+| `2026-11-07T100434Z` | `fea9fd96d`, causes asked per message | 71.6 ms | 1 079.7 ms | 15.09× (quadratic ≈ 16) |
+| `2026-11-07T113959Z` | `0bd996ecf`, causes asked once per scope | 4.3 ms | 16.9 ms | 3.88× (linear ≈ 4) |
+
+Each fired message asked its aggregated cause entities again, and each question walks every row of the scope; the answer depends only on the scope, so the validation pass now memoizes it (`686a6c0cd`, [KF683](KERNEL-FINDINGS.md#kf683)). The second run is the gate's whole lane set, failing only on keys no anchor yet covers; the first run's record was not kept.
+
 <a id="checkpoint-2026-11-07-kernel-31-3-footprint"></a>
 ### Checkpoint 2026-11-07 — kernel 31.3.1 leaves both kernel footprints unchanged; the interpreter's cause candidates cost up to 34.5 kB per prepared model
 
