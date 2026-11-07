@@ -8077,7 +8077,7 @@ The rest of the grid re-states the core on one carrier: identity labels are text
 
 **`FirstFilledValue` over textual fields is a String, even over two enumerations** (`CheckEntityListenUtils.treatEnumAsString`): `FirstFilledValue(Plain, PlainTwin) == "missing"` is admitted, so it meets neither the domain gate nor, as no immediate read, the display gate. The portable checker had read a brace as an untyped computation and was silent on every refused brace row. *(Locked: `adapter.laws.CheckerComparisonOperandShapeAgreementTest`, kernel and checker per row.)*
 
-Reported by the portable checker (`CheckFamily.ENUM_DISPLAY_COMPARABILITY`), whose silences are A12's own exits: a category access, a text partner that is not an immediate field read, and a table-backed enumeration.
+The portable checker reported this gate as `CheckFamily.ENUM_DISPLAY_COMPARABILITY` until kernel 31.1.1 retired it ([KF655](#kf655)); its silences were A12's own exits: a category access, a text partner that is not an immediate field read, and a table-backed enumeration.
 
 *Locked by:* `rulekit.validate.laws.EnumDisplayComparabilityLawsTest` (with `EnumComparabilityLawsTest` for the core), portable assertions preserved by `consistency.OperationContractTest`.
 
