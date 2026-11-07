@@ -8,9 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased] — kernel 31.3.1 (A12 Tools 2026.06-ext2)
 
+### Added
+
+- **Possible-cause filters on rules.** `rule add` and `apply` take `possibleCauses`, the entities a fired rule may name as its cause, by absolute path; they are stored as A12's relative entries, read back, and carried across a field or group rename or move. The portable checker states A12's filter classes.
+- **`model eval` and `rule eval` report each message's possibly-causing entities** (`possiblyCausing`), in A12's groups.
+- **Change notes.** `meta --change-note` and `--remove-change-note` set or remove A12's note on an element.
+- **A computation's `errorCode`** in `computation add` and `computation modify`, read back by `computation read`.
+
 ### Changed
 
-- Targets A12 Kernel `31.3.1` / A12 Tools `2026.06-ext2` and writes the DM `29.8.0` model format, which kernel 31.1.1 cannot read; models down to `29.4.0` still load.
+- **BREAKING:** targets A12 Kernel `31.3.1` / A12 Tools `2026.06-ext2` and writes the DM `29.8.0` model format, which kernel 31.1.1 cannot read; models down to `29.4.0` still load.
+- **BREAKING:** a computation's suppressed warnings are A12's `additionalParserInformation` preamble (`@SuppressWarning(<codes>)`). The `errorCodesToSuppress` key is gone from the computation specs and from `computation read`, so a spec that still carries it is refused as an unrecognized key.
 - **`dmtool manifest` returns an index:** one entry per verb (name, schema pointer, description), about a fourteenth of the full document. `dmtool manifest <target> [<op>]` returns the full entries of those verbs, and `dmtool manifest --full` restores the previous whole-tree output.
 - `rejectBefore1900` is deprecated and has no effect, because A12 no longer evaluates `youngerThan1900Check`. It is still accepted and read back, and it no longer refuses a year-free format.
 

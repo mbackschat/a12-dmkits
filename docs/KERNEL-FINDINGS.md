@@ -16967,16 +16967,16 @@ So the order binds as Jackson binds an enum: after Java's `trim` (a tab goes, an
 
 > Fold: pending — the runtime rendering of a stored Number, beside the canonical Document JSON finding's two renderings.
 
-Kernel 31.3.1 caps the scale of the runtime text every evaluation channel reads at fifteen digits less the stored value's precision minus its scale, and rounds half up to it (`NumberConversion.determineFractionalDigits`, source-read; 31.1.1 had no cap). Since a stored number passes the parse with at most fifteen digits, the cap binds in two places: a pad to the field's `minFractionalDigits` that would pass fifteen digits, and a value with more than fifteen significant digits. Measured on a ledger whose `Ledger` takes exactly ten decimals and whose `Rate` takes up to fourteen, with a rule firing when the rate exceeds `1.12345678901234`:
+Kernel 31.3.1 caps the scale of the runtime text every evaluation channel reads at fifteen digits less the stored value's precision minus its scale, and rounds half up to it (`NumberConversion.determineFractionalDigits`, source-read; 31.1.1 had no cap). The cap binds in two places: a pad to the field's `minFractionalDigits` that would pass fifteen digits, and a stored value with more than fifteen significant digits, which the parse admits (`1234567890.1234567` below has seventeen). Measured on a ledger whose `Ledger` takes exactly ten decimals and whose `Rate` takes up to fourteen, with a rule firing when the rate exceeds `1.12345678901234`:
 
-| stored | 31.3.1 | 31.1.1 |
+| stored | 31.3.1 | the uncapped formula (31.1.1's) |
 |---|---|---|
 | `Ledger` `12345`, five plus ten digits | admitted | admitted |
 | `Ledger` `123456`, `1234567`, or the string `"123456"` | `zahlFalscheAnzahlNachkommastellen`: the pad stops at nine and eight decimals | `stelligkeitZuLang` on the sixteen-digit pad |
 | `Rate` `1234567890.1234567` | rounded to `1234567890.12346`; no length class | `stelligkeitZuLang` |
 | `Rate` `1.123456789012345` · `1.123456789012344` | the rule fires · it does not | not measured |
 
-The rate pair is the rounding mode's discriminator: the kept digit is an even `4`, so `HALF_EVEN` would leave both rates equal to the constant and neither would fire. The 31.1.1 column is the interpreter's answer before it took the cap, which reproduced 31.1.1's uncapped formula (`A12RuntimeNumberFormTest`'s former oracle). A computed value is stored by a different formatter, which has no cap ([KF19](#kf19)'s store-path paragraph); its lock, `ComputedNumberDigitOverflowDiffTest`, still passes on 31.3.1.
+The rate pair is the rounding mode's discriminator: the kept digit is an even `4`, so `HALF_EVEN` would leave both rates equal to the constant and neither would fire. The last column is not a kernel 31.1.1 measurement: it is the interpreter's answer before it took the cap, which reproduced 31.1.1's uncapped formula (`A12RuntimeNumberFormTest`'s former oracle). A computed value is stored by a different formatter, which has no cap ([KF19](#kf19)'s store-path paragraph); its lock, `ComputedNumberDigitOverflowDiffTest`, still passes on 31.3.1.
 
 *Locked by:* `adapter.laws.NumberRenderCapDiffTest`, dynamic Groovy pinned, generated Java and the interpreter compared document by document; `interpreter.A12RuntimeNumberFormTest` against `java.math.BigDecimal` on the capped formula.
 
