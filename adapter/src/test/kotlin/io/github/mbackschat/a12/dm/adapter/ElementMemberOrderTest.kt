@@ -100,6 +100,16 @@ class ElementMemberOrderTest {
             memberOrder(typeDefinition(MAPPER.readTree(written))))
     }
 
+    /** A replaced computation is rebuilt from its draft, and the metadata it carries over goes back before the body. */
+    @Test
+    fun aReplacedComputationKeepsItsMetadataWhereA12WritesIt() {
+        val id = "/Subscription/Billing/EffectiveFeeComp"
+        val noted = ModelDocument.read(ModelWriter.addComputation(model, computation, messages))
+            .setChangeNote(id, "reviewed").setAnnotation(id, "owner", "billing")
+            .setExternalDescription(id, "en_US", "Shown").setInternalDescription(id, "en_US", "Kept").toJson()
+        assertA12Order(ModelWriter.replaceComputation(noted, id, computation, messages), id)
+    }
+
     private fun typeDefinition(root: JsonNode): JsonNode =
         root.path("content").path("typeDefinitions").first { it.path("id").asText() == "FeeCode" }
 

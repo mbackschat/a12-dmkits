@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.write;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -13,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.ElementMemberOrder;
 import io.github.mbackschat.a12.dm.core.ElementType;
 
 /**
@@ -115,5 +118,14 @@ final class DmJson {
             }
         }
         return null;
+    }
+
+    /** Puts {@code element}'s head members where A12 writes them, before its body; every other member keeps its order. */
+    static void headFirst(ObjectNode element) {
+        Map<String, JsonNode> members = new LinkedHashMap<>();
+        ElementMemberOrder.ELEMENT_HEAD.stream().filter(element::has).forEach(key -> members.put(key, element.get(key)));
+        element.properties().forEach(member -> members.putIfAbsent(member.getKey(), member.getValue()));
+        element.removeAll();
+        element.setAll(members);
     }
 }

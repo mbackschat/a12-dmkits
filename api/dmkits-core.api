@@ -108,6 +108,10 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String VALUE
   public static final java.lang.String VALUES
 
+public final class io.github.mbackschat.a12.dm.core.ElementMemberOrder
+  public static final java.util.List<java.lang.String> ELEMENT_HEAD
+  public static final java.util.List<java.lang.String> TYPE_DEFINITION
+
 public enum io.github.mbackschat.a12.dm.core.ElementType
   public static final io.github.mbackschat.a12.dm.core.ElementType COMPUTATION
   public static final io.github.mbackschat.a12.dm.core.ElementType FIELD

@@ -355,9 +355,9 @@ public final class ModelWriter {
      * Carry the old computation's leading {@code ;;} comments AND its element-level metadata onto the rebuilt one.
      * {@code replaceComputation} is remove-old + add-rebuilt, and {@link #computationNode} reconstructs only
      * {@code type}/{@code id}/{@code name} and the {@code Computation} body — so without this, the element's
-     * comments (on its common precondition and first operation) and its metadata (annotations,
-     * internalDescription, externalDescription) would be lost. Best-effort: any parse hiccup leaves the rebuilt
-     * model as-is.
+     * comments (on its common precondition and first operation) and its metadata (annotations, descriptions, change
+     * note) would be lost. The carried metadata goes back before the body, where A12 writes it. Best-effort: any
+     * parse hiccup leaves the rebuilt model as-is.
      */
     private static String preserveComputationMetadata(String oldModel, String fullName, String newModel) {
         try {
@@ -368,6 +368,7 @@ public final class ModelWriter {
                 return newModel;
             }
             carryUnrebuiltSlots(oldComp, newComp, REBUILT_COMPUTATION_SLOTS);
+            DmJson.headFirst(newComp);
             JsonNode oldBody = oldComp.path("Computation");
             ObjectNode newBody = (ObjectNode) newComp.path("Computation");
             carryUnrebuiltSlots(oldBody, newBody, REBUILT_COMPUTATION_BODY_SLOTS);
