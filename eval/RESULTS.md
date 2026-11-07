@@ -16,6 +16,25 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-11-07 22:57 CET — targeted: the condensed surfaces after the 31.3.1 cleanup (haiku + sonnet@xhigh, k=1, 33 agents, bare-tool)
+
+**Question.** Did the prose condensation of the 31.3.1 migration (`b86afdbf0`, `96d724ece`, `a61ac2b4f`) cost a cold agent anything on tasks that read the condensed surfaces — the per-kind `field add` spec, `schema apply`, `schema computation add`, the operator catalog's date and pattern entries, and the runtime result envelope? **Arm:** the working-tree launcher at `32ebc0517`, kernel 31.3.1, sandboxed fixtures; sonnet pinned at `xhigh` through the new `efforts` arg, haiku at its default. A separate cold review of every prose removal in those commits found no dropped fact (two HIGH reviewers, 79 schema pairs and 99 catalog/corrective/skill items).
+
+| task | family | surface it reads | haiku: calls · tool output · peak context | sonnet@xhigh: calls · tool output · peak context | pass haiku · sonnet |
+|---|---|---|---|---|---|
+| `modelkit/01` add a whole-number field | structure | `field add --help` / `schema field add` | 1 · 8 KB · 71k | 5 · 8 KB · 72k | ✓ · ✓ |
+| `mixed/01` field + rule in one apply | session | `schema apply`, `model describe` | 4 · 45 KB · 87k | 6 · 20 KB · 78k | ✓ · ✓ |
+| `mixed/02` repair a rejected batch | session | `schema apply`, `operators GreaterThan` | 6 · 42 KB · 87k | 7 · 34 KB · 83k | ✓ · ✓ |
+| `modelkit/07` multi-select group | template | `group multiselect --help` | 1 · 6 KB · 71k | 2 · 5 KB · 71k | ✓ · ✓ |
+| `rulekit/03` product-code pattern | authoring | `operators PatternViolated` | 7 · 43 KB · 85k | 5 · 28 KB · 79k | ✓ · ✓ |
+| `rulekit/13` coverage window | authoring-computation | `schema computation add`, `operators DateRange` | 6 · 52 KB · 89k | 7 · 31 KB · 80k | ✓ · ✓ |
+| `rulekit/19` date deadline (ISO-literal trap) | self-correction | `operators`, the rejection's `fix` | 8 · 47 KB · 87k | 4 · 35 KB · 80k | ✓ · ✓ |
+| `rulekit/22` whole-model runtime eval | runtime | `model eval --help`, the text view | 4 · 15 KB · 74k | 4 · 21 KB · 76k | ✓ · ✓ |
+
+**Findings (n=1 per cell, so directional only).** (1) 16/16: no condensed surface cost a pass on either tier. (2) What dmtool hands an agent is small next to what the agent already carries: tool output per task was 5–52 KB (about 1.5–13k tokens), while every producer starts near **70k tokens** of harness context before its first call — so trimming CLI prose further buys little per task; the remaining lever is fewer calls, not shorter texts. (3) haiku spends its extra calls on recovery loops (`rulekit/19`: 8 calls against sonnet's 4). On the authoring tasks both tiers read the raw model file (`cat`) to orient rather than `model describe`; the session tasks open with `model describe`.
+
+**Instrument notes.** The boundary audit is clean (no `docs/`, source, test or `*.md` read; the only file read is the agents' own `/tmp` op file). Two standing caveats this run surfaced, neither new: the task schemas carry **no GAPS field**, so friction is reconstructed from transcripts rather than reported by the producer (the skill's guardrail 5); and workflow subagents receive the repository's `CLAUDE.md` at start, which carries a few DSL facts — every workflow-run eval shares it, so trends stay comparable, but a bare-tool claim is bounded by it. Call counts are tool calls, halved for the harness's `cd`-prefixed re-issue of each command.
+
 ### 2026-11-06 23:53 CET — targeted A/B: the tiered `manifest` vs the one-call tree (haiku + sonnet, k=1, 12 agents, bare-tool)
 
 **Question.** Does a bare `manifest` that returns a 22 KB verb index (with `manifest <target> [<op>]` drill-down) cost an agent less than the 311 KB whole tree it replaced, without costing correctness? **Arms:** B is the working-tree launcher (kernel 31.3.1 build, uncommitted); A is the same launcher behind a shim that restores the previous surface byte for byte, apart from the manifest verb's own entry (bare `manifest` = the full tree, the old help footer and `manifest --help`, drill-down arguments refused), so the tiering is the only variable. Fresh `general-purpose` agents, one isolated work dir each, binary-only material, scored deterministically (re-running the reported `apply --dry-run`; set-equality against `manifest --full`'s required flags).

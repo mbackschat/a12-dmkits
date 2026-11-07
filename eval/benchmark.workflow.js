@@ -31,9 +31,14 @@ export const meta = {
 // handle both so the run can never silently no-op on an empty TASKS again.
 const A = (typeof args === 'string') ? JSON.parse(args) : (args || {})
 const MODELS = A.models || ['opus']
+// A tier is a model AND a reasoning effort (sonnet at xhigh is not sonnet at its default), so the producers
+// take an optional per-model effort; an unlisted model inherits the session effort. Judges and rescorers
+// are the instrument, not the subject, and keep the session's settings.
+const EFFORTS = A.efforts || {}
+const EFFORT = model => EFFORTS[model]
 const K = A.k || 3
 const TASKS = A.tasks || []
-log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
+log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS.map(m => EFFORT(m) ? `${m}@${EFFORT(m)}` : m)}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
 // The JDK-21 pin comes from the shared helper, not a second copy of `java_home -v 21`: this string is a
 // shell command an agent runs from the repository root, so it can source it like every other consumer.
@@ -110,7 +115,7 @@ const COMPUTATION_PREFLIGHT = TASKS.filter(t => t.family === 'computation-prefli
 // ISO date literal → MVK_INVALID_TYPE_FOR_COMPARISON) and the agent must read the diagnostic's `fix` and
 // recover within its turns. The recovery loop happens INSIDE the produce agent (it has the check verb), so
 // the pass criterion is identical to authoring — final rule kernel-valid AND gold-equivalent. It therefore
-// rides the authoring produce → batch-recheck → judge-by-execution path verbatim (folded into authorRuns).
+// rides the authoring produce → batch-recheck → judge-by-execution path verbatim (folded into the authoring produce phase).
 const SELF_CORRECTION = TASKS.filter(t => t.family === 'self-correction')
 const STRUCTURE = TASKS.filter(t => t.family === 'structure' && t.status !== 'deferred')
 const SESSION = TASKS.filter(t => t.family === 'session' && t.status !== 'deferred')
@@ -454,155 +459,30 @@ if (!prep || prep.ready !== true) {
 // ---- Produce: one clean agent per (model, task, run); model pinned for reproducibility ------------
 
 phase('Produce')
-const authorRuns = []
-for (const model of MODELS)
-  for (const task of [...AUTHORING, ...SELF_CORRECTION])  // self-correction = authoring + a recovery trap; same pass path
-    for (let i = 0; i < K; i++) authorRuns.push({ model, task, i })
+// Every producer phase fans out the same (model × task × run) grid, one clean agent per cell; only the prompt,
+// the label and the output schema differ. A failed agent becomes `out: null` so the scorers see the cell.
+const produce = (kind, tasks, prompt, label, schema) => parallel(
+  MODELS.flatMap(model => tasks.flatMap(task => Array.from({ length: K }, (_, i) => ({ model, task, i })))).map(r => () =>
+    agent(prompt(r.task), { label: `${label} ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, effort: EFFORT(r.model), schema })
+      .then(out => ({ kind, model: r.model, task: r.task, i: r.i, out }))
+      .catch(() => ({ kind, model: r.model, task: r.task, i: r.i, out: null }))))
 
-const explainRuns = []
-for (const model of MODELS)
-  for (const task of COMPREHENSION)
-    for (let i = 0; i < K; i++) explainRuns.push({ model, task, i })
-
-const authored = await parallel(authorRuns.map(r => () =>
-  agent(authorPrompt(r.task), { label: `author ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_SCHEMA })
-    .then(out => ({ kind: 'authoring', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'authoring', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const explained = await parallel(explainRuns.map(r => () =>
-  agent(explainPrompt(r.task), { label: `explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
-    .then(out => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const rolesAuditRuns = []
-for (const model of MODELS)
-  for (const task of WORKSPACE_ROLES)
-    for (let i = 0; i < K; i++) rolesAuditRuns.push({ model, task, i })
-
-const rolesAudited = await parallel(rolesAuditRuns.map(r => () =>
-  agent(rolesAuditPrompt(r.task), { label: `roles-audit ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: ROLES_AUDIT_SCHEMA })
-    .then(out => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const compExplainRuns = []
-for (const model of MODELS)
-  for (const task of COMPUTATION_COMPREHENSION)
-    for (let i = 0; i < K; i++) compExplainRuns.push({ model, task, i })
-
-const compExplained = await parallel(compExplainRuns.map(r => () =>
-  agent(computationExplainPrompt(r.task), { label: `comp-explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
-    .then(out => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const runtimeRuns = []
-for (const model of MODELS)
-  for (const task of RUNTIME)
-    for (let i = 0; i < K; i++) runtimeRuns.push({ model, task, i })
-
-const runtimeObserved = await parallel(runtimeRuns.map(r => () =>
-  agent(runtimePrompt(r.task), { label: `runtime ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: RUNTIME_SCHEMA })
-    .then(out => ({ kind: 'runtime', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'runtime', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const preflightRuns = []
-for (const model of MODELS)
-  for (const task of COMPUTATION_PREFLIGHT)
-    for (let i = 0; i < K; i++) preflightRuns.push({ model, task, i })
-
-const preflightObserved = await parallel(preflightRuns.map(r => () =>
-  agent(computationPreflightPrompt(r.task), { label: `preflight ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: COMPUTATION_PREFLIGHT_SCHEMA })
-    .then(out => ({ kind: 'computation-preflight', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'computation-preflight', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const compRuns = []
-for (const model of MODELS)
-  for (const task of AUTHORING_COMP)
-    for (let i = 0; i < K; i++) compRuns.push({ model, task, i })
-
-const authoredComp = await parallel(compRuns.map(r => () =>
-  agent(authorComputationPrompt(r.task), { label: `comp ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
-    .then(out => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const structureRuns = []
-for (const model of MODELS)
-  for (const task of STRUCTURE)
-    for (let i = 0; i < K; i++) structureRuns.push({ model, task, i })
-
-const authoredStructure = await parallel(structureRuns.map(r => () =>
-  agent(structurePrompt(r.task), { label: `struct ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: STRUCTURE_SCHEMA })
-    .then(out => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const sessionRuns = []
-for (const model of MODELS)
-  for (const task of SESSION)
-    for (let i = 0; i < K; i++) sessionRuns.push({ model, task, i })
-
-const authoredSession = await parallel(sessionRuns.map(r => () =>
-  agent(sessionPrompt(r.task), { label: `session ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: SESSION_SCHEMA })
-    .then(out => ({ kind: 'session', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'session', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const deleteRuns = []
-for (const model of MODELS)
-  for (const task of DELETE_SAFETY)
-    for (let i = 0; i < K; i++) deleteRuns.push({ model, task, i })
-
-const authoredDeleteSafety = await parallel(deleteRuns.map(r => () =>
-  agent(deleteSafetyPrompt(r.task), { label: `del ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: DELETE_SAFETY_SCHEMA })
-    .then(out => ({ kind: 'delete-safety', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'delete-safety', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const modRuns = []
-for (const model of MODELS)
-  for (const task of MODIFY_COMP)
-    for (let i = 0; i < K; i++) modRuns.push({ model, task, i })
-
-const authoredMod = await parallel(modRuns.map(r => () =>
-  agent(modifyComputationPrompt(r.task), { label: `modify ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
-    .then(out => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const modRuleRuns = []
-for (const model of MODELS)
-  for (const task of MODIFY_RULE)
-    for (let i = 0; i < K; i++) modRuleRuns.push({ model, task, i })
-
-const authoredModRule = await parallel(modRuleRuns.map(r => () =>
-  agent(modifyRulePrompt(r.task), { label: `modrule ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: MODIFY_RULE_SCHEMA })
-    .then(out => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const metadataRuns = []
-for (const model of MODELS)
-  for (const task of METADATA)
-    for (let i = 0; i < K; i++) metadataRuns.push({ model, task, i })
-
-const authoredMetadata = await parallel(metadataRuns.map(r => () =>
-  agent(metadataPrompt(r.task), { label: `meta ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: METADATA_SCHEMA })
-    .then(out => ({ kind: 'metadata', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'metadata', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const templateRuns = []
-for (const model of MODELS)
-  for (const task of TEMPLATE)
-    for (let i = 0; i < K; i++) templateRuns.push({ model, task, i })
-
-const authoredTemplate = await parallel(templateRuns.map(r => () =>
-  agent(templatePrompt(r.task), { label: `tmpl ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: TEMPLATE_SCHEMA })
-    .then(out => ({ kind: 'template', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'template', model: r.model, task: r.task, i: r.i, out: null }))))
-
-const refactorRuns = []
-for (const model of MODELS)
-  for (const task of REFACTOR)
-    for (let i = 0; i < K; i++) refactorRuns.push({ model, task, i })
-
-const authoredRefactor = await parallel(refactorRuns.map(r => () =>
-  agent(refactorPrompt(r.task), { label: `refac ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: REFACTOR_SCHEMA })
-    .then(out => ({ kind: 'refactor', model: r.model, task: r.task, i: r.i, out }))
-    .catch(() => ({ kind: 'refactor', model: r.model, task: r.task, i: r.i, out: null }))))
+// self-correction = authoring + a recovery trap; same pass path
+const authored = await produce('authoring', [...AUTHORING, ...SELF_CORRECTION], authorPrompt, 'author', AUTHOR_SCHEMA)
+const explained = await produce('comprehension', COMPREHENSION, explainPrompt, 'explain', EXPLAIN_SCHEMA)
+const rolesAudited = await produce('workspace-roles', WORKSPACE_ROLES, rolesAuditPrompt, 'roles-audit', ROLES_AUDIT_SCHEMA)
+const compExplained = await produce('computation-comprehension', COMPUTATION_COMPREHENSION, computationExplainPrompt, 'comp-explain', EXPLAIN_SCHEMA)
+const runtimeObserved = await produce('runtime', RUNTIME, runtimePrompt, 'runtime', RUNTIME_SCHEMA)
+const preflightObserved = await produce('computation-preflight', COMPUTATION_PREFLIGHT, computationPreflightPrompt, 'preflight', COMPUTATION_PREFLIGHT_SCHEMA)
+const authoredComp = await produce('authoring-computation', AUTHORING_COMP, authorComputationPrompt, 'comp', AUTHOR_COMP_SCHEMA)
+const authoredStructure = await produce('structure', STRUCTURE, structurePrompt, 'struct', STRUCTURE_SCHEMA)
+const authoredSession = await produce('session', SESSION, sessionPrompt, 'session', SESSION_SCHEMA)
+const authoredDeleteSafety = await produce('delete-safety', DELETE_SAFETY, deleteSafetyPrompt, 'del', DELETE_SAFETY_SCHEMA)
+const authoredMod = await produce('modify-computation', MODIFY_COMP, modifyComputationPrompt, 'modify', AUTHOR_COMP_SCHEMA)
+const authoredModRule = await produce('modify-rule', MODIFY_RULE, modifyRulePrompt, 'modrule', MODIFY_RULE_SCHEMA)
+const authoredMetadata = await produce('metadata', METADATA, metadataPrompt, 'meta', METADATA_SCHEMA)
+const authoredTemplate = await produce('template', TEMPLATE, templatePrompt, 'tmpl', TEMPLATE_SCHEMA)
+const authoredRefactor = await produce('refactor', REFACTOR, refactorPrompt, 'refac', REFACTOR_SCHEMA)
 
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:

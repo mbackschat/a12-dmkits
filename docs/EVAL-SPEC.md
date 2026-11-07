@@ -229,6 +229,7 @@ The lesson generalizes: **a 0/k cell whose candidates look correct is an artifac
 | param | meaning | selective-run use |
 |---|---|---|
 | `models` | tiers to pin, e.g. `["opus","sonnet"]` | pass one tier to re-check just it |
+| `efforts` | optional reasoning effort per model, e.g. `{"sonnet":"xhigh"}`; producers only, an unlisted model inherits the session effort | pin a tier's effort, not just its model |
 | `k` | runs per (model, task) cell | low `k` for a quick trial; higher for stable pass@k |
 | `tasks` | the trimmed task objects (`id/family/model/intent/gold/rules/expected`) | **pass only the affected tasks** → targeted re-run (§8b) |
 

@@ -22,7 +22,7 @@
     "build.gradle": 1041,
     "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java": 840,
     "consistency/build.gradle": 936,
-    "eval/benchmark.workflow.js": 1034,
+    "eval/benchmark.workflow.js": 936,
     "interpreter/build.gradle": 3463,
     "interpreter/consumer-tests/browser/scripts/smoke.ts": 931,
     "interpreter/consumer-tests/browser/src/showcase.ts": 921,
