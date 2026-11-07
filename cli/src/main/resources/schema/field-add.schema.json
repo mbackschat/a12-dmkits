@@ -95,14 +95,14 @@
     "boolean": {
       "type": "object", "description": "(kind BOOLEAN) config", "additionalProperties": false,
       "properties": {
-        "trueValue": { "type": "string", "description": "The text this model stores for true where it differs from A12's default (DM-JSON `notInDCustomTrueValue`); independent of falseValue, and omitting both writes no config block." },
-        "falseValue": { "type": "string", "description": "The text this model stores for false where it differs from A12's default (DM-JSON `notInDCustomFalseValue`); independent of trueValue, and omitting both writes no config block." } }
+        "trueValue": { "type": "string", "description": "A representation for true where it differs from A12's default (DM-JSON `notInDCustomTrueValue`). The model keeps it, but validation never consults it: the stored value is still the literal `true` or `false`. Independent of falseValue; omitting both writes no config block." },
+        "falseValue": { "type": "string", "description": "A representation for false where it differs from A12's default (DM-JSON `notInDCustomFalseValue`). The model keeps it, but validation never consults it: the stored value is still the literal `true` or `false`. Independent of trueValue; omitting both writes no config block." } }
     },
     "confirm": {
       "type": "object", "description": "(kind CONFIRM) config", "additionalProperties": false,
       "properties": {
-        "trueValue": { "type": "string", "description": "The text this model stores for true where it differs from A12's default (DM-JSON `notInDCustomTrueValue`); independent of falseValue, and omitting both writes no config block." },
-        "falseValue": { "type": "string", "description": "The text this model stores for false where it differs from A12's default (DM-JSON `notInDCustomFalseValue`); independent of trueValue, and omitting both writes no config block." } }
+        "trueValue": { "type": "string", "description": "A representation for true where it differs from A12's default (DM-JSON `notInDCustomTrueValue`). The model keeps it, but validation never consults it: the stored value is still the literal `true` or nothing. Independent of falseValue; omitting both writes no config block." },
+        "falseValue": { "type": "string", "description": "A representation for false where it differs from A12's default (DM-JSON `notInDCustomFalseValue`). The model keeps it, but validation never consults it: the stored value is still the literal `true` or nothing. Independent of trueValue; omitting both writes no config block." } }
     },
     "dateFragment": {
       "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,

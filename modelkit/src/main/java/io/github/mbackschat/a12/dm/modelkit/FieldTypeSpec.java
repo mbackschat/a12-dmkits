@@ -391,7 +391,9 @@ public sealed interface FieldTypeSpec {
     }
 
     /**
-     * A boolean (three-state, §1), with the text this model stores for true and for false.
+     * A boolean (three-state, §1), with the model's own representation of true and of false. The model keeps
+     * them, but validation never consults them: a stored value is still the literal {@code true}/{@code false}
+     * (KERNEL-FINDINGS KF273, measured).
      *
      * Both are {@code null} where the model takes A12's defaults, and they are independent — a model may
      * override one and leave the other (DM-JSON {@code notInDCustomTrueValue} / {@code notInDCustomFalseValue}).
@@ -403,7 +405,7 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A confirm (unspecified = False, §1), carrying the same two stored-value overrides as [BooleanSpec]. */
+    /** A confirm (unspecified = False, §1), carrying the same two representation overrides as [BooleanSpec]. */
     record ConfirmSpec(String customTrueValue, String customFalseValue) implements FieldTypeSpec {
         @Override
         public String jsonType() {
