@@ -2,12 +2,13 @@ package io.github.mbackschat.a12.dm.predicates
 
 /**
  * The spelling A12 compares and reports a rule's possible-cause entry in (KERNEL-FINDINGS KF682): an empty path is
- * `./`, and a path ending in `..` gains a trailing `/`. Nothing else is normalized, so `./Premium`, `Premium/` and
- * ` Premium` stay distinct from `Premium`, and A12 admits none of them.
+ * `./`, and a path ending in `..` gains a trailing `/`, a name ending in `..` included (`Premium..` is `Premium../`,
+ * `ElementPathUtils.mapDmRelPathToDorRelPath`, source-read). Nothing else is normalized, so `./Premium`, `Premium/`
+ * and ` Premium` stay distinct from `Premium`, and A12 admits none of them.
  */
 fun possibleCauseSpelling(written: String): String = when {
     written.isEmpty() -> "./"
-    written == ".." || written.endsWith("/..") -> "$written/"
+    written.endsWith("..") -> "$written/"
     else -> written
 }
 

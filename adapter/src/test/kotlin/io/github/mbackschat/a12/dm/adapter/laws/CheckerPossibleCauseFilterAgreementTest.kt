@@ -32,15 +32,18 @@ class CheckerPossibleCauseFilterAgreementTest {
                 .stringField("Key") { }
                 .numberField("Amount") { }
             }
-        }.build().toJson()
+        }
+        .rootGroup("Agent") { it.stringField("Name") { } }
+        .build().toJson()
 
     private val policy = EditSession.read(base).group("/Policy")
     private val lines = EditSession.read(base).group("/Policy/Lines")
+    private val agent = EditSession.read(base).group("/Agent")
 
     /** The condition shapes whose references differ; every one also references the rule's error field. */
     private enum class Construct(val group: String) {
         FIELDS("/Policy"), UPWARD("/Policy/Lines"), AGGREGATE("/Policy"), GROUP("/Policy"),
-        SEMANTIC_INDEX("/Policy/Lines"), HAVING("/Policy"),
+        SEMANTIC_INDEX("/Policy/Lines"), HAVING("/Policy"), OTHER_ROOT("/Policy"),
     }
 
     private fun condition(construct: Construct): Condition = when (construct) {
@@ -52,6 +55,7 @@ class CheckerPossibleCauseFilterAgreementTest {
             .and(lines.num("Amount").gt(lines.num("Amount").forIndex("K1")))
         Construct.HAVING -> policy.num("Premium").filled()
             .and(Dsl.sum(policy.flatten("Lines*/Amount").having(lines.num("Amount").gt(0))).gt(5))
+        Construct.OTHER_ROOT -> policy.num("Premium").filled().and(agent.str("Name").filled())
     }
 
     /** The model with rule `Flagged` under [construct]'s group, its filter set to [filter]'s JSON. */
@@ -98,6 +102,8 @@ class CheckerPossibleCauseFilterAgreementTest {
                 (model(Construct.SEMANTIC_INDEX, listOf("Key", "Amount", "")) to NONE),
             "the own group as './'" to (model(Construct.SEMANTIC_INDEX, listOf("./")) to NONE),
             "a field read inside Having" to (model(Construct.HAVING, listOf("Lines/Amount")) to NONE),
+            "a field of another root" to (model(Construct.OTHER_ROOT, listOf("../Agent/Name")) to NONE),
+            "another root's field below the own group" to (model(Construct.OTHER_ROOT, listOf("Agent/Name")) to IF_FILLED_REF),
             "the same entry in both lists" to (model(Construct.FIELDS, listOf("Premium"), listOf("Premium")) to NONE),
             "a leading ./" to (model(Construct.FIELDS, listOf("./Premium")) to IF_FILLED_REF),
             "through the root group" to (model(Construct.FIELDS, listOf("../Policy/Premium")) to IF_FILLED_REF),
@@ -131,6 +137,8 @@ class CheckerPossibleCauseFilterAgreementTest {
             "a repeat after the spelling map" to (model(Construct.SEMANTIC_INDEX, listOf("", "./")) to IF_FILLED_DUP),
             "a trailing up-step repeated by its mapped spelling" to
                 (model(Construct.FIELDS, listOf("Rider/..", "Rider/../")) to IF_FILLED_REF + IF_FILLED_DUP),
+            "a name ending in an up-step repeated by its mapped spelling" to
+                (model(Construct.FIELDS, listOf("Premium..", "Premium../")) to IF_FILLED_REF + IF_FILLED_DUP),
             "a repeated unreferenced entry" to (model(Construct.FIELDS, listOf("Nope", "Nope")) to IF_FILLED_REF + IF_FILLED_DUP),
             "repeated in the second list" to (model(Construct.FIELDS, emptyList(), listOf("Holder", "Holder")) to
                 setOf("CUSTOM_REF_ERROR_ENTITY_IF_NOT_FILLED_DUPLICATE")),

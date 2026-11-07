@@ -14,7 +14,7 @@ class PossibleCausePredicatesTest {
         val rows = linkedMapOf(
             "" to "./", "./" to "./", ".." to "../", "Premium/.." to "Premium/../", "Rider/../" to "Rider/../",
             "Premium" to "Premium", "./Premium" to "./Premium", "Premium/" to "Premium/", " Premium" to " Premium",
-            "." to ".", "../Premium" to "../Premium",
+            "." to ".", "../Premium" to "../Premium", "Premium.." to "Premium../",
         )
         assertEquals<Map<String, String>>(rows, rows.keys.associateWith { possibleCauseSpelling(it) })
     }
