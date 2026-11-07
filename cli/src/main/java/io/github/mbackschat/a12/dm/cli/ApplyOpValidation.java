@@ -57,7 +57,8 @@ final class ApplyOpValidation {
             }
             String near = Suggestions.nearest(f, valid);
             Optional<String> relocation = MetadataRelocation.fix(which.target, which.op, f)
-                    .or(() -> IncludeAliasRetirement.fix(which.target, f));
+                    .or(() -> IncludeAliasRetirement.fix(which.target, f))
+                    .or(() -> SuppressionListRetirement.fix(which.target, f));
             out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_ARG"),
                     "unknown arg '" + f + "' for op '" + label + "'",
                     Diagnostic.Where.arg(null, f),

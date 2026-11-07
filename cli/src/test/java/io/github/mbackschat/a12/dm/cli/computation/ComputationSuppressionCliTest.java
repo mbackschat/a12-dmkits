@@ -119,7 +119,7 @@ class ComputationSuppressionCliTest {
         assertRefusedUnwritten(dir, "german", "@UnterdrueckeWarnung(" + SUPPRESSION + ")", "MVK_UNEXPECTED_TOKEN");
     }
 
-    /** Kernel 31.3.1 reads a comma-separated list, the supported code twice included (KERNEL-FINDINGS KF329). */
+    /** Kernel 31.3.1 reads a comma-separated list, the supported code twice included (KERNEL-FINDINGS KF298). */
     @Test
     void aListIsAdmittedAndStoredVerbatim(@TempDir Path dir) throws Exception {
         Path model = write(dir, "model.json", CliTestSupport.subscriptionJson());

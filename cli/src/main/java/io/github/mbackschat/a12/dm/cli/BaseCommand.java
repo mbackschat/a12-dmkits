@@ -409,6 +409,7 @@ public abstract class BaseCommand implements Callable<Integer> {
     protected Optional<Integer> rejectInvalidSpec(ResultIdentity identity, String schemaName, JsonNode spec) {
         List<Diagnostic> problems = SpecKeys.forSchema(schemaName).validate(spec).stream()
                 .map(diagnostic -> MetadataRelocation.correct(identity.target(), identity.op(), diagnostic))
+                .map(diagnostic -> SuppressionListRetirement.correct(identity.target(), diagnostic))
                 .toList();
         if (problems.isEmpty()) {
             return Optional.empty();
